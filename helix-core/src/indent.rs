@@ -201,6 +201,8 @@ impl AddedIndent {
             outdent: false,
         }
     }
+    /// Combine this [AddedIndent] with other.
+    /// This is intended for indents that apply to the same line.
     fn combine_with(&mut self, other: &AddedIndent) {
         self.indent |= other.indent;
         self.outdent |= other.outdent;
@@ -218,6 +220,8 @@ impl IndentResult {
     fn new() -> Self {
         IndentResult { indent: 0 }
     }
+    /// Add the given [AddedIndent] to the [IndentResult].
+    /// The [AddedIndent] should be the combination of all the added indents for one line.
     fn add(&mut self, added: &AddedIndent) {
         if added.indent && !added.outdent {
             self.indent += 1;
@@ -378,6 +382,42 @@ fn added_indent<'a>(
     (line, next)
 }
 
+/// Use the syntax tree to determine the indentation for a given position.
+/// This can be used in 2 ways:
+///
+/// - To get the correct indentation for an existing line (new_line=false), not necessarily equal to the current indentation.
+///   - In this case, pos should be inside the first tree-sitter node on that line.
+///     In most cases, this can just be the first non-whitespace on that line.
+///   - To get the indentation for a new line (new_line=true). This behaves like the first usecase if the part of the current line
+///     after pos were moved to a new line.
+///
+/// The indentation is determined by traversing all the tree-sitter nodes containing the position.
+/// Each of these nodes produces some [AddedIndent] for:
+///
+/// - The line of the (beginning of the) node. This is defined by the scope `all` if this is the first node on its line.
+/// - The line after the node. This is defined by:
+///   - The scope `tail`.
+///   - The scope `all` if this node is not the first node on its line.
+/// Intuitively, `all` applies to everything contained in this node while `tail` applies to everything except for the first line of the node.
+/// The indents from different nodes for the same line are then combined.
+/// The [IndentResult] is simply the sum of the [AddedIndent] for all lines.
+///
+/// Specifying which line exactly an [AddedIndent] applies to is important because indents on the same line combine differently than indents on different lines:
+/// ```ignore
+/// some_function(|| {
+///     // Both the function parameters as well as the contained block should be indented.
+///     // Because they are on the same line, this only yields one indent level
+/// });
+/// ```
+///
+/// ```ignore
+/// some_function(
+///     parm1,
+///     || {
+///         // Here we get 2 indent levels because the 'parameters' and the 'block' node begin on different lines
+///     },
+/// );
+/// ```
 fn treesitter_indent_for_pos(
     query: &IndentQuery,
     syntax: &Syntax,
@@ -681,7 +721,7 @@ where
             let line = text.line(i);
             if let Some(pos) = crate::find_first_non_whitespace_char(line) {
                 let suggested_indent = treesitter_indent_for_pos(
-                    &language_config.indent_query().unwrap(),
+                    language_config.indent_query().unwrap(),
                     &syntax,
                     &IndentStyle::Spaces(4),
                     text,

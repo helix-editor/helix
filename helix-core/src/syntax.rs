@@ -186,8 +186,10 @@ impl<'de> Deserialize<'de> for IndentQueryScopes {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct IndentQuery {
+    /// Every node specified here increases the indent level by one (in total at most one per line)
     #[serde(default)]
     pub indent: IndentQueryScopes,
+    /// Every node specified here decreases the indent level by one (in total at most one per line)
     #[serde(default)]
     pub outdent: IndentQueryScopes,
 }
