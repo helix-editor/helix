@@ -40,7 +40,7 @@
 | ocaml | ✓ |  | ✓ |  |
 | ocaml-interface | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |
-| php | ✓ |  | ✓ |  |
+| php | ✓ | ✓ | ✓ |  |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ |  | ✓ |  |
 | python | ✓ | ✓ | ✓ | `pylsp` |
