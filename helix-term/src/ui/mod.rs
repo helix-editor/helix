@@ -132,6 +132,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         walk_builder.types(excluded_types);
     }
 
+    // We want files along with their modification date for sorting
     let files = walk_builder.build().filter_map(|entry| {
         let entry = entry.ok()?;
         // Path::is_dir() traverses symlinks, so we use it over DirEntry::is_dir
@@ -151,6 +152,8 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         Some((entry.into_path(), time))
     });
 
+    // Cap the number of files if we aren't in a git project, preventing
+    // hangs when using the picker in your home directory
     let mut files: Vec<_> = if root.join(".git").is_dir() {
         files.collect()
     } else {
@@ -158,8 +161,10 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         files.take(MAX).collect()
     };
 
+    // Most recently modified first
     files.sort_by_key(|file| std::cmp::Reverse(file.1));
 
+    // Strip the time data so we can send just the paths to the FilePicker
     let files = files.into_iter().map(|(path, _)| path).collect();
 
     FilePicker::new(
