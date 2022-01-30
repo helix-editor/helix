@@ -226,13 +226,11 @@ impl IndentResult {
         if added.indent && !added.outdent {
             self.indent += 1;
         } else if added.outdent && !added.indent {
-            self.indent = self.indent.saturating_sub(1);
+            self.indent -= 1;
         }
     }
     fn as_string(&self, indent_style: &IndentStyle) -> String {
-        indent_style
-            .as_str()
-            .repeat(std::cmp::max(self.indent, 0) as usize)
+        indent_style.as_str().repeat(0.max(self.indent) as usize)
     }
 }
 
@@ -253,7 +251,7 @@ fn get_first_in_line(mut node: Node, byte_pos: usize, new_line: bool) -> Vec<boo
                 || (new_line && node.start_byte() >= byte_pos && prev.start_byte() < byte_pos);
             first_in_line.push(Some(first));
         } else {
-            // Nodes that have no previous siblings are first in their line iff their parent is
+            // Nodes that have no previous siblings are first in their line if and only if their parent is
             // (which we don't know yet)
             first_in_line.push(None);
         }
@@ -339,20 +337,17 @@ fn contains_match<'a>(
 ) -> bool {
     let current_kind = node.kind();
     let first = scope.partition_point(|n| n.kind() < Some(current_kind));
-    for named_node in scope[first..]
+    if scope[first..]
         .iter()
         .take_while(|n| n.kind() == Some(current_kind))
+        .any(|named_node| matches(named_node, node, cursor))
     {
-        if matches(named_node, node, cursor) {
-            return true;
-        }
+        return true;
     }
-    for unnamed_node in scope.iter().take_while(|n| n.kind().is_none()) {
-        if matches(unnamed_node, node, cursor) {
-            return true;
-        }
-    }
-    false
+    scope
+        .iter()
+        .take_while(|n| n.kind().is_none())
+        .any(|unnamed_node| matches(unnamed_node, node, cursor))
 }
 
 /// Returns whether the given scopes contain a match for this line and/or for the next
@@ -429,12 +424,7 @@ fn treesitter_indent_for_pos(
 ) -> Option<String> {
     let mut cursor = syntax.tree().walk();
     let byte_pos = text.char_to_byte(pos);
-    let mut node = match get_lowest_node(syntax.tree().root_node(), query, byte_pos) {
-        Some(n) => n,
-        None => {
-            return None;
-        }
-    };
+    let mut node = get_lowest_node(syntax.tree().root_node(), query, byte_pos)?;
     let mut first_in_line = get_first_in_line(node, byte_pos, new_line);
 
     let mut result = IndentResult::new();
