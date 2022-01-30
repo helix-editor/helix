@@ -101,8 +101,6 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time;
 
-    // We want to exclude files that the editor can't handle yet
-    let mut type_builder = TypesBuilder::new();
     let mut walk_builder = WalkBuilder::new(&root);
     walk_builder
         .hidden(config.file_picker.hidden)
@@ -117,17 +115,22 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         // in our picker.
         .filter_entry(|entry| entry.file_name() != ".git");
 
-    let walk_builder = match type_builder.add(
-        "compressed",
-        "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}",
-    ) {
-        Err(_) => &walk_builder,
-        _ => {
-            type_builder.negate("all");
-            let excluded_types = type_builder.build().unwrap();
-            walk_builder.types(excluded_types)
-        }
-    };
+    // We want to exclude files that the editor can't handle yet
+    let mut type_builder = TypesBuilder::new();
+
+    type_builder
+        .add(
+            "compressed",
+            "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}",
+        )
+        // We don't care if this fails, but we can't leave failures
+        // unhandled, so just convert to Option and ignore.
+        .ok();
+    type_builder.negate("all");
+
+    if let Ok(excluded_types) = type_builder.build() {
+        walk_builder.types(excluded_types);
+    }
 
     let files = walk_builder.build().filter_map(|entry| {
         let entry = entry.ok()?;
