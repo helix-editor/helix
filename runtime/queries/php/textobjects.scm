@@ -28,3 +28,7 @@
     (variadic_parameter)
     (property_promotion_parameter)
   ] @parameter.inside)
+
+(comment) @comment.inside
+
+(comment)+ @comment.around

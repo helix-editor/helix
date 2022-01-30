@@ -24,3 +24,8 @@
 
 (arguments
   (_) @parameter.inside)
+
+[
+  (line_comment)
+  (block_comment)
+] @comment.inside
