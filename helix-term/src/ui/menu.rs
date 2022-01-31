@@ -139,15 +139,23 @@ impl<T: Item> Menu<T> {
 
             acc
         });
-        let len = max_lens.iter().sum::<usize>() + n + 1; // +1: reserve some space for scrollbar
+
+        let height = self.matches.len().min(10).min(viewport.1 as usize);
+        // do all the matches fit on a single screen?
+        let fits = self.matches.len() <= height;
+
+        let mut len = max_lens.iter().sum::<usize>() + n;
+
+        if !fits {
+            len += 1; // +1: reserve some space for scrollbar
+        }
+
         let width = len.min(viewport.0 as usize);
 
         self.widths = max_lens
             .into_iter()
             .map(|len| Constraint::Length(len as u16))
             .collect();
-
-        let height = self.matches.len().min(10).min(viewport.1 as usize);
 
         self.size = (width as u16, height as u16);
 
