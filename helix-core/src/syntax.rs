@@ -209,8 +209,7 @@ impl LanguageConfiguration {
                 &highlights_query,
                 &injections_query,
                 &locals_query,
-            )
-            .unwrap(); // TODO: avoid panic
+            ).unwrap_or_else(|query_error| panic!("Could not parse queries for language {:?}. This can happen if your grammars are out of sync - try running './scripts/grammars sync'. This query could not be parsed: {:?}", self.language_id, query_error));
 
             config.configure(scopes);
             Some(Arc::new(config))
