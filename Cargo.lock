@@ -1145,9 +1145,9 @@ checksum = "1a01404663e3db436ed2746d9fefef640d868edae3cceb81c3b8d5732fda678f"
 
 [[package]]
 name = "unicode-general-category"
-version = "0.4.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07547e3ee45e28326cc23faac56d44f58f16ab23e413db526debce3b0bfd2742"
+checksum = "1218098468b8085b19a2824104c70d976491d247ce194bbd9dc77181150cdfd6"
 
 [[package]]
 name = "unicode-normalization"
