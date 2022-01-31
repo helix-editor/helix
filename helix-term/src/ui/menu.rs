@@ -304,12 +304,14 @@ impl<T: Item + 'static> Component for Menu<T> {
             },
         );
 
+        let fits = len <= win_height;
+
         for (i, _) in (scroll..(scroll + win_height).min(len)).enumerate() {
             let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
 
-            if is_marked {
+            if !fits && is_marked {
                 let cell = &mut surface[(area.x + area.width - 2, area.y + i as u16)];
-                cell.set_symbol("▐ ");
+                cell.set_symbol("▐");
                 // cell.set_style(selected);
                 // cell.set_style(if is_marked { selected } else { style });
             }
