@@ -2,11 +2,9 @@
 # Author: ChrisHa<chunghha@users.noreply.github.com>
 
 "ui.background" = { bg = "base" }
-"ui.menu" = "surface"
+"ui.menu" = { fg = "text", bg = "overlay" }
 "ui.menu.selected" = { fg = "iris", bg = "surface" }
 "ui.linenr" = {fg = "subtle" }
-"ui.popup" = { bg = "overlay" }
-"ui.window" = { bg = "overlay" }
 "ui.liner.selected" = "highlightOverlay"
 "ui.selection" = "highlight"
 "comment" = "subtle"
@@ -34,7 +32,7 @@
 "keyword" = "pine"
 "label" = "iris"
 "namespace" = "pine"
-"ui.popup" = { bg = "overlay" }
+"ui.popup" = { bg = "surface" }
 "ui.window" = { bg = "base" }
 "ui.help" = { bg = "overlay", fg = "foam" }
 "text" = "text"
