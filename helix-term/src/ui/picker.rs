@@ -393,6 +393,16 @@ fn inner_rect(area: Rect) -> Rect {
 }
 
 impl<T: 'static> Component for Picker<T> {
+    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
+        let max_width = 50.min(viewport.0);
+        let max_height = 10.min(viewport.1.saturating_sub(2)); // add some spacing in the viewport
+
+        let height = (self.options.len() as u16 + 4) // add some spacing for input + padding
+            .min(max_height);
+        let width = max_width;
+        Some((width, height))
+    }
+
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let key_event = match event {
             Event::Key(event) => event,

@@ -3482,12 +3482,17 @@ pub fn code_action(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |_editor: &mut Editor,
+        move |editor: &mut Editor,
               compositor: &mut Compositor,
               response: Option<lsp::CodeActionResponse>| {
             if let Some(actions) = response {
+                if actions.is_empty() {
+                    editor.set_status("No code actions available".to_owned());
+                    return;
+                }
+
                 let picker = Picker::new(
-                    true,
+                    false,
                     actions,
                     |action| match action {
                         lsp::CodeActionOrCommand::CodeAction(action) => {
@@ -3515,7 +3520,8 @@ pub fn code_action(cx: &mut Context) {
                         }
                     },
                 );
-                compositor.push(Box::new(picker))
+                let popup = Popup::new("code-action", picker);
+                compositor.push(Box::new(popup))
             }
         },
     )
