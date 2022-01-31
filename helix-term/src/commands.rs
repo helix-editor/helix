@@ -39,7 +39,7 @@ use movement::Movement;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
-    ui::{self, FilePicker, Picker, Popup, Prompt, PromptEvent},
+    ui::{self, FilePicker, Popup, Prompt, PromptEvent},
 };
 
 use crate::job::{self, Job, Jobs};
@@ -3463,6 +3463,15 @@ fn workspace_symbol_picker(cx: &mut Context) {
     )
 }
 
+impl ui::menu::Item for lsp::CodeActionOrCommand {
+    fn label(&self) -> &str {
+        match self {
+            lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str(),
+            lsp::CodeActionOrCommand::Command(command) => command.title.as_str(),
+        }
+    }
+}
+
 pub fn code_action(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
@@ -3491,16 +3500,15 @@ pub fn code_action(cx: &mut Context) {
                     return;
                 }
 
-                let picker = Picker::new(
-                    false,
-                    actions,
-                    |action| match action {
-                        lsp::CodeActionOrCommand::CodeAction(action) => {
-                            action.title.as_str().into()
-                        }
-                        lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
-                    },
-                    move |editor, code_action, _action| match code_action {
+                let picker = ui::Menu::new(actions, move |editor, code_action, event| {
+                    if event != PromptEvent::Validate {
+                        return;
+                    }
+
+                    // always present here
+                    let code_action = code_action.unwrap();
+
+                    match code_action {
                         lsp::CodeActionOrCommand::Command(command) => {
                             log::debug!("code action command: {:?}", command);
                             execute_lsp_command(editor, command.clone());
@@ -3518,9 +3526,13 @@ pub fn code_action(cx: &mut Context) {
                                 execute_lsp_command(editor, command.clone());
                             }
                         }
-                    },
-                );
-                let popup = Popup::new("code-action", picker);
+                    }
+                });
+                let popup =
+                    Popup::new("code-action", picker).margin(helix_view::graphics::Margin {
+                        vertical: 1,
+                        horizontal: 1,
+                    });
                 compositor.push(Box::new(popup))
             }
         },

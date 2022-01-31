@@ -2,7 +2,7 @@ mod completion;
 pub(crate) mod editor;
 mod info;
 mod markdown;
-mod menu;
+pub mod menu;
 mod picker;
 mod popup;
 mod prompt;

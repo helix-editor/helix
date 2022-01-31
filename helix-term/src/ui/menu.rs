@@ -14,11 +14,18 @@ use helix_view::{graphics::Rect, Editor};
 use tui::layout::Constraint;
 
 pub trait Item {
-    fn sort_text(&self) -> &str;
-    fn filter_text(&self) -> &str;
-
     fn label(&self) -> &str;
-    fn row(&self) -> Row;
+
+    fn sort_text(&self) -> &str {
+        self.label()
+    }
+    fn filter_text(&self) -> &str {
+        self.label()
+    }
+
+    fn row(&self) -> Row {
+        Row::new(vec![Cell::from(self.label())])
+    }
 }
 
 pub struct Menu<T: Item> {
