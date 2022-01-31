@@ -14,3 +14,5 @@
   (array_vector_body) @class.inside) @class.around
 
 (argument) @parameter.inside
+
+(comment) @comment.inside

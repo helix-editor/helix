@@ -6,3 +6,8 @@
 
 (argument 
   (_) @parameter.inside)
+
+[
+  (comments)
+  (pod_statement)
+] @comment.inside

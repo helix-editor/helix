@@ -19,3 +19,5 @@
 
 (argument_list
   (_) @parameter.inside)
+
+(comment) @comment.inside
