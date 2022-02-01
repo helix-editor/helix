@@ -52,3 +52,26 @@ exit /B 0
     call :ensure_grammar_fetched %%i %%j
   )
 exit /B
+
+:do_status
+  for /F "tokens=1,2" %%i in (%REVISIONS_FILE%) do (
+    set "remote_url=%%i"
+
+    for /F "delims=" %%g in (%remote_url%) do set grammar=%%g
+    echo grammar: %grammar%
+
+    pushd %grammar_dir%
+    for /F "tokens=*" %%r in ('git rev-parse HEAD') do (
+      set current_revision=%%r
+    )
+    if "%%j" == "%current_revision%" (
+      echo "%%j is out of date."
+      set "are_any_out_of_date="
+    )
+    popd
+  )
+
+  if defined are_any_out_of_date () else (
+    echo "All grammars are up to date."
+  )
+exit /B 0
