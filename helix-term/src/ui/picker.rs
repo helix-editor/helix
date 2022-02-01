@@ -271,6 +271,9 @@ pub struct Picker<T> {
     /// Filter over original options.
     filters: Vec<usize>, // could be optimized into bit but not worth it now
 
+    /// Current height of the completions box
+    completion_height: u16,
+
     cursor: usize,
     // pattern: String,
     prompt: Prompt,
@@ -310,6 +313,7 @@ impl<T> Picker<T> {
             truncate_start: true,
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
+            completion_height: 0,
         };
 
         // TODO: scoring on empty input should just use a fastpath
@@ -362,6 +366,43 @@ impl<T> Picker<T> {
         let len = self.matches.len();
         let pos = (self.cursor + 1) % len;
         self.cursor = pos;
+    }
+
+    pub fn page_up(&mut self) {
+        if self.matches.is_empty() {
+            return;
+        }
+        let len = self.matches.len();
+        let pos = ((self.cursor + len.saturating_sub(self.completion_height as usize)) % len) % len;
+        self.cursor = pos;
+    }
+
+    pub fn page_down(&mut self) {
+        if self.matches.is_empty() {
+            return;
+        }
+        let len = self.matches.len();
+        let pos = (self.cursor + self.completion_height as usize) % len;
+        self.cursor = pos;
+    }
+
+    pub fn to_start(&mut self) {
+        if self.matches.is_empty() {
+            return;
+        }
+        self.cursor = 0;
+    }
+
+    pub fn to_end(&mut self) {
+        if self.matches.is_empty() {
+            return;
+        }
+        self.cursor = self.matches.len() - 1;
+    }
+
+    pub fn set_height(&mut self, new_height: u16) {
+        // subtract borders and input line
+        self.completion_height = new_height - 4;
     }
 
     pub fn selection(&self) -> Option<&T> {
@@ -422,6 +463,18 @@ impl<T: 'static> Component for Picker<T> {
             key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
                 self.move_down();
             }
+            key!(PageDown) | ctrl!('d') => {
+                self.page_down();
+            }
+            key!(PageUp) | ctrl!('u') => {
+                self.page_up();
+            }
+            key!(Home) => {
+                self.to_start();
+            }
+            key!(End) => {
+                self.to_end();
+            }
             key!(Esc) | ctrl!('c') => {
                 return close_fn;
             }
@@ -463,6 +516,8 @@ impl<T: 'static> Component for Picker<T> {
         } else {
             area
         };
+
+        self.set_height(area.height);
 
         let text_style = cx.editor.theme.get("ui.text");
 

@@ -304,7 +304,11 @@ Keys to use within picker. Remapping currently not supported.
 | Key                          | Description       |
 | -----                        | -------------     |
 | `Up`, `Ctrl-k`, `Ctrl-p`     | Previous entry    |
+| `PageUp`, `Ctrl-u`           | Page up           |
 | `Down`, `Ctrl-j`, `Ctrl-n`   | Next entry        |
+| `PageDown`, `Ctrl-d`         | Page down         |
+| `Home`                       | Go to first entry |
+| `End`                        | Go to last entry  |
 | `Ctrl-space`                 | Filter options    |
 | `Enter`                      | Open selected     |
 | `Ctrl-s`                     | Open horizontally |
