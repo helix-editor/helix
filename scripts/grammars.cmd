@@ -16,7 +16,7 @@ exit /B
   echo   sync    Ensures all grammars are cloned at the revisions in revisions.txt
   echo   clean   Removes all grammars from the grammars directory
   echo.
-exit /B 1
+  exit /B 1
 
 :ensure_grammar_fetched
   setlocal
@@ -37,7 +37,29 @@ exit /B 1
   git fetch %REMOTE_NAME% %revision% --depth=1
   git checkout %revision%
   popd
-exit /B 0
+  exit /B 0
+
+:check_grammar_status
+  setlocal
+  set "grammar=%~nx1"
+  set "grammar_dir=%GRAMMARS_DIR%\%grammar%"
+  set remote_url=%~1
+  set expected_revision=%~2
+
+  pushd %grammar_dir%
+  for /F "tokens=*" %%r in ('git rev-parse HEAD') do (
+    set current_revision=%%r
+  )
+  popd
+
+  if "%current_revision%" == "%expected_revision%" (
+    exit /B 0
+  ) else (
+    endlocal
+    set are_any_out_of_date=true
+    echo %grammar% is out of date.
+    exit /B 1
+  )
 
 :do_clean
   pushd %GRAMMARS_DIR%
@@ -45,33 +67,22 @@ exit /B 0
     rmdir /s /q %%d
   )
   popd
-exit /B 0
+  exit /B 0
 
 :do_sync
   for /F "tokens=1,2" %%i in (%REVISIONS_FILE%) do (
     call :ensure_grammar_fetched %%i %%j
   )
-exit /B
+  exit /B
+
 
 :do_status
+  set are_any_out_of_date=false
   for /F "tokens=1,2" %%i in (%REVISIONS_FILE%) do (
-    set "remote_url=%%i"
-
-    for /F "delims=" %%g in (%remote_url%) do set grammar=%%g
-    echo grammar: %grammar%
-
-    pushd %grammar_dir%
-    for /F "tokens=*" %%r in ('git rev-parse HEAD') do (
-      set current_revision=%%r
-    )
-    if "%%j" == "%current_revision%" (
-      echo "%%j is out of date."
-      set "are_any_out_of_date="
-    )
-    popd
+    call :check_grammar_status %%i %%j
   )
 
-  if defined are_any_out_of_date () else (
-    echo "All grammars are up to date."
+  if "%are_any_out_of_date%" == "false" (
+    echo All grammars are up to date.
   )
-exit /B 0
+  exit /B
