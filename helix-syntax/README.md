@@ -1,7 +1,8 @@
 helix-syntax
 ============
 
-Syntax highlighting for helix, (shallow) submodules resides here.
+Syntax highlighting for helix. This crate builds the tree-sitter
+grammars fetched by the grammars script.
 
 Differences from nvim-treesitter
 --------------------------------

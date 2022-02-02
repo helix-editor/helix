@@ -158,7 +158,7 @@ fn build_dir(dir: &str, language: &str) {
         .is_none()
     {
         eprintln!(
-            "The directory {} is empty, you probably need to use 'git submodule update --init --recursive'?",
+            "The directory {} is empty, you probably need to use './scripts/grammars sync'?",
             dir
         );
         std::process::exit(1);
