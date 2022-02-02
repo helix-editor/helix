@@ -11,6 +11,15 @@ pub mod tree_sitter_grammars {
         process::Command,
     };
 
+    const TARGET: &str = env!("TARGET");
+    const HOST: &str = env!("HOST");
+
+    #[cfg(unix)]
+    const DYLIB_EXTENSION: &str = "so";
+
+    #[cfg(windows)]
+    const DYLIB_EXTENSION: &str = "dll";
+
     pub fn collect_tree_sitter_dirs(ignore: &[String]) -> Result<Vec<String>> {
         let mut dirs = Vec::new();
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../helix-syntax/languages");
@@ -34,12 +43,6 @@ pub mod tree_sitter_grammars {
 
         Ok(dirs)
     }
-
-    #[cfg(unix)]
-    const DYLIB_EXTENSION: &str = "so";
-
-    #[cfg(windows)]
-    const DYLIB_EXTENSION: &str = "dll";
 
     fn build_library(src_path: &Path, language: &str) -> Result<()> {
         let header_path = src_path;
@@ -68,7 +71,12 @@ pub mod tree_sitter_grammars {
             return Ok(());
         }
         let mut config = cc::Build::new();
-        config.cpp(true).opt_level(2).cargo_metadata(false);
+        config
+            .cpp(true)
+            .opt_level(2)
+            .cargo_metadata(false)
+            .host(HOST)
+            .target(TARGET);
         let compiler = config.get_compiler();
         let mut command = Command::new(compiler.path());
         command.current_dir(src_path);
