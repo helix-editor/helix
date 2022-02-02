@@ -350,42 +350,36 @@ impl<T> Picker<T> {
         self.cursor = 0;
     }
 
-    pub fn move_up(&mut self) {
+    /// Move the cursor by a number of lines, `amount`.
+    ///
+    /// Positive numbers move the cursor down, negative numbers move it up. The cursor cycles
+    /// through the entries.
+    pub fn move_by(&mut self, amount: isize) {
         if self.matches.is_empty() {
             return;
         }
-        let len = self.matches.len();
-        let pos = ((self.cursor + len.saturating_sub(1)) % len) % len;
-        self.cursor = pos;
+
+        let cursor: isize = self.cursor.try_into().unwrap();
+        let len: isize = self.matches.len().try_into().unwrap();
+
+        self.cursor = cursor
+            .saturating_add(amount)
+            .rem_euclid(len)
+            .try_into()
+            .unwrap();
     }
 
-    pub fn move_down(&mut self) {
-        if self.matches.is_empty() {
-            return;
-        }
-        let len = self.matches.len();
-        let pos = (self.cursor + 1) % len;
-        self.cursor = pos;
-    }
-
+    /// Move the cursor down by exactly one page. After the last page comes the first page.
     pub fn page_up(&mut self) {
-        if self.matches.is_empty() {
-            return;
-        }
-        let len = self.matches.len();
-        let pos = ((self.cursor + len.saturating_sub(self.completion_height as usize)) % len) % len;
-        self.cursor = pos;
+        self.move_by(-(self.completion_height as isize));
     }
 
+    /// Move the cursor up by exactly one page. After the first page comes the last page.
     pub fn page_down(&mut self) {
-        if self.matches.is_empty() {
-            return;
-        }
-        let len = self.matches.len();
-        let pos = (self.cursor + self.completion_height as usize) % len;
-        self.cursor = pos;
+        self.move_by(self.completion_height as isize);
     }
 
+    /// Move the cursor to the first entry
     pub fn to_start(&mut self) {
         if self.matches.is_empty() {
             return;
@@ -393,6 +387,7 @@ impl<T> Picker<T> {
         self.cursor = 0;
     }
 
+    /// Move the cursor to the last entry
     pub fn to_end(&mut self) {
         if self.matches.is_empty() {
             return;
@@ -400,6 +395,8 @@ impl<T> Picker<T> {
         self.cursor = self.matches.len() - 1;
     }
 
+    /// Sets the height of the component, which is necessary for [`Picker::page_down`] and
+    /// [`Picker::page_up`]
     pub fn set_height(&mut self, new_height: u16) {
         // subtract borders and input line
         self.completion_height = new_height - 4;
@@ -458,10 +455,10 @@ impl<T: 'static> Component for Picker<T> {
 
         match key_event.into() {
             shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
-                self.move_up();
+                self.move_by(-1);
             }
             key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
-                self.move_down();
+                self.move_by(1);
             }
             key!(PageDown) | ctrl!('d') => {
                 self.page_down();
