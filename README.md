@@ -39,6 +39,7 @@ build from source.
 git clone https://github.com/helix-editor/helix
 cd helix
 ./scripts/grammars sync
+cargo xtask build-grammars
 cargo install --path helix-term
 ```
 
