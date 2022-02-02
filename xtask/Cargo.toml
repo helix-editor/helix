@@ -9,3 +9,6 @@ edition = "2021"
 helix-term = { version = "0.6", path = "../helix-term" }
 helix-core = { version = "0.6", path = "../helix-core" }
 toml = "0.5"
+anyhow = "1"
+cc = { version = "1" }
+threadpool = { version = "1.0" }

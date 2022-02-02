@@ -368,11 +368,12 @@ dependencies = [
 name = "helix-core"
 version = "0.6.0"
 dependencies = [
+ "anyhow",
  "arc-swap",
  "chrono",
  "encoding_rs",
  "etcetera",
- "helix-syntax",
+ "libloading",
  "log",
  "once_cell",
  "quickcheck",
@@ -407,17 +408,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
-]
-
-[[package]]
-name = "helix-syntax"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "cc",
- "libloading",
- "threadpool",
- "tree-sitter",
 ]
 
 [[package]]
@@ -1264,7 +1254,10 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 name = "xtask"
 version = "0.6.0"
 dependencies = [
+ "anyhow",
+ "cc",
  "helix-core",
  "helix-term",
+ "threadpool",
  "toml",
 ]
