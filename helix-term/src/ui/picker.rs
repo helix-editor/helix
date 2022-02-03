@@ -28,7 +28,7 @@ use helix_view::{
     Document, Editor,
 };
 
-use super::overlay::Overlay;
+use super::overlay::{clip_rect_relative, Overlay};
 
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 /// Biggest file size to preview in bytes
@@ -99,8 +99,7 @@ impl<T> FilePicker<T> {
                 read_buffer: Vec::with_capacity(1024),
                 file_fn: Box::new(preview_fn),
             },
-            vertical_size: 90,   // percent
-            horizontal_size: 90, // percent
+            calc_child_size: Box::new(|rect: Rect| clip_rect_relative(rect.clip_bottom(2), 90, 90)),
         }
     }
 
