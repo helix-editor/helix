@@ -398,6 +398,12 @@ impl MappableCommand {
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
+        goto_next_function, "Goto next function",
+        goto_prev_function, "Goto previous function",
+        goto_next_class, "Goto next class",
+        goto_prev_class, "Goto previous class",
+        goto_next_parameter, "Goto next parameter",
+        goto_prev_parameter, "Goto previous parameter",
         dap_launch, "Launch debug target",
         dap_toggle_breakpoint, "Toggle breakpoint",
         dap_continue, "Continue program execution",
@@ -5905,6 +5911,52 @@ fn scroll_up(cx: &mut Context) {
 
 fn scroll_down(cx: &mut Context) {
     scroll(cx, cx.count(), Direction::Forward);
+}
+
+fn goto_ts_object_impl(cx: &mut Context, object: &str, direction: Direction) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let range = doc.selection(view.id).primary();
+
+    let new_range = match doc.language_config().zip(doc.syntax()) {
+        Some((lang_config, syntax)) => movement::goto_treesitter_object(
+            text,
+            range,
+            object,
+            direction,
+            syntax.tree().root_node(),
+            lang_config,
+            count,
+        ),
+        None => range,
+    };
+
+    doc.set_selection(view.id, Selection::single(new_range.anchor, new_range.head));
+}
+
+fn goto_next_function(cx: &mut Context) {
+    goto_ts_object_impl(cx, "function", Direction::Forward)
+}
+
+fn goto_prev_function(cx: &mut Context) {
+    goto_ts_object_impl(cx, "function", Direction::Backward)
+}
+
+fn goto_next_class(cx: &mut Context) {
+    goto_ts_object_impl(cx, "class", Direction::Forward)
+}
+
+fn goto_prev_class(cx: &mut Context) {
+    goto_ts_object_impl(cx, "class", Direction::Backward)
+}
+
+fn goto_next_parameter(cx: &mut Context) {
+    goto_ts_object_impl(cx, "parameter", Direction::Forward)
+}
+
+fn goto_prev_parameter(cx: &mut Context) {
+    goto_ts_object_impl(cx, "parameter", Direction::Backward)
 }
 
 fn select_textobject_around(cx: &mut Context) {
