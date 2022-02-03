@@ -3,6 +3,7 @@ pub(crate) mod editor;
 mod info;
 mod markdown;
 pub mod menu;
+mod overlay;
 mod picker;
 mod popup;
 mod prompt;
@@ -24,6 +25,8 @@ use helix_core::regex::RegexBuilder;
 use helix_view::{Document, Editor, View};
 
 use std::path::PathBuf;
+
+use self::overlay::Overlay;
 
 pub fn regex_prompt(
     cx: &mut crate::commands::Context,
@@ -93,7 +96,10 @@ pub fn regex_prompt(
     )
 }
 
-pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
+pub fn file_picker(
+    root: PathBuf,
+    config: &helix_view::editor::Config,
+) -> Overlay<FilePicker<PathBuf>> {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time;
 

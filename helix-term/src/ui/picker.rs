@@ -21,14 +21,16 @@ use std::{
 };
 
 use crate::ui::{Prompt, PromptEvent};
-use helix_core::Position;
+use helix_core::{movement::Direction, Position};
 use helix_view::{
     editor::Action,
     graphics::{Color, CursorKind, Margin, Rect, Style},
     Document, Editor,
 };
 
-pub const MIN_SCREEN_WIDTH_FOR_PREVIEW: u16 = 80;
+use super::overlay::Overlay;
+
+pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
@@ -88,13 +90,17 @@ impl<T> FilePicker<T> {
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
-    ) -> Self {
-        Self {
-            picker: Picker::new(false, options, format_fn, callback_fn),
-            truncate_start: true,
-            preview_cache: HashMap::new(),
-            read_buffer: Vec::with_capacity(1024),
-            file_fn: Box::new(preview_fn),
+    ) -> Overlay<Self> {
+        Overlay {
+            content: Self {
+                picker: Picker::new(options, format_fn, callback_fn),
+                truncate_start: true,
+                preview_cache: HashMap::new(),
+                read_buffer: Vec::with_capacity(1024),
+                file_fn: Box::new(preview_fn),
+            },
+            vertical_size: 90,   // percent
+            horizontal_size: 90, // percent
         }
     }
 
@@ -160,8 +166,7 @@ impl<T: 'static> Component for FilePicker<T> {
         // |         | |         |
         // +---------+ +---------+
 
-        let render_preview = area.width > MIN_SCREEN_WIDTH_FOR_PREVIEW;
-        let area = inner_rect(area);
+        let render_preview = area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
@@ -260,6 +265,16 @@ impl<T: 'static> Component for FilePicker<T> {
     fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
         self.picker.cursor(area, ctx)
     }
+
+    fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
+        let picker_width = if width > MIN_AREA_WIDTH_FOR_PREVIEW {
+            width / 2
+        } else {
+            width
+        };
+        self.picker.required_size((picker_width, height))?;
+        Some((width, height))
+    }
 }
 
 pub struct Picker<T> {
@@ -277,8 +292,6 @@ pub struct Picker<T> {
     cursor: usize,
     // pattern: String,
     prompt: Prompt,
-    /// Whether to render in the middle of the area
-    render_centered: bool,
     /// Wheather to truncate the start (default true)
     pub truncate_start: bool,
 
@@ -288,7 +301,6 @@ pub struct Picker<T> {
 
 impl<T> Picker<T> {
     pub fn new(
-        render_centered: bool,
         options: Vec<T>,
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
@@ -309,7 +321,6 @@ impl<T> Picker<T> {
             filters: Vec::new(),
             cursor: 0,
             prompt,
-            render_centered,
             truncate_start: true,
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
@@ -350,56 +361,38 @@ impl<T> Picker<T> {
         self.cursor = 0;
     }
 
-    /// Move the cursor by a number of lines, `amount`.
-    ///
-    /// Positive numbers move the cursor down, negative numbers move it up. The cursor cycles
-    /// through the entries.
-    pub fn move_by(&mut self, amount: isize) {
-        if self.matches.is_empty() {
-            return;
+    /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
+    pub fn move_by(&mut self, amount: usize, direction: Direction) {
+        let len = self.matches.len();
+
+        match direction {
+            Direction::Forward => {
+                self.cursor = self.cursor.saturating_add(amount) % len;
+            }
+            Direction::Backward => {
+                self.cursor = self.cursor.saturating_add(len).saturating_sub(amount) % len;
+            }
         }
-
-        let cursor: isize = self.cursor.try_into().unwrap();
-        let len: isize = self.matches.len().try_into().unwrap();
-
-        self.cursor = cursor
-            .saturating_add(amount)
-            .rem_euclid(len)
-            .try_into()
-            .unwrap();
     }
 
     /// Move the cursor down by exactly one page. After the last page comes the first page.
     pub fn page_up(&mut self) {
-        self.move_by(-(self.completion_height as isize));
+        self.move_by(self.completion_height as usize, Direction::Backward);
     }
 
     /// Move the cursor up by exactly one page. After the first page comes the last page.
     pub fn page_down(&mut self) {
-        self.move_by(self.completion_height as isize);
+        self.move_by(self.completion_height as usize, Direction::Forward);
     }
 
     /// Move the cursor to the first entry
     pub fn to_start(&mut self) {
-        if self.matches.is_empty() {
-            return;
-        }
         self.cursor = 0;
     }
 
     /// Move the cursor to the last entry
     pub fn to_end(&mut self) {
-        if self.matches.is_empty() {
-            return;
-        }
-        self.cursor = self.matches.len() - 1;
-    }
-
-    /// Sets the height of the component, which is necessary for [`Picker::page_down`] and
-    /// [`Picker::page_up`]
-    pub fn set_height(&mut self, new_height: u16) {
-        // subtract borders and input line
-        self.completion_height = new_height - 4;
+        self.cursor = self.matches.len().saturating_sub(1);
     }
 
     pub fn selection(&self) -> Option<&T> {
@@ -422,23 +415,10 @@ impl<T> Picker<T> {
 // - on input change:
 //  - score all the names in relation to input
 
-fn inner_rect(area: Rect) -> Rect {
-    let margin = Margin {
-        vertical: area.height * 10 / 100,
-        horizontal: area.width * 10 / 100,
-    };
-    area.inner(&margin)
-}
-
 impl<T: 'static> Component for Picker<T> {
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        let max_width = 50.min(viewport.0);
-        let max_height = 10.min(viewport.1.saturating_sub(2)); // add some spacing in the viewport
-
-        let height = (self.options.len() as u16 + 4) // add some spacing for input + padding
-            .min(max_height);
-        let width = max_width;
-        Some((width, height))
+        self.completion_height = viewport.1.saturating_sub(4);
+        Some(viewport)
     }
 
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
@@ -455,10 +435,10 @@ impl<T: 'static> Component for Picker<T> {
 
         match key_event.into() {
             shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
-                self.move_by(-1);
+                self.move_by(1, Direction::Backward);
             }
             key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
-                self.move_by(1);
+                self.move_by(1, Direction::Forward);
             }
             key!(PageDown) | ctrl!('f') => {
                 self.page_down();
@@ -508,14 +488,6 @@ impl<T: 'static> Component for Picker<T> {
     }
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        let area = if self.render_centered {
-            inner_rect(area)
-        } else {
-            area
-        };
-
-        self.set_height(area.height);
-
         let text_style = cx.editor.theme.get("ui.text");
 
         // -- Render the frame:
@@ -590,8 +562,6 @@ impl<T: 'static> Component for Picker<T> {
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        // TODO: this is mostly duplicate code
-        let area = inner_rect(area);
         let block = Block::default().borders(Borders::ALL);
         // calculate the inner area inside the box
         let inner = block.inner(area);

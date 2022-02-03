@@ -3396,7 +3396,7 @@ fn symbol_picker(cx: &mut Context) {
                         Some((path, line))
                     },
                 );
-                picker.truncate_start = false;
+                picker.content.truncate_start = false;
                 compositor.push(Box::new(picker))
             }
         },
@@ -3456,7 +3456,7 @@ fn workspace_symbol_picker(cx: &mut Context) {
                         Some((path, line))
                     },
                 );
-                picker.truncate_start = false;
+                picker.content.truncate_start = false;
                 compositor.push(Box::new(picker))
             }
         },
