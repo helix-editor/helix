@@ -258,14 +258,20 @@ Displays documentation for item under cursor.
 
 Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
 
-| Key      | Description                                  | Command             |
-| -----    | -----------                                  | -------             |
-| `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`    |
-| `]d`     | Go to next diagnostic (**LSP**)              | `goto_next_diag`    |
-| `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`   |
-| `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`    |
-| `[space` | Add newline above                            | `add_newline_above` |
-| `]space` | Add newline below                            | `add_newline_below` |
+| Key      | Description                                  | Command               |
+| -----    | -----------                                  | -------               |
+| `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`      |
+| `]d`     | Go to next diagnostic (**LSP**)              | `goto_next_diag`      |
+| `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`     |
+| `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`      |
+| `]f`     | Go to next function (**TS**)                 | `goto_next_function`  |
+| `[f`     | Go to previous function (**TS**)             | `goto_prev_function`  |
+| `]c`     | Go to next class (**TS**)                    | `goto_next_class`     |
+| `[c`     | Go to previous class (**TS**)                | `goto_prev_class`     |
+| `]p`     | Go to next parameter (**TS**)                | `goto_next_parameter` |
+| `[p`     | Go to previous parameter (**TS**)            | `goto_prev_parameter` |
+| `[space` | Add newline above                            | `add_newline_above`   |
+| `]space` | Add newline below                            | `add_newline_below`   |
 
 ## Insert Mode
 
