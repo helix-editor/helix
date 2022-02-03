@@ -460,10 +460,10 @@ impl<T: 'static> Component for Picker<T> {
             key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
                 self.move_by(1);
             }
-            key!(PageDown) | ctrl!('d') => {
+            key!(PageDown) | ctrl!('f') => {
                 self.page_down();
             }
-            key!(PageUp) | ctrl!('u') => {
+            key!(PageUp) | ctrl!('b') => {
                 self.page_up();
             }
             key!(Home) => {
