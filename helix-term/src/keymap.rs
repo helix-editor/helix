@@ -572,11 +572,17 @@ impl Default for Keymaps {
             "[" => { "Left bracket"
                 "d" => goto_prev_diag,
                 "D" => goto_first_diag,
+                "f" => goto_prev_function,
+                "c" => goto_prev_class,
+                "p" => goto_prev_parameter,
                 "space" => add_newline_above,
             },
             "]" => { "Right bracket"
                 "d" => goto_next_diag,
                 "D" => goto_last_diag,
+                "f" => goto_next_function,
+                "c" => goto_next_class,
+                "p" => goto_next_parameter,
                 "space" => add_newline_below,
             },
 
