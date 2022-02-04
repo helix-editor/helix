@@ -1,14 +1,9 @@
 ; Classes (modules)
 ;------------------
 
-(module_declaration definition: ((_) @class.inner)) @class.outer
+(module_declaration definition: ((_) @class.inside)) @class.outside
 
 ; Functions
 ;----------
 
-(function body: (_) @function.inner) @function.outer
-
-; Parameters
-;-----------
-
-(function parameter: (_) @parameter.inner @parameter.outer)
+(function body: (_) @function.inside) @function.outside

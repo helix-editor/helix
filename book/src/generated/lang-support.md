@@ -46,7 +46,7 @@
 | python | ✓ | ✓ | ✓ | `pylsp` |
 | racket |  |  |  | `racket` |
 | regex | ✓ |  |  |  |
-| rescript | ✓ |  |  | `rescript-language-server` |
+| rescript | ✓ | ✓ |  | `rescript-language-server` |
 | ruby | ✓ |  | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | scala | ✓ |  | ✓ | `metals` |

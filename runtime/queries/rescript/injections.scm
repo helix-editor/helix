@@ -6,4 +6,3 @@
 
 ((raw_gql) @injection.content
  (#set! injection.language "graphql"))
-
