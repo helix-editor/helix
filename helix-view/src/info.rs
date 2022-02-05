@@ -58,7 +58,12 @@ impl Info {
             .inner()
             .iter()
             .map(|(ch, reg)| {
-                let content = reg.read().join(", ").trim_end().to_string();
+                let content = reg
+                    .read()
+                    .get(0)
+                    .and_then(|s| s.lines().next())
+                    .map(String::from)
+                    .unwrap_or_default();
                 (ch.to_string(), content)
             })
             .collect();
