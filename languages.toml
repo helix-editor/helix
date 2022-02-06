@@ -602,3 +602,14 @@ scope = "source.iex"
 injection-regex = "iex"
 file-types = ["iex"]
 roots = []
+
+[[language]]
+name = "rescript"
+scope = "source.rescript"
+injection-regex = "rescript"
+file-types = ["res"]
+roots = ["bsconfig.json"]
+auto-format = true
+comment-token = "//"
+language-server = { command = "rescript-language-server", args = ["--stdio"] }
+indent = { tab-width = 2, unit = "  " }
