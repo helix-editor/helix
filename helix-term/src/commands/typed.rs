@@ -1028,10 +1028,12 @@ fn reload(
     }
 
     let scrolloff = cx.editor.config().scrolloff;
+    let redraw_handle = cx.editor.redraw_handle.clone();
     let (view, doc) = current!(cx.editor);
-    doc.reload(view).map(|_| {
-        view.ensure_cursor_in_view(doc, scrolloff);
-    })
+    doc.reload(view, &cx.editor.diff_providers, redraw_handle)
+        .map(|_| {
+            view.ensure_cursor_in_view(doc, scrolloff);
+        })
 }
 
 fn reload_all(
@@ -1066,7 +1068,8 @@ fn reload_all(
 
         // Every doc is guaranteed to have at least 1 view at this point.
         let view = view_mut!(cx.editor, view_ids[0]);
-        doc.reload(view)?;
+        let redraw_handle = cx.editor.redraw_handle.clone();
+        doc.reload(view, &cx.editor.diff_providers, redraw_handle)?;
 
         for view_id in view_ids {
             let view = view_mut!(cx.editor, view_id);

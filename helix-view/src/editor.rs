@@ -9,6 +9,7 @@ use crate::{
     tree::{self, Tree},
     Align, Document, DocumentId, View, ViewId,
 };
+use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
@@ -22,7 +23,7 @@ use std::{
     num::NonZeroUsize,
     path::{Path, PathBuf},
     pin::Pin,
-    sync::Arc,
+    sync::{atomic::AtomicBool, Arc},
 };
 
 use tokio::{
@@ -454,6 +455,8 @@ pub enum GutterType {
     LineNumbers,
     /// Show one blank space
     Spacer,
+    /// Highlight local changes
+    Diff,
 }
 
 impl std::str::FromStr for GutterType {
@@ -464,6 +467,7 @@ impl std::str::FromStr for GutterType {
             "diagnostics" => Ok(Self::Diagnostics),
             "spacer" => Ok(Self::Spacer),
             "line-numbers" => Ok(Self::LineNumbers),
+            "diff" => Ok(Self::Diff),
             _ => anyhow::bail!("Gutter type can only be `diagnostics` or `line-numbers`."),
         }
     }
@@ -600,6 +604,8 @@ impl Default for Config {
                 GutterType::Diagnostics,
                 GutterType::Spacer,
                 GutterType::LineNumbers,
+                GutterType::Spacer,
+                GutterType::Diff,
             ],
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
@@ -681,6 +687,7 @@ pub struct Editor {
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
+    pub diff_providers: DiffProviderRegistry,
 
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
@@ -711,6 +718,7 @@ pub struct Editor {
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
+    pub redraw_handle: Arc<AtomicBool>,
 }
 
 #[derive(Debug)]
@@ -785,6 +793,7 @@ impl Editor {
             theme: theme_loader.default(),
             language_servers: helix_lsp::Registry::new(),
             diagnostics: BTreeMap::new(),
+            diff_providers: DiffProviderRegistry::default(),
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
@@ -803,6 +812,7 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
+            redraw_handle: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -1107,7 +1117,9 @@ impl Editor {
             let mut doc = Document::open(&path, None, Some(self.syn_loader.clone()))?;
 
             let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
-
+            if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
+                doc.set_diff_base(diff_base, self.redraw_handle.clone());
+            }
             self.new_document(doc)
         };
 
@@ -1340,24 +1352,29 @@ impl Editor {
     }
 
     pub async fn wait_event(&mut self) -> EditorEvent {
-        tokio::select! {
-            biased;
+        // the loop only runs once or twice and would be better implemented with a recursion + const generic
+        // however due to limitations with async functions that can not be implemented right now
+        loop {
+            tokio::select! {
+                biased;
 
-            Some(event) = self.save_queue.next() => {
-                self.write_count -= 1;
-                EditorEvent::DocumentSaved(event)
-            }
-            Some(config_event) = self.config_events.1.recv() => {
-                EditorEvent::ConfigEvent(config_event)
-            }
-            Some(message) = self.language_servers.incoming.next() => {
-                EditorEvent::LanguageServerMessage(message)
-            }
-            Some(event) = self.debugger_events.next() => {
-                EditorEvent::DebuggerEvent(event)
-            }
-            _ = &mut self.idle_timer => {
-                EditorEvent::IdleTimer
+                Some(event) = self.save_queue.next() => {
+                    self.write_count -= 1;
+                    return EditorEvent::DocumentSaved(event)
+                }
+                Some(config_event) = self.config_events.1.recv() => {
+                    return EditorEvent::ConfigEvent(config_event)
+                }
+                Some(message) = self.language_servers.incoming.next() => {
+                    return EditorEvent::LanguageServerMessage(message)
+                }
+                Some(event) = self.debugger_events.next() => {
+                    return EditorEvent::DebuggerEvent(event)
+                }
+
+                _ = &mut self.idle_timer  => {
+                    return EditorEvent::IdleTimer
+                }
             }
         }
     }

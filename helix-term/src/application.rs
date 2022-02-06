@@ -31,7 +31,7 @@ use crate::{
 use log::{debug, error, warn};
 use std::{
     io::{stdin, stdout, Write},
-    sync::Arc,
+    sync::{atomic::Ordering, Arc},
     time::{Duration, Instant},
 };
 
@@ -284,6 +284,8 @@ impl Application {
             scroll: None,
         };
 
+        cx.editor.redraw_handle.store(false, Ordering::Relaxed);
+
         let area = self
             .terminal
             .autoresize()
@@ -462,7 +464,7 @@ impl Application {
             scroll: None,
         };
         let should_render = self.compositor.handle_event(&Event::IdleTimeout, &mut cx);
-        if should_render {
+        if should_render || self.editor.redraw_handle.load(Ordering::Relaxed) {
             self.render();
         }
     }

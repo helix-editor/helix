@@ -1,0 +1,25 @@
+[package]
+name = "helix-vcs"
+version = "0.6.0"
+authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
+edition = "2021"
+license = "MPL-2.0"
+categories = ["editor"]
+repository = "https://github.com/helix-editor/helix"
+homepage = "https://helix-editor.com"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+git-repository = { version = "0.26", default-features = false , optional = true }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "parking_lot", "macros"] }
+imara-diff = "0.1.5"
+helix-core = { version = "0.6", path = "../helix-core" }
+log = "0.4"
+parking_lot = "0.12"
+
+[features]
+git = ["git-repository"]
+
+[dev-dependencies]
+tempfile = "3.3"
