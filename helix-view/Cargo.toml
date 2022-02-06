@@ -19,6 +19,7 @@ anyhow = "1"
 helix-core = { version = "0.6", path = "../helix-core" }
 helix-lsp = { version = "0.6", path = "../helix-lsp" }
 helix-dap = { version = "0.6", path = "../helix-dap" }
+helix-vcs = { version = "0.6", path = "../helix-vcs" }
 crossterm = { version = "0.23", optional = true }
 
 # Conversion traits

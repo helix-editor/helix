@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use helix_vcs::LineDiff;
+
 use crate::{
     graphics::{Color, Modifier, Style},
     Document, Editor, Theme, View,
@@ -36,6 +38,31 @@ pub fn diagnostic<'doc>(
             });
         }
         None
+    })
+}
+
+pub fn git_diff<'doc>(
+    _editor: &'doc Editor,
+    doc: &'doc Document,
+    _view: &View,
+    theme: &Theme,
+    _is_focused: bool,
+    _width: usize,
+) -> GutterFn<'doc> {
+    let added = theme.get("diff.plus");
+    let deleted = theme.get("diff.minus");
+    let modified = theme.get("diff.delta");
+
+    Box::new(move |line: usize, _selected: bool, out: &mut String| {
+        let diff = doc.line_diffs().get(&(line))?;
+
+        let (icon, style) = match diff {
+            LineDiff::Added => ("▍", added),
+            LineDiff::Deleted => ("▔", deleted),
+            LineDiff::Modified => ("▍", modified),
+        };
+        write!(out, "{}", icon).unwrap();
+        Some(style)
     })
 }
 
