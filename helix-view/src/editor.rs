@@ -442,7 +442,7 @@ impl Editor {
                         view.last_accessed_doc = Some(view.doc);
                         // Set last modified doc if modified and last modified doc is different
                         if std::mem::take(&mut doc.modified_since_accessed)
-                            && view.last_modified_docs[0] != Some(id)
+                            && view.last_modified_docs[0] != Some(view.doc)
                         {
                             view.last_modified_docs = [Some(view.doc), view.last_modified_docs[0]];
                         }
