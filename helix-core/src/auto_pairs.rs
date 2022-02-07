@@ -26,7 +26,7 @@ pub const DEFAULT_PAIRS: &[(char, char)] = &[
 pub struct AutoPairs(HashMap<char, Pair>);
 
 /// Represents the config for a particular pairing.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Pair {
     pub open: char,
     pub close: char,
@@ -62,8 +62,8 @@ impl Pair {
     }
 }
 
-impl From<(char, char)> for Pair {
-    fn from(pair: (char, char)) -> Self {
+impl From<&(char, char)> for Pair {
+    fn from(pair: &(char, char)) -> Self {
         Self {
             open: pair.0,
             close: pair.1,
@@ -92,7 +92,7 @@ impl AutoPairs {
         for pair in pairs.into_iter() {
             let auto_pair = pair.into();
 
-            auto_pairs.insert(auto_pair.open, auto_pair.clone());
+            auto_pairs.insert(auto_pair.open, auto_pair);
 
             if auto_pair.open != auto_pair.close {
                 auto_pairs.insert(auto_pair.close, auto_pair);
@@ -109,7 +109,7 @@ impl AutoPairs {
 
 impl Default for AutoPairs {
     fn default() -> Self {
-        AutoPairs::new(DEFAULT_PAIRS.iter().cloned())
+        AutoPairs::new(DEFAULT_PAIRS.iter())
     }
 }
 
@@ -414,7 +414,7 @@ mod test {
         expected_doc: &Rope,
         expected_sel: &Selection,
     ) {
-        let pairs = AutoPairs::new(pairs.iter().cloned());
+        let pairs = AutoPairs::new(pairs.iter());
         let trans = hook(&in_doc, &in_sel, ch, &pairs).unwrap();
         let mut actual_doc = in_doc.clone();
         assert!(trans.apply(&mut actual_doc));
