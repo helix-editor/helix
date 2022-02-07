@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Error};
+use anyhow::{anyhow, bail, Context, Error};
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::cell::Cell;
@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use helix_core::{
     encoding,
-    history::History,
+    history::{History, UndoKind},
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
     syntax::{self, LanguageConfiguration},
@@ -54,7 +54,7 @@ impl FromStr for Mode {
             "normal" => Ok(Mode::Normal),
             "select" => Ok(Mode::Select),
             "insert" => Ok(Mode::Insert),
-            _ => Err(anyhow!("Invalid mode '{}'", s)),
+            _ => bail!("Invalid mode '{}'", s),
         }
     }
 }
@@ -396,7 +396,7 @@ impl Document {
     /// The same as [`format`], but only returns formatting changes if auto-formatting
     /// is configured.
     pub fn auto_format(&self) -> Option<impl Future<Output = LspFormatting> + 'static> {
-        if self.language_config().map(|c| c.auto_format) == Some(true) {
+        if self.language_config()?.auto_format {
             self.format()
         } else {
             None
@@ -406,30 +406,27 @@ impl Document {
     /// If supported, returns the changes that should be applied to this document in order
     /// to format it nicely.
     pub fn format(&self) -> Option<impl Future<Output = LspFormatting> + 'static> {
-        if let Some(language_server) = self.language_server() {
-            let text = self.text.clone();
-            let offset_encoding = language_server.offset_encoding();
-            let request = language_server.text_document_formatting(
-                self.identifier(),
-                lsp::FormattingOptions::default(),
-                None,
-            )?;
+        let language_server = self.language_server()?;
+        let text = self.text.clone();
+        let offset_encoding = language_server.offset_encoding();
+        let request = language_server.text_document_formatting(
+            self.identifier(),
+            lsp::FormattingOptions::default(),
+            None,
+        )?;
 
-            let fut = async move {
-                let edits = request.await.unwrap_or_else(|e| {
-                    log::warn!("LSP formatting failed: {}", e);
-                    Default::default()
-                });
-                LspFormatting {
-                    doc: text,
-                    edits,
-                    offset_encoding,
-                }
-            };
-            Some(fut)
-        } else {
-            None
-        }
+        let fut = async move {
+            let edits = request.await.unwrap_or_else(|e| {
+                log::warn!("LSP formatting failed: {}", e);
+                Default::default()
+            });
+            LspFormatting {
+                doc: text,
+                edits,
+                offset_encoding,
+            }
+        };
+        Some(fut)
     }
 
     pub fn save(&mut self) -> impl Future<Output = Result<(), anyhow::Error>> {
@@ -473,9 +470,7 @@ impl Document {
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
-                    return Err(Error::msg(
-                        "can't save file, parent directory does not exist",
-                    ));
+                    bail!("can't save file, parent directory does not exist");
                 }
             }
 
@@ -522,8 +517,7 @@ impl Document {
     /// line ending.
     pub fn detect_indent_and_line_ending(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
-            self.language
-                .as_ref()
+            self.language_config()
                 .and_then(|config| config.indent.as_ref())
                 .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
         });
@@ -537,7 +531,7 @@ impl Document {
 
         // If there is no path or the path no longer exists.
         if path.is_none() {
-            return Err(anyhow!("can't find file to reload from"));
+            bail!("can't find file to reload from");
         }
 
         let mut file = std::fs::File::open(path.unwrap())?;
@@ -558,10 +552,8 @@ impl Document {
 
     /// Sets the [`Document`]'s encoding with the encoding correspondent to `label`.
     pub fn set_encoding(&mut self, label: &str) -> Result<(), Error> {
-        match encoding::Encoding::for_label(label.as_bytes()) {
-            Some(encoding) => self.encoding = encoding,
-            None => return Err(anyhow::anyhow!("unknown encoding")),
-        }
+        self.encoding = encoding::Encoding::for_label(label.as_bytes())
+            .ok_or_else(|| anyhow!("unknown encoding"))?;
         Ok(())
     }
 
@@ -646,7 +638,6 @@ impl Document {
                 );
             }
 
-            // set modified since accessed
             self.modified_since_accessed = true;
         }
 
@@ -689,7 +680,7 @@ impl Document {
 
                 if let Some(notify) = notify {
                     tokio::spawn(notify);
-                } //.expect("failed to emit textDocument/didChange");
+                }
             }
         }
         success
@@ -717,11 +708,11 @@ impl Document {
         success
     }
 
-    /// Undo the last modification to the [`Document`]. Returns whether the undo was successful.
-    pub fn undo(&mut self, view_id: ViewId) -> bool {
+    fn undo_redo_impl(&mut self, view_id: ViewId, undo: bool) -> bool {
         let mut history = self.history.take();
-        let success = if let Some(transaction) = history.undo() {
-            self.apply_impl(transaction, view_id)
+        let txn = if undo { history.undo() } else { history.redo() };
+        let success = if let Some(txn) = txn {
+            self.apply_impl(txn, view_id)
         } else {
             false
         };
@@ -734,21 +725,14 @@ impl Document {
         success
     }
 
+    /// Undo the last modification to the [`Document`]. Returns whether the undo was successful.
+    pub fn undo(&mut self, view_id: ViewId) -> bool {
+        self.undo_redo_impl(view_id, true)
+    }
+
     /// Redo the last modification to the [`Document`]. Returns whether the redo was sucessful.
     pub fn redo(&mut self, view_id: ViewId) -> bool {
-        let mut history = self.history.take();
-        let success = if let Some(transaction) = history.redo() {
-            self.apply_impl(transaction, view_id)
-        } else {
-            false
-        };
-        self.history.set(history);
-
-        if success {
-            // reset changeset to fix len
-            self.changes = ChangeSet::new(self.text());
-        }
-        success
+        self.undo_redo_impl(view_id, false)
     }
 
     pub fn savepoint(&mut self) {
@@ -761,9 +745,12 @@ impl Document {
         }
     }
 
-    /// Undo modifications to the [`Document`] according to `uk`.
-    pub fn earlier(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) -> bool {
-        let txns = self.history.get_mut().earlier(uk);
+    fn earlier_later_impl(&mut self, view_id: ViewId, uk: UndoKind, earlier: bool) -> bool {
+        let txns = if earlier {
+            self.history.get_mut().earlier(uk)
+        } else {
+            self.history.get_mut().later(uk)
+        };
         let mut success = false;
         for txn in txns {
             if self.apply_impl(&txn, view_id) {
@@ -777,20 +764,14 @@ impl Document {
         success
     }
 
+    /// Undo modifications to the [`Document`] according to `uk`.
+    pub fn earlier(&mut self, view_id: ViewId, uk: UndoKind) -> bool {
+        self.earlier_later_impl(view_id, uk, true)
+    }
+
     /// Redo modifications to the [`Document`] according to `uk`.
-    pub fn later(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) -> bool {
-        let txns = self.history.get_mut().later(uk);
-        let mut success = false;
-        for txn in txns {
-            if self.apply_impl(&txn, view_id) {
-                success = true;
-            }
-        }
-        if success {
-            // reset changeset to fix len
-            self.changes = ChangeSet::new(self.text());
-        }
-        success
+    pub fn later(&mut self, view_id: ViewId, uk: UndoKind) -> bool {
+        self.earlier_later_impl(view_id, uk, false)
     }
 
     /// Commit pending changes to history
@@ -850,18 +831,10 @@ impl Document {
     /// `language-server` configuration, or the document language if no
     /// `language-id` has been specified.
     pub fn language_id(&self) -> Option<&str> {
-        self.language
-            .as_ref()
+        self.language_config()
             .and_then(|config| config.language_server.as_ref())
-            .and_then(|lsp_config| lsp_config.language_id.as_ref())
-            .map_or_else(
-                || {
-                    self.language()
-                        .and_then(|s| s.rsplit_once('.'))
-                        .map(|(_, language_id)| language_id)
-                },
-                |language_id| Some(language_id.as_str()),
-            )
+            .and_then(|lsp_config| lsp_config.language_id.as_deref())
+            .or_else(|| Some(self.language()?.rsplit_once('.')?.1))
     }
 
     /// Corresponding [`LanguageConfiguration`].
@@ -874,18 +847,10 @@ impl Document {
         self.version
     }
 
+    /// Language server if it has been initialized.
     pub fn language_server(&self) -> Option<&helix_lsp::Client> {
-        let server = self.language_server.as_deref();
-        let initialized = server
-            .map(|server| server.is_initialized())
-            .unwrap_or(false);
-
-        // only resolve language_server if it's initialized
-        if initialized {
-            server
-        } else {
-            None
-        }
+        let server = self.language_server.as_deref()?;
+        server.is_initialized().then(|| server)
     }
 
     #[inline]
@@ -896,8 +861,7 @@ impl Document {
 
     /// Tab size in columns.
     pub fn tab_width(&self) -> usize {
-        self.language
-            .as_ref()
+        self.language_config()
             .and_then(|config| config.indent.as_ref())
             .map_or(4, |config| config.tab_width) // fallback to 4 columns
     }
@@ -922,7 +886,7 @@ impl Document {
 
     /// File path as a URL.
     pub fn url(&self) -> Option<Url> {
-        self.path().map(|path| Url::from_file_path(path).unwrap())
+        Url::from_file_path(self.path()?).ok()
     }
 
     #[inline]
@@ -945,10 +909,6 @@ impl Document {
             .map(helix_core::path::get_relative_path)
     }
 
-    // pub fn slice<R>(&self, range: R) -> RopeSlice where R: RangeBounds {
-    //     self.state.doc.slice
-    // }
-
     // transact(Fn) ?
 
     // -- LSP methods
@@ -969,7 +929,6 @@ impl Document {
 
     pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
         self.diagnostics = diagnostics;
-        // sort by range
         self.diagnostics
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
     }
