@@ -3494,47 +3494,48 @@ pub fn code_action(cx: &mut Context) {
         move |editor: &mut Editor,
               compositor: &mut Compositor,
               response: Option<lsp::CodeActionResponse>| {
-            if let Some(actions) = response {
-                if actions.is_empty() {
-                    editor.set_status("No code actions available".to_owned());
+            let actions = match response {
+                Some(a) => a,
+                None => return,
+            };
+            if actions.is_empty() {
+                editor.set_status("No code actions available".to_owned());
+                return;
+            }
+
+            let picker = ui::Menu::new(actions, move |editor, code_action, event| {
+                if event != PromptEvent::Validate {
                     return;
                 }
 
-                let picker = ui::Menu::new(actions, move |editor, code_action, event| {
-                    if event != PromptEvent::Validate {
-                        return;
+                // always present here
+                let code_action = code_action.unwrap();
+
+                match code_action {
+                    lsp::CodeActionOrCommand::Command(command) => {
+                        log::debug!("code action command: {:?}", command);
+                        execute_lsp_command(editor, command.clone());
                     }
+                    lsp::CodeActionOrCommand::CodeAction(code_action) => {
+                        log::debug!("code action: {:?}", code_action);
+                        if let Some(ref workspace_edit) = code_action.edit {
+                            log::debug!("edit: {:?}", workspace_edit);
+                            apply_workspace_edit(editor, offset_encoding, workspace_edit);
+                        }
 
-                    // always present here
-                    let code_action = code_action.unwrap();
-
-                    match code_action {
-                        lsp::CodeActionOrCommand::Command(command) => {
-                            log::debug!("code action command: {:?}", command);
+                        // if code action provides both edit and command first the edit
+                        // should be applied and then the command
+                        if let Some(command) = &code_action.command {
                             execute_lsp_command(editor, command.clone());
                         }
-                        lsp::CodeActionOrCommand::CodeAction(code_action) => {
-                            log::debug!("code action: {:?}", code_action);
-                            if let Some(ref workspace_edit) = code_action.edit {
-                                log::debug!("edit: {:?}", workspace_edit);
-                                apply_workspace_edit(editor, offset_encoding, workspace_edit);
-                            }
-
-                            // if code action provides both edit and command first the edit
-                            // should be applied and then the command
-                            if let Some(command) = &code_action.command {
-                                execute_lsp_command(editor, command.clone());
-                            }
-                        }
                     }
-                });
-                let popup =
-                    Popup::new("code-action", picker).margin(helix_view::graphics::Margin {
-                        vertical: 1,
-                        horizontal: 1,
-                    });
-                compositor.push(Box::new(popup))
-            }
+                }
+            });
+            let popup = Popup::new("code-action", picker).margin(helix_view::graphics::Margin {
+                vertical: 1,
+                horizontal: 1,
+            });
+            compositor.push(Box::new(popup))
         },
     )
 }
