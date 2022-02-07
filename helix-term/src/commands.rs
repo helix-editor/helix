@@ -3503,7 +3503,7 @@ pub fn code_action(cx: &mut Context) {
                 return;
             }
 
-            let picker = ui::Menu::new(actions, move |editor, code_action, event| {
+            let mut picker = ui::Menu::new(actions, move |editor, code_action, event| {
                 if event != PromptEvent::Validate {
                     return;
                 }
@@ -3531,6 +3531,8 @@ pub fn code_action(cx: &mut Context) {
                     }
                 }
             });
+            picker.move_down(); // pre-select the first item
+
             let popup = Popup::new("code-action", picker).margin(helix_view::graphics::Margin {
                 vertical: 1,
                 horizontal: 1,
