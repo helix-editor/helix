@@ -134,7 +134,7 @@ impl<'a> Widget for Block<'a> {
         if area.area() == 0 {
             return;
         }
-        buf.clear_with(area, self.style);
+        buf.set_style(area, self.style);
         let symbols = BorderType::line_symbols(self.border_type);
 
         // Sides
