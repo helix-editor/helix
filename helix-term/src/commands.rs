@@ -4043,7 +4043,6 @@ pub mod insert {
     }
 
     use helix_core::auto_pairs;
-    use log::debug;
 
     pub fn insert_char(cx: &mut Context, c: char) {
         let (view, doc) = current_ref!(cx.editor);
@@ -4053,16 +4052,8 @@ pub mod insert {
 
         let transaction = auto_pairs
             .as_ref()
-            .and_then(|ap| {
-                let ap_result = auto_pairs::hook(text, selection, c, ap);
-                debug!("ap_result: {:#?}", ap_result);
-                ap_result
-            })
-            .or_else(|| {
-                let ins_result = insert(text, selection, c);
-                debug!("ins_result: {:#?}", ins_result);
-                ins_result
-            });
+            .and_then(|ap| auto_pairs::hook(text, selection, c, ap))
+            .or_else(|| insert(text, selection, c));
 
         let (view, doc) = current!(cx.editor);
         if let Some(t) = transaction {
