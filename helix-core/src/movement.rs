@@ -10,6 +10,7 @@ use crate::{
         next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
         prev_grapheme_boundary,
     },
+    line_ending::{rope_is_line_ending, str_is_line_ending},
     pos_at_coords,
     syntax::LanguageConfiguration,
     textobject::TextObject,
@@ -147,6 +148,63 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
     (0..count).fold(start_range, |r, _| {
         slice.chars_at(r.head).range_to_target(target, r)
     })
+}
+
+pub fn move_prev_para(slice: RopeSlice, range: Range, count: usize, behavior: Movement) -> Range {
+    let mut line = range.cursor_line(slice);
+    let first_char = slice.line_to_char(line) == range.cursor(slice);
+    let curr_line_empty = rope_is_line_ending(slice.line(line));
+    let last_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
+    let line_to_empty = last_line_empty && !curr_line_empty;
+
+    // iterate current line if first character after paragraph boundary
+    if line_to_empty && !first_char {
+        line += 1;
+    }
+    let mut lines = slice.lines_at(line);
+    lines.reverse();
+    let mut lines = lines.map(rope_is_line_ending).peekable();
+    for _ in 0..count {
+        while lines.next_if(|&e| e).is_some() {
+            line -= 1;
+        }
+        while lines.next_if(|&e| !e).is_some() {
+            line -= 1;
+        }
+    }
+
+    let head = slice.line_to_char(line);
+    let anchor = if behavior == Movement::Move {
+        // exclude first character after paragraph boundary
+        if line_to_empty && first_char {
+            range.cursor(slice)
+        } else {
+            range.head
+        }
+    } else {
+        range.put_cursor(slice, head, true).anchor
+    };
+    Range::new(anchor, head)
+}
+
+pub fn move_next_para(slice: RopeSlice, range: Range, count: usize, behavior: Movement) -> Range {
+    let mut line = slice.char_to_line(range.head);
+    let lines = slice.lines_at(line);
+    let mut lines = lines.map(|l| l.chunks().all(str_is_line_ending)).peekable();
+    for _ in 0..count {
+        while lines.next_if(|&e| !e).is_some() {
+            line += 1;
+        }
+        while lines.next_if(|&e| e).is_some() {
+            line += 1;
+        }
+    }
+    let anchor = if behavior == Movement::Move {
+        range.cursor(slice)
+    } else {
+        range.anchor
+    };
+    Range::new(anchor, slice.line_to_char(line))
 }
 
 // ---- util ------------
@@ -1177,6 +1235,69 @@ mod test {
                 let range = move_next_long_word_end(Rope::from(sample).slice(..), begin, count);
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
+        }
+    }
+
+    #[test]
+    fn test_behaviour_when_moving_to_prev_paragraph_single() {
+        let tests = [
+            ("^@", "@^"),
+            ("^s@tart at\nfirst char\n", "@s^tart at\nfirst char\n"),
+            ("start at\nlast char^\n@", "@start at\nlast char\n^"),
+            ("goto\nfirst\n\n^p@aragraph", "@goto\nfirst\n\n^paragraph"),
+            ("goto\nfirst\n^\n@paragraph", "@goto\nfirst\n\n^paragraph"),
+            ("goto\nsecond\n\np^a@ragraph", "goto\nsecond\n\n@pa^ragraph"),
+            (
+                "here\n\nhave\nmultiple\nparagraph\n\n\n\n\n^@",
+                "here\n\n@have\nmultiple\nparagraph\n\n\n\n\n^",
+            ),
+        ];
+
+        for (actual, expected) in tests {
+            let (s, selection) = crate::test::print(actual);
+            let text = Rope::from(s.as_str());
+            let selection =
+                selection.transform(|r| move_prev_para(text.slice(..), r, 1, Movement::Move));
+            let actual = crate::test::plain(&s, selection);
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[ignore]
+    #[test]
+    fn test_behaviour_when_moving_to_prev_paragraph_double() {}
+
+    #[test]
+    fn test_behaviour_when_moving_to_next_paragraph_single() {
+        let tests = [
+            ("^@", "@^"),
+            ("^s@tart at\nfirst char\n", "^start at\nfirst char\n@"),
+            ("start at\nlast char^\n@", "start at\nlast char^\n@"),
+            (
+                "a\nb\n\n^g@oto\nthird\n\nparagraph",
+                "a\nb\n\n^goto\nthird\n\n@paragraph",
+            ),
+            (
+                "a\nb\n^\n@goto\nthird\n\nparagraph",
+                "a\nb\n\n^goto\nthird\n\n@paragraph",
+            ),
+            (
+                "a\nb^\n@\ngoto\nsecond\n\nparagraph",
+                "a\nb^\n\n@goto\nsecond\n\nparagraph",
+            ),
+            (
+                "here\n\nhave\n^m@ultiple\nparagraph\n\n\n\n\n",
+                "here\n\nhave\n^multiple\nparagraph\n\n\n\n\n@",
+            ),
+        ];
+
+        for (actual, expected) in tests {
+            let (s, selection) = crate::test::print(actual);
+            let text = Rope::from(s.as_str());
+            let selection =
+                selection.transform(|r| move_next_para(text.slice(..), r, 1, Movement::Move));
+            let actual = crate::test::plain(&s, selection);
+            assert_eq!(actual, expected);
         }
     }
 }
