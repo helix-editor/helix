@@ -22,7 +22,6 @@ pub struct Markdown {
 
     config_loader: Arc<syntax::Loader>,
 
-    text_style: String,
     block_style: String,
     heading_style: String,
 }
@@ -35,14 +34,12 @@ impl Markdown {
         Self {
             contents,
             config_loader,
-            text_style: "markup.normal".into(),
             block_style: "markup.raw.inline".into(),
             heading_style: "markup.heading".into(),
         }
     }
 
     pub fn style_group(mut self, suffix: &str) -> Self {
-        self.text_style = format!("markup.normal.{}", suffix);
         self.block_style = format!("markup.raw.inline.{}", suffix);
         self.heading_style = format!("markup.heading.{}", suffix);
         self
@@ -78,7 +75,7 @@ impl Markdown {
                     .unwrap_or_default()
             };
         }
-        let text_style = get_theme!(self.text_style);
+        let text_style = theme.map(|theme| theme.get("ui.text")).unwrap_or_default();
         let code_style = get_theme!(self.block_style);
         let heading_style = get_theme!(self.heading_style);
 
