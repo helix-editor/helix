@@ -451,7 +451,7 @@ mod test {
                     .unwrap()
                     .increment(amount)
                     .1,
-                expected.into()
+                Tendril::from(expected)
             );
         }
     }

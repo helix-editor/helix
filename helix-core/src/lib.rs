@@ -212,7 +212,10 @@ use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 
 pub use ropey::{Rope, RopeBuilder, RopeSlice};
 
-pub use tendril::StrTendril as Tendril;
+// pub use tendril::StrTendril as Tendril;
+pub use smartstring::SmartString;
+
+pub type Tendril = SmartString<smartstring::LazyCompact>;
 
 #[doc(inline)]
 pub use {regex, tree_sitter};

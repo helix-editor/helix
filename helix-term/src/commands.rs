@@ -2769,7 +2769,7 @@ pub mod cmd {
 
         let mut fragments: Vec<_> = selection
             .fragments(text)
-            .map(|fragment| Tendril::from_slice(&fragment))
+            .map(|fragment| Tendril::from(fragment.as_ref()))
             .collect();
 
         fragments.sort_by(match reverse {
@@ -3921,7 +3921,7 @@ fn try_restore_indent(doc: &mut Document, view_id: ViewId) {
         if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
             changes
         {
-            move_pos + inserted_str.len32() as usize == pos
+            move_pos + inserted_str.len() == pos
                 && inserted_str.starts_with('\n')
                 && inserted_str.chars().skip(1).all(char_is_whitespace)
                 && pos == line_end_pos // ensure no characters exists after current position
@@ -4513,7 +4513,8 @@ pub mod insert {
     #[allow(clippy::unnecessary_wraps)] // need to use Option<> because of the Hook signature
     fn insert(doc: &Rope, selection: &Selection, ch: char) -> Option<Transaction> {
         let cursors = selection.clone().cursors(doc.slice(..));
-        let t = Tendril::from_char(ch);
+        let mut t = Tendril::new();
+        t.push(ch);
         let transaction = Transaction::insert(doc, &cursors, t);
         Some(transaction)
     }
@@ -5015,12 +5016,12 @@ fn replace_with_yanked(cx: &mut Context) {
             let repeat = std::iter::repeat(
                 values
                     .last()
-                    .map(|value| Tendril::from_slice(&value.repeat(count)))
+                    .map(|value| Tendril::from(&value.repeat(count)))
                     .unwrap(),
             );
             let mut values = values
                 .iter()
-                .map(|value| Tendril::from_slice(&value.repeat(count)))
+                .map(|value| Tendril::from(&value.repeat(count)))
                 .chain(repeat);
             let selection = doc.selection(view.id);
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
@@ -5530,7 +5531,7 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
     let selection = doc.selection(view.id);
     let mut fragments: Vec<_> = selection
         .fragments(text)
-        .map(|fragment| Tendril::from_slice(&fragment))
+        .map(|fragment| Tendril::from(fragment.as_ref()))
         .collect();
 
     let group = count
@@ -5891,8 +5892,12 @@ fn surround_add(cx: &mut Context) {
 
             let mut changes = Vec::with_capacity(selection.len() * 2);
             for range in selection.iter() {
-                changes.push((range.from(), range.from(), Some(Tendril::from_char(open))));
-                changes.push((range.to(), range.to(), Some(Tendril::from_char(close))));
+                let mut o = Tendril::new();
+                o.push(open);
+                let mut c = Tendril::new();
+                c.push(close);
+                changes.push((range.from(), range.from(), Some(o)));
+                changes.push((range.to(), range.to(), Some(c)));
             }
 
             let transaction = Transaction::change(doc.text(), changes.into_iter());
@@ -5921,11 +5926,9 @@ fn surround_replace(cx: &mut Context) {
                     let transaction = Transaction::change(
                         doc.text(),
                         change_pos.iter().enumerate().map(|(i, &pos)| {
-                            (
-                                pos,
-                                pos + 1,
-                                Some(Tendril::from_char(if i % 2 == 0 { open } else { close })),
-                            )
+                            let mut t = Tendril::new();
+                            t.push(if i % 2 == 0 { open } else { close });
+                            (pos, pos + 1, Some(t))
                         }),
                     );
                     doc.apply(&transaction, view.id);
@@ -6065,8 +6068,9 @@ fn shell_impl(
         log::error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
     }
 
-    let tendril = Tendril::try_from_byte_slice(&output.stdout)
+    let str = std::str::from_utf8(&output.stdout)
         .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
+    let tendril = Tendril::from(str);
     Ok((tendril, output.status.success()))
 }
 

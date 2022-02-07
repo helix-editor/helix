@@ -214,7 +214,9 @@ fn handle_open(
         let change = match next_char {
             Some(ch) if !close_before.contains(ch) => {
                 len_inserted = open.len_utf8();
-                (cursor, cursor, Some(Tendril::from_char(open)))
+                let mut tendril = Tendril::new();
+                tendril.push(open);
+                (cursor, cursor, Some(tendril))
             }
             // None | Some(ch) if close_before.contains(ch) => {}
             _ => {
@@ -252,7 +254,9 @@ fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> 
             (cursor, cursor, None) // no-op
         } else {
             len_inserted += close.len_utf8();
-            (cursor, cursor, Some(Tendril::from_char(close)))
+            let mut tendril = Tendril::new();
+            tendril.push(close);
+            (cursor, cursor, Some(tendril))
         };
 
         let next_range = get_next_range(doc, start_range, offs, close, len_inserted);
@@ -290,15 +294,15 @@ fn handle_same(
             //  return transaction that moves past close
             (cursor, cursor, None) // no-op
         } else {
-            let mut pair = Tendril::with_capacity(2 * token.len_utf8() as u32);
-            pair.push_char(token);
+            let mut pair = Tendril::new();
+            pair.push(token);
 
             // for equal pairs, don't insert both open and close if either
             // side has a non-pair char
             if (next_char.is_none() || close_before.contains(next_char.unwrap()))
                 && (prev_char.is_none() || open_before.contains(prev_char.unwrap()))
             {
-                pair.push_char(token);
+                pair.push(token);
             }
 
             len_inserted += pair.len();
