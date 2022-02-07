@@ -415,7 +415,7 @@ mod test {
         expected_sel: &Selection,
     ) {
         let pairs = AutoPairs::new(pairs.iter());
-        let trans = hook(&in_doc, &in_sel, ch, &pairs).unwrap();
+        let trans = hook(in_doc, in_sel, ch, &pairs).unwrap();
         let mut actual_doc = in_doc.clone();
         assert!(trans.apply(&mut actual_doc));
         assert_eq!(expected_doc, &actual_doc);

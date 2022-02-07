@@ -724,12 +724,8 @@ impl Editor {
     /// language config with auto pairs configured, returns that;
     /// otherwise, falls back to the global auto pairs config.
     pub fn get_document_auto_pairs(&self, id: DocumentId) -> Option<&AutoPairs> {
-        if self.document(id).is_none() {
-            return None;
-        }
-
         let global_config = (&self.auto_pairs).as_ref();
-        let doc = self.document(id).unwrap();
+        let doc = self.document(id)?;
 
         match &doc.language {
             Some(lang) => lang.as_ref().auto_pairs.as_ref().or(global_config),
