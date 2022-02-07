@@ -4,7 +4,7 @@
 use crate::{
     graphemes, movement::Direction, Range, Rope, RopeGraphemes, Selection, Tendril, Transaction,
 };
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
 use log::debug;
 use smallvec::SmallVec;
@@ -23,10 +23,10 @@ pub const DEFAULT_PAIRS: &[(char, char)] = &[
 /// The type that represents the collection of auto pairs,
 /// keyed by the opener.
 #[derive(Debug, Clone)]
-pub struct AutoPairs(HashMap<char, Rc<Pair>>);
+pub struct AutoPairs(HashMap<char, Pair>);
 
 /// Represents the config for a particular pairing.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Pair {
     pub open: char,
     pub close: char,
@@ -90,7 +90,7 @@ impl AutoPairs {
         let mut auto_pairs = HashMap::new();
 
         for pair in pairs.into_iter() {
-            let auto_pair = Rc::new(pair.into());
+            let auto_pair = pair.into();
 
             auto_pairs.insert(auto_pair.open, auto_pair.clone());
 
@@ -103,7 +103,7 @@ impl AutoPairs {
     }
 
     pub fn get(&self, ch: char) -> Option<&Pair> {
-        self.0.get(&ch).map(Rc::as_ref)
+        self.0.get(&ch)
     }
 }
 
