@@ -23,16 +23,16 @@ pub const DEFAULT_PAIRS: &[(char, char)] = &[
 /// The type that represents the collection of auto pairs,
 /// keyed by the opener.
 #[derive(Debug, Clone)]
-pub struct AutoPairs(HashMap<char, Rc<AutoPair>>);
+pub struct AutoPairs(HashMap<char, Rc<Pair>>);
 
 /// Represents the config for a particular pairing.
 #[derive(Debug)]
-pub struct AutoPair {
+pub struct Pair {
     pub open: char,
     pub close: char,
 }
 
-impl AutoPair {
+impl Pair {
     /// true if open == close
     pub fn same(&self) -> bool {
         self.open == self.close
@@ -62,7 +62,7 @@ impl AutoPair {
     }
 }
 
-impl From<(char, char)> for AutoPair {
+impl From<(char, char)> for Pair {
     fn from(pair: (char, char)) -> Self {
         Self {
             open: pair.0,
@@ -71,7 +71,7 @@ impl From<(char, char)> for AutoPair {
     }
 }
 
-impl From<(&char, &char)> for AutoPair {
+impl From<(&char, &char)> for Pair {
     fn from(pair: (&char, &char)) -> Self {
         Self {
             open: *pair.0,
@@ -85,7 +85,7 @@ impl AutoPairs {
     pub fn new<'a, V: 'a, A>(pairs: V) -> Self
     where
         V: IntoIterator<Item = A>,
-        A: Into<AutoPair>,
+        A: Into<Pair>,
     {
         let mut auto_pairs = HashMap::new();
 
@@ -102,7 +102,7 @@ impl AutoPairs {
         Self(auto_pairs)
     }
 
-    pub fn get(&self, ch: char) -> Option<&AutoPair> {
+    pub fn get(&self, ch: char) -> Option<&Pair> {
         self.0.get(&ch).map(Rc::as_ref)
     }
 }
@@ -283,7 +283,7 @@ fn get_next_range(
     Range::new(end_anchor, end_head)
 }
 
-fn handle_open(doc: &Rope, selection: &Selection, pair: &AutoPair) -> Transaction {
+fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     let mut end_ranges = SmallVec::with_capacity(selection.len());
     let mut offs = 0;
 
@@ -319,7 +319,7 @@ fn handle_open(doc: &Rope, selection: &Selection, pair: &AutoPair) -> Transactio
     t
 }
 
-fn handle_close(doc: &Rope, selection: &Selection, pair: &AutoPair) -> Transaction {
+fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     let mut end_ranges = SmallVec::with_capacity(selection.len());
 
     let mut offs = 0;
@@ -352,7 +352,7 @@ fn handle_close(doc: &Rope, selection: &Selection, pair: &AutoPair) -> Transacti
 }
 
 /// handle cases where open and close is the same, or in triples ("""docstring""")
-fn handle_same(doc: &Rope, selection: &Selection, pair: &AutoPair) -> Transaction {
+fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     let mut end_ranges = SmallVec::with_capacity(selection.len());
 
     let mut offs = 0;
