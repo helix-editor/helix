@@ -82,7 +82,7 @@ a simple boolean value, or a specific mapping of pairs of single characters.
 
 | Key | Description |
 | --- | ----------- |
-| `false` | Completely disable auto pairing
+| `false` | Completely disable auto pairing, regardless of language-specific settings
 | `true` | Use the default pairs: <code>(){}[]''""``</code>
 | Mapping of pairs | e.g. `{ "(" =  ")", "{" = "}", ... }`
 
@@ -98,8 +98,9 @@ Example
 '<' = '>'
 ```
 
-Additionally, this setting can be used in a language config. This will
-override the editor config in documents with this language.
+Additionally, this setting can be used in a language config. Unless
+the editor setting is `false`, this will override the editor config in
+documents with this language.
 
 Example `languages.toml` that adds <> and removes ''
 

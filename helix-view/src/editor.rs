@@ -722,9 +722,17 @@ impl Editor {
 
     /// Get the document's auto pairs. If the document has a recognized
     /// language config with auto pairs configured, returns that;
-    /// otherwise, falls back to the global auto pairs config.
+    /// otherwise, falls back to the global auto pairs config. If the global
+    /// config is false, then ignore language settings.
     pub fn get_document_auto_pairs(&self, id: DocumentId) -> Option<&AutoPairs> {
         let global_config = (&self.auto_pairs).as_ref();
+
+        // NOTE: If the user specifies the global auto pairs config as false, then
+        //       we want to disable it globally regardless of language settings
+        if global_config.is_none() {
+            return None;
+        }
+
         let doc = self.document(id)?;
 
         match &doc.language {
