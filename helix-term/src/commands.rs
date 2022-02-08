@@ -2792,11 +2792,7 @@ pub mod cmd {
                         Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
                             let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
                             let popup = Popup::new("hover", contents);
-                            if let Some(doc_popup) = compositor.find_id("hover") {
-                                *doc_popup = popup;
-                            } else {
-                                compositor.push(Box::new(popup));
-                            }
+                            compositor.replace_or_push("hover", Box::new(popup));
                         });
                     Ok(call)
                 };
@@ -3537,7 +3533,7 @@ pub fn code_action(cx: &mut Context) {
                 vertical: 1,
                 horizontal: 1,
             });
-            compositor.push(Box::new(popup))
+            compositor.replace_or_push("code-action", Box::new(popup));
         },
     )
 }
@@ -5465,11 +5461,7 @@ fn hover(cx: &mut Context) {
                 let contents =
                     ui::Markdown::new(contents, editor.syn_loader.clone()).style_group("hover");
                 let popup = Popup::new("hover", contents);
-                if let Some(doc_popup) = compositor.find_id("hover") {
-                    *doc_popup = popup;
-                } else {
-                    compositor.push(Box::new(popup));
-                }
+                compositor.replace_or_push("hover", Box::new(popup));
             }
         },
     );
