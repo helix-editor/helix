@@ -222,6 +222,7 @@
 <tr><td><code>Alt-|</code></td><td>Pipe each selection into shell command, ignoring output</td><td><code>shell_pipe_to</code></td></tr>
 <tr><td><code>!</code></td><td>Run shell command, inserting output before each selection</td><td><code>shell_insert_output</code></td></tr>
 <tr><td><code>Alt-!</code></td><td>Run shell command, appending output after each selection</td><td><code>shell_append_output</code></td></tr>
+<tr><td><code>$</code></td><td>Pipe each selection into shell command, keep selections where command returned 0</td><td><code>shell_keep_pipe</code></td></tr>
 </tbody></table>
 <h3 id="selection-manipulation"><a class="header" href="#selection-manipulation">Selection manipulation</a></h3>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
@@ -243,16 +244,14 @@
 <tr><td><code>%</code></td><td>Select entire file</td><td><code>select_all</code></td></tr>
 <tr><td><code>x</code></td><td>Select current line, if already selected, extend to next line</td><td><code>extend_line</code></td></tr>
 <tr><td><code>X</code></td><td>Extend selection to line bounds (line-wise selection)</td><td><code>extend_to_line_bounds</code></td></tr>
-<tr><td></td><td>Expand selection to parent syntax node TODO: pick a key (<strong>TS</strong>)</td><td><code>expand_selection</code></td></tr>
 <tr><td><code>J</code></td><td>Join lines inside selection</td><td><code>join_selections</code></td></tr>
 <tr><td><code>K</code></td><td>Keep selections matching the regex</td><td><code>keep_selections</code></td></tr>
 <tr><td><code>Alt-K</code></td><td>Remove selections matching the regex</td><td><code>remove_selections</code></td></tr>
-<tr><td><code>$</code></td><td>Pipe each selection into shell command, keep selections where command returned 0</td><td><code>shell_keep_pipe</code></td></tr>
 <tr><td><code>Ctrl-c</code></td><td>Comment/uncomment the selections</td><td><code>toggle_comments</code></td></tr>
-<tr><td><code>Alt-k</code></td><td>Expand selection to parent syntax node</td><td><code>expand_selection</code></td></tr>
-<tr><td><code>Alt-j</code></td><td>Shrink syntax tree object selection</td><td><code>shrink_selection</code></td></tr>
-<tr><td><code>Alt-h</code></td><td>Select previous sibling node in syntax tree</td><td><code>select_prev_sibling</code></td></tr>
-<tr><td><code>Alt-l</code></td><td>Select next sibling node in syntax tree</td><td><code>select_next_sibling</code></td></tr>
+<tr><td><code>Alt-k</code></td><td>Expand selection to parent syntax node (<strong>TS</strong>)</td><td><code>expand_selection</code></td></tr>
+<tr><td><code>Alt-j</code></td><td>Shrink syntax tree object selection (<strong>TS</strong>)</td><td><code>shrink_selection</code></td></tr>
+<tr><td><code>Alt-h</code></td><td>Select previous sibling node in syntax tree (<strong>TS</strong>)</td><td><code>select_prev_sibling</code></td></tr>
+<tr><td><code>Alt-l</code></td><td>Select next sibling node in syntax tree (<strong>TS</strong>)</td><td><code>select_next_sibling</code></td></tr>
 </tbody></table>
 <h3 id="search"><a class="header" href="#search">Search</a></h3>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
@@ -276,10 +275,10 @@ over text and not actively editing it).</p>
 <tr><td><code>m</code></td><td>Align the line to the middle of the screen (horizontally)</td><td><code>align_view_middle</code></td></tr>
 <tr><td><code>j</code> , <code>down</code></td><td>Scroll the view downwards</td><td><code>scroll_down</code></td></tr>
 <tr><td><code>k</code> , <code>up</code></td><td>Scroll the view upwards</td><td><code>scroll_up</code></td></tr>
-<tr><td><code>f</code></td><td>Move page down</td><td><code>page_down</code></td></tr>
-<tr><td><code>b</code></td><td>Move page up</td><td><code>page_up</code></td></tr>
-<tr><td><code>d</code></td><td>Move half page down</td><td><code>half_page_down</code></td></tr>
-<tr><td><code>u</code></td><td>Move half page up</td><td><code>half_page_up</code></td></tr>
+<tr><td><code>Ctrl-f</code></td><td>Move page down</td><td><code>page_down</code></td></tr>
+<tr><td><code>Ctrl-b</code></td><td>Move page up</td><td><code>page_up</code></td></tr>
+<tr><td><code>Ctrl-d</code></td><td>Move half page down</td><td><code>half_page_down</code></td></tr>
+<tr><td><code>Ctrl-u</code></td><td>Move half page up</td><td><code>half_page_up</code></td></tr>
 </tbody></table>
 <h4 id="goto-mode"><a class="header" href="#goto-mode">Goto mode</a></h4>
 <p>Jumps to various locations.</p>
