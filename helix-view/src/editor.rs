@@ -318,7 +318,7 @@ impl Editor {
         config: Config,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
-        let auto_pairs = Option::<AutoPairs>::from(&config.auto_pairs);
+        let auto_pairs = (&config.auto_pairs).into();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;

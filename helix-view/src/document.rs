@@ -83,6 +83,7 @@ pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
     pub(crate) selections: HashMap<ViewId, Selection>,
+
     path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
 
@@ -95,26 +96,27 @@ pub struct Document {
 
     /// The document's default line ending.
     pub line_ending: LineEnding,
-    syntax: Option<Syntax>,
 
+    syntax: Option<Syntax>,
     /// Corresponding language scope name. Usually `source.<lang>`.
     pub(crate) language: Option<Arc<LanguageConfiguration>>,
 
     /// Pending changes since last history commit.
     changes: ChangeSet,
-
     /// State at last commit. Used for calculating reverts.
     old_state: Option<State>,
-
     /// Undo tree.
     // It can be used as a cell where we will take it out to get some parts of the history and put
     // it back as it separated from the edits. We could split out the parts manually but that will
     // be more troublesome.
     pub history: Cell<History>,
+
     pub savepoint: Option<Transaction>,
+
     last_saved_revision: usize,
     version: i32, // should be usize?
     pub(crate) modified_since_accessed: bool,
+
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
 }

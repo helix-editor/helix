@@ -48,10 +48,7 @@ pub fn deserialize_auto_pairs<'de, D>(deserializer: D) -> Result<Option<AutoPair
 where
     D: serde::Deserializer<'de>,
 {
-    Ok(match Option::<AutoPairConfig>::deserialize(deserializer)? {
-        Some(auto_pairs_config) => Option::<AutoPairs>::from(&auto_pairs_config),
-        None => None,
-    })
+    Ok(Option::<AutoPairConfig>::deserialize(deserializer)?.and_then(AutoPairConfig::into))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -210,6 +207,12 @@ impl From<&AutoPairConfig> for Option<AutoPairs> {
         debug!("auto pairs: {:#?}", auto_pairs);
 
         auto_pairs
+    }
+}
+
+impl From<AutoPairConfig> for Option<AutoPairs> {
+    fn from(auto_pairs_config: AutoPairConfig) -> Self {
+        (&auto_pairs_config).into()
     }
 }
 
