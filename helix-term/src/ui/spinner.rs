@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::SystemTime};
+use std::{collections::HashMap, time::Instant};
 
 #[derive(Default, Debug)]
 pub struct ProgressSpinners {
@@ -25,7 +25,7 @@ impl Default for Spinner {
 pub struct Spinner {
     frames: Vec<&'static str>,
     count: usize,
-    start: Option<SystemTime>,
+    start: Option<Instant>,
     interval: u64,
 }
 
@@ -50,14 +50,13 @@ impl Spinner {
     }
 
     pub fn start(&mut self) {
-        self.start = Some(SystemTime::now());
+        self.start = Some(Instant::now());
     }
 
     pub fn frame(&self) -> Option<&str> {
         let idx = (self
             .start
-            .map(|time| SystemTime::now().duration_since(time))?
-            .ok()?
+            .map(|time| Instant::now().duration_since(time))?
             .as_millis()
             / self.interval as u128) as usize
             % self.count;
