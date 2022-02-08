@@ -89,6 +89,7 @@
 | <code>Alt-&#124;</code> | Pipe each selection into shell command, ignoring output          | `shell_pipe_to`       |
 | `!`                     | Run shell command, inserting output before each selection        | `shell_insert_output` |
 | `Alt-!`                 | Run shell command, appending output after each selection         | `shell_append_output` |
+| `$`     | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
 
 
 ### Selection manipulation
@@ -113,16 +114,14 @@
 | `%`      | Select entire file                                                | `select_all`                         |
 | `x`      | Select current line, if already selected, extend to next line     | `extend_line`                        |
 | `X`      | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
-|          | Expand selection to parent syntax node TODO: pick a key (**TS**)  | `expand_selection`                   |
 | `J`      | Join lines inside selection                                       | `join_selections`                    |
 | `K`      | Keep selections matching the regex                                | `keep_selections`                    |
 | `Alt-K`  | Remove selections matching the regex                              | `remove_selections`                  |
-| `$`      | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
 | `Ctrl-c` | Comment/uncomment the selections                                  | `toggle_comments`                    |
-| `Alt-k`  | Expand selection to parent syntax node                            | `expand_selection`                   |
-| `Alt-j`  | Shrink syntax tree object selection                               | `shrink_selection`                   |
-| `Alt-h`  | Select previous sibling node in syntax tree                       | `select_prev_sibling`                |
-| `Alt-l`  | Select next sibling node in syntax tree                           | `select_next_sibling`                |
+| `Alt-k`  | Expand selection to parent syntax node (**TS**)                   | `expand_selection`                   |
+| `Alt-j`  | Shrink syntax tree object selection (**TS**)                      | `shrink_selection`                   |
+| `Alt-h`  | Select previous sibling node in syntax tree (**TS**)              | `select_prev_sibling`                |
+| `Alt-l`  | Select next sibling node in syntax tree (**TS**)                  | `select_next_sibling`                |
 
 ### Search
 
@@ -155,10 +154,10 @@ over text and not actively editing it).
 | `m`           | Align the line to the middle of the screen (horizontally) | `align_view_middle` |
 | `j` , `down`  | Scroll the view downwards                                 | `scroll_down`       |
 | `k` , `up`    | Scroll the view upwards                                   | `scroll_up`         |
-| `f`           | Move page down                                            | `page_down`         |
-| `b`           | Move page up                                              | `page_up`           |
-| `d`           | Move half page down                                       | `half_page_down`    |
-| `u`           | Move half page up                                         | `half_page_up`      |
+| `Ctrl-f`      | Move page down                                            | `page_down`         |
+| `Ctrl-b`      | Move page up                                              | `page_up`           |
+| `Ctrl-d`      | Move half page down                                       | `half_page_down`    |
+| `Ctrl-u`      | Move half page up                                         | `half_page_up`      |
 
 #### Goto mode
 
