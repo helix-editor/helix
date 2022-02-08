@@ -729,8 +729,11 @@ impl Editor {
 
         // NOTE: If the user specifies the global auto pairs config as false, then
         //       we want to disable it globally regardless of language settings
-        if global_config.is_none() {
-            return None;
+        #[allow(clippy::question_mark)]
+        {
+            if global_config.is_none() {
+                return None;
+            }
         }
 
         let doc = self.document(id)?;
