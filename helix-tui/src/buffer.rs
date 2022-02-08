@@ -287,7 +287,7 @@ impl Buffer {
     where
         S: AsRef<str>,
     {
-        self.set_string_truncated(x, y, string, width, style, false, false)
+        self.set_string_truncated(x, y, string, width, |_| style, false, false)
     }
 
     /// Print at most the first `width` characters of a string if enough space is available
@@ -301,7 +301,7 @@ impl Buffer {
         y: u16,
         string: S,
         width: usize,
-        style: Style,
+        style: impl Fn(usize) -> Style, // Map a grapheme's string offset to a style
         ellipsis: bool,
         truncate_start: bool,
     ) -> (u16, u16)
@@ -316,10 +316,10 @@ impl Buffer {
         let mut index = self.index_of(x, y);
         let mut x_offset = x as usize;
         let width = if ellipsis { width - 1 } else { width };
-        let graphemes = UnicodeSegmentation::graphemes(string.as_ref(), true);
+        let graphemes = string.as_ref().grapheme_indices(true);
         let max_offset = min(self.area.right() as usize, width.saturating_add(x as usize));
         if !truncate_start {
-            for s in graphemes {
+            for (byte_offset, s) in graphemes {
                 let width = s.width();
                 if width == 0 {
                     continue;
@@ -331,7 +331,7 @@ impl Buffer {
                 }
 
                 self.content[index].set_symbol(s);
-                self.content[index].set_style(style);
+                self.content[index].set_style(style(byte_offset));
                 // Reset following cells if multi-width (they would be hidden by the grapheme),
                 for i in index + 1..index + width {
                     self.content[i].reset();
@@ -355,7 +355,7 @@ impl Buffer {
             if !truncated {
                 index -= width - total_width;
             }
-            for s in graphemes.rev() {
+            for (byte_offset, s) in graphemes.rev() {
                 let width = s.width();
                 if width == 0 {
                     continue;
@@ -365,7 +365,7 @@ impl Buffer {
                     break;
                 }
                 self.content[start].set_symbol(s);
-                self.content[start].set_style(style);
+                self.content[start].set_style(style(byte_offset));
                 for i in start + 1..index {
                     self.content[i].reset();
                 }

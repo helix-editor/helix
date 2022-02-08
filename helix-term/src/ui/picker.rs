@@ -24,7 +24,7 @@ use crate::ui::{Prompt, PromptEvent};
 use helix_core::Position;
 use helix_view::{
     editor::Action,
-    graphics::{Color, CursorKind, Margin, Rect, Style},
+    graphics::{Color, CursorKind, Margin, Modifier, Rect, Style},
     Document, Editor,
 };
 
@@ -266,8 +266,8 @@ pub struct Picker<T> {
     options: Vec<T>,
     // filter: String,
     matcher: Box<Matcher>,
-    /// (index, score)
-    matches: Vec<(usize, i64)>,
+    /// (index, score, highlight indices)
+    matches: Vec<(usize, i64, Option<Vec<usize>>)>,
     /// Filter over original options.
     filters: Vec<usize>, // could be optimized into bit but not worth it now
 
@@ -334,13 +334,13 @@ impl<T> Picker<T> {
                     }
                     // TODO: maybe using format_fn isn't the best idea here
                     let text = (self.format_fn)(option);
-                    // TODO: using fuzzy_indices could give us the char idx for match highlighting
+                    // Highlight indices are computed lazily in the render function and cached
                     self.matcher
                         .fuzzy_match(&text, pattern)
-                        .map(|score| (index, score))
+                        .map(|score| (index, score, None))
                 }),
         );
-        self.matches.sort_unstable_by_key(|(_, score)| -score);
+        self.matches.sort_unstable_by_key(|(_, score, _)| -score);
 
         // reset cursor position
         self.cursor = 0;
@@ -367,13 +367,13 @@ impl<T> Picker<T> {
     pub fn selection(&self) -> Option<&T> {
         self.matches
             .get(self.cursor)
-            .map(|(index, _score)| &self.options[*index])
+            .map(|(index, _score, _highlights)| &self.options[*index])
     }
 
     pub fn save_filter(&mut self) {
         self.filters.clear();
         self.filters
-            .extend(self.matches.iter().map(|(index, _)| *index));
+            .extend(self.matches.iter().map(|(index, _, _)| *index));
         self.filters.sort_unstable(); // used for binary search later
         self.prompt.clear();
     }
@@ -465,6 +465,8 @@ impl<T: 'static> Component for Picker<T> {
         };
 
         let text_style = cx.editor.theme.get("ui.text");
+        let selected = cx.editor.theme.get("ui.text.focus");
+        let highlighted = cx.editor.theme.get("special").add_modifier(Modifier::BOLD);
 
         // -- Render the frame:
         // clear area
@@ -507,29 +509,45 @@ impl<T: 'static> Component for Picker<T> {
         // subtract area of prompt from top and current item marker " > " from left
         let inner = inner.clip_top(2).clip_left(3);
 
-        let selected = cx.editor.theme.get("ui.text.focus");
-
         let rows = inner.height;
         let offset = self.cursor - (self.cursor % std::cmp::max(1, rows as usize));
 
-        let files = self.matches.iter().skip(offset).map(|(index, _score)| {
-            (index, self.options.get(*index).unwrap()) // get_unchecked
-        });
+        let files = self
+            .matches
+            .iter_mut()
+            .skip(offset)
+            .map(|(index, _score, highlights)| {
+                (*index, self.options.get(*index).unwrap(), highlights)
+            });
 
-        for (i, (_index, option)) in files.take(rows as usize).enumerate() {
-            if i == (self.cursor - offset) {
+        for (i, (_index, option, highlights)) in files.take(rows as usize).enumerate() {
+            let is_active = i == (self.cursor - offset);
+            if is_active {
                 surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
             }
+
+            let formatted = (self.format_fn)(option);
+
+            let highlights = highlights.get_or_insert_with(|| {
+                self.matcher
+                    .fuzzy_indices(&formatted, &self.prompt.line)
+                    .unwrap_or_default()
+                    .1
+            });
 
             surface.set_string_truncated(
                 inner.x,
                 inner.y + i as u16,
-                (self.format_fn)(option),
+                &formatted,
                 inner.width as usize,
-                if i == (self.cursor - offset) {
-                    selected
-                } else {
-                    text_style
+                |idx| {
+                    if highlights.contains(&idx) {
+                        highlighted
+                    } else if is_active {
+                        selected
+                    } else {
+                        text_style
+                    }
                 },
                 true,
                 self.truncate_start,
