@@ -2083,10 +2083,23 @@ pub mod cmd {
         let future = doc.format_and_save(fmt);
         cx.jobs.add(Job::new(future).wait_before_exiting());
 
+        // TODO?: Accept all valid unicode correctly (`to_string_lossy` is used to satisfy the type system)
+        // This might not be necessary since `path` is already coming in as a Cow<str> to begin with.
+        let path_text = path
+            .unwrap_or(&doc.relative_path().unwrap().to_string_lossy())
+            .to_string();
+        let (lines, columns) = (doc.text().len_lines(), doc.text().len_chars());
+
         if path.is_some() {
             let id = doc.id();
             let _ = cx.editor.refresh_language_server(id);
         }
+
+        cx.editor.set_status(format!(
+            "\"{}\" {}L, {}C written",
+            path_text, lines, columns,
+        ));
+
         Ok(())
     }
 
