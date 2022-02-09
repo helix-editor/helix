@@ -267,7 +267,7 @@ pub struct Picker<T> {
     // filter: String,
     matcher: Box<Matcher>,
     /// (index, score, highlight indices)
-    matches: Vec<(usize, i64, Option<Vec<usize>>)>,
+    matches: Vec<(usize, i64)>,
     /// Filter over original options.
     filters: Vec<usize>, // could be optimized into bit but not worth it now
 
@@ -337,10 +337,10 @@ impl<T> Picker<T> {
                     // Highlight indices are computed lazily in the render function and cached
                     self.matcher
                         .fuzzy_match(&text, pattern)
-                        .map(|score| (index, score, None))
+                        .map(|score| (index, score))
                 }),
         );
-        self.matches.sort_unstable_by_key(|(_, score, _)| -score);
+        self.matches.sort_unstable_by_key(|(_, score)| -score);
 
         // reset cursor position
         self.cursor = 0;
@@ -367,13 +367,13 @@ impl<T> Picker<T> {
     pub fn selection(&self) -> Option<&T> {
         self.matches
             .get(self.cursor)
-            .map(|(index, _score, _highlights)| &self.options[*index])
+            .map(|(index, _score)| &self.options[*index])
     }
 
     pub fn save_filter(&mut self) {
         self.filters.clear();
         self.filters
-            .extend(self.matches.iter().map(|(index, _, _)| *index));
+            .extend(self.matches.iter().map(|(index, _)| *index));
         self.filters.sort_unstable(); // used for binary search later
         self.prompt.clear();
     }
@@ -516,11 +516,9 @@ impl<T: 'static> Component for Picker<T> {
             .matches
             .iter_mut()
             .skip(offset)
-            .map(|(index, _score, highlights)| {
-                (*index, self.options.get(*index).unwrap(), highlights)
-            });
+            .map(|(index, _score)| (*index, self.options.get(*index).unwrap()));
 
-        for (i, (_index, option, highlights)) in files.take(rows as usize).enumerate() {
+        for (i, (_index, option)) in files.take(rows as usize).enumerate() {
             let is_active = i == (self.cursor - offset);
             if is_active {
                 surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
@@ -528,12 +526,10 @@ impl<T: 'static> Component for Picker<T> {
 
             let formatted = (self.format_fn)(option);
 
-            let highlights = highlights.get_or_insert_with(|| {
-                self.matcher
-                    .fuzzy_indices(&formatted, &self.prompt.line)
-                    .unwrap_or_default()
-                    .1
-            });
+            let (_score, highlights) = self
+                .matcher
+                .fuzzy_indices(&formatted, &self.prompt.line)
+                .unwrap_or_default();
 
             surface.set_string_truncated(
                 inner.x,

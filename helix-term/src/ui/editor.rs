@@ -657,7 +657,7 @@ impl EditorView {
         surface.set_string_truncated(
             viewport.x + 8, // 8: 1 space + 3 char mode string + 1 space + 1 spinner + 1 space
             viewport.y,
-            title,
+            &title,
             viewport
                 .width
                 .saturating_sub(6)
