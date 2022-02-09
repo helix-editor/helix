@@ -10,7 +10,6 @@ use crate::{
 pub use helix_syntax::get_language;
 
 use arc_swap::{ArcSwap, Guard};
-use log::debug;
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
 use std::{
@@ -198,15 +197,11 @@ impl Default for AutoPairConfig {
 
 impl From<&AutoPairConfig> for Option<AutoPairs> {
     fn from(auto_pair_config: &AutoPairConfig) -> Self {
-        let auto_pairs = match auto_pair_config {
+        match auto_pair_config {
             AutoPairConfig::Enable(false) => None,
             AutoPairConfig::Enable(true) => Some(AutoPairs::default()),
             AutoPairConfig::Pairs(pairs) => Some(AutoPairs::new(pairs.iter())),
-        };
-
-        debug!("auto pairs: {:#?}", auto_pairs);
-
-        auto_pairs
+        }
     }
 }
 

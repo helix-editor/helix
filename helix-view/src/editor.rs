@@ -13,6 +13,7 @@ use futures_util::future;
 use futures_util::stream::select_all::SelectAll;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+use log::debug;
 use std::{
     borrow::Cow,
     collections::{BTreeMap, HashMap},
@@ -319,6 +320,8 @@ impl Editor {
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
         let auto_pairs = (&config.auto_pairs).into();
+
+        debug!("Editor config: {config:#?}");
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
