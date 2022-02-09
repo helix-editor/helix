@@ -92,9 +92,7 @@ impl Completion {
                 offset_encoding: helix_lsp::OffsetEncoding,
                 start_offset: usize,
                 trigger_offset: usize,
-            ) -> (Transaction, Option<CompleteAction>) {
-                let mut completion = None;
-
+            ) -> Transaction {
                 let transaction = if let Some(edit) = &item.text_edit {
                     let edit = match edit {
                         lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
@@ -102,28 +100,6 @@ impl Completion {
                             unimplemented!("completion: insert_and_replace {:?}", item)
                         }
                     };
-
-                    let start = util::lsp_pos_to_pos(doc.text(), edit.range.start, offset_encoding);
-                    let end = util::lsp_pos_to_pos(doc.text(), edit.range.end, offset_encoding);
-                    if let (Some(start), Some(end)) = (start, end) {
-                        let start = if start >= trigger_offset {
-                            (start - trigger_offset) as isize
-                        } else {
-                            -((trigger_offset - start) as isize)
-                        };
-
-                        let end = if end >= trigger_offset {
-                            (end - trigger_offset) as isize
-                        } else {
-                            -((trigger_offset - end) as isize)
-                        };
-
-                        completion = Some(CompleteAction {
-                            start,
-                            end,
-                            text: edit.new_text.clone(),
-                        })
-                    }
 
                     util::generate_transaction_from_edits(
                         doc.text(),
@@ -142,7 +118,57 @@ impl Completion {
                     )
                 };
 
-                (transaction, completion)
+                transaction
+            }
+
+            fn fetch_complete_action(
+                doc: &Document,
+                item: &CompletionItem,
+                offset_encoding: helix_lsp::OffsetEncoding,
+                start_offset: usize,
+                trigger_offset: usize,
+            ) -> Option<CompleteAction> {
+                let action = if let Some(edit) = &item.text_edit {
+                    let edit = match edit {
+                        lsp::CompletionTextEdit::Edit(edit) => edit,
+                        lsp::CompletionTextEdit::InsertAndReplace(item) => {
+                            unimplemented!("completion: insert_and_replace {:?}", item)
+                        }
+                    };
+
+                    let triger_relative = |pos| {
+                        let pos = util::lsp_pos_to_pos(doc.text(), pos, offset_encoding)?;
+
+                        let relative = if pos >= trigger_offset {
+                            (pos - trigger_offset) as isize
+                        } else {
+                            -((trigger_offset - pos) as isize)
+                        };
+                        Some(relative)
+                    };
+
+                    let start = triger_relative(edit.range.start)?;
+                    let end = triger_relative(edit.range.end)?;
+
+                    CompleteAction {
+                        start,
+                        end,
+                        text: edit.new_text.clone(),
+                    }
+                } else {
+                    let text = item.insert_text.as_ref().unwrap_or(&item.label);
+                    // Some LSPs just give you an insertText with no offset ¯\_(ツ)_/¯
+                    // in these cases we need to check for a common prefix and remove it
+                    let prefix = Cow::from(doc.text().slice(start_offset..trigger_offset));
+                    let text = text.trim_start_matches::<&str>(&prefix).to_owned();
+                    CompleteAction {
+                        start: 0,
+                        end: 0,
+                        text,
+                    }
+                };
+
+                Some(action)
             }
 
             let (view, doc) = current!(editor);
@@ -156,7 +182,7 @@ impl Completion {
                     // always present here
                     let item = item.unwrap();
 
-                    let (transaction, _) = item_to_transaction(
+                    let transaction = item_to_transaction(
                         doc,
                         item,
                         offset_encoding,
@@ -173,17 +199,27 @@ impl Completion {
                     // always present here
                     let item = item.unwrap();
 
-                    let (transaction, completion) = item_to_transaction(
+                    let transaction = item_to_transaction(
                         doc,
                         item,
                         offset_encoding,
                         start_offset,
                         trigger_offset,
                     );
+                    let completion = fetch_complete_action(
+                        doc,
+                        item,
+                        offset_encoding,
+                        start_offset,
+                        trigger_offset,
+                    );
+
                     doc.apply(&transaction, view.id);
 
                     if let Some(completion) = completion {
                         editor.last_completion = Some(completion);
+                    } else {
+                        log::warn!("Failed to generate completion action");
                     }
 
                     // apply additional edits, mostly used to auto import unqualified types

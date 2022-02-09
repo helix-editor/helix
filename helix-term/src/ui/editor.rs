@@ -744,11 +744,7 @@ impl EditorView {
                 for key in self.last_insert.1.clone() {
                     match key {
                         InsertEvent::Key(key) => self.insert_mode(cxt, key),
-                        InsertEvent::Completion(CompleteAction {
-                            start,
-                            end,
-                            text: change,
-                        }) => {
+                        InsertEvent::Completion(compl) => {
                             let (view, doc) = current!(cxt.editor);
 
                             let text = doc.text().slice(..);
@@ -756,20 +752,28 @@ impl EditorView {
 
                             let cursor_offset = |offset: isize| {
                                 if offset >= 0 {
-                                    cursor + (offset) as usize
+                                    Some(cursor + (offset as usize))
                                 } else {
-                                    cursor - (-offset) as usize
+                                    let minus_offset = (-offset) as usize;
+                                    if cursor >= minus_offset {
+                                        Some(cursor - minus_offset)
+                                    } else {
+                                        None
+                                    }
                                 }
                             };
 
-                            let start = cursor_offset(start);
-                            let end = cursor_offset(end);
-
-                            let tr = Transaction::change(
-                                doc.text(),
-                                [(start, end, Some(change.into()))].into_iter(),
-                            );
-                            doc.apply(&tr, view.id);
+                            if let (Some(start), Some(end)) =
+                                (cursor_offset(compl.start), cursor_offset(compl.end))
+                            {
+                                let tr = Transaction::change(
+                                    doc.text(),
+                                    [(start, end, Some(compl.text.into()))].into_iter(),
+                                );
+                                doc.apply(&tr, view.id);
+                            } else {
+                                log::warn!("Skipping completion replay: {compl:?}");
+                            }
                         }
                     }
                 }
