@@ -1,6 +1,10 @@
 use std::borrow::Cow;
 
-use crate::{graphics::Rect, Document, DocumentId, ViewId};
+use crate::{
+    graphics::Rect,
+    gutter::{self, Gutter},
+    Document, DocumentId, ViewId,
+};
 use helix_core::{
     graphemes::{grapheme_width, RopeGraphemes},
     line_ending::line_end_char_index,
@@ -54,7 +58,13 @@ impl JumpList {
             None
         }
     }
+
+    pub fn remove(&mut self, doc_id: &DocumentId) {
+        self.jumps.retain(|(other_id, _)| other_id != doc_id);
+    }
 }
+
+const GUTTERS: &[(Gutter, usize)] = &[(gutter::diagnostic, 1), (gutter::line_number, 5)];
 
 #[derive(Debug)]
 pub struct View {
@@ -65,6 +75,13 @@ pub struct View {
     pub jumps: JumpList,
     /// the last accessed file before the current one
     pub last_accessed_doc: Option<DocumentId>,
+    /// the last modified files before the current one
+    /// ordered from most frequent to least frequent
+    // uses two docs because we want to be able to swap between the
+    // two last modified docs which we need to manually keep track of
+    pub last_modified_docs: [Option<DocumentId>; 2],
+    /// used to store previous selections of tree-sitter objecs
+    pub object_selections: Vec<Selection>,
 }
 
 impl View {
@@ -76,13 +93,24 @@ impl View {
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
             last_accessed_doc: None,
+            last_modified_docs: [None, None],
+            object_selections: Vec::new(),
         }
     }
 
+    pub fn gutters(&self) -> &[(Gutter, usize)] {
+        GUTTERS
+    }
+
     pub fn inner_area(&self) -> Rect {
-        // TODO: not ideal
-        const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
-        self.area.clip_left(OFFSET).clip_bottom(1) // -1 for statusline
+        // TODO: cache this
+        let offset = self
+            .gutters()
+            .iter()
+            .map(|(_, width)| *width as u16)
+            .sum::<u16>()
+            + 1; // +1 for some space between gutters and line
+        self.area.clip_left(offset).clip_bottom(1) // -1 for statusline
     }
 
     //
@@ -272,6 +300,7 @@ mod tests {
     use super::*;
     use helix_core::Rope;
     const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
+                           // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
 
     #[test]
     fn test_text_pos_at_screen_coords() {
@@ -327,7 +356,7 @@ mod tests {
         let text = rope.slice(..);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 0, 4),
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET, 4),
             Some(0)
         );
 
@@ -360,7 +389,7 @@ mod tests {
         let text = rope.slice(..);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 0, 4),
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET, 4),
             Some(0)
         );
 

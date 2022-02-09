@@ -1,4 +1,4 @@
-use crate::{search, Selection};
+use crate::{search, Range, Selection};
 use ropey::RopeSlice;
 
 pub const PAIRS: &[(char, char)] = &[
@@ -35,33 +35,27 @@ pub fn get_pair(ch: char) -> (char, char) {
 pub fn find_nth_pairs_pos(
     text: RopeSlice,
     ch: char,
-    pos: usize,
+    range: Range,
     n: usize,
 ) -> Option<(usize, usize)> {
-    let (open, close) = get_pair(ch);
-
-    if text.len_chars() < 2 || pos >= text.len_chars() {
+    if text.len_chars() < 2 || range.to() >= text.len_chars() {
         return None;
     }
 
+    let (open, close) = get_pair(ch);
+    let pos = range.cursor(text);
+
     if open == close {
         if Some(open) == text.get_char(pos) {
-            // Special case: cursor is directly on a matching char.
-            match pos {
-                0 => Some((pos, search::find_nth_next(text, close, pos + 1, n)?)),
-                _ if (pos + 1) == text.len_chars() => {
-                    Some((search::find_nth_prev(text, open, pos, n)?, pos))
-                }
-                // We return no match because there's no way to know which
-                // side of the char we should be searching on.
-                _ => None,
-            }
-        } else {
-            Some((
-                search::find_nth_prev(text, open, pos, n)?,
-                search::find_nth_next(text, close, pos, n)?,
-            ))
+            // Cursor is directly on match char. We return no match
+            // because there's no way to know which side of the char
+            // we should be searching on.
+            return None;
         }
+        Some((
+            search::find_nth_prev(text, open, pos, n)?,
+            search::find_nth_next(text, close, pos, n)?,
+        ))
     } else {
         Some((
             find_nth_open_pair(text, open, close, pos, n)?,
@@ -160,8 +154,8 @@ pub fn get_surround_pos(
 ) -> Option<Vec<usize>> {
     let mut change_pos = Vec::new();
 
-    for range in selection {
-        let (open_pos, close_pos) = find_nth_pairs_pos(text, ch, range.head, skip)?;
+    for &range in selection {
+        let (open_pos, close_pos) = find_nth_pairs_pos(text, ch, range, skip)?;
         if change_pos.contains(&open_pos) || change_pos.contains(&close_pos) {
             return None;
         }
@@ -178,67 +172,92 @@ mod test {
     use ropey::Rope;
     use smallvec::SmallVec;
 
-    #[test]
-    fn test_find_nth_pairs_pos() {
-        let doc = Rope::from("some (text) here");
+    #[allow(clippy::type_complexity)]
+    fn check_find_nth_pair_pos(
+        text: &str,
+        cases: Vec<(usize, char, usize, Option<(usize, usize)>)>,
+    ) {
+        let doc = Rope::from(text);
         let slice = doc.slice(..);
 
-        // cursor on [t]ext
-        assert_eq!(find_nth_pairs_pos(slice, '(', 6, 1), Some((5, 10)));
-        assert_eq!(find_nth_pairs_pos(slice, ')', 6, 1), Some((5, 10)));
-        // cursor on so[m]e
-        assert_eq!(find_nth_pairs_pos(slice, '(', 2, 1), None);
-        // cursor on bracket itself
-        assert_eq!(find_nth_pairs_pos(slice, '(', 5, 1), Some((5, 10)));
-        assert_eq!(find_nth_pairs_pos(slice, '(', 10, 1), Some((5, 10)));
+        for (cursor_pos, ch, n, expected_range) in cases {
+            let range = find_nth_pairs_pos(slice, ch, (cursor_pos, cursor_pos + 1).into(), n);
+            assert_eq!(
+                range, expected_range,
+                "Expected {:?}, got {:?}",
+                expected_range, range
+            );
+        }
+    }
+
+    #[test]
+    fn test_find_nth_pairs_pos() {
+        check_find_nth_pair_pos(
+            "some (text) here",
+            vec![
+                // cursor on [t]ext
+                (6, '(', 1, Some((5, 10))),
+                (6, ')', 1, Some((5, 10))),
+                // cursor on so[m]e
+                (2, '(', 1, None),
+                // cursor on bracket itself
+                (5, '(', 1, Some((5, 10))),
+                (10, '(', 1, Some((5, 10))),
+            ],
+        );
     }
 
     #[test]
     fn test_find_nth_pairs_pos_skip() {
-        let doc = Rope::from("(so (many (good) text) here)");
-        let slice = doc.slice(..);
-
-        // cursor on go[o]d
-        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 1), Some((10, 15)));
-        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 2), Some((4, 21)));
-        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 3), Some((0, 27)));
+        check_find_nth_pair_pos(
+            "(so (many (good) text) here)",
+            vec![
+                // cursor on go[o]d
+                (13, '(', 1, Some((10, 15))),
+                (13, '(', 2, Some((4, 21))),
+                (13, '(', 3, Some((0, 27))),
+            ],
+        );
     }
 
     #[test]
     fn test_find_nth_pairs_pos_same() {
-        let doc = Rope::from("'so 'many 'good' text' here'");
-        let slice = doc.slice(..);
-
-        // cursor on go[o]d
-        assert_eq!(find_nth_pairs_pos(slice, '\'', 13, 1), Some((10, 15)));
-        assert_eq!(find_nth_pairs_pos(slice, '\'', 13, 2), Some((4, 21)));
-        assert_eq!(find_nth_pairs_pos(slice, '\'', 13, 3), Some((0, 27)));
-        // cursor on the quotes
-        assert_eq!(find_nth_pairs_pos(slice, '\'', 10, 1), None);
-        // this is the best we can do since opening and closing pairs are same
-        assert_eq!(find_nth_pairs_pos(slice, '\'', 0, 1), Some((0, 4)));
-        assert_eq!(find_nth_pairs_pos(slice, '\'', 27, 1), Some((21, 27)));
+        check_find_nth_pair_pos(
+            "'so 'many 'good' text' here'",
+            vec![
+                // cursor on go[o]d
+                (13, '\'', 1, Some((10, 15))),
+                (13, '\'', 2, Some((4, 21))),
+                (13, '\'', 3, Some((0, 27))),
+                // cursor on the quotes
+                (10, '\'', 1, None),
+            ],
+        )
     }
 
     #[test]
     fn test_find_nth_pairs_pos_step() {
-        let doc = Rope::from("((so)((many) good (text))(here))");
-        let slice = doc.slice(..);
-
-        // cursor on go[o]d
-        assert_eq!(find_nth_pairs_pos(slice, '(', 15, 1), Some((5, 24)));
-        assert_eq!(find_nth_pairs_pos(slice, '(', 15, 2), Some((0, 31)));
+        check_find_nth_pair_pos(
+            "((so)((many) good (text))(here))",
+            vec![
+                // cursor on go[o]d
+                (15, '(', 1, Some((5, 24))),
+                (15, '(', 2, Some((0, 31))),
+            ],
+        )
     }
 
     #[test]
     fn test_find_nth_pairs_pos_mixed() {
-        let doc = Rope::from("(so [many {good} text] here)");
-        let slice = doc.slice(..);
-
-        // cursor on go[o]d
-        assert_eq!(find_nth_pairs_pos(slice, '{', 13, 1), Some((10, 15)));
-        assert_eq!(find_nth_pairs_pos(slice, '[', 13, 1), Some((4, 21)));
-        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 1), Some((0, 27)));
+        check_find_nth_pair_pos(
+            "(so [many {good} text] here)",
+            vec![
+                // cursor on go[o]d
+                (13, '{', 1, Some((10, 15))),
+                (13, '[', 1, Some((4, 21))),
+                (13, '(', 1, Some((0, 27))),
+            ],
+        )
     }
 
     #[test]

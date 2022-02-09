@@ -1,6 +1,8 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
+    document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::{CursorKind, Rect},
+    input::KeyEvent,
     theme::{self, Theme},
     tree::{self, Tree},
     Document, DocumentId, View, ViewId,
@@ -8,8 +10,9 @@ use crate::{
 
 use futures_util::future;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     io::stdin,
+    num::NonZeroUsize,
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
@@ -17,14 +20,14 @@ use std::{
 
 use tokio::time::{sleep, Duration, Instant, Sleep};
 
-use anyhow::Error;
+use anyhow::{bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
 use helix_core::syntax;
-use helix_core::Position;
+use helix_core::{Position, Selection};
 
-use serde::Deserialize;
+use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize};
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -34,7 +37,47 @@ where
     Ok(Duration::from_millis(millis))
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct FilePickerConfig {
+    /// IgnoreOptions
+    /// Enables ignoring hidden files.
+    /// Whether to hide hidden files in file picker and global search results. Defaults to true.
+    pub hidden: bool,
+    /// Enables reading ignore files from parent directories. Defaults to true.
+    pub parents: bool,
+    /// Enables reading `.ignore` files.
+    /// Whether to hide files listed in .ignore in file picker and global search results. Defaults to true.
+    pub ignore: bool,
+    /// Enables reading `.gitignore` files.
+    /// Whether to hide files listed in .gitignore in file picker and global search results. Defaults to true.
+    pub git_ignore: bool,
+    /// Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option.
+    /// Whether to hide files listed in global .gitignore in file picker and global search results. Defaults to true.
+    pub git_global: bool,
+    /// Enables reading `.git/info/exclude` files.
+    /// Whether to hide files listed in .git/info/exclude in file picker and global search results. Defaults to true.
+    pub git_exclude: bool,
+    /// WalkBuilder options
+    /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
+    pub max_depth: Option<usize>,
+}
+
+impl Default for FilePickerConfig {
+    fn default() -> Self {
+        Self {
+            hidden: true,
+            parents: true,
+            ignore: true,
+            git_ignore: true,
+            git_global: true,
+            git_exclude: true,
+            max_depth: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
@@ -61,16 +104,88 @@ pub struct Config {
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
+    pub file_picker: FilePickerConfig,
+    /// Shape for cursor in each mode
+    pub cursor_shape: CursorShapeConfig,
+    /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
+    pub true_color: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+// Cursor shape is read and used on every rendered frame and so needs
+// to be fast. Therefore we avoid a hashmap and use an enum indexed array.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CursorShapeConfig([CursorKind; 3]);
+
+impl CursorShapeConfig {
+    pub fn from_mode(&self, mode: Mode) -> CursorKind {
+        self.get(mode as usize).copied().unwrap_or_default()
+    }
+}
+
+impl<'de> Deserialize<'de> for CursorShapeConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let m = HashMap::<Mode, CursorKind>::deserialize(deserializer)?;
+        let into_cursor = |mode: Mode| m.get(&mode).copied().unwrap_or_default();
+        Ok(CursorShapeConfig([
+            into_cursor(Mode::Normal),
+            into_cursor(Mode::Select),
+            into_cursor(Mode::Insert),
+        ]))
+    }
+}
+
+impl Serialize for CursorShapeConfig {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.len()))?;
+        let modes = [Mode::Normal, Mode::Select, Mode::Insert];
+        for mode in modes {
+            map.serialize_entry(&mode, &self.from_mode(mode))?;
+        }
+        map.end()
+    }
+}
+
+impl std::ops::Deref for CursorShapeConfig {
+    type Target = [CursorKind; 3];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Default for CursorShapeConfig {
+    fn default() -> Self {
+        Self([CursorKind::Block; 3])
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LineNumber {
     /// Show absolute line number
     Absolute,
 
-    /// Show relative line number to the primary cursor
+    /// If focused and in normal/select mode, show relative line number to the primary cursor.
+    /// If unfocused or in insert mode, show absolute line number.
     Relative,
+}
+
+impl std::str::FromStr for LineNumber {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "absolute" | "abs" => Ok(Self::Absolute),
+            "relative" | "rel" => Ok(Self::Relative),
+            _ => anyhow::bail!("Line number can only be `absolute` or `relative`."),
+        }
+    }
 }
 
 impl Default for Config {
@@ -92,6 +207,9 @@ impl Default for Config {
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
+            file_picker: FilePickerConfig::default(),
+            cursor_shape: CursorShapeConfig::default(),
+            true_color: false,
         }
     }
 }
@@ -111,11 +229,12 @@ impl std::fmt::Debug for Motion {
 #[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
-    pub next_document_id: usize,
+    pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: Option<char>,
     pub registers: Registers,
+    pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
     pub clipboard_provider: Box<dyn ClipboardProvider>,
@@ -129,6 +248,8 @@ pub struct Editor {
 
     pub idle_timer: Pin<Box<Sleep>>,
     pub last_motion: Option<Motion>,
+
+    pub exit_code: i32,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -142,8 +263,8 @@ pub enum Action {
 impl Editor {
     pub fn new(
         mut area: Rect,
-        themes: Arc<theme::Loader>,
-        config_loader: Arc<syntax::Loader>,
+        theme_loader: Arc<theme::Loader>,
+        syn_loader: Arc<syntax::Loader>,
         config: Config,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
@@ -153,20 +274,22 @@ impl Editor {
 
         Self {
             tree: Tree::new(area),
-            next_document_id: 0,
+            next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
             count: None,
             selected_register: None,
-            theme: themes.default(),
+            macro_recording: None,
+            theme: theme_loader.default(),
             language_servers,
-            syn_loader: config_loader,
-            theme_loader: themes,
+            syn_loader,
+            theme_loader,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
             idle_timer: Box::pin(sleep(config.idle_timeout)),
             last_motion: None,
             config,
+            exit_code: 0,
         }
     }
 
@@ -203,26 +326,54 @@ impl Editor {
         }
 
         let scopes = theme.scopes();
-        for config in self
-            .syn_loader
-            .language_configs_iter()
-            .filter(|cfg| cfg.is_highlight_initialized())
-        {
-            config.reconfigure(scopes);
-        }
+        self.syn_loader.set_scopes(scopes.to_vec());
 
         self.theme = theme;
         self._refresh();
     }
 
-    pub fn set_theme_from_name(&mut self, theme: &str) -> anyhow::Result<()> {
-        use anyhow::Context;
-        let theme = self
-            .theme_loader
-            .load(theme.as_ref())
-            .with_context(|| format!("failed setting theme `{}`", theme))?;
-        self.set_theme(theme);
-        Ok(())
+    /// Refreshes the language server for a given document
+    pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
+        let doc = self.documents.get_mut(&doc_id)?;
+        doc.detect_language(self.syn_loader.clone());
+        Self::launch_language_server(&mut self.language_servers, doc)
+    }
+
+    /// Launch a language server for a given document
+    fn launch_language_server(ls: &mut helix_lsp::Registry, doc: &mut Document) -> Option<()> {
+        // try to find a language server based on the language name
+        let language_server = doc.language.as_ref().and_then(|language| {
+            ls.get(language)
+                .map_err(|e| {
+                    log::error!(
+                        "Failed to initialize the LSP for `{}` {{ {} }}",
+                        language.scope(),
+                        e
+                    )
+                })
+                .ok()
+        });
+        if let Some(language_server) = language_server {
+            // only spawn a new lang server if the servers aren't the same
+            if Some(language_server.id()) != doc.language_server().map(|server| server.id()) {
+                if let Some(language_server) = doc.language_server() {
+                    tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+                }
+
+                let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
+
+                // TODO: this now races with on_init code if the init happens too quickly
+                tokio::spawn(language_server.text_document_did_open(
+                    doc.url().unwrap(),
+                    doc.version(),
+                    doc.text(),
+                    language_id,
+                ));
+
+                doc.set_language_server(Some(language_server));
+            }
+        }
+        Some(())
     }
 
     fn _refresh(&mut self) {
@@ -232,9 +383,28 @@ impl Editor {
         }
     }
 
+    fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
+        let view = self.tree.get_mut(current_view);
+        view.doc = doc_id;
+        view.offset = Position::default();
+
+        let doc = self.documents.get_mut(&doc_id).unwrap();
+
+        // initialize selection for view
+        doc.selections
+            .entry(view.id)
+            .or_insert_with(|| Selection::point(0));
+        // TODO: reuse align_view
+        let pos = doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..));
+        let line = doc.text().char_to_line(pos);
+        view.offset.row = line.saturating_sub(view.inner_area().height as usize / 2);
+    }
+
     pub fn switch(&mut self, id: DocumentId, action: Action) {
         use crate::tree::Layout;
-        use helix_core::Selection;
 
         if !self.documents.contains_key(&id) {
             log::error!("cannot switch to document that does not exist (anymore)");
@@ -257,7 +427,8 @@ impl Editor {
                         .tree
                         .traverse()
                         .any(|(_, v)| v.doc == doc.id && v.id != view.id);
-                let view = view_mut!(self);
+
+                let (view, doc) = current!(self);
                 if remove_empty_scratch {
                     // Copy `doc.id` into a variable before calling `self.documents.remove`, which requires a mutable
                     // borrow, invalidating direct access to `doc.id`.
@@ -266,46 +437,41 @@ impl Editor {
                 } else {
                     let jump = (view.doc, doc.selection(view.id).clone());
                     view.jumps.push(jump);
-                    view.last_accessed_doc = Some(view.doc);
+                    // Set last accessed doc if it is a different document
+                    if doc.id != id {
+                        view.last_accessed_doc = Some(view.doc);
+                        // Set last modified doc if modified and last modified doc is different
+                        if std::mem::take(&mut doc.modified_since_accessed)
+                            && view.last_modified_docs[0] != Some(view.doc)
+                        {
+                            view.last_modified_docs = [Some(view.doc), view.last_modified_docs[0]];
+                        }
+                    }
                 }
-                view.doc = id;
-                view.offset = Position::default();
 
-                let (view, doc) = current!(self);
-
-                // initialize selection for view
-                doc.selections
-                    .entry(view.id)
-                    .or_insert_with(|| Selection::point(0));
-                // TODO: reuse align_view
-                let pos = doc
-                    .selection(view.id)
-                    .primary()
-                    .cursor(doc.text().slice(..));
-                let line = doc.text().char_to_line(pos);
-                view.offset.row = line.saturating_sub(view.inner_area().height as usize / 2);
+                let view_id = view.id;
+                self.replace_document_in_view(view_id, id);
 
                 return;
             }
             Action::Load => {
                 let view_id = view!(self).id;
-                if let Some(doc) = self.document_mut(id) {
-                    if doc.selections().is_empty() {
-                        doc.selections.insert(view_id, Selection::point(0));
-                    }
+                let doc = self.documents.get_mut(&id).unwrap();
+                if doc.selections().is_empty() {
+                    doc.selections.insert(view_id, Selection::point(0));
                 }
                 return;
             }
-            Action::HorizontalSplit => {
+            Action::HorizontalSplit | Action::VerticalSplit => {
                 let view = View::new(id);
-                let view_id = self.tree.split(view, Layout::Horizontal);
-                // initialize selection for view
-                let doc = self.documents.get_mut(&id).unwrap();
-                doc.selections.insert(view_id, Selection::point(0));
-            }
-            Action::VerticalSplit => {
-                let view = View::new(id);
-                let view_id = self.tree.split(view, Layout::Vertical);
+                let view_id = self.tree.split(
+                    view,
+                    match action {
+                        Action::HorizontalSplit => Layout::Horizontal,
+                        Action::VerticalSplit => Layout::Vertical,
+                        _ => unreachable!(),
+                    },
+                );
                 // initialize selection for view
                 let doc = self.documents.get_mut(&id).unwrap();
                 doc.selections.insert(view_id, Selection::point(0));
@@ -315,11 +481,19 @@ impl Editor {
         self._refresh();
     }
 
-    fn new_file_from_document(&mut self, action: Action, mut document: Document) -> DocumentId {
-        let id = DocumentId(self.next_document_id);
-        self.next_document_id += 1;
-        document.id = id;
-        self.documents.insert(id, document);
+    /// Generate an id for a new document and register it.
+    fn new_document(&mut self, mut doc: Document) -> DocumentId {
+        let id = self.next_document_id;
+        // Safety: adding 1 from 1 is fine, probably impossible to reach usize max
+        self.next_document_id =
+            DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
+        doc.id = id;
+        self.documents.insert(id, doc);
+        id
+    }
+
+    fn new_file_from_document(&mut self, action: Action, doc: Document) -> DocumentId {
+        let id = self.new_document(doc);
         self.switch(id, action);
         id
     }
@@ -335,61 +509,23 @@ impl Editor {
 
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
         let path = helix_core::path::get_canonicalized_path(&path)?;
-
-        let id = self
-            .documents()
-            .find(|doc| doc.path() == Some(&path))
-            .map(|doc| doc.id);
+        let id = self.document_by_path(&path).map(|doc| doc.id);
 
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::open(&path, None, Some(&self.theme), Some(&self.syn_loader))?;
+            let mut doc = Document::open(&path, None, Some(self.syn_loader.clone()))?;
 
-            // try to find a language server based on the language name
-            let language_server = doc.language.as_ref().and_then(|language| {
-                self.language_servers
-                    .get(language)
-                    .map_err(|e| {
-                        log::error!(
-                            "Failed to initialize the LSP for `{}` {{ {} }}",
-                            language.scope(),
-                            e
-                        )
-                    })
-                    .ok()
-            });
+            let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
 
-            if let Some(language_server) = language_server {
-                let language_id = doc
-                    .language()
-                    .and_then(|s| s.split('.').last()) // source.rust
-                    .map(ToOwned::to_owned)
-                    .unwrap_or_default();
-
-                // TODO: this now races with on_init code if the init happens too quickly
-                tokio::spawn(language_server.text_document_did_open(
-                    doc.url().unwrap(),
-                    doc.version(),
-                    doc.text(),
-                    language_id,
-                ));
-
-                doc.set_language_server(Some(language_server));
-            }
-
-            let id = DocumentId(self.next_document_id);
-            self.next_document_id += 1;
-            doc.id = id;
-            self.documents.insert(id, doc);
-            id
+            self.new_document(doc)
         };
 
         self.switch(id, action);
         Ok(id)
     }
 
-    pub fn close(&mut self, id: ViewId, close_buffer: bool) {
+    pub fn close(&mut self, id: ViewId) {
         let view = self.tree.get(self.tree.focus);
         // remove selection
         self.documents
@@ -398,18 +534,66 @@ impl Editor {
             .selections
             .remove(&id);
 
-        if close_buffer {
-            // get around borrowck issues
-            let doc = &self.documents[&view.doc];
-
-            if let Some(language_server) = doc.language_server() {
-                tokio::spawn(language_server.text_document_did_close(doc.identifier()));
-            }
-            self.documents.remove(&view.doc);
-        }
-
         self.tree.remove(id);
         self._refresh();
+    }
+
+    pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> anyhow::Result<()> {
+        let doc = match self.documents.get(&doc_id) {
+            Some(doc) => doc,
+            None => bail!("document does not exist"),
+        };
+
+        if !force && doc.is_modified() {
+            bail!(
+                "buffer {:?} is modified",
+                doc.relative_path()
+                    .map(|path| path.to_string_lossy().to_string())
+                    .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
+            );
+        }
+
+        if let Some(language_server) = doc.language_server() {
+            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+        }
+
+        let views_to_close = self
+            .tree
+            .views()
+            .filter_map(|(view, _focus)| {
+                if view.doc == doc_id {
+                    Some(view.id)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        for view_id in views_to_close {
+            self.close(view_id);
+        }
+
+        self.documents.remove(&doc_id);
+
+        // If the document we removed was visible in all views, we will have no more views. We don't
+        // want to close the editor just for a simple buffer close, so we need to create a new view
+        // containing either an existing document, or a brand new document.
+        if self.tree.views().next().is_none() {
+            let doc_id = self
+                .documents
+                .iter()
+                .map(|(&doc_id, _)| doc_id)
+                .next()
+                .unwrap_or_else(|| self.new_document(Document::default()));
+            let view = View::new(doc_id);
+            let view_id = self.tree.insert(view);
+            let doc = self.documents.get_mut(&doc_id).unwrap();
+            doc.selections.insert(view_id, Selection::point(0));
+        }
+
+        self._refresh();
+
+        Ok(())
     }
 
     pub fn resize(&mut self, area: Rect) {
@@ -479,8 +663,7 @@ impl Editor {
     }
 
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
-        let view = view!(self);
-        let doc = &self.documents[&view.doc];
+        let (view, doc) = current_ref!(self);
         let cursor = doc
             .selection(view.id)
             .primary()
@@ -489,9 +672,10 @@ impl Editor {
             let inner = view.inner_area();
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            (Some(pos), CursorKind::Hidden)
+            let cursorkind = self.config.cursor_shape.from_mode(doc.mode());
+            (Some(pos), cursorkind)
         } else {
-            (None, CursorKind::Hidden)
+            (None, CursorKind::default())
         }
     }
 

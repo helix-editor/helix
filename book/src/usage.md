@@ -23,8 +23,10 @@ If there is a selected register before invoking a change or delete command, the 
 | `/`                | Last search           |
 | `:`                | Last executed command |
 | `"`                | Last yanked text      |
+| `_`                | Black hole            |
 
 > There is no special register for copying to system clipboard, instead special commands and keybindings are provided. See the [keymap](keymap.md#space-mode) for the specifics.
+> The black hole register works as a no-op register, meaning no data will be written to / read from it.
 
 ## Surround
 
@@ -40,7 +42,7 @@ helix. The keymappings have been inspired from [vim-sandwich](https://github.com
 `ms` acts on a selection, so select the text first and use `ms<char>`. `mr` and `md` work
 on the closest pairs found and selections are not required; use counts to act in outer pairs.
 
-It can also act on multiple seletions (yay!). For example, to change every occurance of `(use)` to `[use]`:
+It can also act on multiple selections (yay!). For example, to change every occurrence of `(use)` to `[use]`:
 
 - `%` to select the whole file
 - `s` to split the selections on a search term

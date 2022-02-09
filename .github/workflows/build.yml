@@ -25,19 +25,19 @@ jobs:
           override: true
 
       - name: Cache cargo registry
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo index
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo target dir
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: target
           key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
@@ -64,19 +64,19 @@ jobs:
           override: true
 
       - name: Cache cargo registry
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo index
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo target dir
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: target
           key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
@@ -109,6 +109,52 @@ jobs:
           components: rustfmt, clippy
 
       - name: Cache cargo registry
+        uses: actions/cache@v2.1.7
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v2.1.7
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo target dir
+        uses: actions/cache@v2.1.7
+        with:
+          path: target
+          key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-targets -- -D warnings
+
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Cache cargo registry
         uses: actions/cache@v2.1.6
         with:
           path: ~/.cargo/registry
@@ -126,14 +172,16 @@ jobs:
           path: target
           key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Run cargo fmt
+      - name: Generate docs
         uses: actions-rs/cargo@v1
         with:
-          command: fmt
-          args: --all -- --check
+          command: xtask
+          args: docgen
 
-      - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
+      - name: Check uncommitted documentation changes
+        run: |
+          git diff
+          git diff-files --quiet \
+            || (echo "Run 'cargo xtask docgen', commit the changes and push again" \
+            && exit 1)
+

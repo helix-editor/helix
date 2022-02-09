@@ -1,5 +1,8 @@
-use crate::compositor::{Component, Compositor, Context, EventResult};
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crate::{
+    compositor::{Component, Compositor, Context, EventResult},
+    ctrl, key, shift,
+};
+use crossterm::event::Event;
 use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
@@ -11,11 +14,18 @@ use helix_view::{graphics::Rect, Editor};
 use tui::layout::Constraint;
 
 pub trait Item {
-    fn sort_text(&self) -> &str;
-    fn filter_text(&self) -> &str;
-
     fn label(&self) -> &str;
-    fn row(&self) -> Row;
+
+    fn sort_text(&self) -> &str {
+        self.label()
+    }
+    fn filter_text(&self) -> &str {
+        self.label()
+    }
+
+    fn row(&self) -> Row {
+        Row::new(vec![Cell::from(self.label())])
+    }
 }
 
 pub struct Menu<T: Item> {
@@ -129,15 +139,23 @@ impl<T: Item> Menu<T> {
 
             acc
         });
-        let len = max_lens.iter().sum::<usize>() + n + 1; // +1: reserve some space for scrollbar
+
+        let height = self.matches.len().min(10).min(viewport.1 as usize);
+        // do all the matches fit on a single screen?
+        let fits = self.matches.len() <= height;
+
+        let mut len = max_lens.iter().sum::<usize>() + n;
+
+        if !fits {
+            len += 1; // +1: reserve some space for scrollbar
+        }
+
         let width = len.min(viewport.0 as usize);
 
         self.widths = max_lens
             .into_iter()
             .map(|len| Constraint::Length(len as u16))
             .collect();
-
-        let height = self.matches.len().min(10).min(viewport.1 as usize);
 
         self.size = (width as u16, height as u16);
 
@@ -187,68 +205,30 @@ impl<T: Item + 'static> Component for Menu<T> {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.pop();
         })));
 
-        match event {
+        match event.into() {
             // esc or ctrl-c aborts the completion and closes the menu
-            KeyEvent {
-                code: KeyCode::Esc, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            key!(Esc) | ctrl!('c') => {
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Abort);
                 return close_fn;
             }
             // arrow up/ctrl-p/shift-tab prev completion choice (including updating the doc)
-            KeyEvent {
-                code: KeyCode::BackTab,
-                ..
-            }
-            | KeyEvent {
-                code: KeyCode::Up, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('p'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('k'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
                 self.move_up();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
-            // arrow down/ctrl-n/tab advances completion choice (including updating the doc)
-            KeyEvent {
-                code: KeyCode::Tab,
-                modifiers: KeyModifiers::NONE,
-            }
-            | KeyEvent {
-                code: KeyCode::Down,
-                ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('n'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('j'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
+                // arrow down/ctrl-n/tab advances completion choice (including updating the doc)
                 self.move_down();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => {
+            key!(Enter) => {
                 if let Some(selection) = self.selection() {
                     (self.callback_fn)(cx.editor, Some(selection), MenuEvent::Validate);
                 }
@@ -332,12 +312,14 @@ impl<T: Item + 'static> Component for Menu<T> {
             },
         );
 
+        let fits = len <= win_height;
+
         for (i, _) in (scroll..(scroll + win_height).min(len)).enumerate() {
             let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
 
-            if is_marked {
-                let cell = surface.get_mut(area.x + area.width - 2, area.y + i as u16);
-                cell.set_symbol("▐ ");
+            if !fits && is_marked {
+                let cell = &mut surface[(area.x + area.width - 2, area.y + i as u16)];
+                cell.set_symbol("▐");
                 // cell.set_style(selected);
                 // cell.set_style(if is_marked { selected } else { style });
             }

@@ -36,7 +36,6 @@ pub(crate) mod keys {
     pub(crate) const PAGEUP: &str = "pageup";
     pub(crate) const PAGEDOWN: &str = "pagedown";
     pub(crate) const TAB: &str = "tab";
-    pub(crate) const BACKTAB: &str = "backtab";
     pub(crate) const DELETE: &str = "del";
     pub(crate) const INSERT: &str = "ins";
     pub(crate) const NULL: &str = "null";
@@ -82,7 +81,6 @@ impl fmt::Display for KeyEvent {
             KeyCode::PageUp => f.write_str(keys::PAGEUP)?,
             KeyCode::PageDown => f.write_str(keys::PAGEDOWN)?,
             KeyCode::Tab => f.write_str(keys::TAB)?,
-            KeyCode::BackTab => f.write_str(keys::BACKTAB)?,
             KeyCode::Delete => f.write_str(keys::DELETE)?,
             KeyCode::Insert => f.write_str(keys::INSERT)?,
             KeyCode::Null => f.write_str(keys::NULL)?,
@@ -116,7 +114,6 @@ impl UnicodeWidthStr for KeyEvent {
             KeyCode::PageUp => keys::PAGEUP.len(),
             KeyCode::PageDown => keys::PAGEDOWN.len(),
             KeyCode::Tab => keys::TAB.len(),
-            KeyCode::BackTab => keys::BACKTAB.len(),
             KeyCode::Delete => keys::DELETE.len(),
             KeyCode::Insert => keys::INSERT.len(),
             KeyCode::Null => keys::NULL.len(),
@@ -166,7 +163,6 @@ impl std::str::FromStr for KeyEvent {
             keys::PAGEUP => KeyCode::PageUp,
             keys::PAGEDOWN => KeyCode::PageDown,
             keys::TAB => KeyCode::Tab,
-            keys::BACKTAB => KeyCode::BackTab,
             keys::DELETE => KeyCode::Delete,
             keys::INSERT => KeyCode::Insert,
             keys::NULL => KeyCode::Null,
@@ -220,14 +216,79 @@ impl<'de> Deserialize<'de> for KeyEvent {
 
 #[cfg(feature = "term")]
 impl From<crossterm::event::KeyEvent> for KeyEvent {
-    fn from(
-        crossterm::event::KeyEvent { code, modifiers }: crossterm::event::KeyEvent,
-    ) -> KeyEvent {
-        KeyEvent {
-            code: code.into(),
-            modifiers: modifiers.into(),
+    fn from(crossterm::event::KeyEvent { code, modifiers }: crossterm::event::KeyEvent) -> Self {
+        if code == crossterm::event::KeyCode::BackTab {
+            // special case for BackTab -> Shift-Tab
+            let mut modifiers: KeyModifiers = modifiers.into();
+            modifiers.insert(KeyModifiers::SHIFT);
+            Self {
+                code: KeyCode::Tab,
+                modifiers,
+            }
+        } else {
+            Self {
+                code: code.into(),
+                modifiers: modifiers.into(),
+            }
         }
     }
+}
+
+#[cfg(feature = "term")]
+impl From<KeyEvent> for crossterm::event::KeyEvent {
+    fn from(KeyEvent { code, modifiers }: KeyEvent) -> Self {
+        if code == KeyCode::Tab && modifiers.contains(KeyModifiers::SHIFT) {
+            // special case for Shift-Tab -> BackTab
+            let mut modifiers = modifiers;
+            modifiers.remove(KeyModifiers::SHIFT);
+            crossterm::event::KeyEvent {
+                code: crossterm::event::KeyCode::BackTab,
+                modifiers: modifiers.into(),
+            }
+        } else {
+            crossterm::event::KeyEvent {
+                code: code.into(),
+                modifiers: modifiers.into(),
+            }
+        }
+    }
+}
+
+pub fn parse_macro(keys_str: &str) -> anyhow::Result<Vec<KeyEvent>> {
+    use anyhow::Context;
+    let mut keys_res: anyhow::Result<_> = Ok(Vec::new());
+    let mut i = 0;
+    while let Ok(keys) = &mut keys_res {
+        if i >= keys_str.len() {
+            break;
+        }
+        if !keys_str.is_char_boundary(i) {
+            i += 1;
+            continue;
+        }
+
+        let s = &keys_str[i..];
+        let mut end_i = 1;
+        while !s.is_char_boundary(end_i) {
+            end_i += 1;
+        }
+        let c = &s[..end_i];
+        if c == ">" {
+            keys_res = Err(anyhow!("Unmatched '>'"));
+        } else if c != "<" {
+            keys.push(c);
+            i += end_i;
+        } else {
+            match s.find('>').context("'>' expected") {
+                Ok(end_i) => {
+                    keys.push(&s[1..end_i]);
+                    i += end_i + 1;
+                }
+                Err(err) => keys_res = Err(err),
+            }
+        }
+    }
+    keys_res.and_then(|keys| keys.into_iter().map(str::parse).collect())
 }
 
 #[cfg(test)]
@@ -314,5 +375,121 @@ mod test {
         assert!(str::parse::<KeyEvent>("FU").is_err());
         assert!(str::parse::<KeyEvent>("123").is_err());
         assert!(str::parse::<KeyEvent>("S--").is_err());
+    }
+
+    #[test]
+    fn parsing_valid_macros() {
+        assert_eq!(
+            parse_macro("xdo").ok(),
+            Some(vec![
+                KeyEvent {
+                    code: KeyCode::Char('x'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('d'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('o'),
+                    modifiers: KeyModifiers::NONE,
+                },
+            ]),
+        );
+
+        assert_eq!(
+            parse_macro("<C-w>v<C-w>h<C-o>xx<A-s>").ok(),
+            Some(vec![
+                KeyEvent {
+                    code: KeyCode::Char('w'),
+                    modifiers: KeyModifiers::CONTROL,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('v'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('w'),
+                    modifiers: KeyModifiers::CONTROL,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('h'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('o'),
+                    modifiers: KeyModifiers::CONTROL,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('x'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('x'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('s'),
+                    modifiers: KeyModifiers::ALT,
+                },
+            ])
+        );
+
+        assert_eq!(
+            parse_macro(":o foo.bar<ret>").ok(),
+            Some(vec![
+                KeyEvent {
+                    code: KeyCode::Char(':'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('o'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char(' '),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('f'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('o'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('o'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('.'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('b'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('a'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('r'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Enter,
+                    modifiers: KeyModifiers::NONE,
+                },
+            ])
+        );
+    }
+
+    #[test]
+    fn parsing_invalid_macros_fails() {
+        assert!(parse_macro("abc<C-").is_err());
+        assert!(parse_macro("abc>123").is_err());
+        assert!(parse_macro("wd<foo>").is_err());
     }
 }

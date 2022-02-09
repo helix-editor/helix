@@ -16,7 +16,7 @@ pub struct Info {
 }
 
 impl Info {
-    pub fn new(title: &str, body: Vec<(&str, BTreeSet<KeyEvent>)>) -> Info {
+    pub fn new(title: &str, body: Vec<(&str, BTreeSet<KeyEvent>)>) -> Self {
         let body = body
             .into_iter()
             .map(|(desc, events)| {
@@ -38,7 +38,7 @@ impl Info {
             );
         }
 
-        Info {
+        Self {
             title: title.to_string(),
             width: text.lines().map(|l| l.width()).max().unwrap() as u16,
             height: body.len() as u16,

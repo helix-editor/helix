@@ -11,4 +11,3 @@ Changes made to the `languages.toml` file in a user's [configuration directory](
 name = "rust"
 auto-format = false
 ```
-

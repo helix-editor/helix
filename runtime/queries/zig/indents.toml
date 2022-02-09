@@ -3,6 +3,9 @@ indent = [
  "BlockExpr",
  "ContainerDecl",
  "SwitchExpr",
+ "AssignExpr",
+ "ErrorUnionExpr",
+ "Statement",
  "InitList"
 ]
 

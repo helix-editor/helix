@@ -22,22 +22,12 @@ pub enum Assoc {
 }
 
 // ChangeSpec = Change | ChangeSet | Vec<Change>
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ChangeSet {
     pub(crate) changes: Vec<Operation>,
     /// The required document length. Will refuse to apply changes unless it matches.
     len: usize,
     len_after: usize,
-}
-
-impl Default for ChangeSet {
-    fn default() -> Self {
-        Self {
-            changes: Vec::new(),
-            len: 0,
-            len_after: 0,
-        }
-    }
 }
 
 impl ChangeSet {
@@ -330,7 +320,7 @@ impl ChangeSet {
     /// `true` when the set is empty.
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.changes.is_empty()
+        self.changes.is_empty() || self.changes == [Operation::Retain(self.len)]
     }
 
     /// Map a position through the changes.
@@ -419,7 +409,7 @@ impl ChangeSet {
 
 /// Transaction represents a single undoable unit of changes. Several changes can be grouped into
 /// a single transaction.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Transaction {
     changes: ChangeSet,
     selection: Option<Selection>,
@@ -771,7 +761,7 @@ mod test {
 
     #[test]
     fn combine_with_utf8() {
-        const TEST_CASE: &'static str = "Hello, これはヘリックスエディターです！";
+        const TEST_CASE: &str = "Hello, これはヘリックスエディターです！";
 
         let empty = Rope::from("");
         let a = ChangeSet::new(&empty);

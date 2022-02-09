@@ -1,6 +1,8 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
-use crate::ui;
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crate::{alt, ctrl, key, shift, ui};
+use crossterm::event::Event;
+use helix_view::input::KeyEvent;
+use helix_view::keyboard::{KeyCode, KeyModifiers};
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
 
@@ -125,7 +127,7 @@ impl Prompt {
                 let mut char_position = char_indices
                     .iter()
                     .position(|(idx, _)| *idx == self.cursor)
-                    .unwrap_or_else(|| char_indices.len());
+                    .unwrap_or(char_indices.len());
 
                 for _ in 0..rep {
                     // Skip any non-whitespace characters
@@ -229,6 +231,14 @@ impl Prompt {
         self.completion = (self.completion_fn)(&self.line);
     }
 
+    pub fn delete_word_forwards(&mut self) {
+        let pos = self.eval_movement(Movement::ForwardWord(1));
+        self.line.replace_range(self.cursor..pos, "");
+
+        self.exit_selection();
+        self.completion = (self.completion_fn)(&self.line);
+    }
+
     pub fn kill_to_start_of_line(&mut self) {
         let pos = self.eval_movement(Movement::StartOfLine);
         self.line.replace_range(pos..self.cursor, "");
@@ -320,7 +330,7 @@ impl Prompt {
             .max(BASE_WIDTH);
 
         let cols = std::cmp::max(1, area.width / max_len);
-        let col_width = (area.width - (cols)) / cols;
+        let col_width = (area.width.saturating_sub(cols)) / cols;
 
         let height = ((self.completion.len() as u16 + cols - 1) / cols)
             .min(10) // at most 10 rows (or less)
@@ -416,108 +426,35 @@ impl Component for Prompt {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.pop();
         })));
 
-        match event {
-            KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-            | KeyEvent {
-                code: KeyCode::Esc, ..
-            } => {
+        match event.into() {
+            ctrl!('c') | key!(Esc) => {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
                 return close_fn;
             }
-            KeyEvent {
-                code: KeyCode::Left,
-                modifiers: KeyModifiers::ALT,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('b'),
-                modifiers: KeyModifiers::ALT,
-            } => self.move_cursor(Movement::BackwardWord(1)),
-            KeyEvent {
-                code: KeyCode::Right,
-                modifiers: KeyModifiers::ALT,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('f'),
-                modifiers: KeyModifiers::ALT,
-            } => self.move_cursor(Movement::ForwardWord(1)),
-            KeyEvent {
-                code: KeyCode::Char('f'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-            | KeyEvent {
-                code: KeyCode::Right,
-                ..
-            } => self.move_cursor(Movement::ForwardChar(1)),
-            KeyEvent {
-                code: KeyCode::Char('b'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-            | KeyEvent {
-                code: KeyCode::Left,
-                ..
-            } => self.move_cursor(Movement::BackwardChar(1)),
-            KeyEvent {
-                code: KeyCode::End,
-                modifiers: KeyModifiers::NONE,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('e'),
-                modifiers: KeyModifiers::CONTROL,
-            } => self.move_end(),
-            KeyEvent {
-                code: KeyCode::Home,
-                modifiers: KeyModifiers::NONE,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('a'),
-                modifiers: KeyModifiers::CONTROL,
-            } => self.move_start(),
-            KeyEvent {
-                code: KeyCode::Char('w'),
-                modifiers: KeyModifiers::CONTROL,
-            } => self.delete_word_backwards(),
-            KeyEvent {
-                code: KeyCode::Char('k'),
-                modifiers: KeyModifiers::CONTROL,
-            } => self.kill_to_end_of_line(),
-            KeyEvent {
-                code: KeyCode::Char('u'),
-                modifiers: KeyModifiers::CONTROL,
-            } => self.kill_to_start_of_line(),
-            KeyEvent {
-                code: KeyCode::Char('h'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-            | KeyEvent {
-                code: KeyCode::Backspace,
-                modifiers: KeyModifiers::NONE,
-            } => {
+            alt!('b') | alt!(Left) => self.move_cursor(Movement::BackwardWord(1)),
+            alt!('f') | alt!(Right) => self.move_cursor(Movement::ForwardWord(1)),
+            ctrl!('b') | key!(Left) => self.move_cursor(Movement::BackwardChar(1)),
+            ctrl!('f') | key!(Right) => self.move_cursor(Movement::ForwardChar(1)),
+            ctrl!('e') | key!(End) => self.move_end(),
+            ctrl!('a') | key!(Home) => self.move_start(),
+            ctrl!('w') => self.delete_word_backwards(),
+            alt!('d') => self.delete_word_forwards(),
+            ctrl!('k') => self.kill_to_end_of_line(),
+            ctrl!('u') => self.kill_to_start_of_line(),
+            ctrl!('h') | key!(Backspace) => {
                 self.delete_char_backwards();
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
-            KeyEvent {
-                code: KeyCode::Char('d'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-            | KeyEvent {
-                code: KeyCode::Delete,
-                modifiers: KeyModifiers::NONE,
-            } => {
+            ctrl!('d') | key!(Delete) => {
                 self.delete_char_forwards();
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
-            KeyEvent {
-                code: KeyCode::Char('s'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            ctrl!('s') => {
                 let (view, doc) = current!(cx.editor);
                 let text = doc.text().slice(..);
 
@@ -535,11 +472,8 @@ impl Component for Prompt {
                     (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => {
-                if self.selection.is_some() && self.line.ends_with('/') {
+            key!(Enter) => {
+                if self.selection.is_some() && self.line.ends_with(std::path::MAIN_SEPARATOR) {
                     self.completion = (self.completion_fn)(&self.line);
                     self.exit_selection();
                 } else {
@@ -553,50 +487,29 @@ impl Component for Prompt {
                     return close_fn;
                 }
             }
-            KeyEvent {
-                code: KeyCode::Char('p'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-            | KeyEvent {
-                code: KeyCode::Up, ..
-            } => {
+            ctrl!('p') | key!(Up) => {
                 if let Some(register) = self.history_register {
                     let register = cx.editor.registers.get_mut(register);
                     self.change_history(register.read(), CompletionDirection::Backward);
                     (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
-            KeyEvent {
-                code: KeyCode::Char('n'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-            | KeyEvent {
-                code: KeyCode::Down,
-                ..
-            } => {
+            ctrl!('n') | key!(Down) => {
                 if let Some(register) = self.history_register {
                     let register = cx.editor.registers.get_mut(register);
                     self.change_history(register.read(), CompletionDirection::Forward);
                     (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
-            KeyEvent {
-                code: KeyCode::Tab, ..
-            } => {
+            key!(Tab) => {
                 self.change_completion_selection(CompletionDirection::Forward);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
-            KeyEvent {
-                code: KeyCode::BackTab,
-                ..
-            } => {
+            shift!(Tab) => {
                 self.change_completion_selection(CompletionDirection::Backward);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
-            KeyEvent {
-                code: KeyCode::Char('q'),
-                modifiers: KeyModifiers::CONTROL,
-            } => self.exit_selection(),
+            ctrl!('q') => self.exit_selection(),
             // any char event that's not combined with control or mapped to any other combo
             KeyEvent {
                 code: KeyCode::Char(c),

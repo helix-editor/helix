@@ -144,7 +144,6 @@ field_constant: (IDENTIFIER) @constant
 
 ; VarDecl
 [
-  "comptime"
   "threadlocal"
   "fn"
 ] @keyword.function
@@ -178,6 +177,7 @@ field_constant: (IDENTIFIER) @constant
 
 ; PrecProc
 [
+  "comptime"
   "inline"
   "noinline"
   "asm"
@@ -195,15 +195,14 @@ field_constant: (IDENTIFIER) @constant
   (BitwiseOp)
   (BitShiftOp)
   (AdditionOp)
+  (AssignOp)
   (MultiplyOp)
   (PrefixOp)
   "*"
   "**"
   "->"
-  "=>"
   ".?"
   ".*"
-  "="
   "?"
 ] @operator
 

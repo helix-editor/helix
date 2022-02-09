@@ -314,6 +314,9 @@ impl Tree {
 
     pub fn recalculate(&mut self) {
         if self.is_empty() {
+            // There are no more views, so the tree should focus itself again.
+            self.focus = self.root;
+
             return;
         }
 

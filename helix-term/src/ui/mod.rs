@@ -2,7 +2,7 @@ mod completion;
 pub(crate) mod editor;
 mod info;
 mod markdown;
-mod menu;
+pub mod menu;
 mod picker;
 mod popup;
 mod prompt;
@@ -93,13 +93,22 @@ pub fn regex_prompt(
     )
 }
 
-pub fn file_picker(root: PathBuf) -> FilePicker<PathBuf> {
+pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time;
 
     // We want to exclude files that the editor can't handle yet
     let mut type_builder = TypesBuilder::new();
     let mut walk_builder = WalkBuilder::new(&root);
+    walk_builder
+        .hidden(config.file_picker.hidden)
+        .parents(config.file_picker.parents)
+        .ignore(config.file_picker.ignore)
+        .git_ignore(config.file_picker.git_ignore)
+        .git_global(config.file_picker.git_global)
+        .git_exclude(config.file_picker.git_exclude)
+        .max_depth(config.file_picker.max_depth);
+
     let walk_builder = match type_builder.add(
         "compressed",
         "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}",
@@ -165,7 +174,9 @@ pub mod completers {
     use crate::ui::prompt::Completion;
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
+    use helix_view::editor::Config;
     use helix_view::theme;
+    use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::cmp::Reverse;
 
@@ -177,6 +188,7 @@ pub mod completers {
             &helix_core::config_dir().join("themes"),
         ));
         names.push("default".into());
+        names.push("base16_default".into());
 
         let mut names: Vec<_> = names
             .into_iter()
@@ -196,6 +208,31 @@ pub mod completers {
         names = matches.into_iter().map(|(name, _)| ((0..), name)).collect();
 
         names
+    }
+
+    pub fn setting(input: &str) -> Vec<Completion> {
+        static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
+            serde_json::to_value(Config::default())
+                .unwrap()
+                .as_object()
+                .unwrap()
+                .keys()
+                .cloned()
+                .collect()
+        });
+
+        let matcher = Matcher::default();
+
+        let mut matches: Vec<_> = KEYS
+            .iter()
+            .filter_map(|name| matcher.fuzzy_match(name, input).map(|score| (name, score)))
+            .collect();
+
+        matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+        matches
+            .into_iter()
+            .map(|(name, _)| ((0..), name.into()))
+            .collect()
     }
 
     pub fn filename(input: &str) -> Vec<Completion> {
@@ -246,7 +283,7 @@ pub mod completers {
         let is_tilde = input.starts_with('~') && input.len() == 1;
         let path = helix_core::path::expand_tilde(Path::new(input));
 
-        let (dir, file_name) = if input.ends_with('/') {
+        let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
             (path, None)
         } else {
             let file_name = path

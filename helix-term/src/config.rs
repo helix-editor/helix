@@ -20,14 +20,18 @@ pub struct LspConfig {
     pub display_messages: bool,
 }
 
-#[test]
-fn parsing_keymaps_config_file() {
-    use crate::keymap;
-    use crate::keymap::Keymap;
-    use helix_core::hashmap;
-    use helix_view::document::Mode;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let sample_keymaps = r#"
+    #[test]
+    fn parsing_keymaps_config_file() {
+        use crate::keymap;
+        use crate::keymap::Keymap;
+        use helix_core::hashmap;
+        use helix_view::document::Mode;
+
+        let sample_keymaps = r#"
             [keys.insert]
             y = "move_line_down"
             S-C-a = "delete_selection"
@@ -36,19 +40,20 @@ fn parsing_keymaps_config_file() {
             A-F12 = "move_next_word_end"
         "#;
 
-    assert_eq!(
-        toml::from_str::<Config>(sample_keymaps).unwrap(),
-        Config {
-            keys: Keymaps(hashmap! {
-                Mode::Insert => Keymap::new(keymap!({ "Insert mode"
-                    "y" => move_line_down,
-                    "S-C-a" => delete_selection,
-                })),
-                Mode::Normal => Keymap::new(keymap!({ "Normal mode"
-                    "A-F12" => move_next_word_end,
-                })),
-            }),
-            ..Default::default()
-        }
-    );
+        assert_eq!(
+            toml::from_str::<Config>(sample_keymaps).unwrap(),
+            Config {
+                keys: Keymaps(hashmap! {
+                    Mode::Insert => Keymap::new(keymap!({ "Insert mode"
+                        "y" => move_line_down,
+                        "S-C-a" => delete_selection,
+                    })),
+                    Mode::Normal => Keymap::new(keymap!({ "Normal mode"
+                        "A-F12" => move_next_word_end,
+                    })),
+                }),
+                ..Default::default()
+            }
+        );
+    }
 }

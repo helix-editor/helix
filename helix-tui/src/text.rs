@@ -195,14 +195,8 @@ impl<'a> From<&'a str> for Span<'a> {
 }
 
 /// A string composed of clusters of graphemes, each with their own style.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct Spans<'a>(pub Vec<Span<'a>>);
-
-impl<'a> Default for Spans<'a> {
-    fn default() -> Spans<'a> {
-        Spans(Vec::new())
-    }
-}
 
 impl<'a> Spans<'a> {
     /// Returns the width of the underlying string.
@@ -280,15 +274,9 @@ impl<'a> From<Spans<'a>> for String {
 /// text.extend(Text::styled("Some more lines\nnow with more style!", style));
 /// assert_eq!(6, text.height());
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct Text<'a> {
     pub lines: Vec<Spans<'a>>,
-}
-
-impl<'a> Default for Text<'a> {
-    fn default() -> Text<'a> {
-        Text { lines: Vec::new() }
-    }
 }
 
 impl<'a> Text<'a> {

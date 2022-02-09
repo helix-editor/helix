@@ -1,0 +1,73 @@
+# Author: RayGervais<raygervais@hotmail.ca>
+# Author: ChrisHa<chunghha@users.noreply.github.com>
+
+"ui.background" = { bg = "surface" }
+"ui.menu" = { fg = "text", bg = "overlay" }
+"ui.menu.selected" = { fg = "iris", bg = "surface" }
+"ui.linenr" = {fg = "subtle" }
+"ui.liner.selected" = "highlightOverlay"
+"ui.selection" = "highlight"
+"comment" = "subtle"
+"ui.statusline" = {fg = "foam", bg = "surface" }
+"ui.statusline.inactive" = { fg = "iris", bg = "surface" }
+"ui.help" = { fg = "foam", bg = "surface" }
+"ui.cursor" = { fg = "rose", modifiers = ["reversed"] }
+"ui.text" = { fg = "text" }
+"operator" = "rose"
+"ui.text.focus" = { fg = "base05" }
+"variable" = "text"
+"number" = "iris"
+"constant" = "gold"
+"attributes" = "gold" 
+"type" = "foam"
+"ui.cursor.match" = { fg = "gold", modifiers = ["underlined"] }
+"string"  = "gold"
+"property" = "foam"
+"escape" = "subtle"
+"function" = "rose"
+"function.builtin" = "rose"
+"function.method"  = "foam"
+"constructor" = "gold"
+"special" = "gold"
+"keyword" = "pine"
+"label" = "iris"
+"namespace" = "pine"
+"ui.popup" = { bg = "surface" }
+"ui.window" = { bg = "base" }
+"ui.help" = { bg = "overlay", fg = "foam" }
+"text" = "text"
+"diff.plus" = "foam"
+"diff.delta" = "rose"
+"diff.minus" = "love"
+
+"info" = "gold"
+"hint" = "gold"
+"debug" = "rose"
+"diagnostic" = "rose"
+"error" = "love"
+
+"markup.heading" = { fg = "rose" }
+"markup.raw.inline" = { fg = "foam" }
+"markup.bold" = { fg = "gold", modifiers = ["bold"] }
+"markup.italic" = { fg = "iris", modifiers = ["italic"] }
+"markup.list" = { fg = "love" }
+"markup.quote" = { fg = "rose" }
+"markup.link.url" = { fg = "pine", modifiers = ["underlined"]}
+"markup.link.test" = { fg = "foam" }
+
+[palette]
+base     = "#faf4ed" 
+surface  = "#fffaf3" 
+overlay  = "#f2e9de"
+inactive = "#9893a5"
+subtle   = "#6e6a86"
+text     = "#575279"
+love     = "#b4637a"
+gold     = "#ea9d34"
+rose     = "#d7827e"
+pine     = "#286983"
+foam     = "#56949f"
+iris     = "#907aa9"
+highlight = "#eee9e6"
+highlightInactive = "#f2ede9"
+highlightOverlay = "#e4dfde"
