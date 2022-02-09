@@ -1,5 +1,6 @@
 use crate::compositor::{Component, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent};
+use helix_view::editor::CompleteAction;
 use tui::buffer::Buffer as Surface;
 
 use std::borrow::Cow;
@@ -91,14 +92,39 @@ impl Completion {
                 offset_encoding: helix_lsp::OffsetEncoding,
                 start_offset: usize,
                 trigger_offset: usize,
-            ) -> Transaction {
-                if let Some(edit) = &item.text_edit {
+            ) -> (Transaction, Option<CompleteAction>) {
+                let mut completion = None;
+
+                let transaction = if let Some(edit) = &item.text_edit {
                     let edit = match edit {
                         lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
                         lsp::CompletionTextEdit::InsertAndReplace(item) => {
                             unimplemented!("completion: insert_and_replace {:?}", item)
                         }
                     };
+
+                    let start = util::lsp_pos_to_pos(doc.text(), edit.range.start, offset_encoding);
+                    let end = util::lsp_pos_to_pos(doc.text(), edit.range.end, offset_encoding);
+                    if let (Some(start), Some(end)) = (start, end) {
+                        let start = if start >= trigger_offset {
+                            (start - trigger_offset) as isize
+                        } else {
+                            -((trigger_offset - start) as isize)
+                        };
+
+                        let end = if end >= trigger_offset {
+                            (end - trigger_offset) as isize
+                        } else {
+                            -((trigger_offset - end) as isize)
+                        };
+
+                        completion = Some(CompleteAction {
+                            start,
+                            end,
+                            text: edit.new_text.clone(),
+                        })
+                    }
+
                     util::generate_transaction_from_edits(
                         doc.text(),
                         vec![edit],
@@ -114,7 +140,9 @@ impl Completion {
                         doc.text(),
                         vec![(trigger_offset, trigger_offset, Some(text.into()))].into_iter(),
                     )
-                }
+                };
+
+                (transaction, completion)
             }
 
             let (view, doc) = current!(editor);
@@ -128,7 +156,7 @@ impl Completion {
                     // always present here
                     let item = item.unwrap();
 
-                    let transaction = item_to_transaction(
+                    let (transaction, _) = item_to_transaction(
                         doc,
                         item,
                         offset_encoding,
@@ -145,7 +173,7 @@ impl Completion {
                     // always present here
                     let item = item.unwrap();
 
-                    let transaction = item_to_transaction(
+                    let (transaction, completion) = item_to_transaction(
                         doc,
                         item,
                         offset_encoding,
@@ -153,6 +181,10 @@ impl Completion {
                         trigger_offset,
                     );
                     doc.apply(&transaction, view.id);
+
+                    if let Some(completion) = completion {
+                        editor.last_completion = Some(completion);
+                    }
 
                     // apply additional edits, mostly used to auto import unqualified types
                     let resolved_additional_text_edits = if item.additional_text_edits.is_some() {

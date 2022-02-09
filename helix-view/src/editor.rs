@@ -249,7 +249,19 @@ pub struct Editor {
     pub idle_timer: Pin<Box<Sleep>>,
     pub last_motion: Option<Motion>,
 
+    pub last_completion: Option<CompleteAction>,
+
     pub exit_code: i32,
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct CompleteAction {
+    // Relative to cursor position
+    pub start: isize,
+    // Relative to cursor position
+    pub end: isize,
+
+    pub text: String,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -288,6 +300,7 @@ impl Editor {
             status_msg: None,
             idle_timer: Box::pin(sleep(config.idle_timeout)),
             last_motion: None,
+            last_completion: None,
             config,
             exit_code: 0,
         }

@@ -15,11 +15,11 @@ use helix_core::{
     syntax::{self, HighlightEvent},
     unicode::segmentation::UnicodeSegmentation,
     unicode::width::UnicodeWidthStr,
-    LineEnding, Position, Range, Selection,
+    LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::CursorShapeConfig,
+    editor::{CompleteAction, CursorShapeConfig},
     graphics::{CursorKind, Modifier, Rect, Style},
     info::Info,
     input::KeyEvent,
@@ -34,10 +34,16 @@ use tui::buffer::Buffer as Surface;
 pub struct EditorView {
     keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
-    last_insert: (commands::MappableCommand, Vec<KeyEvent>),
+    last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
     autoinfo: Option<Info>,
+}
+
+#[derive(Debug, Clone)]
+pub enum InsertEvent {
+    Key(KeyEvent),
+    Completion(CompleteAction),
 }
 
 impl Default for EditorView {
@@ -735,8 +741,41 @@ impl EditorView {
                 // first execute whatever put us into insert mode
                 self.last_insert.0.execute(cxt);
                 // then replay the inputs
-                for &key in &self.last_insert.1.clone() {
-                    self.insert_mode(cxt, key)
+                for key in self.last_insert.1.clone() {
+                    log::error!("Replaying event: {key:?}");
+
+                    match key {
+                        InsertEvent::Key(key) => self.insert_mode(cxt, key),
+                        InsertEvent::Completion(CompleteAction {
+                            start,
+                            end,
+                            text: change,
+                        }) => {
+                            let (view, doc) = current!(cxt.editor);
+
+                            let text = doc.text().slice(..);
+                            let cursor = doc.selection(view.id).primary().cursor(text);
+
+                            let cursor_offset = |offset: isize| {
+                                if offset >= 0 {
+                                    cursor + (offset) as usize
+                                } else {
+                                    cursor - (-offset) as usize
+                                }
+                            };
+
+                            let start = cursor_offset(start);
+                            let end = cursor_offset(end);
+
+                            log::error!("start: {start}, end: {end}");
+
+                            let tr = Transaction::change(
+                                doc.text(),
+                                [(start, end, Some(change.into()))].into_iter(),
+                            );
+                            doc.apply(&tr, view.id);
+                        }
+                    }
                 }
             }
             _ => {
@@ -981,12 +1020,11 @@ impl Component for EditorView {
                 } else {
                     match mode {
                         Mode::Insert => {
-                            // record last_insert key
-                            self.last_insert.1.push(key);
-
                             // let completion swallow the event if necessary
                             let mut consumed = false;
                             if let Some(completion) = &mut self.completion {
+                                cx.editor.last_completion = None;
+
                                 // use a fake context here
                                 let mut cx = Context {
                                     editor: cx.editor,
@@ -999,6 +1037,10 @@ impl Component for EditorView {
                                     consumed = true;
 
                                     if callback.is_some() {
+                                        if let Some(compl) = cx.editor.last_completion.take() {
+                                            self.last_insert.1.push(InsertEvent::Completion(compl));
+                                        }
+
                                         // assume close_fn
                                         self.clear_completion(cx.editor);
                                     }
@@ -1008,6 +1050,9 @@ impl Component for EditorView {
                             // if completion didn't take the event, we pass it onto commands
                             if !consumed {
                                 self.insert_mode(&mut cx, key);
+
+                                // record last_insert key
+                                self.last_insert.1.push(InsertEvent::Key(key));
 
                                 // lastly we recalculate completion
                                 if let Some(completion) = &mut self.completion {
