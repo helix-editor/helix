@@ -742,8 +742,6 @@ impl EditorView {
                 self.last_insert.0.execute(cxt);
                 // then replay the inputs
                 for key in self.last_insert.1.clone() {
-                    log::error!("Replaying event: {key:?}");
-
                     match key {
                         InsertEvent::Key(key) => self.insert_mode(cxt, key),
                         InsertEvent::Completion(CompleteAction {
@@ -766,8 +764,6 @@ impl EditorView {
 
                             let start = cursor_offset(start);
                             let end = cursor_offset(end);
-
-                            log::error!("start: {start}, end: {end}");
 
                             let tr = Transaction::change(
                                 doc.text(),
