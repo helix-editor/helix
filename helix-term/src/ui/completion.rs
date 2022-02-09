@@ -1,6 +1,7 @@
 use crate::compositor::{Component, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use helix_view::editor::CompleteAction;
+use helix_view::ViewId;
 use tui::buffer::Buffer as Surface;
 
 use std::borrow::Cow;
@@ -127,7 +128,11 @@ impl Completion {
                 offset_encoding: helix_lsp::OffsetEncoding,
                 start_offset: usize,
                 trigger_offset: usize,
+                view_id: ViewId,
             ) -> Option<CompleteAction> {
+                let text = doc.text().slice(..);
+                let cursor = doc.selection(view_id).primary().cursor(text);
+
                 let action = if let Some(edit) = &item.text_edit {
                     let edit = match edit {
                         lsp::CompletionTextEdit::Edit(edit) => edit,
@@ -139,10 +144,10 @@ impl Completion {
                     let triger_relative = |pos| {
                         let pos = util::lsp_pos_to_pos(doc.text(), pos, offset_encoding)?;
 
-                        let relative = if pos >= trigger_offset {
-                            (pos - trigger_offset) as isize
+                        let relative = if pos >= cursor {
+                            (pos - cursor) as isize
                         } else {
-                            -((trigger_offset - pos) as isize)
+                            -((cursor - pos) as isize)
                         };
                         Some(relative)
                     };
@@ -177,7 +182,9 @@ impl Completion {
             doc.restore(view.id);
 
             match event {
-                PromptEvent::Abort => {}
+                PromptEvent::Abort => {
+                    editor.last_completion = None;
+                }
                 PromptEvent::Update => {
                     // always present here
                     let item = item.unwrap();
@@ -189,11 +196,25 @@ impl Completion {
                         start_offset,
                         trigger_offset,
                     );
+                    let completion = fetch_complete_action(
+                        doc,
+                        item,
+                        offset_encoding,
+                        start_offset,
+                        trigger_offset,
+                        view.id,
+                    );
 
                     // initialize a savepoint
                     doc.savepoint();
 
                     doc.apply(&transaction, view.id);
+
+                    if let Some(completion) = completion {
+                        editor.last_completion = Some(completion);
+                    } else {
+                        log::warn!("Failed to generate completion action");
+                    }
                 }
                 PromptEvent::Validate => {
                     // always present here
@@ -212,6 +233,7 @@ impl Completion {
                         offset_encoding,
                         start_offset,
                         trigger_offset,
+                        view.id,
                     );
 
                     doc.apply(&transaction, view.id);

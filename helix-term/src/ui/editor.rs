@@ -816,6 +816,8 @@ impl EditorView {
         // Immediately initialize a savepoint
         doc_mut!(editor).savepoint();
 
+        editor.last_completion = None;
+
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
         self.completion = Some(completion);
@@ -1023,8 +1025,6 @@ impl Component for EditorView {
                             // let completion swallow the event if necessary
                             let mut consumed = false;
                             if let Some(completion) = &mut self.completion {
-                                cx.editor.last_completion = None;
-
                                 // use a fake context here
                                 let mut cx = Context {
                                     editor: cx.editor,
@@ -1049,6 +1049,10 @@ impl Component for EditorView {
 
                             // if completion didn't take the event, we pass it onto commands
                             if !consumed {
+                                if let Some(compl) = cx.editor.last_completion.take() {
+                                    self.last_insert.1.push(InsertEvent::Completion(compl));
+                                }
+
                                 self.insert_mode(&mut cx, key);
 
                                 // record last_insert key
