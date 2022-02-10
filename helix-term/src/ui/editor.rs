@@ -43,7 +43,8 @@ pub struct EditorView {
 #[derive(Debug, Clone)]
 pub enum InsertEvent {
     Key(KeyEvent),
-    Completion(CompleteAction),
+    CompletionApply(CompleteAction),
+    TriggerCompleiton,
 }
 
 impl Default for EditorView {
@@ -744,36 +745,30 @@ impl EditorView {
                 for key in self.last_insert.1.clone() {
                     match key {
                         InsertEvent::Key(key) => self.insert_mode(cxt, key),
-                        InsertEvent::Completion(compl) => {
+                        InsertEvent::CompletionApply(compl) => {
                             let (view, doc) = current!(cxt.editor);
+
+                            doc.restore(view.id);
 
                             let text = doc.text().slice(..);
                             let cursor = doc.selection(view.id).primary().cursor(text);
 
-                            let cursor_offset = |offset: isize| {
-                                if offset >= 0 {
-                                    Some(cursor + (offset as usize))
-                                } else {
-                                    let minus_offset = (-offset) as usize;
-                                    if cursor >= minus_offset {
-                                        Some(cursor - minus_offset)
-                                    } else {
-                                        None
-                                    }
-                                }
-                            };
+                            log::error!("Replaying completion: {compl:?}");
 
-                            if let (Some(start), Some(end)) =
-                                (cursor_offset(compl.start), cursor_offset(compl.end))
-                            {
-                                let tr = Transaction::change(
-                                    doc.text(),
-                                    [(start, end, Some(compl.text.into()))].into_iter(),
-                                );
-                                doc.apply(&tr, view.id);
-                            } else {
-                                log::warn!("Skipping completion replay: {compl:?}");
-                            }
+                            let shift_position =
+                                |pos: usize| -> usize { pos + cursor - compl.trigger_pos };
+
+                            let tx = Transaction::change(
+                                doc.text(),
+                                compl.transaction.changes_iter().map(|(start, end, t)| {
+                                    (shift_position(start), shift_position(end), t)
+                                }),
+                            );
+                            doc.apply(&tx, view.id);
+                        }
+                        InsertEvent::TriggerCompleiton => {
+                            let (_, doc) = current!(cxt.editor);
+                            doc.savepoint();
                         }
                     }
                 }
@@ -817,6 +812,7 @@ impl EditorView {
         doc_mut!(editor).savepoint();
 
         editor.last_completion = None;
+        self.last_insert.1.push(InsertEvent::TriggerCompleiton);
 
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
@@ -1038,7 +1034,9 @@ impl Component for EditorView {
 
                                     if callback.is_some() {
                                         if let Some(compl) = cx.editor.last_completion.take() {
-                                            self.last_insert.1.push(InsertEvent::Completion(compl));
+                                            self.last_insert
+                                                .1
+                                                .push(InsertEvent::CompletionApply(compl));
                                         }
 
                                         // assume close_fn
@@ -1050,7 +1048,7 @@ impl Component for EditorView {
                             // if completion didn't take the event, we pass it onto commands
                             if !consumed {
                                 if let Some(compl) = cx.editor.last_completion.take() {
-                                    self.last_insert.1.push(InsertEvent::Completion(compl));
+                                    self.last_insert.1.push(InsertEvent::CompletionApply(compl));
                                 }
 
                                 self.insert_mode(&mut cx, key);

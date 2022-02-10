@@ -24,7 +24,7 @@ use anyhow::{bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::syntax;
+use helix_core::{syntax, Transaction};
 use helix_core::{Position, Selection};
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize};
@@ -256,12 +256,8 @@ pub struct Editor {
 
 #[derive(Default, Debug, Clone)]
 pub struct CompleteAction {
-    // Relative to cursor position
-    pub start: isize,
-    // Relative to cursor position
-    pub end: isize,
-
-    pub text: String,
+    pub trigger_pos: usize,
+    pub transaction: Transaction,
 }
 
 #[derive(Debug, Copy, Clone)]

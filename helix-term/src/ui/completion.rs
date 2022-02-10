@@ -1,7 +1,6 @@
 use crate::compositor::{Component, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use helix_view::editor::CompleteAction;
-use helix_view::ViewId;
 use tui::buffer::Buffer as Surface;
 
 use std::borrow::Cow;
@@ -122,60 +121,6 @@ impl Completion {
                 transaction
             }
 
-            fn fetch_complete_action(
-                doc: &Document,
-                item: &CompletionItem,
-                offset_encoding: helix_lsp::OffsetEncoding,
-                start_offset: usize,
-                trigger_offset: usize,
-                view_id: ViewId,
-            ) -> Option<CompleteAction> {
-                let text = doc.text().slice(..);
-                let cursor = doc.selection(view_id).primary().cursor(text);
-
-                let action = if let Some(edit) = &item.text_edit {
-                    let edit = match edit {
-                        lsp::CompletionTextEdit::Edit(edit) => edit,
-                        lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                            unimplemented!("completion: insert_and_replace {:?}", item)
-                        }
-                    };
-
-                    let triger_relative = |pos| {
-                        let pos = util::lsp_pos_to_pos(doc.text(), pos, offset_encoding)?;
-
-                        let relative = if pos >= cursor {
-                            (pos - cursor) as isize
-                        } else {
-                            -((cursor - pos) as isize)
-                        };
-                        Some(relative)
-                    };
-
-                    let start = triger_relative(edit.range.start)?;
-                    let end = triger_relative(edit.range.end)?;
-
-                    CompleteAction {
-                        start,
-                        end,
-                        text: edit.new_text.clone(),
-                    }
-                } else {
-                    let text = item.insert_text.as_ref().unwrap_or(&item.label);
-                    // Some LSPs just give you an insertText with no offset ¯\_(ツ)_/¯
-                    // in these cases we need to check for a common prefix and remove it
-                    let prefix = Cow::from(doc.text().slice(start_offset..trigger_offset));
-                    let text = text.trim_start_matches::<&str>(&prefix).to_owned();
-                    CompleteAction {
-                        start: 0,
-                        end: 0,
-                        text,
-                    }
-                };
-
-                Some(action)
-            }
-
             let (view, doc) = current!(editor);
 
             // if more text was entered, remove it
@@ -196,25 +141,14 @@ impl Completion {
                         start_offset,
                         trigger_offset,
                     );
-                    let completion = fetch_complete_action(
-                        doc,
-                        item,
-                        offset_encoding,
-                        start_offset,
-                        trigger_offset,
-                        view.id,
-                    );
 
                     // initialize a savepoint
                     doc.savepoint();
-
                     doc.apply(&transaction, view.id);
-
-                    if let Some(completion) = completion {
-                        editor.last_completion = Some(completion);
-                    } else {
-                        log::warn!("Failed to generate completion action");
-                    }
+                    editor.last_completion = Some(CompleteAction {
+                        trigger_pos: trigger_offset,
+                        transaction,
+                    });
                 }
                 PromptEvent::Validate => {
                     // always present here
@@ -227,22 +161,12 @@ impl Completion {
                         start_offset,
                         trigger_offset,
                     );
-                    let completion = fetch_complete_action(
-                        doc,
-                        item,
-                        offset_encoding,
-                        start_offset,
-                        trigger_offset,
-                        view.id,
-                    );
 
                     doc.apply(&transaction, view.id);
-
-                    if let Some(completion) = completion {
-                        editor.last_completion = Some(completion);
-                    } else {
-                        log::warn!("Failed to generate completion action");
-                    }
+                    editor.last_completion = Some(CompleteAction {
+                        trigger_pos: trigger_offset,
+                        transaction,
+                    });
 
                     // apply additional edits, mostly used to auto import unqualified types
                     let resolved_additional_text_edits = if item.additional_text_edits.is_some() {
