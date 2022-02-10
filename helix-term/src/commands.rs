@@ -2080,25 +2080,36 @@ pub mod cmd {
             jobs.callback(callback);
             shared
         });
-        let future = doc.format_and_save(fmt);
-        cx.jobs.add(Job::new(future).wait_before_exiting());
 
-        // TODO?: Accept all valid unicode correctly (`to_string_lossy` is used to satisfy the type system)
-        // This might not be necessary since `path` is already coming in as a Cow<str> to begin with.
+        let id = doc.id();
+        let future = doc.format_and_save(fmt);
+        // TODO: Find a way to only compute this when necessary (i.e. in the closure).
         let path_text = path
             .unwrap_or(&doc.relative_path().unwrap().to_string_lossy())
             .to_string();
-        let (lines, columns) = (doc.text().len_lines(), doc.text().len_chars());
+
+        let callback = Box::pin(async move {
+            let save_ok = future.await;
+            let call: job::Callback = Box::new(move |editor, _compositor| {
+                if save_ok.is_ok() {
+                    let doc = editor.document(id).unwrap();
+                    // TODO?: Accept all valid unicode correctly (`to_string_lossy` is used to satisfy the type system)
+                    // This might not be necessary since `path` is already coming in as a `Cow<str>`.
+                    let (lines, columns) = (doc.text().len_lines(), doc.text().len_chars());
+                    editor.set_status(format!(
+                        "\"{}\" {}L, {}C written",
+                        path_text, lines, columns,
+                    ));
+                }
+            });
+            Ok(call)
+        });
+        cx.jobs
+            .add(Job::with_callback(callback).wait_before_exiting());
 
         if path.is_some() {
-            let id = doc.id();
             let _ = cx.editor.refresh_language_server(id);
         }
-
-        cx.editor.set_status(format!(
-            "\"{}\" {}L, {}C written",
-            path_text, lines, columns,
-        ));
 
         Ok(())
     }
