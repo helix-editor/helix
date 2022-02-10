@@ -1459,6 +1459,7 @@ fn split_selection_on_newline(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn search_impl(
     doc: &mut Document,
     view: &mut View,
@@ -1467,6 +1468,7 @@ fn search_impl(
     movement: Movement,
     direction: Direction,
     scrolloff: usize,
+    wrap_around: bool,
 ) {
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
@@ -1492,16 +1494,22 @@ fn search_impl(
 
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
-    let mat = match direction {
-        Direction::Forward => regex
-            .find_at(contents, start)
-            .or_else(|| regex.find(contents)),
-        Direction::Backward => regex.find_iter(&contents[..start]).last().or_else(|| {
-            offset = start;
-            regex.find_iter(&contents[start..]).last()
-        }),
+    let mut mat = match direction {
+        Direction::Forward => regex.find_at(contents, start),
+        Direction::Backward => regex.find_iter(&contents[..start]).last(),
     };
-    // TODO: message on wraparound
+
+    if wrap_around && mat.is_none() {
+        mat = match direction {
+            Direction::Forward => regex.find(contents),
+            Direction::Backward => {
+                offset = start;
+                regex.find_iter(&contents[start..]).last()
+            }
+        }
+        // TODO: message on wraparound
+    }
+
     if let Some(mat) = mat {
         let start = text.byte_to_char(mat.start() + offset);
         let end = text.byte_to_char(mat.end() + offset);
@@ -1554,6 +1562,7 @@ fn rsearch(cx: &mut Context) {
 fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
     let scrolloff = cx.editor.config.scrolloff;
+    let wrap_around = cx.editor.config.search.wrap_around;
 
     let doc = doc!(cx.editor);
 
@@ -1587,6 +1596,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
                 Movement::Move,
                 direction,
                 scrolloff,
+                wrap_around,
             );
         },
     );
@@ -1601,16 +1611,27 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
     if let Some(query) = registers.read('/') {
         let query = query.last().unwrap();
         let contents = doc.text().slice(..).to_string();
-        let case_insensitive = if cx.editor.config.smart_case {
+        let search_config = &cx.editor.config.search;
+        let case_insensitive = if search_config.smart_case {
             !query.chars().any(char::is_uppercase)
         } else {
             false
         };
+        let wrap_around = search_config.wrap_around;
         if let Ok(regex) = RegexBuilder::new(query)
             .case_insensitive(case_insensitive)
             .build()
         {
-            search_impl(doc, view, &contents, &regex, movement, direction, scrolloff);
+            search_impl(
+                doc,
+                view,
+                &contents,
+                &regex,
+                movement,
+                direction,
+                scrolloff,
+                wrap_around,
+            );
         } else {
             // get around warning `mutable_borrow_reservation_conflict`
             // which will be a hard error in the future
@@ -1649,7 +1670,7 @@ fn search_selection(cx: &mut Context) {
 fn global_search(cx: &mut Context) {
     let (all_matches_sx, all_matches_rx) =
         tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
-    let smart_case = cx.editor.config.smart_case;
+    let smart_case = cx.editor.config.search.smart_case;
     let file_picker_config = cx.editor.config.file_picker.clone();
 
     let completions = search_completions(cx, None);
@@ -2707,12 +2728,13 @@ pub mod cmd {
             "mouse" => runtime_config.mouse = arg.parse()?,
             "line-number" => runtime_config.line_number = arg.parse()?,
             "middle-click_paste" => runtime_config.middle_click_paste = arg.parse()?,
-            "smart-case" => runtime_config.smart_case = arg.parse()?,
             "auto-pairs" => runtime_config.auto_pairs = arg.parse()?,
             "auto-completion" => runtime_config.auto_completion = arg.parse()?,
             "completion-trigger-len" => runtime_config.completion_trigger_len = arg.parse()?,
             "auto-info" => runtime_config.auto_info = arg.parse()?,
             "true-color" => runtime_config.true_color = arg.parse()?,
+            "search.smart-case" => runtime_config.search.smart_case = arg.parse()?,
+            "search.wrap-around" => runtime_config.search.wrap_around = arg.parse()?,
             _ => anyhow::bail!("Unknown key `{}`.", args[0]),
         }
 

@@ -65,7 +65,7 @@ pub fn regex_prompt(
                         return;
                     }
 
-                    let case_insensitive = if cx.editor.config.smart_case {
+                    let case_insensitive = if cx.editor.config.search.smart_case {
                         !input.chars().any(char::is_uppercase)
                     } else {
                         false
