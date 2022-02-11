@@ -4648,9 +4648,12 @@ fn indent(cx: &mut Context) {
 
     let transaction = Transaction::change(
         doc.text(),
-        lines.into_iter().map(|line| {
+        lines.into_iter().filter_map(|line| {
+            if doc.text().get_line(line).unwrap().as_str().unwrap().trim() == "" {
+                return None;
+            }
             let pos = doc.text().line_to_char(line);
-            (pos, pos, Some(indent.clone()))
+            Some((pos, pos, Some(indent.clone())))
         }),
     );
     doc.apply(&transaction, view.id);
