@@ -188,7 +188,21 @@ impl TextObjectQuery {
         slice: RopeSlice<'a>,
         cursor: &'a mut QueryCursor,
     ) -> Option<impl Iterator<Item = Node<'a>>> {
-        let capture_idx = self.query.capture_index_for_name(capture_name)?;
+        self.capture_nodes_any(&[capture_name], node, slice, cursor)
+    }
+
+    /// Find the first capture that exists out of all given `capture_names`
+    /// and return sub nodes that match this capture.
+    pub fn capture_nodes_any<'a>(
+        &'a self,
+        capture_names: &[&str],
+        node: Node<'a>,
+        slice: RopeSlice<'a>,
+        cursor: &'a mut QueryCursor,
+    ) -> Option<impl Iterator<Item = Node<'a>>> {
+        let capture_idx = capture_names
+            .iter()
+            .find_map(|cap| self.query.capture_index_for_name(cap))?;
         let captures = cursor.captures(&self.query, node, RopeProvider(slice));
 
         captures

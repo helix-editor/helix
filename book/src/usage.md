@@ -75,7 +75,7 @@ document and a special tree-sitter query file to work properly. [Only
 some grammars][lang-support] currently have the query file implemented.
 Contributions are welcome!
 
-## Tree-sitter Based Navigation
+## Tree-sitter Textobject Based Navigation
 
 Navigating between functions, classes, parameters, etc is made
 possible by leveraging tree-sitter and textobjects queries. For

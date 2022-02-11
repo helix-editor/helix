@@ -53,6 +53,8 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, lo
 pub enum TextObject {
     Around,
     Inside,
+    /// Used for moving between objects.
+    Movement,
 }
 
 impl Display for TextObject {
@@ -60,6 +62,7 @@ impl Display for TextObject {
         f.write_str(match self {
             Self::Around => "around",
             Self::Inside => "inside",
+            Self::Movement => "movement",
         })
     }
 }
@@ -104,6 +107,7 @@ pub fn textobject_word(
                 Range::new(word_start - whitespace_count_left, word_end)
             }
         }
+        TextObject::Movement => unreachable!(),
     }
 }
 
@@ -118,6 +122,7 @@ pub fn textobject_surround(
         .map(|(anchor, head)| match textobject {
             TextObject::Inside => Range::new(next_grapheme_boundary(slice, anchor), head),
             TextObject::Around => Range::new(anchor, next_grapheme_boundary(slice, head)),
+            TextObject::Movement => unreachable!(),
         })
         .unwrap_or(range)
 }
