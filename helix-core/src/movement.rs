@@ -321,10 +321,14 @@ pub fn goto_treesitter_object(
     let get_range = move || -> Option<Range> {
         let byte_pos = slice.char_to_byte(range.cursor(slice));
 
-        let capture_name = format!("{}.{}", object_name, TextObject::Around);
+        let cap_name = |t: TextObject| format!("{}.{}", object_name, t);
         let mut cursor = QueryCursor::new();
-        let nodes = lang_config.textobject_query()?.capture_nodes(
-            &capture_name,
+        let nodes = lang_config.textobject_query()?.capture_nodes_any(
+            &[
+                &cap_name(TextObject::Movement),
+                &cap_name(TextObject::Around),
+                &cap_name(TextObject::Inside),
+            ],
             slice_tree,
             slice,
             &mut cursor,
