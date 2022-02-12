@@ -1,4 +1,4 @@
-use anyhow::{Error, Result};
+use anyhow::Result;
 use helix_core::Position;
 use std::path::{Path, PathBuf};
 
@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 pub struct Args {
     pub display_help: bool,
     pub display_version: bool,
+    pub health: bool,
     pub load_tutor: bool,
     pub verbosity: u64,
     pub files: Vec<(PathBuf, Position)>,
@@ -25,11 +26,9 @@ impl Args {
                 "--version" => args.display_version = true,
                 "--help" => args.display_help = true,
                 "--tutor" => args.load_tutor = true,
+                "--health" => args.health = true,
                 arg if arg.starts_with("--") => {
-                    return Err(Error::msg(format!(
-                        "unexpected double dash argument: {}",
-                        arg
-                    )))
+                    anyhow::bail!("unexpected double dash argument: {}", arg)
                 }
                 arg if arg.starts_with('-') => {
                     let arg = arg.get(1..).unwrap().chars();
@@ -38,7 +37,7 @@ impl Args {
                             'v' => args.verbosity += 1,
                             'V' => args.display_version = true,
                             'h' => args.display_help = true,
-                            _ => return Err(Error::msg(format!("unexpected short arg {}", chr))),
+                            _ => anyhow::bail!("unexpected short arg {}", chr),
                         }
                     }
                 }

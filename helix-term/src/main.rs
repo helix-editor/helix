@@ -61,6 +61,7 @@ ARGS:
 FLAGS:
     -h, --help       Prints help information
     --tutor          Loads the tutorial
+    --health         Checks for potential errors in editor setup
     -v               Increases logging verbosity each use for up to 3 times
                      (default file: {})
     -V, --version    Prints version information
@@ -82,6 +83,11 @@ FLAGS:
 
     if args.display_version {
         println!("helix {}", env!("VERSION_AND_GIT_HASH"));
+        std::process::exit(0);
+    }
+
+    if args.health {
+        helix_term::health::general();
         std::process::exit(0);
     }
 
