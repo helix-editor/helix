@@ -40,12 +40,12 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let cache_dir = helix_core::cache_dir();
-    if !cache_dir.exists() {
-        std::fs::create_dir_all(&cache_dir).ok();
+    let logpath = helix_core::log_file();
+    let parent = logpath.parent().unwrap();
+    if !parent.exists() {
+        std::fs::create_dir_all(parent).ok();
     }
 
-    let logpath = cache_dir.join("helix.log");
     let help = format!(
         "\
 {} {}
@@ -90,7 +90,7 @@ FLAGS:
         std::fs::create_dir_all(&conf_dir).ok();
     }
 
-    let config = match std::fs::read_to_string(conf_dir.join("config.toml")) {
+    let config = match std::fs::read_to_string(helix_core::config_file()) {
         Ok(config) => toml::from_str(&config)
             .map(merge_keys)
             .unwrap_or_else(|err| {
