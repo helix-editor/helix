@@ -27,7 +27,7 @@ pub mod helpers {
             match *self {
                 Self::Highlight => "highlights.scm",
                 Self::TextObjects => "textobjects.scm",
-                Self::AutoIndent => "indents.toml",
+                Self::AutoIndent => "indents.scm",
             }
         }
     }
