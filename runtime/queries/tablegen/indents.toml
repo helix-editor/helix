@@ -1,7 +1,0 @@
-indent.tail = [
-  "statement",
-]
-
-outdent.all = [
-  "}",
-]

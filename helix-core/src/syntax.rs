@@ -84,7 +84,7 @@ pub struct LanguageConfiguration {
     pub indent: Option<IndentationConfiguration>,
 
     #[serde(skip)]
-    pub(crate) indent_query: OnceCell<Option<IndentQuery>>,
+    pub(crate) indent_query: OnceCell<Option<Query>>,
     #[serde(skip)]
     pub(crate) textobject_query: OnceCell<Option<TextObjectQuery>>,
 }
@@ -104,94 +104,6 @@ pub struct LanguageServerConfiguration {
 pub struct IndentationConfiguration {
     pub tab_width: usize,
     pub unit: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum IndentQueryNode {
-    // A node given just by its kind
-    SimpleNode(String),
-    // A node given by a list of characteristics which must all be fulfilled in order to match
-    ComplexNode {
-        kind: Option<String>,
-        #[serde(default)]
-        #[serde(skip_serializing_if = "Vec::is_empty")]
-        kind_not_in: Vec<String>,
-        #[serde(default)]
-        #[serde(skip_serializing_if = "Vec::is_empty")]
-        parent_kind_in: Vec<String>,
-        #[serde(default)]
-        #[serde(skip_serializing_if = "Vec::is_empty")]
-        field_name_in: Vec<String>,
-    },
-}
-impl IndentQueryNode {
-    pub fn kind(&self) -> Option<&str> {
-        match self {
-            IndentQueryNode::SimpleNode(n) => Some(n),
-            IndentQueryNode::ComplexNode { kind, .. } => kind.as_ref().map(|k| k.as_str()),
-        }
-    }
-}
-impl PartialEq for IndentQueryNode {
-    fn eq(&self, other: &Self) -> bool {
-        self.kind().eq(&other.kind())
-    }
-}
-impl Eq for IndentQueryNode {}
-impl PartialOrd for IndentQueryNode {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl Ord for IndentQueryNode {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.kind().cmp(&other.kind())
-    }
-}
-
-#[derive(Default, Debug, Serialize)]
-pub struct IndentQueryScopes {
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub all: Vec<IndentQueryNode>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub tail: Vec<IndentQueryNode>,
-}
-
-impl<'de> Deserialize<'de> for IndentQueryScopes {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        struct Derived {
-            #[serde(default)]
-            pub all: Vec<IndentQueryNode>,
-            #[serde(default)]
-            pub tail: Vec<IndentQueryNode>,
-        }
-        let derived = Derived::deserialize(deserializer)?;
-        let mut result = IndentQueryScopes {
-            all: derived.all,
-            tail: derived.tail,
-        };
-        result.all.sort_unstable();
-        result.tail.sort_unstable();
-        Ok(result)
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct IndentQuery {
-    /// Every node specified here increases the indent level by one (in total at most one per line)
-    #[serde(default)]
-    pub indent: IndentQueryScopes,
-    /// Every node specified here decreases the indent level by one (in total at most one per line)
-    #[serde(default)]
-    pub outdent: IndentQueryScopes,
 }
 
 #[derive(Debug)]
@@ -310,13 +222,13 @@ impl LanguageConfiguration {
         self.highlight_config.get().is_some()
     }
 
-    pub fn indent_query(&self) -> Option<&IndentQuery> {
+    pub fn indent_query(&self) -> Option<&Query> {
         self.indent_query
             .get_or_init(|| {
-                let language = self.language_id.to_ascii_lowercase();
-
-                let toml = load_runtime_file(&language, "indents.toml").ok()?;
-                toml::from_slice(toml.as_bytes()).ok()
+                let lang_name = self.language_id.to_ascii_lowercase();
+                let query_text = read_query(&lang_name, "indents.scm");
+                let lang = self.highlight_config.get()?.as_ref()?.language;
+                Query::new(lang, &query_text).ok()
             })
             .as_ref()
     }
@@ -1088,7 +1000,7 @@ struct HighlightIter<'a> {
 }
 
 // Adapter to convert rope chunks to bytes
-struct ChunksBytes<'a> {
+pub struct ChunksBytes<'a> {
     chunks: ropey::iter::Chunks<'a>,
 }
 impl<'a> Iterator for ChunksBytes<'a> {
@@ -1098,7 +1010,7 @@ impl<'a> Iterator for ChunksBytes<'a> {
     }
 }
 
-struct RopeProvider<'a>(RopeSlice<'a>);
+pub struct RopeProvider<'a>(pub RopeSlice<'a>);
 impl<'a> TextProvider<'a> for RopeProvider<'a> {
     type I = ChunksBytes<'a>;
 
@@ -1996,7 +1908,7 @@ mod test {
     #[test]
     fn test_load_runtime_file() {
         // Test to make sure we can load some data from the runtime directory.
-        let contents = load_runtime_file("rust", "indents.toml").unwrap();
+        let contents = load_runtime_file("rust", "indents.scm").unwrap();
         assert!(!contents.is_empty());
 
         let results = load_runtime_file("rust", "does-not-exist");
