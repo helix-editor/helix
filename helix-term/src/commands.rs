@@ -445,8 +445,8 @@ impl std::str::FromStr for MappableCommand {
         } else {
             MappableCommand::STATIC_COMMAND_LIST
                 .iter()
-                .cloned()
                 .find(|cmd| cmd.name() == s)
+                .cloned()
                 .ok_or_else(|| anyhow!("No command named '{}'", s))
         }
     }
