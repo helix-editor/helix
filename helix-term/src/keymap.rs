@@ -1009,7 +1009,7 @@ mod tests {
         // sort keybindings in order to have consistent tests
         // HashMaps can be compared but we can still get different ordering of bindings
         // for commands that have multiple bindings assigned
-        for (_k, v) in &mut reverse_map {
+        for v in reverse_map.values_mut() {
             v.sort()
         }
 
