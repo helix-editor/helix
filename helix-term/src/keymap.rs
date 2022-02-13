@@ -1,4 +1,4 @@
-pub use crate::commands::Command;
+pub use crate::commands::MappableCommand;
 use crate::config::Config;
 use helix_core::hashmap;
 use helix_view::{document::Mode, info::Info, input::KeyEvent};
@@ -92,7 +92,7 @@ macro_rules! alt {
 #[macro_export]
 macro_rules! keymap {
     (@trie $cmd:ident) => {
-        $crate::keymap::KeyTrie::Leaf($crate::commands::Command::$cmd)
+        $crate::keymap::KeyTrie::Leaf($crate::commands::MappableCommand::$cmd)
     };
 
     (@trie
@@ -120,7 +120,7 @@ macro_rules! keymap {
                         _key,
                         keymap!(@trie $value)
                     );
-                    debug_assert!(_duplicate.is_none(), "Duplicate key found: {:?}", _duplicate.unwrap());
+                    assert!(_duplicate.is_none(), "Duplicate key found: {:?}", _duplicate.unwrap());
                     _order.push(_key);
                 )+
             )*
@@ -222,9 +222,8 @@ impl KeyTrieNode {
                 .map(|(desc, keys)| (desc.strip_prefix(&prefix).unwrap(), keys))
                 .collect();
         }
-        Info::new(self.name(), body)
+        Info::from_keymap(self.name(), body)
     }
-
     /// Get a reference to the key trie node's order.
     pub fn order(&self) -> &[KeyEvent] {
         self.order.as_slice()
@@ -260,8 +259,8 @@ impl DerefMut for KeyTrieNode {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(untagged)]
 pub enum KeyTrie {
-    Leaf(Command),
-    Sequence(Vec<Command>),
+    Leaf(MappableCommand),
+    Sequence(Vec<MappableCommand>),
     Node(KeyTrieNode),
 }
 
@@ -304,9 +303,9 @@ impl KeyTrie {
 pub enum KeymapResultKind {
     /// Needs more keys to execute a command. Contains valid keys for next keystroke.
     Pending(KeyTrieNode),
-    Matched(Command),
+    Matched(MappableCommand),
     /// Matched a sequence of commands to execute.
-    MatchedSequence(Vec<Command>),
+    MatchedSequence(Vec<MappableCommand>),
     /// Key was not found in the root keymap
     NotFound,
     /// Key is invalid in combination with previous keys. Contains keys leading upto
@@ -344,7 +343,7 @@ pub struct Keymap {
 
 impl Keymap {
     pub fn new(root: KeyTrie) -> Self {
-        Keymap {
+        Self {
             root,
             state: Vec::new(),
             sticky: None,
@@ -368,7 +367,7 @@ impl Keymap {
     /// key cancels pending keystrokes. If there are no pending keystrokes but a
     /// sticky node is in use, it will be cleared.
     pub fn get(&mut self, key: KeyEvent) -> KeymapResult {
-        if let key!(Esc) = key {
+        if key!(Esc) == key {
             if !self.state.is_empty() {
                 return KeymapResult::new(
                     // Note that Esc is not included here
@@ -386,10 +385,10 @@ impl Keymap {
         };
 
         let trie = match trie_node.search(&[*first]) {
-            Some(&KeyTrie::Leaf(cmd)) => {
-                return KeymapResult::new(KeymapResultKind::Matched(cmd), self.sticky())
+            Some(KeyTrie::Leaf(ref cmd)) => {
+                return KeymapResult::new(KeymapResultKind::Matched(cmd.clone()), self.sticky())
             }
-            Some(&KeyTrie::Sequence(ref cmds)) => {
+            Some(KeyTrie::Sequence(ref cmds)) => {
                 return KeymapResult::new(
                     KeymapResultKind::MatchedSequence(cmds.clone()),
                     self.sticky(),
@@ -408,9 +407,9 @@ impl Keymap {
                 }
                 KeymapResult::new(KeymapResultKind::Pending(map.clone()), self.sticky())
             }
-            Some(&KeyTrie::Leaf(cmd)) => {
+            Some(&KeyTrie::Leaf(ref cmd)) => {
                 self.state.clear();
-                return KeymapResult::new(KeymapResultKind::Matched(cmd), self.sticky());
+                return KeymapResult::new(KeymapResultKind::Matched(cmd.clone()), self.sticky());
             }
             Some(&KeyTrie::Sequence(ref cmds)) => {
                 self.state.clear();
@@ -477,7 +476,7 @@ impl DerefMut for Keymaps {
 }
 
 impl Default for Keymaps {
-    fn default() -> Keymaps {
+    fn default() -> Self {
         let normal = keymap!({ "Normal mode"
             "h" | "left" => move_char_left,
             "j" | "down" => move_line_down,
@@ -521,9 +520,10 @@ impl Default for Keymaps {
                 "r" => goto_reference,
                 "i" => goto_implementation,
                 "t" => goto_window_top,
-                "m" => goto_window_middle,
+                "c" => goto_window_center,
                 "b" => goto_window_bottom,
                 "a" => goto_last_accessed_file,
+                "m" => goto_last_modified_file,
                 "n" => goto_next_buffer,
                 "p" => goto_previous_buffer,
                 "." => goto_last_modification,
@@ -551,6 +551,11 @@ impl Default for Keymaps {
             "S" => split_selection,
             ";" => collapse_selection,
             "A-;" => flip_selections,
+            "A-k" => expand_selection,
+            "A-j" => shrink_selection,
+            "A-h" => select_prev_sibling,
+            "A-l" => select_next_sibling,
+
             "%" => select_all,
             "x" => extend_line,
             "X" => extend_to_line_bounds,
@@ -592,6 +597,9 @@ impl Default for Keymaps {
             // paste_all
             "P" => paste_before,
 
+            "Q" => record_macro,
+            "q" => replay_macro,
+
             ">" => indent,
             "<" => unindent,
             "=" => format_selections,
@@ -612,6 +620,8 @@ impl Default for Keymaps {
             ")" => rotate_selections_forward,
             "A-(" => rotate_selection_contents_backward,
             "A-)" => rotate_selection_contents_forward,
+
+            "A-:" => ensure_selections_forward,
 
             "esc" => normal_mode,
             "C-b" | "pageup" => page_up,
@@ -640,7 +650,7 @@ impl Default for Keymaps {
 
             "tab" => jump_forward, // tab == <C-i>
             "C-o" => jump_backward,
-            // "C-s" => save_selection,
+            "C-s" => save_selection,
 
             "space" => { "Space"
                 "f" => file_picker,
@@ -763,8 +773,10 @@ impl Default for Keymaps {
             "del" => delete_char_forward,
             "C-d" => delete_char_forward,
             "ret" => insert_newline,
+            "C-j" => insert_newline,
             "tab" => insert_tab,
             "C-w" => delete_word_backward,
+            "A-backspace" => delete_word_backward,
             "A-d" => delete_word_forward,
 
             "left" => move_char_left,
@@ -779,6 +791,8 @@ impl Default for Keymaps {
             "A-left" => move_prev_word_end,
             "A-f" => move_next_word_start,
             "A-right" => move_next_word_start,
+            "A-<" => goto_file_start,
+            "A->" => goto_file_end,
             "pageup" => page_up,
             "pagedown" => page_down,
             "home" => goto_line_start,
@@ -792,7 +806,7 @@ impl Default for Keymaps {
             "C-x" => completion,
             "C-r" => insert_register,
         });
-        Keymaps(hashmap!(
+        Self(hashmap!(
             Mode::Normal => Keymap::new(normal),
             Mode::Select => Keymap::new(select),
             Mode::Insert => Keymap::new(insert),
@@ -852,36 +866,36 @@ mod tests {
         let keymap = merged_config.keys.0.get_mut(&Mode::Normal).unwrap();
         assert_eq!(
             keymap.get(key!('i')).kind,
-            KeymapResultKind::Matched(Command::normal_mode),
+            KeymapResultKind::Matched(MappableCommand::normal_mode),
             "Leaf should replace leaf"
         );
         assert_eq!(
             keymap.get(key!('无')).kind,
-            KeymapResultKind::Matched(Command::insert_mode),
+            KeymapResultKind::Matched(MappableCommand::insert_mode),
             "New leaf should be present in merged keymap"
         );
         // Assumes that z is a node in the default keymap
         assert_eq!(
             keymap.get(key!('z')).kind,
-            KeymapResultKind::Matched(Command::jump_backward),
+            KeymapResultKind::Matched(MappableCommand::jump_backward),
             "Leaf should replace node"
         );
         // Assumes that `g` is a node in default keymap
         assert_eq!(
             keymap.root().search(&[key!('g'), key!('$')]).unwrap(),
-            &KeyTrie::Leaf(Command::goto_line_end),
+            &KeyTrie::Leaf(MappableCommand::goto_line_end),
             "Leaf should be present in merged subnode"
         );
         // Assumes that `gg` is in default keymap
         assert_eq!(
             keymap.root().search(&[key!('g'), key!('g')]).unwrap(),
-            &KeyTrie::Leaf(Command::delete_char_forward),
+            &KeyTrie::Leaf(MappableCommand::delete_char_forward),
             "Leaf should replace old leaf in merged subnode"
         );
         // Assumes that `ge` is in default keymap
         assert_eq!(
             keymap.root().search(&[key!('g'), key!('e')]).unwrap(),
-            &KeyTrie::Leaf(Command::goto_last_line),
+            &KeyTrie::Leaf(MappableCommand::goto_last_line),
             "Old leaves in subnode should be present in merged node"
         );
 
@@ -915,7 +929,7 @@ mod tests {
                 .root()
                 .search(&[key!(' '), key!('s'), key!('v')])
                 .unwrap(),
-            &KeyTrie::Leaf(Command::vsplit),
+            &KeyTrie::Leaf(MappableCommand::vsplit),
             "Leaf should be present in merged subnode"
         );
         // Make sure an order was set during merge

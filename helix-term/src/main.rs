@@ -56,7 +56,7 @@ USAGE:
     hx [FLAGS] [files]...
 
 ARGS:
-    <files>...    Sets the input file to use
+    <files>...    Sets the input file to use, position can also be specified via file[:row[:col]]
 
 FLAGS:
     -h, --help       Prints help information

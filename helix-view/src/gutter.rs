@@ -25,7 +25,8 @@ pub fn diagnostic<'doc>(
 
     Box::new(move |line: usize, _selected: bool, out: &mut String| {
         use helix_core::diagnostic::Severity;
-        if let Some(diagnostic) = diagnostics.iter().find(|d| d.line == line) {
+        if let Ok(index) = diagnostics.binary_search_by_key(&line, |d| d.line) {
+            let diagnostic = &diagnostics[index];
             write!(out, "●").unwrap();
             return Some(match diagnostic.severity {
                 Some(Severity::Error) => error,
@@ -60,29 +61,31 @@ pub fn line_number<'doc>(
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
     let config = editor.config.line_number;
+    let mode = doc.mode;
 
     Box::new(move |line: usize, selected: bool, out: &mut String| {
         if line == last_line && !draw_last {
             write!(out, "{:>1$}", '~', width).unwrap();
             Some(linenr)
         } else {
-            use crate::editor::LineNumber;
-            let line = match config {
-                LineNumber::Absolute => line + 1,
-                LineNumber::Relative => {
-                    if current_line == line {
-                        line + 1
-                    } else {
-                        abs_diff(current_line, line)
-                    }
-                }
+            use crate::{document::Mode, editor::LineNumber};
+
+            let relative = config == LineNumber::Relative
+                && mode != Mode::Insert
+                && is_focused
+                && current_line != line;
+
+            let display_num = if relative {
+                abs_diff(current_line, line)
+            } else {
+                line + 1
             };
             let style = if selected && is_focused {
                 linenr_select
             } else {
                 linenr
             };
-            write!(out, "{:>1$}", line, width).unwrap();
+            write!(out, "{:>1$}", display_num, width).unwrap();
             Some(style)
         }
     })

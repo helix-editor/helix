@@ -22,8 +22,8 @@ pub struct Jobs {
 }
 
 impl Job {
-    pub fn new<F: Future<Output = anyhow::Result<()>> + Send + 'static>(f: F) -> Job {
-        Job {
+    pub fn new<F: Future<Output = anyhow::Result<()>> + Send + 'static>(f: F) -> Self {
+        Self {
             future: f.map(|r| r.map(|()| None)).boxed(),
             wait: false,
         }
@@ -31,22 +31,22 @@ impl Job {
 
     pub fn with_callback<F: Future<Output = anyhow::Result<Callback>> + Send + 'static>(
         f: F,
-    ) -> Job {
-        Job {
+    ) -> Self {
+        Self {
             future: f.map(|r| r.map(Some)).boxed(),
             wait: false,
         }
     }
 
-    pub fn wait_before_exiting(mut self) -> Job {
+    pub fn wait_before_exiting(mut self) -> Self {
         self.wait = true;
         self
     }
 }
 
 impl Jobs {
-    pub fn new() -> Jobs {
-        Jobs::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn spawn<F: Future<Output = anyhow::Result<()>> + Send + 'static>(&mut self, f: F) {
@@ -93,8 +93,8 @@ impl Jobs {
     }
 
     /// Blocks until all the jobs that need to be waited on are done.
-    pub fn finish(&mut self) {
+    pub async fn finish(&mut self) {
         let wait_futures = std::mem::take(&mut self.wait_futures);
-        helix_lsp::block_on(wait_futures.for_each(|_| future::ready(())));
+        wait_futures.for_each(|_| future::ready(())).await
     }
 }

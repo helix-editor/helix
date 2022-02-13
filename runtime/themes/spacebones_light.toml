@@ -30,6 +30,20 @@
 "label" = "#b1951d"
 "module" = "#b1951d"
 
+# TODO
+"markup.heading" = "blue"
+"markup.list" = "red"
+"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.text" = "red"
+"markup.quote" = "cyan"
+"markup.raw" = "green"
+
+"diff.plus" = "#2d9574"
+"diff.delta" = "#715ab1"
+"diff.minus" = "#ba2f59"
+
 "warning" = { fg = "#da8b55" }
 "error" = { fg = "#e0211d" }
 "info" = { fg = "#b1951d" }

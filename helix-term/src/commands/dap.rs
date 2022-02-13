@@ -194,7 +194,7 @@ pub fn dap_start_impl(
     cx: &mut compositor::Context,
     name: Option<&str>,
     socket: Option<std::net::SocketAddr>,
-    params: Option<Vec<&str>>,
+    params: Option<Vec<std::borrow::Cow<str>>>,
 ) -> Result<(), anyhow::Error> {
     let doc = doc!(cx.editor);
 
@@ -242,7 +242,7 @@ pub fn dap_start_impl(
                 let mut param = x.to_string();
                 if let Some(DebugConfigCompletion::Advanced(cfg)) = template.completion.get(i) {
                     if matches!(cfg.completion.as_deref(), Some("filename" | "directory")) {
-                        param = std::fs::canonicalize(x)
+                        param = std::fs::canonicalize(x.as_ref())
                             .ok()
                             .and_then(|pb| pb.into_os_string().into_string().ok())
                             .unwrap_or_else(|| x.to_string());
@@ -408,7 +408,7 @@ fn debug_parameter_prompt(
                 cx,
                 Some(&config_name),
                 None,
-                Some(params.iter().map(|x| x.as_str()).collect()),
+                Some(params.iter().map(|x| x.into()).collect()),
             ) {
                 cx.editor.set_error(e.to_string());
             }
@@ -651,7 +651,7 @@ pub fn dap_variables(cx: &mut Context) {
     }
 
     let contents = Text::from(tui::text::Text::from(variables));
-    let popup = Popup::new(contents);
+    let popup = Popup::new("dap-variables", contents);
     cx.push_layer(Box::new(popup));
 }
 

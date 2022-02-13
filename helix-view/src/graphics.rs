@@ -1,10 +1,12 @@
 use bitflags::bitflags;
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::{max, min},
     str::FromStr,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
 /// UNSTABLE
 pub enum CursorKind {
     /// █
@@ -17,6 +19,12 @@ pub enum CursorKind {
     Hidden,
 }
 
+impl Default for CursorKind {
+    fn default() -> Self {
+        Self::Block
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Margin {
     pub vertical: u16,
@@ -25,23 +33,12 @@ pub struct Margin {
 
 /// A simple rectangle used in the computation of the layout and to give widgets an hint about the
 /// area they are supposed to render to. (x, y) = (0, 0) is at the top left corner of the screen.
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Rect {
     pub x: u16,
     pub y: u16,
     pub width: u16,
     pub height: u16,
-}
-
-impl Default for Rect {
-    fn default() -> Rect {
-        Rect {
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 0,
-        }
-    }
 }
 
 impl Rect {
@@ -334,7 +331,7 @@ impl FromStr for Modifier {
 /// ];
 /// let mut buffer = Buffer::empty(Rect::new(0, 0, 1, 1));
 /// for style in &styles {
-///   buffer.get_mut(0, 0).set_style(*style);
+///   buffer[(0, 0)].set_style(*style);
 /// }
 /// assert_eq!(
 ///     Style {
@@ -343,7 +340,7 @@ impl FromStr for Modifier {
 ///         add_modifier: Modifier::BOLD,
 ///         sub_modifier: Modifier::empty(),
 ///     },
-///     buffer.get(0, 0).style(),
+///     buffer[(0, 0)].style(),
 /// );
 /// ```
 ///
@@ -359,7 +356,7 @@ impl FromStr for Modifier {
 /// ];
 /// let mut buffer = Buffer::empty(Rect::new(0, 0, 1, 1));
 /// for style in &styles {
-///   buffer.get_mut(0, 0).set_style(*style);
+///   buffer[(0, 0)].set_style(*style);
 /// }
 /// assert_eq!(
 ///     Style {
@@ -368,7 +365,7 @@ impl FromStr for Modifier {
 ///         add_modifier: Modifier::empty(),
 ///         sub_modifier: Modifier::empty(),
 ///     },
-///     buffer.get(0, 0).style(),
+///     buffer[(0, 0)].style(),
 /// );
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq)]

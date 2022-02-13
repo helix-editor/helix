@@ -127,7 +127,7 @@ impl Prompt {
                 let mut char_position = char_indices
                     .iter()
                     .position(|(idx, _)| *idx == self.cursor)
-                    .unwrap_or_else(|| char_indices.len());
+                    .unwrap_or(char_indices.len());
 
                 for _ in 0..rep {
                     // Skip any non-whitespace characters
@@ -330,7 +330,7 @@ impl Prompt {
             .max(BASE_WIDTH);
 
         let cols = std::cmp::max(1, area.width / max_len);
-        let col_width = (area.width - (cols)) / cols;
+        let col_width = (area.width.saturating_sub(cols)) / cols;
 
         let height = ((self.completion.len() as u16 + cols - 1) / cols)
             .min(10) // at most 10 rows (or less)
@@ -426,7 +426,7 @@ impl Component for Prompt {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.pop();
         })));
@@ -473,7 +473,7 @@ impl Component for Prompt {
                 }
             }
             key!(Enter) => {
-                if self.selection.is_some() && self.line.ends_with('/') {
+                if self.selection.is_some() && self.line.ends_with(std::path::MAIN_SEPARATOR) {
                     self.completion = (self.completion_fn)(&self.line);
                     self.exit_selection();
                 } else {
@@ -505,7 +505,7 @@ impl Component for Prompt {
                 self.change_completion_selection(CompletionDirection::Forward);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
-            shift!(BackTab) => {
+            shift!(Tab) => {
                 self.change_completion_selection(CompletionDirection::Backward);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }

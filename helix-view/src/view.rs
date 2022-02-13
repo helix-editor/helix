@@ -78,6 +78,13 @@ pub struct View {
     pub jumps: JumpList,
     /// the last accessed file before the current one
     pub last_accessed_doc: Option<DocumentId>,
+    /// the last modified files before the current one
+    /// ordered from most frequent to least frequent
+    // uses two docs because we want to be able to swap between the
+    // two last modified docs which we need to manually keep track of
+    pub last_modified_docs: [Option<DocumentId>; 2],
+    /// used to store previous selections of tree-sitter objecs
+    pub object_selections: Vec<Selection>,
 }
 
 impl View {
@@ -89,6 +96,8 @@ impl View {
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
             last_accessed_doc: None,
+            last_modified_docs: [None, None],
+            object_selections: Vec::new(),
         }
     }
 
@@ -370,7 +379,7 @@ mod tests {
         let text = rope.slice(..);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 0, 4),
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET, 4),
             Some(0)
         );
 
@@ -403,7 +412,7 @@ mod tests {
         let text = rope.slice(..);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 0, 4),
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET, 4),
             Some(0)
         );
 

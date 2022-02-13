@@ -36,7 +36,7 @@ pub struct Response {
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum Payload {
     // type = "event"
-    Event(Event),
+    Event(Box<Event>),
     // type = "response"
     Response(Response),
     // type = "request"
@@ -45,6 +45,7 @@ pub enum Payload {
 
 #[derive(Debug)]
 pub struct Transport {
+    #[allow(unused)]
     id: usize,
     pending_requests: Mutex<HashMap<u64, Sender<Result<Response>>>>,
 }

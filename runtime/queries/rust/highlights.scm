@@ -127,11 +127,16 @@
   "await"
 ] @keyword.control
 
+"use" @keyword.control.import
+(mod_item "mod" @keyword.control.import !body)
+(use_as_clause "as" @keyword.control.import)
+
+(type_cast_expression "as" @keyword.operator)
+
 [
   (crate)
   (super)
   "as"
-  "use"
   "pub"
   "mod"
   "extern"
@@ -242,10 +247,9 @@
 ; ---
 ; Macros
 ; ---
-
 (meta_item
-  (identifier) @attribute)
-(attribute_item) @attribute
+  (identifier) @function.macro)
+
 (inner_attribute_item) @attribute
 
 (macro_definition
@@ -259,7 +263,7 @@
   "!" @function.macro)
 
 (metavariable) @variable.parameter
-(fragment_specifier) @variable.parameter
+(fragment_specifier) @type
 
 
 

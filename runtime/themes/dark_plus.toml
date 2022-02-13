@@ -39,6 +39,20 @@
 "constant.numeric" = { fg = "pale_green" }
 "constant.character.escape" = { fg = "gold" }
 
+# TODO
+"markup.heading" = "blue"
+"markup.list" = "red"
+"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.text" = "red"
+"markup.quote" = "cyan"
+"markup.raw" = "green"
+
+"diff.plus" = { fg = "pale_green" }
+"diff.delta" = { fg = "gold" }
+"diff.minus" = { fg = "red" }
+
 "ui.background" = { fg = "light_gray", bg = "dark_gray2" }
 
 "ui.window" = { bg = "widget" }

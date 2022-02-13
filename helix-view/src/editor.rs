@@ -1,7 +1,9 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::SCRATCH_BUFFER_NAME,
+    document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::{CursorKind, Rect},
+    info::Info,
+    input::KeyEvent,
     theme::{self, Theme},
     tree::{self, Tree},
     Document, DocumentId, View, ViewId,
@@ -22,7 +24,7 @@ use std::{
 
 use tokio::time::{sleep, Duration, Instant, Sleep};
 
-use anyhow::{bail, Context, Error};
+use anyhow::{bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
@@ -30,7 +32,7 @@ use helix_core::syntax;
 use helix_core::{Position, Selection};
 use helix_dap as dap;
 
-use serde::Deserialize;
+use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize};
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -40,7 +42,7 @@ where
     Ok(Duration::from_millis(millis))
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
     /// IgnoreOptions
@@ -80,7 +82,7 @@ impl Default for FilePickerConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
@@ -95,8 +97,6 @@ pub struct Config {
     pub line_number: LineNumber,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
-    /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
-    pub smart_case: bool,
     /// Automatic insertion of pairs to parentheses, brackets, etc. Defaults to true.
     pub auto_pairs: bool,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
@@ -108,16 +108,99 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
+    /// Shape for cursor in each mode
+    pub cursor_shape: CursorShapeConfig,
+    /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
+    pub true_color: bool,
+    /// Search configuration.
+    #[serde(default)]
+    pub search: SearchConfig,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct SearchConfig {
+    /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
+    pub smart_case: bool,
+    /// Whether the search should wrap after depleting the matches. Default to true.
+    pub wrap_around: bool,
+}
+
+// Cursor shape is read and used on every rendered frame and so needs
+// to be fast. Therefore we avoid a hashmap and use an enum indexed array.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CursorShapeConfig([CursorKind; 3]);
+
+impl CursorShapeConfig {
+    pub fn from_mode(&self, mode: Mode) -> CursorKind {
+        self.get(mode as usize).copied().unwrap_or_default()
+    }
+}
+
+impl<'de> Deserialize<'de> for CursorShapeConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let m = HashMap::<Mode, CursorKind>::deserialize(deserializer)?;
+        let into_cursor = |mode: Mode| m.get(&mode).copied().unwrap_or_default();
+        Ok(CursorShapeConfig([
+            into_cursor(Mode::Normal),
+            into_cursor(Mode::Select),
+            into_cursor(Mode::Insert),
+        ]))
+    }
+}
+
+impl Serialize for CursorShapeConfig {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.len()))?;
+        let modes = [Mode::Normal, Mode::Select, Mode::Insert];
+        for mode in modes {
+            map.serialize_entry(&mode, &self.from_mode(mode))?;
+        }
+        map.end()
+    }
+}
+
+impl std::ops::Deref for CursorShapeConfig {
+    type Target = [CursorKind; 3];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Default for CursorShapeConfig {
+    fn default() -> Self {
+        Self([CursorKind::Block; 3])
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LineNumber {
     /// Show absolute line number
     Absolute,
 
-    /// Show relative line number to the primary cursor
+    /// If focused and in normal/select mode, show relative line number to the primary cursor.
+    /// If unfocused or in insert mode, show absolute line number.
     Relative,
+}
+
+impl std::str::FromStr for LineNumber {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "absolute" | "abs" => Ok(Self::Absolute),
+            "relative" | "rel" => Ok(Self::Relative),
+            _ => anyhow::bail!("Line number can only be `absolute` or `relative`."),
+        }
+    }
 }
 
 impl Default for Config {
@@ -133,13 +216,24 @@ impl Default for Config {
             },
             line_number: LineNumber::Absolute,
             middle_click_paste: true,
-            smart_case: true,
             auto_pairs: true,
             auto_completion: true,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            cursor_shape: CursorShapeConfig::default(),
+            true_color: false,
+            search: SearchConfig::default(),
+        }
+    }
+}
+
+impl Default for SearchConfig {
+    fn default() -> Self {
+        Self {
+            wrap_around: true,
+            smart_case: true,
         }
     }
 }
@@ -177,6 +271,7 @@ pub struct Editor {
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: Option<char>,
     pub registers: Registers,
+    pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
 
@@ -190,6 +285,7 @@ pub struct Editor {
     pub theme_loader: Arc<theme::Loader>,
 
     pub status_msg: Option<(String, Severity)>,
+    pub autoinfo: Option<Info>,
 
     pub config: Config,
 
@@ -225,6 +321,7 @@ impl Editor {
             documents: BTreeMap::new(),
             count: None,
             selected_register: None,
+            macro_recording: None,
             theme: theme_loader.default(),
             language_servers,
             debugger: None,
@@ -235,6 +332,7 @@ impl Editor {
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
+            autoinfo: None,
             idle_timer: Box::pin(sleep(config.idle_timeout)),
             last_motion: None,
             config,
@@ -275,31 +373,16 @@ impl Editor {
         }
 
         let scopes = theme.scopes();
-        for config in self
-            .syn_loader
-            .language_configs_iter()
-            .filter(|cfg| cfg.is_highlight_initialized())
-        {
-            config.reconfigure(scopes);
-        }
+        self.syn_loader.set_scopes(scopes.to_vec());
 
         self.theme = theme;
         self._refresh();
     }
 
-    pub fn set_theme_from_name(&mut self, theme: &str) -> anyhow::Result<()> {
-        let theme = self
-            .theme_loader
-            .load(theme.as_ref())
-            .with_context(|| format!("failed setting theme `{}`", theme))?;
-        self.set_theme(theme);
-        Ok(())
-    }
-
     /// Refreshes the language server for a given document
     pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
         let doc = self.documents.get_mut(&doc_id)?;
-        doc.detect_language(Some(&self.theme), &self.syn_loader);
+        doc.detect_language(self.syn_loader.clone());
         Self::launch_language_server(&mut self.language_servers, doc)
     }
 
@@ -323,11 +406,8 @@ impl Editor {
                 if let Some(language_server) = doc.language_server() {
                     tokio::spawn(language_server.text_document_did_close(doc.identifier()));
                 }
-                let language_id = doc
-                    .language()
-                    .and_then(|s| s.split('.').last()) // source.rust
-                    .map(ToOwned::to_owned)
-                    .unwrap_or_default();
+
+                let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
                 // TODO: this now races with on_init code if the init happens too quickly
                 tokio::spawn(language_server.text_document_did_open(
@@ -394,7 +474,8 @@ impl Editor {
                         .tree
                         .traverse()
                         .any(|(_, v)| v.doc == doc.id && v.id != view.id);
-                let view = view_mut!(self);
+
+                let (view, doc) = current!(self);
                 if remove_empty_scratch {
                     // Copy `doc.id` into a variable before calling `self.documents.remove`, which requires a mutable
                     // borrow, invalidating direct access to `doc.id`.
@@ -403,7 +484,16 @@ impl Editor {
                 } else {
                     let jump = (view.doc, doc.selection(view.id).clone());
                     view.jumps.push(jump);
-                    view.last_accessed_doc = Some(view.doc);
+                    // Set last accessed doc if it is a different document
+                    if doc.id != id {
+                        view.last_accessed_doc = Some(view.doc);
+                        // Set last modified doc if modified and last modified doc is different
+                        if std::mem::take(&mut doc.modified_since_accessed)
+                            && view.last_modified_docs[0] != Some(view.doc)
+                        {
+                            view.last_modified_docs = [Some(view.doc), view.last_modified_docs[0]];
+                        }
+                    }
                 }
 
                 let view_id = view.id;
@@ -471,7 +561,7 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::open(&path, None, Some(&self.theme), Some(&self.syn_loader))?;
+            let mut doc = Document::open(&path, None, Some(self.syn_loader.clone()))?;
 
             let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
 
@@ -629,9 +719,10 @@ impl Editor {
             let inner = view.inner_area();
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            (Some(pos), CursorKind::Hidden)
+            let cursorkind = self.config.cursor_shape.from_mode(doc.mode());
+            (Some(pos), cursorkind)
         } else {
-            (None, CursorKind::Hidden)
+            (None, CursorKind::default())
         }
     }
 

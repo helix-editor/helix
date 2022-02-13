@@ -19,6 +19,7 @@
 "function" = { fg = "green1", modifiers = ["bold"] }
 "function.macro" = "aqua1"
 "function.builtin" = "yellow1"
+"tag" = "red1"
 "comment" = { fg = "gray1", modifiers = ["italic"]  }
 "constant" = { fg = "purple1" }
 "constant.builtin" = { fg = "purple1", modifiers = ["bold"] }
@@ -27,6 +28,10 @@
 "constant.character.escape" = { fg = "fg2", modifiers = ["bold"] }
 "label" = "aqua1"
 "module" = "aqua1"
+
+"diff.plus" = "green1"
+"diff.delta" = "orange1"
+"diff.minus" = "red1"
 
 "warning" = { fg = "orange1", bg = "bg1" }
 "error" = { fg = "red1", bg = "bg1" }
@@ -50,6 +55,13 @@
 "ui.menu.selected" = { fg = "bg2", bg = "blue1", modifiers = ["bold"] }
 
 "diagnostic" = { modifiers = ["underlined"] }
+
+"markup.heading" = "aqua1"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.link.url" = { fg = "green1", modifiers = ["underlined"] }
+"markup.link.text" = "red1"
+"markup.raw" = "red1"
 
 [palette]
 bg0 = "#282828" # main background

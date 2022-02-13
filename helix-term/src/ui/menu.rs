@@ -14,11 +14,18 @@ use helix_view::{graphics::Rect, Editor};
 use tui::layout::Constraint;
 
 pub trait Item {
-    fn sort_text(&self) -> &str;
-    fn filter_text(&self) -> &str;
-
     fn label(&self) -> &str;
-    fn row(&self) -> Row;
+
+    fn sort_text(&self) -> &str {
+        self.label()
+    }
+    fn filter_text(&self) -> &str {
+        self.label()
+    }
+
+    fn row(&self) -> Row {
+        Row::new(vec![Cell::from(self.label())])
+    }
 }
 
 pub struct Menu<T: Item> {
@@ -132,15 +139,23 @@ impl<T: Item> Menu<T> {
 
             acc
         });
-        let len = max_lens.iter().sum::<usize>() + n + 1; // +1: reserve some space for scrollbar
+
+        let height = self.matches.len().min(10).min(viewport.1 as usize);
+        // do all the matches fit on a single screen?
+        let fits = self.matches.len() <= height;
+
+        let mut len = max_lens.iter().sum::<usize>() + n;
+
+        if !fits {
+            len += 1; // +1: reserve some space for scrollbar
+        }
+
         let width = len.min(viewport.0 as usize);
 
         self.widths = max_lens
             .into_iter()
             .map(|len| Constraint::Length(len as u16))
             .collect();
-
-        let height = self.matches.len().min(10).min(viewport.1 as usize);
 
         self.size = (width as u16, height as u16);
 
@@ -190,7 +205,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.pop();
         })));
@@ -202,7 +217,7 @@ impl<T: Item + 'static> Component for Menu<T> {
                 return close_fn;
             }
             // arrow up/ctrl-p/shift-tab prev completion choice (including updating the doc)
-            shift!(BackTab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
+            shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
                 self.move_up();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
@@ -297,12 +312,14 @@ impl<T: Item + 'static> Component for Menu<T> {
             },
         );
 
+        let fits = len <= win_height;
+
         for (i, _) in (scroll..(scroll + win_height).min(len)).enumerate() {
             let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
 
-            if is_marked {
-                let cell = surface.get_mut(area.x + area.width - 2, area.y + i as u16);
-                cell.set_symbol("▐ ");
+            if !fits && is_marked {
+                let cell = &mut surface[(area.x + area.width - 2, area.y + i as u16)];
+                cell.set_symbol("▐");
                 // cell.set_style(selected);
                 // cell.set_style(if is_marked { selected } else { style });
             }

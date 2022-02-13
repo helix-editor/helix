@@ -7,6 +7,7 @@ use crate::{
         ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, next_grapheme_boundary,
         prev_grapheme_boundary,
     },
+    movement::Direction,
     Assoc, ChangeSet, RopeSlice,
 };
 use smallvec::{smallvec, SmallVec};
@@ -82,6 +83,13 @@ impl Range {
         std::cmp::max(self.anchor, self.head)
     }
 
+    /// Total length of the range.
+    #[inline]
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.to() - self.from()
+    }
+
     /// The (inclusive) range of lines that the range overlaps.
     #[inline]
     #[must_use]
@@ -102,6 +110,27 @@ impl Range {
         self.anchor == self.head
     }
 
+    /// `Direction::Backward` when head < anchor.
+    /// `Direction::Backward` otherwise.
+    #[inline]
+    #[must_use]
+    pub fn direction(&self) -> Direction {
+        if self.head < self.anchor {
+            Direction::Backward
+        } else {
+            Direction::Forward
+        }
+    }
+
+    // flips the direction of the selection
+    pub fn flip(&self) -> Self {
+        Self {
+            anchor: self.head,
+            head: self.anchor,
+            horiz: self.horiz,
+        }
+    }
+
     /// Check two ranges for overlap.
     #[must_use]
     pub fn overlaps(&self, other: &Self) -> bool {
@@ -109,6 +138,11 @@ impl Range {
         // at it after transforming the slower version that explicitly
         // enumerated more cases.  The unit tests are thorough.
         self.from() == other.from() || (self.to() > other.from() && other.to() > self.from())
+    }
+
+    #[inline]
+    pub fn contains_range(&self, other: &Self) -> bool {
+        self.from() <= other.from() && self.to() >= other.to()
     }
 
     pub fn contains(&self, pos: usize) -> bool {
@@ -515,6 +549,39 @@ impl Selection {
     pub fn len(&self) -> usize {
         self.ranges.len()
     }
+
+    // returns true if self ⊇ other
+    pub fn contains(&self, other: &Selection) -> bool {
+        // can't contain other if it is larger
+        if other.len() > self.len() {
+            return false;
+        }
+
+        let (mut iter_self, mut iter_other) = (self.iter(), other.iter());
+        let (mut ele_self, mut ele_other) = (iter_self.next(), iter_other.next());
+
+        loop {
+            match (ele_self, ele_other) {
+                (Some(ra), Some(rb)) => {
+                    if !ra.contains_range(rb) {
+                        // `self` doesn't contain next element from `other`, advance `self`, we need to match all from `other`
+                        ele_self = iter_self.next();
+                    } else {
+                        // matched element from `other`, advance `other`
+                        ele_other = iter_other.next();
+                    };
+                }
+                (None, Some(_)) => {
+                    // exhausted `self`, we can't match the reminder of `other`
+                    return false;
+                }
+                (_, None) => {
+                    // no elements from `other` left to match, `self` contains `other`
+                    return true;
+                }
+            }
+        }
+    }
 }
 
 impl<'a> IntoIterator for &'a Selection {
@@ -699,16 +766,16 @@ mod test {
     fn test_contains() {
         let range = Range::new(10, 12);
 
-        assert_eq!(range.contains(9), false);
-        assert_eq!(range.contains(10), true);
-        assert_eq!(range.contains(11), true);
-        assert_eq!(range.contains(12), false);
-        assert_eq!(range.contains(13), false);
+        assert!(!range.contains(9));
+        assert!(range.contains(10));
+        assert!(range.contains(11));
+        assert!(!range.contains(12));
+        assert!(!range.contains(13));
 
         let range = Range::new(9, 6);
-        assert_eq!(range.contains(9), false);
-        assert_eq!(range.contains(7), true);
-        assert_eq!(range.contains(6), true);
+        assert!(!range.contains(9));
+        assert!(range.contains(7));
+        assert!(range.contains(6));
     }
 
     #[test]
@@ -952,5 +1019,31 @@ mod test {
             result.fragments(text.slice(..)).collect::<Vec<_>>(),
             &["", "abcd", "efg", "rs", "xyz"]
         );
+    }
+    #[test]
+    fn test_selection_contains() {
+        fn contains(a: Vec<(usize, usize)>, b: Vec<(usize, usize)>) -> bool {
+            let sela = Selection::new(a.iter().map(|a| Range::new(a.0, a.1)).collect(), 0);
+            let selb = Selection::new(b.iter().map(|b| Range::new(b.0, b.1)).collect(), 0);
+            sela.contains(&selb)
+        }
+
+        // exact match
+        assert!(contains(vec!((1, 1)), vec!((1, 1))));
+
+        // larger set contains smaller
+        assert!(contains(vec!((1, 1), (2, 2), (3, 3)), vec!((2, 2))));
+
+        // multiple matches
+        assert!(contains(vec!((1, 1), (2, 2)), vec!((1, 1), (2, 2))));
+
+        // smaller set can't contain bigger
+        assert!(!contains(vec!((1, 1)), vec!((1, 1), (2, 2))));
+
+        assert!(contains(
+            vec!((1, 1), (2, 4), (5, 6), (7, 9), (10, 13)),
+            vec!((3, 4), (7, 9))
+        ));
+        assert!(!contains(vec!((1, 1), (5, 6)), vec!((1, 6))));
     }
 }

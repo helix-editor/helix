@@ -39,6 +39,20 @@
 "constant.numeric" = { fg = "#ae81ff" }
 "constant.character.escape" = { fg = "#ae81ff" }
 
+# TODO
+"markup.heading" = "blue"
+"markup.list" = "red"
+"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.text" = "red"
+"markup.quote" = "cyan"
+"markup.raw" = "green"
+
+"diff.plus" = { fg = "#a6e22e" }
+"diff.delta" = { fg = "#fd971f" }
+"diff.minus" = { fg = "#f92672" }
+
 "ui.background" = { fg = "text", bg = "background" }
 
 "ui.window" = { bg = "widget" }
@@ -65,7 +79,7 @@
 "warning" = { fg = "#cca700" }
 "error" = { fg = "#f48771" }
 "info" = { fg = "#75beff" }
-"hint" = { fg = "#eeeeeeb3" }
+"hint" = { fg = "#eeeeeb3" }
 
 diagnostic = { modifiers = ["underlined"] }
 

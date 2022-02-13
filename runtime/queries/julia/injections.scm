@@ -1,5 +1,5 @@
-; TODO: re-add when markdown is added.
-; ((triple_string) @markdown
-;   (#offset! @markdown 0 3 0 -3))
+((triple_string) @injection.content
+ (#set! injection.language "markdown"))
 
-(comment) @comment
+((comment) @injection.content
+ (#set! injection.language "comment"))

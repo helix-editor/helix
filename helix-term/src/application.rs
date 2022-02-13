@@ -1,10 +1,16 @@
-use helix_core::{merge_toml_values, syntax};
+use helix_core::{merge_toml_values, pos_at_coords, syntax, Selection};
 use helix_dap::{self as dap, Payload, Request};
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{editor::Breakpoint, theme, Editor};
+use serde_json::json;
 
 use crate::{
-    args::Args, commands::fetch_stack_trace, compositor::Compositor, config::Config, job::Jobs, ui,
+    args::Args,
+    commands::{align_view, apply_workspace_edit, fetch_stack_trace, Align},
+    compositor::Compositor,
+    config::Config,
+    job::Jobs,
+    ui,
 };
 
 use log::{error, warn};
@@ -78,17 +84,27 @@ impl Application {
             None => Ok(def_lang_conf),
         };
 
-        let theme = if let Some(theme) = &config.theme {
-            match theme_loader.load(theme) {
-                Ok(theme) => theme,
-                Err(e) => {
-                    log::warn!("failed to load theme `{}` - {}", theme, e);
+        let true_color = config.editor.true_color || crate::true_color();
+        let theme = config
+            .theme
+            .as_ref()
+            .and_then(|theme| {
+                theme_loader
+                    .load(theme)
+                    .map_err(|e| {
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        e
+                    })
+                    .ok()
+                    .filter(|theme| (true_color || theme.is_16_color()))
+            })
+            .unwrap_or_else(|| {
+                if true_color {
                     theme_loader.default()
+                } else {
+                    theme_loader.base16_default()
                 }
-            }
-        } else {
-            theme_loader.default()
-        };
+            });
 
         let syn_loader_conf: helix_core::syntax::Configuration = lang_conf
             .and_then(|conf| conf.try_into())
@@ -118,7 +134,7 @@ impl Application {
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
         } else if !args.files.is_empty() {
-            let first = &args.files[0]; // we know it's not empty
+            let first = &args.files[0].0; // we know it's not empty
             if first.is_dir() {
                 std::env::set_current_dir(&first)?;
                 editor.new_file(Action::VerticalSplit);
@@ -126,16 +142,25 @@ impl Application {
             } else {
                 let nr_of_files = args.files.len();
                 editor.open(first.to_path_buf(), Action::VerticalSplit)?;
-                for file in args.files {
+                for (file, pos) in args.files {
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
                             "expected a path to file, found a directory. (to open a directory pass it as first argument)"
                         ));
                     } else {
-                        editor.open(file.to_path_buf(), Action::Load)?;
+                        let doc_id = editor.open(file, Action::Load)?;
+                        // with Action::Load all documents have the same view
+                        let view_id = editor.tree.focus;
+                        let doc = editor.document_mut(doc_id).unwrap();
+                        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+                        doc.set_selection(view_id, pos);
                     }
                 }
                 editor.set_status(format!("Loaded {} files.", nr_of_files));
+                // align the view to center after all files are loaded,
+                // does not affect views without pos since it is at the top
+                let (view, doc) = current!(editor);
+                align_view(doc, view, Align::Center);
             }
         } else if stdin().is_tty() {
             editor.new_file(Action::VerticalSplit);
@@ -197,7 +222,6 @@ impl Application {
 
         loop {
             if self.editor.should_close() {
-                self.jobs.finish();
                 break;
             }
 
@@ -328,7 +352,7 @@ impl Application {
             None => return,
         };
         match payload {
-            Payload::Event(ev) => match ev {
+            Payload::Event(ev) => match *ev {
                 Event::Stopped(events::Stopped {
                     thread_id,
                     description,
@@ -529,12 +553,8 @@ impl Application {
 
                         // trigger textDocument/didOpen for docs that are already open
                         for doc in docs {
-                            // TODO: extract and share with editor.open
-                            let language_id = doc
-                                .language()
-                                .and_then(|s| s.split('.').last()) // source.rust
-                                .map(ToOwned::to_owned)
-                                .unwrap_or_default();
+                            let language_id =
+                                doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
                             tokio::spawn(language_server.text_document_did_open(
                                 doc.url().unwrap(),
@@ -549,6 +569,7 @@ impl Application {
                         let doc = self.editor.document_by_path_mut(&path);
 
                         if let Some(doc) = doc {
+                            let lang_conf = doc.language_config();
                             let text = doc.text();
 
                             let diagnostics = params
@@ -586,19 +607,31 @@ impl Application {
                                         return None;
                                     };
 
+                                    let severity =
+                                        diagnostic.severity.map(|severity| match severity {
+                                            DiagnosticSeverity::ERROR => Error,
+                                            DiagnosticSeverity::WARNING => Warning,
+                                            DiagnosticSeverity::INFORMATION => Info,
+                                            DiagnosticSeverity::HINT => Hint,
+                                            severity => unreachable!(
+                                                "unrecognized diagnostic severity: {:?}",
+                                                severity
+                                            ),
+                                        });
+
+                                    if let Some(lang_conf) = lang_conf {
+                                        if let Some(severity) = severity {
+                                            if severity < lang_conf.diagnostic_severity {
+                                                return None;
+                                            }
+                                        }
+                                    };
+
                                     Some(Diagnostic {
                                         range: Range { start, end },
                                         line: diagnostic.range.start.line as usize,
                                         message: diagnostic.message,
-                                        severity: diagnostic.severity.map(
-                                            |severity| match severity {
-                                                DiagnosticSeverity::ERROR => Error,
-                                                DiagnosticSeverity::WARNING => Warning,
-                                                DiagnosticSeverity::INFORMATION => Info,
-                                                DiagnosticSeverity::HINT => Hint,
-                                                severity => unimplemented!("{:?}", severity),
-                                            },
-                                        ),
+                                        severity,
                                         // code
                                         // source
                                     })
@@ -705,14 +738,6 @@ impl Application {
             Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
                 method, params, id, ..
             }) => {
-                let language_server = match self.editor.language_servers.get_by_id(server_id) {
-                    Some(language_server) => language_server,
-                    None => {
-                        warn!("can't find language server with id `{}`", server_id);
-                        return;
-                    }
-                };
-
                 let call = match MethodCall::parse(&method, params) {
                     Some(call) => call,
                     None => {
@@ -742,7 +767,41 @@ impl Application {
                         if spinner.is_stopped() {
                             spinner.start();
                         }
+                        let language_server =
+                            match self.editor.language_servers.get_by_id(server_id) {
+                                Some(language_server) => language_server,
+                                None => {
+                                    warn!("can't find language server with id `{}`", server_id);
+                                    return;
+                                }
+                            };
+
                         tokio::spawn(language_server.reply(id, Ok(serde_json::Value::Null)));
+                    }
+                    MethodCall::ApplyWorkspaceEdit(params) => {
+                        apply_workspace_edit(
+                            &mut self.editor,
+                            helix_lsp::OffsetEncoding::Utf8,
+                            &params.edit,
+                        );
+
+                        let language_server =
+                            match self.editor.language_servers.get_by_id(server_id) {
+                                Some(language_server) => language_server,
+                                None => {
+                                    warn!("can't find language server with id `{}`", server_id);
+                                    return;
+                                }
+                            };
+
+                        tokio::spawn(language_server.reply(
+                            id,
+                            Ok(json!(lsp::ApplyWorkspaceEditResponse {
+                                applied: true,
+                                failure_reason: None,
+                                failed_change: None,
+                            })),
+                        ));
                     }
                 }
             }
@@ -788,6 +847,8 @@ impl Application {
         }));
 
         self.event_loop().await;
+
+        self.jobs.finish().await;
 
         if self.editor.close_language_servers(None).await.is_err() {
             log::error!("Timed out waiting for language servers to shutdown");

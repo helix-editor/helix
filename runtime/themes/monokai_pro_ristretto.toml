@@ -1,0 +1,115 @@
+# Author : WindSoilder<WindSoilder@outlook.com>
+# The unofficial Monokai Pro theme, simply migrate from jetbrains monokai pro theme: https://github.com/subtheme-dev/monokai-pro
+# Credit goes to the original creator: https://monokai.pro
+
+"ui.linenr.selected" = { bg = "base3" }
+"ui.text.focus" = { fg = "yellow", modifiers= ["bold"] }
+"ui.menu.selected" = { fg = "base2", bg = "yellow" }
+
+"info" = "base8"
+"hint" = "base8"
+
+# background color
+"ui.background" = { bg = "base2" }
+"ui.statusline.inactive" = { fg = "base8", bg = "base8x0c" }
+
+# status bars, panels, modals, autocompletion
+"ui.statusline" = { bg = "base4" }
+"ui.popup" = { bg = "base3" }
+"ui.window" = { bg = "base3" }
+"ui.help" = { bg = "base3" }
+
+# active line, highlighting
+"ui.selection" = { bg = "base4" }
+"ui.cursor.match" = { bg = "base4" }
+
+# comments, nord3 based lighter color
+"comment" = { fg = "base5", modifiers = ["italic"] }
+"ui.linenr" = { fg = "base5" }
+
+# cursor, variables, constants, attributes, fields
+"ui.cursor.primary" = { fg = "base7", modifiers = ["reversed"] }
+"attribute" = "blue"
+"variable"  = "base8"
+"constant"  = "orange"
+"variable.builtin" = "red"
+"constant.builtin" = "red"
+"namespace" = "base8"
+
+# base text, punctuation
+"ui.text" = { fg = "base8" }
+"punctuation" = "base6"
+
+# classes, types, primiatives
+"type" = "green"
+"type.builtin" = { fg = "red"}
+"label" = "base8"
+
+# declaration, methods, routines
+"constructor" = "blue"
+"function" = "green"
+"function.macro" = { fg = "blue" }
+"function.builtin" = { fg = "cyan" }
+
+# operator, tags, units, punctuations
+"operator" = "red"
+"variable.other.member" = "base8"
+
+# keywords, special
+"keyword" = { fg = "red" }
+"keyword.directive" = "blue"
+"variable.parameter" = "#f59762"
+
+# error
+"error" = "red"
+
+# annotations, decorators
+"special" = "#f59762"
+"module" = "#f59762"
+
+# warnings, escape characters, regex
+"warning" = "orange"
+"constant.character.escape" = { fg = "base8" }
+
+# strings
+"string" = "yellow"
+
+# integer, floating point
+"constant.numeric" = "purple"
+
+# vcs
+"diff.plus" = "green"
+"diff.delta" = "orange"
+"diff.minus" = "red"
+
+# make diagnostic underlined, to distinguish with selection text.
+diagnostic = { modifiers = ["underlined"] }
+
+# markup highlight, no need for `markup.raw` and `markup.list`, make them to be default
+"markup.heading" = "green"
+"markup.bold" = { fg = "orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "orange", modifiers = ["italic"] }
+"markup.link.url" = { fg = "orange", modifiers = ["underlined"] }
+"markup.link.text" = "yellow"
+"markup.quote" = "green"
+
+[palette]
+# primary colors
+"red" = "#fd6883"
+"orange" = "#f38d70"
+"yellow" = "#f9cc6c"
+"green" = "#adda78"
+"blue" = "#85dacc"
+"purple" = "#a8a9eb"
+# base colors
+"base0" = "#191515"
+"base1" = "#211c1c"
+"base2" = "#2c2525"
+"base3" = "#403838"
+"base4" = "#5b5353"
+"base5" = "#72696a"
+"base6" = "#8c8384"
+"base7" = "#c3b7b8"
+"base8" = "#fff1f3"
+# variants
+"base8x0c" = "#352e2e"
