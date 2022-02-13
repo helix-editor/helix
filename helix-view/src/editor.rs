@@ -815,6 +815,9 @@ impl Editor {
                 }
                 Action::ReplaceDoc(view_id, doc_id) => {
                     self.replace_document_in_view(view_id, doc_id);
+
+                    let view = self.tree.get_mut(view_id);
+                    view.jumps.remove(&doc_id);
                 }
             }
         }
