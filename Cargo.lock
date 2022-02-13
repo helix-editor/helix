@@ -456,6 +456,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "toml",
+ "which",
 ]
 
 [[package]]

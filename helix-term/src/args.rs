@@ -7,6 +7,7 @@ pub struct Args {
     pub display_help: bool,
     pub display_version: bool,
     pub health: bool,
+    pub health_arg: Option<String>,
     pub load_tutor: bool,
     pub verbosity: u64,
     pub files: Vec<(PathBuf, Position)>,
@@ -15,18 +16,20 @@ pub struct Args {
 impl Args {
     pub fn parse_args() -> Result<Args> {
         let mut args = Args::default();
-        let argv: Vec<String> = std::env::args().collect();
-        let mut iter = argv.iter();
+        let mut argv = std::env::args().peekable();
 
-        iter.next(); // skip the program, we don't care about that
+        argv.next(); // skip the program, we don't care about that
 
-        for arg in &mut iter {
+        while let Some(arg) = argv.next() {
             match arg.as_str() {
                 "--" => break, // stop parsing at this point treat the remaining as files
                 "--version" => args.display_version = true,
                 "--help" => args.display_help = true,
                 "--tutor" => args.load_tutor = true,
-                "--health" => args.health = true,
+                "--health" => {
+                    args.health = true;
+                    args.health_arg = argv.next_if(|opt| !opt.starts_with('-'));
+                }
                 arg if arg.starts_with("--") => {
                     anyhow::bail!("unexpected double dash argument: {}", arg)
                 }
@@ -46,8 +49,8 @@ impl Args {
         }
 
         // push the remaining args, if any to the files
-        for arg in iter {
-            args.files.push(parse_file(arg));
+        for arg in argv {
+            args.files.push(parse_file(&arg));
         }
 
         Ok(args)

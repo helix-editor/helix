@@ -61,7 +61,8 @@ ARGS:
 FLAGS:
     -h, --help       Prints help information
     --tutor          Loads the tutorial
-    --health         Checks for potential errors in editor setup
+    --health [LANG]  Checks for potential errors in editor setup
+                     If given, checks for config errors in language LANG
     -v               Increases logging verbosity each use for up to 3 times
                      (default file: {})
     -V, --version    Prints version information
@@ -87,7 +88,11 @@ FLAGS:
     }
 
     if args.health {
-        helix_term::health::general();
+        if let Some(lang) = args.health_arg {
+            helix_term::health::language(lang);
+        } else {
+            helix_term::health::general();
+        }
         std::process::exit(0);
     }
 
