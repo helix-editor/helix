@@ -155,11 +155,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         files,
         move |path: &PathBuf| {
             // format_fn
-            path.strip_prefix(&root)
-                .unwrap_or(path)
-                .to_str()
-                .unwrap()
-                .into()
+            path.strip_prefix(&root).unwrap_or(path).to_string_lossy()
         },
         move |editor: &mut Editor, path: &PathBuf, action| {
             editor
@@ -288,7 +284,7 @@ pub mod completers {
         } else {
             let file_name = path
                 .file_name()
-                .map(|file| file.to_str().unwrap().to_owned());
+                .and_then(|file| file.to_str().map(|path| path.to_owned()));
 
             let path = match path.parent() {
                 Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
@@ -331,7 +327,7 @@ pub mod completers {
                         path.push("");
                     }
 
-                    let path = path.to_str().unwrap().to_owned();
+                    let path = path.to_str()?.to_owned();
                     Some((end.clone(), Cow::from(path)))
                 })
             }) // TODO: unwrap or skip

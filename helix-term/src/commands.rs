@@ -1774,9 +1774,8 @@ fn global_search(cx: &mut Context) {
                     all_matches,
                     move |(_line_num, path)| {
                         let relative_path = helix_core::path::get_relative_path(path)
-                            .to_str()
-                            .unwrap()
-                            .to_owned();
+                            .to_string_lossy()
+                            .into_owned();
                         if current_path.as_ref().map(|p| p == path).unwrap_or(false) {
                             format!("{} (*)", relative_path).into()
                         } else {
@@ -3446,9 +3445,8 @@ fn workspace_symbol_picker(cx: &mut Context) {
                             (&symbol.name).into()
                         } else {
                             let relative_path = helix_core::path::get_relative_path(path.as_path())
-                                .to_str()
-                                .unwrap()
-                                .to_owned();
+                                .to_string_lossy()
+                                .into_owned();
                             format!("{} ({})", &symbol.name, relative_path).into()
                         }
                     },
@@ -4119,8 +4117,8 @@ fn goto_impl(
                                         .map(|path| path.to_path_buf())
                                         .unwrap_or(path)
                                 })
+                                .map(|path| Cow::from(path.to_string_lossy().into_owned()))
                                 .ok()
-                                .and_then(|path| path.to_str().map(|path| path.to_owned().into()))
                         })
                         .flatten()
                         .unwrap_or_else(|| location.uri.as_str().into());
