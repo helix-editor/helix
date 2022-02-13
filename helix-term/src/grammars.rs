@@ -6,11 +6,13 @@ use std::{
     process::Command,
 };
 
-use std::sync::mpsc::channel;
+use helix_core::syntax::DYLIB_EXTENSION;
 
-fn collect_tree_sitter_dirs(ignore: &[String]) -> Result<Vec<String>> {
+const BUILD_TARGET: &str = env!("BUILD_TARGET");
+
+pub fn collect_tree_sitter_dirs(ignore: &[String]) -> Result<Vec<String>> {
     let mut dirs = Vec::new();
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("languages");
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../helix-syntax/languages");
 
     for entry in fs::read_dir(path)? {
         let entry = entry?;
@@ -31,12 +33,6 @@ fn collect_tree_sitter_dirs(ignore: &[String]) -> Result<Vec<String>> {
 
     Ok(dirs)
 }
-
-#[cfg(unix)]
-const DYLIB_EXTENSION: &str = "so";
-
-#[cfg(windows)]
-const DYLIB_EXTENSION: &str = "dll";
 
 fn build_library(src_path: &Path, language: &str) -> Result<()> {
     let header_path = src_path;
@@ -65,7 +61,12 @@ fn build_library(src_path: &Path, language: &str) -> Result<()> {
         return Ok(());
     }
     let mut config = cc::Build::new();
-    config.cpp(true).opt_level(2).cargo_metadata(false);
+    config
+        .cpp(true)
+        .opt_level(2)
+        .cargo_metadata(false)
+        .host(BUILD_TARGET)
+        .target(BUILD_TARGET);
     let compiler = config.get_compiler();
     let mut command = Command::new(compiler.path());
     command.current_dir(src_path);
@@ -148,9 +149,10 @@ fn mtime(path: &Path) -> Result<SystemTime> {
     Ok(fs::metadata(path)?.modified()?)
 }
 
-fn build_dir(dir: &str, language: &str) {
+pub fn build_dir(dir: &str, language: &str) {
     println!("Build language {}", language);
-    if PathBuf::from("languages")
+    if PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../helix-syntax/languages")
         .join(dir)
         .read_dir()
         .unwrap()
@@ -158,49 +160,16 @@ fn build_dir(dir: &str, language: &str) {
         .is_none()
     {
         eprintln!(
-            "The directory {} is empty, you probably need to use 'git submodule update --init --recursive'?",
+            "The directory {} is empty, you probably need to use './scripts/grammars sync'?",
             dir
         );
         std::process::exit(1);
     }
 
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("languages")
+        .join("../helix-syntax/languages")
         .join(dir)
         .join("src");
 
     build_library(&path, language).unwrap();
-}
-
-fn main() {
-    let ignore = vec![
-        "tree-sitter-typescript".to_string(),
-        "tree-sitter-ocaml".to_string(),
-    ];
-    let dirs = collect_tree_sitter_dirs(&ignore).unwrap();
-
-    let mut n_jobs = 0;
-    let pool = threadpool::Builder::new().build(); // by going through the builder, it'll use num_cpus
-    let (tx, rx) = channel();
-
-    for dir in dirs {
-        let tx = tx.clone();
-        n_jobs += 1;
-
-        pool.execute(move || {
-            let language = &dir.strip_prefix("tree-sitter-").unwrap();
-            build_dir(&dir, language);
-
-            // report progress
-            tx.send(1).unwrap();
-        });
-    }
-    pool.join();
-    // drop(tx);
-    assert_eq!(rx.try_iter().sum::<usize>(), n_jobs);
-
-    build_dir("tree-sitter-typescript/tsx", "tsx");
-    build_dir("tree-sitter-typescript/typescript", "typescript");
-    build_dir("tree-sitter-ocaml/ocaml", "ocaml");
-    build_dir("tree-sitter-ocaml/interface", "ocaml-interface")
 }

@@ -1,11 +1,10 @@
 
-| Crate        | Description                                            |
-| -----------  | -----------                                            |
-| helix-core   | Core editing primitives, functional.                   |
-| helix-syntax | Tree-sitter grammars                                   |
-| helix-lsp    | Language server client                                 |
-| helix-view   | UI abstractions for use in backends, imperative shell. |
-| helix-term   | Terminal UI                                            |
+| Crate        | Description                                             |
+| -----------  | -----------                                             |
+| helix-core   | Core editing primitives, functional.                    |
+| helix-lsp    | Language server client                                  |
+| helix-view   | UI abstractions for use in backends, imperative shell.  |
+| helix-term   | Terminal UI                                             |
 | helix-tui    | TUI primitives, forked from tui-rs, inspired by Cursive |
 
 

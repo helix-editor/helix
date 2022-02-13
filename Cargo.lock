@@ -358,11 +358,12 @@ dependencies = [
 name = "helix-core"
 version = "0.6.0"
 dependencies = [
+ "anyhow",
  "arc-swap",
  "chrono",
  "encoding_rs",
  "etcetera",
- "helix-syntax",
+ "libloading",
  "log",
  "once_cell",
  "quickcheck",
@@ -416,21 +417,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "helix-syntax"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "cc",
- "libloading",
- "threadpool",
- "tree-sitter",
-]
-
-[[package]]
 name = "helix-term"
 version = "0.6.0"
 dependencies = [
  "anyhow",
+ "cc",
  "chrono",
  "content_inspector",
  "crossterm",
@@ -454,6 +445,7 @@ dependencies = [
  "serde_json",
  "signal-hook",
  "signal-hook-tokio",
+ "threadpool",
  "tokio",
  "tokio-stream",
  "toml",

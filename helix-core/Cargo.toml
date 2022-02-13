@@ -13,8 +13,6 @@ include = ["src/**/*", "README.md"]
 [features]
 
 [dependencies]
-helix-syntax = { version = "0.6", path = "../helix-syntax" }
-
 ropey = "1.3"
 smallvec = "1.8"
 smartstring = "1.0.0"
@@ -39,6 +37,9 @@ etcetera = "0.3"
 encoding_rs = "0.8"
 
 chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }
+
+libloading = "0.7"
+anyhow = "1"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
