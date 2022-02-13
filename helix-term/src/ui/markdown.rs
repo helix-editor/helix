@@ -21,37 +21,29 @@ pub struct Markdown {
     contents: String,
 
     config_loader: Arc<syntax::Loader>,
-
-    block_style: String,
-    heading_styles: [String; 6],
 }
 
 // TODO: pre-render and self reference via Pin
 // better yet, just use Tendril + subtendril for references
 
 impl Markdown {
+    // theme keys, including fallbacks
+    const TEXT_STYLE: [&'static str; 2] = ["ui.text", "ui"];
+    const BLOCK_STYLE: [&'static str; 3] = ["markup.raw.inline", "markup.raw", "markup"];
+    const HEADING_STYLES: [[&'static str; 3]; 6] = [
+        ["markup.heading.1", "markup.heading", "markup"],
+        ["markup.heading.2", "markup.heading", "markup"],
+        ["markup.heading.3", "markup.heading", "markup"],
+        ["markup.heading.4", "markup.heading", "markup"],
+        ["markup.heading.5", "markup.heading", "markup"],
+        ["markup.heading.6", "markup.heading", "markup"],
+    ];
+
     pub fn new(contents: String, config_loader: Arc<syntax::Loader>) -> Self {
         Self {
             contents,
             config_loader,
-            block_style: "markup.raw.inline".into(),
-            heading_styles: [
-                "markup.heading.1".into(),
-                "markup.heading.2".into(),
-                "markup.heading.3".into(),
-                "markup.heading.4".into(),
-                "markup.heading.5".into(),
-                "markup.heading.6".into(),
-            ],
         }
-    }
-
-    pub fn style_group(mut self, suffix: &str) -> Self {
-        self.block_style = format!("markup.raw.inline.{}", suffix);
-        for i in 0..self.heading_styles.len() {
-            self.heading_styles[i] = format!("markup.heading.{}.{}", i + 1, suffix);
-        }
-        self
     }
 
     fn parse(&self, theme: Option<&Theme>) -> tui::text::Text<'_> {
@@ -76,16 +68,16 @@ impl Markdown {
             })
         }
 
-        let get_theme = |key: &str| {
-            theme
-                .map(|theme| theme.try_get(key))
-                .flatten()
-                .unwrap_or_default()
+        let get_theme = |keys: &[&str]| match theme {
+            Some(theme) => keys
+                .iter()
+                .find_map(|key| theme.try_get(key))
+                .unwrap_or_default(),
+            None => Default::default(),
         };
-        let text_style = get_theme(&self.text_style);
-        let code_style = get_theme(&self.block_style);
-        let heading_styles: Vec<Style> = self
-            .heading_styles
+        let text_style = get_theme(&Self::TEXT_STYLE);
+        let code_style = get_theme(&Self::BLOCK_STYLE);
+        let heading_styles: Vec<Style> = Self::HEADING_STYLES
             .iter()
             .map(|key| get_theme(key))
             .collect();
