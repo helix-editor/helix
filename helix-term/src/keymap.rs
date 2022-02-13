@@ -659,7 +659,7 @@ impl Default for Keymaps {
                 "S" => workspace_symbol_picker,
                 "a" => code_action,
                 "'" => last_picker,
-                "d" => { "Debug" sticky=true
+                "d" => { "Debug (experimental)" sticky=true
                     "l" => dap_launch,
                     "b" => dap_toggle_breakpoint,
                     "c" => dap_continue,
