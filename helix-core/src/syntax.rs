@@ -7,7 +7,9 @@ use crate::{
     Rope, RopeSlice, Tendril,
 };
 
-pub use helix_syntax::get_language;
+use anyhow::{Context, Result};
+use libloading::{Library, Symbol};
+use tree_sitter::Language;
 
 use arc_swap::{ArcSwap, Guard};
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
@@ -24,6 +26,34 @@ use std::{
 
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
+
+#[cfg(unix)]
+pub const DYLIB_EXTENSION: &str = "so";
+
+#[cfg(windows)]
+pub const DYLIB_EXTENSION: &str = "dll";
+
+fn replace_dashes_with_underscores(name: &str) -> String {
+    name.replace('-', "_")
+}
+
+pub fn get_language(runtime_path: &std::path::Path, name: &str) -> Result<Language> {
+    let name = name.to_ascii_lowercase();
+    let mut library_path = runtime_path.join("grammars").join(&name);
+    library_path.set_extension(DYLIB_EXTENSION);
+
+    let library = unsafe { Library::new(&library_path) }
+        .with_context(|| format!("Error opening dynamic library {:?}", &library_path))?;
+    let language_fn_name = format!("tree_sitter_{}", replace_dashes_with_underscores(&name));
+    let language = unsafe {
+        let language_fn: Symbol<unsafe extern "C" fn() -> Language> = library
+            .get(language_fn_name.as_bytes())
+            .with_context(|| format!("Failed to load symbol {}", language_fn_name))?;
+        language_fn()
+    };
+    std::mem::forget(library);
+    Ok(language)
+}
 
 fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
 where
@@ -426,7 +456,7 @@ impl LanguageConfiguration {
                 &injections_query,
                 &locals_query,
             )
-            .unwrap(); // TODO: avoid panic
+            .unwrap_or_else(|query_error| panic!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --fetch-grammars' and 'hx --build-grammars'. This query could not be parsed: {:?}", self.language_id, query_error));
 
             config.configure(scopes);
             Some(Arc::new(config))
@@ -2023,7 +2053,7 @@ mod test {
         );
 
         let loader = Loader::new(Configuration { language: vec![] });
-        let language = get_language(&crate::RUNTIME_DIR, "Rust").unwrap();
+        let language = get_language("Rust").unwrap();
 
         let query = Query::new(language, query_str).unwrap();
         let textobject = TextObjectQuery { query };
