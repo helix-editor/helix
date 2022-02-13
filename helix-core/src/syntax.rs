@@ -54,6 +54,7 @@ where
 #[serde(deny_unknown_fields)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
+    pub grammar: Vec<GrammarConfiguration>,
 }
 
 // largely based on tree-sitter/cli/src/loader.rs
@@ -237,6 +238,29 @@ pub struct IndentQuery {
     #[serde(default)]
     #[serde(skip_serializing_if = "HashSet::is_empty")]
     pub outdent: HashSet<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GrammarConfiguration {
+    #[serde(rename = "name")]
+    pub grammar_id: String, // c-sharp, rust
+    pub source: GrammarSource,
+    pub path: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+#[serde(untagged)]
+pub enum GrammarSource {
+    Local {
+        path: String,
+    },
+    Git {
+        #[serde(rename = "git")]
+        remote: String,
+        #[serde(rename = "rev")]
+        revision: String,
+    },
 }
 
 #[derive(Debug)]
@@ -2055,7 +2079,10 @@ mod test {
         .map(String::from)
         .collect();
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(Configuration {
+            language: vec![],
+            grammar: vec![],
+        });
 
         let language = get_language(&crate::RUNTIME_DIR, "Rust").unwrap();
         let config = HighlightConfiguration::new(
