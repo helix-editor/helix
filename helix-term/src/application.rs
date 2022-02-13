@@ -9,7 +9,7 @@ use crate::{
     compositor::Compositor,
     config::Config,
     job::Jobs,
-    ui,
+    ui::{self, overlay::overlayed},
 };
 
 use log::{error, warn};
@@ -138,7 +138,8 @@ impl Application {
             if first.is_dir() {
                 std::env::set_current_dir(&first)?;
                 editor.new_file(Action::VerticalSplit);
-                compositor.push(Box::new(ui::file_picker(".".into(), &config.editor)));
+                let picker = ui::file_picker(".".into(), &config.editor);
+                compositor.push(Box::new(overlayed(picker)));
             } else {
                 let nr_of_files = args.files.len();
                 editor.open(first.to_path_buf(), Action::VerticalSplit)?;

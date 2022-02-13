@@ -28,8 +28,6 @@ use helix_view::{
     Document, Editor,
 };
 
-use super::overlay::{clip_rect_relative, Overlay};
-
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
@@ -90,16 +88,13 @@ impl<T> FilePicker<T> {
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
-    ) -> Overlay<Self> {
-        Overlay {
-            content: Self {
-                picker: Picker::new(options, format_fn, callback_fn),
-                truncate_start: true,
-                preview_cache: HashMap::new(),
-                read_buffer: Vec::with_capacity(1024),
-                file_fn: Box::new(preview_fn),
-            },
-            calc_child_size: Box::new(|rect: Rect| clip_rect_relative(rect.clip_bottom(2), 90, 90)),
+    ) -> Self {
+        Self {
+            picker: Picker::new(options, format_fn, callback_fn),
+            truncate_start: true,
+            preview_cache: HashMap::new(),
+            read_buffer: Vec::with_capacity(1024),
+            file_fn: Box::new(preview_fn),
         }
     }
 

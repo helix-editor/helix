@@ -16,7 +16,15 @@ pub struct Overlay<T> {
     pub calc_child_size: Box<dyn Fn(Rect) -> Rect>,
 }
 
-pub(super) fn clip_rect_relative(rect: Rect, percent_horizontal: u8, percent_vertical: u8) -> Rect {
+/// Surrounds the component with a margin of 5% on each side, and an additional 2 rows at the bottom
+pub fn overlayed<T>(content: T) -> Overlay<T> {
+    Overlay {
+        content,
+        calc_child_size: Box::new(|rect: Rect| clip_rect_relative(rect.clip_bottom(2), 90, 90)),
+    }
+}
+
+fn clip_rect_relative(rect: Rect, percent_horizontal: u8, percent_vertical: u8) -> Rect {
     fn mul_and_cast(size: u16, factor: u8) -> u16 {
         ((size as u32) * (factor as u32) / 100).try_into().unwrap()
     }

@@ -39,7 +39,7 @@ use movement::Movement;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
-    ui::{self, FilePicker, Popup, Prompt, PromptEvent},
+    ui::{self, overlay::overlayed, FilePicker, Popup, Prompt, PromptEvent},
 };
 
 use crate::job::{self, Job, Jobs};
@@ -1785,7 +1785,7 @@ fn global_search(cx: &mut Context) {
                     },
                     |_editor, (line_num, path)| Some((path.clone(), Some((*line_num, *line_num)))),
                 );
-                compositor.push(Box::new(picker));
+                compositor.push(Box::new(overlayed(picker)));
             });
         Ok(call)
     };
@@ -3251,7 +3251,7 @@ fn file_picker(cx: &mut Context) {
     // We don't specify language markers, root will be the root of the current git repo
     let root = find_root(None, &[]).unwrap_or_else(|| PathBuf::from("./"));
     let picker = ui::file_picker(root, &cx.editor.config);
-    cx.push_layer(Box::new(picker));
+    cx.push_layer(Box::new(overlayed(picker)));
 }
 
 fn buffer_picker(cx: &mut Context) {
@@ -3319,7 +3319,7 @@ fn buffer_picker(cx: &mut Context) {
             Some((meta.path.clone()?, Some((line, line))))
         },
     );
-    cx.push_layer(Box::new(picker));
+    cx.push_layer(Box::new(overlayed(picker)));
 }
 
 fn symbol_picker(cx: &mut Context) {
@@ -3396,8 +3396,8 @@ fn symbol_picker(cx: &mut Context) {
                         Some((path, line))
                     },
                 );
-                picker.content.truncate_start = false;
-                compositor.push(Box::new(picker))
+                picker.truncate_start = false;
+                compositor.push(Box::new(overlayed(picker)))
             }
         },
     )
@@ -3456,8 +3456,8 @@ fn workspace_symbol_picker(cx: &mut Context) {
                         Some((path, line))
                     },
                 );
-                picker.content.truncate_start = false;
-                compositor.push(Box::new(picker))
+                picker.truncate_start = false;
+                compositor.push(Box::new(overlayed(picker)))
             }
         },
     )
@@ -4117,7 +4117,7 @@ fn goto_impl(
                     Some((path, line))
                 },
             );
-            compositor.push(Box::new(picker));
+            compositor.push(Box::new(overlayed(picker)));
         }
     }
 }
