@@ -226,3 +226,6 @@
 	path = helix-syntax/languages/tree-sitter-rescript
 	url = https://github.com/jaredramirez/tree-sitter-rescript
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-erlang"]
+	path = helix-syntax/languages/tree-sitter-erlang
+	url = https://github.com/the-mikedavis/tree-sitter-erlang

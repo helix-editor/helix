@@ -11,6 +11,7 @@
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | elixir | ✓ |  |  | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
+| erlang | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |
 | git-commit | ✓ |  |  |  |
 | git-config | ✓ |  |  |  |
