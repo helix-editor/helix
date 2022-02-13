@@ -3659,13 +3659,8 @@ pub fn command_palette(cx: &mut Context) {
     cx.callback = Some(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
             let doc = doc_mut!(cx.editor);
-            let keymap = compositor
-                .find::<ui::EditorView>()
-                .unwrap()
-                .keymaps
-                .get(&doc.mode)
-                .unwrap()
-                .reverse_map();
+            let keymap =
+                compositor.find::<ui::EditorView>().unwrap().keymaps[&doc.mode].reverse_map();
 
             let mut commands: Vec<MappableCommand> = MappableCommand::STATIC_COMMAND_LIST.into();
             commands.extend(
