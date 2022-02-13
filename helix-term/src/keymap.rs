@@ -367,7 +367,6 @@ impl Keymap {
                         .or_default()
                         .push(keys.clone()),
                 },
-                KeyTrie::Sequence(_) => todo!(),
                 KeyTrie::Node(next) => {
                     for (key, trie) in &next.map {
                         keys.push(*key);
@@ -375,6 +374,7 @@ impl Keymap {
                         keys.pop();
                     }
                 }
+                KeyTrie::Sequence(_) => {}
             };
         }
 
