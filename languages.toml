@@ -535,6 +535,7 @@ scope = "source.make"
 file-types = ["Makefile", "makefile", "justfile", ".justfile"]
 roots =[]
 comment-token = "#"
+indent = { tab-width = 4, unit = "\t" }
 
 [[language]]
 name = "glsl"
