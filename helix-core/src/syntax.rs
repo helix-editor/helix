@@ -108,7 +108,7 @@ pub struct LanguageConfiguration {
     #[serde(default)]
     pub diagnostic_severity: Severity,
 
-    pub tree_sitter_library: Option<String>, // tree-sitter library name, defaults to language_id
+    pub grammar: Option<String>, // tree-sitter grammar name, defaults to language_id
 
     // content_regex
     #[serde(default, skip_serializing, deserialize_with = "deserialize_regex")]
@@ -444,9 +444,7 @@ impl LanguageConfiguration {
         } else {
             let language = get_language(
                 &crate::RUNTIME_DIR,
-                self.tree_sitter_library
-                    .as_deref()
-                    .unwrap_or(&self.language_id),
+                self.grammar.as_deref().unwrap_or(&self.language_id),
             )
             .map_err(|e| log::info!("{}", e))
             .ok()?;
