@@ -53,8 +53,6 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
-        with:
-          submodules: true
 
       - name: Install ${{ matrix.rust }} toolchain
         uses: actions-rs/toolchain@v1
@@ -63,6 +61,20 @@ jobs:
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.target }}
           override: true
+
+      - name: Fetch tree-sitter grammars
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: ${{ matrix.cross }}
+          command: run
+          args: --release --locked --target ${{ matrix.target }} -- --fetch-grammars
+
+      - name: Build tree-sitter grammars
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: ${{ matrix.cross }}
+          command: run
+          args: --release --locked --target ${{ matrix.target }} -- --build-grammars
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
@@ -114,14 +126,8 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
-        with:
-          submodules: false
 
       - uses: actions/download-artifact@v2
-        # with:
-        #   path: dist
-      # - run: ls -al ./dist
-      - run: ls -al bins-*
 
       - name: Calculate tag name
         run: |

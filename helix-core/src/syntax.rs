@@ -2115,14 +2115,10 @@ mod test {
         let language = get_language(&crate::RUNTIME_DIR, "Rust").unwrap();
         let config = HighlightConfiguration::new(
             language,
-            &std::fs::read_to_string(
-                "../helix-syntax/languages/tree-sitter-rust/queries/highlights.scm",
-            )
-            .unwrap(),
-            &std::fs::read_to_string(
-                "../helix-syntax/languages/tree-sitter-rust/queries/injections.scm",
-            )
-            .unwrap(),
+            &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/highlights.scm")
+                .unwrap(),
+            &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/injections.scm")
+                .unwrap(),
             "", // locals.scm
         )
         .unwrap();
