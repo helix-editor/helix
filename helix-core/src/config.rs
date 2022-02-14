@@ -25,7 +25,7 @@ pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
 pub fn default_syntax_loader() -> crate::syntax::Configuration {
     default_lang_config()
         .try_into()
-        .expect("Could not serialize built-in language.toml")
+        .expect("Could not serialize built-in languages.toml")
 }
 /// Syntax configuration loader based on user configured languages.toml.
 pub fn user_syntax_loader() -> Result<crate::syntax::Configuration, toml::de::Error> {
