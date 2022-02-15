@@ -27,12 +27,18 @@
   ")"
 ] @outdent
 
+; TODO Add some mechanism to correctly align if-else statements here.
+; For now they have to be excluded here because in some cases the else block
+; is indented differently than the if block
 (assignment_expression
   right: (_) @indent
-  (#set! "scope" "all"))
+  (#set! "scope" "all")
+  (#not-match? @indent "if\\s"))
 (compound_assignment_expr
   right: (_) @indent
-  (#set! "scope" "all"))
+  (#set! "scope" "all")
+  (#not-match? @indent "if\\s"))
 (let_declaration
   value: (_) @indent
-  (#set! "scope" "all"))
+  (#set! "scope" "all")
+  (#not-match? @indent "if\\s"))

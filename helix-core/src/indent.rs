@@ -1,4 +1,4 @@
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::HashMap;
 
 use tree_sitter::{Query, QueryCursor};
 
@@ -226,55 +226,51 @@ fn get_first_in_line(mut node: Node, byte_pos: usize, new_line: bool) -> Vec<boo
 }
 
 /// The total indent for some line of code.
-/// This is usually constructed by successively adding instances of [AddedIndent]
+/// This is usually constructed in one of 2 ways:
+/// - Successively add indent captures to get the (added) indent from a single line
+/// - Successively add the indent results for each line
 struct IndentResult {
-    /// The total indent (the number of indent levels).
+    /// The total indent (the number of indent levels) is defined as max(0, indent-outdent).
     /// The string that this results in depends on the indent style (spaces or tabs, etc.)
-    indent: i32,
+    indent: usize,
+    outdent: usize,
 }
 impl IndentResult {
     fn new() -> Self {
-        IndentResult { indent: 0 }
+        IndentResult {
+            indent: 0,
+            outdent: 0,
+        }
     }
-    /// Add the given [AddedIndent] to the [IndentResult].
-    /// The [AddedIndent] should be the combination of all the added indents for one line.
-    fn add(&mut self, added: &AddedIndent) {
-        if added.indent && !added.outdent {
+    /// Add some other [IndentResult] to this.
+    /// The added indent should be the total added indent from one line
+    fn add_line(&mut self, added: &IndentResult) {
+        if added.indent > 0 && added.outdent == 0 {
             self.indent += 1;
-        } else if added.outdent && !added.indent {
-            self.indent -= 1;
+        } else if added.outdent > 0 && added.indent == 0 {
+            self.outdent += 1;
+        }
+    }
+    /// Add an indent capture to this indent.
+    /// All the captures that are added in this way should be on the same line.
+    fn add_capture(&mut self, added: IndentCaptureType) {
+        match added {
+            IndentCaptureType::Indent => {
+                self.indent = 1;
+            }
+            IndentCaptureType::Outdent => {
+                self.outdent = 1;
+            }
         }
     }
     fn as_string(&self, indent_style: &IndentStyle) -> String {
-        indent_style.as_str().repeat(0.max(self.indent) as usize)
-    }
-}
-
-/// The indent that is added for a single line.
-/// This is different from the total indent ([IndentResult]) because multiple indents/outdents on the same line don't stack.
-/// It should be constructed by successively adding the relevant indent captures.
-struct AddedIndent {
-    indent: bool,
-    outdent: bool,
-}
-impl AddedIndent {
-    /// Returns the [AddedIndent] for a line without any indent definitions
-    fn new() -> Self {
-        AddedIndent {
-            indent: false,
-            outdent: false,
-        }
-    }
-    /// Adds an indent capture to this indent.
-    fn add_capture(&mut self, capture: &IndentCaptureType) {
-        match capture {
-            IndentCaptureType::Indent => {
-                self.indent = true;
-            }
-            IndentCaptureType::Outdent => {
-                self.outdent = true;
-            }
-        }
+        let indent_level = if self.indent >= self.outdent {
+            self.indent - self.outdent
+        } else {
+            log::warn!("Encountered more outdent than indent nodes while calculating indentation: {} outdent, {} indent", self.outdent, self.indent);
+            0
+        };
+        indent_style.as_str().repeat(indent_level)
     }
 }
 
@@ -283,13 +279,14 @@ struct IndentCapture {
     capture_type: IndentCaptureType,
     scope: IndentScope,
 }
+#[derive(Clone, Copy)]
 enum IndentCaptureType {
     Indent,
     Outdent,
 }
 impl IndentCaptureType {
     fn default_scope(&self) -> IndentScope {
-        match *self {
+        match self {
             IndentCaptureType::Indent => IndentScope::Tail,
             IndentCaptureType::Outdent => IndentScope::All,
         }
@@ -298,6 +295,7 @@ impl IndentCaptureType {
 /// This defines which part of a node an [IndentCapture] applies to.
 /// Each [IndentCaptureType] has a default scope, but the scope can be changed
 /// with `#set!` property declarations.
+#[derive(Clone, Copy)]
 enum IndentScope {
     /// The indent applies to the whole node
     All,
@@ -338,7 +336,7 @@ fn query_indents(
             for property in query.property_settings(m.pattern_index) {
                 match property.key.as_ref() {
                     "scope" => {
-                        indent_capture.scope = match property.value.as_ref().map(|s| s.as_ref()) {
+                        indent_capture.scope = match property.value.as_deref() {
                             Some("all") => IndentScope::All,
                             Some("tail") => IndentScope::Tail,
                             Some(s) => {
@@ -359,14 +357,10 @@ fn query_indents(
                     }
                 }
             }
-            match indent_captures.entry(capture.node.id()) {
-                Entry::Occupied(mut e) => {
-                    e.get_mut().push(indent_capture);
-                }
-                Entry::Vacant(e) => {
-                    e.insert(vec![indent_capture]);
-                }
-            }
+            indent_captures
+                .entry(capture.node.id())
+                .or_default()
+                .push(indent_capture);
         }
     }
     indent_captures
@@ -428,8 +422,8 @@ fn treesitter_indent_for_pos(
     let mut result = IndentResult::new();
     // We always keep track of all the indent changes on one line, in order to only indent once
     // even if there are multiple "indent" nodes on the same line
-    let mut indent_for_line = AddedIndent::new();
-    let mut indent_for_line_below = AddedIndent::new();
+    let mut indent_for_line = IndentResult::new();
+    let mut indent_for_line_below = IndentResult::new();
     loop {
         let is_first = *first_in_line.last().unwrap();
         // Apply all indent definitions for this node
@@ -438,13 +432,13 @@ fn treesitter_indent_for_pos(
                 match definition.scope {
                     IndentScope::All => {
                         if is_first {
-                            indent_for_line.add_capture(&definition.capture_type);
+                            indent_for_line.add_capture(definition.capture_type);
                         } else {
-                            indent_for_line_below.add_capture(&definition.capture_type);
+                            indent_for_line_below.add_capture(definition.capture_type);
                         }
                     }
                     IndentScope::Tail => {
-                        indent_for_line_below.add_capture(&definition.capture_type);
+                        indent_for_line_below.add_capture(definition.capture_type);
                     }
                 }
             }
@@ -453,7 +447,7 @@ fn treesitter_indent_for_pos(
         if let Some(parent) = node.parent() {
             let mut node_line = node.start_position().row;
             let mut parent_line = parent.start_position().row;
-            if node.start_position().row == line && new_line {
+            if node_line == line && new_line {
                 // Also consider the line that will be inserted
                 if node.start_byte() >= byte_pos {
                     node_line += 1;
@@ -465,22 +459,22 @@ fn treesitter_indent_for_pos(
             if node_line != parent_line {
                 if node_line < line + (new_line as usize) {
                     // Don't add indent for the line below the line of the query
-                    result.add(&indent_for_line_below);
+                    result.add_line(&indent_for_line_below);
                 }
                 if node_line == parent_line + 1 {
                     indent_for_line_below = indent_for_line;
                 } else {
-                    result.add(&indent_for_line);
-                    indent_for_line_below = AddedIndent::new();
+                    result.add_line(&indent_for_line);
+                    indent_for_line_below = IndentResult::new();
                 }
-                indent_for_line = AddedIndent::new();
+                indent_for_line = IndentResult::new();
             }
 
             node = parent;
             first_in_line.pop();
         } else {
-            result.add(&indent_for_line_below);
-            result.add(&indent_for_line);
+            result.add_line(&indent_for_line_below);
+            result.add_line(&indent_for_line);
             break;
         }
     }
