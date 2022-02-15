@@ -1,6 +1,6 @@
 # Author: NNB <nnbnh@protonmail.com>
 
-"ui.menu" = "black"
+"ui.menu" = { fg = "light-gray", bg = "gray" }
 "ui.menu.selected" = { modifiers = ["reversed"] }
 "ui.linenr" = { fg = "light-gray", bg = "black" }
 "ui.popup" = { bg = "black" }
