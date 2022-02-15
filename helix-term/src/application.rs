@@ -330,7 +330,7 @@ impl Application {
     }
 
     pub async fn handle_debugger_message(&mut self, payload: helix_dap::Payload) {
-        use crate::commands::dap::{breakpoints_changed, resume_application, select_thread_id};
+        use crate::commands::dap::{breakpoints_changed, select_thread_id};
         use dap::requests::RunInTerminal;
         use helix_dap::{events, Event};
 
@@ -392,7 +392,7 @@ impl Application {
                         .thread_states
                         .insert(thread_id, "running".to_owned());
                     if debugger.thread_id == Some(thread_id) {
-                        resume_application(debugger)
+                        debugger.resume_application();
                     }
                 }
                 Event::Thread(_) => {

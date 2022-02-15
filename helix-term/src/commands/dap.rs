@@ -40,17 +40,6 @@ pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Opt
     Some(pos)
 }
 
-pub fn resume_application(debugger: &mut Client) {
-    if let Some(thread_id) = debugger.thread_id {
-        debugger
-            .thread_states
-            .insert(thread_id, "running".to_string());
-        debugger.stack_frames.remove(&thread_id);
-    }
-    debugger.active_frame = None;
-    debugger.thread_id = None;
-}
-
 pub async fn select_thread_id(editor: &mut Editor, thread_id: ThreadId, force: bool) {
     let debugger = debugger!(editor);
 
@@ -518,11 +507,14 @@ pub fn dap_continue(cx: &mut Context) {
 
     if let Some(thread_id) = debugger.thread_id {
         let request = debugger.continue_thread(thread_id);
-        if let Err(e) = block_on(request) {
-            cx.editor.set_error(format!("Failed to continue: {}", e));
-            return;
-        }
-        resume_application(debugger);
+
+        dap_callback(
+            cx.jobs,
+            request,
+            |editor, _compositor, _response: dap::requests::ContinueResponse| {
+                debugger!(editor).resume_application();
+            },
+        );
     } else {
         cx.editor
             .set_error("Currently active thread is not stopped. Switch the thread.".into());
@@ -545,11 +537,10 @@ pub fn dap_step_in(cx: &mut Context) {
 
     if let Some(thread_id) = debugger.thread_id {
         let request = debugger.step_in(thread_id);
-        if let Err(e) = block_on(request) {
-            cx.editor.set_error(format!("Failed to continue: {}", e));
-            return;
-        }
-        resume_application(debugger);
+
+        dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
+            debugger!(editor).resume_application();
+        });
     } else {
         cx.editor
             .set_error("Currently active thread is not stopped. Switch the thread.".into());
@@ -561,11 +552,9 @@ pub fn dap_step_out(cx: &mut Context) {
 
     if let Some(thread_id) = debugger.thread_id {
         let request = debugger.step_out(thread_id);
-        if let Err(e) = block_on(request) {
-            cx.editor.set_error(format!("Failed to continue: {}", e));
-            return;
-        }
-        resume_application(debugger);
+        dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
+            debugger!(editor).resume_application();
+        });
     } else {
         cx.editor
             .set_error("Currently active thread is not stopped. Switch the thread.".into());
@@ -577,11 +566,9 @@ pub fn dap_next(cx: &mut Context) {
 
     if let Some(thread_id) = debugger.thread_id {
         let request = debugger.next(thread_id);
-        if let Err(e) = block_on(request) {
-            cx.editor.set_error(format!("Failed to continue: {}", e));
-            return;
-        }
-        resume_application(debugger);
+        dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
+            debugger!(editor).resume_application();
+        });
     } else {
         cx.editor
             .set_error("Currently active thread is not stopped. Switch the thread.".into());
@@ -658,11 +645,10 @@ pub fn dap_terminate(cx: &mut Context) {
     let debugger = debugger!(cx.editor);
 
     let request = debugger.disconnect();
-    if let Err(e) = block_on(request) {
-        cx.editor.set_error(format!("Failed to disconnect: {}", e));
-        return;
-    }
-    cx.editor.debugger = None;
+    dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
+        // editor.set_error(format!("Failed to disconnect: {}", e));
+        editor.debugger = None;
+    });
 }
 
 pub fn dap_enable_exceptions(cx: &mut Context) {
@@ -673,19 +659,29 @@ pub fn dap_enable_exceptions(cx: &mut Context) {
         None => return,
     };
 
-    if let Err(e) = block_on(debugger.set_exception_breakpoints(filters)) {
-        cx.editor
-            .set_error(format!("Failed to set up exception breakpoints: {}", e));
-    }
+    let request = debugger.set_exception_breakpoints(filters);
+
+    dap_callback(
+        cx.jobs,
+        request,
+        |_editor, _compositor, _response: dap::requests::SetExceptionBreakpointsResponse| {
+            // editor.set_error(format!("Failed to set up exception breakpoints: {}", e));
+        },
+    )
 }
 
 pub fn dap_disable_exceptions(cx: &mut Context) {
     let debugger = debugger!(cx.editor);
 
-    if let Err(e) = block_on(debugger.set_exception_breakpoints(Vec::new())) {
-        cx.editor
-            .set_error(format!("Failed to set up exception breakpoints: {}", e));
-    }
+    let request = debugger.set_exception_breakpoints(Vec::new());
+
+    dap_callback(
+        cx.jobs,
+        request,
+        |_editor, _compositor, _response: dap::requests::SetExceptionBreakpointsResponse| {
+            // editor.set_error(format!("Failed to set up exception breakpoints: {}", e));
+        },
+    )
 }
 
 // TODO: both edit condition and edit log need to be stable: we might get new breakpoints from the debugger which can change offsets

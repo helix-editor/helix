@@ -208,6 +208,16 @@ impl Client {
         self.request_counter.fetch_add(1, Ordering::Relaxed)
     }
 
+    // Internal, called by specific DAP commands when resuming
+    pub fn resume_application(&mut self) {
+        if let Some(thread_id) = self.thread_id {
+            self.thread_states.insert(thread_id, "running".to_string());
+            self.stack_frames.remove(&thread_id);
+        }
+        self.active_frame = None;
+        self.thread_id = None;
+    }
+
     /// Execute a RPC request on the debugger.
     pub fn call<R: crate::types::Request>(
         &self,
@@ -321,8 +331,8 @@ impl Client {
         Ok(())
     }
 
-    pub async fn disconnect(&self) -> Result<()> {
-        self.request::<requests::Disconnect>(()).await
+    pub fn disconnect(&self) -> impl Future<Output = Result<Value>> {
+        self.call::<requests::Disconnect>(())
     }
 
     pub fn launch(&self, args: serde_json::Value) -> impl Future<Output = Result<Value>> {
@@ -362,11 +372,10 @@ impl Client {
         self.request::<requests::ConfigurationDone>(()).await
     }
 
-    pub async fn continue_thread(&self, thread_id: ThreadId) -> Result<Option<bool>> {
+    pub fn continue_thread(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> {
         let args = requests::ContinueArguments { thread_id };
 
-        let response = self.request::<requests::Continue>(args).await?;
-        Ok(response.all_threads_continued)
+        self.call::<requests::Continue>(args)
     }
 
     pub async fn stack_trace(
@@ -408,38 +417,38 @@ impl Client {
         Ok(response.variables)
     }
 
-    pub async fn step_in(&self, thread_id: ThreadId) -> Result<()> {
+    pub fn step_in(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> {
         let args = requests::StepInArguments {
             thread_id,
             target_id: None,
             granularity: None,
         };
 
-        self.request::<requests::StepIn>(args).await
+        self.call::<requests::StepIn>(args)
     }
 
-    pub async fn step_out(&self, thread_id: ThreadId) -> Result<()> {
+    pub fn step_out(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> {
         let args = requests::StepOutArguments {
             thread_id,
             granularity: None,
         };
 
-        self.request::<requests::StepOut>(args).await
+        self.call::<requests::StepOut>(args)
     }
 
-    pub async fn next(&self, thread_id: ThreadId) -> Result<()> {
+    pub fn next(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> {
         let args = requests::NextArguments {
             thread_id,
             granularity: None,
         };
 
-        self.request::<requests::Next>(args).await
+        self.call::<requests::Next>(args)
     }
 
-    pub async fn pause(&self, thread_id: ThreadId) -> Result<()> {
+    pub fn pause(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> {
         let args = requests::PauseArguments { thread_id };
 
-        self.request::<requests::Pause>(args).await
+        self.call::<requests::Pause>(args)
     }
 
     pub async fn eval(
@@ -457,16 +466,12 @@ impl Client {
         self.request::<requests::Evaluate>(args).await
     }
 
-    pub async fn set_exception_breakpoints(
+    pub fn set_exception_breakpoints(
         &self,
         filters: Vec<String>,
-    ) -> Result<Option<Vec<Breakpoint>>> {
+    ) -> impl Future<Output = Result<Value>> {
         let args = requests::SetExceptionBreakpointsArguments { filters };
 
-        let response = self
-            .request::<requests::SetExceptionBreakpoints>(args)
-            .await;
-
-        Ok(response.ok().map(|r| r.breakpoints).unwrap_or_default())
+        self.call::<requests::SetExceptionBreakpoints>(args)
     }
 }
