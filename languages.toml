@@ -732,3 +732,12 @@ auto-format = true
 comment-token = "//"
 language-server = { command = "rescript-language-server", args = ["--stdio"] }
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "erlang"
+scope = "source.erlang"
+injection-regex = "^erl$"
+file-types = ["erl", "hrl", "app", "rebar.config"]
+roots = ["rebar.config"]
+comment-token = "%%"
+indent = { tab-width = 4, unit = "    " }
