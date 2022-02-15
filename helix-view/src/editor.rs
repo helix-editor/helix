@@ -254,9 +254,9 @@ pub struct Editor {
     pub exit_code: i32,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct CompleteAction {
-    pub trigger_pos: usize,
+    pub trigger_offset: usize,
     pub transaction: Transaction,
 }
 

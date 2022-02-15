@@ -44,7 +44,7 @@ pub struct EditorView {
 pub enum InsertEvent {
     Key(KeyEvent),
     CompletionApply(CompleteAction),
-    TriggerCompleiton,
+    TriggerCompletion,
 }
 
 impl Default for EditorView {
@@ -753,20 +753,23 @@ impl EditorView {
                             let text = doc.text().slice(..);
                             let cursor = doc.selection(view.id).primary().cursor(text);
 
-                            log::error!("Replaying completion: {compl:?}");
-
                             let shift_position =
-                                |pos: usize| -> usize { pos + cursor - compl.trigger_pos };
+                                |pos: usize| -> usize { pos + cursor - compl.trigger_offset };
 
                             let tx = Transaction::change(
                                 doc.text(),
-                                compl.transaction.changes_iter().map(|(start, end, t)| {
-                                    (shift_position(start), shift_position(end), t)
-                                }),
+                                compl
+                                    .transaction
+                                    .changes_iter()
+                                    .filter_map(|(start, end, t)| {
+                                        (start..=end).contains(&compl.trigger_offset).then(|| {
+                                            (shift_position(start), shift_position(end), t)
+                                        })
+                                    }),
                             );
                             doc.apply(&tx, view.id);
                         }
-                        InsertEvent::TriggerCompleiton => {
+                        InsertEvent::TriggerCompletion => {
                             let (_, doc) = current!(cxt.editor);
                             doc.savepoint();
                         }
@@ -812,7 +815,7 @@ impl EditorView {
         doc_mut!(editor).savepoint();
 
         editor.last_completion = None;
-        self.last_insert.1.push(InsertEvent::TriggerCompleiton);
+        self.last_insert.1.push(InsertEvent::TriggerCompletion);
 
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
@@ -1033,12 +1036,6 @@ impl Component for EditorView {
                                     consumed = true;
 
                                     if callback.is_some() {
-                                        if let Some(compl) = cx.editor.last_completion.take() {
-                                            self.last_insert
-                                                .1
-                                                .push(InsertEvent::CompletionApply(compl));
-                                        }
-
                                         // assume close_fn
                                         self.clear_completion(cx.editor);
                                     }

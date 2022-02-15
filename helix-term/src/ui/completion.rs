@@ -146,7 +146,7 @@ impl Completion {
                     doc.savepoint();
                     doc.apply(&transaction, view.id);
                     editor.last_completion = Some(CompleteAction {
-                        trigger_pos: trigger_offset,
+                        trigger_offset,
                         transaction,
                     });
                 }
@@ -164,7 +164,7 @@ impl Completion {
 
                     doc.apply(&transaction, view.id);
                     editor.last_completion = Some(CompleteAction {
-                        trigger_pos: trigger_offset,
+                        trigger_offset,
                         transaction,
                     });
 
