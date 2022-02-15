@@ -81,10 +81,19 @@ where
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct Configuration {
+    #[serde(rename = "use-grammars")]
+    pub grammar_selection: Option<GrammarSelection>,
     pub language: Vec<LanguageConfiguration>,
     pub grammar: Vec<GrammarConfiguration>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase", untagged)]
+pub enum GrammarSelection {
+    Only(HashSet<String>),
+    Except(HashSet<String>),
 }
 
 // largely based on tree-sitter/cli/src/loader.rs
@@ -2110,6 +2119,7 @@ mod test {
         let loader = Loader::new(Configuration {
             language: vec![],
             grammar: vec![],
+            grammar_selection: None,
         });
 
         let language = get_language(&crate::RUNTIME_DIR, "Rust").unwrap();
