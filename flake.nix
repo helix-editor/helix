@@ -33,26 +33,32 @@
         package = "helix";
       };
       overrides = {
-        crateOverrides = common: _: rec {
-          helix-term = prev: {
-            # disable fetching and building of tree-sitter grammars in the helix-term build.rs
-            HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
-            buildInputs = (prev.buildInputs or [ ]) ++ [ common.cCompiler.cc.lib ];
-            nativeBuildInputs = (prev.nativeBuildInputs or [ ]) ++ [ common.pkgs.makeWrapper ];
-            preConfigure = ''
-              ${prev.preConfigure}
-              rm -r helix-syntax/languages
-              ln -s ${helix}/helix-syntax/languages helix-syntax/languages
-              ln -s "$PWD/helix-syntax/languages" languages
-              mkdir -p runtime/grammars
-            '';
-            postInstall = ''
-              ${prev.postInstall or ""}
-              mkdir -p $out/lib
-              cp -r runtime $out/lib
-              wrapProgram "$out/bin/hx" --set HELIX_RUNTIME "$out/lib/runtime"
-            '';
-          };
+        crateOverrides = common: _: {
+          helix-term = prev:
+            let
+              inherit (common) pkgs;
+              grammars = pkgs.callPackage ./grammars.nix { };
+              runtimeDir = pkgs.runCommand "helix-runtime" { } ''
+                mkdir -p $out
+                ln -s ${common.root}/runtime/* $out
+                rm -r $out/grammars
+                ln -s ${grammars} $out/grammars
+              '';
+            in
+            {
+              # disable fetching and building of tree-sitter grammars in the helix-term build.rs
+              HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
+              # link languages and theme toml files since helix-term expects them (for tests)
+              preConfigure = "ln -s ${common.root}/{languages.toml,theme.toml,base16_theme.toml} ..";
+              buildInputs = (prev.buildInputs or [ ]) ++ [ common.cCompiler.cc.lib ];
+              nativeBuildInputs = [ pkgs.makeWrapper ];
+
+              postFixup = ''
+                if [ -f "$out/bin/hx" ]; then
+                  wrapProgram "$out/bin/hx" --set HELIX_RUNTIME "${runtimeDir}"
+                fi
+              '';
+            };
         };
         shell = common: prev: {
           packages = prev.packages ++ (with common.pkgs; [ lld_13 lldb cargo-tarpaulin cargo-flamegraph ]);
