@@ -3689,15 +3689,13 @@ pub fn command_palette(cx: &mut Context) {
             };
 
             let picker = Picker::new(
-                true,
                 commands,
                 move |command| match command {
-                    MappableCommand::Typable { doc, name, .. } => {
-                        match keymap.get(name as &String) {
-                            Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
-                            None => doc.into(),
-                        }
-                    }
+                    MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String)
+                    {
+                        Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
+                        None => doc.into(),
+                    },
                     MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
                         Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
                         None => (*doc).into(),
@@ -4894,7 +4892,7 @@ pub mod insert {
             .transform(|range| movement::move_next_word_start(text, range, count));
         delete_selection_insert_mode(doc, view, &selection);
     }
-
+}
 
 // Undo / Redo
 
