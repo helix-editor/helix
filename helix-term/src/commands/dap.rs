@@ -2,7 +2,7 @@ use super::{align_view, Align, Context, Editor};
 use crate::{
     compositor::{self, Compositor},
     job::{Callback, Jobs},
-    ui::{self, FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
+    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
 };
 use helix_core::{
     syntax::{DebugArgumentValue, DebugConfigCompletion},
@@ -330,8 +330,7 @@ pub fn dap_launch(cx: &mut Context) {
 
     let templates = config.templates.clone();
 
-    cx.push_layer(Box::new(Picker::new(
-        true,
+    cx.push_layer(Box::new(overlayed(Picker::new(
         templates,
         |template| template.name.as_str().into(),
         |cx, template, _action| {
