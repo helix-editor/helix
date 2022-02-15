@@ -445,6 +445,7 @@ where
                 auto_pairs: None,
             }],
             grammar: vec![],
+            grammar_selection: None,
         });
 
         // set runtime path so we can find the queries

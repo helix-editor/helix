@@ -28,4 +28,13 @@ name = "c"
 source = { path = "/path/to/tree-sitter-c" }
 ```
 
-If a user has a `languages.toml`, only the grammars in that `languages.toml` are evaluated when running `hx --fetch-grammars` and `hx --build-grammars`. Otherwise the [default `languages.toml`](https://github.com/helix-editor/helix/blob/master/languages.toml) is used.
+You may use a top-level `use-grammars` key to control which grammars are fetched and built.
+
+```toml
+# Note: this key must come **before** the [[language]] and [[grammar]] sections
+use-grammars = { only = [ "rust", "c", "cpp" ] }
+# or
+use-grammars = { except = [ "yaml", "json" ] }
+```
+
+When omitted, all grammars are fetched and built.

@@ -7,7 +7,7 @@ use std::{
     sync::mpsc::channel,
 };
 
-use helix_core::syntax::{GrammarConfiguration, GrammarSource, DYLIB_EXTENSION};
+use helix_core::syntax::{GrammarConfiguration, GrammarSelection, GrammarSource, DYLIB_EXTENSION};
 
 const BUILD_TARGET: &str = env!("BUILD_TARGET");
 const REMOTE_NAME: &str = "origin";
@@ -163,7 +163,19 @@ fn build_grammar(grammar: GrammarConfiguration) -> Result<()> {
 fn get_grammar_configs() -> Vec<GrammarConfiguration> {
     let config = helix_core::config::user_syntax_loader().expect("Could not parse languages.toml");
 
-    config.grammar
+    match config.grammar_selection {
+        Some(GrammarSelection::Only(selections)) => config
+            .grammar
+            .into_iter()
+            .filter(|grammar| selections.contains(&grammar.grammar_id))
+            .collect(),
+        Some(GrammarSelection::Except(rejections)) => config
+            .grammar
+            .into_iter()
+            .filter(|grammar| !rejections.contains(&grammar.grammar_id))
+            .collect(),
+        None => config.grammar,
+    }
 }
 
 fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> Result<()> {
