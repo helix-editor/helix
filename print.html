@@ -228,10 +228,24 @@ on the closest pairs found and selections are not required; use counts to act in
 <tr><td><code>c</code></td><td>Class</td></tr>
 <tr><td><code>p</code></td><td>Parameter</td></tr>
 </tbody></table>
-<p>Note: <code>f</code>, <code>c</code>, etc need a tree-sitter grammar active for the current
-document and a special tree-sitter query file to work properly. <a href="https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+filename%3Atextobjects.scm&amp;type=Code&amp;ref=advsearch&amp;l=&amp;l=">Only
-some grammars</a>
-currently have the query file implemented. Contributions are welcome !</p>
+<blockquote>
+<p>NOTE: <code>f</code>, <code>c</code>, etc need a tree-sitter grammar active for the current
+document and a special tree-sitter query file to work properly. <a href="./lang-support.html">Only
+some grammars</a> currently have the query file implemented.
+Contributions are welcome!</p>
+</blockquote>
+<h2 id="tree-sitter-textobject-based-navigation"><a class="header" href="#tree-sitter-textobject-based-navigation">Tree-sitter Textobject Based Navigation</a></h2>
+<p>Navigating between functions, classes, parameters, etc is made
+possible by leveraging tree-sitter and textobjects queries. For
+example to move to the next function use <code>]f</code>, to move to previous
+class use <code>[c</code>, and so on.</p>
+<p><img src="https://user-images.githubusercontent.com/23398472/152332550-7dfff043-36a2-4aec-b8f2-77c13eb56d6f.gif" alt="tree-sitter-nav-demo" /></p>
+<p>See the <a href="./keymap.html#unimpaired">unimpaired</a> section of the keybind
+documentation for the full reference.</p>
+<blockquote>
+<p>NOTE: This feature is dependent on tree-sitter based textobjects
+and therefore requires the corresponding query file to work properly.</p>
+</blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="keymap"><a class="header" href="#keymap">Keymap</a></h1>
 <ul>
 <li>Mappings marked (<strong>LSP</strong>) require an active language server for the file.</li>
@@ -461,6 +475,12 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>]d</code></td><td>Go to next diagnostic (<strong>LSP</strong>)</td><td><code>goto_next_diag</code></td></tr>
 <tr><td><code>[D</code></td><td>Go to first diagnostic in document (<strong>LSP</strong>)</td><td><code>goto_first_diag</code></td></tr>
 <tr><td><code>]D</code></td><td>Go to last diagnostic in document (<strong>LSP</strong>)</td><td><code>goto_last_diag</code></td></tr>
+<tr><td><code>]f</code></td><td>Go to next function (<strong>TS</strong>)</td><td><code>goto_next_function</code></td></tr>
+<tr><td><code>[f</code></td><td>Go to previous function (<strong>TS</strong>)</td><td><code>goto_prev_function</code></td></tr>
+<tr><td><code>]c</code></td><td>Go to next class (<strong>TS</strong>)</td><td><code>goto_next_class</code></td></tr>
+<tr><td><code>[c</code></td><td>Go to previous class (<strong>TS</strong>)</td><td><code>goto_prev_class</code></td></tr>
+<tr><td><code>]p</code></td><td>Go to next parameter (<strong>TS</strong>)</td><td><code>goto_next_parameter</code></td></tr>
+<tr><td><code>[p</code></td><td>Go to previous parameter (<strong>TS</strong>)</td><td><code>goto_prev_parameter</code></td></tr>
 <tr><td><code>[space</code></td><td>Add newline above</td><td><code>add_newline_above</code></td></tr>
 <tr><td><code>]space</code></td><td>Add newline below</td><td><code>add_newline_below</code></td></tr>
 </tbody></table>
@@ -1161,6 +1181,18 @@ for example).</p>
 <tr><td><code>parameter.inside</code></td></tr>
 </tbody></table>
 <p><a href="https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+filename%3Atextobjects.scm&amp;type=Code&amp;ref=advsearch&amp;l=&amp;l=">Example query files</a> can be found in the helix GitHub repository.</p>
+<h2 id="queries-for-textobject-based-navigation"><a class="header" href="#queries-for-textobject-based-navigation">Queries for Textobject Based Navigation</a></h2>
+<p><a href="guides/../usage.html#tree-sitter-textobject-based-navigation">Tree-sitter based navigation</a> is done using captures in the
+following order:</p>
+<ul>
+<li><code>object.movement</code></li>
+<li><code>object.around</code></li>
+<li><code>object.inside</code></li>
+</ul>
+<p>For example if a <code>function.around</code> capture has been already defined for a language
+in it's <code>textobjects.scm</code> file, function navigation should also work automatically.
+<code>function.movement</code> should be defined only if the node captured by <code>function.around</code>
+doesn't make sense in a navigation context.</p>
 
                     </main>
 

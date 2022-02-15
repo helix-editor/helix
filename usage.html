@@ -197,10 +197,24 @@ on the closest pairs found and selections are not required; use counts to act in
 <tr><td><code>c</code></td><td>Class</td></tr>
 <tr><td><code>p</code></td><td>Parameter</td></tr>
 </tbody></table>
-<p>Note: <code>f</code>, <code>c</code>, etc need a tree-sitter grammar active for the current
-document and a special tree-sitter query file to work properly. <a href="https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+filename%3Atextobjects.scm&amp;type=Code&amp;ref=advsearch&amp;l=&amp;l=">Only
-some grammars</a>
-currently have the query file implemented. Contributions are welcome !</p>
+<blockquote>
+<p>NOTE: <code>f</code>, <code>c</code>, etc need a tree-sitter grammar active for the current
+document and a special tree-sitter query file to work properly. <a href="./lang-support.html">Only
+some grammars</a> currently have the query file implemented.
+Contributions are welcome!</p>
+</blockquote>
+<h2 id="tree-sitter-textobject-based-navigation"><a class="header" href="#tree-sitter-textobject-based-navigation">Tree-sitter Textobject Based Navigation</a></h2>
+<p>Navigating between functions, classes, parameters, etc is made
+possible by leveraging tree-sitter and textobjects queries. For
+example to move to the next function use <code>]f</code>, to move to previous
+class use <code>[c</code>, and so on.</p>
+<p><img src="https://user-images.githubusercontent.com/23398472/152332550-7dfff043-36a2-4aec-b8f2-77c13eb56d6f.gif" alt="tree-sitter-nav-demo" /></p>
+<p>See the <a href="./keymap.html#unimpaired">unimpaired</a> section of the keybind
+documentation for the full reference.</p>
+<blockquote>
+<p>NOTE: This feature is dependent on tree-sitter based textobjects
+and therefore requires the corresponding query file to work properly.</p>
+</blockquote>
 
                     </main>
 
