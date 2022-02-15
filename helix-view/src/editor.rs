@@ -14,6 +14,7 @@ use futures_util::stream::select_all::SelectAll;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
+    borrow::Cow,
     collections::{BTreeMap, HashMap},
     io::stdin,
     num::NonZeroUsize,
@@ -284,7 +285,7 @@ pub struct Editor {
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
 
-    pub status_msg: Option<(String, Severity)>,
+    pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
     pub config: Config,
@@ -357,18 +358,20 @@ impl Editor {
         self.status_msg = None;
     }
 
-    pub fn set_status(&mut self, status: String) {
-        self.status_msg = Some((status, Severity::Info));
+    #[inline]
+    pub fn set_status<T: Into<Cow<'static, str>>>(&mut self, status: T) {
+        self.status_msg = Some((status.into(), Severity::Info));
     }
 
-    pub fn set_error(&mut self, error: String) {
-        self.status_msg = Some((error, Severity::Error));
+    #[inline]
+    pub fn set_error<T: Into<Cow<'static, str>>>(&mut self, error: T) {
+        self.status_msg = Some((error.into(), Severity::Error));
     }
 
     pub fn set_theme(&mut self, theme: Theme) {
         // `ui.selection` is the only scope required to be able to render a theme.
         if theme.find_scope_index("ui.selection").is_none() {
-            self.set_error("Invalid theme: `ui.selection` required".to_owned());
+            self.set_error("Invalid theme: `ui.selection` required");
             return;
         }
 

@@ -468,8 +468,7 @@ impl Application {
                     // TODO: fetch breakpoints (in case we're attaching)
 
                     if debugger.configuration_done().await.is_ok() {
-                        self.editor
-                            .set_status("Debugged application started".to_owned());
+                        self.editor.set_status("Debugged application started");
                     }; // TODO: do we need to handle error?
                 }
                 ev => {

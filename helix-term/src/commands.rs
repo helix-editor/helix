@@ -776,9 +776,8 @@ fn trim_selections(cx: &mut Context) {
 fn align_selections(cx: &mut Context) {
     let align_style = cx.count();
     if align_style > 3 {
-        cx.editor.set_error(
-            "align only accept 1,2,3 as count to set left/center/right align".to_string(),
-        );
+        cx.editor
+            .set_error("align only accept 1,2,3 as count to set left/center/right align");
         return;
     }
 
@@ -793,7 +792,7 @@ fn align_selections(cx: &mut Context) {
         let (l1, l2) = sel.line_range(text);
         if l1 != l2 {
             cx.editor
-                .set_error("align cannot work with multi line selections".to_string());
+                .set_error("align cannot work with multi line selections");
             return;
         }
         // if the selection is not in the same line with last selection, we set the column to 0
@@ -1790,7 +1789,7 @@ fn global_search(cx: &mut Context) {
         let call: job::Callback =
             Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
                 if all_matches.is_empty() {
-                    editor.set_status("No matches found".to_string());
+                    editor.set_status("No matches found");
                     return;
                 }
 
@@ -2177,10 +2176,10 @@ pub mod cmd {
         if args.is_empty() {
             let style = doc!(cx.editor).indent_style;
             cx.editor.set_status(match style {
-                Tabs => "tabs".into(),
-                Spaces(1) => "1 space".into(),
+                Tabs => "tabs".to_owned(),
+                Spaces(1) => "1 space".to_owned(),
                 Spaces(n) if (2..=8).contains(&n) => format!("{} spaces", n),
-                _ => "error".into(), // Shouldn't happen.
+                _ => unreachable!(), // Shouldn't happen.
             });
             return Ok(());
         }
@@ -2216,14 +2215,14 @@ pub mod cmd {
         if args.is_empty() {
             let line_ending = doc!(cx.editor).line_ending;
             cx.editor.set_status(match line_ending {
-                Crlf => "crlf".into(),
-                LF => "line feed".into(),
-                FF => "form feed".into(),
-                CR => "carriage return".into(),
-                Nel => "next line".into(),
+                Crlf => "crlf",
+                LF => "line feed",
+                FF => "form feed",
+                CR => "carriage return",
+                Nel => "next line",
 
                 // These should never be a document's default line ending.
-                VT | LS | PS => "error".into(),
+                VT | LS | PS => "error",
             });
 
             return Ok(());
@@ -2259,7 +2258,7 @@ pub mod cmd {
         let (view, doc) = current!(cx.editor);
         let success = doc.earlier(view.id, uk);
         if !success {
-            cx.editor.set_status("Already at oldest change".to_owned());
+            cx.editor.set_status("Already at oldest change");
         }
 
         Ok(())
@@ -2274,7 +2273,7 @@ pub mod cmd {
         let (view, doc) = current!(cx.editor);
         let success = doc.later(view.id, uk);
         if !success {
-            cx.editor.set_status("Already at newest change".to_owned());
+            cx.editor.set_status("Already at newest change");
         }
 
         Ok(())
@@ -2634,7 +2633,7 @@ pub mod cmd {
         if let Some(label) = args.first() {
             doc.set_encoding(label)
         } else {
-            let encoding = doc.encoding().name().to_string();
+            let encoding = doc.encoding().name().to_owned();
             cx.editor.set_status(encoding);
             Ok(())
         }
@@ -3612,7 +3611,7 @@ pub fn code_action(cx: &mut Context) {
                 None => return,
             };
             if actions.is_empty() {
-                editor.set_status("No code actions available".to_owned());
+                editor.set_status("No code actions available");
                 return;
             }
 
@@ -3836,7 +3835,7 @@ fn last_picker(cx: &mut Context) {
             compositor.push(picker);
         }
         // XXX: figure out how to show error when no last picker lifetime
-        // cx.editor.set_error("no last picker".to_owned())
+        // cx.editor.set_error("no last picker")
     }));
 }
 
@@ -4098,7 +4097,7 @@ fn goto_last_accessed_file(cx: &mut Context) {
     if let Some(alt) = alternate_file {
         cx.editor.switch(alt, Action::Replace);
     } else {
-        cx.editor.set_error("no last accessed buffer".to_owned())
+        cx.editor.set_error("no last accessed buffer")
     }
 }
 
@@ -4125,7 +4124,7 @@ fn goto_last_modified_file(cx: &mut Context) {
     if let Some(alt) = alternate_file {
         cx.editor.switch(alt, Action::Replace);
     } else {
-        cx.editor.set_error("no last modified buffer".to_owned())
+        cx.editor.set_error("no last modified buffer")
     }
 }
 
@@ -4196,7 +4195,7 @@ fn goto_impl(
             jump_to(editor, location, offset_encoding, Action::Replace);
         }
         [] => {
-            editor.set_error("No definition found.".to_string());
+            editor.set_error("No definition found.");
         }
         _locations => {
             let picker = FilePicker::new(
@@ -4841,7 +4840,7 @@ fn undo(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     for _ in 0..count {
         if !doc.undo(view.id) {
-            cx.editor.set_status("Already at oldest change".to_owned());
+            cx.editor.set_status("Already at oldest change");
             break;
         }
     }
@@ -4852,7 +4851,7 @@ fn redo(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     for _ in 0..count {
         if !doc.redo(view.id) {
-            cx.editor.set_status("Already at newest change".to_owned());
+            cx.editor.set_status("Already at newest change");
             break;
         }
     }
@@ -4864,7 +4863,7 @@ fn earlier(cx: &mut Context) {
     for _ in 0..count {
         // rather than doing in batch we do this so get error halfway
         if !doc.earlier(view.id, UndoKind::Steps(1)) {
-            cx.editor.set_status("Already at oldest change".to_owned());
+            cx.editor.set_status("Already at oldest change");
             break;
         }
     }
@@ -4876,7 +4875,7 @@ fn later(cx: &mut Context) {
     for _ in 0..count {
         // rather than doing in batch we do this so get error halfway
         if !doc.later(view.id, UndoKind::Steps(1)) {
-            cx.editor.set_status("Already at newest change".to_owned());
+            cx.editor.set_status("Already at newest change");
             break;
         }
     }
@@ -4962,7 +4961,7 @@ fn yank_main_selection_to_clipboard_impl(
         bail!("Couldn't set system clipboard content: {}", e);
     }
 
-    editor.set_status("yanked main selection to system clipboard".to_owned());
+    editor.set_status("yanked main selection to system clipboard");
     Ok(())
 }
 
@@ -5399,7 +5398,7 @@ fn remove_primary_selection(cx: &mut Context) {
 
     let selection = doc.selection(view.id);
     if selection.len() == 1 {
-        cx.editor.set_error("no selections remaining".to_owned());
+        cx.editor.set_error("no selections remaining");
         return;
     }
     let index = selection.primary_index();
@@ -5506,7 +5505,7 @@ pub fn completion(cx: &mut Context) {
             }
 
             if items.is_empty() {
-                // editor.set_error("No completion available".to_string());
+                // editor.set_error("No completion available");
                 return;
             }
             let size = compositor.size();
@@ -5787,8 +5786,7 @@ fn jump_backward(cx: &mut Context) {
 
 fn save_selection(cx: &mut Context) {
     push_jump(cx.editor);
-    cx.editor
-        .set_status("Selection saved to jumplist".to_owned());
+    cx.editor.set_status("Selection saved to jumplist");
 }
 
 fn rotate_view(cx: &mut Context) {
@@ -6161,7 +6159,7 @@ fn shell_keep_pipe(cx: &mut Context) {
             }
 
             if ranges.is_empty() {
-                cx.editor.set_error("No selections remaining".to_string());
+                cx.editor.set_error("No selections remaining");
                 return;
             }
 
@@ -6247,7 +6245,7 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
                     };
 
                 if !success {
-                    cx.editor.set_error("Command failed".to_string());
+                    cx.editor.set_error("Command failed");
                     return;
                 }
 

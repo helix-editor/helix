@@ -298,8 +298,7 @@ pub fn dap_start_impl(
 
 pub fn dap_launch(cx: &mut Context) {
     if cx.editor.debugger.is_some() {
-        cx.editor
-            .set_error("Debugger is already running".to_string());
+        cx.editor.set_error("Debugger is already running");
         return;
     }
 
@@ -312,7 +311,7 @@ pub fn dap_launch(cx: &mut Context) {
         Some(c) => c,
         None => {
             cx.editor
-                .set_error("No debug adapter available for language".to_string());
+                .set_error("No debug adapter available for language");
             return;
         }
     };
@@ -410,7 +409,7 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
         Some(path) => path.clone(),
         None => {
             cx.editor
-                .set_error("Can't set breakpoint: document has no path".to_string());
+                .set_error("Can't set breakpoint: document has no path");
             return;
         }
     };
@@ -517,7 +516,7 @@ pub fn dap_continue(cx: &mut Context) {
         );
     } else {
         cx.editor
-            .set_error("Currently active thread is not stopped. Switch the thread.".into());
+            .set_error("Currently active thread is not stopped. Switch the thread.");
     }
 }
 
@@ -543,7 +542,7 @@ pub fn dap_step_in(cx: &mut Context) {
         });
     } else {
         cx.editor
-            .set_error("Currently active thread is not stopped. Switch the thread.".into());
+            .set_error("Currently active thread is not stopped. Switch the thread.");
     }
 }
 
@@ -557,7 +556,7 @@ pub fn dap_step_out(cx: &mut Context) {
         });
     } else {
         cx.editor
-            .set_error("Currently active thread is not stopped. Switch the thread.".into());
+            .set_error("Currently active thread is not stopped. Switch the thread.");
     }
 }
 
@@ -571,7 +570,7 @@ pub fn dap_next(cx: &mut Context) {
         });
     } else {
         cx.editor
-            .set_error("Currently active thread is not stopped. Switch the thread.".into());
+            .set_error("Currently active thread is not stopped. Switch the thread.");
     }
 }
 
@@ -580,14 +579,14 @@ pub fn dap_variables(cx: &mut Context) {
 
     if debugger.thread_id.is_none() {
         cx.editor
-            .set_status("Cannot access variables while target is running".to_owned());
+            .set_status("Cannot access variables while target is running");
         return;
     }
     let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
         (Some(frame), Some(thread_id)) => (frame, thread_id),
         _ => {
             cx.editor
-                .set_status("Cannot find current stack frame to access variables".to_owned());
+                .set_status("Cannot find current stack frame to access variables");
             return;
         }
     };
@@ -783,8 +782,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
     let thread_id = match debugger.thread_id {
         Some(thread_id) => thread_id,
         None => {
-            cx.editor
-                .set_error("No thread is currently active".to_owned());
+            cx.editor.set_error("No thread is currently active");
             return;
         }
     };
