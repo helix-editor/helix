@@ -346,7 +346,7 @@ pub fn dap_launch(cx: &mut Context) {
             });
             cx.jobs.callback(callback);
         },
-    ))); // TODO: wrap in popup with fixed size
+    ))));
 }
 
 fn debug_parameter_prompt(
