@@ -3,6 +3,7 @@ pub(crate) mod editor;
 mod info;
 mod markdown;
 pub mod menu;
+pub mod overlay;
 mod picker;
 mod popup;
 mod prompt;
