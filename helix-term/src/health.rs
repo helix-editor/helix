@@ -1,8 +1,6 @@
 use crossterm::style::{Color, Print, Stylize};
-use helix_core::{
-    config::{default_syntax_loader, user_syntax_loader},
-    syntax::load_runtime_file,
-};
+use helix_core::config::{default_syntax_loader, user_syntax_loader};
+use helix_loader::grammar::load_runtime_file;
 
 #[derive(Copy, Clone)]
 pub enum TsFeature {
@@ -43,10 +41,10 @@ impl TsFeature {
 
 /// Display general diagnostics.
 pub fn general() {
-    let config_file = helix_core::config_file();
-    let lang_file = helix_core::lang_config_file();
-    let log_file = helix_core::log_file();
-    let rt_dir = helix_core::runtime_dir();
+    let config_file = helix_loader::config_file();
+    let lang_file = helix_loader::lang_config_file();
+    let log_file = helix_loader::log_file();
+    let rt_dir = helix_loader::runtime_dir();
 
     if config_file.exists() {
         println!("Config file: {}", config_file.display());

@@ -1,63 +1,155 @@
 use anyhow::{anyhow, Context, Result};
+use libloading::{Library, Symbol};
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::time::SystemTime;
 use std::{
+    collections::HashSet,
     path::{Path, PathBuf},
     process::Command,
     sync::mpsc::channel,
 };
+use tree_sitter::Language;
 
-use helix_core::syntax::{GrammarConfiguration, GrammarSelection, GrammarSource, DYLIB_EXTENSION};
+#[cfg(unix)]
+const DYLIB_EXTENSION: &str = "so";
+
+#[cfg(windows)]
+const DYLIB_EXTENSION: &str = "dll";
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Configuration {
+    #[serde(rename = "use-grammars")]
+    pub grammar_selection: Option<GrammarSelection>,
+    pub grammar: Vec<GrammarConfiguration>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase", untagged)]
+pub enum GrammarSelection {
+    Only(HashSet<String>),
+    Except(HashSet<String>),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GrammarConfiguration {
+    #[serde(rename = "name")]
+    pub grammar_id: String,
+    pub source: GrammarSource,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase", untagged)]
+pub enum GrammarSource {
+    Local {
+        path: String,
+    },
+    Git {
+        #[serde(rename = "git")]
+        remote: String,
+        #[serde(rename = "rev")]
+        revision: String,
+        subpath: Option<String>,
+    },
+}
 
 const BUILD_TARGET: &str = env!("BUILD_TARGET");
 const REMOTE_NAME: &str = "origin";
 
+pub fn get_language(name: &str) -> Result<Language> {
+    let name = name.to_ascii_lowercase();
+    let mut library_path = crate::runtime_dir().join("grammars").join(&name);
+    library_path.set_extension(DYLIB_EXTENSION);
+
+    let library = unsafe { Library::new(&library_path) }
+        .with_context(|| format!("Error opening dynamic library {library_path:?}"))?;
+    let language_fn_name = format!("tree_sitter_{}", name.replace('-', "_"));
+    let language = unsafe {
+        let language_fn: Symbol<unsafe extern "C" fn() -> Language> = library
+            .get(language_fn_name.as_bytes())
+            .with_context(|| format!("Failed to load symbol {language_fn_name}"))?;
+        language_fn()
+    };
+    std::mem::forget(library);
+    Ok(language)
+}
+
 pub fn fetch_grammars() -> Result<()> {
-    run_parallel(get_grammar_configs(), fetch_grammar, "fetch")
+    run_parallel(get_grammar_configs()?, fetch_grammar, "fetch")
 }
 
 pub fn build_grammars() -> Result<()> {
-    run_parallel(get_grammar_configs(), build_grammar, "build")
+    run_parallel(get_grammar_configs()?, build_grammar, "build")
+}
+
+// Returns the set of grammar configurations the user requests.
+// Grammars are configured in the default and user `languages.toml` and are
+// merged. The `grammar_selection` key of the config is then used to filter
+// down all grammars into a subset of the user's choosing.
+fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
+    let config: Configuration = crate::user_lang_config()
+        .context("Could not parse languages.toml")?
+        .try_into()?;
+
+    let grammars = match config.grammar_selection {
+        Some(GrammarSelection::Only(selections)) => config
+            .grammar
+            .into_iter()
+            .filter(|grammar| selections.contains(&grammar.grammar_id))
+            .collect(),
+        Some(GrammarSelection::Except(rejections)) => config
+            .grammar
+            .into_iter()
+            .filter(|grammar| !rejections.contains(&grammar.grammar_id))
+            .collect(),
+        None => config.grammar,
+    };
+
+    Ok(grammars)
 }
 
 fn run_parallel<F>(grammars: Vec<GrammarConfiguration>, job: F, action: &'static str) -> Result<()>
 where
     F: Fn(GrammarConfiguration) -> Result<()> + std::marker::Send + 'static + Copy,
 {
-    let mut n_jobs = 0;
     let pool = threadpool::Builder::new().build();
     let (tx, rx) = channel();
 
     for grammar in grammars {
         let tx = tx.clone();
-        n_jobs += 1;
 
         pool.execute(move || {
-            let grammar_id = grammar.grammar_id.clone();
-            job(grammar).unwrap_or_else(|err| {
-                eprintln!("Failed to {} grammar '{}'\n{}", action, grammar_id, err)
-            });
-
-            // report progress
-            tx.send(1).unwrap();
+            tx.send(job(grammar)).unwrap();
         });
     }
     pool.join();
 
-    if rx.try_iter().sum::<usize>() == n_jobs {
-        Ok(())
+    // TODO: print all failures instead of the first one found.
+    if let Some(failure) = rx.try_iter().find_map(|result| result.err()) {
+        Err(anyhow!(
+            "Failed to {} some grammar(s).\n{}",
+            action,
+            failure
+        ))
     } else {
-        Err(anyhow!("Failed to {} some grammar(s).", action))
+        Ok(())
     }
 }
 
 fn fetch_grammar(grammar: GrammarConfiguration) -> Result<()> {
-    if let GrammarSource::Git { remote, revision } = grammar.source {
-        let grammar_dir = helix_core::runtime_dir()
+    if let GrammarSource::Git {
+        remote, revision, ..
+    } = grammar.source
+    {
+        let grammar_dir = crate::runtime_dir()
             .join("grammars/sources")
-            .join(grammar.grammar_id.clone());
+            .join(&grammar.grammar_id);
 
-        fs::create_dir_all(grammar_dir.clone()).expect("Could not create grammar directory");
+        fs::create_dir_all(&grammar_dir).context(format!(
+            "Could not create grammar directory {:?}",
+            grammar_dir
+        ))?;
 
         // create the grammar dir contains a git directory
         if !grammar_dir.join(".git").is_dir() {
@@ -65,12 +157,12 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<()> {
         }
 
         // ensure the remote matches the configured remote
-        if get_remote_url(&grammar_dir).map_or(true, |s| s.trim_end() != remote) {
+        if get_remote_url(&grammar_dir).map_or(true, |s| s != remote) {
             set_remote(&grammar_dir, &remote)?;
         }
 
         // ensure the revision matches the configured revision
-        if get_revision(&grammar_dir).map_or(true, |s| s.trim_end() != revision) {
+        if get_revision(&grammar_dir).map_or(true, |s| s != revision) {
             // Fetch the exact revision from the remote.
             // Supported by server-side git since v2.5.0 (July 2015),
             // enabled by default on major git hosts.
@@ -94,33 +186,38 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<()> {
 
 // Sets the remote for a repository to the given URL, creating the remote if
 // it does not yet exist.
-fn set_remote(repository: &Path, remote_url: &str) -> Result<String> {
-    git(repository, ["remote", "set-url", REMOTE_NAME, remote_url])
-        .or_else(|_| git(repository, ["remote", "add", REMOTE_NAME, remote_url]))
+fn set_remote(repository_dir: &Path, remote_url: &str) -> Result<String> {
+    git(
+        repository_dir,
+        ["remote", "set-url", REMOTE_NAME, remote_url],
+    )
+    .or_else(|_| git(repository_dir, ["remote", "add", REMOTE_NAME, remote_url]))
 }
 
-fn get_remote_url(repository: &Path) -> Option<String> {
-    git(repository, ["remote", "get-url", REMOTE_NAME]).ok()
+fn get_remote_url(repository_dir: &Path) -> Option<String> {
+    git(repository_dir, ["remote", "get-url", REMOTE_NAME]).ok()
 }
 
-fn get_revision(repository: &Path) -> Option<String> {
-    git(repository, ["rev-parse", "HEAD"]).ok()
+fn get_revision(repository_dir: &Path) -> Option<String> {
+    git(repository_dir, ["rev-parse", "HEAD"]).ok()
 }
 
 // A wrapper around 'git' commands which returns stdout in success and a
 // helpful error message showing the command, stdout, and stderr in error.
-fn git<I, S>(repository: &Path, args: I) -> Result<String>
+fn git<I, S>(repository_dir: &Path, args: I) -> Result<String>
 where
     I: IntoIterator<Item = S>,
     S: AsRef<std::ffi::OsStr>,
 {
     let output = Command::new("git")
         .args(args)
-        .current_dir(repository)
+        .current_dir(repository_dir)
         .output()?;
 
     if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+        Ok(String::from_utf8_lossy(&output.stdout)
+            .trim_end()
+            .to_owned())
     } else {
         // TODO: figure out how to display the git command using `args`
         Err(anyhow!(
@@ -132,50 +229,35 @@ where
 }
 
 fn build_grammar(grammar: GrammarConfiguration) -> Result<()> {
-    let grammar_dir = if let GrammarSource::Local { ref path } = grammar.source {
-        PathBuf::from(path)
+    println!("{:#?}", grammar);
+    let grammar_dir = if let GrammarSource::Local { path } = &grammar.source {
+        PathBuf::from(&path)
     } else {
-        helix_core::runtime_dir()
+        crate::runtime_dir()
             .join("grammars/sources")
-            .join(grammar.grammar_id.clone())
+            .join(&grammar.grammar_id)
     };
 
-    grammar_dir.read_dir().with_context(|| {
-        format!(
-            "The directory {:?} is empty, you probably need to use 'hx --fetch-grammars'?",
-            grammar_dir
-        )
+    let grammar_dir_entries = grammar_dir.read_dir().with_context(|| {
+        format!("Failed to read directory {grammar_dir:?}. Did you use 'hx --fetch-grammars'?")
     })?;
 
-    let path = match grammar.path {
-        Some(ref subpath) => grammar_dir.join(subpath),
-        None => grammar_dir,
+    if grammar_dir_entries.count() == 0 {
+        return Err(anyhow!(
+            "Directory {grammar_dir:?} is empty. Did you use 'hx --fetch-grammars'?"
+        ));
+    };
+
+    let path = match &grammar.source {
+        GrammarSource::Git {
+            subpath: Some(subpath),
+            ..
+        } => grammar_dir.join(subpath),
+        _ => grammar_dir,
     }
     .join("src");
 
     build_tree_sitter_library(&path, grammar)
-}
-
-// Returns the set of grammar configurations the user requests.
-// Grammars are configured in the default and user `languages.toml` and are
-// merged. The `grammar_selection` key of the config is then used to filter
-// down all grammars into a subset of the user's choosing.
-fn get_grammar_configs() -> Vec<GrammarConfiguration> {
-    let config = helix_core::config::user_syntax_loader().expect("Could not parse languages.toml");
-
-    match config.grammar_selection {
-        Some(GrammarSelection::Only(selections)) => config
-            .grammar
-            .into_iter()
-            .filter(|grammar| selections.contains(&grammar.grammar_id))
-            .collect(),
-        Some(GrammarSelection::Except(rejections)) => config
-            .grammar
-            .into_iter()
-            .filter(|grammar| !rejections.contains(&grammar.grammar_id))
-            .collect(),
-        None => config.grammar,
-    }
 }
 
 fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> Result<()> {
@@ -193,8 +275,8 @@ fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> 
             None
         }
     };
-    let parser_lib_path = helix_core::runtime_dir().join("../runtime/grammars");
-    let mut library_path = parser_lib_path.join(grammar.grammar_id.clone());
+    let parser_lib_path = crate::runtime_dir().join("grammars");
+    let mut library_path = parser_lib_path.join(&grammar.grammar_id);
     library_path.set_extension(DYLIB_EXTENSION);
 
     let recompile = needs_recompile(&library_path, &parser_path, &scanner_path)
@@ -210,7 +292,7 @@ fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> 
     let mut config = cc::Build::new();
     config
         .cpp(true)
-        .opt_level(2)
+        .opt_level(3)
         .cargo_metadata(false)
         .host(BUILD_TARGET)
         .target(BUILD_TARGET);
@@ -245,7 +327,7 @@ fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> 
             .arg(header_path)
             .arg("-o")
             .arg(&library_path)
-            .arg("-O2");
+            .arg("-O3");
         if let Some(scanner_path) = scanner_path.as_ref() {
             if scanner_path.extension() == Some("c".as_ref()) {
                 command.arg("-xc").arg("-std=c99").arg(scanner_path);
@@ -293,4 +375,14 @@ fn needs_recompile(
 
 fn mtime(path: &Path) -> Result<SystemTime> {
     Ok(fs::metadata(path)?.modified()?)
+}
+
+/// Gives the contents of a file from a language's `runtime/queries/<lang>`
+/// directory
+pub fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
+    let path = crate::RUNTIME_DIR
+        .join("queries")
+        .join(language)
+        .join(filename);
+    std::fs::read_to_string(&path)
 }

@@ -51,16 +51,16 @@ Grammar configuration takes these keys:
 | Key      | Description                                                              |
 | ---      | -----------                                                              |
 | `name`   | The name of the tree-sitter grammar                                      |
-| `path`   | A path within the grammar directory which should be built. Some grammar repositories host multiple grammars (for example `tree-sitter-typescript` and `tree-sitter-ocaml`) in subdirectories. This key is used to point `hx --build-grammars` to the correct path for compilation. When ommitted, the root of the grammar directory is used |
 | `source` | The method of fetching the grammar - a table with a schema defined below |
 
 Where `source` is a table with either these keys when using a grammar from a
 git repository:
 
-| Key   | Description                                               |
-| ---   | -----------                                               |
-| `git` | A git remote URL from which the grammar should be cloned  |
-| `rev` | The revision (commit hash or tag) which should be fetched |
+| Key    | Description                                               |
+| ---    | -----------                                               |
+| `git`  | A git remote URL from which the grammar should be cloned  |
+| `rev`  | The revision (commit hash or tag) which should be fetched |
+| `subpath` | A path within the grammar directory which should be built. Some grammar repositories host multiple grammars (for example `tree-sitter-typescript` and `tree-sitter-ocaml`) in subdirectories. This key is used to point `hx --build-grammars` to the correct path for compilation. When omitted, the root of repository is used |
 
 Or a `path` key with an absolute path to a locally available grammar directory.
 
