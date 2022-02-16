@@ -2130,6 +2130,7 @@ pub mod cmd {
             let id = doc.id();
             let _ = cx.editor.refresh_language_server(id);
         }
+        cx.editor.set_status("File written.");
         Ok(())
     }
 
