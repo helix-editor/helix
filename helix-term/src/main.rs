@@ -40,7 +40,7 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let logpath = helix_core::log_file();
+    let logpath = helix_loader::log_file();
     let parent = logpath.parent().unwrap();
     if !parent.exists() {
         std::fs::create_dir_all(parent).ok();
@@ -105,21 +105,21 @@ FLAGS:
     }
 
     if args.fetch_grammars {
-        helix_term::grammars::fetch_grammars()?;
+        helix_loader::grammar::fetch_grammars()?;
         return Ok(0);
     }
 
     if args.build_grammars {
-        helix_term::grammars::build_grammars()?;
+        helix_loader::grammar::build_grammars()?;
         return Ok(0);
     }
 
-    let conf_dir = helix_core::config_dir();
+    let conf_dir = helix_loader::config_dir();
     if !conf_dir.exists() {
         std::fs::create_dir_all(&conf_dir).ok();
     }
 
-    let config = match std::fs::read_to_string(helix_core::config_file()) {
+    let config = match std::fs::read_to_string(helix_loader::config_file()) {
         Ok(config) => toml::from_str(&config)
             .map(merge_keys)
             .unwrap_or_else(|err| {

@@ -7,10 +7,6 @@ use crate::{
     Rope, RopeSlice, Tendril,
 };
 
-use anyhow::{Context, Result};
-use libloading::{Library, Symbol};
-use tree_sitter::Language;
-
 use arc_swap::{ArcSwap, Guard};
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
@@ -27,33 +23,7 @@ use std::{
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
 
-#[cfg(unix)]
-pub const DYLIB_EXTENSION: &str = "so";
-
-#[cfg(windows)]
-pub const DYLIB_EXTENSION: &str = "dll";
-
-fn replace_dashes_with_underscores(name: &str) -> String {
-    name.replace('-', "_")
-}
-
-pub fn get_language(runtime_path: &std::path::Path, name: &str) -> Result<Language> {
-    let name = name.to_ascii_lowercase();
-    let mut library_path = runtime_path.join("grammars").join(&name);
-    library_path.set_extension(DYLIB_EXTENSION);
-
-    let library = unsafe { Library::new(&library_path) }
-        .with_context(|| format!("Error opening dynamic library {:?}", &library_path))?;
-    let language_fn_name = format!("tree_sitter_{}", replace_dashes_with_underscores(&name));
-    let language = unsafe {
-        let language_fn: Symbol<unsafe extern "C" fn() -> Language> = library
-            .get(language_fn_name.as_bytes())
-            .with_context(|| format!("Failed to load symbol {}", language_fn_name))?;
-        language_fn()
-    };
-    std::mem::forget(library);
-    Ok(language)
-}
+use helix_loader::grammar::{get_language, load_runtime_file};
 
 fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
 where
@@ -81,19 +51,8 @@ where
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct Configuration {
-    #[serde(rename = "use-grammars")]
-    pub grammar_selection: Option<GrammarSelection>,
     pub language: Vec<LanguageConfiguration>,
-    pub grammar: Vec<GrammarConfiguration>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase", untagged)]
-pub enum GrammarSelection {
-    Only(HashSet<String>),
-    Except(HashSet<String>),
 }
 
 // largely based on tree-sitter/cli/src/loader.rs
@@ -279,29 +238,6 @@ pub struct IndentQuery {
     pub outdent: HashSet<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GrammarConfiguration {
-    #[serde(rename = "name")]
-    pub grammar_id: String, // c-sharp, rust
-    pub source: GrammarSource,
-    pub path: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-#[serde(untagged)]
-pub enum GrammarSource {
-    Local {
-        path: String,
-    },
-    Git {
-        #[serde(rename = "git")]
-        remote: String,
-        #[serde(rename = "rev")]
-        revision: String,
-    },
-}
-
 #[derive(Debug)]
 pub struct TextObjectQuery {
     pub query: Query,
@@ -398,14 +334,6 @@ impl TextObjectQuery {
     }
 }
 
-pub fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
-    let path = crate::RUNTIME_DIR
-        .join("queries")
-        .join(language)
-        .join(filename);
-    std::fs::read_to_string(&path)
-}
-
 fn read_query(language: &str, filename: &str) -> String {
     static INHERITS_REGEX: Lazy<Regex> =
         Lazy::new(|| Regex::new(r";+\s*inherits\s*:?\s*([a-z_,()]+)\s*").unwrap());
@@ -451,12 +379,9 @@ impl LanguageConfiguration {
         if highlights_query.is_empty() {
             None
         } else {
-            let language = get_language(
-                &crate::RUNTIME_DIR,
-                self.grammar.as_deref().unwrap_or(&self.language_id),
-            )
-            .map_err(|e| log::info!("{}", e))
-            .ok()?;
+            let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
+                .map_err(|e| log::info!("{}", e))
+                .ok()?;
             let config = HighlightConfiguration::new(
                 language,
                 &highlights_query,
@@ -2116,13 +2041,9 @@ mod test {
         .map(String::from)
         .collect();
 
-        let loader = Loader::new(Configuration {
-            language: vec![],
-            grammar: vec![],
-            grammar_selection: None,
-        });
+        let loader = Loader::new(Configuration { language: vec![] });
 
-        let language = get_language(&crate::RUNTIME_DIR, "Rust").unwrap();
+        let language = get_language("Rust").unwrap();
         let config = HighlightConfiguration::new(
             language,
             &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/highlights.scm")

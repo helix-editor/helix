@@ -7,7 +7,6 @@ pub mod commands;
 pub mod compositor;
 pub mod config;
 pub mod health;
-pub mod grammars;
 pub mod job;
 pub mod keymap;
 pub mod ui;

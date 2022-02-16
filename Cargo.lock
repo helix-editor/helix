@@ -358,12 +358,11 @@ dependencies = [
 name = "helix-core"
 version = "0.6.0"
 dependencies = [
- "anyhow",
  "arc-swap",
  "chrono",
  "encoding_rs",
  "etcetera",
- "libloading",
+ "helix-loader",
  "log",
  "once_cell",
  "quickcheck",
@@ -395,6 +394,21 @@ dependencies = [
  "thiserror",
  "tokio",
  "which",
+]
+
+[[package]]
+name = "helix-loader"
+version = "0.6.0"
+dependencies = [
+ "anyhow",
+ "cc",
+ "etcetera",
+ "libloading",
+ "once_cell",
+ "serde",
+ "threadpool",
+ "toml",
+ "tree-sitter",
 ]
 
 [[package]]
@@ -432,6 +446,7 @@ dependencies = [
  "grep-searcher",
  "helix-core",
  "helix-dap",
+ "helix-loader",
  "helix-lsp",
  "helix-tui",
  "helix-view",

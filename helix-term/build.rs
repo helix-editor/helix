@@ -14,10 +14,5 @@ fn main() {
         None => env!("CARGO_PKG_VERSION").into(),
     };
 
-    println!(
-        "cargo:rustc-env=BUILD_TARGET={}",
-        std::env::var("TARGET").unwrap()
-    );
-
     println!("cargo:rustc-env=VERSION_AND_GIT_HASH={}", version);
 }
