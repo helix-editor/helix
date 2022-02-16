@@ -64,7 +64,10 @@ impl JumpList {
     }
 }
 
-const GUTTERS: &[(Gutter, usize)] = &[(gutter::diagnostic, 1), (gutter::line_number, 5)];
+const GUTTERS: &[(Gutter, usize)] = &[
+    (gutter::diagnostics_or_breakpoints, 1),
+    (gutter::line_number, 5),
+];
 
 #[derive(Debug)]
 pub struct View {
@@ -80,6 +83,8 @@ pub struct View {
     // uses two docs because we want to be able to swap between the
     // two last modified docs which we need to manually keep track of
     pub last_modified_docs: [Option<DocumentId>; 2],
+    /// used to store previous selections of tree-sitter objecs
+    pub object_selections: Vec<Selection>,
 }
 
 impl View {
@@ -92,6 +97,7 @@ impl View {
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
             last_accessed_doc: None,
             last_modified_docs: [None, None],
+            object_selections: Vec::new(),
         }
     }
 
@@ -270,6 +276,26 @@ impl View {
     pub fn pos_at_screen_coords(&self, doc: &Document, row: u16, column: u16) -> Option<usize> {
         self.text_pos_at_screen_coords(&doc.text().slice(..), row, column, doc.tab_width())
     }
+
+    /// Translates screen coordinates into coordinates on the gutter of the view.
+    /// Returns a tuple of usize typed line and column numbers starting with 0.
+    /// Returns None if coordinates are not on the gutter.
+    pub fn gutter_coords_at_screen_coords(&self, row: u16, column: u16) -> Option<Position> {
+        // 1 for status
+        if row < self.area.top() || row >= self.area.bottom() {
+            return None;
+        }
+
+        if column < self.area.left() || column > self.area.right() {
+            return None;
+        }
+
+        Some(Position::new(
+            (row - self.area.top()) as usize,
+            (column - self.area.left()) as usize,
+        ))
+    }
+
     // pub fn traverse<F>(&self, text: RopeSlice, start: usize, end: usize, fun: F)
     // where
     //     F: Fn(usize, usize),
@@ -353,7 +379,7 @@ mod tests {
         let text = rope.slice(..);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 0, 4),
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET, 4),
             Some(0)
         );
 
@@ -386,7 +412,7 @@ mod tests {
         let text = rope.slice(..);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 0, 4),
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET, 4),
             Some(0)
         );
 

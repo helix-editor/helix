@@ -11,10 +11,6 @@ pub fn compare_ropes(old: &Rope, new: &Rope) -> Transaction {
     // A timeout is set so after 1 seconds, the algorithm will start
     // approximating. This is especially important for big `Rope`s or
     // `Rope`s that are extremely dissimilar to each other.
-    //
-    // Note: Ignore the clippy warning, as the trait bounds of
-    // `Transaction::change()` require an iterator implementing
-    // `ExactIterator`.
     let mut config = similar::TextDiff::configure();
     config.timeout(std::time::Duration::from_secs(1));
 
@@ -62,7 +58,7 @@ mod tests {
             let mut old = Rope::from(a);
             let new = Rope::from(b);
             compare_ropes(&old, &new).apply(&mut old);
-            old.to_string() == new.to_string()
+            old == new
         }
     }
 }

@@ -1,5 +1,6 @@
-use anyhow::{anyhow, Context, Error};
+use anyhow::{anyhow, bail, Context, Error};
 use serde::de::{self, Deserialize, Deserializer};
+use serde::Serialize;
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -10,7 +11,7 @@ use std::sync::Arc;
 
 use helix_core::{
     encoding,
-    history::History,
+    history::{History, UndoKind},
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
     syntax::{self, LanguageConfiguration},
@@ -19,7 +20,7 @@ use helix_core::{
 };
 use helix_lsp::util::LspFormatting;
 
-use crate::{DocumentId, Theme, ViewId};
+use crate::{DocumentId, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -30,9 +31,9 @@ pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
-    Normal,
-    Select,
-    Insert,
+    Normal = 0,
+    Select = 1,
+    Insert = 2,
 }
 
 impl Display for Mode {
@@ -53,7 +54,7 @@ impl FromStr for Mode {
             "normal" => Ok(Mode::Normal),
             "select" => Ok(Mode::Select),
             "insert" => Ok(Mode::Insert),
-            _ => Err(anyhow!("Invalid mode '{}'", s)),
+            _ => bail!("Invalid mode '{}'", s),
         }
     }
 }
@@ -66,6 +67,15 @@ impl<'de> Deserialize<'de> for Mode {
     {
         let s = String::deserialize(deserializer)?;
         s.parse().map_err(de::Error::custom)
+    }
+}
+
+impl Serialize for Mode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self)
     }
 }
 
@@ -358,8 +368,7 @@ impl Document {
     pub fn open(
         path: &Path,
         encoding: Option<&'static encoding::Encoding>,
-        theme: Option<&Theme>,
-        config_loader: Option<&syntax::Loader>,
+        config_loader: Option<Arc<syntax::Loader>>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding) = if path.exists() {
@@ -376,7 +385,7 @@ impl Document {
         // set the path and try detecting the language
         doc.set_path(Some(path))?;
         if let Some(loader) = config_loader {
-            doc.detect_language(theme, loader);
+            doc.detect_language(loader);
         }
 
         doc.detect_indent_and_line_ending();
@@ -387,7 +396,7 @@ impl Document {
     /// The same as [`format`], but only returns formatting changes if auto-formatting
     /// is configured.
     pub fn auto_format(&self) -> Option<impl Future<Output = LspFormatting> + 'static> {
-        if self.language_config().map(|c| c.auto_format) == Some(true) {
+        if self.language_config()?.auto_format {
             self.format()
         } else {
             None
@@ -397,30 +406,27 @@ impl Document {
     /// If supported, returns the changes that should be applied to this document in order
     /// to format it nicely.
     pub fn format(&self) -> Option<impl Future<Output = LspFormatting> + 'static> {
-        if let Some(language_server) = self.language_server() {
-            let text = self.text.clone();
-            let offset_encoding = language_server.offset_encoding();
-            let request = language_server.text_document_formatting(
-                self.identifier(),
-                lsp::FormattingOptions::default(),
-                None,
-            )?;
+        let language_server = self.language_server()?;
+        let text = self.text.clone();
+        let offset_encoding = language_server.offset_encoding();
+        let request = language_server.text_document_formatting(
+            self.identifier(),
+            lsp::FormattingOptions::default(),
+            None,
+        )?;
 
-            let fut = async move {
-                let edits = request.await.unwrap_or_else(|e| {
-                    log::warn!("LSP formatting failed: {}", e);
-                    Default::default()
-                });
-                LspFormatting {
-                    doc: text,
-                    edits,
-                    offset_encoding,
-                }
-            };
-            Some(fut)
-        } else {
-            None
-        }
+        let fut = async move {
+            let edits = request.await.unwrap_or_else(|e| {
+                log::warn!("LSP formatting failed: {}", e);
+                Default::default()
+            });
+            LspFormatting {
+                doc: text,
+                edits,
+                offset_encoding,
+            }
+        };
+        Some(fut)
     }
 
     pub fn save(&mut self) -> impl Future<Output = Result<(), anyhow::Error>> {
@@ -464,9 +470,7 @@ impl Document {
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
-                    return Err(Error::msg(
-                        "can't save file, parent directory does not exist",
-                    ));
+                    bail!("can't save file, parent directory does not exist");
                 }
             }
 
@@ -498,12 +502,12 @@ impl Document {
     }
 
     /// Detect the programming language based on the file type.
-    pub fn detect_language(&mut self, theme: Option<&Theme>, config_loader: &syntax::Loader) {
+    pub fn detect_language(&mut self, config_loader: Arc<syntax::Loader>) {
         if let Some(path) = &self.path {
             let language_config = config_loader
                 .language_config_for_file_name(path)
                 .or_else(|| config_loader.language_config_for_shebang(self.text()));
-            self.set_language(theme, language_config);
+            self.set_language(language_config, Some(config_loader));
         }
     }
 
@@ -513,8 +517,7 @@ impl Document {
     /// line ending.
     pub fn detect_indent_and_line_ending(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
-            self.language
-                .as_ref()
+            self.language_config()
                 .and_then(|config| config.indent.as_ref())
                 .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
         });
@@ -528,7 +531,7 @@ impl Document {
 
         // If there is no path or the path no longer exists.
         if path.is_none() {
-            return Err(anyhow!("can't find file to reload from"));
+            bail!("can't find file to reload from");
         }
 
         let mut file = std::fs::File::open(path.unwrap())?;
@@ -549,10 +552,8 @@ impl Document {
 
     /// Sets the [`Document`]'s encoding with the encoding correspondent to `label`.
     pub fn set_encoding(&mut self, label: &str) -> Result<(), Error> {
-        match encoding::Encoding::for_label(label.as_bytes()) {
-            Some(encoding) => self.encoding = encoding,
-            None => return Err(anyhow::anyhow!("unknown encoding")),
-        }
+        self.encoding = encoding::Encoding::for_label(label.as_bytes())
+            .ok_or_else(|| anyhow!("unknown encoding"))?;
         Ok(())
     }
 
@@ -577,15 +578,13 @@ impl Document {
     /// if it exists.
     pub fn set_language(
         &mut self,
-        theme: Option<&Theme>,
         language_config: Option<Arc<helix_core::syntax::LanguageConfiguration>>,
+        loader: Option<Arc<helix_core::syntax::Loader>>,
     ) {
-        if let Some(language_config) = language_config {
-            let scopes = theme.map(|theme| theme.scopes()).unwrap_or(&[]);
-            if let Some(highlight_config) = language_config.highlight_config(scopes) {
-                let syntax = Syntax::new(&self.text, highlight_config);
+        if let (Some(language_config), Some(loader)) = (language_config, loader) {
+            if let Some(highlight_config) = language_config.highlight_config(&loader.scopes()) {
+                let syntax = Syntax::new(&self.text, highlight_config, loader);
                 self.syntax = Some(syntax);
-                // TODO: config.configure(scopes) is now delayed, is that ok?
             }
 
             self.language = Some(language_config);
@@ -597,15 +596,10 @@ impl Document {
 
     /// Set the programming language for the file if you know the name (scope) but don't have the
     /// [`syntax::LanguageConfiguration`] for it.
-    pub fn set_language2(
-        &mut self,
-        scope: &str,
-        theme: Option<&Theme>,
-        config_loader: Arc<syntax::Loader>,
-    ) {
+    pub fn set_language2(&mut self, scope: &str, config_loader: Arc<syntax::Loader>) {
         let language_config = config_loader.language_config_for_scope(scope);
 
-        self.set_language(theme, language_config);
+        self.set_language(language_config, Some(config_loader));
     }
 
     /// Set the LSP.
@@ -644,7 +638,6 @@ impl Document {
                 );
             }
 
-            // set modified since accessed
             self.modified_since_accessed = true;
         }
 
@@ -687,7 +680,7 @@ impl Document {
 
                 if let Some(notify) = notify {
                     tokio::spawn(notify);
-                } //.expect("failed to emit textDocument/didChange");
+                }
             }
         }
         success
@@ -715,11 +708,11 @@ impl Document {
         success
     }
 
-    /// Undo the last modification to the [`Document`]. Returns whether the undo was successful.
-    pub fn undo(&mut self, view_id: ViewId) -> bool {
+    fn undo_redo_impl(&mut self, view_id: ViewId, undo: bool) -> bool {
         let mut history = self.history.take();
-        let success = if let Some(transaction) = history.undo() {
-            self.apply_impl(transaction, view_id)
+        let txn = if undo { history.undo() } else { history.redo() };
+        let success = if let Some(txn) = txn {
+            self.apply_impl(txn, view_id)
         } else {
             false
         };
@@ -732,21 +725,14 @@ impl Document {
         success
     }
 
+    /// Undo the last modification to the [`Document`]. Returns whether the undo was successful.
+    pub fn undo(&mut self, view_id: ViewId) -> bool {
+        self.undo_redo_impl(view_id, true)
+    }
+
     /// Redo the last modification to the [`Document`]. Returns whether the redo was sucessful.
     pub fn redo(&mut self, view_id: ViewId) -> bool {
-        let mut history = self.history.take();
-        let success = if let Some(transaction) = history.redo() {
-            self.apply_impl(transaction, view_id)
-        } else {
-            false
-        };
-        self.history.set(history);
-
-        if success {
-            // reset changeset to fix len
-            self.changes = ChangeSet::new(self.text());
-        }
-        success
+        self.undo_redo_impl(view_id, false)
     }
 
     pub fn savepoint(&mut self) {
@@ -759,9 +745,12 @@ impl Document {
         }
     }
 
-    /// Undo modifications to the [`Document`] according to `uk`.
-    pub fn earlier(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) -> bool {
-        let txns = self.history.get_mut().earlier(uk);
+    fn earlier_later_impl(&mut self, view_id: ViewId, uk: UndoKind, earlier: bool) -> bool {
+        let txns = if earlier {
+            self.history.get_mut().earlier(uk)
+        } else {
+            self.history.get_mut().later(uk)
+        };
         let mut success = false;
         for txn in txns {
             if self.apply_impl(&txn, view_id) {
@@ -775,20 +764,14 @@ impl Document {
         success
     }
 
+    /// Undo modifications to the [`Document`] according to `uk`.
+    pub fn earlier(&mut self, view_id: ViewId, uk: UndoKind) -> bool {
+        self.earlier_later_impl(view_id, uk, true)
+    }
+
     /// Redo modifications to the [`Document`] according to `uk`.
-    pub fn later(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) -> bool {
-        let txns = self.history.get_mut().later(uk);
-        let mut success = false;
-        for txn in txns {
-            if self.apply_impl(&txn, view_id) {
-                success = true;
-            }
-        }
-        if success {
-            // reset changeset to fix len
-            self.changes = ChangeSet::new(self.text());
-        }
-        success
+    pub fn later(&mut self, view_id: ViewId, uk: UndoKind) -> bool {
+        self.earlier_later_impl(view_id, uk, false)
     }
 
     /// Commit pending changes to history
@@ -844,6 +827,16 @@ impl Document {
             .map(|language| language.scope.as_str())
     }
 
+    /// Language ID for the document. Either the `language-id` from the
+    /// `language-server` configuration, or the document language if no
+    /// `language-id` has been specified.
+    pub fn language_id(&self) -> Option<&str> {
+        self.language_config()
+            .and_then(|config| config.language_server.as_ref())
+            .and_then(|lsp_config| lsp_config.language_id.as_deref())
+            .or_else(|| Some(self.language()?.rsplit_once('.')?.1))
+    }
+
     /// Corresponding [`LanguageConfiguration`].
     pub fn language_config(&self) -> Option<&LanguageConfiguration> {
         self.language.as_deref()
@@ -854,18 +847,10 @@ impl Document {
         self.version
     }
 
+    /// Language server if it has been initialized.
     pub fn language_server(&self) -> Option<&helix_lsp::Client> {
-        let server = self.language_server.as_deref();
-        let initialized = server
-            .map(|server| server.is_initialized())
-            .unwrap_or(false);
-
-        // only resolve language_server if it's initialized
-        if initialized {
-            server
-        } else {
-            None
-        }
+        let server = self.language_server.as_deref()?;
+        server.is_initialized().then(|| server)
     }
 
     #[inline]
@@ -876,8 +861,7 @@ impl Document {
 
     /// Tab size in columns.
     pub fn tab_width(&self) -> usize {
-        self.language
-            .as_ref()
+        self.language_config()
             .and_then(|config| config.indent.as_ref())
             .map_or(4, |config| config.tab_width) // fallback to 4 columns
     }
@@ -902,7 +886,7 @@ impl Document {
 
     /// File path as a URL.
     pub fn url(&self) -> Option<Url> {
-        self.path().map(|path| Url::from_file_path(path).unwrap())
+        Url::from_file_path(self.path()?).ok()
     }
 
     #[inline]
@@ -925,10 +909,6 @@ impl Document {
             .map(helix_core::path::get_relative_path)
     }
 
-    // pub fn slice<R>(&self, range: R) -> RopeSlice where R: RangeBounds {
-    //     self.state.doc.slice
-    // }
-
     // transact(Fn) ?
 
     // -- LSP methods
@@ -949,7 +929,6 @@ impl Document {
 
     pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
         self.diagnostics = diagnostics;
-        // sort by range
         self.diagnostics
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
     }

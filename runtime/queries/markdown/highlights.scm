@@ -22,6 +22,11 @@
 (link_label) @markup.link.label
 
 [
+  (link_text)
+  (image_description)
+] @markup.link.text
+
+[
   (list_marker_plus)
   (list_marker_minus)
   (list_marker_star)

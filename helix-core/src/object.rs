@@ -1,31 +1,72 @@
 use crate::{Range, RopeSlice, Selection, Syntax};
+use tree_sitter::Node;
 
-// TODO: to contract_selection we'd need to store the previous ranges before expand.
-// Maybe just contract to the first child node?
-pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
+pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
+    select_node_impl(syntax, text, selection, |descendant, from, to| {
+        if descendant.start_byte() == from && descendant.end_byte() == to {
+            descendant.parent()
+        } else {
+            Some(descendant)
+        }
+    })
+}
+
+pub fn shrink_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
+    select_node_impl(syntax, text, selection, |descendant, _from, _to| {
+        descendant.child(0).or(Some(descendant))
+    })
+}
+
+pub fn select_sibling<F>(
+    syntax: &Syntax,
+    text: RopeSlice,
+    selection: Selection,
+    sibling_fn: &F,
+) -> Selection
+where
+    F: Fn(Node) -> Option<Node>,
+{
+    select_node_impl(syntax, text, selection, |descendant, _from, _to| {
+        find_sibling_recursive(descendant, sibling_fn)
+    })
+}
+
+fn find_sibling_recursive<F>(node: Node, sibling_fn: F) -> Option<Node>
+where
+    F: Fn(Node) -> Option<Node>,
+{
+    sibling_fn(node).or_else(|| {
+        node.parent()
+            .and_then(|node| find_sibling_recursive(node, sibling_fn))
+    })
+}
+
+fn select_node_impl<F>(
+    syntax: &Syntax,
+    text: RopeSlice,
+    selection: Selection,
+    select_fn: F,
+) -> Selection
+where
+    F: Fn(Node, usize, usize) -> Option<Node>,
+{
     let tree = syntax.tree();
 
-    selection.clone().transform(|range| {
+    selection.transform(|range| {
         let from = text.char_to_byte(range.from());
         let to = text.char_to_byte(range.to());
 
-        // find parent of a descendant that matches the range
-        let parent = match tree
+        let node = match tree
             .root_node()
             .descendant_for_byte_range(from, to)
-            .and_then(|node| {
-                if node.child_count() == 0 || (node.start_byte() == from && node.end_byte() == to) {
-                    node.parent()
-                } else {
-                    Some(node)
-                }
-            }) {
-            Some(parent) => parent,
+            .and_then(|node| select_fn(node, from, to))
+        {
+            Some(node) => node,
             None => return range,
         };
 
-        let from = text.byte_to_char(parent.start_byte());
-        let to = text.byte_to_char(parent.end_byte());
+        let from = text.byte_to_char(node.start_byte());
+        let to = text.byte_to_char(node.end_byte());
 
         if range.head < range.anchor {
             Range::new(to, from)

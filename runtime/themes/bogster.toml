@@ -28,6 +28,16 @@
 
 "module" = "#d32c5d"
 
+# TODO
+"markup.heading" = "blue"
+"markup.list" = "red"
+"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.text" = "red"
+"markup.quote" = "cyan"
+"markup.raw" = "green"
+
 "diff.plus" = "#59dcb7"
 "diff.delta" = "#dc7759"
 "diff.minus" = "#dc597f"

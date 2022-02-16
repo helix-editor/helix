@@ -195,82 +195,82 @@ struct DateField {
 impl DateField {
     fn from_specifier(specifier: &str) -> Option<Self> {
         match specifier {
-            "Y" => Some(DateField {
+            "Y" => Some(Self {
                 regex: r"\d{4}",
                 unit: DateUnit::Years,
                 max_len: 5,
             }),
-            "y" => Some(DateField {
+            "y" => Some(Self {
                 regex: r"\d\d",
                 unit: DateUnit::Years,
                 max_len: 2,
             }),
-            "m" => Some(DateField {
+            "m" => Some(Self {
                 regex: r"[0-1]\d",
                 unit: DateUnit::Months,
                 max_len: 2,
             }),
-            "d" => Some(DateField {
+            "d" => Some(Self {
                 regex: r"[0-3]\d",
                 unit: DateUnit::Days,
                 max_len: 2,
             }),
-            "-d" => Some(DateField {
+            "-d" => Some(Self {
                 regex: r"[1-3]?\d",
                 unit: DateUnit::Days,
                 max_len: 2,
             }),
-            "a" => Some(DateField {
+            "a" => Some(Self {
                 regex: r"Sun|Mon|Tue|Wed|Thu|Fri|Sat",
                 unit: DateUnit::Days,
                 max_len: 3,
             }),
-            "A" => Some(DateField {
+            "A" => Some(Self {
                 regex: r"Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday",
                 unit: DateUnit::Days,
                 max_len: 9,
             }),
-            "b" | "h" => Some(DateField {
+            "b" | "h" => Some(Self {
                 regex: r"Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec",
                 unit: DateUnit::Months,
                 max_len: 3,
             }),
-            "B" => Some(DateField {
+            "B" => Some(Self {
                 regex: r"January|February|March|April|May|June|July|August|September|October|November|December",
                 unit: DateUnit::Months,
                 max_len: 9,
             }),
-            "H" => Some(DateField {
+            "H" => Some(Self {
                 regex: r"[0-2]\d",
                 unit: DateUnit::Hours,
                 max_len: 2,
             }),
-            "M" => Some(DateField {
+            "M" => Some(Self {
                 regex: r"[0-5]\d",
                 unit: DateUnit::Minutes,
                 max_len: 2,
             }),
-            "S" => Some(DateField {
+            "S" => Some(Self {
                 regex: r"[0-5]\d",
                 unit: DateUnit::Seconds,
                 max_len: 2,
             }),
-            "I" => Some(DateField {
+            "I" => Some(Self {
                 regex: r"[0-1]\d",
                 unit: DateUnit::Hours,
                 max_len: 2,
             }),
-            "-I" => Some(DateField {
+            "-I" => Some(Self {
                 regex: r"1?\d",
                 unit: DateUnit::Hours,
                 max_len: 2,
             }),
-            "P" => Some(DateField {
+            "P" => Some(Self {
                 regex: r"am|pm",
                 unit: DateUnit::AmPm,
                 max_len: 2,
             }),
-            "p" => Some(DateField {
+            "p" => Some(Self {
                 regex: r"AM|PM",
                 unit: DateUnit::AmPm,
                 max_len: 2,
@@ -451,7 +451,7 @@ mod test {
                     .unwrap()
                     .increment(amount)
                     .1,
-                expected.into()
+                Tendril::from(expected)
             );
         }
     }

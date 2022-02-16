@@ -2,7 +2,8 @@ mod completion;
 pub(crate) mod editor;
 mod info;
 mod markdown;
-mod menu;
+pub mod menu;
+pub mod overlay;
 mod picker;
 mod popup;
 mod prompt;
@@ -21,7 +22,7 @@ pub use text::Text;
 
 use helix_core::regex::Regex;
 use helix_core::regex::RegexBuilder;
-use helix_view::{Document, Editor, View};
+use helix_view::{Document, View};
 
 use std::path::PathBuf;
 
@@ -65,7 +66,7 @@ pub fn regex_prompt(
                         return;
                     }
 
-                    let case_insensitive = if cx.editor.config.smart_case {
+                    let case_insensitive = if cx.editor.config.search.smart_case {
                         !input.chars().any(char::is_uppercase)
                     } else {
                         false
@@ -155,14 +156,10 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         files,
         move |path: &PathBuf| {
             // format_fn
-            path.strip_prefix(&root)
-                .unwrap_or(path)
-                .to_str()
-                .unwrap()
-                .into()
+            path.strip_prefix(&root).unwrap_or(path).to_string_lossy()
         },
-        move |editor: &mut Editor, path: &PathBuf, action| {
-            editor
+        move |cx, path: &PathBuf, action| {
+            cx.editor
                 .open(path.into(), action)
                 .expect("editor.open failed");
         },
@@ -327,12 +324,12 @@ pub mod completers {
         let is_tilde = input.starts_with('~') && input.len() == 1;
         let path = helix_core::path::expand_tilde(Path::new(input));
 
-        let (dir, file_name) = if input.ends_with('/') {
+        let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
             (path, None)
         } else {
             let file_name = path
                 .file_name()
-                .map(|file| file.to_str().unwrap().to_owned());
+                .and_then(|file| file.to_str().map(|path| path.to_owned()));
 
             let path = match path.parent() {
                 Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
@@ -357,7 +354,7 @@ pub mod completers {
                         return None;
                     }
 
-                    let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+                    //let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
                     let path = entry.path();
                     let mut path = if is_tilde {
@@ -375,12 +372,7 @@ pub mod completers {
                         path.push("");
                     }
 
-                    let path = if cfg!(windows) && is_dir {
-                        // Convert Windows style path separator to Unix style
-                        path.to_str().unwrap().replace("\\", "/")
-                    } else {
-                        path.to_str().unwrap().to_owned()
-                    };
+                    let path = path.to_str()?.to_owned();
                     Some((end.clone(), Cow::from(path)))
                 })
             }) // TODO: unwrap or skip

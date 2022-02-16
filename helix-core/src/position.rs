@@ -109,7 +109,10 @@ pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Po
 /// TODO: this should be changed to work in terms of visual row/column, not
 /// graphemes.
 pub fn pos_at_coords(text: RopeSlice, coords: Position, limit_before_line_ending: bool) -> usize {
-    let Position { row, col } = coords;
+    let Position { mut row, col } = coords;
+    if limit_before_line_ending {
+        row = row.min(text.len_lines() - 1);
+    };
     let line_start = text.line_to_char(row);
     let line_end = if limit_before_line_ending {
         line_end_char_index(&text, row)
@@ -290,5 +293,12 @@ mod test {
         assert_eq!(pos_at_coords(slice, (0, 0).into(), false), 0);
         assert_eq!(pos_at_coords(slice, (0, 1).into(), false), 1);
         assert_eq!(pos_at_coords(slice, (0, 2).into(), false), 2);
+
+        // Test out of bounds.
+        let text = Rope::new();
+        let slice = text.slice(..);
+        assert_eq!(pos_at_coords(slice, (10, 0).into(), true), 0);
+        assert_eq!(pos_at_coords(slice, (0, 10).into(), true), 0);
+        assert_eq!(pos_at_coords(slice, (10, 10).into(), true), 0);
     }
 }

@@ -192,10 +192,7 @@ fn get_highest_syntax_node_at_bytepos(syntax: &Syntax, pos: usize) -> Option<Nod
     let tree = syntax.tree();
 
     // named_descendant
-    let mut node = match tree.root_node().descendant_for_byte_range(pos, pos) {
-        Some(node) => node,
-        None => return None,
-    };
+    let mut node = tree.root_node().descendant_for_byte_range(pos, pos)?;
 
     while let Some(parent) = node.parent() {
         if parent.start_byte() == node.start_byte() {
@@ -416,7 +413,7 @@ where
 ",
         );
 
-        let doc = Rope::from(doc);
+        let doc = doc;
         use crate::diagnostic::Severity;
         use crate::syntax::{
             Configuration, IndentationConfiguration, LanguageConfiguration, Loader,
@@ -436,6 +433,7 @@ where
                 comment_token: None,
                 auto_format: false,
                 diagnostic_severity: Severity::Warning,
+                tree_sitter_library: None,
                 language_server: None,
                 indent: Some(IndentationConfiguration {
                     tab_width: 4,
@@ -443,6 +441,7 @@ where
                 }),
                 indent_query: OnceCell::new(),
                 textobject_query: OnceCell::new(),
+                debugger: None,
             }],
         });
 
@@ -453,7 +452,7 @@ where
 
         let language_config = loader.language_config_for_scope("source.rust").unwrap();
         let highlight_config = language_config.highlight_config(&[]).unwrap();
-        let syntax = Syntax::new(&doc, highlight_config.clone());
+        let syntax = Syntax::new(&doc, highlight_config, std::sync::Arc::new(loader));
         let text = doc.slice(..);
         let tab_width = 4;
 

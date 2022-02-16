@@ -34,7 +34,7 @@
 "markup.list" = { fg = "red" }
 "markup.quote" = { fg = "yellow" }
 "markup.link.url" = { fg = "cyan", modifiers = ["underlined"]}
-"markup.link.label" = { fg = "purple" }
+"markup.link.text" = { fg = "purple" }
 
 "diff.plus" = "green"
 "diff.delta" = "gold"

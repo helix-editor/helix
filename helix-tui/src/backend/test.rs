@@ -111,8 +111,7 @@ impl Backend for TestBackend {
         I: Iterator<Item = (u16, u16, &'a Cell)>,
     {
         for (x, y, c) in content {
-            let cell = self.buffer.get_mut(x, y);
-            *cell = c.clone();
+            self.buffer[(x, y)] = c.clone();
         }
         Ok(())
     }

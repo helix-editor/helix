@@ -1,7 +1,9 @@
 //! When typing the opening character of one of the possible pairs defined below,
 //! this module provides the functionality to insert the paired closing character.
 
-use crate::{movement::Direction, Range, Rope, Selection, Tendril, Transaction};
+use crate::{
+    graphemes, movement::Direction, Range, Rope, RopeGraphemes, Selection, Tendril, Transaction,
+};
 use log::debug;
 use smallvec::SmallVec;
 
@@ -63,31 +65,132 @@ fn prev_char(doc: &Rope, pos: usize) -> Option<char> {
     doc.get_char(pos - 1)
 }
 
+fn is_single_grapheme(doc: &Rope, range: &Range) -> bool {
+    let mut graphemes = RopeGraphemes::new(doc.slice(range.from()..range.to()));
+    let first = graphemes.next();
+    let second = graphemes.next();
+    debug!("first: {:#?}, second: {:#?}", first, second);
+    first.is_some() && second.is_none()
+}
+
 /// calculate what the resulting range should be for an auto pair insertion
 fn get_next_range(
+    doc: &Rope,
     start_range: &Range,
     offset: usize,
     typed_char: char,
     len_inserted: usize,
 ) -> Range {
-    let end_head = start_range.head + offset + typed_char.len_utf8();
+    // When the character under the cursor changes due to complete pair
+    // insertion, we must look backward a grapheme and then add the length
+    // of the insertion to put the resulting cursor in the right place, e.g.
+    //
+    // foo[\r\n] - anchor: 3, head: 5
+    // foo([)]\r\n - anchor: 4, head: 5
+    //
+    // foo[\r\n] - anchor: 3, head: 5
+    // foo'[\r\n] - anchor: 4, head: 6
+    //
+    // foo([)]\r\n - anchor: 4, head: 5
+    // foo()[\r\n] - anchor: 5, head: 7
+    //
+    // [foo]\r\n - anchor: 0, head: 3
+    // [foo(])\r\n - anchor: 0, head: 5
+
+    // inserting at the very end of the document after the last newline
+    if start_range.head == doc.len_chars() && start_range.anchor == doc.len_chars() {
+        return Range::new(
+            start_range.anchor + offset + typed_char.len_utf8(),
+            start_range.head + offset + typed_char.len_utf8(),
+        );
+    }
+
+    let single_grapheme = is_single_grapheme(doc, start_range);
+    let doc_slice = doc.slice(..);
+
+    // just skip over graphemes
+    if len_inserted == 0 {
+        let end_anchor = if single_grapheme {
+            graphemes::next_grapheme_boundary(doc_slice, start_range.anchor) + offset
+
+        // even for backward inserts with multiple grapheme selections,
+        // we want the anchor to stay where it is so that the relative
+        // selection does not change, e.g.:
+        //
+        // foo([) wor]d -> insert ) -> foo()[ wor]d
+        } else {
+            start_range.anchor + offset
+        };
+
+        return Range::new(
+            end_anchor,
+            graphemes::next_grapheme_boundary(doc_slice, start_range.head) + offset,
+        );
+    }
+
+    // trivial case: only inserted a single-char opener, just move the selection
+    if len_inserted == 1 {
+        let end_anchor = if single_grapheme || start_range.direction() == Direction::Backward {
+            start_range.anchor + offset + typed_char.len_utf8()
+        } else {
+            start_range.anchor + offset
+        };
+
+        return Range::new(
+            end_anchor,
+            start_range.head + offset + typed_char.len_utf8(),
+        );
+    }
+
+    // If the head = 0, then we must be in insert mode with a backward
+    // cursor, which implies the head will just move
+    let end_head = if start_range.head == 0 || start_range.direction() == Direction::Backward {
+        start_range.head + offset + typed_char.len_utf8()
+    } else {
+        // We must have a forward cursor, which means we must move to the
+        // other end of the grapheme to get to where the new characters
+        // are inserted, then move the head to where it should be
+        let prev_bound = graphemes::prev_grapheme_boundary(doc_slice, start_range.head);
+        debug!(
+            "prev_bound: {}, offset: {}, len_inserted: {}",
+            prev_bound, offset, len_inserted
+        );
+        prev_bound + offset + len_inserted
+    };
 
     let end_anchor = match (start_range.len(), start_range.direction()) {
         // if we have a zero width cursor, it shifts to the same number
         (0, _) => end_head,
 
-        // if we are inserting for a regular one-width cursor, the anchor
-        // moves with the head
+        // If we are inserting for a regular one-width cursor, the anchor
+        // moves with the head. This is the fast path for ASCII.
         (1, Direction::Forward) => end_head - 1,
         (1, Direction::Backward) => end_head + 1,
 
-        // if we are appending, the anchor stays where it is; only offset
-        // for multiple range insertions
-        (_, Direction::Forward) => start_range.anchor + offset,
+        (_, Direction::Forward) => {
+            if single_grapheme {
+                graphemes::prev_grapheme_boundary(doc.slice(..), start_range.head)
+                    + typed_char.len_utf8()
 
-        // when we are inserting in front of a selection, we need to move
-        // the anchor over by however many characters were inserted overall
-        (_, Direction::Backward) => start_range.anchor + offset + len_inserted,
+            // if we are appending, the anchor stays where it is; only offset
+            // for multiple range insertions
+            } else {
+                start_range.anchor + offset
+            }
+        }
+
+        (_, Direction::Backward) => {
+            if single_grapheme {
+                // if we're backward, then the head is at the first char
+                // of the typed char, so we need to add the length of
+                // the closing char
+                graphemes::prev_grapheme_boundary(doc.slice(..), start_range.anchor) + len_inserted
+            } else {
+                // when we are inserting in front of a selection, we need to move
+                // the anchor over by however many characters were inserted overall
+                start_range.anchor + offset + len_inserted
+            }
+        }
     };
 
     Range::new(end_anchor, end_head)
@@ -111,7 +214,9 @@ fn handle_open(
         let change = match next_char {
             Some(ch) if !close_before.contains(ch) => {
                 len_inserted = open.len_utf8();
-                (cursor, cursor, Some(Tendril::from_char(open)))
+                let mut tendril = Tendril::new();
+                tendril.push(open);
+                (cursor, cursor, Some(tendril))
             }
             // None | Some(ch) if close_before.contains(ch) => {}
             _ => {
@@ -122,7 +227,7 @@ fn handle_open(
             }
         };
 
-        let next_range = get_next_range(start_range, offs, open, len_inserted);
+        let next_range = get_next_range(doc, start_range, offs, open, len_inserted);
         end_ranges.push(next_range);
         offs += len_inserted;
 
@@ -149,10 +254,12 @@ fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> 
             (cursor, cursor, None) // no-op
         } else {
             len_inserted += close.len_utf8();
-            (cursor, cursor, Some(Tendril::from_char(close)))
+            let mut tendril = Tendril::new();
+            tendril.push(close);
+            (cursor, cursor, Some(tendril))
         };
 
-        let next_range = get_next_range(start_range, offs, close, len_inserted);
+        let next_range = get_next_range(doc, start_range, offs, close, len_inserted);
         end_ranges.push(next_range);
         offs += len_inserted;
 
@@ -187,22 +294,22 @@ fn handle_same(
             //  return transaction that moves past close
             (cursor, cursor, None) // no-op
         } else {
-            let mut pair = Tendril::with_capacity(2 * token.len_utf8() as u32);
-            pair.push_char(token);
+            let mut pair = Tendril::new();
+            pair.push(token);
 
             // for equal pairs, don't insert both open and close if either
             // side has a non-pair char
             if (next_char.is_none() || close_before.contains(next_char.unwrap()))
                 && (prev_char.is_none() || open_before.contains(prev_char.unwrap()))
             {
-                pair.push_char(token);
+                pair.push(token);
             }
 
             len_inserted += pair.len();
             (cursor, cursor, Some(pair))
         };
 
-        let next_range = get_next_range(start_range, offs, token, len_inserted);
+        let next_range = get_next_range(doc, start_range, offs, token, len_inserted);
         end_ranges.push(next_range);
         offs += len_inserted;
 
@@ -219,6 +326,8 @@ mod test {
     use super::*;
     use smallvec::smallvec;
 
+    const LINE_END: &str = crate::DEFAULT_LINE_ENDING.as_str();
+
     fn differing_pairs() -> impl Iterator<Item = &'static (char, char)> {
         PAIRS.iter().filter(|(open, close)| open != close)
     }
@@ -234,7 +343,7 @@ mod test {
         expected_doc: &Rope,
         expected_sel: &Selection,
     ) {
-        let trans = hook(&in_doc, &in_sel, ch).unwrap();
+        let trans = hook(in_doc, in_sel, ch).unwrap();
         let mut actual_doc = in_doc.clone();
         assert!(trans.apply(&mut actual_doc));
         assert_eq!(expected_doc, &actual_doc);
@@ -270,11 +379,58 @@ mod test {
     #[test]
     fn test_insert_blank() {
         test_hooks_with_pairs(
-            &Rope::new(),
+            &Rope::from(LINE_END),
             &Selection::single(1, 0),
             PAIRS,
-            |open, close| format!("{}{}", open, close),
+            |open, close| format!("{}{}{}", open, close, LINE_END),
             &Selection::single(2, 1),
+        );
+
+        let empty_doc = Rope::from(format!("{line_end}{line_end}", line_end = LINE_END));
+
+        test_hooks_with_pairs(
+            &empty_doc,
+            &Selection::single(empty_doc.len_chars(), LINE_END.len()),
+            PAIRS,
+            |open, close| {
+                format!(
+                    "{line_end}{open}{close}{line_end}",
+                    open = open,
+                    close = close,
+                    line_end = LINE_END
+                )
+            },
+            &Selection::single(LINE_END.len() + 2, LINE_END.len() + 1),
+        );
+    }
+
+    #[test]
+    fn test_insert_before_multi_code_point_graphemes() {
+        test_hooks_with_pairs(
+            &Rope::from(format!("hello 👨‍👩‍👧‍👦 goodbye{}", LINE_END)),
+            &Selection::single(13, 6),
+            PAIRS,
+            |open, _| format!("hello {}👨‍👩‍👧‍👦 goodbye{}", open, LINE_END),
+            &Selection::single(14, 7),
+        );
+    }
+
+    #[test]
+    fn test_insert_at_end_of_document() {
+        test_hooks_with_pairs(
+            &Rope::from(LINE_END),
+            &Selection::single(LINE_END.len(), LINE_END.len()),
+            PAIRS,
+            |open, close| format!("{}{}{}", LINE_END, open, close),
+            &Selection::single(LINE_END.len() + 1, LINE_END.len() + 1),
+        );
+
+        test_hooks_with_pairs(
+            &Rope::from(format!("foo{}", LINE_END)),
+            &Selection::single(3 + LINE_END.len(), 3 + LINE_END.len()),
+            PAIRS,
+            |open, close| format!("foo{}{}{}", LINE_END, open, close),
+            &Selection::single(LINE_END.len() + 4, LINE_END.len() + 4),
         );
     }
 
@@ -283,11 +439,20 @@ mod test {
     fn test_append_blank() {
         test_hooks_with_pairs(
             // this is what happens when you have a totally blank document and then append
-            &Rope::from("\n\n"),
-            &Selection::single(0, 2),
+            &Rope::from(format!("{line_end}{line_end}", line_end = LINE_END)),
+            // before inserting the pair, the cursor covers all of both empty lines
+            &Selection::single(0, LINE_END.len() * 2),
             PAIRS,
-            |open, close| format!("\n{}{}\n", open, close),
-            &Selection::single(0, 3),
+            |open, close| {
+                format!(
+                    "{line_end}{open}{close}{line_end}",
+                    line_end = LINE_END,
+                    open = open,
+                    close = close
+                )
+            },
+            // after inserting pair, the cursor covers the first new line and the open char
+            &Selection::single(0, LINE_END.len() + 2),
         );
     }
 
@@ -329,6 +494,18 @@ mod test {
         );
     }
 
+    /// foo[] -> append to end of line ( -> foo([])
+    #[test]
+    fn test_append_single_cursor() {
+        test_hooks_with_pairs(
+            &Rope::from(format!("foo{}", LINE_END)),
+            &Selection::single(3, 3 + LINE_END.len()),
+            differing_pairs(),
+            |open, close| format!("foo{}{}{}", open, close, LINE_END),
+            &Selection::single(4, 5),
+        );
+    }
+
     /// fo[o]                fo[o(])
     /// fo[o] -> append ( -> fo[o(])
     /// fo[o]                fo[o(])
@@ -355,18 +532,18 @@ mod test {
         );
     }
 
-    /// ([]) -> insert ) -> ()[]
+    /// ([)] -> insert ) -> ()[]
     #[test]
     fn test_insert_close_inside_pair() {
         for (open, close) in PAIRS {
-            let doc = Rope::from(format!("{}{}", open, close));
+            let doc = Rope::from(format!("{}{}{}", open, close, LINE_END));
 
             test_hooks(
                 &doc,
                 &Selection::single(2, 1),
                 *close,
                 &doc,
-                &Selection::single(3, 2),
+                &Selection::single(2 + LINE_END.len(), 2),
             );
         }
     }
@@ -375,14 +552,14 @@ mod test {
     #[test]
     fn test_append_close_inside_pair() {
         for (open, close) in PAIRS {
-            let doc = Rope::from(format!("{}{}\n", open, close));
+            let doc = Rope::from(format!("{}{}{}", open, close, LINE_END));
 
             test_hooks(
                 &doc,
                 &Selection::single(0, 2),
                 *close,
                 &doc,
-                &Selection::single(0, 3),
+                &Selection::single(0, 2 + LINE_END.len()),
             );
         }
     }
@@ -564,6 +741,20 @@ mod test {
         )
     }
 
+    /// foo([) wor]d -> insert ) -> foo()[ wor]d
+    #[test]
+    fn test_insert_close_inside_pair_trailing_word_with_selection() {
+        for (open, close) in differing_pairs() {
+            test_hooks(
+                &Rope::from(format!("foo{}{} word{}", open, close, LINE_END)),
+                &Selection::single(9, 4),
+                *close,
+                &Rope::from(format!("foo{}{} word{}", open, close, LINE_END)),
+                &Selection::single(9, 5),
+            )
+        }
+    }
+
     /// we want pairs that are *not* the same char to be inserted after
     /// a non-pair char, for cases like functions, but for pairs that are
     /// the same char, we want to *not* insert a pair to handle cases like "I'm"
@@ -572,7 +763,7 @@ mod test {
     /// word[]  -> insert ' -> word'[]
     #[test]
     fn test_insert_open_after_non_pair() {
-        let doc = Rope::from("word");
+        let doc = Rope::from(format!("word{}", LINE_END));
         let sel = Selection::single(5, 4);
         let expected_sel = Selection::single(6, 5);
 
@@ -580,7 +771,7 @@ mod test {
             &doc,
             &sel,
             differing_pairs(),
-            |open, close| format!("word{}{}", open, close),
+            |open, close| format!("word{}{}{}", open, close, LINE_END),
             &expected_sel,
         );
 
@@ -588,22 +779,8 @@ mod test {
             &doc,
             &sel,
             matching_pairs(),
-            |open, _| format!("word{}", open),
+            |open, _| format!("word{}{}", open, LINE_END),
             &expected_sel,
-        );
-    }
-
-    /// appending with only a cursor should stay a cursor
-    ///
-    /// [] -> append to end "foo -> "foo[]"
-    #[test]
-    fn test_append_single_cursor() {
-        test_hooks_with_pairs(
-            &Rope::from("\n"),
-            &Selection::single(0, 1),
-            PAIRS,
-            |open, close| format!("{}{}\n", open, close),
-            &Selection::single(1, 2),
         );
     }
 }
