@@ -5,7 +5,7 @@ use tui::buffer::Buffer as Surface;
 
 use std::borrow::Cow;
 
-use helix_core::Transaction;
+use helix_core::{Change, Transaction};
 use helix_view::{graphics::Rect, Document, Editor};
 
 use crate::commands;
@@ -121,6 +121,13 @@ impl Completion {
                 transaction
             }
 
+            fn completion_changes(transaction: &Transaction, trigger_offset: usize) -> Vec<Change> {
+                transaction
+                    .changes_iter()
+                    .filter(|(start, end, _)| (*start..=*end).contains(&trigger_offset))
+                    .collect()
+            }
+
             let (view, doc) = current!(editor);
 
             // if more text was entered, remove it
@@ -145,9 +152,10 @@ impl Completion {
                     // initialize a savepoint
                     doc.savepoint();
                     doc.apply(&transaction, view.id);
+
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
-                        transaction,
+                        changes: completion_changes(&transaction, trigger_offset),
                     });
                 }
                 PromptEvent::Validate => {
@@ -163,9 +171,10 @@ impl Completion {
                     );
 
                     doc.apply(&transaction, view.id);
+
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
-                        transaction,
+                        changes: completion_changes(&transaction, trigger_offset),
                     });
 
                     // apply additional edits, mostly used to auto import unqualified types

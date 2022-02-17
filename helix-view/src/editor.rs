@@ -24,7 +24,7 @@ use anyhow::{bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::{syntax, Transaction};
+use helix_core::{syntax, Change};
 use helix_core::{Position, Selection};
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize};
@@ -257,7 +257,7 @@ pub struct Editor {
 #[derive(Debug, Clone)]
 pub struct CompleteAction {
     pub trigger_offset: usize,
-    pub transaction: Transaction,
+    pub changes: Vec<Change>,
 }
 
 #[derive(Debug, Copy, Clone)]

@@ -758,14 +758,9 @@ impl EditorView {
 
                             let tx = Transaction::change(
                                 doc.text(),
-                                compl
-                                    .transaction
-                                    .changes_iter()
-                                    .filter_map(|(start, end, t)| {
-                                        (start..=end).contains(&compl.trigger_offset).then(|| {
-                                            (shift_position(start), shift_position(end), t)
-                                        })
-                                    }),
+                                compl.changes.iter().cloned().map(|(start, end, t)| {
+                                    (shift_position(start), shift_position(end), t)
+                                }),
                             );
                             doc.apply(&tx, view.id);
                         }
