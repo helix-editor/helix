@@ -17,11 +17,14 @@
   (tuple_expression)
   (array_expression)
   (where_clause)
-  (macro_invocation)
+
+  (token_tree)
+  (macro_definition)
+  (token_tree_pattern)
+  (token_repetition)
 ] @indent
 
 [
-  "where"
   "}"
   "]"
   ")"
@@ -51,6 +54,20 @@
   (#not-same-line? @indent @expr-start)
   (#set! "scope" "all")
 )
+(if_let_expression
+  .
+  (_) @expr-start
+  value: (_) @indent
+  (#not-same-line? @indent @expr-start)
+  (#set! "scope" "all")
+)
+(static_item
+  .
+  (_) @expr-start
+  value: (_) @indent
+  (#not-same-line? @indent @expr-start)
+  (#set! "scope" "all")
+)
 
 ; Some field expressions where the left part is a multiline expression are not
 ; indented by cargo fmt.
@@ -59,5 +76,5 @@
 (field_expression
   value: (_) @val
   "." @outdent
-  (#match? @val "([^\\n]+\\([\\t ]*\\n.*)|([^\\n]*\\{[\\t ]*\\n)")
+  (#match? @val "(\\A[^\\n\\r]+\\([\\t ]*(\\n|\\r).*)|(\\A[^\\n\\r]*\\{[\\t ]*(\\n|\\r))")
 )
