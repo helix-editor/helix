@@ -22,7 +22,7 @@ pub use text::Text;
 
 use helix_core::regex::Regex;
 use helix_core::regex::RegexBuilder;
-use helix_view::{Document, View};
+use helix_view::{Document, Editor, View};
 
 use std::path::PathBuf;
 
@@ -30,7 +30,7 @@ pub fn regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&crate::compositor::Context, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     fun: impl Fn(&mut View, &mut Document, Regex, PromptEvent) + 'static,
 ) -> Prompt {
     let (view, doc) = current!(cx.editor);
@@ -168,26 +168,24 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 }
 
 pub mod completers {
-    use crate::compositor::Context;
     use crate::ui::prompt::Completion;
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
     use helix_view::document::SCRATCH_BUFFER_NAME;
-    use helix_view::editor::Config;
     use helix_view::theme;
+    use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::cmp::Reverse;
 
-    pub type Completer = fn(&Context, &str) -> Vec<Completion>;
+    pub type Completer = fn(&Editor, &str) -> Vec<Completion>;
 
-    pub fn none(_cx: &Context, _input: &str) -> Vec<Completion> {
+    pub fn none(_editor: &Editor, _input: &str) -> Vec<Completion> {
         Vec::new()
     }
 
-    pub fn buffer(cx: &Context, input: &str) -> Vec<Completion> {
-        let mut names: Vec<_> = cx
-            .editor
+    pub fn buffer(editor: &Editor, input: &str) -> Vec<Completion> {
+        let mut names: Vec<_> = editor
             .documents
             .iter()
             .map(|(_id, doc)| {
@@ -214,7 +212,7 @@ pub mod completers {
         names
     }
 
-    pub fn theme(_cx: &Context, input: &str) -> Vec<Completion> {
+    pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
         let mut names = theme::Loader::read_names(&helix_core::runtime_dir().join("themes"));
         names.extend(theme::Loader::read_names(
             &helix_core::config_dir().join("themes"),
@@ -242,7 +240,7 @@ pub mod completers {
         names
     }
 
-    pub fn setting(_cx: &Context, input: &str) -> Vec<Completion> {
+    pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
             serde_json::to_value(Config::default())
                 .unwrap()
@@ -267,7 +265,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn filename(_cx: &Context, input: &str) -> Vec<Completion> {
+    pub fn filename(_editor: &Editor, input: &str) -> Vec<Completion> {
         filename_impl(input, |entry| {
             let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
@@ -279,7 +277,7 @@ pub mod completers {
         })
     }
 
-    pub fn directory(_cx: &Context, input: &str) -> Vec<Completion> {
+    pub fn directory(_editor: &Editor, input: &str) -> Vec<Completion> {
         filename_impl(input, |entry| {
             let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 

@@ -24,7 +24,7 @@ pub struct Prompt {
     selection: Option<usize>,
     history_register: Option<char>,
     history_pos: Option<usize>,
-    completion_fn: Box<dyn FnMut(&Context, &str) -> Vec<Completion>>,
+    completion_fn: Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
     pub doc_fn: Box<dyn Fn(&str) -> Option<&'static str>>,
 }
@@ -59,7 +59,7 @@ impl Prompt {
     pub fn new(
         prompt: Cow<'static, str>,
         history_register: Option<char>,
-        completion_fn: impl FnMut(&Context, &str) -> Vec<Completion> + 'static,
+        completion_fn: impl FnMut(&Editor, &str) -> Vec<Completion> + 'static,
         callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
     ) -> Self {
         Self {
@@ -74,6 +74,10 @@ impl Prompt {
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
         }
+    }
+
+    pub fn recalculate_completion(&mut self, editor: &Editor) {
+        self.completion = (self.completion_fn)(editor, &self.line);
     }
 
     /// Compute the cursor position after applying movement
@@ -183,7 +187,7 @@ impl Prompt {
         if let Ok(Some(pos)) = cursor.next_boundary(&self.line, 0) {
             self.cursor = pos;
         }
-        self.completion = (self.completion_fn)(cx, &self.line);
+        self.recalculate_completion(cx.editor);
         self.exit_selection();
     }
 
@@ -211,7 +215,7 @@ impl Prompt {
         self.cursor = pos;
 
         self.exit_selection();
-        self.completion = (self.completion_fn)(cx, &self.line);
+        self.recalculate_completion(cx.editor);
     }
 
     pub fn delete_char_forwards(&mut self, cx: &Context) {
@@ -219,7 +223,7 @@ impl Prompt {
         self.line.replace_range(self.cursor..pos, "");
 
         self.exit_selection();
-        self.completion = (self.completion_fn)(cx, &self.line);
+        self.recalculate_completion(cx.editor);
     }
 
     pub fn delete_word_backwards(&mut self, cx: &Context) {
@@ -228,7 +232,7 @@ impl Prompt {
         self.cursor = pos;
 
         self.exit_selection();
-        self.completion = (self.completion_fn)(cx, &self.line);
+        self.recalculate_completion(cx.editor);
     }
 
     pub fn delete_word_forwards(&mut self, cx: &Context) {
@@ -236,7 +240,7 @@ impl Prompt {
         self.line.replace_range(self.cursor..pos, "");
 
         self.exit_selection();
-        self.completion = (self.completion_fn)(cx, &self.line);
+        self.recalculate_completion(cx.editor);
     }
 
     pub fn kill_to_start_of_line(&mut self, cx: &Context) {
@@ -245,7 +249,7 @@ impl Prompt {
         self.cursor = pos;
 
         self.exit_selection();
-        self.completion = (self.completion_fn)(cx, &self.line);
+        self.recalculate_completion(cx.editor);
     }
 
     pub fn kill_to_end_of_line(&mut self, cx: &Context) {
@@ -253,13 +257,13 @@ impl Prompt {
         self.line.replace_range(self.cursor..pos, "");
 
         self.exit_selection();
-        self.completion = (self.completion_fn)(cx, &self.line);
+        self.recalculate_completion(cx.editor);
     }
 
     pub fn clear(&mut self, cx: &Context) {
         self.line.clear();
         self.cursor = 0;
-        self.completion = (self.completion_fn)(cx, &self.line);
+        self.recalculate_completion(cx.editor);
         self.exit_selection();
     }
 
@@ -474,7 +478,7 @@ impl Component for Prompt {
             }
             key!(Enter) => {
                 if self.selection.is_some() && self.line.ends_with(std::path::MAIN_SEPARATOR) {
-                    self.completion = (self.completion_fn)(cx, &self.line);
+                    self.recalculate_completion(cx.editor);
                     self.exit_selection();
                 } else {
                     (self.callback_fn)(cx, &self.line, PromptEvent::Validate);
@@ -525,7 +529,6 @@ impl Component for Prompt {
     }
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        self.completion = (self.completion_fn)(cx, &self.line);
         self.render_prompt(area, surface, cx)
     }
 
