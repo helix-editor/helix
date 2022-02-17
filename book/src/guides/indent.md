@@ -45,3 +45,35 @@ capture on the same line, the indent level isn't changed at all.
 
 - `@outdent` (default scope `all`):
 Decrease the indent level by 1. The same rules as for `@indent` apply.
+
+## Predicates
+
+In some cases, an S-expression cannot express exactly what pattern should be matched.
+For that, tree-sitter allows for predicates to appear anywhere within a pattern,
+similar to how `#set!` declarations work:
+```scm
+(some_kind
+  (child_kind) @indent
+  (#predicate? arg1 arg2 ...)
+)
+```
+The number of arguments depends on the predicate that's used.
+Each argument is either a capture (`@name`) or a string (`"some string"`).
+The following predicates are supported by tree-sitter:
+
+- `#eq?`/`#not-eq?`:
+The first argument (a capture) must/must not be equal to the second argument
+(a capture or a string).
+
+- `#match?`/`#not-match?`:
+The first argument (a capture) must/must not match the regex given in the
+second argument (a string).
+
+Additionally, we support some custom predicates for indent queries:
+
+- `#not-kind-eq?`:
+The kind of the first argument (a capture) must not be equal to the second
+argument (a string).
+
+- `#same-line?`/`#not-same-line?`:
+The captures given by the 2 arguments must/must not start on the same line.

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use tree_sitter::{Query, QueryCursor};
+use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
 
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
@@ -309,14 +309,76 @@ fn query_indents(
     query: &Query,
     syntax: &Syntax,
     text: RopeSlice,
-    byte_pos: usize,
+    range: std::ops::Range<usize>,
+    // Position of the (optional) newly inserted line break.
+    // Given as (line, byte_pos)
+    new_line_break: Option<(usize, usize)>,
 ) -> HashMap<usize, Vec<IndentCapture>> {
     // TODO Maybe reuse this cursor?
     let mut cursor = QueryCursor::new();
     let mut indent_captures: HashMap<usize, Vec<IndentCapture>> = HashMap::new();
-    cursor.set_byte_range(byte_pos..byte_pos + 1);
+    cursor.set_byte_range(range);
     // Iterate over all captures from the query
     for m in cursor.matches(query, syntax.tree().root_node(), RopeProvider(text)) {
+        // Skip matches where not all custom predicates are fulfilled
+        if !query.general_predicates(m.pattern_index).iter().all(|pred| {
+            match pred.operator.as_ref() {
+                "not-kind-eq?" => match (pred.args.get(0), pred.args.get(1)) {
+                    (
+                        Some(QueryPredicateArg::Capture(capture_idx)),
+                        Some(QueryPredicateArg::String(kind)),
+                    ) => {
+                        let node = m.nodes_for_capture_index(*capture_idx).next();
+                        match node {
+                            Some(node) => node.kind()!=kind.as_ref(),
+                            _ => true,
+                        }
+                    }
+                    _ => {
+                        panic!("Invalid indent query: Arguments to \"not-kind-eq?\" must be a capture and a string");
+                    }
+                },
+                "same-line?" | "not-same-line?" => {
+                    match (pred.args.get(0), pred.args.get(1)) {
+                        (
+                            Some(QueryPredicateArg::Capture(capt1)),
+                            Some(QueryPredicateArg::Capture(capt2))
+                        ) => {
+                            let get_line_num = |node: Node| {
+                                let mut node_line = node.start_position().row;
+                                // Adjust for the new line that will be inserted
+                                if let Some((line, byte)) = new_line_break {
+                                    if node_line==line && node.start_byte()>=byte {
+                                        node_line += 1;
+                                    }
+                                }
+                                node_line
+                            };
+                            let n1 = m.nodes_for_capture_index(*capt1).next();
+                            let n2 = m.nodes_for_capture_index(*capt2).next();
+                            match (n1, n2) {
+                                (Some(n1), Some(n2)) => {
+                                    let same_line = get_line_num(n1)==get_line_num(n2);
+                                    same_line==(pred.operator.as_ref()=="same-line?")
+                                }
+                                _ => true,
+                            }
+                        }
+                        _ => {
+                            panic!("Invalid indent query: Arguments to \"{}\" must be 2 captures", pred.operator);
+                        }
+                    }
+                }
+                _ => {
+                    panic!(
+                        "Invalid indent query: Unknown predicate (\"{}\")",
+                        pred.operator
+                    );
+                }
+            }
+        }) {
+            continue;
+        }
         for capture in m.captures {
             let capture_type = query.capture_names()[capture.index as usize].as_str();
             let capture_type = match capture_type {
@@ -417,7 +479,12 @@ fn treesitter_indent_for_pos(
         .root_node()
         .descendant_for_byte_range(byte_pos, byte_pos)?;
     let mut first_in_line = get_first_in_line(node, byte_pos, new_line);
-    let query_result = query_indents(query, syntax, text, byte_pos);
+    let new_line_break = if new_line {
+        Some((line, byte_pos))
+    } else {
+        None
+    };
+    let query_result = query_indents(query, syntax, text, byte_pos..byte_pos + 1, new_line_break);
 
     let mut result = IndentResult::new();
     // We always keep track of all the indent changes on one line, in order to only indent once
@@ -557,123 +624,25 @@ mod test {
     }
 
     #[test]
-    fn test_suggested_indent_for_line() {
-        let doc = Rope::from(
-            "
-use std::{
-    io::{self, stdout, Stdout, Write},
-    path::PathBuf,
-    sync::Arc,
-    time::Duration,
-}
-mod test {
-    fn hello_world() {
-        1 + 1;
-
-        let does_indentation_work = 1;
-
-        let mut really_long_variable_name_using_up_the_line =
-            really_long_fn_that_should_definitely_go_on_the_next_line();
-        really_long_variable_name_using_up_the_line =
-            really_long_fn_that_should_definitely_go_on_the_next_line();
-        really_long_variable_name_using_up_the_line |=
-            really_long_fn_that_should_definitely_go_on_the_next_line();
-
-        let (
-            a_long_variable_name_in_this_tuple,
-            b_long_variable_name_in_this_tuple,
-            c_long_variable_name_in_this_tuple,
-            d_long_variable_name_in_this_tuple,
-            e_long_variable_name_in_this_tuple,
-        ): (usize, usize, usize, usize, usize) =
-            if really_long_fn_that_should_definitely_go_on_the_next_line() {
-                (
-                    03294239434,
-                    1213412342314,
-                    21231234134,
-                    834534234549898789,
-                    9879234234543853457,
-                )
-            } else {
-                (0, 1, 2, 3, 4)
-            };
-
-        let test_function = function_with_param(this_param,
-            that_param
-        );
-
-        let test_function = function_with_param(
-            this_param,
-            that_param
-        );
-
-        let test_function = function_with_proper_indent(param1,
-            param2,
-        );
-
-        let selection = Selection::new(
-            changes
-                .clone()
-                .map(|(start, end, text): (usize, usize, Option<Tendril>)| {
-                    let len = text.map(|text| text.len()).unwrap() - 1; // minus newline
-                    let pos = start + len;
-                    Range::new(pos, pos)
-                })
-                .collect(),
-            0,
-        );
-
-        return;
+    fn test_treesitter_indent_rust() {
+        test_treesitter_indent("rust.rs", "source.rust");
     }
-}
-
-impl<A, D> MyTrait<A, D> for YourType
-where
-    A: TraitB + TraitC,
-    D: TraitE + TraitF,
-{
-
-}
-#[test]
-//
-match test {
-    Some(a) => 1,
-    None => {
-        unimplemented!()
+    #[test]
+    fn test_treesitter_indent_rust_2() {
+        test_treesitter_indent("commands.rs", "source.rust");
     }
-}
-std::panic::set_hook(Box::new(move |info| {
-    hook(info);
-}));
 
-{ { {
-    1
-}}}
-
-pub fn change<I>(document: &Document, changes: I) -> Self
-where
-    I: IntoIterator<Item = Change> + ExactSizeIterator,
-{
-    [
-        1,
-        2,
-        3,
-    ];
-    (
-        1,
-        2
-    );
-    true
-}
-",
-        );
-
-        let doc = doc;
+    fn test_treesitter_indent(file_name: &str, lang_scope: &str) {
         use crate::diagnostic::Severity;
-        use crate::syntax::{
-            Configuration, IndentationConfiguration, LanguageConfiguration, Loader,
-        };
+        use crate::syntax::{Configuration, IndentationConfiguration, Loader};
         use once_cell::sync::OnceCell;
+        use std::path::PathBuf;
+        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        path.push("test-indent");
+        path.push(file_name);
+        let file = std::fs::File::open(path).unwrap();
+        let doc = ropey::Rope::from_reader(file).unwrap();
+
         let loader = Loader::new(Configuration {
             language: vec![LanguageConfiguration {
                 scope: "source.rust".to_string(),
@@ -704,16 +673,17 @@ where
         runtime.push("../runtime");
         std::env::set_var("HELIX_RUNTIME", runtime.to_str().unwrap());
 
-        let language_config = loader.language_config_for_scope("source.rust").unwrap();
+        let language_config = loader.language_config_for_scope(lang_scope).unwrap();
         let highlight_config = language_config.highlight_config(&[]).unwrap();
         let syntax = Syntax::new(&doc, highlight_config, std::sync::Arc::new(loader));
+        let indent_query = language_config.indent_query().unwrap();
         let text = doc.slice(..);
 
         for i in 0..doc.len_lines() {
             let line = text.line(i);
             if let Some(pos) = crate::find_first_non_whitespace_char(line) {
                 let suggested_indent = treesitter_indent_for_pos(
-                    language_config.indent_query().unwrap(),
+                    indent_query,
                     &syntax,
                     &IndentStyle::Spaces(4),
                     text,
@@ -726,7 +696,7 @@ where
                     line.get_slice(..suggested_indent.chars().count())
                         .map_or(false, |s| s == suggested_indent),
                     "Wrong indentation on line {}:\n\"{}\" (original line)\n\"{}\" (suggested indentation)\n",
-                    i,
+                    i+1,
                     line.slice(..line.len_chars()-1),
                     suggested_indent,
                 );

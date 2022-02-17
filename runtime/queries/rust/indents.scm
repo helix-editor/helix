@@ -27,18 +27,37 @@
   ")"
 ] @outdent
 
-; TODO Add some mechanism to correctly align if-else statements here.
-; For now they have to be excluded here because in some cases the else block
-; is indented differently than the if block
+; Indent the right side of assignments.
+; The #not-same-line? predicate is required to prevent an extra indent for e.g.
+; an else-clause where the previous if-clause starts on the same line as the assignment.
 (assignment_expression
+  .
+  (_) @expr-start
   right: (_) @indent
+  (#not-same-line? @indent @expr-start)
   (#set! "scope" "all")
-  (#not-match? @indent "if\\s"))
+)
 (compound_assignment_expr
+  .
+  (_) @expr-start
   right: (_) @indent
+  (#not-same-line? @indent @expr-start)
   (#set! "scope" "all")
-  (#not-match? @indent "if\\s"))
+)
 (let_declaration
+  .
+  (_) @expr-start
   value: (_) @indent
+  (#not-same-line? @indent @expr-start)
   (#set! "scope" "all")
-  (#not-match? @indent "if\\s"))
+)
+
+; Some field expressions where the left part is a multiline expression are not
+; indented by cargo fmt.
+; Because this multiline expression might be nested in an arbitrary number of
+; field expressions, this can only be matched using a Regex.
+(field_expression
+  value: (_) @val
+  "." @outdent
+  (#match? @val "([^\\n]+\\([\\t ]*\\n.*)|([^\\n]*\\{[\\t ]*\\n)")
+)
