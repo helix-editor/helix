@@ -392,13 +392,13 @@ fn debug_parameter_prompt(
                     Ok(call)
                 });
                 cx.jobs.callback(callback);
-            } else if let Err(e) = dap_start_impl(
+            } else if let Err(err) = dap_start_impl(
                 cx,
                 Some(&config_name),
                 None,
                 Some(params.iter().map(|x| x.into()).collect()),
             ) {
-                cx.editor.set_error(e.to_string());
+                cx.editor.set_error(err.to_string());
             }
         },
     )
