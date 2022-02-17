@@ -44,7 +44,7 @@ use movement::Movement;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
-    ui::{self, overlay::overlayed, FilePicker, Popup, Prompt, PromptEvent},
+    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 
 use crate::job::{self, Job, Jobs};
@@ -430,6 +430,7 @@ impl MappableCommand {
         decrement, "Decrement",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
+        command_palette, "Open command pallete",
     );
 }
 
@@ -3690,6 +3691,69 @@ pub fn code_action(cx: &mut Context) {
             compositor.replace_or_push("code-action", Box::new(popup));
         },
     )
+}
+
+pub fn command_palette(cx: &mut Context) {
+    cx.callback = Some(Box::new(
+        move |compositor: &mut Compositor, cx: &mut compositor::Context| {
+            let doc = doc_mut!(cx.editor);
+            let keymap =
+                compositor.find::<ui::EditorView>().unwrap().keymaps[&doc.mode].reverse_map();
+
+            let mut commands: Vec<MappableCommand> = MappableCommand::STATIC_COMMAND_LIST.into();
+            commands.extend(
+                cmd::TYPABLE_COMMAND_LIST
+                    .iter()
+                    .map(|cmd| MappableCommand::Typable {
+                        name: cmd.name.to_owned(),
+                        doc: cmd.doc.to_owned(),
+                        args: Vec::new(),
+                    }),
+            );
+
+            // formats key bindings, multiple bindings are comma separated,
+            // individual key presses are joined with `+`
+            let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
+                bindings
+                    .iter()
+                    .map(|bind| {
+                        bind.iter()
+                            .map(|key| key.to_string())
+                            .collect::<Vec<String>>()
+                            .join("+")
+                    })
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            };
+
+            let picker = Picker::new(
+                commands,
+                move |command| match command {
+                    MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String)
+                    {
+                        Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
+                        None => doc.into(),
+                    },
+                    MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
+                        Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
+                        None => (*doc).into(),
+                    },
+                },
+                move |cx, command, _action| {
+                    let mut ctx = Context {
+                        register: None,
+                        count: std::num::NonZeroUsize::new(1),
+                        editor: cx.editor,
+                        callback: None,
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
+                    command.execute(&mut ctx);
+                },
+            );
+            compositor.push(Box::new(picker));
+        },
+    ));
 }
 
 pub fn execute_lsp_command(editor: &mut Editor, cmd: lsp::Command) {

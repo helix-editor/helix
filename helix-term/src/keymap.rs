@@ -343,11 +343,44 @@ pub struct Keymap {
 
 impl Keymap {
     pub fn new(root: KeyTrie) -> Self {
-        Self {
+        Keymap {
             root,
             state: Vec::new(),
             sticky: None,
         }
+    }
+
+    pub fn reverse_map(&self) -> HashMap<String, Vec<Vec<KeyEvent>>> {
+        // recursively visit all nodes in keymap
+        fn map_node(
+            cmd_map: &mut HashMap<String, Vec<Vec<KeyEvent>>>,
+            node: &KeyTrie,
+            keys: &mut Vec<KeyEvent>,
+        ) {
+            match node {
+                KeyTrie::Leaf(cmd) => match cmd {
+                    MappableCommand::Typable { name, .. } => {
+                        cmd_map.entry(name.into()).or_default().push(keys.clone())
+                    }
+                    MappableCommand::Static { name, .. } => cmd_map
+                        .entry(name.to_string())
+                        .or_default()
+                        .push(keys.clone()),
+                },
+                KeyTrie::Node(next) => {
+                    for (key, trie) in &next.map {
+                        keys.push(*key);
+                        map_node(cmd_map, trie, keys);
+                        keys.pop();
+                    }
+                }
+                KeyTrie::Sequence(_) => {}
+            };
+        }
+
+        let mut res = HashMap::new();
+        map_node(&mut res, &self.root, &mut Vec::new());
+        res
     }
 
     pub fn root(&self) -> &KeyTrie {
@@ -706,6 +739,7 @@ impl Default for Keymaps {
                 "/" => global_search,
                 "k" => hover,
                 "r" => rename_symbol,
+                "?" => command_palette,
             },
             "z" => { "View"
                 "z" | "c" => align_view_center,
@@ -957,5 +991,46 @@ mod tests {
             root.search(&[key!('Z')]).unwrap(),
             "Mismatch for view mode on `z` and `Z`"
         );
+    }
+
+    #[test]
+    fn reverse_map() {
+        let normal_mode = keymap!({ "Normal mode"
+            "i" => insert_mode,
+            "g" => { "Goto"
+                "g" => goto_file_start,
+                "e" => goto_file_end,
+            },
+            "j" | "k" => move_line_down,
+        });
+        let keymap = Keymap::new(normal_mode);
+        let mut reverse_map = keymap.reverse_map();
+
+        // sort keybindings in order to have consistent tests
+        // HashMaps can be compared but we can still get different ordering of bindings
+        // for commands that have multiple bindings assigned
+        for v in reverse_map.values_mut() {
+            v.sort()
+        }
+
+        assert_eq!(
+            reverse_map,
+            HashMap::from([
+                ("insert_mode".to_string(), vec![vec![key!('i')]]),
+                (
+                    "goto_file_start".to_string(),
+                    vec![vec![key!('g'), key!('g')]]
+                ),
+                (
+                    "goto_file_end".to_string(),
+                    vec![vec![key!('g'), key!('e')]]
+                ),
+                (
+                    "move_line_down".to_string(),
+                    vec![vec![key!('j')], vec![key!('k')]]
+                ),
+            ]),
+            "Mistmatch"
+        )
     }
 }
