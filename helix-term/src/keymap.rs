@@ -222,9 +222,8 @@ impl KeyTrieNode {
                 .map(|(desc, keys)| (desc.strip_prefix(&prefix).unwrap(), keys))
                 .collect();
         }
-        Info::new(self.name(), body)
+        Info::from_keymap(self.name(), body)
     }
-
     /// Get a reference to the key trie node's order.
     pub fn order(&self) -> &[KeyEvent] {
         self.order.as_slice()
@@ -344,11 +343,44 @@ pub struct Keymap {
 
 impl Keymap {
     pub fn new(root: KeyTrie) -> Self {
-        Self {
+        Keymap {
             root,
             state: Vec::new(),
             sticky: None,
         }
+    }
+
+    pub fn reverse_map(&self) -> HashMap<String, Vec<Vec<KeyEvent>>> {
+        // recursively visit all nodes in keymap
+        fn map_node(
+            cmd_map: &mut HashMap<String, Vec<Vec<KeyEvent>>>,
+            node: &KeyTrie,
+            keys: &mut Vec<KeyEvent>,
+        ) {
+            match node {
+                KeyTrie::Leaf(cmd) => match cmd {
+                    MappableCommand::Typable { name, .. } => {
+                        cmd_map.entry(name.into()).or_default().push(keys.clone())
+                    }
+                    MappableCommand::Static { name, .. } => cmd_map
+                        .entry(name.to_string())
+                        .or_default()
+                        .push(keys.clone()),
+                },
+                KeyTrie::Node(next) => {
+                    for (key, trie) in &next.map {
+                        keys.push(*key);
+                        map_node(cmd_map, trie, keys);
+                        keys.pop();
+                    }
+                }
+                KeyTrie::Sequence(_) => {}
+            };
+        }
+
+        let mut res = HashMap::new();
+        map_node(&mut res, &self.root, &mut Vec::new());
+        res
     }
 
     pub fn root(&self) -> &KeyTrie {
@@ -573,11 +605,17 @@ impl Default for Keymaps {
             "[" => { "Left bracket"
                 "d" => goto_prev_diag,
                 "D" => goto_first_diag,
+                "f" => goto_prev_function,
+                "c" => goto_prev_class,
+                "p" => goto_prev_parameter,
                 "space" => add_newline_above,
             },
             "]" => { "Right bracket"
                 "d" => goto_next_diag,
                 "D" => goto_last_diag,
+                "f" => goto_next_function,
+                "c" => goto_next_class,
+                "p" => goto_next_parameter,
                 "space" => add_newline_below,
             },
 
@@ -660,6 +698,26 @@ impl Default for Keymaps {
                 "S" => workspace_symbol_picker,
                 "a" => code_action,
                 "'" => last_picker,
+                "d" => { "Debug (experimental)" sticky=true
+                    "l" => dap_launch,
+                    "b" => dap_toggle_breakpoint,
+                    "c" => dap_continue,
+                    "h" => dap_pause,
+                    "i" => dap_step_in,
+                    "o" => dap_step_out,
+                    "n" => dap_next,
+                    "v" => dap_variables,
+                    "t" => dap_terminate,
+                    "C-c" => dap_edit_condition,
+                    "C-l" => dap_edit_log,
+                    "s" => { "Switch"
+                        "t" => dap_switch_thread,
+                        "f" => dap_switch_stack_frame,
+                        // sl, sb
+                    },
+                    "e" => dap_enable_exceptions,
+                    "E" => dap_disable_exceptions,
+                },
                 "w" => { "Window"
                     "C-w" | "w" => rotate_view,
                     "C-s" | "s" => hsplit,
@@ -681,6 +739,7 @@ impl Default for Keymaps {
                 "/" => global_search,
                 "k" => hover,
                 "r" => rename_symbol,
+                "?" => command_palette,
             },
             "z" => { "View"
                 "z" | "c" => align_view_center,
@@ -932,5 +991,46 @@ mod tests {
             root.search(&[key!('Z')]).unwrap(),
             "Mismatch for view mode on `z` and `Z`"
         );
+    }
+
+    #[test]
+    fn reverse_map() {
+        let normal_mode = keymap!({ "Normal mode"
+            "i" => insert_mode,
+            "g" => { "Goto"
+                "g" => goto_file_start,
+                "e" => goto_file_end,
+            },
+            "j" | "k" => move_line_down,
+        });
+        let keymap = Keymap::new(normal_mode);
+        let mut reverse_map = keymap.reverse_map();
+
+        // sort keybindings in order to have consistent tests
+        // HashMaps can be compared but we can still get different ordering of bindings
+        // for commands that have multiple bindings assigned
+        for v in reverse_map.values_mut() {
+            v.sort()
+        }
+
+        assert_eq!(
+            reverse_map,
+            HashMap::from([
+                ("insert_mode".to_string(), vec![vec![key!('i')]]),
+                (
+                    "goto_file_start".to_string(),
+                    vec![vec![key!('g'), key!('g')]]
+                ),
+                (
+                    "goto_file_end".to_string(),
+                    vec![vec![key!('g'), key!('e')]]
+                ),
+                (
+                    "move_line_down".to_string(),
+                    vec![vec![key!('j')], vec![key!('k')]]
+                ),
+            ]),
+            "Mistmatch"
+        )
     }
 }

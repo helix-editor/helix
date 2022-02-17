@@ -24,7 +24,7 @@ pub struct Prompt {
     selection: Option<usize>,
     history_register: Option<char>,
     history_pos: Option<usize>,
-    completion_fn: Box<dyn FnMut(&str) -> Vec<Completion>>,
+    completion_fn: Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
     pub doc_fn: Box<dyn Fn(&str) -> Option<&'static str>>,
 }
@@ -59,14 +59,14 @@ impl Prompt {
     pub fn new(
         prompt: Cow<'static, str>,
         history_register: Option<char>,
-        mut completion_fn: impl FnMut(&str) -> Vec<Completion> + 'static,
+        completion_fn: impl FnMut(&Editor, &str) -> Vec<Completion> + 'static,
         callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
     ) -> Self {
         Self {
             prompt,
             line: String::new(),
             cursor: 0,
-            completion: completion_fn(""),
+            completion: Vec::new(),
             selection: None,
             history_register,
             history_pos: None,
@@ -74,6 +74,10 @@ impl Prompt {
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
         }
+    }
+
+    pub fn recalculate_completion(&mut self, editor: &Editor) {
+        self.completion = (self.completion_fn)(editor, &self.line);
     }
 
     /// Compute the cursor position after applying movement
@@ -177,13 +181,13 @@ impl Prompt {
         }
     }
 
-    pub fn insert_char(&mut self, c: char) {
+    pub fn insert_char(&mut self, c: char, cx: &Context) {
         self.line.insert(self.cursor, c);
         let mut cursor = GraphemeCursor::new(self.cursor, self.line.len(), false);
         if let Ok(Some(pos)) = cursor.next_boundary(&self.line, 0) {
             self.cursor = pos;
         }
-        self.completion = (self.completion_fn)(&self.line);
+        self.recalculate_completion(cx.editor);
         self.exit_selection();
     }
 
@@ -205,61 +209,61 @@ impl Prompt {
         self.cursor = self.line.len();
     }
 
-    pub fn delete_char_backwards(&mut self) {
+    pub fn delete_char_backwards(&mut self, cx: &Context) {
         let pos = self.eval_movement(Movement::BackwardChar(1));
         self.line.replace_range(pos..self.cursor, "");
         self.cursor = pos;
 
         self.exit_selection();
-        self.completion = (self.completion_fn)(&self.line);
+        self.recalculate_completion(cx.editor);
     }
 
-    pub fn delete_char_forwards(&mut self) {
+    pub fn delete_char_forwards(&mut self, cx: &Context) {
         let pos = self.eval_movement(Movement::ForwardChar(1));
         self.line.replace_range(self.cursor..pos, "");
 
         self.exit_selection();
-        self.completion = (self.completion_fn)(&self.line);
+        self.recalculate_completion(cx.editor);
     }
 
-    pub fn delete_word_backwards(&mut self) {
+    pub fn delete_word_backwards(&mut self, cx: &Context) {
         let pos = self.eval_movement(Movement::BackwardWord(1));
         self.line.replace_range(pos..self.cursor, "");
         self.cursor = pos;
 
         self.exit_selection();
-        self.completion = (self.completion_fn)(&self.line);
+        self.recalculate_completion(cx.editor);
     }
 
-    pub fn delete_word_forwards(&mut self) {
+    pub fn delete_word_forwards(&mut self, cx: &Context) {
         let pos = self.eval_movement(Movement::ForwardWord(1));
         self.line.replace_range(self.cursor..pos, "");
 
         self.exit_selection();
-        self.completion = (self.completion_fn)(&self.line);
+        self.recalculate_completion(cx.editor);
     }
 
-    pub fn kill_to_start_of_line(&mut self) {
+    pub fn kill_to_start_of_line(&mut self, cx: &Context) {
         let pos = self.eval_movement(Movement::StartOfLine);
         self.line.replace_range(pos..self.cursor, "");
         self.cursor = pos;
 
         self.exit_selection();
-        self.completion = (self.completion_fn)(&self.line);
+        self.recalculate_completion(cx.editor);
     }
 
-    pub fn kill_to_end_of_line(&mut self) {
+    pub fn kill_to_end_of_line(&mut self, cx: &Context) {
         let pos = self.eval_movement(Movement::EndOfLine);
         self.line.replace_range(self.cursor..pos, "");
 
         self.exit_selection();
-        self.completion = (self.completion_fn)(&self.line);
+        self.recalculate_completion(cx.editor);
     }
 
-    pub fn clear(&mut self) {
+    pub fn clear(&mut self, cx: &Context) {
         self.line.clear();
         self.cursor = 0;
-        self.completion = (self.completion_fn)(&self.line);
+        self.recalculate_completion(cx.editor);
         self.exit_selection();
     }
 
@@ -442,16 +446,16 @@ impl Component for Prompt {
             ctrl!('f') | key!(Right) => self.move_cursor(Movement::ForwardChar(1)),
             ctrl!('e') | key!(End) => self.move_end(),
             ctrl!('a') | key!(Home) => self.move_start(),
-            ctrl!('w') => self.delete_word_backwards(),
-            alt!('d') => self.delete_word_forwards(),
-            ctrl!('k') => self.kill_to_end_of_line(),
-            ctrl!('u') => self.kill_to_start_of_line(),
+            ctrl!('w') => self.delete_word_backwards(cx),
+            alt!('d') => self.delete_word_forwards(cx),
+            ctrl!('k') => self.kill_to_end_of_line(cx),
+            ctrl!('u') => self.kill_to_start_of_line(cx),
             ctrl!('h') | key!(Backspace) => {
-                self.delete_char_backwards();
+                self.delete_char_backwards(cx);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
             ctrl!('d') | key!(Delete) => {
-                self.delete_char_forwards();
+                self.delete_char_forwards(cx);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
             ctrl!('s') => {
@@ -474,7 +478,7 @@ impl Component for Prompt {
             }
             key!(Enter) => {
                 if self.selection.is_some() && self.line.ends_with(std::path::MAIN_SEPARATOR) {
-                    self.completion = (self.completion_fn)(&self.line);
+                    self.recalculate_completion(cx.editor);
                     self.exit_selection();
                 } else {
                     (self.callback_fn)(cx, &self.line, PromptEvent::Validate);
@@ -515,7 +519,7 @@ impl Component for Prompt {
                 code: KeyCode::Char(c),
                 modifiers,
             } if !modifiers.contains(KeyModifiers::CONTROL) => {
-                self.insert_char(c);
+                self.insert_char(c, cx);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
             _ => (),

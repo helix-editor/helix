@@ -68,4 +68,8 @@ impl Registers {
     pub fn read(&self, name: char) -> Option<&[String]> {
         self.get(name).map(|reg| reg.read())
     }
+
+    pub fn inner(&self) -> &HashMap<char, Register> {
+        &self.inner
+    }
 }

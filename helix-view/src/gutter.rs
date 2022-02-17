@@ -1,16 +1,19 @@
 use std::fmt::Write;
 
-use crate::{editor::Config, graphics::Style, Document, Theme, View};
+use crate::{
+    graphics::{Color, Modifier, Style},
+    Document, Editor, Theme, View,
+};
 
 pub type GutterFn<'doc> = Box<dyn Fn(usize, bool, &mut String) -> Option<Style> + 'doc>;
 pub type Gutter =
-    for<'doc> fn(&'doc Document, &View, &Theme, &Config, bool, usize) -> GutterFn<'doc>;
+    for<'doc> fn(&'doc Editor, &'doc Document, &View, &Theme, bool, usize) -> GutterFn<'doc>;
 
 pub fn diagnostic<'doc>(
+    _editor: &'doc Editor,
     doc: &'doc Document,
     _view: &View,
     theme: &Theme,
-    _config: &Config,
     _is_focused: bool,
     _width: usize,
 ) -> GutterFn<'doc> {
@@ -37,10 +40,10 @@ pub fn diagnostic<'doc>(
 }
 
 pub fn line_number<'doc>(
+    editor: &'doc Editor,
     doc: &'doc Document,
     view: &View,
     theme: &Theme,
-    config: &Config,
     is_focused: bool,
     width: usize,
 ) -> GutterFn<'doc> {
@@ -57,30 +60,32 @@ pub fn line_number<'doc>(
         .text()
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
-    let config = config.line_number;
+    let config = editor.config.line_number;
+    let mode = doc.mode;
 
     Box::new(move |line: usize, selected: bool, out: &mut String| {
         if line == last_line && !draw_last {
             write!(out, "{:>1$}", '~', width).unwrap();
             Some(linenr)
         } else {
-            use crate::editor::LineNumber;
-            let line = match config {
-                LineNumber::Absolute => line + 1,
-                LineNumber::Relative => {
-                    if current_line == line {
-                        line + 1
-                    } else {
-                        abs_diff(current_line, line)
-                    }
-                }
+            use crate::{document::Mode, editor::LineNumber};
+
+            let relative = config == LineNumber::Relative
+                && mode != Mode::Insert
+                && is_focused
+                && current_line != line;
+
+            let display_num = if relative {
+                abs_diff(current_line, line)
+            } else {
+                line + 1
             };
             let style = if selected && is_focused {
                 linenr_select
             } else {
                 linenr
             };
-            write!(out, "{:>1$}", line, width).unwrap();
+            write!(out, "{:>1$}", display_num, width).unwrap();
             Some(style)
         }
     })
@@ -93,4 +98,73 @@ const fn abs_diff(a: usize, b: usize) -> usize {
     } else {
         b - a
     }
+}
+
+pub fn breakpoints<'doc>(
+    editor: &'doc Editor,
+    doc: &'doc Document,
+    _view: &View,
+    theme: &Theme,
+    _is_focused: bool,
+    _width: usize,
+) -> GutterFn<'doc> {
+    let warning = theme.get("warning");
+    let error = theme.get("error");
+    let info = theme.get("info");
+
+    let breakpoints = doc.path().and_then(|path| editor.breakpoints.get(path));
+
+    let breakpoints = match breakpoints {
+        Some(breakpoints) => breakpoints,
+        None => return Box::new(move |_, _, _| None),
+    };
+
+    Box::new(move |line: usize, _selected: bool, out: &mut String| {
+        let breakpoint = breakpoints
+            .iter()
+            .find(|breakpoint| breakpoint.line == line)?;
+
+        let mut style = if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
+            error.add_modifier(Modifier::UNDERLINED)
+        } else if breakpoint.condition.is_some() {
+            error
+        } else if breakpoint.log_message.is_some() {
+            info
+        } else {
+            warning
+        };
+
+        if !breakpoint.verified {
+            // Faded colors
+            style = if let Some(Color::Rgb(r, g, b)) = style.fg {
+                style.fg(Color::Rgb(
+                    ((r as f32) * 0.4).floor() as u8,
+                    ((g as f32) * 0.4).floor() as u8,
+                    ((b as f32) * 0.4).floor() as u8,
+                ))
+            } else {
+                style.fg(Color::Gray)
+            }
+        };
+
+        let sym = if breakpoint.verified { "▲" } else { "⊚" };
+        write!(out, "{}", sym).unwrap();
+        Some(style)
+    })
+}
+
+pub fn diagnostics_or_breakpoints<'doc>(
+    editor: &'doc Editor,
+    doc: &'doc Document,
+    view: &View,
+    theme: &Theme,
+    is_focused: bool,
+    width: usize,
+) -> GutterFn<'doc> {
+    let diagnostics = diagnostic(editor, doc, view, theme, is_focused, width);
+    let breakpoints = breakpoints(editor, doc, view, theme, is_focused, width);
+
+    Box::new(move |line, selected, out| {
+        breakpoints(line, selected, out).or_else(|| diagnostics(line, selected, out))
+    })
 }

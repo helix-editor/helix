@@ -665,6 +665,7 @@ mod test {
                 }),
                 indent_query: OnceCell::new(),
                 textobject_query: OnceCell::new(),
+                debugger: None,
             }],
         });
 

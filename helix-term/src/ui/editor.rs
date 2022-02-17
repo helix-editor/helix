@@ -21,7 +21,6 @@ use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::CursorShapeConfig,
     graphics::{CursorKind, Modifier, Rect, Style},
-    info::Info,
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
@@ -32,12 +31,11 @@ use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
 
 pub struct EditorView {
-    keymaps: Keymaps,
+    pub keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::MappableCommand, Vec<KeyEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
-    autoinfo: Option<Info>,
 }
 
 impl Default for EditorView {
@@ -54,7 +52,6 @@ impl EditorView {
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
-            autoinfo: None,
         }
     }
 
@@ -62,33 +59,66 @@ impl EditorView {
         &mut self.spinners
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn render_view(
         &self,
+        editor: &Editor,
         doc: &Document,
         view: &View,
         viewport: Rect,
         surface: &mut Surface,
-        theme: &Theme,
         is_focused: bool,
-        config: &helix_view::editor::Config,
     ) {
         let inner = view.inner_area();
         let area = view.area;
+        let theme = &editor.theme;
+
+        // DAP: Highlight current stack frame position
+        let stack_frame = editor.debugger.as_ref().and_then(|debugger| {
+            if let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id) {
+                debugger
+                    .stack_frames
+                    .get(&thread_id)
+                    .and_then(|bt| bt.get(frame))
+            } else {
+                None
+            }
+        });
+        if let Some(frame) = stack_frame {
+            if doc.path().is_some()
+                && frame
+                    .source
+                    .as_ref()
+                    .and_then(|source| source.path.as_ref())
+                    == doc.path()
+            {
+                let line = frame.line - 1; // convert to 0-indexing
+                if line >= view.offset.row && line < view.offset.row + area.height as usize {
+                    surface.set_style(
+                        Rect::new(
+                            area.x,
+                            area.y + (line - view.offset.row) as u16,
+                            area.width,
+                            1,
+                        ),
+                        theme.get("ui.highlight"),
+                    );
+                }
+            }
+        }
 
         let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
         let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
-                Self::doc_selection_highlights(doc, view, theme, &config.cursor_shape),
+                Self::doc_selection_highlights(doc, view, theme, &editor.config.cursor_shape),
             ))
         } else {
             Box::new(highlights)
         };
 
         Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights);
-        Self::render_gutter(doc, view, view.area, surface, theme, is_focused, config);
+        Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
 
         if is_focused {
             Self::render_focused_view_elements(view, doc, inner, theme, surface);
@@ -118,7 +148,6 @@ impl EditorView {
     /// Get syntax highlights for a document in a view represented by the first line
     /// and column (`offset`) and the last line. This is done instead of using a view
     /// directly to enable rendering syntax highlighted docs anywhere (eg. picker preview)
-    #[allow(clippy::too_many_arguments)]
     pub fn doc_syntax_highlights<'doc>(
         doc: &'doc Document,
         offset: Position,
@@ -140,31 +169,34 @@ impl EditorView {
             start..end
         };
 
-        // TODO: range doesn't actually restrict source, just highlight range
-        let highlights = match doc.syntax() {
+        match doc.syntax() {
             Some(syntax) => {
-                syntax
+                let iter = syntax
+                    // TODO: range doesn't actually restrict source, just highlight range
                     .highlight_iter(text.slice(..), Some(range), None)
                     .map(|event| event.unwrap())
-                    .collect() // TODO: we collect here to avoid holding the lock, fix later
-            }
-            None => vec![HighlightEvent::Source {
-                start: range.start,
-                end: range.end,
-            }],
-        }
-        .into_iter()
-        .map(move |event| match event {
-            // convert byte offsets to char offset
-            HighlightEvent::Source { start, end } => {
-                let start = text.byte_to_char(ensure_grapheme_boundary_next_byte(text, start));
-                let end = text.byte_to_char(ensure_grapheme_boundary_next_byte(text, end));
-                HighlightEvent::Source { start, end }
-            }
-            event => event,
-        });
+                    .map(move |event| match event {
+                        // convert byte offsets to char offset
+                        HighlightEvent::Source { start, end } => {
+                            let start =
+                                text.byte_to_char(ensure_grapheme_boundary_next_byte(text, start));
+                            let end =
+                                text.byte_to_char(ensure_grapheme_boundary_next_byte(text, end));
+                            HighlightEvent::Source { start, end }
+                        }
+                        event => event,
+                    });
 
-        Box::new(highlights)
+                Box::new(iter)
+            }
+            None => Box::new(
+                [HighlightEvent::Source {
+                    start: text.byte_to_char(range.start),
+                    end: text.byte_to_char(range.end),
+                }]
+                .into_iter(),
+            ),
+        }
     }
 
     /// Get highlight spans for document diagnostics
@@ -404,15 +436,14 @@ impl EditorView {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn render_gutter(
+        editor: &Editor,
         doc: &Document,
         view: &View,
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
-        config: &helix_view::editor::Config,
     ) {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
@@ -434,7 +465,7 @@ impl EditorView {
         let mut text = String::with_capacity(8);
 
         for (constructor, width) in view.gutters() {
-            let gutter = constructor(doc, view, theme, config, is_focused, *width);
+            let gutter = constructor(editor, doc, view, theme, is_focused, *width);
             text.reserve(*width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
                 let selected = cursors.contains(&line);
@@ -450,6 +481,7 @@ impl EditorView {
                 }
                 text.clear();
             }
+
             offset += *width as u16;
         }
     }
@@ -509,7 +541,6 @@ impl EditorView {
         );
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn render_statusline(
         &self,
         doc: &Document,
@@ -678,13 +709,13 @@ impl EditorView {
         cxt: &mut commands::Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
-        self.autoinfo = None;
+        cxt.editor.autoinfo = None;
         let key_result = self.keymaps.get_mut(&mode).unwrap().get(event);
-        self.autoinfo = key_result.sticky.map(|node| node.infobox());
+        cxt.editor.autoinfo = key_result.sticky.map(|node| node.infobox());
 
         match &key_result.kind {
             KeymapResultKind::Matched(command) => command.execute(cxt),
-            KeymapResultKind::Pending(node) => self.autoinfo = Some(node.infobox()),
+            KeymapResultKind::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
             KeymapResultKind::MatchedSequence(commands) => {
                 for command in commands {
                     command.execute(cxt);
@@ -828,6 +859,31 @@ impl EditorView {
                     return EventResult::Consumed(None);
                 }
 
+                let result = editor.tree.views().find_map(|(view, _focus)| {
+                    view.gutter_coords_at_screen_coords(row, column)
+                        .map(|coords| (coords, view.id))
+                });
+
+                if let Some((coords, view_id)) = result {
+                    editor.tree.focus = view_id;
+
+                    let view = editor.tree.get(view_id);
+                    let doc = editor.documents.get_mut(&view.doc).unwrap();
+
+                    let path = match doc.path() {
+                        Some(path) => path.clone(),
+                        None => {
+                            return EventResult::Ignored;
+                        }
+                    };
+
+                    let line = coords.row + view.offset.row;
+                    if line < doc.text().len_lines() {
+                        commands::dap_toggle_breakpoint_impl(cxt, path, line);
+                        return EventResult::Consumed(None);
+                    }
+                }
+
                 EventResult::Ignored
             }
 
@@ -901,6 +957,38 @@ impl EditorView {
                 commands::MappableCommand::yank_main_selection_to_primary_clipboard.execute(cxt);
 
                 EventResult::Consumed(None)
+            }
+
+            MouseEvent {
+                kind: MouseEventKind::Up(MouseButton::Right),
+                row,
+                column,
+                modifiers,
+                ..
+            } => {
+                let result = cxt.editor.tree.views().find_map(|(view, _focus)| {
+                    view.gutter_coords_at_screen_coords(row, column)
+                        .map(|coords| (coords, view.id))
+                });
+
+                if let Some((coords, view_id)) = result {
+                    cxt.editor.tree.focus = view_id;
+
+                    let view = cxt.editor.tree.get(view_id);
+                    let doc = cxt.editor.documents.get_mut(&view.doc).unwrap();
+                    let line = coords.row + view.offset.row;
+                    if let Ok(pos) = doc.text().try_line_to_char(line) {
+                        doc.set_selection(view_id, Selection::point(pos));
+                        if modifiers == crossterm::event::KeyModifiers::ALT {
+                            commands::MappableCommand::dap_edit_log.execute(cxt);
+                        } else {
+                            commands::MappableCommand::dap_edit_condition.execute(cxt);
+                        }
+
+                        return EventResult::Consumed(None);
+                    }
+                }
+                EventResult::Ignored
             }
 
             MouseEvent {
@@ -1035,6 +1123,12 @@ impl Component for EditorView {
                 let (view, doc) = current!(cx.editor);
                 view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
 
+                // Store a history state if not in insert mode. This also takes care of
+                // commiting changes when leaving insert mode.
+                if doc.mode() != Mode::Insert {
+                    doc.append_changes_to_history(view.id);
+                }
+
                 // mode transitions
                 match (mode, doc.mode()) {
                     (Mode::Normal, Mode::Insert) => {
@@ -1075,20 +1169,13 @@ impl Component for EditorView {
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
-            self.render_view(
-                doc,
-                view,
-                area,
-                surface,
-                &cx.editor.theme,
-                is_focused,
-                &cx.editor.config,
-            );
+            self.render_view(cx.editor, doc, view, area, surface, is_focused);
         }
 
         if cx.editor.config.auto_info {
-            if let Some(ref mut info) = self.autoinfo {
+            if let Some(mut info) = cx.editor.autoinfo.take() {
                 info.render(area, surface, cx);
+                cx.editor.autoinfo = Some(info)
             }
         }
 

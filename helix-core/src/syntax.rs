@@ -87,6 +87,8 @@ pub struct LanguageConfiguration {
     pub(crate) indent_query: OnceCell<Option<Query>>,
     #[serde(skip)]
     pub(crate) textobject_query: OnceCell<Option<TextObjectQuery>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub debugger: Option<DebugAdapterConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -97,6 +99,60 @@ pub struct LanguageServerConfiguration {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
     pub language_id: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct AdvancedCompletion {
+    pub name: Option<String>,
+    pub completion: Option<String>,
+    pub default: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case", untagged)]
+pub enum DebugConfigCompletion {
+    Named(String),
+    Advanced(AdvancedCompletion),
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum DebugArgumentValue {
+    String(String),
+    Array(Vec<String>),
+    Boolean(bool),
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct DebugTemplate {
+    pub name: String,
+    pub request: String,
+    pub completion: Vec<DebugConfigCompletion>,
+    pub args: HashMap<String, DebugArgumentValue>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct DebugAdapterConfig {
+    pub name: String,
+    pub transport: String,
+    #[serde(default)]
+    pub command: String,
+    #[serde(default)]
+    pub args: Vec<String>,
+    pub port_arg: Option<String>,
+    pub templates: Vec<DebugTemplate>,
+    #[serde(default)]
+    pub quirks: DebuggerQuirks,
+}
+
+// Different workarounds for adapters' differences
+#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
+pub struct DebuggerQuirks {
+    #[serde(default)]
+    pub absolute_paths: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -121,7 +177,21 @@ impl TextObjectQuery {
         slice: RopeSlice<'a>,
         cursor: &'a mut QueryCursor,
     ) -> Option<impl Iterator<Item = Node<'a>>> {
-        let capture_idx = self.query.capture_index_for_name(capture_name)?;
+        self.capture_nodes_any(&[capture_name], node, slice, cursor)
+    }
+
+    /// Find the first capture that exists out of all given `capture_names`
+    /// and return sub nodes that match this capture.
+    pub fn capture_nodes_any<'a>(
+        &'a self,
+        capture_names: &[&str],
+        node: Node<'a>,
+        slice: RopeSlice<'a>,
+        cursor: &'a mut QueryCursor,
+    ) -> Option<impl Iterator<Item = Node<'a>>> {
+        let capture_idx = capture_names
+            .iter()
+            .find_map(|cap| self.query.capture_index_for_name(cap))?;
         let captures = cursor.captures(&self.query, node, RopeProvider(slice));
 
         captures

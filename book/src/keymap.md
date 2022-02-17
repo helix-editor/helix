@@ -27,6 +27,7 @@
 | `F`         | Find previous char                                 | `find_prev_char`            |
 | `G`         | Go to line number `<n>`                            | `goto_line`                 |
 | `Alt-.`     | Repeat last motion (`f`, `t` or `m`)               | `repeat_last_motion`        |
+| `Alt-:`     | Ensures the selection is in forward direction      | `ensure_selections_forward` |
 | `Home`      | Move to the start of the line                      | `goto_line_start`           |
 | `End`       | Move to the end of the line                        | `goto_line_end`             |
 | `PageUp`    | Move page up                                       | `page_up`                   |
@@ -89,6 +90,7 @@
 | <code>Alt-&#124;</code> | Pipe each selection into shell command, ignoring output          | `shell_pipe_to`       |
 | `!`                     | Run shell command, inserting output before each selection        | `shell_insert_output` |
 | `Alt-!`                 | Run shell command, appending output after each selection         | `shell_append_output` |
+| `$`     | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
 
 
 ### Selection manipulation
@@ -113,16 +115,14 @@
 | `%`      | Select entire file                                                | `select_all`                         |
 | `x`      | Select current line, if already selected, extend to next line     | `extend_line`                        |
 | `X`      | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
-|          | Expand selection to parent syntax node TODO: pick a key (**TS**)  | `expand_selection`                   |
 | `J`      | Join lines inside selection                                       | `join_selections`                    |
 | `K`      | Keep selections matching the regex                                | `keep_selections`                    |
 | `Alt-K`  | Remove selections matching the regex                              | `remove_selections`                  |
-| `$`      | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
 | `Ctrl-c` | Comment/uncomment the selections                                  | `toggle_comments`                    |
-| `Alt-k`  | Expand selection to parent syntax node                            | `expand_selection`                   |
-| `Alt-j`  | Shrink syntax tree object selection                               | `shrink_selection`                   |
-| `Alt-h`  | Select previous sibling node in syntax tree                       | `select_prev_sibling`                |
-| `Alt-l`  | Select next sibling node in syntax tree                           | `select_next_sibling`                |
+| `Alt-k`  | Expand selection to parent syntax node (**TS**)                   | `expand_selection`                   |
+| `Alt-j`  | Shrink syntax tree object selection (**TS**)                      | `shrink_selection`                   |
+| `Alt-h`  | Select previous sibling node in syntax tree (**TS**)              | `select_prev_sibling`                |
+| `Alt-l`  | Select next sibling node in syntax tree (**TS**)                  | `select_next_sibling`                |
 
 ### Search
 
@@ -155,10 +155,10 @@ over text and not actively editing it).
 | `m`           | Align the line to the middle of the screen (horizontally) | `align_view_middle` |
 | `j` , `down`  | Scroll the view downwards                                 | `scroll_down`       |
 | `k` , `up`    | Scroll the view upwards                                   | `scroll_up`         |
-| `f`           | Move page down                                            | `page_down`         |
-| `b`           | Move page up                                              | `page_up`           |
-| `d`           | Move half page down                                       | `half_page_down`    |
-| `u`           | Move half page up                                         | `half_page_up`      |
+| `Ctrl-f`      | Move page down                                            | `page_down`         |
+| `Ctrl-b`      | Move page up                                              | `page_up`           |
+| `Ctrl-d`      | Move half page down                                       | `half_page_down`    |
+| `Ctrl-u`      | Move half page up                                         | `half_page_up`      |
 
 #### Goto mode
 
@@ -258,14 +258,20 @@ Displays documentation for item under cursor.
 
 Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
 
-| Key      | Description                                  | Command             |
-| -----    | -----------                                  | -------             |
-| `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`    |
-| `]d`     | Go to next diagnostic (**LSP**)              | `goto_next_diag`    |
-| `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`   |
-| `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`    |
-| `[space` | Add newline above                            | `add_newline_above` |
-| `]space` | Add newline below                            | `add_newline_below` |
+| Key      | Description                                  | Command               |
+| -----    | -----------                                  | -------               |
+| `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`      |
+| `]d`     | Go to next diagnostic (**LSP**)              | `goto_next_diag`      |
+| `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`     |
+| `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`      |
+| `]f`     | Go to next function (**TS**)                 | `goto_next_function`  |
+| `[f`     | Go to previous function (**TS**)             | `goto_prev_function`  |
+| `]c`     | Go to next class (**TS**)                    | `goto_next_class`     |
+| `[c`     | Go to previous class (**TS**)                | `goto_prev_class`     |
+| `]p`     | Go to next parameter (**TS**)                | `goto_next_parameter` |
+| `[p`     | Go to previous parameter (**TS**)            | `goto_prev_parameter` |
+| `[space` | Add newline above                            | `add_newline_above`   |
+| `]space` | Add newline below                            | `add_newline_below`   |
 
 ## Insert Mode
 
@@ -304,7 +310,11 @@ Keys to use within picker. Remapping currently not supported.
 | Key                          | Description       |
 | -----                        | -------------     |
 | `Up`, `Ctrl-k`, `Ctrl-p`     | Previous entry    |
+| `PageUp`, `Ctrl-b`           | Page up           |
 | `Down`, `Ctrl-j`, `Ctrl-n`   | Next entry        |
+| `PageDown`, `Ctrl-f`         | Page down         |
+| `Home`                       | Go to first entry |
+| `End`                        | Go to last entry  |
 | `Ctrl-space`                 | Filter options    |
 | `Enter`                      | Open selected     |
 | `Ctrl-s`                     | Open horizontally |

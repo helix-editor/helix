@@ -1,6 +1,7 @@
 use std::iter;
 
 use ropey::iter::Chars;
+use tree_sitter::{Node, QueryCursor};
 
 use crate::{
     chars::{categorize_char, char_is_line_ending, CharCategory},
@@ -9,7 +10,10 @@ use crate::{
         next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
         prev_grapheme_boundary,
     },
-    pos_at_coords, Position, Range, RopeSlice,
+    pos_at_coords,
+    syntax::LanguageConfiguration,
+    textobject::TextObject,
+    Position, Range, RopeSlice,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -303,6 +307,56 @@ fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> boo
                 && (!prev_ch.is_whitespace() || char_is_line_ending(next_ch))
         }
     }
+}
+
+pub fn goto_treesitter_object(
+    slice: RopeSlice,
+    range: Range,
+    object_name: &str,
+    dir: Direction,
+    slice_tree: Node,
+    lang_config: &LanguageConfiguration,
+    _count: usize,
+) -> Range {
+    let get_range = move || -> Option<Range> {
+        let byte_pos = slice.char_to_byte(range.cursor(slice));
+
+        let cap_name = |t: TextObject| format!("{}.{}", object_name, t);
+        let mut cursor = QueryCursor::new();
+        let nodes = lang_config.textobject_query()?.capture_nodes_any(
+            &[
+                &cap_name(TextObject::Movement),
+                &cap_name(TextObject::Around),
+                &cap_name(TextObject::Inside),
+            ],
+            slice_tree,
+            slice,
+            &mut cursor,
+        )?;
+
+        let node = match dir {
+            Direction::Forward => nodes
+                .filter(|n| n.start_byte() > byte_pos)
+                .min_by_key(|n| n.start_byte())?,
+            Direction::Backward => nodes
+                .filter(|n| n.start_byte() < byte_pos)
+                .max_by_key(|n| n.start_byte())?,
+        };
+
+        let len = slice.len_bytes();
+        let start_byte = node.start_byte();
+        let end_byte = node.end_byte();
+        if start_byte >= len || end_byte >= len {
+            return None;
+        }
+
+        let start_char = slice.byte_to_char(start_byte);
+        let end_char = slice.byte_to_char(end_byte);
+
+        // head of range should be at beginning
+        Some(Range::new(end_char, start_char))
+    };
+    get_range().unwrap_or(range)
 }
 
 #[cfg(test)]

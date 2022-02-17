@@ -438,7 +438,7 @@ impl Client {
 
                     changes.push(lsp::TextDocumentContentChangeEvent {
                         range: Some(lsp::Range::new(start, end)),
-                        text: s.into(),
+                        text: s.to_string(),
                         range_length: None,
                     });
                 }

@@ -85,7 +85,7 @@ impl ChangeSet {
 
         let new_last = match self.changes.as_mut_slice() {
             [.., Insert(prev)] | [.., Insert(prev), Delete(_)] => {
-                prev.push_tendril(&fragment);
+                prev.push_str(&fragment);
                 return;
             }
             [.., last @ Delete(_)] => std::mem::replace(last, Insert(fragment)),
@@ -189,7 +189,7 @@ impl ChangeSet {
                             // TODO: cover this with a test
                             // figure out the byte index of the truncated string end
                             let (pos, _) = s.char_indices().nth(j).unwrap();
-                            s.pop_front(pos as u32);
+                            s.replace_range(0..pos, "");
                             head_a = Some(Insert(s));
                             head_b = changes_b.next();
                         }
@@ -211,9 +211,11 @@ impl ChangeSet {
                         Ordering::Greater => {
                             // figure out the byte index of the truncated string end
                             let (pos, _) = s.char_indices().nth(j).unwrap();
-                            let pos = pos as u32;
-                            changes.insert(s.subtendril(0, pos));
-                            head_a = Some(Insert(s.subtendril(pos, s.len() as u32 - pos)));
+                            let mut before = s;
+                            let after = before.split_off(pos);
+
+                            changes.insert(before);
+                            head_a = Some(Insert(after));
                             head_b = changes_b.next();
                         }
                     }
@@ -277,7 +279,7 @@ impl ChangeSet {
                 }
                 Delete(n) => {
                     let text = Cow::from(original_doc.slice(pos..pos + *n));
-                    changes.insert(Tendril::from_slice(&text));
+                    changes.insert(Tendril::from(text.as_ref()));
                     pos += n;
                 }
                 Insert(s) => {
@@ -710,19 +712,19 @@ mod test {
     #[test]
     fn optimized_composition() {
         let mut state = State::new("".into());
-        let t1 = Transaction::insert(&state.doc, &state.selection, Tendril::from_char('h'));
+        let t1 = Transaction::insert(&state.doc, &state.selection, Tendril::from("h"));
         t1.apply(&mut state.doc);
         state.selection = state.selection.clone().map(t1.changes());
-        let t2 = Transaction::insert(&state.doc, &state.selection, Tendril::from_char('e'));
+        let t2 = Transaction::insert(&state.doc, &state.selection, Tendril::from("e"));
         t2.apply(&mut state.doc);
         state.selection = state.selection.clone().map(t2.changes());
-        let t3 = Transaction::insert(&state.doc, &state.selection, Tendril::from_char('l'));
+        let t3 = Transaction::insert(&state.doc, &state.selection, Tendril::from("l"));
         t3.apply(&mut state.doc);
         state.selection = state.selection.clone().map(t3.changes());
-        let t4 = Transaction::insert(&state.doc, &state.selection, Tendril::from_char('l'));
+        let t4 = Transaction::insert(&state.doc, &state.selection, Tendril::from("l"));
         t4.apply(&mut state.doc);
         state.selection = state.selection.clone().map(t4.changes());
-        let t5 = Transaction::insert(&state.doc, &state.selection, Tendril::from_char('o'));
+        let t5 = Transaction::insert(&state.doc, &state.selection, Tendril::from("o"));
         t5.apply(&mut state.doc);
         state.selection = state.selection.clone().map(t5.changes());
 
