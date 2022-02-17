@@ -772,18 +772,11 @@ fn trim_selections(cx: &mut Context) {
 
 // align text in selection
 fn align_selections(cx: &mut Context) {
-    let align_style = cx.count();
-    if align_style > 3 {
-        cx.editor
-            .set_error("align only accept 1,2,3 as count to set left/center/right align");
-        return;
-    }
-
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
-    let mut column_widths = vec![];
-    let mut last_line = text.len_lines();
+    let mut column_widths: Vec<Vec<_>> = vec![];
+    let mut last_line = text.len_lines() + 1;
     let mut column = 0;
     // first of all, we need compute all column's width, let use max width of the selections in a column
     for sel in selection {
@@ -797,45 +790,50 @@ fn align_selections(cx: &mut Context) {
         column = if l1 != last_line { 0 } else { column + 1 };
         last_line = l1;
 
+        // save all max line cursor of selections
+        let cursor = sel.to() - text.line_to_char(l1);
         if column < column_widths.len() {
-            if sel.to() - sel.from() > column_widths[column] {
-                column_widths[column] = sel.to() - sel.from();
-            }
+            column_widths[column].push((l1, cursor));
         } else {
-            // a new column, current selection width is the temp width of the column
-            column_widths.push(sel.to() - sel.from());
+            column_widths.push(vec![(l1, cursor)]);
         }
     }
-    last_line = text.len_lines();
-    // once we get the with of each column, we transform each selection with to it's column width based on the align style
-    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        let l = range.cursor_line(text);
-        column = if l != last_line { 0 } else { column + 1 };
-        last_line = l;
+    let mut max_curs = vec![];
+    for i in 0..column_widths.len() {
+        // compute max cursor of current column
+        let max_cur = column_widths[i]
+            .iter()
+            .fold(0, |max, &(_, cur)| max.max(cur));
+        max_curs.push(max_cur);
 
-        (
-            range.from(),
-            range.to(),
-            Some(
-                align_fragment_to_width(&range.fragment(text), column_widths[column], align_style)
-                    .into(),
-            ),
-        )
+        let mut pads = std::collections::HashMap::new();
+        for item in column_widths[i].iter_mut() {
+            pads.insert(item.0, max_cur - item.1);
+        }
+        // add pad to right columns
+        for col in column_widths[i + 1..].iter_mut() {
+            for item in col.iter_mut() {
+                item.1 += pads.get(&item.0).unwrap_or(&0);
+            }
+        }
+    }
+
+    last_line = text.len_lines();
+    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
+        let line = range.cursor_line(text);
+        column = if line != last_line { 0 } else { column + 1 };
+        last_line = line;
+        let max_cur = max_curs[column];
+        let new_cur = column_widths[column]
+            .iter()
+            .fold(max_cur, |c, (l, cur)| if *l == line { *cur } else { c });
+        let mut new_str = " ".repeat(max_cur - new_cur);
+        new_str.push_str(&range.fragment(text));
+
+        (range.from(), range.to(), Some(new_str.into()))
     });
 
     doc.apply(&transaction, view.id);
-}
-
-fn align_fragment_to_width(fragment: &str, width: usize, align_style: usize) -> String {
-    let trimed = fragment.trim_matches(|c| c == ' ');
-    let mut s = " ".repeat(width - trimed.chars().count());
-    match align_style {
-        1 => s.insert_str(0, trimed),           // left align
-        2 => s.insert_str(s.len() / 2, trimed), // center align
-        3 => s.push_str(trimed),                // right align
-        n => unimplemented!("{}", n),
-    }
-    s
 }
 
 fn goto_window(cx: &mut Context, align: Align) {
