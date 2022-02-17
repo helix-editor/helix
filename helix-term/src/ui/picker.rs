@@ -1,7 +1,7 @@
 use crate::{
     compositor::{Component, Compositor, Context, EventResult},
     ctrl, key, shift,
-    ui::EditorView,
+    ui::{self, EditorView},
 };
 use crossterm::event::Event;
 use tui::{
@@ -302,7 +302,7 @@ impl<T> Picker<T> {
         let prompt = Prompt::new(
             "".into(),
             None,
-            |_ctx: &Context, _pattern: &str| Vec::new(),
+            ui::completers::none,
             |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {
                 //
             },

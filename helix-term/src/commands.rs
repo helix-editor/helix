@@ -1435,7 +1435,7 @@ fn select_regex(cx: &mut Context) {
         cx,
         "select:".into(),
         Some(reg),
-        |_ctx: &compositor::Context, _input: &str| Vec::new(),
+        ui::completers::none,
         move |view, doc, regex, event| {
             if event != PromptEvent::Update {
                 return;
@@ -1458,7 +1458,7 @@ fn split_selection(cx: &mut Context) {
         cx,
         "split:".into(),
         Some(reg),
-        |_ctx: &compositor::Context, _input: &str| Vec::new(),
+        ui::completers::none,
         move |view, doc, regex, event| {
             if event != PromptEvent::Update {
                 return;
@@ -1600,7 +1600,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
         cx,
         "search:".into(),
         Some(reg),
-        move |_ctx: &compositor::Context, input: &str| {
+        move |_editor: &Editor, input: &str| {
             completions
                 .iter()
                 .filter(|comp| comp.starts_with(input))
@@ -1701,7 +1701,7 @@ fn global_search(cx: &mut Context) {
         cx,
         "global-search:".into(),
         None,
-        move |_ctx: &compositor::Context, input: &str| {
+        move |_editor: &Editor, input: &str| {
             completions
                 .iter()
                 .filter(|comp| comp.starts_with(input))
@@ -3298,7 +3298,7 @@ fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
-        |ctx: &compositor::Context, input: &str| {
+        |editor: &Editor, input: &str| {
             static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
                 Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);
 
@@ -3330,7 +3330,7 @@ fn command_mode(cx: &mut Context) {
                     ..
                 }) = cmd::TYPABLE_COMMAND_MAP.get(parts[0])
                 {
-                    completer(ctx, part)
+                    completer(editor, part)
                         .into_iter()
                         .map(|(range, file)| {
                             // offset ranges to input
@@ -5394,7 +5394,7 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
         cx,
         if !remove { "keep:" } else { "remove:" }.into(),
         Some(reg),
-        |_ctx: &compositor::Context, _input: &str| Vec::new(),
+        ui::completers::none,
         move |view, doc, regex, event| {
             if event != PromptEvent::Update {
                 return;
@@ -6158,7 +6158,7 @@ fn shell_keep_pipe(cx: &mut Context) {
     let prompt = Prompt::new(
         "keep-pipe:".into(),
         Some('|'),
-        |_ctx: &compositor::Context, _input: &str| Vec::new(),
+        ui::completers::none,
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
             let shell = &cx.editor.config.shell;
             if event != PromptEvent::Validate {
@@ -6254,7 +6254,7 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
     let prompt = Prompt::new(
         prompt,
         Some('|'),
-        |_ctx: &compositor::Context, _input: &str| Vec::new(),
+        ui::completers::none,
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
             let shell = &cx.editor.config.shell;
             if event != PromptEvent::Validate {
@@ -6350,7 +6350,7 @@ fn rename_symbol(cx: &mut Context) {
     let prompt = Prompt::new(
         "rename-to:".into(),
         None,
-        |_ctx: &compositor::Context, _input: &str| Vec::new(),
+        ui::completers::none,
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
             if event != PromptEvent::Validate {
                 return;
