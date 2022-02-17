@@ -38,7 +38,7 @@ pub fn regex_prompt(
     let snapshot = doc.selection(view_id).clone();
     let offset_snapshot = view.offset;
 
-    Prompt::new(
+    let mut prompt = Prompt::new(
         prompt,
         history_register,
         completion_fn,
@@ -91,7 +91,10 @@ pub fn regex_prompt(
                 }
             }
         },
-    )
+    );
+    // Calculate initial completion
+    prompt.recalculate_completion(cx.editor);
+    prompt
 }
 
 pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {

@@ -3393,6 +3393,8 @@ fn command_mode(cx: &mut Context) {
         None
     });
 
+    // Calculate initial completion
+    prompt.recalculate_completion(cx.editor);
     cx.push_layer(Box::new(prompt));
 }
 
