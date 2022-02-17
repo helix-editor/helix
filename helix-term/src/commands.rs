@@ -3474,6 +3474,58 @@ fn buffer_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
+fn sym_picker(
+    symbols: Vec<lsp::SymbolInformation>,
+    current_path: Option<lsp::Url>,
+    offset_encoding: OffsetEncoding,
+) -> FilePicker<lsp::SymbolInformation> {
+    // TODO: drop current_path comparison and instead use workspace: bool flag?
+    let current_path2 = current_path.clone();
+    let mut picker = FilePicker::new(
+        symbols,
+        move |symbol| {
+            if current_path.as_ref() == Some(&symbol.location.uri) {
+                symbol.name.as_str().into()
+            } else {
+                let path = symbol.location.uri.to_file_path().unwrap();
+                let relative_path = helix_core::path::get_relative_path(path.as_path())
+                    .to_string_lossy()
+                    .into_owned();
+                format!("{} ({})", &symbol.name, relative_path).into()
+            }
+        },
+        move |cx, symbol, action| {
+            if current_path2.as_ref() == Some(&symbol.location.uri) {
+                push_jump(cx.editor);
+            } else {
+                let path = symbol.location.uri.to_file_path().unwrap();
+                cx.editor.open(path, action).expect("editor.open failed");
+            }
+
+            let (view, doc) = current!(cx.editor);
+
+            if let Some(range) =
+                lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
+            {
+                // we flip the range so that the cursor sits on the start of the symbol
+                // (for example start of the function).
+                doc.set_selection(view.id, Selection::single(range.head, range.anchor));
+                align_view(doc, view, Align::Center);
+            }
+        },
+        move |_editor, symbol| {
+            let path = symbol.location.uri.to_file_path().unwrap();
+            let line = Some((
+                symbol.location.range.start.line as usize,
+                symbol.location.range.end.line as usize,
+            ));
+            Some((path, line))
+        },
+    );
+    picker.truncate_start = false;
+    picker
+}
+
 fn symbol_picker(cx: &mut Context) {
     fn nested_to_flat(
         list: &mut Vec<lsp::SymbolInformation>,
@@ -3499,6 +3551,7 @@ fn symbol_picker(cx: &mut Context) {
         Some(language_server) => language_server,
         None => return,
     };
+    let current_url = doc.url();
     let offset_encoding = language_server.offset_encoding();
 
     let future = language_server.document_symbols(doc.identifier());
@@ -3523,32 +3576,7 @@ fn symbol_picker(cx: &mut Context) {
                     }
                 };
 
-                let mut picker = FilePicker::new(
-                    symbols,
-                    |symbol| (&symbol.name).into(),
-                    move |cx, symbol, _action| {
-                        push_jump(cx.editor);
-                        let (view, doc) = current!(cx.editor);
-
-                        if let Some(range) =
-                            lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
-                        {
-                            // we flip the range so that the cursor sits on the start of the symbol
-                            // (for example start of the function).
-                            doc.set_selection(view.id, Selection::single(range.head, range.anchor));
-                            align_view(doc, view, Align::Center);
-                        }
-                    },
-                    move |_editor, symbol| {
-                        let path = symbol.location.uri.to_file_path().unwrap();
-                        let line = Some((
-                            symbol.location.range.start.line as usize,
-                            symbol.location.range.end.line as usize,
-                        ));
-                        Some((path, line))
-                    },
-                );
-                picker.truncate_start = false;
+                let picker = sym_picker(symbols, current_url, offset_encoding);
                 compositor.push(Box::new(overlayed(picker)))
             }
         },
@@ -3557,7 +3585,7 @@ fn symbol_picker(cx: &mut Context) {
 
 fn workspace_symbol_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
-    let current_path = doc.path().cloned();
+    let current_url = doc.url();
     let language_server = match doc.language_server() {
         Some(language_server) => language_server,
         None => return,
@@ -3571,43 +3599,7 @@ fn workspace_symbol_picker(cx: &mut Context) {
               compositor: &mut Compositor,
               response: Option<Vec<lsp::SymbolInformation>>| {
             if let Some(symbols) = response {
-                let mut picker = FilePicker::new(
-                    symbols,
-                    move |symbol| {
-                        let path = symbol.location.uri.to_file_path().unwrap();
-                        if current_path.as_ref().map(|p| p == &path).unwrap_or(false) {
-                            (&symbol.name).into()
-                        } else {
-                            let relative_path = helix_core::path::get_relative_path(path.as_path())
-                                .to_string_lossy()
-                                .into_owned();
-                            format!("{} ({})", &symbol.name, relative_path).into()
-                        }
-                    },
-                    move |cx, symbol, action| {
-                        let path = symbol.location.uri.to_file_path().unwrap();
-                        cx.editor.open(path, action).expect("editor.open failed");
-                        let (view, doc) = current!(cx.editor);
-
-                        if let Some(range) =
-                            lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
-                        {
-                            // we flip the range so that the cursor sits on the start of the symbol
-                            // (for example start of the function).
-                            doc.set_selection(view.id, Selection::single(range.head, range.anchor));
-                            align_view(doc, view, Align::Center);
-                        }
-                    },
-                    move |_editor, symbol| {
-                        let path = symbol.location.uri.to_file_path().unwrap();
-                        let line = Some((
-                            symbol.location.range.start.line as usize,
-                            symbol.location.range.end.line as usize,
-                        ));
-                        Some((path, line))
-                    },
-                );
-                picker.truncate_start = false;
+                let picker = sym_picker(symbols, current_url, offset_encoding);
                 compositor.push(Box::new(overlayed(picker)))
             }
         },
@@ -4266,6 +4258,7 @@ fn goto_impl(
 ) {
     push_jump(editor);
 
+    // TODO: share with symbol picker(symbol.location)
     fn jump_to(
         editor: &mut Editor,
         location: &lsp::Location,
@@ -4324,6 +4317,7 @@ fn goto_impl(
                 },
                 move |cx, location, action| jump_to(cx.editor, location, offset_encoding, action),
                 |_editor, location| {
+                    // TODO: share code for symbol.location and location
                     let path = location.uri.to_file_path().unwrap();
                     let line = Some((
                         location.range.start.line as usize,
