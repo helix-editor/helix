@@ -2135,6 +2135,42 @@ pub mod cmd {
         buffer_close_impl(cx.editor, args, true)
     }
 
+    fn buffer_close_others(
+        cx: &mut compositor::Context,
+        _args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let all_documents: Vec<_> = cx.editor.documents().map(|doc| doc.id()).collect();
+        let current_document = &doc!(cx.editor).id();
+
+        for doc_id in all_documents
+            .into_iter()
+            .filter(|doc_id| doc_id != current_document)
+        {
+            cx.editor.close_document(doc_id, false)?;
+        }
+
+        Ok(())
+    }
+
+    fn force_buffer_close_others(
+        cx: &mut compositor::Context,
+        _args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let all_documents: Vec<_> = cx.editor.documents().map(|doc| doc.id()).collect();
+        let current_document = &doc!(cx.editor).id();
+
+        for doc_id in all_documents
+            .into_iter()
+            .filter(|doc_id| doc_id != current_document)
+        {
+            cx.editor.close_document(doc_id, true)?;
+        }
+
+        Ok(())
+    }
+
     fn buffer_close_all(
         cx: &mut compositor::Context,
         _args: &[Cow<str>],
@@ -2997,6 +3033,20 @@ pub mod cmd {
             doc: "Close the current buffer forcefully (ignoring unsaved changes).",
             fun: force_buffer_close,
           completer: Some(completers::buffer),
+        },
+        TypableCommand {
+            name: "buffer-close-others",
+            aliases: &["bco", "bcloseother"],
+            doc: "Close all buffers but the currently focused one.",
+            fun: buffer_close_others,
+            completer: None,
+        },
+        TypableCommand {
+            name: "buffer-close-others!",
+            aliases: &["bco!", "bcloseother!"],
+            doc: "Close all buffers but the currently focused one.",
+            fun: force_buffer_close_others,
+            completer: None,
         },
         TypableCommand {
             name: "buffer-close-all",
