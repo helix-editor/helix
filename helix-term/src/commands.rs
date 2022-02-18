@@ -2135,6 +2135,34 @@ pub mod cmd {
         buffer_close_impl(cx.editor, args, true)
     }
 
+    fn buffer_close_all(
+        cx: &mut compositor::Context,
+        _args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let all_documents: Vec<_> = cx.editor.documents().map(|doc| doc.id()).collect();
+
+        for doc_id in all_documents {
+            cx.editor.close_document(doc_id, false)?;
+        }
+
+        Ok(())
+    }
+
+    fn force_buffer_close_all(
+        cx: &mut compositor::Context,
+        _args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let all_documents: Vec<_> = cx.editor.documents().map(|doc| doc.id()).collect();
+
+        for doc_id in all_documents {
+            cx.editor.close_document(doc_id, true)?;
+        }
+
+        Ok(())
+    }
+
     fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::Result<()> {
         let jobs = &mut cx.jobs;
         let doc = doc_mut!(cx.editor);
@@ -2969,6 +2997,20 @@ pub mod cmd {
             doc: "Close the current buffer forcefully (ignoring unsaved changes).",
             fun: force_buffer_close,
           completer: Some(completers::buffer),
+        },
+        TypableCommand {
+            name: "buffer-close-all",
+            aliases: &["bca", "bcloseall"],
+            doc: "Close all buffers, without quiting.",
+            fun: buffer_close_all,
+            completer: None,
+        },
+        TypableCommand {
+            name: "buffer-close-all!",
+            aliases: &["bca!", "bcloseall!"],
+            doc: "Close all buffers forcefully (ignoring unsaved changes), without quiting.",
+            fun: force_buffer_close_all,
+            completer: None,
         },
         TypableCommand {
             name: "write",
