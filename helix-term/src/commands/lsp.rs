@@ -35,6 +35,32 @@ fn location_to_file_location(location: &lsp::Location) -> FileLocation {
     (path, line)
 }
 
+// TODO: share with symbol picker(symbol.location)
+// TODO: need to use push_jump() before?
+fn jump_to_location(
+    editor: &mut Editor,
+    location: &lsp::Location,
+    offset_encoding: OffsetEncoding,
+    action: Action,
+) {
+    let path = location
+        .uri
+        .to_file_path()
+        .expect("unable to convert URI to filepath");
+    let _id = editor.open(path, action).expect("editor.open failed");
+    let (view, doc) = current!(editor);
+    let definition_pos = location.range.start;
+    // TODO: convert inside server
+    let new_pos = if let Some(new_pos) = lsp_pos_to_pos(doc.text(), definition_pos, offset_encoding)
+    {
+        new_pos
+    } else {
+        return;
+    };
+    doc.set_selection(view.id, Selection::point(new_pos));
+    align_view(doc, view, Align::Center);
+}
+
 fn sym_picker(
     symbols: Vec<lsp::SymbolInformation>,
     current_path: Option<lsp::Url>,
@@ -407,36 +433,11 @@ fn goto_impl(
 ) {
     push_jump(editor);
 
-    // TODO: share with symbol picker(symbol.location)
-    fn jump_to(
-        editor: &mut Editor,
-        location: &lsp::Location,
-        offset_encoding: OffsetEncoding,
-        action: Action,
-    ) {
-        let path = location
-            .uri
-            .to_file_path()
-            .expect("unable to convert URI to filepath");
-        let _id = editor.open(path, action).expect("editor.open failed");
-        let (view, doc) = current!(editor);
-        let definition_pos = location.range.start;
-        // TODO: convert inside server
-        let new_pos =
-            if let Some(new_pos) = lsp_pos_to_pos(doc.text(), definition_pos, offset_encoding) {
-                new_pos
-            } else {
-                return;
-            };
-        doc.set_selection(view.id, Selection::point(new_pos));
-        align_view(doc, view, Align::Center);
-    }
-
     let cwdir = std::env::current_dir().expect("couldn't determine current directory");
 
     match locations.as_slice() {
         [location] => {
-            jump_to(editor, location, offset_encoding, Action::Replace);
+            jump_to_location(editor, location, offset_encoding, Action::Replace);
         }
         [] => {
             editor.set_error("No definition found.");
@@ -464,7 +465,9 @@ fn goto_impl(
                     let line = location.range.start.line;
                     format!("{}:{}", file, line).into()
                 },
-                move |cx, location, action| jump_to(cx.editor, location, offset_encoding, action),
+                move |cx, location, action| {
+                    jump_to_location(cx.editor, location, offset_encoding, action)
+                },
                 move |_editor, location| Some(location_to_file_location(location)),
             );
             compositor.push(Box::new(overlayed(picker)));
