@@ -82,7 +82,7 @@ fn split_path_row_col(s: &str) -> Option<(PathBuf, Position)> {
 ///
 /// Does not validate if file.rs is a file or directory.
 fn split_path_row(s: &str) -> Option<(PathBuf, Position)> {
-    let (row, path) = s.rsplit_once(':')?;
+    let (path, row) = s.rsplit_once(':')?;
     let row: usize = row.parse().ok()?;
     let path = path.into();
     let pos = Position::new(row.saturating_sub(1), 0);
