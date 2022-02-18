@@ -6,6 +6,7 @@ fn main() {
         .args(&["rev-parse", "HEAD"])
         .output()
         .ok()
+        .filter(|output| output.status.success())
         .and_then(|x| String::from_utf8(x.stdout).ok());
 
     let version: Cow<_> = match git_hash {
