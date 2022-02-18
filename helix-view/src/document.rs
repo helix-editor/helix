@@ -922,6 +922,20 @@ impl Document {
         lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap(), self.version)
     }
 
+    pub fn position(
+        &self,
+        view_id: ViewId,
+        offset_encoding: helix_lsp::OffsetEncoding,
+    ) -> lsp::Position {
+        let text = self.text();
+
+        helix_lsp::util::pos_to_lsp_pos(
+            text,
+            self.selection(view_id).primary().cursor(text.slice(..)),
+            offset_encoding,
+        )
+    }
+
     #[inline]
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics

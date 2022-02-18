@@ -1,6 +1,6 @@
 use helix_lsp::{
     block_on, lsp,
-    util::{lsp_pos_to_pos, lsp_range_to_range, pos_to_lsp_pos, range_to_lsp_range},
+    util::{lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
 
@@ -495,13 +495,7 @@ pub fn goto_definition(cx: &mut Context) {
     let language_server = language_server!(doc);
     let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(
-        doc.text(),
-        doc.selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..)),
-        offset_encoding,
-    );
+    let pos = doc.position(view.id, offset_encoding);
 
     let future = language_server.goto_definition(doc.identifier(), pos, None);
 
@@ -519,13 +513,7 @@ pub fn goto_type_definition(cx: &mut Context) {
     let language_server = language_server!(doc);
     let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(
-        doc.text(),
-        doc.selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..)),
-        offset_encoding,
-    );
+    let pos = doc.position(view.id, offset_encoding);
 
     let future = language_server.goto_type_definition(doc.identifier(), pos, None);
 
@@ -543,13 +531,7 @@ pub fn goto_implementation(cx: &mut Context) {
     let language_server = language_server!(doc);
     let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(
-        doc.text(),
-        doc.selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..)),
-        offset_encoding,
-    );
+    let pos = doc.position(view.id, offset_encoding);
 
     let future = language_server.goto_implementation(doc.identifier(), pos, None);
 
@@ -567,13 +549,7 @@ pub fn goto_reference(cx: &mut Context) {
     let language_server = language_server!(doc);
     let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(
-        doc.text(),
-        doc.selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..)),
-        offset_encoding,
-    );
+    let pos = doc.position(view.id, offset_encoding);
 
     let future = language_server.goto_reference(doc.identifier(), pos, None);
 
@@ -589,14 +565,9 @@ pub fn goto_reference(cx: &mut Context) {
 pub fn signature_help(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(doc);
+    let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(
-        doc.text(),
-        doc.selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..)),
-        language_server.offset_encoding(),
-    );
+    let pos = doc.position(view.id, offset_encoding);
 
     let future = language_server.text_document_signature_help(doc.identifier(), pos, None);
 
@@ -622,16 +593,11 @@ pub fn signature_help(cx: &mut Context) {
 pub fn hover(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(doc);
+    let offset_encoding = language_server.offset_encoding();
 
     // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
 
-    let pos = pos_to_lsp_pos(
-        doc.text(),
-        doc.selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..)),
-        language_server.offset_encoding(),
-    );
+    let pos = doc.position(view.id, offset_encoding);
 
     let future = language_server.text_document_hover(doc.identifier(), pos, None);
 
@@ -688,13 +654,7 @@ pub fn rename_symbol(cx: &mut Context) {
             let language_server = language_server!(doc);
             let offset_encoding = language_server.offset_encoding();
 
-            let pos = pos_to_lsp_pos(
-                doc.text(),
-                doc.selection(view.id)
-                    .primary()
-                    .cursor(doc.text().slice(..)),
-                offset_encoding,
-            );
+            let pos = doc.position(view.id, offset_encoding);
 
             let task = language_server.rename_symbol(doc.identifier(), pos, input.to_string());
             let edits = block_on(task).unwrap_or_default();
