@@ -16,6 +16,16 @@ use crate::{
 
 use std::borrow::Cow;
 
+#[macro_export]
+macro_rules! language_server {
+    ($doc:expr) => {
+        match $doc.language_server() {
+            Some(language_server) => language_server,
+            None => return,
+        }
+    };
+}
+
 fn location_to_file_location(location: &lsp::Location) -> FileLocation {
     let path = location.uri.to_file_path().unwrap();
     let line = Some((
@@ -91,10 +101,7 @@ pub fn symbol_picker(cx: &mut Context) {
     }
     let doc = doc!(cx.editor);
 
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
-        None => return,
-    };
+    let language_server = language_server!(doc);
     let current_url = doc.url();
     let offset_encoding = language_server.offset_encoding();
 
@@ -130,10 +137,7 @@ pub fn symbol_picker(cx: &mut Context) {
 pub fn workspace_symbol_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
     let current_url = doc.url();
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
-        None => return,
-    };
+    let language_server = language_server!(doc);
     let offset_encoding = language_server.offset_encoding();
     let future = language_server.workspace_symbols("".to_string());
 
@@ -162,10 +166,7 @@ impl ui::menu::Item for lsp::CodeActionOrCommand {
 pub fn code_action(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
-        None => return,
-    };
+    let language_server = language_server!(doc);
 
     let range = range_to_lsp_range(
         doc.text(),
@@ -230,10 +231,7 @@ pub fn code_action(cx: &mut Context) {
 }
 pub fn execute_lsp_command(editor: &mut Editor, cmd: lsp::Command) {
     let doc = doc!(editor);
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
-        None => return,
-    };
+    let language_server = language_server!(doc);
 
     // the command is executed on the server and communicated back
     // to the client asynchronously using workspace edits
@@ -476,11 +474,7 @@ fn goto_impl(
 
 pub fn goto_definition(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
-        None => return,
-    };
-
+    let language_server = language_server!(doc);
     let offset_encoding = language_server.offset_encoding();
 
     let pos = pos_to_lsp_pos(
@@ -518,11 +512,7 @@ pub fn goto_definition(cx: &mut Context) {
 
 pub fn goto_type_definition(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
-        None => return,
-    };
-
+    let language_server = language_server!(doc);
     let offset_encoding = language_server.offset_encoding();
 
     let pos = pos_to_lsp_pos(
@@ -560,11 +550,7 @@ pub fn goto_type_definition(cx: &mut Context) {
 
 pub fn goto_implementation(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
-        None => return,
-    };
-
+    let language_server = language_server!(doc);
     let offset_encoding = language_server.offset_encoding();
 
     let pos = pos_to_lsp_pos(
@@ -602,11 +588,7 @@ pub fn goto_implementation(cx: &mut Context) {
 
 pub fn goto_reference(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
-        None => return,
-    };
-
+    let language_server = language_server!(doc);
     let offset_encoding = language_server.offset_encoding();
 
     let pos = pos_to_lsp_pos(
@@ -636,11 +618,7 @@ pub fn goto_reference(cx: &mut Context) {
 
 pub fn signature_help(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
-        None => return,
-    };
+    let language_server = language_server!(doc);
 
     let pos = pos_to_lsp_pos(
         doc.text(),
@@ -675,11 +653,7 @@ pub fn signature_help(cx: &mut Context) {
 }
 pub fn hover(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
-        None => return,
-    };
+    let language_server = language_server!(doc);
 
     // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
 
@@ -742,14 +716,8 @@ pub fn rename_symbol(cx: &mut Context) {
                 return;
             }
 
-            log::debug!("renaming to: {:?}", input);
-
             let (view, doc) = current!(cx.editor);
-            let language_server = match doc.language_server() {
-                Some(language_server) => language_server,
-                None => return,
-            };
-
+            let language_server = language_server!(doc);
             let offset_encoding = language_server.offset_encoding();
 
             let pos = pos_to_lsp_pos(
@@ -762,7 +730,6 @@ pub fn rename_symbol(cx: &mut Context) {
 
             let task = language_server.rename_symbol(doc.identifier(), pos, input.to_string());
             let edits = block_on(task).unwrap_or_default();
-            log::debug!("Edits from LSP: {:?}", edits);
             apply_workspace_edit(cx.editor, offset_encoding, &edits);
         },
     );
