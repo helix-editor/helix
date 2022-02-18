@@ -33,7 +33,7 @@ pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
 /// File path and range of lines (used to align and highlight lines)
-type FileLocation = (PathBuf, Option<(usize, usize)>);
+pub type FileLocation = (PathBuf, Option<(usize, usize)>);
 
 pub struct FilePicker<T> {
     picker: Picker<T>,

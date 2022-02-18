@@ -11,10 +11,19 @@ use helix_view::editor::Action;
 
 use crate::{
     compositor::{self, Compositor},
-    ui::{self, overlay::overlayed, FilePicker, Popup, Prompt, PromptEvent},
+    ui::{self, overlay::overlayed, FileLocation, FilePicker, Popup, Prompt, PromptEvent},
 };
 
 use std::borrow::Cow;
+
+fn location_to_file_location(location: &lsp::Location) -> FileLocation {
+    let path = location.uri.to_file_path().unwrap();
+    let line = Some((
+        location.range.start.line as usize,
+        location.range.end.line as usize,
+    ));
+    (path, line)
+}
 
 fn sym_picker(
     symbols: Vec<lsp::SymbolInformation>,
@@ -55,14 +64,7 @@ fn sym_picker(
                 align_view(doc, view, Align::Center);
             }
         },
-        move |_editor, symbol| {
-            let path = symbol.location.uri.to_file_path().unwrap();
-            let line = Some((
-                symbol.location.range.start.line as usize,
-                symbol.location.range.end.line as usize,
-            ));
-            Some((path, line))
-        },
+        move |_editor, symbol| Some(location_to_file_location(&symbol.location)),
     );
     picker.truncate_start = false;
     picker
@@ -465,15 +467,7 @@ fn goto_impl(
                     format!("{}:{}", file, line).into()
                 },
                 move |cx, location, action| jump_to(cx.editor, location, offset_encoding, action),
-                |_editor, location| {
-                    // TODO: share code for symbol.location and location
-                    let path = location.uri.to_file_path().unwrap();
-                    let line = Some((
-                        location.range.start.line as usize,
-                        location.range.end.line as usize,
-                    ));
-                    Some((path, line))
-                },
+                move |_editor, location| Some(location_to_file_location(location)),
             );
             compositor.push(Box::new(overlayed(picker)));
         }
