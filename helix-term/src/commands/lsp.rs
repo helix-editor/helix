@@ -475,6 +475,21 @@ fn goto_impl(
     }
 }
 
+fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<lsp::Location> {
+    match definitions {
+        Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
+        Some(lsp::GotoDefinitionResponse::Array(locations)) => locations,
+        Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
+            .into_iter()
+            .map(|location_link| lsp::Location {
+                uri: location_link.target_uri,
+                range: location_link.target_range,
+            })
+            .collect(),
+        None => Vec::new(),
+    }
+}
+
 pub fn goto_definition(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(doc);
@@ -492,22 +507,8 @@ pub fn goto_definition(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |editor: &mut Editor,
-              compositor: &mut Compositor,
-              response: Option<lsp::GotoDefinitionResponse>| {
-            let items = match response {
-                Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
-                Some(lsp::GotoDefinitionResponse::Array(locations)) => locations,
-                Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
-                    .into_iter()
-                    .map(|location_link| lsp::Location {
-                        uri: location_link.target_uri,
-                        range: location_link.target_range,
-                    })
-                    .collect(),
-                None => Vec::new(),
-            };
-
+        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
+            let items = to_locations(response);
             goto_impl(editor, compositor, items, offset_encoding);
         },
     );
@@ -530,22 +531,8 @@ pub fn goto_type_definition(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |editor: &mut Editor,
-              compositor: &mut Compositor,
-              response: Option<lsp::GotoDefinitionResponse>| {
-            let items = match response {
-                Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
-                Some(lsp::GotoDefinitionResponse::Array(locations)) => locations,
-                Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
-                    .into_iter()
-                    .map(|location_link| lsp::Location {
-                        uri: location_link.target_uri,
-                        range: location_link.target_range,
-                    })
-                    .collect(),
-                None => Vec::new(),
-            };
-
+        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
+            let items = to_locations(response);
             goto_impl(editor, compositor, items, offset_encoding);
         },
     );
@@ -568,22 +555,8 @@ pub fn goto_implementation(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |editor: &mut Editor,
-              compositor: &mut Compositor,
-              response: Option<lsp::GotoDefinitionResponse>| {
-            let items = match response {
-                Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
-                Some(lsp::GotoDefinitionResponse::Array(locations)) => locations,
-                Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
-                    .into_iter()
-                    .map(|location_link| lsp::Location {
-                        uri: location_link.target_uri,
-                        range: location_link.target_range,
-                    })
-                    .collect(),
-                None => Vec::new(),
-            };
-
+        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
+            let items = to_locations(response);
             goto_impl(editor, compositor, items, offset_encoding);
         },
     );
@@ -606,15 +579,9 @@ pub fn goto_reference(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |editor: &mut Editor,
-              compositor: &mut Compositor,
-              items: Option<Vec<lsp::Location>>| {
-            goto_impl(
-                editor,
-                compositor,
-                items.unwrap_or_default(),
-                offset_encoding,
-            );
+        move |editor, compositor, response: Option<Vec<lsp::Location>>| {
+            let items = response.unwrap_or_default();
+            goto_impl(editor, compositor, items, offset_encoding);
         },
     );
 }
@@ -635,9 +602,7 @@ pub fn signature_help(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |_editor: &mut Editor,
-              _compositor: &mut Compositor,
-              response: Option<lsp::SignatureHelp>| {
+        move |_editor, _compositor, response: Option<lsp::SignatureHelp>| {
             if let Some(signature_help) = response {
                 log::info!("{:?}", signature_help);
                 // signatures
