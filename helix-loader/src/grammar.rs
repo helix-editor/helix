@@ -76,7 +76,11 @@ pub fn get_language(name: &str) -> Result<Language> {
 }
 
 pub fn fetch_grammars() -> Result<()> {
-    run_parallel(get_grammar_configs()?, fetch_grammar, "fetch")
+    // We do not need to fetch local grammars.
+    let mut grammars = get_grammar_configs()?;
+    grammars.retain(|grammar| !matches!(grammar.source, GrammarSource::Local { .. }));
+
+    run_parallel(grammars, fetch_grammar, "fetch")
 }
 
 pub fn build_grammars() -> Result<()> {
@@ -172,15 +176,12 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<()> {
                 "Grammar '{}' checked out at '{}'.",
                 grammar.grammar_id, revision
             );
-            Ok(())
         } else {
             println!("Grammar '{}' is already up to date.", grammar.grammar_id);
-            Ok(())
         }
-    } else {
-        println!("Skipping local grammar '{}'", grammar.grammar_id);
-        Ok(())
     }
+
+    Ok(())
 }
 
 // Sets the remote for a repository to the given URL, creating the remote if
