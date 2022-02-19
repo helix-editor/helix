@@ -2116,7 +2116,7 @@ pub mod cmd {
             }
         }
 
-        if nonexistent_buffers.len() != 0 {
+        if !nonexistent_buffers.is_empty() {
             editor.set_error(format!(
                 "couldn't close the following buffer because they do not exist: {}",
                 nonexistent_buffers.join(", ")
