@@ -123,18 +123,14 @@ where
             tx.send(job(grammar)).unwrap();
         });
     }
-    pool.join();
+
+    drop(tx);
 
     // TODO: print all failures instead of the first one found.
-    if let Some(failure) = rx.try_iter().find_map(|result| result.err()) {
-        Err(anyhow!(
-            "Failed to {} some grammar(s).\n{}",
-            action,
-            failure
-        ))
-    } else {
-        Ok(())
-    }
+    rx.iter()
+        .find(|result| result.is_err())
+        .map(|err| err.with_context(|| format!("Failed to {} some grammar(s)", action)))
+        .unwrap_or(Ok(()))
 }
 
 fn fetch_grammar(grammar: GrammarConfiguration) -> Result<()> {
