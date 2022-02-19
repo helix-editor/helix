@@ -2077,18 +2077,27 @@ pub mod cmd {
         Ok(())
     }
 
-    fn buffer_close_impl(
+    fn buffer_close_by_ids_impl(
         editor: &mut Editor,
-        args: &[Cow<str>],
+        doc_ids: impl IntoIterator<Item = DocumentId>,
         force: bool,
     ) -> anyhow::Result<()> {
+        for doc_id in doc_ids {
+            editor.close_document(doc_id, force)?;
+        }
+
+        Ok(())
+    }
+
+    fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -> Vec<DocumentId> {
+        // No arguments implies current document
         if args.is_empty() {
             let doc_id = view!(editor).doc;
-            editor.close_document(doc_id, force)?;
-            return Ok(());
+            return vec![doc_id];
         }
 
         let mut nonexistent_buffers = vec![];
+        let mut document_ids = vec![];
         for arg in args {
             let doc_id = editor.documents().find_map(|doc| {
                 let arg_path = Some(Path::new(arg.as_ref()));
@@ -2102,21 +2111,19 @@ pub mod cmd {
             });
 
             match doc_id {
-                Some(doc_id) => editor.close_document(doc_id, force)?,
-                None => nonexistent_buffers.push(arg),
+                Some(doc_id) => document_ids.push(doc_id),
+                None => nonexistent_buffers.push(format!("'{}'", arg)),
             }
         }
 
-        let nonexistent_buffers: Vec<_> = nonexistent_buffers
-            .into_iter()
-            .map(|str| format!("'{}'", str))
-            .collect();
-        editor.set_error(format!(
-            "couldn't close buffer(s) {}: does not exist",
-            nonexistent_buffers.join(", ")
-        ));
+        if nonexistent_buffers.len() != 0 {
+            editor.set_error(format!(
+                "couldn't close the following buffer because they do not exist: {}",
+                nonexistent_buffers.join(", ")
+            ));
+        }
 
-        Ok(())
+        document_ids
     }
 
     fn buffer_close(
@@ -2124,7 +2131,8 @@ pub mod cmd {
         args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        buffer_close_impl(cx.editor, args, false)
+        let document_ids = buffer_gather_paths_impl(cx.editor, args);
+        buffer_close_by_ids_impl(cx.editor, document_ids, false)
     }
 
     fn force_buffer_close(
@@ -2132,7 +2140,17 @@ pub mod cmd {
         args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        buffer_close_impl(cx.editor, args, true)
+        let document_ids = buffer_gather_paths_impl(cx.editor, args);
+        buffer_close_by_ids_impl(cx.editor, document_ids, true)
+    }
+
+    fn buffer_gather_others_impl(cx: &mut compositor::Context) -> Vec<DocumentId> {
+        let current_document = &doc!(cx.editor).id();
+        cx.editor
+            .documents()
+            .map(|doc| doc.id())
+            .filter(|doc_id| doc_id != current_document)
+            .collect()
     }
 
     fn buffer_close_others(
@@ -2140,17 +2158,8 @@ pub mod cmd {
         _args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let all_documents: Vec<_> = cx.editor.documents().map(|doc| doc.id()).collect();
-        let current_document = &doc!(cx.editor).id();
-
-        for doc_id in all_documents
-            .into_iter()
-            .filter(|doc_id| doc_id != current_document)
-        {
-            cx.editor.close_document(doc_id, false)?;
-        }
-
-        Ok(())
+        let document_ids = buffer_gather_others_impl(cx);
+        buffer_close_by_ids_impl(cx.editor, document_ids, false)
     }
 
     fn force_buffer_close_others(
@@ -2158,17 +2167,12 @@ pub mod cmd {
         _args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let all_documents: Vec<_> = cx.editor.documents().map(|doc| doc.id()).collect();
-        let current_document = &doc!(cx.editor).id();
+        let document_ids = buffer_gather_others_impl(cx);
+        buffer_close_by_ids_impl(cx.editor, document_ids, true)
+    }
 
-        for doc_id in all_documents
-            .into_iter()
-            .filter(|doc_id| doc_id != current_document)
-        {
-            cx.editor.close_document(doc_id, true)?;
-        }
-
-        Ok(())
+    fn buffer_gather_all_impl(cx: &mut compositor::Context) -> Vec<DocumentId> {
+        cx.editor.documents().map(|doc| doc.id()).collect()
     }
 
     fn buffer_close_all(
@@ -2176,13 +2180,8 @@ pub mod cmd {
         _args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let all_documents: Vec<_> = cx.editor.documents().map(|doc| doc.id()).collect();
-
-        for doc_id in all_documents {
-            cx.editor.close_document(doc_id, false)?;
-        }
-
-        Ok(())
+        let document_ids = buffer_gather_all_impl(cx);
+        buffer_close_by_ids_impl(cx.editor, document_ids, false)
     }
 
     fn force_buffer_close_all(
@@ -2190,13 +2189,8 @@ pub mod cmd {
         _args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let all_documents: Vec<_> = cx.editor.documents().map(|doc| doc.id()).collect();
-
-        for doc_id in all_documents {
-            cx.editor.close_document(doc_id, true)?;
-        }
-
-        Ok(())
+        let document_ids = buffer_gather_all_impl(cx);
+        buffer_close_by_ids_impl(cx.editor, document_ids, true)
     }
 
     fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::Result<()> {
