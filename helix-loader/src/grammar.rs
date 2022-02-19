@@ -129,7 +129,7 @@ where
     // TODO: print all failures instead of the first one found.
     rx.iter()
         .find(|result| result.is_err())
-        .map(|err| err.with_context(|| format!("Failed to {} some grammar(s)", action)))
+        .map(|err| err.with_context(|| format!("Failed to {action} some grammar(s)")))
         .unwrap_or(Ok(()))
 }
 
@@ -162,7 +162,10 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<()> {
             // Fetch the exact revision from the remote.
             // Supported by server-side git since v2.5.0 (July 2015),
             // enabled by default on major git hosts.
-            git(&grammar_dir, ["fetch", REMOTE_NAME, &revision])?;
+            git(
+                &grammar_dir,
+                ["fetch", "--depth", "1", REMOTE_NAME, &revision],
+            )?;
             git(&grammar_dir, ["checkout", &revision])?;
 
             println!(
