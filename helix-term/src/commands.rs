@@ -2144,9 +2144,9 @@ pub mod cmd {
         buffer_close_by_ids_impl(cx.editor, document_ids, true)
     }
 
-    fn buffer_gather_others_impl(cx: &mut compositor::Context) -> Vec<DocumentId> {
-        let current_document = &doc!(cx.editor).id();
-        cx.editor
+    fn buffer_gather_others_impl(editor: &mut Editor) -> Vec<DocumentId> {
+        let current_document = &doc!(editor).id();
+        editor
             .documents()
             .map(|doc| doc.id())
             .filter(|doc_id| doc_id != current_document)
@@ -2158,7 +2158,7 @@ pub mod cmd {
         _args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let document_ids = buffer_gather_others_impl(cx);
+        let document_ids = buffer_gather_others_impl(cx.editor);
         buffer_close_by_ids_impl(cx.editor, document_ids, false)
     }
 
@@ -2167,12 +2167,12 @@ pub mod cmd {
         _args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let document_ids = buffer_gather_others_impl(cx);
+        let document_ids = buffer_gather_others_impl(cx.editor);
         buffer_close_by_ids_impl(cx.editor, document_ids, true)
     }
 
-    fn buffer_gather_all_impl(cx: &mut compositor::Context) -> Vec<DocumentId> {
-        cx.editor.documents().map(|doc| doc.id()).collect()
+    fn buffer_gather_all_impl(editor: &mut Editor) -> Vec<DocumentId> {
+        editor.documents().map(|doc| doc.id()).collect()
     }
 
     fn buffer_close_all(
@@ -2180,7 +2180,7 @@ pub mod cmd {
         _args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let document_ids = buffer_gather_all_impl(cx);
+        let document_ids = buffer_gather_all_impl(cx.editor);
         buffer_close_by_ids_impl(cx.editor, document_ids, false)
     }
 
@@ -2189,7 +2189,7 @@ pub mod cmd {
         _args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let document_ids = buffer_gather_all_impl(cx);
+        let document_ids = buffer_gather_all_impl(cx.editor);
         buffer_close_by_ids_impl(cx.editor, document_ids, true)
     }
 
