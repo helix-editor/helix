@@ -5,6 +5,7 @@ use helix_view::input::KeyEvent;
 use helix_view::keyboard::{KeyCode, KeyModifiers};
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
+use tui::widgets::{Block, Borders, Widget};
 
 use helix_core::{
     unicode::segmentation::GraphemeCursor, unicode::width::UnicodeWidthStr, Position,
@@ -26,7 +27,7 @@ pub struct Prompt {
     history_pos: Option<usize>,
     completion_fn: Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
-    pub doc_fn: Box<dyn Fn(&str) -> Option<&'static str>>,
+    pub doc_fn: Box<dyn Fn(&str) -> Option<Cow<str>>>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -406,14 +407,18 @@ impl Prompt {
             let background = theme.get("ui.help");
             surface.clear_with(area, background);
 
-            text.render(
-                area.inner(&Margin {
-                    vertical: padding,
-                    horizontal: padding,
-                }),
-                surface,
-                cx,
-            );
+            let block = Block::default()
+                // .title(self.title.as_str())
+                .borders(Borders::ALL)
+                .border_style(background);
+
+            let inner = block.inner(area).inner(&Margin {
+                vertical: 0,
+                horizontal: 1,
+            });
+
+            block.render(area, surface);
+            text.render(inner, surface, cx);
         }
 
         let line = area.height - 1;

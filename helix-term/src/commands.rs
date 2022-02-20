@@ -3384,8 +3384,11 @@ fn command_mode(cx: &mut Context) {
     prompt.doc_fn = Box::new(|input: &str| {
         let part = input.split(' ').next().unwrap_or_default();
 
-        if let Some(cmd::TypableCommand { doc, .. }) = cmd::TYPABLE_COMMAND_MAP.get(part) {
-            return Some(doc);
+        if let Some(cmd::TypableCommand { doc, aliases, .. }) = cmd::TYPABLE_COMMAND_MAP.get(part) {
+            if aliases.is_empty() {
+                return Some((*doc).into());
+            }
+            return Some(format!("{}\nAliases: {}", doc, aliases.join(", ")).into());
         }
 
         None
