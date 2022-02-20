@@ -551,6 +551,21 @@ impl Application {
                                 }
                             };
 
+                        // Trigger a workspace/didChangeConfiguration notification after initialization.
+                        // This might not be required by the spec but Neovim does this as well, so it's
+                        // probably a good idea for compatibility.
+                        let config = self.editor.documents().find_map(|doc| {
+                            if doc.language_server().map(|server| server.id()) == Some(server_id) {
+                                doc.language_config()
+                                    .and_then(|config| config.config.clone())
+                            } else {
+                                None
+                            }
+                        });
+                        if let Some(config) = config {
+                            tokio::spawn(language_server.did_change_configuration(config));
+                        }
+
                         let docs = self.editor.documents().filter(|doc| {
                             doc.language_server().map(|server| server.id()) == Some(server_id)
                         });

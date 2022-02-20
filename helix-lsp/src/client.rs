@@ -245,6 +245,9 @@ impl Client {
             capabilities: lsp::ClientCapabilities {
                 workspace: Some(lsp::WorkspaceClientCapabilities {
                     configuration: Some(true),
+                    did_change_configuration: Some(lsp::DynamicRegistrationClientCapabilities {
+                        dynamic_registration: Some(false),
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
@@ -329,6 +332,16 @@ impl Client {
             log::warn!("language server failed to terminate gracefully - {}", e);
         }
         self.exit().await
+    }
+
+    // -------------------------------------------------------------------------------------------
+    // Workspace
+    // -------------------------------------------------------------------------------------------
+
+    pub fn did_change_configuration(&self, settings: Value) -> impl Future<Output = Result<()>> {
+        self.notify::<lsp::notification::DidChangeConfiguration>(
+            lsp::DidChangeConfigurationParams { settings },
+        )
     }
 
     // -------------------------------------------------------------------------------------------
