@@ -103,8 +103,8 @@ pub struct Config {
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
     /// Automatic insertion of pairs to parentheses, brackets,
-    /// etc. Defaults to true. Optionally, this can be a list of 2-tuples
-    /// to specify a global list of characters to pair.
+    /// etc. Optionally, this can be a list of 2-tuples to specify a
+    /// global list of characters to pair. Defaults to true.
     pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
