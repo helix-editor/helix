@@ -247,19 +247,8 @@ impl Component for Markdown {
 
         // TODO: account for tab width
         let max_text_width = (viewport.0 - padding).min(120);
-        let mut text_width = 0;
-        let mut height = padding;
-        for content in contents {
-            height += 1;
-            let content_width = content.width() as u16;
-            if content_width > max_text_width {
-                text_width = max_text_width;
-                height += content_width / max_text_width;
-            } else if content_width > text_width {
-                text_width = content_width;
-            }
-        }
+        let (width, height) = crate::ui::text::required_size(&contents, max_text_width);
 
-        Some((text_width + padding, height))
+        Some((width + padding * 2, height))
     }
 }

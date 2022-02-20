@@ -389,12 +389,18 @@ impl Prompt {
         if let Some(doc) = (self.doc_fn)(&self.line) {
             let mut text = ui::Text::new(doc.to_string());
 
+            let max_width = BASE_WIDTH * 3;
+            let padding = 1;
+
             let viewport = area;
+
+            let (_width, height) = ui::text::required_size(&text.contents, max_width);
+
             let area = viewport.intersection(Rect::new(
                 completion_area.x,
-                completion_area.y.saturating_sub(3),
-                BASE_WIDTH * 3,
-                3,
+                completion_area.y.saturating_sub(height + padding * 2),
+                max_width,
+                height + padding * 2,
             ));
 
             let background = theme.get("ui.help");
@@ -402,8 +408,8 @@ impl Prompt {
 
             text.render(
                 area.inner(&Margin {
-                    vertical: 1,
-                    horizontal: 1,
+                    vertical: padding,
+                    horizontal: padding,
                 }),
                 surface,
                 cx,
