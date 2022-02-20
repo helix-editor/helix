@@ -2940,13 +2940,17 @@ pub mod cmd {
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         let shell = &cx.editor.config.shell;
-        let (output, _success) = match shell_impl(shell, &args.join(" "), None) {
+        let (output, success) = match shell_impl(shell, &args.join(" "), None) {
             Ok(result) => result,
             Err(err) => {
                 cx.editor.set_error(err.to_string());
                 return Ok(());
             }
         };
+
+        if !success {
+            cx.editor.set_error("Command failed");
+        }
 
         if !output.is_empty() {
             cx.editor.autoinfo = Some(Info::from_string("Run shell command", output.to_string()));
