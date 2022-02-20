@@ -5353,6 +5353,7 @@ fn select_textobject_inner(cx: &mut Context) {
 
 fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     let count = cx.count();
+
     cx.on_next_key(move |cx, event| {
         if let Some(ch) = event.char() {
             let textobject = move |editor: &mut Editor| {
@@ -5400,9 +5401,33 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 doc.set_selection(view.id, selection);
             };
             textobject(cx.editor);
+            cx.editor.autoinfo = None;
             cx.editor.last_motion = Some(Motion(Box::new(textobject)));
         }
-    })
+    });
+
+    if let Some(title) = match objtype {
+        textobject::TextObject::Inside => Some("Match inside"),
+        textobject::TextObject::Around => Some("Match around"),
+        textobject::TextObject::Movement => None,
+    } {
+        let help_text = vec![
+            ("w", "Word"),
+            ("W", "WORD"),
+            ("c", "Class (tree-sitter)"),
+            ("f", "Function (tree-sitter)"),
+            ("p", "Parameter (tree-sitter)"),
+            ("m", "Matching delimiter under cursor"),
+        ];
+
+        cx.editor.autoinfo = Some(Info::new(
+            title,
+            help_text
+                .into_iter()
+                .map(|(col1, col2)| (col1.to_string(), col2.to_string()))
+                .collect(),
+        ));
+    };
 }
 
 fn surround_add(cx: &mut Context) {
