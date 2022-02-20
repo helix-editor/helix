@@ -270,6 +270,8 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `[c`     | Go to previous class (**TS**)                | `goto_prev_class`     |
 | `]p`     | Go to next parameter (**TS**)                | `goto_next_parameter` |
 | `[p`     | Go to previous parameter (**TS**)            | `goto_prev_parameter` |
+| `]o`     | Go to next comment (**TS**)                  | `goto_next_comment`   |
+| `[o`     | Go to previous comment (**TS**)              | `goto_prev_comment`   |
 | `[space` | Add newline above                            | `add_newline_above`   |
 | `]space` | Add newline below                            | `add_newline_below`   |
 

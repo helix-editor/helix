@@ -401,6 +401,8 @@ impl MappableCommand {
         goto_prev_class, "Goto previous class",
         goto_next_parameter, "Goto next parameter",
         goto_prev_parameter, "Goto previous parameter",
+        goto_next_comment, "Goto next comment",
+        goto_prev_comment, "Goto previous comment",
         dap_launch, "Launch debug target",
         dap_toggle_breakpoint, "Toggle breakpoint",
         dap_continue, "Continue program execution",
@@ -5378,6 +5380,14 @@ fn goto_next_parameter(cx: &mut Context) {
 
 fn goto_prev_parameter(cx: &mut Context) {
     goto_ts_object_impl(cx, "parameter", Direction::Backward)
+}
+
+fn goto_next_comment(cx: &mut Context) {
+    goto_ts_object_impl(cx, "comment", Direction::Forward)
+}
+
+fn goto_prev_comment(cx: &mut Context) {
+    goto_ts_object_impl(cx, "comment", Direction::Backward)
 }
 
 fn select_textobject_around(cx: &mut Context) {
