@@ -49,3 +49,4 @@
 | `:sort` | Sort ranges in selection. |
 | `:rsort` | Sort ranges in selection in reverse order. |
 | `:tree-sitter-subtree`, `:ts-subtree` | Display tree sitter subtree under cursor, primarily for debugging queries. |
+| `:run_shell_command`, `:sh` | Run a shell command |
