@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Context, Error};
+use helix_core::auto_pairs::AutoPairs;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::cell::Cell;
@@ -20,7 +21,7 @@ use helix_core::{
 };
 use helix_lsp::util::LspFormatting;
 
-use crate::{DocumentId, ViewId};
+use crate::{DocumentId, Editor, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -945,6 +946,28 @@ impl Document {
         self.diagnostics = diagnostics;
         self.diagnostics
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
+    }
+
+    /// Get the document's auto pairs. If the document has a recognized
+    /// language config with auto pairs configured, returns that;
+    /// otherwise, falls back to the global auto pairs config. If the global
+    /// config is false, then ignore language settings.
+    pub fn auto_pairs<'a>(&'a self, editor: &'a Editor) -> Option<&'a AutoPairs> {
+        let global_config = (editor.auto_pairs).as_ref();
+
+        // NOTE: If the user specifies the global auto pairs config as false, then
+        //       we want to disable it globally regardless of language settings
+        #[allow(clippy::question_mark)]
+        {
+            if global_config.is_none() {
+                return None;
+            }
+        }
+
+        match &self.language {
+            Some(lang) => lang.as_ref().auto_pairs.as_ref().or(global_config),
+            None => global_config,
+        }
     }
 }
 

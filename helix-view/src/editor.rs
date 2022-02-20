@@ -723,30 +723,6 @@ impl Editor {
             .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
     }
 
-    /// Get the document's auto pairs. If the document has a recognized
-    /// language config with auto pairs configured, returns that;
-    /// otherwise, falls back to the global auto pairs config. If the global
-    /// config is false, then ignore language settings.
-    pub fn get_document_auto_pairs(&self, id: DocumentId) -> Option<&AutoPairs> {
-        let global_config = (&self.auto_pairs).as_ref();
-
-        // NOTE: If the user specifies the global auto pairs config as false, then
-        //       we want to disable it globally regardless of language settings
-        #[allow(clippy::question_mark)]
-        {
-            if global_config.is_none() {
-                return None;
-            }
-        }
-
-        let doc = self.document(id)?;
-
-        match &doc.language {
-            Some(lang) => lang.as_ref().auto_pairs.as_ref().or(global_config),
-            None => global_config,
-        }
-    }
-
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
         let (view, doc) = current_ref!(self);
         let cursor = doc

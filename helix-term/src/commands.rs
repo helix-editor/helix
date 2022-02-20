@@ -4048,7 +4048,7 @@ pub mod insert {
         let (view, doc) = current_ref!(cx.editor);
         let text = doc.text();
         let selection = doc.selection(view.id);
-        let auto_pairs = cx.editor.get_document_auto_pairs(doc.id());
+        let auto_pairs = doc.auto_pairs(cx.editor);
 
         let transaction = auto_pairs
             .as_ref()
@@ -4122,9 +4122,8 @@ pub mod insert {
             // If we are between pairs (such as brackets), we want to
             // insert an additional line which is indented one level
             // more and place the cursor there
-            let on_auto_pair = cx
-                .editor
-                .get_document_auto_pairs(doc.id())
+            let on_auto_pair = doc
+                .auto_pairs(cx.editor)
                 .and_then(|pairs| pairs.get(prev))
                 .and_then(|pair| if pair.close == curr { Some(pair) } else { None })
                 .is_some();
