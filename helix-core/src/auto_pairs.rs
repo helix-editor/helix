@@ -63,19 +63,16 @@ impl Pair {
 }
 
 impl From<&(char, char)> for Pair {
-    fn from(pair: &(char, char)) -> Self {
-        Self {
-            open: pair.0,
-            close: pair.1,
-        }
+    fn from(&(open, close): &(char, char)) -> Self {
+        Self { open, close }
     }
 }
 
 impl From<(&char, &char)> for Pair {
-    fn from(pair: (&char, &char)) -> Self {
+    fn from((open, close): (&char, &char)) -> Self {
         Self {
-            open: *pair.0,
-            close: *pair.1,
+            open: *open,
+            close: *close,
         }
     }
 }
