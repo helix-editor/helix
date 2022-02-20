@@ -3300,7 +3300,7 @@ pub mod cmd {
             completer: None,
         },
         TypableCommand {
-            name: "run_shell_command",
+            name: "run-shell-command",
             aliases: &["sh"],
             doc: "Run a shell command",
             fun: run_shell_command,
