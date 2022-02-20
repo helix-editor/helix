@@ -191,6 +191,7 @@ pub mod util {
 pub enum MethodCall {
     WorkDoneProgressCreate(lsp::WorkDoneProgressCreateParams),
     ApplyWorkspaceEdit(lsp::ApplyWorkspaceEditParams),
+    WorkspaceConfiguration(lsp::ConfigurationParams),
 }
 
 impl MethodCall {
@@ -208,6 +209,12 @@ impl MethodCall {
                     .parse()
                     .expect("Failed to parse ApplyWorkspaceEdit params");
                 Self::ApplyWorkspaceEdit(params)
+            }
+            lsp::request::WorkspaceConfiguration::METHOD => {
+                let params: lsp::ConfigurationParams = params
+                    .parse()
+                    .expect("Failed to parse WorkspaceConfiguration params");
+                Self::WorkspaceConfiguration(params)
             }
             _ => {
                 log::warn!("unhandled lsp request: {}", method);

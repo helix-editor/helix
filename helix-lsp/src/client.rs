@@ -243,6 +243,10 @@ impl Client {
             root_uri: root,
             initialization_options: self.config.clone(),
             capabilities: lsp::ClientCapabilities {
+                workspace: Some(lsp::WorkspaceClientCapabilities {
+                    configuration: Some(true),
+                    ..Default::default()
+                }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
                     completion: Some(lsp::CompletionClientCapabilities {
                         completion_item: Some(lsp::CompletionItemCapability {

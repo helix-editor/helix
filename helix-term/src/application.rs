@@ -807,6 +807,48 @@ impl Application {
                             })),
                         ));
                     }
+                    MethodCall::WorkspaceConfiguration(params) => {
+                        let language_server =
+                            match self.editor.language_servers.get_by_id(server_id) {
+                                Some(language_server) => language_server,
+                                None => {
+                                    warn!("can't find language server with id `{}`", server_id);
+                                    return;
+                                }
+                            };
+                        let result: Vec<_> = params
+                            .items
+                            .iter()
+                            .map(|item| {
+                                let doc = self.editor.documents().find(|doc| {
+                                    if let Some(server) = doc.language_server() {
+                                        if server.id() != server_id {
+                                            return false;
+                                        }
+                                        // The server may request the config for a specific document.
+                                        // Currently, the configs should all be the same but we might
+                                        // suport per-document configuration in the future.
+                                        if let Some(scope) = &item.scope_uri {
+                                            if Some(scope) != doc.url().as_ref() {
+                                                return false;
+                                            }
+                                        }
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                })?;
+                                let mut config = doc.language_config()?.config.as_ref()?;
+                                if let Some(section) = item.section.as_ref() {
+                                    for part in section.split('.') {
+                                        config = config.get(part)?;
+                                    }
+                                }
+                                Some(config)
+                            })
+                            .collect();
+                        tokio::spawn(language_server.reply(id, Ok(json!(result))));
+                    }
                 }
             }
             e => unreachable!("{:?}", e),
