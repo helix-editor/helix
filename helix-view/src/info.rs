@@ -41,6 +41,24 @@ impl Info {
         }
     }
 
+    pub fn from_string(title: &str, body: String) -> Self {
+        if body.is_empty() {
+            return Self {
+                title: title.to_string(),
+                height: 1,
+                width: title.len() as u16,
+                text: "".to_string(),
+            };
+        }
+
+        Self {
+            title: title.to_string(),
+            width: body.lines().map(|l| l.width()).max().unwrap() as u16,
+            height: body.lines().count() as u16,
+            text: body,
+        }
+    }
+
     pub fn from_keymap(title: &str, body: Vec<(&str, BTreeSet<KeyEvent>)>) -> Self {
         let body = body
             .into_iter()

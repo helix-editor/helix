@@ -2934,6 +2934,27 @@ pub mod cmd {
         Ok(())
     }
 
+    fn run_shell_command(
+        cx: &mut compositor::Context,
+        args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let shell = &cx.editor.config.shell;
+        let (output, _success) = match shell_impl(shell, &args.join(" "), None) {
+            Ok(result) => result,
+            Err(err) => {
+                cx.editor.set_error(err.to_string());
+                return Ok(());
+            }
+        };
+
+        if !output.is_empty() {
+            cx.editor.autoinfo = Some(Info::from_string("Run shell command", output.to_string()));
+        }
+
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -3277,6 +3298,13 @@ pub mod cmd {
             doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
             fun: tree_sitter_subtree,
             completer: None,
+        },
+        TypableCommand {
+            name: "run_shell_command",
+            aliases: &["sh"],
+            doc: "Run a shell command",
+            fun: run_shell_command,
+            completer: Some(completers::directory),
         },
     ];
 
