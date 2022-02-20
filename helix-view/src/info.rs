@@ -17,28 +17,14 @@ pub struct Info {
 
 impl Info {
     pub fn new(title: &str, body: Vec<(String, String)>) -> Self {
-        if body.is_empty() {
-            return Self {
-                title: title.to_string(),
-                height: 1,
-                width: title.len() as u16,
-                text: "".to_string(),
-            };
-        }
-
-        let item_width = body.iter().map(|(item, _)| item.width()).max().unwrap();
+        let item_width = body.iter().map(|(item, _)| item.width()).max().unwrap_or(0);
         let mut text = String::new();
 
         for (item, desc) in &body {
             let _ = writeln!(text, "{:width$}  {}", item, desc, width = item_width);
         }
 
-        Self {
-            title: title.to_string(),
-            width: text.lines().map(|l| l.width()).max().unwrap() as u16,
-            height: body.len() as u16,
-            text,
-        }
+        Self::from_string(title, text)
     }
 
     pub fn from_string(title: &str, body: String) -> Self {
