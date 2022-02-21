@@ -5355,6 +5355,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     let count = cx.count();
 
     cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
         if let Some(ch) = event.char() {
             let textobject = move |editor: &mut Editor| {
                 let (view, doc) = current!(editor);
@@ -5401,7 +5402,6 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 doc.set_selection(view.id, selection);
             };
             textobject(cx.editor);
-            cx.editor.autoinfo = None;
             cx.editor.last_motion = Some(Motion(Box::new(textobject)));
         }
     });
