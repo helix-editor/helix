@@ -97,8 +97,9 @@ pub fn plain(s: &str, selection: Selection) -> String {
         .enumerate()
         .flat_map(|(i, range)| {
             [
-                (range.anchor, '^'),
+                // sort like this before reversed so anchor < head later
                 (range.head, if i == primary { '@' } else { '|' }),
+                (range.anchor, '^'),
             ]
         })
         .collect();

@@ -3991,6 +3991,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'f' => textobject_treesitter("function", range),
                         'a' => textobject_treesitter("parameter", range),
                         'o' => textobject_treesitter("comment", range),
+                        'p' => textobject::textobject_para(text, range, objtype, count),
                         'm' => {
                             let ch = text.char(range.cursor(text));
                             if !ch.is_ascii_alphanumeric() {
