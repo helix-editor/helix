@@ -6,7 +6,7 @@ use tui::{
 
 use std::sync::Arc;
 
-use pulldown_cmark::{CodeBlockKind, CowStr, Event, HeadingLevel, Options, Parser, Tag};
+use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag};
 
 use helix_core::{
     syntax::{self, HighlightEvent, Syntax},
@@ -59,15 +59,6 @@ impl Markdown {
         let mut spans = Vec::new();
         let mut lines = Vec::new();
 
-        fn to_span(text: pulldown_cmark::CowStr) -> Span {
-            use std::ops::Deref;
-            Span::raw::<std::borrow::Cow<_>>(match text {
-                CowStr::Borrowed(s) => s.into(),
-                CowStr::Boxed(s) => s.to_string().into(),
-                CowStr::Inlined(s) => s.deref().to_owned().into(),
-            })
-        }
-
         let get_theme = |keys: &[&str]| match theme {
             Some(theme) => keys
                 .iter()
@@ -82,15 +73,28 @@ impl Markdown {
             .map(|key| get_theme(key))
             .collect();
 
+        let mut list_stack = Vec::new();
+
         for event in parser {
             match event {
-                Event::Start(tag) => tags.push(tag),
+                Event::Start(Tag::List(list)) => list_stack.push(list),
+                Event::End(Tag::List(_)) => {
+                    list_stack.pop();
+                }
+                Event::Start(Tag::Item) => {
+                    tags.push(Tag::Item);
+                    spans.push(Span::from("- "));
+                }
+                Event::Start(tag) => {
+                    tags.push(tag);
+                }
                 Event::End(tag) => {
                     tags.pop();
                     match tag {
                         Tag::Heading(_, _, _)
                         | Tag::Paragraph
-                        | Tag::CodeBlock(CodeBlockKind::Fenced(_)) => {
+                        | Tag::CodeBlock(CodeBlockKind::Fenced(_))
+                        | Tag::Item => {
                             // whenever code block or paragraph closes, new line
                             let spans = std::mem::take(&mut spans);
                             if !spans.is_empty() {
@@ -131,8 +135,6 @@ impl Markdown {
                                                 Some(span) => theme.get(&theme.scopes()[span.0]),
                                                 None => text_style,
                                             };
-
-                                            // TODO: replace tabs with indentation
 
                                             let mut slice = &text[start..end];
                                             // TODO: do we need to handle all unicode line endings
@@ -175,27 +177,24 @@ impl Markdown {
                                 lines.push(Spans::from(span));
                             }
                         }
-                    } else if let Some(Tag::Heading(level, _, _)) = tags.last() {
-                        let mut span = to_span(text);
-                        span.style = match level {
-                            HeadingLevel::H1 => heading_styles[0],
-                            HeadingLevel::H2 => heading_styles[1],
-                            HeadingLevel::H3 => heading_styles[2],
-                            HeadingLevel::H4 => heading_styles[3],
-                            HeadingLevel::H5 => heading_styles[4],
-                            HeadingLevel::H6 => heading_styles[5],
-                        };
-                        spans.push(span);
                     } else {
-                        let mut span = to_span(text);
-                        span.style = text_style;
-                        spans.push(span);
+                        let style = if let Some(Tag::Heading(level, ..)) = tags.last() {
+                            match level {
+                                HeadingLevel::H1 => heading_styles[0],
+                                HeadingLevel::H2 => heading_styles[1],
+                                HeadingLevel::H3 => heading_styles[2],
+                                HeadingLevel::H4 => heading_styles[3],
+                                HeadingLevel::H5 => heading_styles[4],
+                                HeadingLevel::H6 => heading_styles[5],
+                            }
+                        } else {
+                            text_style
+                        };
+                        spans.push(Span::styled(text, style));
                     }
                 }
                 Event::Code(text) | Event::Html(text) => {
-                    let mut span = to_span(text);
-                    span.style = code_style;
-                    spans.push(span);
+                    spans.push(Span::styled(text, code_style));
                 }
                 Event::SoftBreak | Event::HardBreak => {
                     // let spans = std::mem::replace(&mut spans, Vec::new());
@@ -203,9 +202,7 @@ impl Markdown {
                     spans.push(Span::raw(" "));
                 }
                 Event::Rule => {
-                    let mut span = Span::raw("---");
-                    span.style = code_style;
-                    lines.push(Spans::from(span));
+                    lines.push(Spans::from(Span::styled("---", code_style)));
                     lines.push(Spans::default());
                 }
                 // TaskListMarker(bool) true if checked

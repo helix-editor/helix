@@ -4790,7 +4790,7 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
     let reg = cx.register.unwrap_or('/');
     let prompt = ui::regex_prompt(
         cx,
-        if !remove { "keep:" } else { "remove:" }.into(),
+        if remove { "remove:" } else { "keep:" }.into(),
         Some(reg),
         ui::completers::none,
         move |view, doc, regex, event| {
