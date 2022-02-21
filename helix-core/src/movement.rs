@@ -153,12 +153,12 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
 pub fn move_prev_para(slice: RopeSlice, range: Range, count: usize, behavior: Movement) -> Range {
     let mut line = range.cursor_line(slice);
     let first_char = slice.line_to_char(line) == range.cursor(slice);
+    let prev_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
     let curr_line_empty = rope_is_line_ending(slice.line(line));
-    let last_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
-    let line_to_empty = last_line_empty && !curr_line_empty;
+    let prev_empty_to_line = prev_line_empty && !curr_line_empty;
 
-    // iterate current line if first character after paragraph boundary
-    if line_to_empty && !first_char {
+    // skip character before paragraph boundary
+    if prev_empty_to_line && !first_char {
         line += 1;
     }
     let mut lines = slice.lines_at(line);
@@ -176,7 +176,7 @@ pub fn move_prev_para(slice: RopeSlice, range: Range, count: usize, behavior: Mo
     let head = slice.line_to_char(line);
     let anchor = if behavior == Movement::Move {
         // exclude first character after paragraph boundary
-        if line_to_empty && first_char {
+        if prev_empty_to_line && first_char {
             range.cursor(slice)
         } else {
             range.head
@@ -193,13 +193,12 @@ pub fn move_next_para(slice: RopeSlice, range: Range, count: usize, behavior: Mo
         prev_grapheme_boundary(slice, slice.line_to_char(line + 1)) == range.cursor(slice);
     let curr_line_empty = rope_is_line_ending(slice.line(line));
     let next_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
-    let empty_to_line = curr_line_empty && !next_line_empty;
+    let curr_empty_to_line = curr_line_empty && !next_line_empty;
 
-    // iterate current line if first character after paragraph boundary
-    if empty_to_line && last_char {
+    // skip character after paragraph boundary
+    if curr_empty_to_line && last_char {
         line += 1;
     }
-
     let mut lines = slice.lines_at(line).map(rope_is_line_ending).peekable();
     for _ in 0..count {
         while lines.next_if(|&e| !e).is_some() {
@@ -211,7 +210,7 @@ pub fn move_next_para(slice: RopeSlice, range: Range, count: usize, behavior: Mo
     }
     let head = slice.line_to_char(line);
     let anchor = if behavior == Movement::Move {
-        if empty_to_line && last_char {
+        if curr_empty_to_line && last_char {
             range.head
         } else {
             range.cursor(slice)
@@ -1256,7 +1255,7 @@ mod test {
     #[test]
     fn test_behaviour_when_moving_to_prev_paragraph_single() {
         let tests = [
-            ("^@", "@^"),
+            ("^@", "^@"),
             ("^s@tart at\nfirst char\n", "@s^tart at\nfirst char\n"),
             ("start at\nlast char^\n@", "@start at\nlast char\n^"),
             ("goto\nfirst\n\n^p@aragraph", "@goto\nfirst\n\n^paragraph"),
@@ -1315,7 +1314,7 @@ mod test {
     #[test]
     fn test_behaviour_when_moving_to_next_paragraph_single() {
         let tests = [
-            ("^@", "@^"),
+            ("^@", "^@"),
             ("^s@tart at\nfirst char\n", "^start at\nfirst char\n@"),
             ("start at\nlast char^\n@", "start at\nlast char^\n@"),
             (
