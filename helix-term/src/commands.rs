@@ -5411,7 +5411,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         textobject::TextObject::Around => Some("Match around"),
         textobject::TextObject::Movement => None,
     } {
-        let help_text = vec![
+        let help_text = [
             ("w", "Word"),
             ("W", "WORD"),
             ("c", "Class (tree-sitter)"),
