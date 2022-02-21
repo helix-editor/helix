@@ -741,3 +741,13 @@ file-types = ["erl", "hrl", "app", "rebar.config"]
 roots = ["rebar.config"]
 comment-token = "%%"
 indent = { tab-width = 4, unit = "    " }
+
+
+[[language]]
+name = "kotlin"
+scope = "source.kotlin"
+file-types = ["kt", "kts"]
+roots = ["settings.gradle", "settings.gradle.kts"]
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+language-server = { command = "kotlin-language-server" } 

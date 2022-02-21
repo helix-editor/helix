@@ -229,3 +229,6 @@
 [submodule "helix-syntax/languages/tree-sitter-erlang"]
 	path = helix-syntax/languages/tree-sitter-erlang
 	url = https://github.com/the-mikedavis/tree-sitter-erlang
+[submodule "helix-syntax/languages/tree-sitter-kotlin"]
+	path = helix-syntax/languages/tree-sitter-kotlin
+	url = https://github.com/fwcd/tree-sitter-kotlin.git
