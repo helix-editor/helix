@@ -1,161 +1,205 @@
-;;; Identifiers
+;;; Operators & Punctuation
 
-(simple_identifier) @variable
+(multi_line_string_literal
+	"$" @punctuation
+  (interpolated_identifier) @none)
+(multi_line_string_literal
+	"${" @punctuation
+	(interpolated_expression) @none
+	"}" @punctuation.)
 
-; `it` keyword inside lambdas
-; FIXME: This will highlight the keyword outside of lambdas since tree-sitter
-;        does not allow us to check for arbitrary nestation
-((simple_identifier) @variable.builtin
-(#eq? @variable.builtin "it"))
+; NOTE: `interpolated_identifier`s can be highlighted in any way
+(line_string_literal
+	"$" @punctuation
+	(interpolated_identifier) @none)
+(line_string_literal
+	"${" @punctuation
+	(interpolated_expression) @none
+	"}" @punctuation)
 
-; `field` keyword inside property getter/setter
-; FIXME: This will highlight the keyword outside of getters and setters
-;        since tree-sitter does not allow us to check for arbitrary nestation
-((simple_identifier) @variable.builtin
-(#eq? @variable.builtin "field"))
+[
+	"."
+	","
+	";"
+	":"
+	"::"
+] @punctuation.delimiter
 
-; `this` this keyword inside classes
-(this_expression) @variable.builtin
+[
+	"(" ")"
+	"[" "]"
+	"{" "}"
+] @punctuation.bracket
 
-; `super` keyword inside classes
-(super_expression) @variable.builtin
+[
+	"!"
+	"!="
+	"!=="
+	"="
+	"=="
+	"==="
+	">"
+	">="
+	"<"
+	"<="
+	"||"
+	"&&"
+	"+"
+	"++"
+	"+="
+	"-"
+	"--"
+	"-="
+	"*"
+	"*="
+	"/"
+	"/="
+	"%"
+	"%="
+	"?."
+	"?:"
+	"!!"
+	"is"
+	"!is"
+	"in"
+	"!in"
+	"as"
+	"as?"
+	".."
+	"->"
+] @operator
 
-(class_parameter
-	(simple_identifier) @property)
+;;; Keywords
 
-(class_body
-	(property_declaration
-		(variable_declaration
-			(simple_identifier) @property)))
+(type_alias "typealias" @keyword)
+[
+	(class_modifier)
+	(member_modifier)
+	(function_modifier)
+	(property_modifier)
+	(platform_modifier)
+	(variance_modifier)
+	(parameter_modifier)
+	(visibility_modifier)
+	(reification_modifier)
+	(inheritance_modifier)
+]@keyword
 
-; id_1.id_2.id_3: `id_2` and `id_3` are assumed as object properties
-(_
-	(navigation_suffix
-		(simple_identifier) @property))
+[
+	"val"
+	"var"
+	"enum"
+	"class"
+	"object"
+	"interface"
+;	"typeof" ; NOTE: It is reserved for future use
+] @keyword
 
-; SCREAMING CASE identifiers are assumed to be constants
-((simple_identifier) @constant
-(#lua-match? @constant "^[A-Z][A-Z0-9_]*$"))
+("fun") @keyword.function
 
-(_
-	(navigation_suffix
-		(simple_identifier) @constant
-		(#lua-match? @constant "^[A-Z][A-Z0-9_]*$")))
+(jump_expression) @keyword.control.return
 
-(enum_entry
-	(simple_identifier) @constant)
+[
+	"if"
+	"else"
+	"when"
+] @keyword.control.conditional
 
-(type_identifier) @type
+[
+	"for"
+	"do"
+	"while"
+] @keyword.control.repeat
 
-((type_identifier) @type.builtin
-	(#any-of? @type.builtin
-		"Byte"
-		"Short"
-		"Int"
-		"Long"
-		"UByte"
-		"UShort"
-		"UInt"
-		"ULong"
-		"Float"
-		"Double"
-		"Boolean"
-		"Char"
-		"String"
-		"Array"
-		"ByteArray"
-		"ShortArray"
-		"IntArray"
-		"LongArray"
-		"UByteArray"
-		"UShortArray"
-		"UIntArray"
-		"ULongArray"
-		"FloatArray"
-		"DoubleArray"
-		"BooleanArray"
-		"CharArray"
-		"Map"
-		"Set"
-		"List"
-		"EmptyMap"
-		"EmptySet"
-		"EmptyList"
-		"MutableMap"
-		"MutableSet"
-		"MutableList"
-))
+[
+	"try"
+	"catch"
+	"throw"
+	"finally"
+] @keyword.control.exception
 
-(package_header
-	. (identifier)) @namespace
-
-(import_header
-	"import" @include)
-
-; The last `simple_identifier` in a `import_header` will always either be a function
-; or a type. Classes can appear anywhere in the import path, unlike functions
-(import_header
-	(identifier
-		(simple_identifier) @type @_import)
-	(import_alias
-		(type_identifier) @type)?
-		(#lua-match? @_import "^[A-Z]"))
-
-(import_header
-	(identifier
-		(simple_identifier) @function @_import .)
-	(import_alias
-		(type_identifier) @function)?
-		(#lua-match? @_import "^[a-z]"))
-
-; TODO: Seperate labeled returns/breaks/continue/super/this
-;       Must be implemented in the parser first
-(label) @label
-
-;;; Function definitions
-
-(function_declaration
-	. (simple_identifier) @function)
-
-(getter
-	("get") @function.builtin)
-(setter
-	("set") @function.builtin)
-
-(primary_constructor) @constructor
-(secondary_constructor
-	("constructor") @constructor)
-
-(constructor_invocation
+(annotation
+	"@" @attribute (use_site_target)? @attribute)
+(annotation
 	(user_type
-		(type_identifier) @constructor))
+		(type_identifier) @attribute))
+(annotation
+	(constructor_invocation
+		(user_type
+			(type_identifier) @attribute)))
 
-(anonymous_initializer
-	("init") @constructor)
+(file_annotation
+	"@" @attribute "file" @attribute ":" @attribute)
+(file_annotation
+	(user_type
+		(type_identifier) @attribute))
+(file_annotation
+	(constructor_invocation
+		(user_type
+			(type_identifier) @attribute)))
 
-(parameter
-	(simple_identifier) @parameter)
-
-(parameter_with_optional_type
-	(simple_identifier) @parameter)
-
-; lambda parameters
-(lambda_literal
-	(lambda_parameters
-		(variable_declaration
-			(simple_identifier) @parameter)))
-
-;;; Function calls
-
-; function()
-(call_expression
-	. (simple_identifier) @function)
-
-; object.function() or object.property.function()
+;;; Literals
+;    - Regex.fromLiteral("[abc]?")
 (call_expression
 	(navigation_expression
+		((simple_identifier) @_class
+		(#eq? @_class "Regex"))
 		(navigation_suffix
-			(simple_identifier) @function) . ))
+			((simple_identifier) @_function
+			(#eq? @_function "fromLiteral"))))
+	(call_suffix
+		(value_arguments
+			(value_argument
+				[ (line_string_literal) (multi_line_string_literal) ] @string.regex))))
+
+;    - Regex("[abc]?")
+(call_expression
+	((simple_identifier) @_function
+	(#eq? @_function "Regex"))
+	(call_suffix
+		(value_arguments
+			(value_argument
+				[ (line_string_literal) (multi_line_string_literal) ] @string.regex))))
+
+; There are 3 ways to define a regex
+;    - "[abc]?".toRegex()
+(call_expression
+	(navigation_expression
+		([(line_string_literal) (multi_line_string_literal)] @string.regex)
+		(navigation_suffix
+			((simple_identifier) @_function
+			(#eq? @_function "toRegex")))))
+
+; NOTE: Escapes not allowed in multi-line strings
+(line_string_literal (character_escape_seq) @constant.character.escape)
+
+[
+	(line_string_literal)
+	(multi_line_string_literal)
+] @string
+
+(character_literal) @constant.character
+
+[
+	"null" ; should be highlighted the same as booleans
+	(boolean_literal)
+] @constant.builtin.boolean
+
+(real_literal) @constant.numeric.float
+[
+	(integer_literal)
+	(long_literal)
+	(hex_literal)
+	(bin_literal)
+	(unsigned_literal)
+] @constant.numeric.integer
+
+[
+	(comment)
+	(shebang_line)
+] @comment
+
+;;; Function calls
 
 (call_expression
 	. (simple_identifier) @function.builtin
@@ -205,205 +249,158 @@
 		"synchronized"
 ))
 
-;;; Literals
-
-[
-	(comment)
-	(shebang_line)
-] @comment
-
-(real_literal) @float
-[
-	(integer_literal)
-	(long_literal)
-	(hex_literal)
-	(bin_literal)
-	(unsigned_literal)
-] @number
-
-[
-	"null" ; should be highlighted the same as booleans
-	(boolean_literal)
-] @boolean
-
-(character_literal) @character
-
-[
-	(line_string_literal)
-	(multi_line_string_literal)
-] @string
-
-; NOTE: Escapes not allowed in multi-line strings
-(line_string_literal (character_escape_seq) @string.escape)
-
-; There are 3 ways to define a regex
-;    - "[abc]?".toRegex()
+; object.function() or object.property.function()
 (call_expression
 	(navigation_expression
-		([(line_string_literal) (multi_line_string_literal)] @string.regex)
 		(navigation_suffix
-			((simple_identifier) @_function
-			(#eq? @_function "toRegex")))))
+			(simple_identifier) @function) . ))
 
-;    - Regex("[abc]?")
+; function()
 (call_expression
-	((simple_identifier) @_function
-	(#eq? @_function "Regex"))
-	(call_suffix
-		(value_arguments
-			(value_argument
-				[ (line_string_literal) (multi_line_string_literal) ] @string.regex))))
+	. (simple_identifier) @function)
 
-;    - Regex.fromLiteral("[abc]?")
-(call_expression
-	(navigation_expression
-		((simple_identifier) @_class
-		(#eq? @_class "Regex"))
-		(navigation_suffix
-			((simple_identifier) @_function
-			(#eq? @_function "fromLiteral"))))
-	(call_suffix
-		(value_arguments
-			(value_argument
-				[ (line_string_literal) (multi_line_string_literal) ] @string.regex))))
+;;; Function definitions
 
-;;; Keywords
+; lambda parameters
+(lambda_literal
+	(lambda_parameters
+		(variable_declaration
+			(simple_identifier) @variable.parameter)))
+			
+(parameter_with_optional_type
+	(simple_identifier) @variable.parameter)
+			
+(parameter
+	(simple_identifier) @variable.parameter)
+			
+(anonymous_initializer
+	("init") @constructor)
 
-(type_alias "typealias" @keyword)
-[
-	(class_modifier)
-	(member_modifier)
-	(function_modifier)
-	(property_modifier)
-	(platform_modifier)
-	(variance_modifier)
-	(parameter_modifier)
-	(visibility_modifier)
-	(reification_modifier)
-	(inheritance_modifier)
-]@keyword
-
-[
-	"val"
-	"var"
-	"enum"
-	"class"
-	"object"
-	"interface"
-;	"typeof" ; NOTE: It is reserved for future use
-] @keyword
-
-("fun") @keyword.function
-
-(jump_expression) @keyword.return
-
-[
-	"if"
-	"else"
-	"when"
-] @conditional
-
-[
-	"for"
-	"do"
-	"while"
-] @repeat
-
-[
-	"try"
-	"catch"
-	"throw"
-	"finally"
-] @exception
-
-
-(annotation
-	"@" @attribute (use_site_target)? @attribute)
-(annotation
+(constructor_invocation
 	(user_type
-		(type_identifier) @attribute))
-(annotation
-	(constructor_invocation
-		(user_type
-			(type_identifier) @attribute)))
+		(type_identifier) @constructor))
+			
+(secondary_constructor
+	("constructor") @constructor)
+(primary_constructor) @constructor
+			
+(getter
+	("get") @function.builtin)
+(setter
+	("set") @function.builtin)
 
-(file_annotation
-	"@" @attribute "file" @attribute ":" @attribute)
-(file_annotation
-	(user_type
-		(type_identifier) @attribute))
-(file_annotation
-	(constructor_invocation
-		(user_type
-			(type_identifier) @attribute)))
+(function_declaration
+	. (simple_identifier) @function)
 
-;;; Operators & Punctuation
+; TODO: Seperate labeled returns/breaks/continue/super/this
+;       Must be implemented in the parser first
+(label) @label
 
-[
-	"!"
-	"!="
-	"!=="
-	"="
-	"=="
-	"==="
-	">"
-	">="
-	"<"
-	"<="
-	"||"
-	"&&"
-	"+"
-	"++"
-	"+="
-	"-"
-	"--"
-	"-="
-	"*"
-	"*="
-	"/"
-	"/="
-	"%"
-	"%="
-	"?."
-	"?:"
-	"!!"
-	"is"
-	"!is"
-	"in"
-	"!in"
-	"as"
-	"as?"
-	".."
-	"->"
-] @operator
+(import_header
+	(identifier
+		(simple_identifier) @function @_import .)
+	(import_alias
+		(type_identifier) @function)?
+		(#lua-match? @_import "^[a-z]"))
 
-[
-	"(" ")"
-	"[" "]"
-	"{" "}"
-] @punctuation.bracket
+; The last `simple_identifier` in a `import_header` will always either be a function
+; or a type. Classes can appear anywhere in the import path, unlike functions
+(import_header
+	(identifier
+		(simple_identifier) @type @_import)
+	(import_alias
+		(type_identifier) @type)?
+		(#lua-match? @_import "^[A-Z]"))
 
-[
-	"."
-	","
-	";"
-	":"
-	"::"
-] @punctuation.delimiter
+(import_header
+	"import" @keyword.control.import)
 
-; NOTE: `interpolated_identifier`s can be highlighted in any way
-(line_string_literal
-	"$" @punctuation.special
-	(interpolated_identifier) @none)
-(line_string_literal
-	"${" @punctuation.special
-	(interpolated_expression) @none
-	"}" @punctuation.special)
+(package_header
+	. (identifier)) @namespace
 
-(multi_line_string_literal
-    "$" @punctuation.special
-    (interpolated_identifier) @none)
-(multi_line_string_literal
-	"${" @punctuation.special
-	(interpolated_expression) @none
-	"}" @punctuation.special)
+((type_identifier) @type.builtin
+	(#any-of? @type.builtin
+		"Byte"
+		"Short"
+		"Int"
+		"Long"
+		"UByte"
+		"UShort"
+		"UInt"
+		"ULong"
+		"Float"
+		"Double"
+		"Boolean"
+		"Char"
+		"String"
+		"Array"
+		"ByteArray"
+		"ShortArray"
+		"IntArray"
+		"LongArray"
+		"UByteArray"
+		"UShortArray"
+		"UIntArray"
+		"ULongArray"
+		"FloatArray"
+		"DoubleArray"
+		"BooleanArray"
+		"CharArray"
+		"Map"
+		"Set"
+		"List"
+		"EmptyMap"
+		"EmptySet"
+		"EmptyList"
+		"MutableMap"
+		"MutableSet"
+		"MutableList"
+))
+
+(type_identifier) @type
+
+(enum_entry
+	(simple_identifier) @constant)
+
+(_
+	(navigation_suffix
+		(simple_identifier) @constant
+		(#lua-match? @constant "^[A-Z][A-Z0-9_]*$")))
+
+; SCREAMING CASE identifiers are assumed to be constants
+((simple_identifier) @constant
+(#lua-match? @constant "^[A-Z][A-Z0-9_]*$"))
+
+; id_1.id_2.id_3: `id_2` and `id_3` are assumed as object properties
+(_
+	(navigation_suffix
+		(simple_identifier) @variable.other.member))
+
+(class_body
+	(property_declaration
+		(variable_declaration
+			(simple_identifier) @variable.other.member)))
+
+(class_parameter
+	(simple_identifier) @variable.other.member)
+
+; `super` keyword inside classes
+(super_expression) @variable.builtin
+
+; `this` this keyword inside classes
+(this_expression) @variable.builtin
+
+;;; Identifiers
+; `field` keyword inside property getter/setter
+; FIXME: This will highlight the keyword outside of getters and setters
+;        since tree-sitter does not allow us to check for arbitrary nestation
+((simple_identifier) @variable.builtin
+(#eq? @variable.builtin "field"))
+
+; `it` keyword inside lambdas
+; FIXME: This will highlight the keyword outside of lambdas since tree-sitter
+;        does not allow us to check for arbitrary nestation
+((simple_identifier) @variable.builtin
+(#eq? @variable.builtin "it"))
+
+(simple_identifier) @variable
