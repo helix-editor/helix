@@ -10,7 +10,7 @@ use crate::{
         next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
         prev_grapheme_boundary,
     },
-    line_ending::{rope_is_line_ending, str_is_line_ending},
+    line_ending::rope_is_line_ending,
     pos_at_coords,
     syntax::LanguageConfiguration,
     textobject::TextObject,
@@ -188,9 +188,19 @@ pub fn move_prev_para(slice: RopeSlice, range: Range, count: usize, behavior: Mo
 }
 
 pub fn move_next_para(slice: RopeSlice, range: Range, count: usize, behavior: Movement) -> Range {
-    let mut line = slice.char_to_line(range.head);
-    let lines = slice.lines_at(line);
-    let mut lines = lines.map(|l| l.chunks().all(str_is_line_ending)).peekable();
+    let mut line = range.cursor_line(slice);
+    let last_char =
+        prev_grapheme_boundary(slice, slice.line_to_char(line + 1)) == range.cursor(slice);
+    let curr_line_empty = rope_is_line_ending(slice.line(line));
+    let next_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
+    let empty_to_line = curr_line_empty && !next_line_empty;
+
+    // iterate current line if first character after paragraph boundary
+    if empty_to_line && last_char {
+        line += 1;
+    }
+
+    let mut lines = slice.lines_at(line).map(rope_is_line_ending).peekable();
     for _ in 0..count {
         while lines.next_if(|&e| !e).is_some() {
             line += 1;
@@ -199,12 +209,17 @@ pub fn move_next_para(slice: RopeSlice, range: Range, count: usize, behavior: Mo
             line += 1;
         }
     }
+    let head = slice.line_to_char(line);
     let anchor = if behavior == Movement::Move {
-        range.cursor(slice)
+        if empty_to_line && last_char {
+            range.head
+        } else {
+            range.cursor(slice)
+        }
     } else {
-        range.anchor
+        range.put_cursor(slice, head, true).anchor
     };
-    Range::new(anchor, slice.line_to_char(line))
+    Range::new(anchor, head)
 }
 
 // ---- util ------------
@@ -1253,19 +1268,49 @@ mod test {
             ),
         ];
 
-        for (actual, expected) in tests {
-            let (s, selection) = crate::test::print(actual);
+        for (before, expected) in tests {
+            let (s, selection) = crate::test::print(before);
             let text = Rope::from(s.as_str());
             let selection =
                 selection.transform(|r| move_prev_para(text.slice(..), r, 1, Movement::Move));
             let actual = crate::test::plain(&s, selection);
-            assert_eq!(actual, expected);
+            assert_eq!(actual, expected, "\nbefore: `{before:?}`");
         }
     }
 
-    #[ignore]
     #[test]
-    fn test_behaviour_when_moving_to_prev_paragraph_double() {}
+    fn test_behaviour_when_moving_to_prev_paragraph_double() {
+        let tests = [
+            ("on^e@\n\ntwo\n\nthree\n\n", "@one^\n\ntwo\n\nthree\n\n"),
+            ("one\n\ntwo\n\nth^r@ee\n\n", "one\n\n@two\n\nthr^ee\n\n"),
+        ];
+
+        for (before, expected) in tests {
+            let (s, selection) = crate::test::print(before);
+            let text = Rope::from(s.as_str());
+            let selection =
+                selection.transform(|r| move_prev_para(text.slice(..), r, 2, Movement::Move));
+            let actual = crate::test::plain(&s, selection);
+            assert_eq!(actual, expected, "\nbefore: `{before:?}`");
+        }
+    }
+
+    #[test]
+    fn test_behaviour_when_moving_to_prev_paragraph_extend() {
+        let tests = [
+            ("one\n\n@two\n\n^three\n\n", "@one\n\ntwo\n\n^three\n\n"),
+            ("@one\n\ntwo\n\n^three\n\n", "@one\n\ntwo\n\n^three\n\n"),
+        ];
+
+        for (before, expected) in tests {
+            let (s, selection) = crate::test::print(before);
+            let text = Rope::from(s.as_str());
+            let selection =
+                selection.transform(|r| move_prev_para(text.slice(..), r, 1, Movement::Extend));
+            let actual = crate::test::plain(&s, selection);
+            assert_eq!(actual, expected, "\nbefore: `{before:?}`");
+        }
+    }
 
     #[test]
     fn test_behaviour_when_moving_to_next_paragraph_single() {
@@ -1291,13 +1336,47 @@ mod test {
             ),
         ];
 
-        for (actual, expected) in tests {
-            let (s, selection) = crate::test::print(actual);
+        for (before, expected) in tests {
+            let (s, selection) = crate::test::print(before);
             let text = Rope::from(s.as_str());
             let selection =
                 selection.transform(|r| move_next_para(text.slice(..), r, 1, Movement::Move));
             let actual = crate::test::plain(&s, selection);
-            assert_eq!(actual, expected);
+            assert_eq!(actual, expected, "\nbefore: `{before:?}`");
+        }
+    }
+
+    #[test]
+    fn test_behaviour_when_moving_to_next_paragraph_double() {
+        let tests = [
+            ("one\n\ntwo\n\nth^r@ee\n\n", "one\n\ntwo\n\nth^ree\n\n@"),
+            ("on^e@\n\ntwo\n\nthree\n\n", "on^e\n\ntwo\n\n@three\n\n"),
+        ];
+
+        for (before, expected) in tests {
+            let (s, selection) = crate::test::print(before);
+            let text = Rope::from(s.as_str());
+            let selection =
+                selection.transform(|r| move_next_para(text.slice(..), r, 2, Movement::Move));
+            let actual = crate::test::plain(&s, selection);
+            assert_eq!(actual, expected, "\nbefore: `{before:?}`");
+        }
+    }
+
+    #[test]
+    fn test_behaviour_when_moving_to_next_paragraph_extend() {
+        let tests = [
+            ("one\n\n^two\n\n@three\n\n", "one\n\n^two\n\nthree\n\n@"),
+            ("one\n\n^two\n\nthree\n\n@", "one\n\n^two\n\nthree\n\n@"),
+        ];
+
+        for (before, expected) in tests {
+            let (s, selection) = crate::test::print(before);
+            let text = Rope::from(s.as_str());
+            let selection =
+                selection.transform(|r| move_next_para(text.slice(..), r, 1, Movement::Extend));
+            let actual = crate::test::plain(&s, selection);
+            assert_eq!(actual, expected, "\nbefore: `{before:?}`");
         }
     }
 }
