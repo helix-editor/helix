@@ -256,6 +256,6 @@ impl Component for Markdown {
         let max_text_width = (viewport.0 - padding).min(120);
         let (width, height) = crate::ui::text::required_size(&contents, max_text_width);
 
-        Some((width + padding * 2, height))
+        Some((width + padding, height + padding))
     }
 }
