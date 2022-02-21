@@ -6,14 +6,14 @@ use tui::{
 
 use std::sync::Arc;
 
-use pulldown_cmark::{CodeBlockKind, CowStr, Event, Options, Parser, Tag};
+use pulldown_cmark::{CodeBlockKind, CowStr, Event, HeadingLevel, Options, Parser, Tag};
 
 use helix_core::{
     syntax::{self, HighlightEvent, Syntax},
     Rope,
 };
 use helix_view::{
-    graphics::{Margin, Rect},
+    graphics::{Margin, Rect, Style},
     Theme,
 };
 
@@ -21,28 +21,29 @@ pub struct Markdown {
     contents: String,
 
     config_loader: Arc<syntax::Loader>,
-
-    block_style: String,
-    heading_style: String,
 }
 
 // TODO: pre-render and self reference via Pin
 // better yet, just use Tendril + subtendril for references
 
 impl Markdown {
+    // theme keys, including fallbacks
+    const TEXT_STYLE: [&'static str; 2] = ["ui.text", "ui"];
+    const BLOCK_STYLE: [&'static str; 3] = ["markup.raw.inline", "markup.raw", "markup"];
+    const HEADING_STYLES: [[&'static str; 3]; 6] = [
+        ["markup.heading.1", "markup.heading", "markup"],
+        ["markup.heading.2", "markup.heading", "markup"],
+        ["markup.heading.3", "markup.heading", "markup"],
+        ["markup.heading.4", "markup.heading", "markup"],
+        ["markup.heading.5", "markup.heading", "markup"],
+        ["markup.heading.6", "markup.heading", "markup"],
+    ];
+
     pub fn new(contents: String, config_loader: Arc<syntax::Loader>) -> Self {
         Self {
             contents,
             config_loader,
-            block_style: "markup.raw.inline".into(),
-            heading_style: "markup.heading".into(),
         }
-    }
-
-    pub fn style_group(mut self, suffix: &str) -> Self {
-        self.block_style = format!("markup.raw.inline.{}", suffix);
-        self.heading_style = format!("markup.heading.{}", suffix);
-        self
     }
 
     fn parse(&self, theme: Option<&Theme>) -> tui::text::Text<'_> {
@@ -67,17 +68,19 @@ impl Markdown {
             })
         }
 
-        macro_rules! get_theme {
-            ($s1: expr) => {
-                theme
-                    .map(|theme| theme.try_get($s1.as_str()))
-                    .flatten()
-                    .unwrap_or_default()
-            };
-        }
-        let text_style = theme.map(|theme| theme.get("ui.text")).unwrap_or_default();
-        let code_style = get_theme!(self.block_style);
-        let heading_style = get_theme!(self.heading_style);
+        let get_theme = |keys: &[&str]| match theme {
+            Some(theme) => keys
+                .iter()
+                .find_map(|key| theme.try_get(key))
+                .unwrap_or_default(),
+            None => Default::default(),
+        };
+        let text_style = get_theme(&Self::TEXT_STYLE);
+        let code_style = get_theme(&Self::BLOCK_STYLE);
+        let heading_styles: Vec<Style> = Self::HEADING_STYLES
+            .iter()
+            .map(|key| get_theme(key))
+            .collect();
 
         for event in parser {
             match event {
@@ -172,9 +175,16 @@ impl Markdown {
                                 lines.push(Spans::from(span));
                             }
                         }
-                    } else if let Some(Tag::Heading(_, _, _)) = tags.last() {
+                    } else if let Some(Tag::Heading(level, _, _)) = tags.last() {
                         let mut span = to_span(text);
-                        span.style = heading_style;
+                        span.style = match level {
+                            HeadingLevel::H1 => heading_styles[0],
+                            HeadingLevel::H2 => heading_styles[1],
+                            HeadingLevel::H3 => heading_styles[2],
+                            HeadingLevel::H4 => heading_styles[3],
+                            HeadingLevel::H5 => heading_styles[4],
+                            HeadingLevel::H6 => heading_styles[5],
+                        };
                         spans.push(span);
                     } else {
                         let mut span = to_span(text);
