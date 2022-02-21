@@ -5418,6 +5418,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
             ("f", "Function (tree-sitter)"),
             ("p", "Parameter (tree-sitter)"),
             ("m", "Matching delimiter under cursor"),
+            (" ", "Any opening or closing pair character"),
         ];
 
         cx.editor.autoinfo = Some(Info::new(
