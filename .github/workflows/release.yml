@@ -62,20 +62,6 @@ jobs:
           target: ${{ matrix.target }}
           override: true
 
-      - name: Fetch tree-sitter grammars
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: ${{ matrix.cross }}
-          command: run
-          args: --release --locked --target ${{ matrix.target }} -- --fetch-grammars
-
-      - name: Build tree-sitter grammars
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: ${{ matrix.cross }}
-          command: run
-          args: --release --locked --target ${{ matrix.target }} -- --build-grammars
-
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:

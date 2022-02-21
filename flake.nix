@@ -35,6 +35,8 @@
       overrides = {
         crateOverrides = common: _: rec {
           helix-term = prev: {
+            # disable fetching and building of tree-sitter grammars in the helix-term build.rs
+            HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
             buildInputs = (prev.buildInputs or [ ]) ++ [ common.cCompiler.cc.lib ];
             nativeBuildInputs = (prev.nativeBuildInputs or [ ]) ++ [ common.pkgs.makeWrapper ];
             preConfigure = ''
