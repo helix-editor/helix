@@ -5356,6 +5356,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
 
     cx.on_next_key(move |cx, event| {
         cx.editor.autoinfo = None;
+        cx.editor.pseudo_pending = None;
         if let Some(ch) = event.char() {
             let textobject = move |editor: &mut Editor| {
                 let (view, doc) = current!(editor);
@@ -5406,9 +5407,9 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         }
     });
 
-    if let Some(title) = match objtype {
-        textobject::TextObject::Inside => Some("Match inside"),
-        textobject::TextObject::Around => Some("Match around"),
+    if let Some((title, abbrev)) = match objtype {
+        textobject::TextObject::Inside => Some(("Match inside", "mi")),
+        textobject::TextObject::Around => Some(("Match around", "ma")),
         textobject::TextObject::Movement => None,
     } {
         let help_text = [
@@ -5428,6 +5429,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 .map(|(col1, col2)| (col1.to_string(), col2.to_string()))
                 .collect(),
         ));
+        cx.editor.pseudo_pending = Some(abbrev.to_string());
     };
 }
 
