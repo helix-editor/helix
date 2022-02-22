@@ -633,7 +633,7 @@ pub fn hover(cx: &mut Context) {
                 // skip if contents empty
 
                 let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
-                let popup = Popup::new("hover", contents);
+                let popup = Popup::new("hover", contents).auto_close(true);
                 compositor.replace_or_push("hover", Box::new(popup));
             }
         },

@@ -2921,7 +2921,7 @@ pub mod cmd {
                     let call: job::Callback =
                         Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
                             let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
-                            let popup = Popup::new("hover", contents);
+                            let popup = Popup::new("hover", contents).auto_close(true);
                             compositor.replace_or_push("hover", Box::new(popup));
                         });
                     Ok(call)
