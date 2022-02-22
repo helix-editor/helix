@@ -139,37 +139,6 @@
 			(type_identifier) @attribute)))
 
 ;;; Literals
-;    - Regex.fromLiteral("[abc]?")
-(call_expression
-	(navigation_expression
-		((simple_identifier) @_class
-		(#eq? @_class "Regex"))
-		(navigation_suffix
-			((simple_identifier) @_function
-			(#eq? @_function "fromLiteral"))))
-	(call_suffix
-		(value_arguments
-			(value_argument
-				[ (line_string_literal) (multi_line_string_literal) ] @string.regex))))
-
-;    - Regex("[abc]?")
-(call_expression
-	((simple_identifier) @_function
-	(#eq? @_function "Regex"))
-	(call_suffix
-		(value_arguments
-			(value_argument
-				[ (line_string_literal) (multi_line_string_literal) ] @string.regex))))
-
-; There are 3 ways to define a regex
-;    - "[abc]?".toRegex()
-(call_expression
-	(navigation_expression
-		([(line_string_literal) (multi_line_string_literal)] @string.regex)
-		(navigation_suffix
-			((simple_identifier) @_function
-			(#eq? @_function "toRegex")))))
-
 ; NOTE: Escapes not allowed in multi-line strings
 (line_string_literal (character_escape_seq) @constant.character.escape)
 
@@ -203,51 +172,7 @@
 
 (call_expression
 	. (simple_identifier) @function.builtin
-    (#any-of? @function.builtin
-		"arrayOf"
-		"arrayOfNulls"
-		"byteArrayOf"
-		"shortArrayOf"
-		"intArrayOf"
-		"longArrayOf"
-		"ubyteArrayOf"
-		"ushortArrayOf"
-		"uintArrayOf"
-		"ulongArrayOf"
-		"floatArrayOf"
-		"doubleArrayOf"
-		"booleanArrayOf"
-		"charArrayOf"
-		"emptyArray"
-		"mapOf"
-		"setOf"
-		"listOf"
-		"emptyMap"
-		"emptySet"
-		"emptyList"
-		"mutableMapOf"
-		"mutableSetOf"
-		"mutableListOf"
-		"print"
-		"println"
-		"error"
-		"TODO"
-		"run"
-		"runCatching"
-		"repeat"
-		"lazy"
-		"lazyOf"
-		"enumValues"
-		"enumValueOf"
-		"assert"
-		"check"
-		"checkNotNull"
-		"require"
-		"requireNotNull"
-		"with"
-		"suspend"
-		"synchronized"
-))
+    (#match? @function.builtin "^(arrayOf|arrayOfNulls|byteArrayOf|shortArrayOf|intArrayOf|longArrayOf|ubyteArrayOf|ushortArrayOf|uintArrayOf|ulongArrayOf|floatArrayOf|doubleArrayOf|booleanArrayOf|charArrayOf|emptyArray|mapOf|setOf|listOf|emptyMap|emptySet|emptyList|mutableMapOf|mutableSetOf|mutableListOf|print|println|error|TODO|run|runCatching|repeat|lazy|lazyOf|enumValues|enumValueOf|assert|check|checkNotNull|require|requireNotNull|with|suspend|synchronized)$"))
 
 ; object.function() or object.property.function()
 (call_expression
@@ -301,7 +226,7 @@
 		(simple_identifier) @function @_import .)
 	(import_alias
 		(type_identifier) @function)?
-		(#lua-match? @_import "^[a-z]"))
+		(#match? @_import "^[a-z]"))
 
 ; The last `simple_identifier` in a `import_header` will always either be a function
 ; or a type. Classes can appear anywhere in the import path, unlike functions
@@ -310,7 +235,7 @@
 		(simple_identifier) @type @_import)
 	(import_alias
 		(type_identifier) @type)?
-		(#lua-match? @_import "^[A-Z]"))
+		(#match? @_import "^[A-Z]"))
 
 (import_header
 	"import" @keyword.control.import)
@@ -319,43 +244,7 @@
 	. (identifier)) @namespace
 
 ((type_identifier) @type.builtin
-	(#any-of? @type.builtin
-		"Byte"
-		"Short"
-		"Int"
-		"Long"
-		"UByte"
-		"UShort"
-		"UInt"
-		"ULong"
-		"Float"
-		"Double"
-		"Boolean"
-		"Char"
-		"String"
-		"Array"
-		"ByteArray"
-		"ShortArray"
-		"IntArray"
-		"LongArray"
-		"UByteArray"
-		"UShortArray"
-		"UIntArray"
-		"ULongArray"
-		"FloatArray"
-		"DoubleArray"
-		"BooleanArray"
-		"CharArray"
-		"Map"
-		"Set"
-		"List"
-		"EmptyMap"
-		"EmptySet"
-		"EmptyList"
-		"MutableMap"
-		"MutableSet"
-		"MutableList"
-))
+	(#match? @function.builtin "^(Byte|Short|Int|Long|UByte|UShort|UInt|ULong|Float|Double|Boolean|Char|String|Array|ByteArray|ShortArray|IntArray|LongArray|UByteArray|UShortArray|UIntArray|ULongArray|FloatArray|DoubleArray|BooleanArray|CharArray|Map|Set|List|EmptyMap|EmptySet|EmptyList|MutableMap|MutableSet|MutableList)$"))
 
 (type_identifier) @type
 
@@ -365,11 +254,11 @@
 (_
 	(navigation_suffix
 		(simple_identifier) @constant
-		(#lua-match? @constant "^[A-Z][A-Z0-9_]*$")))
+		(#match? @constant "^[A-Z][A-Z0-9_]*$")))
 
 ; SCREAMING CASE identifiers are assumed to be constants
 ((simple_identifier) @constant
-(#lua-match? @constant "^[A-Z][A-Z0-9_]*$"))
+(#match? @constant "^[A-Z][A-Z0-9_]*$"))
 
 ; id_1.id_2.id_3: `id_2` and `id_3` are assumed as object properties
 (_
