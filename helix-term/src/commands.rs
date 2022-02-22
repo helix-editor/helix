@@ -5177,7 +5177,7 @@ fn hover(cx: &mut Context) {
                 // skip if contents empty
 
                 let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
-                let popup = Popup::new("documentation", contents);
+                let popup = Popup::new("documentation", contents).auto_close(true);
                 if let Some(doc_popup) = compositor.find_id("documentation") {
                     *doc_popup = popup;
                 } else {

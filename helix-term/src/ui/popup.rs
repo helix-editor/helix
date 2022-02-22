@@ -17,6 +17,7 @@ pub struct Popup<T: Component> {
     size: (u16, u16),
     child_size: (u16, u16),
     scroll: usize,
+    auto_close: bool,
     id: &'static str,
 }
 
@@ -28,12 +29,18 @@ impl<T: Component> Popup<T> {
             size: (0, 0),
             child_size: (0, 0),
             scroll: 0,
+            auto_close: false,
             id,
         }
     }
 
     pub fn set_position(&mut self, pos: Option<Position>) {
         self.position = pos;
+    }
+
+    pub fn auto_close(mut self, auto_close: bool) -> Self {
+        self.auto_close = auto_close;
+        self
     }
 
     pub fn get_rel_position(&mut self, viewport: Rect, cx: &Context) -> (u16, u16) {
@@ -119,11 +126,13 @@ impl<T: Component> Component for Popup<T> {
             _ => {
                 let contents_event_result = self.contents.handle_event(event, cx);
 
-                if let EventResult::Ignored(None) = contents_event_result {
-                    EventResult::Ignored(Some(close_fn))
-                } else {
-                    contents_event_result
+                if self.auto_close {
+                    if let EventResult::Ignored(None) = contents_event_result {
+                        return EventResult::Ignored(Some(close_fn));
+                    }
                 }
+
+                contents_event_result
             }
         }
         // for some events, we want to process them but send ignore, specifically all input except
