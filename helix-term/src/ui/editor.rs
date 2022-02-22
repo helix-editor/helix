@@ -873,7 +873,7 @@ impl EditorView {
                     let path = match doc.path() {
                         Some(path) => path.clone(),
                         None => {
-                            return EventResult::Ignored;
+                            return EventResult::Ignored(None)
                         }
                     };
 
@@ -884,8 +884,7 @@ impl EditorView {
                     }
                 }
 
-                EventResult::Ignored
-            }
+                EventResult::Ignored(None)            }
 
             MouseEvent {
                 kind: MouseEventKind::Drag(MouseButton::Left),
@@ -897,7 +896,7 @@ impl EditorView {
 
                 let pos = match view.pos_at_screen_coords(doc, row, column) {
                     Some(pos) => pos,
-                    None => return EventResult::Ignored,
+                    None => return EventResult::Ignored(None)
                 };
 
                 let mut selection = doc.selection(view.id).clone();
@@ -928,7 +927,7 @@ impl EditorView {
 
                 match result {
                     Some(view_id) => cxt.editor.tree.focus = view_id,
-                    None => return EventResult::Ignored,
+                    None => return EventResult::Ignored(None)
                 }
 
                 let offset = cxt.editor.config.scroll_lines.abs() as usize;
@@ -944,14 +943,14 @@ impl EditorView {
                 ..
             } => {
                 if !cxt.editor.config.middle_click_paste {
-                    return EventResult::Ignored;
+                    return EventResult::Ignored(None)
                 }
 
                 let (view, doc) = current!(cxt.editor);
                 let range = doc.selection(view.id).primary();
 
                 if range.to() - range.from() <= 1 {
-                    return EventResult::Ignored;
+                    return EventResult::Ignored(None)
                 }
 
                 commands::MappableCommand::yank_main_selection_to_primary_clipboard.execute(cxt);
@@ -988,8 +987,7 @@ impl EditorView {
                         return EventResult::Consumed(None);
                     }
                 }
-                EventResult::Ignored
-            }
+                EventResult::Ignored(None)            }
 
             MouseEvent {
                 kind: MouseEventKind::Up(MouseButton::Middle),
@@ -1000,7 +998,7 @@ impl EditorView {
             } => {
                 let editor = &mut cxt.editor;
                 if !editor.config.middle_click_paste {
-                    return EventResult::Ignored;
+                    return EventResult::Ignored(None)
                 }
 
                 if modifiers == crossterm::event::KeyModifiers::ALT {
@@ -1023,10 +1021,9 @@ impl EditorView {
                     return EventResult::Consumed(None);
                 }
 
-                EventResult::Ignored
-            }
+                EventResult::Ignored(None)            }
 
-            _ => EventResult::Ignored,
+            _ => EventResult::Ignored(None)
         }
     }
 }
@@ -1117,7 +1114,7 @@ impl Component for EditorView {
                 // if the command consumed the last view, skip the render.
                 // on the next loop cycle the Application will then terminate.
                 if cx.editor.should_close() {
-                    return EventResult::Ignored;
+                    return EventResult::Ignored(None)
                 }
 
                 let (view, doc) = current!(cx.editor);
