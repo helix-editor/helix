@@ -28,6 +28,20 @@
 
 "module" = "#d32c5d"
 
+# TODO
+"markup.heading" = "blue"
+"markup.list" = "red"
+"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.text" = "red"
+"markup.quote" = "cyan"
+"markup.raw" = "green"
+
+"diff.plus" = "#59dcb7"
+"diff.delta" = "#dc7759"
+"diff.minus" = "#dc597f"
+
 "ui.background" = { bg = "#161c23" }
 "ui.linenr" = { fg = "#415367" }
 "ui.linenr.selected" = { fg = "#e5ded6" }  # TODO
@@ -49,3 +63,6 @@
 "error" = "#dc597f"
 "info" = "#59dcb7"
 "hint" = "#59c0dc"
+
+# make diagnostic underlined, to distinguish with selection text.
+diagnostic = { modifiers = ["underlined"] }

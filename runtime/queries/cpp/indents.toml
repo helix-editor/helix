@@ -1,0 +1,17 @@
+indent = [
+  "compound_statement",
+  "field_declaration_list",
+  "enumerator_list",
+  "parameter_list",
+  "init_declarator",
+  "case_statement",
+  "condition_clause",
+  "expression_statement",
+]
+
+outdent = [
+  "case",
+  "access_specifier",
+  "}",
+  "]",
+]

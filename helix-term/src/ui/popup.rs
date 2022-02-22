@@ -6,7 +6,7 @@ use crossterm::event::Event;
 use tui::buffer::Buffer as Surface;
 
 use helix_core::Position;
-use helix_view::graphics::Rect;
+use helix_view::graphics::{Margin, Rect};
 
 // TODO: share logic with Menu, it's essentially Popup(render_fn), but render fn needs to return
 // a width/height hint. maybe Popup(Box<Component>)
@@ -14,6 +14,7 @@ use helix_view::graphics::Rect;
 pub struct Popup<T: Component> {
     contents: T,
     position: Option<Position>,
+    margin: Margin,
     size: (u16, u16),
     child_size: (u16, u16),
     scroll: usize,
@@ -26,6 +27,10 @@ impl<T: Component> Popup<T> {
         Self {
             contents,
             position: None,
+            margin: Margin {
+                vertical: 0,
+                horizontal: 0,
+            },
             size: (0, 0),
             child_size: (0, 0),
             scroll: 0,
@@ -36,6 +41,11 @@ impl<T: Component> Popup<T> {
 
     pub fn set_position(&mut self, pos: Option<Position>) {
         self.position = pos;
+    }
+
+    pub fn margin(mut self, margin: Margin) -> Self {
+        self.margin = margin;
+        self
     }
 
     pub fn auto_close(mut self, auto_close: bool) -> Self {
@@ -143,13 +153,18 @@ impl<T: Component> Component for Popup<T> {
         let max_width = 120.min(viewport.0);
         let max_height = 26.min(viewport.1.saturating_sub(2)); // add some spacing in the viewport
 
+        let inner = Rect::new(0, 0, max_width, max_height).inner(&self.margin);
+
         let (width, height) = self
             .contents
-            .required_size((max_width, max_height))
+            .required_size((inner.width, inner.height))
             .expect("Component needs required_size implemented in order to be embedded in a popup");
 
         self.child_size = (width, height);
-        self.size = (width.min(max_width), height.min(max_height));
+        self.size = (
+            (width + self.margin.horizontal * 2).min(max_width),
+            (height + self.margin.vertical * 2).min(max_height),
+        );
 
         // re-clamp scroll offset
         let max_offset = self.child_size.1.saturating_sub(self.size.1);
@@ -173,7 +188,8 @@ impl<T: Component> Component for Popup<T> {
         let background = cx.editor.theme.get("ui.popup");
         surface.clear_with(area, background);
 
-        self.contents.render(area, surface, cx);
+        let inner = area.inner(&self.margin);
+        self.contents.render(inner, surface, cx);
     }
 
     fn id(&self) -> Option<&'static str> {

@@ -1,12 +1,10 @@
-# Author: ChrisHa<chunghha@users.noreply.github.com>
 # Author: RayGervais<raygervais@hotmail.ca>
+# Author: ChrisHa<chunghha@users.noreply.github.com>
 
-"ui.background" = { bg = "base" }
-"ui.menu" = "surface"
+"ui.background" = { bg = "surface" }
+"ui.menu" = { fg = "text", bg = "overlay" }
 "ui.menu.selected" = { fg = "iris", bg = "surface" }
 "ui.linenr" = {fg = "subtle" }
-"ui.popup" = { bg = "overlay" }
-"ui.window" = { bg = "overlay" }
 "ui.liner.selected" = "highlightOverlay"
 "ui.selection" = "highlight"
 "comment" = "subtle"
@@ -34,16 +32,28 @@
 "keyword" = "pine"
 "label" = "iris"
 "namespace" = "pine"
-"ui.popup" = { bg = "overlay" }
+"ui.popup" = { bg = "surface" }
 "ui.window" = { bg = "base" }
 "ui.help" = { bg = "overlay", fg = "foam" }
 "text" = "text"
+"diff.plus" = "foam"
+"diff.delta" = "rose"
+"diff.minus" = "love"
 
 "info" = "gold"
 "hint" = "gold"
 "debug" = "rose"
 "diagnostic" = "rose"
 "error" = "love"
+
+"markup.heading" = { fg = "rose" }
+"markup.raw.inline" = { fg = "foam" }
+"markup.bold" = { fg = "gold", modifiers = ["bold"] }
+"markup.italic" = { fg = "iris", modifiers = ["italic"] }
+"markup.list" = { fg = "love" }
+"markup.quote" = { fg = "rose" }
+"markup.link.url" = { fg = "pine", modifiers = ["underlined"]}
+"markup.link.test" = { fg = "foam" }
 
 [palette]
 base     = "#faf4ed" 

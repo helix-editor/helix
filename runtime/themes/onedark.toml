@@ -3,27 +3,42 @@
 "attribute" = { fg = "yellow" }
 "comment" = { fg = "light-gray", modifiers = ["italic"] }
 "constant" = { fg = "cyan" }
-"constant.builtin" = { fg = "blue" }
+"constant.numeric" = { fg = "gold" }
+"constant.builtin" = { fg = "gold" }
+"constant.character.escape" = { fg = "gold" }
 "constructor" = { fg = "blue" }
-"escape" = { fg = "gold" }
 "function" = { fg = "blue" }
 "function.builtin" = { fg = "blue" }
 "function.macro" = { fg = "purple" }
 "keyword" = { fg = "red" }
 "keyword.control" = { fg = "purple" }
+"keyword.control.import" = { fg = "red" }
 "keyword.directive" = { fg = "purple" }
 "label" = { fg = "purple" }
 "namespace" = { fg = "blue" }
-"number" = { fg = "gold" }
 "operator" = { fg = "purple" }
+"keyword.operator" = { fg = "purple" }
 "property" = { fg = "red" }
 "special" = { fg = "blue" }
 "string" = { fg = "green" }
 "type" = { fg = "yellow" }
-"type.builtin" = { fg = "yellow" }
 # "variable" = { fg = "blue" }
 "variable.builtin" = { fg = "blue" }
 "variable.parameter" = { fg = "red" }
+"variable.other.member" = { fg = "red" }
+
+"markup.heading" = { fg = "red" }
+"markup.raw.inline" = { fg = "green" }
+"markup.bold" = { fg = "gold", modifiers = ["bold"] }
+"markup.italic" = { fg = "purple", modifiers = ["italic"] }
+"markup.list" = { fg = "red" }
+"markup.quote" = { fg = "yellow" }
+"markup.link.url" = { fg = "cyan", modifiers = ["underlined"]}
+"markup.link.text" = { fg = "purple" }
+
+"diff.plus" = "green"
+"diff.delta" = "gold"
+"diff.minus" = "red"
 
 diagnostic = { modifiers = ["underlined"] }
 "info" = { fg = "blue", modifiers = ["bold"] }

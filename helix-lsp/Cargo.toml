@@ -1,6 +1,6 @@
 [package]
 name = "helix-lsp"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 edition = "2021"
 license = "MPL-2.0"
@@ -12,16 +12,16 @@ homepage = "https://helix-editor.com"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-helix-core = { version = "0.5", path = "../helix-core" }
+helix-core = { version = "0.6", path = "../helix-core" }
 
 anyhow = "1.0"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 jsonrpc-core = { version = "18.0", default-features = false } # don't pull in all of futures
 log = "0.4"
-lsp-types = { version = "0.91", features = ["proposed"] }
+lsp-types = { version = "0.92", features = ["proposed"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-tokio = { version = "1.14", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
+tokio = { version = "1.17", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "sync"] }
 tokio-stream = "0.1.8"

@@ -69,6 +69,7 @@
   "|"
   "|="
   "||"
+  "~"
 ] @operator
 
 ; Keywords
@@ -143,6 +144,9 @@
   (false)
 ] @constant.builtin.boolean
 
-(nil) @constant.builtin
+[
+  (nil)
+  (iota)
+] @constant.builtin
 
 (comment) @comment

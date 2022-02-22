@@ -31,6 +31,7 @@ pub struct Client {
     pub(crate) capabilities: OnceCell<lsp::ServerCapabilities>,
     offset_encoding: OffsetEncoding,
     config: Option<Value>,
+    root_markers: Vec<String>,
 }
 
 impl Client {
@@ -39,6 +40,7 @@ impl Client {
         cmd: &str,
         args: &[String],
         config: Option<Value>,
+        root_markers: Vec<String>,
         id: usize,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
         let process = Command::new(cmd)
@@ -68,6 +70,7 @@ impl Client {
             capabilities: OnceCell::new(),
             offset_encoding: OffsetEncoding::Utf8,
             config,
+            root_markers,
         };
 
         Ok((client, server_rx, initialize_notify))
@@ -202,7 +205,7 @@ impl Client {
                 Ok(result) => Output::Success(Success {
                     jsonrpc: Some(Version::V2),
                     id,
-                    result,
+                    result: serde_json::to_value(result)?,
                 }),
                 Err(error) => Output::Failure(Failure {
                     jsonrpc: Some(Version::V2),
@@ -225,7 +228,8 @@ impl Client {
 
     pub(crate) async fn initialize(&self) -> Result<lsp::InitializeResult> {
         // TODO: delay any requests that are triggered prior to initialize
-        let root = find_root(None).and_then(|root| lsp::Url::from_file_path(root).ok());
+        let root = find_root(None, &self.root_markers)
+            .and_then(|root| lsp::Url::from_file_path(root).ok());
 
         if self.config.is_some() {
             log::info!("Using custom LSP config: {}", self.config.as_ref().unwrap());
@@ -434,7 +438,7 @@ impl Client {
 
                     changes.push(lsp::TextDocumentContentChangeEvent {
                         range: Some(lsp::Range::new(start, end)),
-                        text: s.into(),
+                        text: s.to_string(),
                         range_length: None,
                     });
                 }
@@ -554,6 +558,14 @@ impl Client {
         };
 
         self.call::<lsp::request::Completion>(params)
+    }
+
+    pub async fn resolve_completion_item(
+        &self,
+        completion_item: lsp::CompletionItem,
+    ) -> Result<lsp::CompletionItem> {
+        self.request::<lsp::request::ResolveCompletionItem>(completion_item)
+            .await
     }
 
     pub fn text_document_signature_help(
@@ -799,5 +811,17 @@ impl Client {
 
         let response = self.request::<lsp::request::Rename>(params).await?;
         Ok(response.unwrap_or_default())
+    }
+
+    pub fn command(&self, command: lsp::Command) -> impl Future<Output = Result<Value>> {
+        let params = lsp::ExecuteCommandParams {
+            command: command.command,
+            arguments: command.arguments.unwrap_or_default(),
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        self.call::<lsp::request::ExecuteCommand>(params)
     }
 }

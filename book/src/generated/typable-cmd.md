@@ -20,6 +20,7 @@
 | `:quit-all`, `:qa` | Close all views. |
 | `:quit-all!`, `:qa!` | Close all views forcefully (ignoring unsaved changes). |
 | `:cquit`, `:cq` | Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2). |
+| `:cquit!`, `:cq!` | Quit with exit code (default 1) forcefully (ignoring unsaved changes). Accepts an optional integer exit code (:cq! 2). |
 | `:theme` | Change the editor theme. |
 | `:clipboard-yank` | Yank main selection into system clipboard. |
 | `:clipboard-yank-join` | Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline. |
@@ -37,7 +38,14 @@
 | `:encoding` | Set encoding based on `https://encoding.spec.whatwg.org` |
 | `:reload` | Discard changes and reload from the source file. |
 | `:tree-sitter-scopes` | Display tree sitter scopes, primarily for theming and development. |
+| `:debug-start`, `:dbg` | Start a debug session from a given template with given parameters. |
+| `:debug-remote`, `:dbg-tcp` | Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters. |
+| `:debug-eval` | Evaluate expression in current debug context. |
 | `:vsplit`, `:vs` | Open the file in a vertical split. |
 | `:hsplit`, `:hs`, `:sp` | Open the file in a horizontal split. |
 | `:tutor` | Open the tutorial. |
 | `:goto`, `:g` | Go to line number. |
+| `:set-option`, `:set` | Set a config option at runtime |
+| `:sort` | Sort ranges in selection. |
+| `:rsort` | Sort ranges in selection in reverse order. |
+| `:tree-sitter-subtree`, `:ts-subtree` | Display tree sitter subtree under cursor, primarily for debugging queries. |

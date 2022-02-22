@@ -1,10 +1,12 @@
 use bitflags::bitflags;
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::{max, min},
     str::FromStr,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
 /// UNSTABLE
 pub enum CursorKind {
     /// █
@@ -15,6 +17,12 @@ pub enum CursorKind {
     Underline,
     /// Hidden cursor, can set cursor position with this to let IME have correct cursor position.
     Hidden,
+}
+
+impl Default for CursorKind {
+    fn default() -> Self {
+        Self::Block
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -323,7 +331,7 @@ impl FromStr for Modifier {
 /// ];
 /// let mut buffer = Buffer::empty(Rect::new(0, 0, 1, 1));
 /// for style in &styles {
-///   buffer.get_mut(0, 0).set_style(*style);
+///   buffer[(0, 0)].set_style(*style);
 /// }
 /// assert_eq!(
 ///     Style {
@@ -332,7 +340,7 @@ impl FromStr for Modifier {
 ///         add_modifier: Modifier::BOLD,
 ///         sub_modifier: Modifier::empty(),
 ///     },
-///     buffer.get(0, 0).style(),
+///     buffer[(0, 0)].style(),
 /// );
 /// ```
 ///
@@ -348,7 +356,7 @@ impl FromStr for Modifier {
 /// ];
 /// let mut buffer = Buffer::empty(Rect::new(0, 0, 1, 1));
 /// for style in &styles {
-///   buffer.get_mut(0, 0).set_style(*style);
+///   buffer[(0, 0)].set_style(*style);
 /// }
 /// assert_eq!(
 ///     Style {
@@ -357,7 +365,7 @@ impl FromStr for Modifier {
 ///         add_modifier: Modifier::empty(),
 ///         sub_modifier: Modifier::empty(),
 ///     },
-///     buffer.get(0, 0).style(),
+///     buffer[(0, 0)].style(),
 /// );
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq)]

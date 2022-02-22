@@ -1,3 +1,4 @@
-(preproc_arg) @glsl
+; inherits: c
 
-(comment) @comment
+((preproc_arg) @injection.content
+ (#set! injection.language "glsl"))

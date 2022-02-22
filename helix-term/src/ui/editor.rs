@@ -7,8 +7,10 @@ use crate::{
 };
 
 use helix_core::{
-    coords_at_pos,
-    graphemes::{ensure_grapheme_boundary_next, next_grapheme_boundary, prev_grapheme_boundary},
+    coords_at_pos, encoding,
+    graphemes::{
+        ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
+    },
     movement::Direction,
     syntax::{self, HighlightEvent},
     unicode::segmentation::UnicodeSegmentation,
@@ -17,8 +19,8 @@ use helix_core::{
 };
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
+    editor::CursorShapeConfig,
     graphics::{CursorKind, Modifier, Rect, Style},
-    info::Info,
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
@@ -29,12 +31,11 @@ use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
 
 pub struct EditorView {
-    keymaps: Keymaps,
+    pub keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::MappableCommand, Vec<KeyEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
-    autoinfo: Option<Info>,
 }
 
 impl Default for EditorView {
@@ -51,7 +52,6 @@ impl EditorView {
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
-            autoinfo: None,
         }
     }
 
@@ -59,34 +59,66 @@ impl EditorView {
         &mut self.spinners
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn render_view(
         &self,
+        editor: &Editor,
         doc: &Document,
         view: &View,
         viewport: Rect,
         surface: &mut Surface,
-        theme: &Theme,
         is_focused: bool,
-        loader: &syntax::Loader,
-        config: &helix_view::editor::Config,
     ) {
         let inner = view.inner_area();
         let area = view.area;
+        let theme = &editor.theme;
 
-        let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme, loader);
+        // DAP: Highlight current stack frame position
+        let stack_frame = editor.debugger.as_ref().and_then(|debugger| {
+            if let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id) {
+                debugger
+                    .stack_frames
+                    .get(&thread_id)
+                    .and_then(|bt| bt.get(frame))
+            } else {
+                None
+            }
+        });
+        if let Some(frame) = stack_frame {
+            if doc.path().is_some()
+                && frame
+                    .source
+                    .as_ref()
+                    .and_then(|source| source.path.as_ref())
+                    == doc.path()
+            {
+                let line = frame.line - 1; // convert to 0-indexing
+                if line >= view.offset.row && line < view.offset.row + area.height as usize {
+                    surface.set_style(
+                        Rect::new(
+                            area.x,
+                            area.y + (line - view.offset.row) as u16,
+                            area.width,
+                            1,
+                        ),
+                        theme.get("ui.highlight"),
+                    );
+                }
+            }
+        }
+
+        let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
         let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
-                Self::doc_selection_highlights(doc, view, theme),
+                Self::doc_selection_highlights(doc, view, theme, &editor.config.cursor_shape),
             ))
         } else {
             Box::new(highlights)
         };
 
         Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights);
-        Self::render_gutter(doc, view, view.area, surface, theme, is_focused, config);
+        Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
 
         if is_focused {
             Self::render_focused_view_elements(view, doc, inner, theme, surface);
@@ -97,8 +129,7 @@ impl EditorView {
             let x = area.right();
             let border_style = theme.get("ui.window");
             for y in area.top()..area.bottom() {
-                surface
-                    .get_mut(x, y)
+                surface[(x, y)]
                     .set_symbol(tui::symbols::line::VERTICAL)
                     //.set_symbol(" ")
                     .set_style(border_style);
@@ -117,13 +148,11 @@ impl EditorView {
     /// Get syntax highlights for a document in a view represented by the first line
     /// and column (`offset`) and the last line. This is done instead of using a view
     /// directly to enable rendering syntax highlighted docs anywhere (eg. picker preview)
-    #[allow(clippy::too_many_arguments)]
     pub fn doc_syntax_highlights<'doc>(
         doc: &'doc Document,
         offset: Position,
         height: u16,
-        theme: &Theme,
-        loader: &syntax::Loader,
+        _theme: &Theme,
     ) -> Box<dyn Iterator<Item = HighlightEvent> + 'doc> {
         let text = doc.text().slice(..);
         let last_line = std::cmp::min(
@@ -140,48 +169,34 @@ impl EditorView {
             start..end
         };
 
-        // TODO: range doesn't actually restrict source, just highlight range
-        let highlights = match doc.syntax() {
+        match doc.syntax() {
             Some(syntax) => {
-                let scopes = theme.scopes();
-                syntax
-                    .highlight_iter(text.slice(..), Some(range), None, |language| {
-                        loader.language_configuration_for_injection_string(language)
-                            .and_then(|language_config| {
-                                let config = language_config.highlight_config(scopes)?;
-                                let config_ref = config.as_ref();
-                                // SAFETY: the referenced `HighlightConfiguration` behind
-                                // the `Arc` is guaranteed to remain valid throughout the
-                                // duration of the highlight.
-                                let config_ref = unsafe {
-                                    std::mem::transmute::<
-                                        _,
-                                        &'static syntax::HighlightConfiguration,
-                                    >(config_ref)
-                                };
-                                Some(config_ref)
-                            })
-                    })
+                let iter = syntax
+                    // TODO: range doesn't actually restrict source, just highlight range
+                    .highlight_iter(text.slice(..), Some(range), None)
                     .map(|event| event.unwrap())
-                    .collect() // TODO: we collect here to avoid holding the lock, fix later
-            }
-            None => vec![HighlightEvent::Source {
-                start: range.start,
-                end: range.end,
-            }],
-        }
-        .into_iter()
-        .map(move |event| match event {
-            // convert byte offsets to char offset
-            HighlightEvent::Source { start, end } => {
-                let start = ensure_grapheme_boundary_next(text, text.byte_to_char(start));
-                let end = ensure_grapheme_boundary_next(text, text.byte_to_char(end));
-                HighlightEvent::Source { start, end }
-            }
-            event => event,
-        });
+                    .map(move |event| match event {
+                        // convert byte offsets to char offset
+                        HighlightEvent::Source { start, end } => {
+                            let start =
+                                text.byte_to_char(ensure_grapheme_boundary_next_byte(text, start));
+                            let end =
+                                text.byte_to_char(ensure_grapheme_boundary_next_byte(text, end));
+                            HighlightEvent::Source { start, end }
+                        }
+                        event => event,
+                    });
 
-        Box::new(highlights)
+                Box::new(iter)
+            }
+            None => Box::new(
+                [HighlightEvent::Source {
+                    start: text.byte_to_char(range.start),
+                    end: text.byte_to_char(range.end),
+                }]
+                .into_iter(),
+            ),
+        }
     }
 
     /// Get highlight spans for document diagnostics
@@ -213,10 +228,15 @@ impl EditorView {
         doc: &Document,
         view: &View,
         theme: &Theme,
+        cursor_shape_config: &CursorShapeConfig,
     ) -> Vec<(usize, std::ops::Range<usize>)> {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
         let primary_idx = selection.primary_index();
+
+        let mode = doc.mode();
+        let cursorkind = cursor_shape_config.from_mode(mode);
+        let cursor_is_block = cursorkind == CursorKind::Block;
 
         let selection_scope = theme
             .find_scope_index("ui.selection")
@@ -225,7 +245,7 @@ impl EditorView {
             .find_scope_index("ui.cursor")
             .unwrap_or(selection_scope);
 
-        let cursor_scope = match doc.mode() {
+        let cursor_scope = match mode {
             Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
             Mode::Select => theme.find_scope_index("ui.cursor.select"),
             Mode::Normal => Some(base_cursor_scope),
@@ -241,7 +261,8 @@ impl EditorView {
 
         let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
         for (i, range) in selection.iter().enumerate() {
-            let (cursor_scope, selection_scope) = if i == primary_idx {
+            let selection_is_primary = i == primary_idx;
+            let (cursor_scope, selection_scope) = if selection_is_primary {
                 (primary_cursor_scope, primary_selection_scope)
             } else {
                 (cursor_scope, selection_scope)
@@ -249,7 +270,14 @@ impl EditorView {
 
             // Special-case: cursor at end of the rope.
             if range.head == range.anchor && range.head == text.len_chars() {
-                spans.push((cursor_scope, range.head..range.head + 1));
+                if !selection_is_primary || cursor_is_block {
+                    // Bar and underline cursors are drawn by the terminal
+                    // BUG: If the editor area loses focus while having a bar or
+                    // underline cursor (eg. when a regex prompt has focus) then
+                    // the primary cursor will be invisible. This doesn't happen
+                    // with block cursors since we manually draw *all* cursors.
+                    spans.push((cursor_scope, range.head..range.head + 1));
+                }
                 continue;
             }
 
@@ -258,11 +286,15 @@ impl EditorView {
                 // Standard case.
                 let cursor_start = prev_grapheme_boundary(text, range.head);
                 spans.push((selection_scope, range.anchor..cursor_start));
-                spans.push((cursor_scope, cursor_start..range.head));
+                if !selection_is_primary || cursor_is_block {
+                    spans.push((cursor_scope, cursor_start..range.head));
+                }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
-                spans.push((cursor_scope, range.head..cursor_end));
+                if !selection_is_primary || cursor_is_block {
+                    spans.push((cursor_scope, range.head..cursor_end));
+                }
                 spans.push((selection_scope, cursor_end..range.anchor));
             }
         }
@@ -287,6 +319,10 @@ impl EditorView {
         let tab = " ".repeat(tab_width);
 
         let text_style = theme.get("ui.text");
+
+        // It's slightly more efficient to produce a full RopeSlice from the Rope, then slice that a bunch
+        // of times than it is to always call Rope::slice/get_slice (it will internally always hit RSEnum::Light).
+        let text = text.slice(..);
 
         'outer: for event in highlights {
             match event {
@@ -393,23 +429,21 @@ impl EditorView {
                             .add_modifier(Modifier::DIM)
                     });
 
-                    surface
-                        .get_mut(viewport.x + pos.col as u16, viewport.y + pos.row as u16)
+                    surface[(viewport.x + pos.col as u16, viewport.y + pos.row as u16)]
                         .set_style(style);
                 }
             }
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn render_gutter(
+        editor: &Editor,
         doc: &Document,
         view: &View,
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
-        config: &helix_view::editor::Config,
     ) {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
@@ -431,7 +465,7 @@ impl EditorView {
         let mut text = String::with_capacity(8);
 
         for (constructor, width) in view.gutters() {
-            let gutter = constructor(doc, view, theme, config, is_focused, *width);
+            let gutter = constructor(editor, doc, view, theme, is_focused, *width);
             text.reserve(*width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
                 let selected = cursors.contains(&line);
@@ -447,6 +481,7 @@ impl EditorView {
                 }
                 text.clear();
             }
+
             offset += *width as u16;
         }
     }
@@ -506,7 +541,6 @@ impl EditorView {
         );
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn render_statusline(
         &self,
         doc: &Document,
@@ -547,21 +581,6 @@ impl EditorView {
             surface.set_string(viewport.x + 1, viewport.y, mode, base_style);
         }
         surface.set_string(viewport.x + 5, viewport.y, progress, base_style);
-
-        let rel_path = doc.relative_path();
-        let path = rel_path
-            .as_ref()
-            .map(|p| p.to_string_lossy())
-            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-
-        let title = format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" });
-        surface.set_stringn(
-            viewport.x + 8,
-            viewport.y,
-            title,
-            viewport.width.saturating_sub(6) as usize,
-            base_style,
-        );
 
         //-------------------------------
         // Right side of the status line.
@@ -636,6 +655,13 @@ impl EditorView {
             base_style,
         ));
 
+        let enc = doc.encoding();
+        if enc != encoding::UTF_8 {
+            right_side_text
+                .0
+                .push(Span::styled(format!(" {} ", enc.name()), base_style));
+        }
+
         // Render to the statusline.
         surface.set_spans(
             viewport.x
@@ -645,6 +671,31 @@ impl EditorView {
             viewport.y,
             &right_side_text,
             right_side_text.width() as u16,
+        );
+
+        //-------------------------------
+        // Middle / File path / Title
+        //-------------------------------
+        let title = {
+            let rel_path = doc.relative_path();
+            let path = rel_path
+                .as_ref()
+                .map(|p| p.to_string_lossy())
+                .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
+            format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" })
+        };
+
+        surface.set_string_truncated(
+            viewport.x + 8, // 8: 1 space + 3 char mode string + 1 space + 1 spinner + 1 space
+            viewport.y,
+            title,
+            viewport
+                .width
+                .saturating_sub(6)
+                .saturating_sub(right_side_text.width() as u16 + 1) as usize, // "+ 1": a space between the title and the selection info
+            base_style,
+            true,
+            true,
         );
     }
 
@@ -658,13 +709,13 @@ impl EditorView {
         cxt: &mut commands::Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
-        self.autoinfo = None;
+        cxt.editor.autoinfo = None;
         let key_result = self.keymaps.get_mut(&mode).unwrap().get(event);
-        self.autoinfo = key_result.sticky.map(|node| node.infobox());
+        cxt.editor.autoinfo = key_result.sticky.map(|node| node.infobox());
 
         match &key_result.kind {
             KeymapResultKind::Matched(command) => command.execute(cxt),
-            KeymapResultKind::Pending(node) => self.autoinfo = Some(node.infobox()),
+            KeymapResultKind::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
             KeymapResultKind::MatchedSequence(commands) => {
                 for command in commands {
                     command.execute(cxt);
@@ -764,8 +815,9 @@ impl EditorView {
 
     pub fn clear_completion(&mut self, editor: &mut Editor) {
         self.completion = None;
+
         // Clear any savepoints
-        let (_, doc) = current!(editor);
+        let doc = doc_mut!(editor);
         doc.savepoint = None;
         editor.clear_idle_timer(); // don't retrigger
     }
@@ -807,7 +859,32 @@ impl EditorView {
                     return EventResult::Consumed(None);
                 }
 
-                EventResult::Ignored(None)
+                let result = editor.tree.views().find_map(|(view, _focus)| {
+                    view.gutter_coords_at_screen_coords(row, column)
+                        .map(|coords| (coords, view.id))
+                });
+
+                if let Some((coords, view_id)) = result {
+                    editor.tree.focus = view_id;
+
+                    let view = editor.tree.get(view_id);
+                    let doc = editor.documents.get_mut(&view.doc).unwrap();
+
+                    let path = match doc.path() {
+                        Some(path) => path.clone(),
+                        None => {
+                            return EventResult::Ignored;
+                        }
+                    };
+
+                    let line = coords.row + view.offset.row;
+                    if line < doc.text().len_lines() {
+                        commands::dap_toggle_breakpoint_impl(cxt, path, line);
+                        return EventResult::Consumed(None);
+                    }
+                }
+
+                EventResult::Ignored
             }
 
             MouseEvent {
@@ -820,7 +897,7 @@ impl EditorView {
 
                 let pos = match view.pos_at_screen_coords(doc, row, column) {
                     Some(pos) => pos,
-                    None => return EventResult::Ignored(None),
+                    None => return EventResult::Ignored,
                 };
 
                 let mut selection = doc.selection(view.id).clone();
@@ -851,7 +928,7 @@ impl EditorView {
 
                 match result {
                     Some(view_id) => cxt.editor.tree.focus = view_id,
-                    None => return EventResult::Ignored(None),
+                    None => return EventResult::Ignored,
                 }
 
                 let offset = cxt.editor.config.scroll_lines.abs() as usize;
@@ -867,19 +944,51 @@ impl EditorView {
                 ..
             } => {
                 if !cxt.editor.config.middle_click_paste {
-                    return EventResult::Ignored(None);
+                    return EventResult::Ignored;
                 }
 
                 let (view, doc) = current!(cxt.editor);
                 let range = doc.selection(view.id).primary();
 
                 if range.to() - range.from() <= 1 {
-                    return EventResult::Ignored(None);
+                    return EventResult::Ignored;
                 }
 
                 commands::MappableCommand::yank_main_selection_to_primary_clipboard.execute(cxt);
 
                 EventResult::Consumed(None)
+            }
+
+            MouseEvent {
+                kind: MouseEventKind::Up(MouseButton::Right),
+                row,
+                column,
+                modifiers,
+                ..
+            } => {
+                let result = cxt.editor.tree.views().find_map(|(view, _focus)| {
+                    view.gutter_coords_at_screen_coords(row, column)
+                        .map(|coords| (coords, view.id))
+                });
+
+                if let Some((coords, view_id)) = result {
+                    cxt.editor.tree.focus = view_id;
+
+                    let view = cxt.editor.tree.get(view_id);
+                    let doc = cxt.editor.documents.get_mut(&view.doc).unwrap();
+                    let line = coords.row + view.offset.row;
+                    if let Ok(pos) = doc.text().try_line_to_char(line) {
+                        doc.set_selection(view_id, Selection::point(pos));
+                        if modifiers == crossterm::event::KeyModifiers::ALT {
+                            commands::MappableCommand::dap_edit_log.execute(cxt);
+                        } else {
+                            commands::MappableCommand::dap_edit_condition.execute(cxt);
+                        }
+
+                        return EventResult::Consumed(None);
+                    }
+                }
+                EventResult::Ignored
             }
 
             MouseEvent {
@@ -891,7 +1000,7 @@ impl EditorView {
             } => {
                 let editor = &mut cxt.editor;
                 if !editor.config.middle_click_paste {
-                    return EventResult::Ignored(None);
+                    return EventResult::Ignored;
                 }
 
                 if modifiers == crossterm::event::KeyModifiers::ALT {
@@ -914,23 +1023,27 @@ impl EditorView {
                     return EventResult::Consumed(None);
                 }
 
-                EventResult::Ignored(None)
+                EventResult::Ignored
             }
 
-            _ => EventResult::Ignored(None),
+            _ => EventResult::Ignored,
         }
     }
 }
 
 impl Component for EditorView {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
-        let mut cxt = commands::Context {
-            editor: cx.editor,
+    fn handle_event(
+        &mut self,
+        event: Event,
+        context: &mut crate::compositor::Context,
+    ) -> EventResult {
+        let mut cx = commands::Context {
+            editor: context.editor,
             count: None,
             register: None,
             callback: None,
             on_next_key_callback: None,
-            jobs: cx.jobs,
+            jobs: context.jobs,
         };
 
         match event {
@@ -940,18 +1053,19 @@ impl Component for EditorView {
                 EventResult::Consumed(None)
             }
             Event::Key(key) => {
-                cxt.editor.reset_idle_timer();
+                cx.editor.reset_idle_timer();
                 let mut key = KeyEvent::from(key);
                 canonicalize_key(&mut key);
-                // clear status
-                cxt.editor.status_msg = None;
 
-                let (_, doc) = current!(cxt.editor);
+                // clear status
+                cx.editor.status_msg = None;
+
+                let doc = doc!(cx.editor);
                 let mode = doc.mode();
 
                 if let Some(on_next_key) = self.on_next_key.take() {
                     // if there's a command waiting input, do that first
-                    on_next_key(&mut cxt, key);
+                    on_next_key(&mut cx, key);
                 } else {
                     match mode {
                         Mode::Insert => {
@@ -963,8 +1077,8 @@ impl Component for EditorView {
                             if let Some(completion) = &mut self.completion {
                                 // use a fake context here
                                 let mut cx = Context {
-                                    editor: cxt.editor,
-                                    jobs: cxt.jobs,
+                                    editor: cx.editor,
+                                    jobs: cx.jobs,
                                     scroll: None,
                                 };
                                 let res = completion.handle_event(event, &mut cx);
@@ -974,40 +1088,46 @@ impl Component for EditorView {
 
                                     if callback.is_some() {
                                         // assume close_fn
-                                        self.clear_completion(cxt.editor);
+                                        self.clear_completion(cx.editor);
                                     }
                                 }
                             }
 
                             // if completion didn't take the event, we pass it onto commands
                             if !consumed {
-                                self.insert_mode(&mut cxt, key);
+                                self.insert_mode(&mut cx, key);
 
                                 // lastly we recalculate completion
                                 if let Some(completion) = &mut self.completion {
-                                    completion.update(&mut cxt);
+                                    completion.update(&mut cx);
                                     if completion.is_empty() {
-                                        self.clear_completion(cxt.editor);
+                                        self.clear_completion(cx.editor);
                                     }
                                 }
                             }
                         }
-                        mode => self.command_mode(mode, &mut cxt, key),
+                        mode => self.command_mode(mode, &mut cx, key),
                     }
                 }
 
-                self.on_next_key = cxt.on_next_key_callback.take();
+                self.on_next_key = cx.on_next_key_callback.take();
                 // appease borrowck
-                let callback = cxt.callback.take();
+                let callback = cx.callback.take();
 
                 // if the command consumed the last view, skip the render.
                 // on the next loop cycle the Application will then terminate.
-                if cxt.editor.should_close() {
-                    return EventResult::Ignored(None);
+                if cx.editor.should_close() {
+                    return EventResult::Ignored;
                 }
 
-                let (view, doc) = current!(cxt.editor);
-                view.ensure_cursor_in_view(doc, cxt.editor.config.scrolloff);
+                let (view, doc) = current!(cx.editor);
+                view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
+
+                // Store a history state if not in insert mode. This also takes care of
+                // commiting changes when leaving insert mode.
+                if doc.mode() != Mode::Insert {
+                    doc.append_changes_to_history(view.id);
+                }
 
                 // mode transitions
                 match (mode, doc.mode()) {
@@ -1036,7 +1156,7 @@ impl Component for EditorView {
                 EventResult::Consumed(callback)
             }
 
-            Event::Mouse(event) => self.handle_mouse_event(event, &mut cxt),
+            Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
         }
     }
 
@@ -1049,22 +1169,13 @@ impl Component for EditorView {
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
-            let loader = &cx.editor.syn_loader;
-            self.render_view(
-                doc,
-                view,
-                area,
-                surface,
-                &cx.editor.theme,
-                is_focused,
-                loader,
-                &cx.editor.config,
-            );
+            self.render_view(cx.editor, doc, view, area, surface, is_focused);
         }
 
         if cx.editor.config.auto_info {
-            if let Some(ref mut info) = self.autoinfo {
+            if let Some(mut info) = cx.editor.autoinfo.take() {
                 info.render(area, surface, cx);
+                cx.editor.autoinfo = Some(info)
             }
         }
 
@@ -1135,11 +1246,11 @@ impl Component for EditorView {
     }
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        // match view.doc.mode() {
-        //     Mode::Insert => write!(stdout, "\x1B[6 q"),
-        //     mode => write!(stdout, "\x1B[2 q"),
-        // };
-        editor.cursor()
+        match editor.cursor() {
+            // All block cursors are drawn manually
+            (pos, CursorKind::Block) => (pos, CursorKind::Hidden),
+            cursor => cursor,
+        }
     }
 }
 

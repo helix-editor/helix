@@ -1,0 +1,100 @@
+# Serika (Light)
+# Author: VuiMuich
+
+# Original Author:
+# URL: https://github.com/arturoalviar/serika-syntax
+# Author: arturoalviar
+# License: MIT License
+
+"escape" = "orange"
+"type" = "yellow"
+"constant" = "purple"
+"number" = "purple"
+"string" = "fg"
+"comment" = "grey2"
+"variable" = "yellow"
+"variable.builtin" = "blue"
+"variable.parameter" = "yellow"
+"variable.property" = "yellow"
+"label" = "aqua"
+"punctuation" = "grey0"
+"punctuation.delimiter" = "grey2"
+"punctuation.bracket" = "fg"
+"keyword" = "red"
+"operator" = "grey0"
+"function" = "green"
+"function.builtin" = "blue"
+"function.macro" = "aqua"
+"tag" = "yellow"
+"namespace" = "fg"
+"attribute" = "aqua"
+"constructor" = "yellow"
+"module" = "blue"
+"property" = "yellow"
+"special" = "orange"
+
+"ui.background" = { bg = "bg0" }
+"ui.cursor" = { fg = "bg0", bg = "fg" }
+"ui.cursor.match" = { fg = "grey1", bg = "grey2" }
+"ui.cursor.insert" = { fg = "bg0", bg = "bg_yellow" }
+"ui.cursor.select" = { fg = "bg0", bg = "bg_yellow" }
+"ui.linenr" = "yellow"
+"ui.linenr.selected" = { fg = "fg", modifiers = ["bold", "underlined"] }
+"ui.statusline" = { fg = "grey1", bg = "bg5" }
+"ui.statusline.inactive" = { fg = "grey2", bg = "bg1" }
+"ui.popup" = { fg = "bg0", bg = "bg5" }
+"ui.window" = { fg = "bg0", bg = "bg5" }
+"ui.help" = { fg = "bg0", bg = "bg5" }
+"ui.text" = "fg"
+"ui.text.focus" = "yellow"
+"ui.menu" = { fg = "bg0", bg = "bg3" }
+"ui.menu.selected" = { fg = "bg0", bg = "bg_yellow" }
+"ui.selection" = { fg = "bg0", bg = "bg3" }
+
+"hint" = "blue"
+"info" = "aqua"
+"warning" = "yellow"
+"error" = "nasty-red"
+"diagnostic" = { fg = "dark-red", Modifiers = ["underlined"] }
+
+"diff.plus" = { fg = "green" }
+"diff.delta" = { fg = "orange" }
+"diff.minus" = { fg = "red" }
+
+"markup.heading" = { fg = "purple", modifiers = ["bold"] }
+"markup.list" = "cyan"
+"markup.bold" = { fg = "orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "yellow", modifiers = ["italic"] }
+"markup.link.url" = "cyan"
+"markup.link.text" = "pink"
+"markup.quote" = { fg = "yellow", modifiers = ["italic"] }
+"markup.raw" = { fg = "foreground" }
+
+
+[palette]
+
+bg0 = "#e1e1e3"
+bg1 = "#494c50"
+bg2 = "#55585e"
+bg3 = "#61656b"
+bg4 = "#6d7278"
+bg5 = "#797e86"
+bg_visual = "#646669"
+bg_red = "#7e2a33"
+bg_green = "#86b365"
+bg_blue = "#6a89af"
+bg_yellow = "#e2b714"
+
+fg = "#323437"
+red = "#621d28"
+nasty-red = "#da3333"
+dark-red = "#791717"
+orange = "#57320f"
+yellow = "#e2b714"
+green = "#3f4b34"
+aqua = "#455054"
+blue = "#3f5673"
+purple = "#534059"
+grey0 = "#aaaeb3"
+grey1 = "#e1e1e3"
+grey2 = "#646669"

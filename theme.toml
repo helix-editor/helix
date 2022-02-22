@@ -31,8 +31,13 @@ label = "honey"
 "markup.heading" = "lilac"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
-"markup.underline.link" = { fg = "silver", modifiers = ["underlined"] }
+"markup.link.url" = { fg = "silver", modifiers = ["underlined"] }
+"markup.link.text" = "almond"
 "markup.raw" = "almond"
+
+"diff.plus" = "#35bf86"
+"diff.minus" = "#f22c86"
+"diff.delta" = "#6f44f0"
 
 # TODO: diferentiate doc comment
 # concat (ERROR) @error.syntax and "MISSING ;" selectors for errors

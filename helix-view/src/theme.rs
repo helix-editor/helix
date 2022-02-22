@@ -296,53 +296,58 @@ impl TryFrom<Value> for ThemePalette {
     }
 }
 
-#[test]
-fn test_parse_style_string() {
-    let fg = Value::String("#ffffff".to_string());
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let mut style = Style::default();
-    let palette = ThemePalette::default();
-    palette.parse_style(&mut style, fg).unwrap();
+    #[test]
+    fn test_parse_style_string() {
+        let fg = Value::String("#ffffff".to_string());
 
-    assert_eq!(style, Style::default().fg(Color::Rgb(255, 255, 255)));
-}
+        let mut style = Style::default();
+        let palette = ThemePalette::default();
+        palette.parse_style(&mut style, fg).unwrap();
 
-#[test]
-fn test_palette() {
-    use helix_core::hashmap;
-    let fg = Value::String("my_color".to_string());
-
-    let mut style = Style::default();
-    let palette =
-        ThemePalette::new(hashmap! { "my_color".to_string() => Color::Rgb(255, 255, 255) });
-    palette.parse_style(&mut style, fg).unwrap();
-
-    assert_eq!(style, Style::default().fg(Color::Rgb(255, 255, 255)));
-}
-
-#[test]
-fn test_parse_style_table() {
-    let table = toml::toml! {
-        "keyword" = {
-            fg = "#ffffff",
-            bg = "#000000",
-            modifiers = ["bold"],
-        }
-    };
-
-    let mut style = Style::default();
-    let palette = ThemePalette::default();
-    if let Value::Table(entries) = table {
-        for (_name, value) in entries {
-            palette.parse_style(&mut style, value).unwrap();
-        }
+        assert_eq!(style, Style::default().fg(Color::Rgb(255, 255, 255)));
     }
 
-    assert_eq!(
-        style,
-        Style::default()
-            .fg(Color::Rgb(255, 255, 255))
-            .bg(Color::Rgb(0, 0, 0))
-            .add_modifier(Modifier::BOLD)
-    );
+    #[test]
+    fn test_palette() {
+        use helix_core::hashmap;
+        let fg = Value::String("my_color".to_string());
+
+        let mut style = Style::default();
+        let palette =
+            ThemePalette::new(hashmap! { "my_color".to_string() => Color::Rgb(255, 255, 255) });
+        palette.parse_style(&mut style, fg).unwrap();
+
+        assert_eq!(style, Style::default().fg(Color::Rgb(255, 255, 255)));
+    }
+
+    #[test]
+    fn test_parse_style_table() {
+        let table = toml::toml! {
+            "keyword" = {
+                fg = "#ffffff",
+                bg = "#000000",
+                modifiers = ["bold"],
+            }
+        };
+
+        let mut style = Style::default();
+        let palette = ThemePalette::default();
+        if let Value::Table(entries) = table {
+            for (_name, value) in entries {
+                palette.parse_style(&mut style, value).unwrap();
+            }
+        }
+
+        assert_eq!(
+            style,
+            Style::default()
+                .fg(Color::Rgb(255, 255, 255))
+                .bg(Color::Rgb(0, 0, 0))
+                .add_modifier(Modifier::BOLD)
+        );
+    }
 }

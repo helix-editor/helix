@@ -26,6 +26,12 @@ impl Default for DocumentId {
     }
 }
 
+impl std::fmt::Display for DocumentId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
+    }
+}
+
 slotmap::new_key_type! {
     pub struct ViewId;
 }

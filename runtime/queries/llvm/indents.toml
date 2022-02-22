@@ -1,0 +1,8 @@
+indent = [
+ "function_body",
+ "instruction",
+]
+
+outdent = [
+ "}",
+]

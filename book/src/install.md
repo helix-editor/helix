@@ -27,6 +27,15 @@ Releases are available in the `community` repository.
 
 A [helix-git](https://aur.archlinux.org/packages/helix-git/) package is also available on the AUR, which builds the master branch.
 
+### Fedora Linux
+
+You can install the COPR package for Helix via
+
+```
+sudo dnf copr enable varlad/helix
+sudo dnf install helix
+```
+
 ## Build from source
 
 ```

@@ -8,6 +8,6 @@ indent = [
     "match_case",
 ]
 
-oudent = [
+outdent = [
     "}",
 ]

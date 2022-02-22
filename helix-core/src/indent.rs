@@ -1,6 +1,5 @@
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
-    find_first_non_whitespace_char,
     syntax::{IndentQuery, LanguageConfiguration, Syntax},
     tree_sitter::Node,
     Rope, RopeSlice,
@@ -174,8 +173,7 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
 
 /// To determine indentation of a newly inserted line, figure out the indentation at the last col
 /// of the previous line.
-#[allow(dead_code)]
-fn indent_level_for_line(line: RopeSlice, tab_width: usize) -> usize {
+pub fn indent_level_for_line(line: RopeSlice, tab_width: usize) -> usize {
     let mut len = 0;
     for ch in line.chars() {
         match ch {
@@ -194,10 +192,7 @@ fn get_highest_syntax_node_at_bytepos(syntax: &Syntax, pos: usize) -> Option<Nod
     let tree = syntax.tree();
 
     // named_descendant
-    let mut node = match tree.root_node().descendant_for_byte_range(pos, pos) {
-        Some(node) => node,
-        None => return None,
-    };
+    let mut node = tree.root_node().descendant_for_byte_range(pos, pos)?;
 
     while let Some(parent) = node.parent() {
         if parent.start_byte() == node.start_byte() {
@@ -210,10 +205,15 @@ fn get_highest_syntax_node_at_bytepos(syntax: &Syntax, pos: usize) -> Option<Nod
     Some(node)
 }
 
-fn calculate_indentation(query: &IndentQuery, node: Option<Node>, newline: bool) -> usize {
-    // NOTE: can't use contains() on query because of comparing Vec<String> and &str
-    // https://doc.rust-lang.org/std/vec/struct.Vec.html#method.contains
-
+/// Calculate the indentation at a given treesitter node.
+/// If newline is false, then any "indent" nodes on the line are ignored ("outdent" still applies).
+/// This is because the indentation is only increased starting at the second line of the node.
+fn calculate_indentation(
+    query: &IndentQuery,
+    node: Option<Node>,
+    line: usize,
+    newline: bool,
+) -> usize {
     let mut increment: isize = 0;
 
     let mut node = match node {
@@ -221,68 +221,43 @@ fn calculate_indentation(query: &IndentQuery, node: Option<Node>, newline: bool)
         None => return 0,
     };
 
-    let mut prev_start = node.start_position().row;
+    let mut current_line = line;
+    let mut consider_indent = newline;
+    let mut increment_from_line: isize = 0;
 
-    // if we're calculating indentation for a brand new line then the current node will become the
-    // parent node. We need to take it's indentation level into account too.
-    let node_kind = node.kind();
-    if newline && query.indent.contains(node_kind) {
-        increment += 1;
-    }
-
-    while let Some(parent) = node.parent() {
-        let parent_kind = parent.kind();
-        let start = parent.start_position().row;
-
-        // detect deeply nested indents in the same line
-        // .map(|a| {       <-- ({ is two scopes
-        //     let len = 1; <-- indents one level
-        // })               <-- }) is two scopes
-        let starts_same_line = start == prev_start;
-
-        if query.outdent.contains(node.kind()) && !starts_same_line {
-            // we outdent by skipping the rules for the current level and jumping up
-            // node = parent;
-            increment -= 1;
-            // continue;
+    loop {
+        let node_kind = node.kind();
+        let start = node.start_position().row;
+        if current_line != start {
+            // Indent/dedent by at most one per line:
+            // .map(|a| {       <-- ({ is two scopes
+            //     let len = 1; <-- indents one level
+            // })               <-- }) is two scopes
+            if consider_indent || increment_from_line < 0 {
+                increment += increment_from_line.signum();
+            }
+            increment_from_line = 0;
+            current_line = start;
+            consider_indent = true;
         }
 
-        if query.indent.contains(parent_kind) // && not_first_or_last_sibling
-            && !starts_same_line
-        {
-            // println!("is_scope {}", parent_kind);
-            prev_start = start;
-            increment += 1
+        if query.outdent.contains(node_kind) {
+            increment_from_line -= 1;
+        }
+        if query.indent.contains(node_kind) {
+            increment_from_line += 1;
         }
 
-        // if last_scope && increment > 0 && ...{ ignore }
-
-        node = parent;
+        if let Some(parent) = node.parent() {
+            node = parent;
+        } else {
+            break;
+        }
     }
-
+    if consider_indent || increment_from_line < 0 {
+        increment += increment_from_line.signum();
+    }
     increment.max(0) as usize
-}
-
-#[allow(dead_code)]
-fn suggested_indent_for_line(
-    language_config: &LanguageConfiguration,
-    syntax: Option<&Syntax>,
-    text: RopeSlice,
-    line_num: usize,
-    _tab_width: usize,
-) -> usize {
-    if let Some(start) = find_first_non_whitespace_char(text.line(line_num)) {
-        return suggested_indent_for_pos(
-            Some(language_config),
-            syntax,
-            text,
-            start + text.line_to_char(line_num),
-            false,
-        );
-    };
-
-    // if the line is blank, indent should be zero
-    0
 }
 
 // TODO: two usecases: if we are triggering this for a new, blank line:
@@ -293,23 +268,20 @@ pub fn suggested_indent_for_pos(
     syntax: Option<&Syntax>,
     text: RopeSlice,
     pos: usize,
+    line: usize,
     new_line: bool,
-) -> usize {
+) -> Option<usize> {
     if let (Some(query), Some(syntax)) = (
         language_config.and_then(|config| config.indent_query()),
         syntax,
     ) {
         let byte_start = text.char_to_byte(pos);
         let node = get_highest_syntax_node_at_bytepos(syntax, byte_start);
-
-        // let config = load indentation query config from Syntax(should contain language_config)
-
         // TODO: special case for comments
         // TODO: if preserve_leading_whitespace
-        calculate_indentation(query, node, new_line)
+        Some(calculate_indentation(query, node, line, new_line))
     } else {
-        // TODO: heuristics for non-tree sitter grammars
-        0
+        None
     }
 }
 
@@ -441,7 +413,8 @@ where
 ",
         );
 
-        let doc = Rope::from(doc);
+        let doc = doc;
+        use crate::diagnostic::Severity;
         use crate::syntax::{
             Configuration, IndentationConfiguration, LanguageConfiguration, Loader,
         };
@@ -459,6 +432,8 @@ where
                 roots: vec![],
                 comment_token: None,
                 auto_format: false,
+                diagnostic_severity: Severity::Warning,
+                tree_sitter_library: None,
                 language_server: None,
                 indent: Some(IndentationConfiguration {
                     tab_width: 4,
@@ -466,6 +441,7 @@ where
                 }),
                 indent_query: OnceCell::new(),
                 textobject_query: OnceCell::new(),
+                debugger: None,
             }],
         });
 
@@ -476,20 +452,29 @@ where
 
         let language_config = loader.language_config_for_scope("source.rust").unwrap();
         let highlight_config = language_config.highlight_config(&[]).unwrap();
-        let syntax = Syntax::new(&doc, highlight_config.clone());
+        let syntax = Syntax::new(&doc, highlight_config, std::sync::Arc::new(loader));
         let text = doc.slice(..);
         let tab_width = 4;
 
         for i in 0..doc.len_lines() {
             let line = text.line(i);
-            let indent = indent_level_for_line(line, tab_width);
-            assert_eq!(
-                suggested_indent_for_line(&language_config, Some(&syntax), text, i, tab_width),
-                indent,
-                "line {}: {}",
-                i,
-                line
-            );
+            if let Some(pos) = crate::find_first_non_whitespace_char(line) {
+                let indent = indent_level_for_line(line, tab_width);
+                assert_eq!(
+                    suggested_indent_for_pos(
+                        Some(&language_config),
+                        Some(&syntax),
+                        text,
+                        text.line_to_char(i) + pos,
+                        i,
+                        false
+                    ),
+                    Some(indent),
+                    "line {}: \"{}\"",
+                    i,
+                    line
+                );
+            }
         }
     }
 }

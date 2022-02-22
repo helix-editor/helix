@@ -1,4 +1,123 @@
 
+# 0.6.0 (2022-01-04)
+
+Happy new year and a big shout out to all the contributors! We had 55 contributors in this release.
+
+Helix has popped up in DPorts and Fedora Linux via COPR ([#1270](https://github.com/helix-editor/helix/pull/1270))
+
+As usual the following is a brief summary, refer to the git history for a full log:
+
+Breaking changes:
+
+- fix: Normalize backtab into shift-tab 
+
+Features:
+
+- Macros ([#1234](https://github.com/helix-editor/helix/pull/1234)) 
+- Add reverse search functionality ([#958](https://github.com/helix-editor/helix/pull/958))
+- Allow keys to be mapped to sequences of commands ([#589](https://github.com/helix-editor/helix/pull/589)) 
+- Make it possible to keybind TypableCommands ([#1169](https://github.com/helix-editor/helix/pull/1169))
+- Detect workspace root using language markers ([#1370](https://github.com/helix-editor/helix/pull/1370))
+- Add WORD textobject ([#991](https://github.com/helix-editor/helix/pull/991))
+- Add LSP rename_symbol (space-r) ([#1011](https://github.com/helix-editor/helix/pull/1011))
+- Added workspace_symbol_picker ([#1041](https://github.com/helix-editor/helix/pull/1041)) 
+- Detect filetype from shebang line ([#1001](https://github.com/helix-editor/helix/pull/1001))
+- Allow piping from stdin into a buffer on startup ([#996](https://github.com/helix-editor/helix/pull/996)) 
+- Add auto pairs for same-char pairs ([#1219](https://github.com/helix-editor/helix/pull/1219)) 
+- Update settings at runtime ([#798](https://github.com/helix-editor/helix/pull/798)) 
+- Enable thin LTO (cccc194)
+
+Commands:
+- :wonly -- window only ([#1057](https://github.com/helix-editor/helix/pull/1057)) 
+- buffer-close (:bc, :bclose) ([#1035](https://github.com/helix-editor/helix/pull/1035)) 
+- Add :<line> and :goto <line> commands ([#1128](https://github.com/helix-editor/helix/pull/1128))
+- :sort command ([#1288](https://github.com/helix-editor/helix/pull/1288)) 
+- Add m textobject for pair under cursor ([#961](https://github.com/helix-editor/helix/pull/961)) 
+- Implement "Goto next buffer / Goto previous buffer" commands ([#950](https://github.com/helix-editor/helix/pull/950))
+- Implement "Goto last modification" command ([#1067](https://github.com/helix-editor/helix/pull/1067)) 
+- Add trim_selections command ([#1092](https://github.com/helix-editor/helix/pull/1092)) 
+- Add movement shortcut for history ([#1088](https://github.com/helix-editor/helix/pull/1088))
+- Add command to inc/dec number under cursor ([#1027](https://github.com/helix-editor/helix/pull/1027))
+  - Add support for dates for increment/decrement
+- Align selections (&) ([#1101](https://github.com/helix-editor/helix/pull/1101))
+- Implement no-yank delete/change ([#1099](https://github.com/helix-editor/helix/pull/1099)) 
+- Implement black hole register ([#1165](https://github.com/helix-editor/helix/pull/1165)) 
+- gf as goto_file (gf) ([#1102](https://github.com/helix-editor/helix/pull/1102))
+- Add last modified file (gm) ([#1093](https://github.com/helix-editor/helix/pull/1093))
+- ensure_selections_forward ([#1393](https://github.com/helix-editor/helix/pull/1393))
+- Readline style insert mode ([#1039](https://github.com/helix-editor/helix/pull/1039))
+
+Usability improvements and fixes:
+
+- Detect filetype on :write ([#1141](https://github.com/helix-editor/helix/pull/1141))
+- Add single and double quotes to matching pairs ([#995](https://github.com/helix-editor/helix/pull/995)) 
+- Launch with defaults upon invalid config/theme (rather than panicking) ([#982](https://github.com/helix-editor/helix/pull/982))
+- If switching away from an empty scratch buffer, remove it ([#935](https://github.com/helix-editor/helix/pull/935)) 
+- Truncate the starts of file paths instead of the ends in picker ([#951](https://github.com/helix-editor/helix/pull/951))
+- Truncate the start of file paths in the StatusLine ([#1351](https://github.com/helix-editor/helix/pull/1351)) 
+- Prevent picker from previewing binaries or large file ([#939](https://github.com/helix-editor/helix/pull/939))
+- Inform when reaching undo/redo bounds ([#981](https://github.com/helix-editor/helix/pull/981))
+- search_impl will only align cursor center when it isn't in view ([#959](https://github.com/helix-editor/helix/pull/959)) 
+- Add <C-h>, <C-u>, <C-d>, Delete in prompt mode ([#1034](https://github.com/helix-editor/helix/pull/1034)) 
+- Restore screen position when aborting search ([#1047](https://github.com/helix-editor/helix/pull/1047)) 
+- Buffer picker: show is_modifier flag ([#1020](https://github.com/helix-editor/helix/pull/1020)) 
+- Add commit hash to version info, if present ([#957](https://github.com/helix-editor/helix/pull/957))
+- Implement indent-aware delete ([#1120](https://github.com/helix-editor/helix/pull/1120))
+- Jump to end char of surrounding pair from any cursor pos ([#1121](https://github.com/helix-editor/helix/pull/1121))
+- File picker configuration ([#988](https://github.com/helix-editor/helix/pull/988))
+- Fix surround cursor position calculation ([#1183](https://github.com/helix-editor/helix/pull/1183))
+- Accept count for goto_window ([#1033](https://github.com/helix-editor/helix/pull/1033))
+- Make kill_to_line_end behave like emacs ([#1235](https://github.com/helix-editor/helix/pull/1235)) 
+- Only use a single documentation popup ([#1241](https://github.com/helix-editor/helix/pull/1241)) 
+- ui: popup: Don't allow scrolling past the end of content (3307f44c)
+- Open files with spaces in filename, allow opening multiple files ([#1231](https://github.com/helix-editor/helix/pull/1231)) 
+- Allow paste commands to take a count ([#1261](https://github.com/helix-editor/helix/pull/1261))
+- Auto pairs selection ([#1254](https://github.com/helix-editor/helix/pull/1254)) 
+- Use a fuzzy matcher for commands ([#1386](https://github.com/helix-editor/helix/pull/1386)) 
+- Add c-s to pick word under doc cursor to prompt line & search completion ([#831](https://github.com/helix-editor/helix/pull/831))
+- Fix :earlier/:later missing changeset update ([#1069](https://github.com/helix-editor/helix/pull/1069))
+- Support extend for multiple goto ([#909](https://github.com/helix-editor/helix/pull/909))
+- Add arrow-key bindings for window switching ([#933](https://github.com/helix-editor/helix/pull/933))
+- Implement key ordering for info box ([#952](https://github.com/helix-editor/helix/pull/952))
+
+LSP:
+- Implement MarkedString rendering (e128a8702)
+- Don't panic if init fails (d31bef7)
+- Configurable diagnostic severity ([#1325](https://github.com/helix-editor/helix/pull/1325))
+- Resolve completion item ([#1315](https://github.com/helix-editor/helix/pull/1315))
+- Code action command support ([#1304](https://github.com/helix-editor/helix/pull/1304))
+
+Grammars:
+
+- Adds mint language server ([#974](https://github.com/helix-editor/helix/pull/974)) 
+- Perl ([#978](https://github.com/helix-editor/helix/pull/978)) ([#1280](https://github.com/helix-editor/helix/pull/1280))
+- GLSL ([#993](https://github.com/helix-editor/helix/pull/993)) 
+- Racket ([#1143](https://github.com/helix-editor/helix/pull/1143)) 
+- WGSL ([#1166](https://github.com/helix-editor/helix/pull/1166)) 
+- LLVM ([#1167](https://github.com/helix-editor/helix/pull/1167)) ([#1388](https://github.com/helix-editor/helix/pull/1388)) ([#1409](https://github.com/helix-editor/helix/pull/1409)) ([#1398](https://github.com/helix-editor/helix/pull/1398))
+- Markdown (49e06787)
+- Scala ([#1278](https://github.com/helix-editor/helix/pull/1278))
+- Dart ([#1250](https://github.com/helix-editor/helix/pull/1250))
+- Fish ([#1308](https://github.com/helix-editor/helix/pull/1308)) 
+- Dockerfile ([#1303](https://github.com/helix-editor/helix/pull/1303))
+- Git (commit, rebase, diff) ([#1338](https://github.com/helix-editor/helix/pull/1338)) ([#1402](https://github.com/helix-editor/helix/pull/1402)) ([#1373](https://github.com/helix-editor/helix/pull/1373))
+- tree-sitter-comment ([#1300](https://github.com/helix-editor/helix/pull/1300))
+- Highlight comments in c, cpp, cmake and llvm ([#1309](https://github.com/helix-editor/helix/pull/1309))
+- Improve yaml syntax highlighting highlighting ([#1294](https://github.com/helix-editor/helix/pull/1294)) 
+- Improve rust syntax highlighting ([#1295](https://github.com/helix-editor/helix/pull/1295))
+- Add textobjects and indents to cmake ([#1307](https://github.com/helix-editor/helix/pull/1307)) 
+- Add textobjects and indents to c and cpp ([#1293](https://github.com/helix-editor/helix/pull/1293))
+
+New themes:
+
+- Solarized dark ([#999](https://github.com/helix-editor/helix/pull/999)) 
+- Solarized light ([#1010](https://github.com/helix-editor/helix/pull/1010)) 
+- Spacebones light ([#1131](https://github.com/helix-editor/helix/pull/1131))
+- Monokai Pro ([#1206](https://github.com/helix-editor/helix/pull/1206)) 
+- Base16 Light and Terminal ([#1078](https://github.com/helix-editor/helix/pull/1078))
+  - and a default 16 color theme, truecolor detection 
+- Dracula ([#1258](https://github.com/helix-editor/helix/pull/1258))
+
 # 0.5.0 (2021-10-28)
 
 A big shout out to all the contributors! We had 46 contributors in this release.

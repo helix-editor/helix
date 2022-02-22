@@ -24,7 +24,22 @@ The following [captures][tree-sitter-captures] are recognized:
 
 [Example query files][textobject-examples] can be found in the helix GitHub repository.
 
+## Queries for Textobject Based Navigation
+
+[Tree-sitter based navigation][textobjects-nav] is done using captures in the
+following order:
+
+- `object.movement`
+- `object.around`
+- `object.inside`
+
+For example if a `function.around` capture has been already defined for a language
+in it's `textobjects.scm` file, function navigation should also work automatically.
+`function.movement` should be defined only if the node captured by `function.around`
+doesn't make sense in a navigation context.
+
 [textobjects]: ../usage.md#textobjects
+[textobjects-nav]: ../usage.md#tree-sitter-textobject-based-navigation
 [tree-sitter-queries]: https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax
 [tree-sitter-captures]: https://tree-sitter.github.io/tree-sitter/using-parsers#capturing-nodes
 [textobject-examples]: https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+filename%3Atextobjects.scm&type=Code&ref=advsearch&l=&l=

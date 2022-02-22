@@ -448,8 +448,8 @@ mod test {
             change: crate::transaction::Change,
             instant: Instant,
         ) {
-            let txn = Transaction::change(&state.doc, vec![change.clone()].into_iter());
-            history.commit_revision_at_timestamp(&txn, &state, instant);
+            let txn = Transaction::change(&state.doc, vec![change].into_iter());
+            history.commit_revision_at_timestamp(&txn, state, instant);
             txn.apply(&mut state.doc);
         }
 

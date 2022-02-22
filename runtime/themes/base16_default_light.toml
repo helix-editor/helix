@@ -1,7 +1,7 @@
 # Author: NNB <nnbnh@protonmail.com>
 
 "ui.background" = { bg = "base00" }
-"ui.menu" = "base01"
+"ui.menu" = { fg = "base05", bg = "base01" }
 "ui.menu.selected" = { fg = "base01", bg = "base04" }
 "ui.linenr" = { fg = "base03", bg = "base01" }
 "ui.popup" = { bg = "base01" }
@@ -32,6 +32,19 @@
 "label" = "base0E"
 "namespace" = "base0E"
 "ui.help" = { fg = "base06", bg = "base01" }
+
+"markup.heading" = "base0D"
+"markup.list" = "base08"
+"markup.bold" = { fg = "base0A", modifiers = ["bold"] }
+"markup.italic" = { fg = "base0E", modifiers = ["italic"] }
+"markup.link.url" = { fg = "base09", modifiers = ["underlined"] }
+"markup.link.text" = "base08"
+"markup.quote" = "base0C"
+"markup.raw" = "base0B"
+
+"diff.plus" = "base0B"
+"diff.delta" = "base09"
+"diff.minus" = "base08"
 
 "diagnostic" = { modifiers = ["underlined"] }
 "ui.gutter" = { bg = "base01" }

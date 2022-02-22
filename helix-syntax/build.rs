@@ -175,7 +175,6 @@ fn build_dir(dir: &str, language: &str) {
 fn main() {
     let ignore = vec![
         "tree-sitter-typescript".to_string(),
-        "tree-sitter-haskell".to_string(), // aarch64 failures: https://github.com/tree-sitter/tree-sitter-haskell/issues/34
         "tree-sitter-ocaml".to_string(),
     ];
     let dirs = collect_tree_sitter_dirs(&ignore).unwrap();

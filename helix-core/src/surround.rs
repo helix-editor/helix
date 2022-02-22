@@ -172,6 +172,7 @@ mod test {
     use ropey::Rope;
     use smallvec::SmallVec;
 
+    #[allow(clippy::type_complexity)]
     fn check_find_nth_pair_pos(
         text: &str,
         cases: Vec<(usize, char, usize, Option<(usize, usize)>)>,

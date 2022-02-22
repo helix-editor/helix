@@ -77,8 +77,21 @@
 # integer, floating point
 "constant.numeric" = "purple"
 
+# vcs
+"diff.plus" = "green"
+"diff.delta" = "orange"
+"diff.minus" = "red"
+
 # make diagnostic underlined, to distinguish with selection text.
 diagnostic = { modifiers = ["underlined"] }
+
+# markup highlight, no need for `markup.raw` and `markup.list`, make them to be default
+"markup.heading" = "green"
+"markup.bold" = { fg = "orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "orange", modifiers = ["italic"] }
+"markup.link.url" = { fg = "orange", modifiers = ["underlined"] }
+"markup.link.text" = "yellow"
+"markup.quote" = "green"
 
 [palette]
 # primary colors

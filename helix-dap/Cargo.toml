@@ -1,0 +1,24 @@
+[package]
+name = "helix-dap"
+version = "0.6.0"
+authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
+edition = "2018"
+license = "MPL-2.0"
+description = "DAP client implementation for Helix project"
+categories = ["editor"]
+repository = "https://github.com/helix-editor/helix"
+homepage = "https://helix-editor.com"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+helix-core = { version = "0.6", path = "../helix-core" }
+anyhow = "1.0"
+log = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "net", "sync"] }
+
+[dev-dependencies]
+fern = "0.6"

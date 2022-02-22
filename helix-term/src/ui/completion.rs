@@ -154,8 +154,19 @@ impl Completion {
                     );
                     doc.apply(&transaction, view.id);
 
-                    if let Some(additional_edits) = &item.additional_text_edits {
-                        // gopls uses this to add extra imports
+                    // apply additional edits, mostly used to auto import unqualified types
+                    let resolved_additional_text_edits = if item.additional_text_edits.is_some() {
+                        None
+                    } else {
+                        Self::resolve_completion_item(doc, item.clone())
+                            .and_then(|item| item.additional_text_edits)
+                    };
+
+                    if let Some(additional_edits) = item
+                        .additional_text_edits
+                        .as_ref()
+                        .or_else(|| resolved_additional_text_edits.as_ref())
+                    {
                         if !additional_edits.is_empty() {
                             let transaction = util::generate_transaction_from_edits(
                                 doc.text(),
@@ -179,6 +190,31 @@ impl Completion {
         completion.recompute_filter(editor);
 
         completion
+    }
+
+    fn resolve_completion_item(
+        doc: &Document,
+        completion_item: lsp::CompletionItem,
+    ) -> Option<CompletionItem> {
+        let language_server = doc.language_server()?;
+        let completion_resolve_provider = language_server
+            .capabilities()
+            .completion_provider
+            .as_ref()?
+            .resolve_provider;
+        if completion_resolve_provider != Some(true) {
+            return None;
+        }
+
+        let future = language_server.resolve_completion_item(completion_item);
+        let response = helix_lsp::block_on(future);
+        match response {
+            Ok(completion_item) => Some(completion_item),
+            Err(err) => {
+                log::error!("execute LSP command: {}", err);
+                None
+            }
+        }
     }
 
     pub fn recompute_filter(&mut self, editor: &Editor) {
@@ -268,6 +304,7 @@ impl Component for Completion {
             let cursor_pos = doc.selection(view.id).primary().cursor(text);
             let coords = helix_core::visual_coords_at_pos(text, cursor_pos, doc.tab_width());
             let cursor_pos = (coords.row - view.offset.row) as u16;
+
             let mut markdown_doc = match &option.documentation {
                 Some(lsp::Documentation::String(contents))
                 | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {

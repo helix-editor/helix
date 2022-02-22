@@ -126,6 +126,16 @@ impl Compositor {
         self.layers.push(layer);
     }
 
+    /// Replace a component that has the given `id` with the new layer and if
+    /// no component is found, push the layer normally.
+    pub fn replace_or_push(&mut self, id: &'static str, layer: Box<dyn Component>) {
+        if let Some(component) = self.find_id(id) {
+            *component = layer;
+        } else {
+            self.push(layer)
+        }
+    }
+
     pub fn pop(&mut self) -> Option<Box<dyn Component>> {
         self.layers.pop()
     }

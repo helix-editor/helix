@@ -5,7 +5,8 @@
 
 (primitive_type) @type.builtin
 (cast_type) @type.builtin
-(type_name (name) @type)
+(named_type (name) @type) @type
+(named_type (qualified_name) @type) @type
 
 ; Functions
 
@@ -85,10 +86,12 @@
 "endif" @keyword
 "endswitch" @keyword
 "endwhile" @keyword
+"enum" @keyword
 "extends" @keyword
 "final" @keyword
 "finally" @keyword
 "foreach" @keyword
+"fn" @keyword
 "function" @keyword
 "global" @keyword
 "if" @keyword
@@ -97,6 +100,7 @@
 "include" @keyword
 "insteadof" @keyword
 "interface" @keyword
+"match" @keyword
 "namespace" @keyword
 "new" @keyword
 "private" @keyword

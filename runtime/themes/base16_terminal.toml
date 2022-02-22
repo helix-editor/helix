@@ -1,6 +1,6 @@
 # Author: NNB <nnbnh@protonmail.com>
 
-"ui.menu" = "black"
+"ui.menu" = { fg = "light-gray", bg = "gray" }
 "ui.menu.selected" = { modifiers = ["reversed"] }
 "ui.linenr" = { fg = "light-gray", bg = "black" }
 "ui.popup" = { bg = "black" }
@@ -12,7 +12,7 @@
 "ui.statusline.inactive" = { fg = "gray", bg = "black" }
 "ui.help" = { fg = "white", bg = "black" }
 "ui.cursor" = { fg = "light-gray", modifiers = ["reversed"] }
-"ui.cursor.primary" = { modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "light-white", modifiers = ["reversed"] }
 "variable" = "light-red"
 "constant.numeric" = "yellow"
 "constant" = "yellow"
@@ -29,6 +29,19 @@
 "label" = "light-magenta"
 "namespace" = "light-magenta"
 "ui.help" = { fg = "white", bg = "black" }
+
+"markup.heading" = "light-blue"
+"markup.list" = "light-red"
+"markup.bold" = { fg = "light-yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "light-magenta", modifiers = ["italic"] }
+"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.text" = "light-red"
+"markup.quote" = "light-cyan"
+"markup.raw" = "light-green"
+
+"diff.plus" = "light-green"
+"diff.delta" = "yellow"
+"diff.minus" = "light-red"
 
 "diagnostic" = { modifiers = ["underlined"] }
 "ui.gutter" = { bg = "black" }

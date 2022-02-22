@@ -1,12 +1,18 @@
+use std::borrow::Cow;
 use std::process::Command;
 
 fn main() {
     let git_hash = Command::new("git")
-        .args(&["describe", "--dirty"])
+        .args(&["rev-parse", "HEAD"])
         .output()
-        .map(|x| String::from_utf8(x.stdout).ok())
         .ok()
-        .flatten()
-        .unwrap_or_else(|| String::from(env!("CARGO_PKG_VERSION")));
-    println!("cargo:rustc-env=VERSION_AND_GIT_HASH={}", git_hash);
+        .filter(|output| output.status.success())
+        .and_then(|x| String::from_utf8(x.stdout).ok());
+
+    let version: Cow<_> = match git_hash {
+        Some(git_hash) => format!("{} ({})", env!("CARGO_PKG_VERSION"), &git_hash[..8]).into(),
+        None => env!("CARGO_PKG_VERSION").into(),
+    };
+
+    println!("cargo:rustc-env=VERSION_AND_GIT_HASH={}", version);
 }

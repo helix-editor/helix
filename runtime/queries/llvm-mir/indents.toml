@@ -1,0 +1,7 @@
+indent = [
+  "basic_block",
+]
+
+outdent = [
+  "label",
+]

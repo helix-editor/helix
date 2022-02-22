@@ -15,3 +15,6 @@
 ((style_element
   (raw_text) @injection.content)
  (#set! injection.language "css"))
+
+((comment) @injection.content
+ (#set! injection.language "comment"))

@@ -26,5 +26,5 @@
   (#set! injection.language "typescript")
 )
 
-(comment) @comment
-
+((comment) @injection.content
+ (#set! injection.language "comment"))

@@ -1,11 +1,22 @@
-use helix_core::{merge_toml_values, syntax};
+use helix_core::{
+    config::{default_syntax_loader, user_syntax_loader},
+    pos_at_coords, syntax, Selection,
+};
+use helix_dap::{self as dap, Payload, Request};
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{theme, Editor};
+use helix_view::{editor::Breakpoint, theme, Editor};
+use serde_json::json;
 
-use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
+use crate::{
+    args::Args,
+    commands::{align_view, apply_workspace_edit, fetch_stack_trace, Align},
+    compositor::Compositor,
+    config::Config,
+    job::Jobs,
+    ui::{self, overlay::overlayed},
+};
 
 use log::{error, warn};
-
 use std::{
     io::{stdin, stdout, Write},
     sync::Arc,
@@ -61,21 +72,6 @@ impl Application {
             std::sync::Arc::new(theme::Loader::new(&conf_dir, &helix_core::runtime_dir()));
 
         // load default and user config, and merge both
-        let builtin_err_msg =
-            "Could not parse built-in languages.toml, something must be very wrong";
-        let def_lang_conf: toml::Value =
-            toml::from_slice(include_bytes!("../../languages.toml")).expect(builtin_err_msg);
-        let def_syn_loader_conf: helix_core::syntax::Configuration =
-            def_lang_conf.clone().try_into().expect(builtin_err_msg);
-        let user_lang_conf = std::fs::read(conf_dir.join("languages.toml"))
-            .ok()
-            .map(|raw| toml::from_slice(&raw));
-        let lang_conf = match user_lang_conf {
-            Some(Ok(value)) => Ok(merge_toml_values(def_lang_conf, value)),
-            Some(err @ Err(_)) => err,
-            None => Ok(def_lang_conf),
-        };
-
         let true_color = config.editor.true_color || crate::true_color();
         let theme = config
             .theme
@@ -98,16 +94,14 @@ impl Application {
                 }
             });
 
-        let syn_loader_conf: helix_core::syntax::Configuration = lang_conf
-            .and_then(|conf| conf.try_into())
-            .unwrap_or_else(|err| {
-                eprintln!("Bad language config: {}", err);
-                eprintln!("Press <ENTER> to continue with default language config");
-                use std::io::Read;
-                // This waits for an enter press.
-                let _ = std::io::stdin().read(&mut []);
-                def_syn_loader_conf
-            });
+        let syn_loader_conf = user_syntax_loader().unwrap_or_else(|err| {
+            eprintln!("Bad language config: {}", err);
+            eprintln!("Press <ENTER> to continue with default language config");
+            use std::io::Read;
+            // This waits for an enter press.
+            let _ = std::io::stdin().read(&mut []);
+            default_syntax_loader()
+        });
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         let mut editor = Editor::new(
@@ -126,24 +120,34 @@ impl Application {
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
         } else if !args.files.is_empty() {
-            let first = &args.files[0]; // we know it's not empty
+            let first = &args.files[0].0; // we know it's not empty
             if first.is_dir() {
                 std::env::set_current_dir(&first)?;
                 editor.new_file(Action::VerticalSplit);
-                compositor.push(Box::new(ui::file_picker(".".into(), &config.editor)));
+                let picker = ui::file_picker(".".into(), &config.editor);
+                compositor.push(Box::new(overlayed(picker)));
             } else {
                 let nr_of_files = args.files.len();
                 editor.open(first.to_path_buf(), Action::VerticalSplit)?;
-                for file in args.files {
+                for (file, pos) in args.files {
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
                             "expected a path to file, found a directory. (to open a directory pass it as first argument)"
                         ));
                     } else {
-                        editor.open(file.to_path_buf(), Action::Load)?;
+                        let doc_id = editor.open(file, Action::Load)?;
+                        // with Action::Load all documents have the same view
+                        let view_id = editor.tree.focus;
+                        let doc = editor.document_mut(doc_id).unwrap();
+                        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+                        doc.set_selection(view_id, pos);
                     }
                 }
                 editor.set_status(format!("Loaded {} files.", nr_of_files));
+                // align the view to center after all files are loaded,
+                // does not affect views without pos since it is at the top
+                let (view, doc) = current!(editor);
+                align_view(doc, view, Align::Center);
             }
         } else if stdin().is_tty() {
             editor.new_file(Action::VerticalSplit);
@@ -205,7 +209,6 @@ impl Application {
 
         loop {
             if self.editor.should_close() {
-                self.jobs.finish();
                 break;
             }
 
@@ -228,6 +231,9 @@ impl Application {
                         self.render();
                         last_render = Instant::now();
                     }
+                }
+                Some(payload) = self.editor.debugger_events.next() => {
+                    self.handle_debugger_message(payload).await;
                 }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
@@ -323,6 +329,203 @@ impl Application {
         }
     }
 
+    pub async fn handle_debugger_message(&mut self, payload: helix_dap::Payload) {
+        use crate::commands::dap::{breakpoints_changed, select_thread_id};
+        use dap::requests::RunInTerminal;
+        use helix_dap::{events, Event};
+
+        let debugger = match self.editor.debugger.as_mut() {
+            Some(debugger) => debugger,
+            None => return,
+        };
+        match payload {
+            Payload::Event(ev) => match *ev {
+                Event::Stopped(events::Stopped {
+                    thread_id,
+                    description,
+                    text,
+                    reason,
+                    all_threads_stopped,
+                    ..
+                }) => {
+                    let all_threads_stopped = all_threads_stopped.unwrap_or_default();
+
+                    if all_threads_stopped {
+                        if let Ok(response) = debugger.request::<dap::requests::Threads>(()).await {
+                            for thread in response.threads {
+                                fetch_stack_trace(debugger, thread.id).await;
+                            }
+                            select_thread_id(
+                                &mut self.editor,
+                                thread_id.unwrap_or_default(),
+                                false,
+                            )
+                            .await;
+                        }
+                    } else if let Some(thread_id) = thread_id {
+                        debugger.thread_states.insert(thread_id, reason.clone()); // TODO: dap uses "type" || "reason" here
+
+                        // whichever thread stops is made "current" (if no previously selected thread).
+                        select_thread_id(&mut self.editor, thread_id, false).await;
+                    }
+
+                    let scope = match thread_id {
+                        Some(id) => format!("Thread {}", id),
+                        None => "Target".to_owned(),
+                    };
+
+                    let mut status = format!("{} stopped because of {}", scope, reason);
+                    if let Some(desc) = description {
+                        status.push_str(&format!(" {}", desc));
+                    }
+                    if let Some(text) = text {
+                        status.push_str(&format!(" {}", text));
+                    }
+                    if all_threads_stopped {
+                        status.push_str(" (all threads stopped)");
+                    }
+
+                    self.editor.set_status(status);
+                }
+                Event::Continued(events::Continued { thread_id, .. }) => {
+                    debugger
+                        .thread_states
+                        .insert(thread_id, "running".to_owned());
+                    if debugger.thread_id == Some(thread_id) {
+                        debugger.resume_application();
+                    }
+                }
+                Event::Thread(_) => {
+                    // TODO: update thread_states, make threads request
+                }
+                Event::Breakpoint(events::Breakpoint { reason, breakpoint }) => {
+                    match &reason[..] {
+                        "new" => {
+                            if let Some(source) = breakpoint.source {
+                                self.editor
+                                    .breakpoints
+                                    .entry(source.path.unwrap()) // TODO: no unwraps
+                                    .or_default()
+                                    .push(Breakpoint {
+                                        id: breakpoint.id,
+                                        verified: breakpoint.verified,
+                                        message: breakpoint.message,
+                                        line: breakpoint.line.unwrap().saturating_sub(1), // TODO: no unwrap
+                                        column: breakpoint.column,
+                                        ..Default::default()
+                                    });
+                            }
+                        }
+                        "changed" => {
+                            for breakpoints in self.editor.breakpoints.values_mut() {
+                                if let Some(i) =
+                                    breakpoints.iter().position(|b| b.id == breakpoint.id)
+                                {
+                                    breakpoints[i].verified = breakpoint.verified;
+                                    breakpoints[i].message = breakpoint.message.clone();
+                                    breakpoints[i].line =
+                                        breakpoint.line.unwrap().saturating_sub(1); // TODO: no unwrap
+                                    breakpoints[i].column = breakpoint.column;
+                                }
+                            }
+                        }
+                        "removed" => {
+                            for breakpoints in self.editor.breakpoints.values_mut() {
+                                if let Some(i) =
+                                    breakpoints.iter().position(|b| b.id == breakpoint.id)
+                                {
+                                    breakpoints.remove(i);
+                                }
+                            }
+                        }
+                        reason => {
+                            warn!("Unknown breakpoint event: {}", reason);
+                        }
+                    }
+                }
+                Event::Output(events::Output {
+                    category, output, ..
+                }) => {
+                    let prefix = match category {
+                        Some(category) => {
+                            if &category == "telemetry" {
+                                return;
+                            }
+                            format!("Debug ({}):", category)
+                        }
+                        None => "Debug:".to_owned(),
+                    };
+
+                    log::info!("{}", output);
+                    self.editor.set_status(format!("{} {}", prefix, output));
+                }
+                Event::Initialized => {
+                    // send existing breakpoints
+                    for (path, breakpoints) in &mut self.editor.breakpoints {
+                        // TODO: call futures in parallel, await all
+                        let _ = breakpoints_changed(debugger, path.clone(), breakpoints);
+                    }
+                    // TODO: fetch breakpoints (in case we're attaching)
+
+                    if debugger.configuration_done().await.is_ok() {
+                        self.editor.set_status("Debugged application started");
+                    }; // TODO: do we need to handle error?
+                }
+                ev => {
+                    log::warn!("Unhandled event {:?}", ev);
+                    return; // return early to skip render
+                }
+            },
+            Payload::Response(_) => unreachable!(),
+            Payload::Request(request) => match request.command.as_str() {
+                RunInTerminal::COMMAND => {
+                    let mut arguments: dap::requests::RunInTerminalArguments =
+                        serde_json::from_value(request.arguments.unwrap_or_default()).unwrap();
+                    // TODO: no unwrap
+
+                    log::error!("run_in_terminal {:?}", arguments);
+
+                    // HAXX: lldb-vscode uses $CWD/lldb-vscode which is wrong
+                    let program = arguments.args[0]
+                        .strip_prefix(
+                            std::env::current_dir()
+                                .expect("Couldn't get current working directory")
+                                .as_path()
+                                .to_str()
+                                .unwrap(),
+                        )
+                        .and_then(|arg| arg.strip_prefix('/'))
+                        .map(|arg| arg.to_owned())
+                        .unwrap_or_else(|| arguments.args[0].clone());
+                    arguments.args[0] = program;
+
+                    log::error!("{}", arguments.args.join(" "));
+
+                    // TODO: handle cwd
+                    let process = std::process::Command::new("tmux")
+                        .arg("split-window")
+                        .arg(arguments.args.join(" ")) // TODO: first arg is wrong, it uses current dir
+                        .spawn()
+                        .unwrap();
+
+                    let _ = debugger
+                        .reply(
+                            request.seq,
+                            dap::requests::RunInTerminal::COMMAND,
+                            serde_json::to_value(dap::requests::RunInTerminalResponse {
+                                process_id: Some(process.id()),
+                                shell_process_id: None,
+                            })
+                            .map_err(|e| e.into()),
+                        )
+                        .await;
+                }
+                _ => log::error!("DAP reverse request not implemented: {:?}", request),
+            },
+        }
+        self.render();
+    }
+
     pub async fn handle_language_server_message(
         &mut self,
         call: helix_lsp::Call,
@@ -354,12 +557,8 @@ impl Application {
 
                         // trigger textDocument/didOpen for docs that are already open
                         for doc in docs {
-                            // TODO: extract and share with editor.open
-                            let language_id = doc
-                                .language()
-                                .and_then(|s| s.split('.').last()) // source.rust
-                                .map(ToOwned::to_owned)
-                                .unwrap_or_default();
+                            let language_id =
+                                doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
                             tokio::spawn(language_server.text_document_did_open(
                                 doc.url().unwrap(),
@@ -374,6 +573,7 @@ impl Application {
                         let doc = self.editor.document_by_path_mut(&path);
 
                         if let Some(doc) = doc {
+                            let lang_conf = doc.language_config();
                             let text = doc.text();
 
                             let diagnostics = params
@@ -411,19 +611,31 @@ impl Application {
                                         return None;
                                     };
 
+                                    let severity =
+                                        diagnostic.severity.map(|severity| match severity {
+                                            DiagnosticSeverity::ERROR => Error,
+                                            DiagnosticSeverity::WARNING => Warning,
+                                            DiagnosticSeverity::INFORMATION => Info,
+                                            DiagnosticSeverity::HINT => Hint,
+                                            severity => unreachable!(
+                                                "unrecognized diagnostic severity: {:?}",
+                                                severity
+                                            ),
+                                        });
+
+                                    if let Some(lang_conf) = lang_conf {
+                                        if let Some(severity) = severity {
+                                            if severity < lang_conf.diagnostic_severity {
+                                                return None;
+                                            }
+                                        }
+                                    };
+
                                     Some(Diagnostic {
                                         range: Range { start, end },
                                         line: diagnostic.range.start.line as usize,
                                         message: diagnostic.message,
-                                        severity: diagnostic.severity.map(
-                                            |severity| match severity {
-                                                DiagnosticSeverity::ERROR => Error,
-                                                DiagnosticSeverity::WARNING => Warning,
-                                                DiagnosticSeverity::INFORMATION => Info,
-                                                DiagnosticSeverity::HINT => Hint,
-                                                severity => unimplemented!("{:?}", severity),
-                                            },
-                                        ),
+                                        severity,
                                         // code
                                         // source
                                     })
@@ -530,14 +742,6 @@ impl Application {
             Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
                 method, params, id, ..
             }) => {
-                let language_server = match self.editor.language_servers.get_by_id(server_id) {
-                    Some(language_server) => language_server,
-                    None => {
-                        warn!("can't find language server with id `{}`", server_id);
-                        return;
-                    }
-                };
-
                 let call = match MethodCall::parse(&method, params) {
                     Some(call) => call,
                     None => {
@@ -567,7 +771,41 @@ impl Application {
                         if spinner.is_stopped() {
                             spinner.start();
                         }
+                        let language_server =
+                            match self.editor.language_servers.get_by_id(server_id) {
+                                Some(language_server) => language_server,
+                                None => {
+                                    warn!("can't find language server with id `{}`", server_id);
+                                    return;
+                                }
+                            };
+
                         tokio::spawn(language_server.reply(id, Ok(serde_json::Value::Null)));
+                    }
+                    MethodCall::ApplyWorkspaceEdit(params) => {
+                        apply_workspace_edit(
+                            &mut self.editor,
+                            helix_lsp::OffsetEncoding::Utf8,
+                            &params.edit,
+                        );
+
+                        let language_server =
+                            match self.editor.language_servers.get_by_id(server_id) {
+                                Some(language_server) => language_server,
+                                None => {
+                                    warn!("can't find language server with id `{}`", server_id);
+                                    return;
+                                }
+                            };
+
+                        tokio::spawn(language_server.reply(
+                            id,
+                            Ok(json!(lsp::ApplyWorkspaceEditResponse {
+                                applied: true,
+                                failure_reason: None,
+                                failed_change: None,
+                            })),
+                        ));
                     }
                 }
             }
@@ -613,6 +851,8 @@ impl Application {
         }));
 
         self.event_loop().await;
+
+        self.jobs.finish().await;
 
         if self.editor.close_language_servers(None).await.is_err() {
             log::error!("Timed out waiting for language servers to shutdown");

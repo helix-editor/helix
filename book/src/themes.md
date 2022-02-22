@@ -1,14 +1,14 @@
 # Themes
 
-First you'll need to place selected themes in your `themes` directory (i.e `~/.config/helix/themes`), the directory might have to be created beforehand.
-
-To use a custom theme add `theme = <name>` to your [`config.toml`](./configuration.md) or override it during runtime using `:theme <name>`.
-
-The default theme.toml can be found [here](https://github.com/helix-editor/helix/blob/master/theme.toml), and user submitted themes [here](https://github.com/helix-editor/helix/blob/master/runtime/themes). 
+To use a theme add `theme = "<name>"` to your [`config.toml`](./configuration.md) at the very top of the file before the first section or select it during runtime using `:theme <name>`.
 
 ## Creating a theme
 
-First create a file with the name of your theme as file name (i.e `mytheme.toml`) and place it in your `themes` directory (i.e `~/.config/helix/themes`).
+Create a file with the name of your theme as file name (i.e `mytheme.toml`) and place it in your `themes` directory (i.e `~/.config/helix/themes`). The directory might have to be created beforehand.
+
+The names "default" and "base16_default" are reserved for the builtin themes and cannot be overridden by user defined themes.
+
+The default theme.toml can be found [here](https://github.com/helix-editor/helix/blob/master/theme.toml), and user submitted themes [here](https://github.com/helix-editor/helix/blob/master/runtime/themes). 
 
 Each line in the theme file is specified as below:
 
@@ -105,6 +105,7 @@ We use a similar set of scopes as
 
 - `type` - Types
   - `builtin` - Primitive types provided by the language (`int`, `usize`)
+- `constructor`
 
 - `constant` (TODO: constant.other.placeholder for %v)
   - `builtin` Special constants provided by the language (`true`, `false`, `nil` etc)
@@ -146,6 +147,7 @@ We use a similar set of scopes as
     - `repeat` - `for`, `while`, `loop`
     - `import` - `import`, `export`
     - `return`
+    - `exception`
   - `operator` - `or`, `in`
   - `directive` - Preprocessor directives (`#if` in C) 
   - `function` - `fn`, `func`
@@ -164,21 +166,43 @@ We use a similar set of scopes as
 
 - `markup`
   - `heading`
+    - `marker`
+    - `1`, `2`, `3`, `4`, `5`, `6` - heading text for h1 through h6
   - `list`
     - `unnumbered`
     - `numbered`
   - `bold`
   - `italic`
-  - `underline`
-    - `link`
+  - `link`
+    - `url` - urls pointed to by links
+    - `label` - non-url link references
+    - `text` - url and image descriptions in links
   - `quote`
   - `raw`
     - `inline`
     - `block`
 
+- `diff` - version control changes
+  - `plus` - additions
+  - `minus` - deletions
+  - `delta` - modifications
+    - `moved` - renamed or moved files/changes
+
 #### Interface
 
 These scopes are used for theming the editor interface.
+
+- `markup`
+  - `normal`
+    - `completion` - for completion doc popup ui
+    - `hover` - for hover popup ui
+  - `heading`
+    - `completion` - for completion doc popup ui
+    - `hover` - for hover popup ui
+  - `raw`
+    - `inline`
+      - `completion` - for completion doc popup ui
+      - `hover` - for hover popup ui
 
 
 | Key                      | Notes                               |

@@ -142,11 +142,15 @@
 	path = helix-syntax/languages/tree-sitter-perl
 	url = https://github.com/ganezdragon/tree-sitter-perl
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-comment"]
+	path = helix-syntax/languages/tree-sitter-comment
+	url = https://github.com/stsewd/tree-sitter-comment
+	shallow = true
 [submodule "helix-syntax/languages/tree-sitter-wgsl"]
 	path = helix-syntax/languages/tree-sitter-wgsl
 	url = https://github.com/szebniok/tree-sitter-wgsl
 	shallow = true
-[submodule "helix-syntax/tree-sitter-llvm"]
+[submodule "helix-syntax/languages/tree-sitter-llvm"]
 	path = helix-syntax/languages/tree-sitter-llvm
 	url = https://github.com/benwilliamgraham/tree-sitter-llvm
 	shallow = true
@@ -154,3 +158,74 @@
 	path = helix-syntax/languages/tree-sitter-markdown
 	url = https://github.com/MDeiml/tree-sitter-markdown
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-dart"]
+	path = helix-syntax/languages/tree-sitter-dart
+	url = https://github.com/UserNobody14/tree-sitter-dart.git
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-dockerfile"]
+	path = helix-syntax/languages/tree-sitter-dockerfile
+	url = https://github.com/camdencheek/tree-sitter-dockerfile.git
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-fish"]
+	path = helix-syntax/languages/tree-sitter-fish
+	url = https://github.com/ram02z/tree-sitter-fish
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-git-commit"]
+	path = helix-syntax/languages/tree-sitter-git-commit
+	url = https://github.com/the-mikedavis/tree-sitter-git-commit.git
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-llvm-mir"]
+	path = helix-syntax/languages/tree-sitter-llvm-mir
+	url = https://github.com/Flakebi/tree-sitter-llvm-mir.git
+    shallow = true
+[submodule "helix-syntax/languages/tree-sitter-git-diff"]
+	path = helix-syntax/languages/tree-sitter-git-diff
+	url = https://github.com/the-mikedavis/tree-sitter-git-diff.git
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-tablegen"]
+	path = helix-syntax/languages/tree-sitter-tablegen
+	url = https://github.com/Flakebi/tree-sitter-tablegen
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-git-rebase"]
+	path = helix-syntax/languages/tree-sitter-git-rebase
+	url = https://github.com/the-mikedavis/tree-sitter-git-rebase.git
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-lean"]
+	path = helix-syntax/languages/tree-sitter-lean
+	url = https://github.com/Julian/tree-sitter-lean
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-regex"]
+	path = helix-syntax/languages/tree-sitter-regex
+	url = https://github.com/tree-sitter/tree-sitter-regex.git
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-make"]
+	path = helix-syntax/languages/tree-sitter-make
+	url = https://github.com/alemuller/tree-sitter-make
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-git-config"]
+	path = helix-syntax/languages/tree-sitter-git-config
+	url = https://github.com/the-mikedavis/tree-sitter-git-config.git
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-graphql"]
+	path = helix-syntax/languages/tree-sitter-graphql
+	url = https://github.com/bkegley/tree-sitter-graphql
+  shallow = true
+[submodule "helix-syntax/languages/tree-sitter-elm"]
+	path = helix-syntax/languages/tree-sitter-elm
+	url = https://github.com/elm-tooling/tree-sitter-elm
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-iex"]
+	path = helix-syntax/languages/tree-sitter-iex
+	url = https://github.com/elixir-lang/tree-sitter-iex
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-twig"]
+	path = helix-syntax/languages/tree-sitter-twig
+	url = https://github.com/eirabben/tree-sitter-twig.git
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-rescript"]
+	path = helix-syntax/languages/tree-sitter-rescript
+	url = https://github.com/jaredramirez/tree-sitter-rescript
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-erlang"]
+	path = helix-syntax/languages/tree-sitter-erlang
+	url = https://github.com/the-mikedavis/tree-sitter-erlang

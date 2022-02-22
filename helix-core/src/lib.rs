@@ -1,6 +1,9 @@
+pub use encoding_rs as encoding;
+
 pub mod auto_pairs;
 pub mod chars;
 pub mod comment;
+pub mod config;
 pub mod diagnostic;
 pub mod diff;
 pub mod graphemes;
@@ -37,8 +40,14 @@ pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
     line.chars().position(|ch| !ch.is_whitespace())
 }
 
-/// Find `.git` root.
-pub fn find_root(root: Option<&str>) -> Option<std::path::PathBuf> {
+/// Find project root.
+///
+/// Order of detection:
+/// * Top-most folder containing a root marker in current git repository
+/// * Git repostory root if no marker detected
+/// * Top-most folder containing a root marker if not git repository detected
+/// * Current working directory as fallback
+pub fn find_root(root: Option<&str>, root_markers: &[String]) -> Option<std::path::PathBuf> {
     let current_dir = std::env::current_dir().expect("unable to determine current directory");
 
     let root = match root {
@@ -50,16 +59,30 @@ pub fn find_root(root: Option<&str>) -> Option<std::path::PathBuf> {
                 current_dir.join(root)
             }
         }
-        None => current_dir,
+        None => current_dir.clone(),
     };
 
+    let mut top_marker = None;
     for ancestor in root.ancestors() {
-        // TODO: also use defined roots if git isn't found
+        for marker in root_markers {
+            if ancestor.join(marker).exists() {
+                top_marker = Some(ancestor);
+                break;
+            }
+        }
+        // don't go higher than repo
         if ancestor.join(".git").is_dir() {
-            return Some(ancestor.to_path_buf());
+            // Use workspace if detected from marker
+            return Some(top_marker.unwrap_or(ancestor).to_path_buf());
         }
     }
-    None
+
+    // In absence of git repo, use workspace if detected
+    if top_marker.is_some() {
+        top_marker.map(|a| a.to_path_buf())
+    } else {
+        Some(current_dir)
+    }
 }
 
 pub fn runtime_dir() -> std::path::PathBuf {
@@ -190,7 +213,10 @@ use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 
 pub use ropey::{Rope, RopeBuilder, RopeSlice};
 
-pub use tendril::StrTendril as Tendril;
+// pub use tendril::StrTendril as Tendril;
+pub use smartstring::SmartString;
+
+pub type Tendril = SmartString<smartstring::LazyCompact>;
 
 #[doc(inline)]
 pub use {regex, tree_sitter};
@@ -198,7 +224,7 @@ pub use {regex, tree_sitter};
 pub use graphemes::RopeGraphemes;
 pub use position::{coords_at_pos, pos_at_coords, visual_coords_at_pos, Position};
 pub use selection::{Range, Selection};
-pub use smallvec::SmallVec;
+pub use smallvec::{smallvec, SmallVec};
 pub use syntax::Syntax;
 
 pub use diagnostic::Diagnostic;
