@@ -209,7 +209,7 @@
 [submodule "helix-syntax/languages/tree-sitter-graphql"]
 	path = helix-syntax/languages/tree-sitter-graphql
 	url = https://github.com/bkegley/tree-sitter-graphql
-  shallow = true
+	shallow = true
 [submodule "helix-syntax/languages/tree-sitter-elm"]
 	path = helix-syntax/languages/tree-sitter-elm
 	url = https://github.com/elm-tooling/tree-sitter-elm
@@ -229,3 +229,8 @@
 [submodule "helix-syntax/languages/tree-sitter-erlang"]
 	path = helix-syntax/languages/tree-sitter-erlang
 	url = https://github.com/the-mikedavis/tree-sitter-erlang
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-kotlin"]
+	path = helix-syntax/languages/tree-sitter-kotlin
+	url = https://github.com/fwcd/tree-sitter-kotlin.git
+	shallow = true
