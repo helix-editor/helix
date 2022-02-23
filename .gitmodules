@@ -234,3 +234,7 @@
 	path = helix-syntax/languages/tree-sitter-kotlin
 	url = https://github.com/fwcd/tree-sitter-kotlin.git
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-hcl"]
+	path = helix-syntax/languages/tree-sitter-hcl
+	url = https://github.com/MichaHoffmann/tree-sitter-hcl.git
+	shallow = true

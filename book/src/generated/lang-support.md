@@ -21,6 +21,7 @@
 | go | ✓ | ✓ | ✓ | `gopls` |
 | graphql | ✓ |  |  |  |
 | haskell | ✓ |  |  | `haskell-language-server-wrapper` |
+| hcl | ✓ |  | ✓ |  |
 | html | ✓ |  |  |  |
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  |  |
