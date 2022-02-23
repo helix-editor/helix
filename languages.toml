@@ -742,7 +742,6 @@ roots = ["rebar.config"]
 comment-token = "%%"
 indent = { tab-width = 4, unit = "    " }
 
-
 [[language]]
 name = "kotlin"
 scope = "source.kotlin"
