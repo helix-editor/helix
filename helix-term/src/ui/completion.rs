@@ -276,7 +276,7 @@ impl Component for Completion {
             code: KeyCode::Esc, ..
         }) = event
         {
-            return EventResult::Ignored;
+            return EventResult::Ignored(None);
         }
         self.popup.handle_event(event, cx)
     }

@@ -1,5 +1,5 @@
 use crate::{
-    compositor::{Component, Compositor, Context, EventResult},
+    compositor::{Callback, Component, Context, EventResult},
     ctrl, key,
 };
 use crossterm::event::Event;
@@ -18,6 +18,7 @@ pub struct Popup<T: Component> {
     size: (u16, u16),
     child_size: (u16, u16),
     scroll: usize,
+    auto_close: bool,
     id: &'static str,
 }
 
@@ -33,6 +34,7 @@ impl<T: Component> Popup<T> {
             size: (0, 0),
             child_size: (0, 0),
             scroll: 0,
+            auto_close: false,
             id,
         }
     }
@@ -43,6 +45,11 @@ impl<T: Component> Popup<T> {
 
     pub fn margin(mut self, margin: Margin) -> Self {
         self.margin = margin;
+        self
+    }
+
+    pub fn auto_close(mut self, auto_close: bool) -> Self {
+        self.auto_close = auto_close;
         self
     }
 
@@ -105,19 +112,19 @@ impl<T: Component> Component for Popup<T> {
             Event::Key(event) => event,
             Event::Resize(_, _) => {
                 // TODO: calculate inner area, call component's handle_event with that area
-                return EventResult::Ignored;
+                return EventResult::Ignored(None);
             }
-            _ => return EventResult::Ignored,
+            _ => return EventResult::Ignored(None),
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
+        let close_fn: Callback = Box::new(|compositor, _| {
             // remove the layer
             compositor.pop();
-        })));
+        });
 
         match key.into() {
             // esc or ctrl-c aborts the completion and closes the menu
-            key!(Esc) | ctrl!('c') => close_fn,
+            key!(Esc) | ctrl!('c') => EventResult::Consumed(Some(close_fn)),
             ctrl!('d') => {
                 self.scroll(self.size.1 as usize / 2, true);
                 EventResult::Consumed(None)
@@ -126,7 +133,17 @@ impl<T: Component> Component for Popup<T> {
                 self.scroll(self.size.1 as usize / 2, false);
                 EventResult::Consumed(None)
             }
-            _ => self.contents.handle_event(event, cx),
+            _ => {
+                let contents_event_result = self.contents.handle_event(event, cx);
+
+                if self.auto_close {
+                    if let EventResult::Ignored(None) = contents_event_result {
+                        return EventResult::Ignored(Some(close_fn));
+                    }
+                }
+
+                contents_event_result
+            }
         }
         // for some events, we want to process them but send ignore, specifically all input except
         // tab/enter/ctrl-k or whatever will confirm the selection/ ctrl-n/ctrl-p for scroll.
