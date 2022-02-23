@@ -231,8 +231,10 @@ impl<T: Item + 'static> Component for Menu<T> {
             key!(Enter) => {
                 if let Some(selection) = self.selection() {
                     (self.callback_fn)(cx.editor, Some(selection), MenuEvent::Validate);
+                    return close_fn;
+                } else {
+                    return EventResult::Ignored(None);
                 }
-                return close_fn;
             }
             // KeyEvent {
             //     code: KeyCode::Char(c),
