@@ -4649,7 +4649,8 @@ fn indent(cx: &mut Context) {
     let transaction = Transaction::change(
         doc.text(),
         lines.into_iter().filter_map(|line| {
-            if Cow::from(doc.text().line(line)).trim().is_empty() {
+            let is_blank = doc.text().line(line).chunks().all(|s| s.trim().is_empty();
+            if is_blank {
                 return None;
             }
             let pos = doc.text().line_to_char(line);
