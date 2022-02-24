@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{search, Range, Selection};
 use ropey::RopeSlice;
 
@@ -10,6 +12,27 @@ pub const PAIRS: &[(char, char)] = &[
     ('「', '」'),
     ('（', '）'),
 ];
+
+#[derive(Debug, PartialEq)]
+pub enum Error {
+    PairNotFound,
+    CursorOverlap,
+    RangeExceedsText,
+    CursorOnAmbiguousPair,
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match *self {
+            Error::PairNotFound => "Surround pair not found around all cursors",
+            Error::CursorOverlap => "Cursors overlap for a single surround pair range",
+            Error::RangeExceedsText => "Cursor range exceeds text length",
+            Error::CursorOnAmbiguousPair => "Cursor on ambiguous surround pair",
+        })
+    }
+}
+
+type Result<T> = std::result::Result<T, Error>;
 
 /// Given any char in [PAIRS], return the open and closing chars. If not found in
 /// [PAIRS] return (ch, ch).
@@ -37,31 +60,36 @@ pub fn find_nth_pairs_pos(
     ch: char,
     range: Range,
     n: usize,
-) -> Option<(usize, usize)> {
-    if text.len_chars() < 2 || range.to() >= text.len_chars() {
-        return None;
+) -> Result<(usize, usize)> {
+    if text.len_chars() < 2 {
+        return Err(Error::PairNotFound);
+    }
+    if range.to() >= text.len_chars() {
+        return Err(Error::RangeExceedsText);
     }
 
     let (open, close) = get_pair(ch);
     let pos = range.cursor(text);
 
-    if open == close {
+    let (open, close) = if open == close {
         if Some(open) == text.get_char(pos) {
             // Cursor is directly on match char. We return no match
             // because there's no way to know which side of the char
             // we should be searching on.
-            return None;
+            return Err(Error::CursorOnAmbiguousPair);
         }
-        Some((
-            search::find_nth_prev(text, open, pos, n)?,
-            search::find_nth_next(text, close, pos, n)?,
-        ))
+        (
+            search::find_nth_prev(text, open, pos, n),
+            search::find_nth_next(text, close, pos, n),
+        )
     } else {
-        Some((
-            find_nth_open_pair(text, open, close, pos, n)?,
-            find_nth_close_pair(text, open, close, pos, n)?,
-        ))
-    }
+        (
+            find_nth_open_pair(text, open, close, pos, n),
+            find_nth_close_pair(text, open, close, pos, n),
+        )
+    };
+
+    Option::zip(open, close).ok_or(Error::PairNotFound)
 }
 
 fn find_nth_open_pair(
@@ -151,17 +179,17 @@ pub fn get_surround_pos(
     selection: &Selection,
     ch: char,
     skip: usize,
-) -> Option<Vec<usize>> {
+) -> Result<Vec<usize>> {
     let mut change_pos = Vec::new();
 
     for &range in selection {
         let (open_pos, close_pos) = find_nth_pairs_pos(text, ch, range, skip)?;
         if change_pos.contains(&open_pos) || change_pos.contains(&close_pos) {
-            return None;
+            return Err(Error::CursorOverlap);
         }
         change_pos.extend_from_slice(&[open_pos, close_pos]);
     }
-    Some(change_pos)
+    Ok(change_pos)
 }
 
 #[cfg(test)]
@@ -175,7 +203,7 @@ mod test {
     #[allow(clippy::type_complexity)]
     fn check_find_nth_pair_pos(
         text: &str,
-        cases: Vec<(usize, char, usize, Option<(usize, usize)>)>,
+        cases: Vec<(usize, char, usize, Result<(usize, usize)>)>,
     ) {
         let doc = Rope::from(text);
         let slice = doc.slice(..);
@@ -196,13 +224,13 @@ mod test {
             "some (text) here",
             vec![
                 // cursor on [t]ext
-                (6, '(', 1, Some((5, 10))),
-                (6, ')', 1, Some((5, 10))),
+                (6, '(', 1, Ok((5, 10))),
+                (6, ')', 1, Ok((5, 10))),
                 // cursor on so[m]e
-                (2, '(', 1, None),
+                (2, '(', 1, Err(Error::PairNotFound)),
                 // cursor on bracket itself
-                (5, '(', 1, Some((5, 10))),
-                (10, '(', 1, Some((5, 10))),
+                (5, '(', 1, Ok((5, 10))),
+                (10, '(', 1, Ok((5, 10))),
             ],
         );
     }
@@ -213,9 +241,9 @@ mod test {
             "(so (many (good) text) here)",
             vec![
                 // cursor on go[o]d
-                (13, '(', 1, Some((10, 15))),
-                (13, '(', 2, Some((4, 21))),
-                (13, '(', 3, Some((0, 27))),
+                (13, '(', 1, Ok((10, 15))),
+                (13, '(', 2, Ok((4, 21))),
+                (13, '(', 3, Ok((0, 27))),
             ],
         );
     }
@@ -226,11 +254,11 @@ mod test {
             "'so 'many 'good' text' here'",
             vec![
                 // cursor on go[o]d
-                (13, '\'', 1, Some((10, 15))),
-                (13, '\'', 2, Some((4, 21))),
-                (13, '\'', 3, Some((0, 27))),
+                (13, '\'', 1, Ok((10, 15))),
+                (13, '\'', 2, Ok((4, 21))),
+                (13, '\'', 3, Ok((0, 27))),
                 // cursor on the quotes
-                (10, '\'', 1, None),
+                (10, '\'', 1, Err(Error::CursorOnAmbiguousPair)),
             ],
         )
     }
@@ -241,8 +269,8 @@ mod test {
             "((so)((many) good (text))(here))",
             vec![
                 // cursor on go[o]d
-                (15, '(', 1, Some((5, 24))),
-                (15, '(', 2, Some((0, 31))),
+                (15, '(', 1, Ok((5, 24))),
+                (15, '(', 2, Ok((0, 31))),
             ],
         )
     }
@@ -253,9 +281,9 @@ mod test {
             "(so [many {good} text] here)",
             vec![
                 // cursor on go[o]d
-                (13, '{', 1, Some((10, 15))),
-                (13, '[', 1, Some((4, 21))),
-                (13, '(', 1, Some((0, 27))),
+                (13, '{', 1, Ok((10, 15))),
+                (13, '[', 1, Ok((4, 21))),
+                (13, '(', 1, Ok((0, 27))),
             ],
         )
     }
@@ -285,11 +313,10 @@ mod test {
 
         let selection =
             Selection::new(SmallVec::from_slice(&[Range::point(2), Range::point(9)]), 0);
-
         // cursor on s[o]me, c[h]ars
         assert_eq!(
             get_surround_pos(slice, &selection, '(', 1),
-            None // different surround chars
+            Err(Error::PairNotFound) // different surround chars
         );
 
         let selection = Selection::new(
@@ -299,7 +326,15 @@ mod test {
         // cursor on [x]x, newli[n]e
         assert_eq!(
             get_surround_pos(slice, &selection, '(', 1),
-            None // overlapping surround chars
+            Err(Error::PairNotFound) // overlapping surround chars
+        );
+
+        let selection =
+            Selection::new(SmallVec::from_slice(&[Range::point(2), Range::point(3)]), 0);
+        // cursor on s[o][m]e
+        assert_eq!(
+            get_surround_pos(slice, &selection, '[', 1),
+            Err(Error::CursorOverlap)
         );
     }
 }

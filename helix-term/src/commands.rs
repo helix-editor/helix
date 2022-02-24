@@ -5442,8 +5442,11 @@ fn surround_replace(cx: &mut Context) {
         let selection = doc.selection(view.id);
 
         let change_pos = match surround::get_surround_pos(text, selection, from, count) {
-            Some(c) => c,
-            None => return,
+            Ok(c) => c,
+            Err(err) => {
+                cx.editor.set_error(err.to_string());
+                return;
+            }
         };
 
         cx.on_next_key(move |cx, event| {
@@ -5478,8 +5481,11 @@ fn surround_delete(cx: &mut Context) {
         let selection = doc.selection(view.id);
 
         let change_pos = match surround::get_surround_pos(text, selection, ch, count) {
-            Some(c) => c,
-            None => return,
+            Ok(c) => c,
+            Err(err) => {
+                cx.editor.set_error(err.to_string());
+                return;
+            }
         };
 
         let transaction =
