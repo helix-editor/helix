@@ -46,14 +46,20 @@
 "diagnostic" = "rose"
 "error" = "love"
 
-"markup.heading" = { fg = "rose" }
-"markup.raw.inline" = { fg = "foam" }
+"markup.heading.marker" = "subtle"
+"markup.heading.1" = { fg = "love", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "gold", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "rose", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "pine", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "form", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "fg", modifiers = ["bold"] }
+"markup.list" = { fg = "love" }
 "markup.bold" = { fg = "gold", modifiers = ["bold"] }
 "markup.italic" = { fg = "iris", modifiers = ["italic"] }
-"markup.list" = { fg = "love" }
-"markup.quote" = { fg = "rose" }
 "markup.link.url" = { fg = "pine", modifiers = ["underlined"]}
-"markup.link.test" = { fg = "foam" }
+"markup.link.text" = { fg = "foam" }
+"markup.quote" = { fg = "rose" }
+"markup.raw" = { fg = "foam" }
 
 [palette]
 base     = "#faf4ed" 
