@@ -393,6 +393,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+ "which",
 ]
 
 [[package]]
@@ -411,6 +412,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
+ "which",
 ]
 
 [[package]]

@@ -479,32 +479,13 @@ impl Application {
             Payload::Response(_) => unreachable!(),
             Payload::Request(request) => match request.command.as_str() {
                 RunInTerminal::COMMAND => {
-                    let mut arguments: dap::requests::RunInTerminalArguments =
+                    let arguments: dap::requests::RunInTerminalArguments =
                         serde_json::from_value(request.arguments.unwrap_or_default()).unwrap();
                     // TODO: no unwrap
 
-                    log::error!("run_in_terminal {:?}", arguments);
-
-                    // HAXX: lldb-vscode uses $CWD/lldb-vscode which is wrong
-                    let program = arguments.args[0]
-                        .strip_prefix(
-                            std::env::current_dir()
-                                .expect("Couldn't get current working directory")
-                                .as_path()
-                                .to_str()
-                                .unwrap(),
-                        )
-                        .and_then(|arg| arg.strip_prefix('/'))
-                        .map(|arg| arg.to_owned())
-                        .unwrap_or_else(|| arguments.args[0].clone());
-                    arguments.args[0] = program;
-
-                    log::error!("{}", arguments.args.join(" "));
-
-                    // TODO: handle cwd
                     let process = std::process::Command::new("tmux")
                         .arg("split-window")
-                        .arg(arguments.args.join(" ")) // TODO: first arg is wrong, it uses current dir
+                        .arg(arguments.args.join(" "))
                         .spawn()
                         .unwrap();
 
