@@ -205,16 +205,16 @@ impl<T: Item + 'static> Component for Menu<T> {
             _ => return EventResult::Ignored(None),
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
+        let close_fn = Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.pop();
-        })));
+        }));
 
         match event.into() {
             // esc or ctrl-c aborts the completion and closes the menu
             key!(Esc) | ctrl!('c') => {
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Abort);
-                return close_fn;
+                return EventResult::Consumed(close_fn);
             }
             // arrow up/ctrl-p/shift-tab prev completion choice (including updating the doc)
             shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
@@ -231,13 +231,9 @@ impl<T: Item + 'static> Component for Menu<T> {
             key!(Enter) => {
                 if let Some(selection) = self.selection() {
                     (self.callback_fn)(cx.editor, Some(selection), MenuEvent::Validate);
-                    return close_fn;
+                    return EventResult::Consumed(close_fn);
                 } else {
-                    return EventResult::Ignored(Some(Box::new(
-                        |compositor: &mut Compositor, _| {
-                            compositor.pop();
-                        },
-                    )));
+                    return EventResult::Ignored(close_fn);
                 }
             }
             // KeyEvent {
