@@ -2946,7 +2946,24 @@ pub mod cmd {
         }
 
         if !output.is_empty() {
-            cx.editor.autoinfo = Some(Info::from_string("Run shell command", output.to_string()));
+            let callback = async move {
+                let call: job::Callback =
+                    Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                        let contents = ui::Markdown::new(
+                            format!("```sh\n{}\n```", output.to_string()),
+                            editor.syn_loader.clone(),
+                        );
+                        let mut popup = Popup::new("shell", contents);
+                        popup.set_position(Some(helix_core::Position::new(
+                            editor.cursor().0.unwrap_or_default().row,
+                            2,
+                        )));
+                        compositor.replace_or_push("shell", Box::new(popup));
+                    });
+                Ok(call)
+            };
+
+            cx.jobs.callback(callback);
         }
 
         Ok(())
