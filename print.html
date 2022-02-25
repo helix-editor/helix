@@ -714,7 +714,6 @@ hidden = false
 <tr><td><code>shell</code></td><td>Shell to use when running external commands.</td><td>Unix: <code>[&quot;sh&quot;, &quot;-c&quot;]</code><br/>Windows: <code>[&quot;cmd&quot;, &quot;/C&quot;]</code></td></tr>
 <tr><td><code>line-number</code></td><td>Line number display: <code>absolute</code> simply shows each line's number, while <code>relative</code> shows the distance from the current line. When unfocused or in insert mode, <code>relative</code> will still show absolute line numbers.</td><td><code>absolute</code></td></tr>
 <tr><td><code>smart-case</code></td><td>Enable smart case regex searching (case insensitive unless pattern contains upper case characters)</td><td><code>true</code></td></tr>
-<tr><td><code>auto-pairs</code></td><td>Enable automatic insertion of pairs to parenthese, brackets, etc.</td><td><code>true</code></td></tr>
 <tr><td><code>auto-completion</code></td><td>Enable automatic pop up of auto-completion.</td><td><code>true</code></td></tr>
 <tr><td><code>idle-timeout</code></td><td>Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant.</td><td><code>400</code></td></tr>
 <tr><td><code>completion-trigger-len</code></td><td>The min-length of word under cursor to trigger autocompletion</td><td><code>2</code></td></tr>
@@ -744,6 +743,38 @@ available, which is not defined by default.</p>
 <tr><td><code>git-exclude</code></td><td>Enables reading <code>.git/info/exclude</code> files.</td><td>true</td></tr>
 <tr><td><code>max-depth</code></td><td>Set with an integer value for maximum depth to recurse.</td><td>Defaults to <code>None</code>.</td></tr>
 </tbody></table>
+<h3 id="editorauto-pairs-section"><a class="header" href="#editorauto-pairs-section"><code>[editor.auto-pairs]</code> Section</a></h3>
+<p>Enable automatic insertion of pairs to parentheses, brackets, etc. Can be
+a simple boolean value, or a specific mapping of pairs of single characters.</p>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>false</code></td><td>Completely disable auto pairing, regardless of language-specific settings</td></tr>
+<tr><td><code>true</code></td><td>Use the default pairs: <code>(){}[]''&quot;&quot;``</code></td></tr>
+<tr><td>Mapping of pairs</td><td>e.g. <code>{ &quot;(&quot; =  &quot;)&quot;, &quot;{&quot; = &quot;}&quot;, ... }</code></td></tr>
+</tbody></table>
+<p>Example</p>
+<pre><code class="language-toml">[editor.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'&quot;' = '&quot;'
+'`' = '`'
+'&lt;' = '&gt;'
+</code></pre>
+<p>Additionally, this setting can be used in a language config. Unless
+the editor setting is <code>false</code>, this will override the editor config in
+documents with this language.</p>
+<p>Example <code>languages.toml</code> that adds &lt;&gt; and removes ''</p>
+<pre><code class="language-toml">[[language]]
+name = &quot;rust&quot;
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'&quot;' = '&quot;'
+'`' = '`'
+'&lt;' = '&gt;'
+</code></pre>
 <h2 id="lsp"><a class="header" href="#lsp">LSP</a></h2>
 <p>To display all language server messages in the status line add the following to your <code>config.toml</code>:</p>
 <pre><code class="language-toml">[lsp]
