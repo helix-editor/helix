@@ -165,7 +165,7 @@ impl Completion {
                     if let Some(additional_edits) = item
                         .additional_text_edits
                         .as_ref()
-                        .or_else(|| resolved_additional_text_edits.as_ref())
+                        .or(resolved_additional_text_edits.as_ref())
                     {
                         if !additional_edits.is_empty() {
                             let transaction = util::generate_transaction_from_edits(
