@@ -490,7 +490,7 @@ mod test {
         assert_eq!(word_wrapper, vec!["AAAAAAAAAAAAAAA", "AAAA\u{00a0}AAA",]);
 
         // Ensure that if the character was a regular space, it would be wrapped differently.
-        let text_space = text.replace("\u{00a0}", " ");
+        let text_space = text.replace('\u{00a0}', " ");
         let (word_wrapper_space, _) =
             run_composer(Composer::WordWrapper { trim: true }, &text_space, width);
         assert_eq!(word_wrapper_space, vec!["AAAAAAAAAAAAAAA AAAA", "AAA",]);

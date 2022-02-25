@@ -33,7 +33,7 @@ pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
 /// File path and range of lines (used to align and highlight lines)
-type FileLocation = (PathBuf, Option<(usize, usize)>);
+pub type FileLocation = (PathBuf, Option<(usize, usize)>);
 
 pub struct FilePicker<T> {
     picker: Picker<T>,
@@ -419,7 +419,7 @@ impl<T: 'static> Component for Picker<T> {
         let key_event = match event {
             Event::Key(event) => event,
             Event::Resize(..) => return EventResult::Consumed(None),
-            _ => return EventResult::Ignored,
+            _ => return EventResult::Ignored(None),
         };
 
         let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {

@@ -4,7 +4,7 @@ use tui::buffer::Buffer as Surface;
 use helix_view::graphics::Rect;
 
 pub struct Text {
-    contents: tui::text::Text<'static>,
+    pub(crate) contents: tui::text::Text<'static>,
     size: (u16, u16),
     viewport: (u16, u16),
 }
@@ -48,4 +48,20 @@ impl Component for Text {
         }
         Some(self.size)
     }
+}
+
+pub fn required_size(text: &tui::text::Text, max_text_width: u16) -> (u16, u16) {
+    let mut text_width = 0;
+    let mut height = 0;
+    for content in &text.lines {
+        height += 1;
+        let content_width = content.width() as u16;
+        if content_width > max_text_width {
+            text_width = max_text_width;
+            height += content_width / max_text_width;
+        } else if content_width > text_width {
+            text_width = content_width;
+        }
+    }
+    (text_width, height)
 }

@@ -21,12 +21,14 @@
 | go | ✓ | ✓ | ✓ | `gopls` |
 | graphql | ✓ |  |  |  |
 | haskell | ✓ |  |  | `haskell-language-server-wrapper` |
+| hcl | ✓ |  | ✓ |  |
 | html | ✓ |  |  |  |
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  |  |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
 | json | ✓ |  | ✓ |  |
 | julia | ✓ |  |  | `julia` |
+| kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ |  |  |  |
 | lean | ✓ |  |  | `lean` |
 | ledger | ✓ |  |  |  |

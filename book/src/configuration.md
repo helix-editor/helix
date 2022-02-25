@@ -36,7 +36,6 @@ hidden = false
 | `shell` | Shell to use when running external commands. | Unix: `["sh", "-c"]`<br/>Windows: `["cmd", "/C"]` |
 | `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers. | `absolute` |
 | `smart-case` | Enable smart case regex searching (case insensitive unless pattern contains upper case characters) | `true` |
-| `auto-pairs` | Enable automatic insertion of pairs to parenthese, brackets, etc. | `true` |
 | `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
@@ -75,6 +74,49 @@ available, which is not defined by default.
 |`git-global` | Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option. | true
 |`git-exclude` | Enables reading `.git/info/exclude` files. | true
 |`max-depth` | Set with an integer value for maximum depth to recurse. | Defaults to `None`.
+
+### `[editor.auto-pairs]` Section
+
+Enable automatic insertion of pairs to parentheses, brackets, etc. Can be
+a simple boolean value, or a specific mapping of pairs of single characters.
+
+| Key | Description |
+| --- | ----------- |
+| `false` | Completely disable auto pairing, regardless of language-specific settings
+| `true` | Use the default pairs: <code>(){}[]''""``</code>
+| Mapping of pairs | e.g. `{ "(" =  ")", "{" = "}", ... }`
+
+Example
+
+```toml
+[editor.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+'<' = '>'
+```
+
+Additionally, this setting can be used in a language config. Unless
+the editor setting is `false`, this will override the editor config in
+documents with this language.
+
+Example `languages.toml` that adds <> and removes ''
+
+```toml
+[[language]]
+name = "rust"
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+'<' = '>'
+```
+
 
 ## LSP
 

@@ -49,6 +49,7 @@ fn test_treesitter_indent(file_name: &str, lang_scope: &str) {
             indent_query: OnceCell::new(),
             textobject_query: OnceCell::new(),
             debugger: None,
+            auto_pairs: None,
         }],
     });
 

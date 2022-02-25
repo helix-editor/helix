@@ -165,7 +165,7 @@ impl Completion {
                     if let Some(additional_edits) = item
                         .additional_text_edits
                         .as_ref()
-                        .or_else(|| resolved_additional_text_edits.as_ref())
+                        .or(resolved_additional_text_edits.as_ref())
                     {
                         if !additional_edits.is_empty() {
                             let transaction = util::generate_transaction_from_edits(
@@ -276,7 +276,7 @@ impl Component for Completion {
             code: KeyCode::Esc, ..
         }) = event
         {
-            return EventResult::Ignored;
+            return EventResult::Ignored(None);
         }
         self.popup.handle_event(event, cx)
     }
@@ -305,8 +305,6 @@ impl Component for Completion {
             let coords = helix_core::visual_coords_at_pos(text, cursor_pos, doc.tab_width());
             let cursor_pos = (coords.row - view.offset.row) as u16;
 
-            let markdown_ui =
-                |content, syn_loader| Markdown::new(content, syn_loader).style_group("completion");
             let mut markdown_doc = match &option.documentation {
                 Some(lsp::Documentation::String(contents))
                 | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
@@ -314,7 +312,7 @@ impl Component for Completion {
                     value: contents,
                 })) => {
                     // TODO: convert to wrapped text
-                    markdown_ui(
+                    Markdown::new(
                         format!(
                             "```{}\n{}\n```\n{}",
                             language,
@@ -329,7 +327,7 @@ impl Component for Completion {
                     value: contents,
                 })) => {
                     // TODO: set language based on doc scope
-                    markdown_ui(
+                    Markdown::new(
                         format!(
                             "```{}\n{}\n```\n{}",
                             language,
@@ -343,7 +341,7 @@ impl Component for Completion {
                     // TODO: copied from above
 
                     // TODO: set language based on doc scope
-                    markdown_ui(
+                    Markdown::new(
                         format!(
                             "```{}\n{}\n```",
                             language,

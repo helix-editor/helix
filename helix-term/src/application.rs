@@ -483,10 +483,9 @@ impl Application {
                         serde_json::from_value(request.arguments.unwrap_or_default()).unwrap();
                     // TODO: no unwrap
 
-                    // TODO: handle cwd
                     let process = std::process::Command::new("tmux")
                         .arg("split-window")
-                        .arg(arguments.args.join(" ")) // TODO: first arg is wrong, it uses current dir
+                        .arg(arguments.args.join(" "))
                         .spawn()
                         .unwrap();
 
