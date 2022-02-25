@@ -266,7 +266,7 @@ pub struct Picker<T> {
     options: Vec<T>,
     // filter: String,
     matcher: Box<Matcher>,
-    /// (index, score, highlight indices)
+    /// (index, score)
     matches: Vec<(usize, i64)>,
     /// Filter over original options.
     filters: Vec<usize>, // could be optimized into bit but not worth it now
@@ -334,7 +334,7 @@ impl<T> Picker<T> {
                     }
                     // TODO: maybe using format_fn isn't the best idea here
                     let text = (self.format_fn)(option);
-                    // Highlight indices are computed lazily in the render function and cached
+                    // Highlight indices are computed lazily in the render function
                     self.matcher
                         .fuzzy_match(&text, pattern)
                         .map(|score| (index, score))
