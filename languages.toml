@@ -757,3 +757,12 @@ roots = ["settings.gradle", "settings.gradle.kts"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
 language-server = { command = "kotlin-language-server" } 
+
+[[language]]
+name = "hcl"
+scope = "source.hcl"
+injection-regex = "(hcl|tf)"
+file-types = ["hcl", "tf"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
