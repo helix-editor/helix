@@ -1012,6 +1012,40 @@ fn sort_impl(
     Ok(())
 }
 
+fn reflow(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    // TODO: Can we instead take an Option<Cow<str>>, and then if the user
+    // doesn't pass in a selection, default to 79 characters per line?
+
+    let max_line_len: usize = args
+        .get(0)
+        .context("expected argument: max_line_len (integer)")?
+        .parse()?;
+
+    let (view, doc) = current!(cx.editor);
+    let rope = doc.text();
+
+    // TODO: If only a single character is selected, we should expand the
+    // selection to whatever "object" (can we use treesitter for this? text query?)
+    // that single selection is part of.
+    let selection = doc.selection(view.id);
+    let transaction = Transaction::change_by_selection(rope, selection, |range| {
+        let beg = std::cmp::min(range.anchor, range.head);
+        let end = std::cmp::max(range.anchor, range.head);
+        let reflowed_text = helix_core::wrap::reflow_hard_wrap(rope.slice(beg..end), max_line_len);
+
+        (beg, end, Some(reflowed_text.into()))
+    });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+
+    Ok(())
+}
+
 fn tree_sitter_subtree(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1472,6 +1506,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Sort ranges in selection in reverse order.",
             fun: sort_reverse,
+            completer: None,
+        },
+        TypableCommand {
+            name: "reflow",
+            aliases: &[],
+            doc: "Hard wrap the current selection of lines to a configured width.",
+            fun: reflow,
             completer: None,
         },
         TypableCommand {
