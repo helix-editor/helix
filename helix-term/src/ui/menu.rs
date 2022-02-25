@@ -233,7 +233,11 @@ impl<T: Item + 'static> Component for Menu<T> {
                     (self.callback_fn)(cx.editor, Some(selection), MenuEvent::Validate);
                     return close_fn;
                 } else {
-                    return EventResult::Ignored(None);
+                    return EventResult::Ignored(Some(Box::new(
+                        |compositor: &mut Compositor, _| {
+                            compositor.pop();
+                        },
+                    )));
                 }
             }
             // KeyEvent {
