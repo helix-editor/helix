@@ -70,7 +70,26 @@ Currently supported: `word`, `surround`, `function`, `class`, `parameter`.
 | `c`                    | Class                    |
 | `p`                    | Parameter                |
 
-Note: `f`, `c`, etc need a tree-sitter grammar active for the current
+> NOTE: `f`, `c`, etc need a tree-sitter grammar active for the current
 document and a special tree-sitter query file to work properly. [Only
-some grammars](https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+filename%3Atextobjects.scm&type=Code&ref=advsearch&l=&l=)
-currently have the query file implemented. Contributions are welcome !
+some grammars][lang-support] currently have the query file implemented.
+Contributions are welcome!
+
+## Tree-sitter Textobject Based Navigation
+
+Navigating between functions, classes, parameters, etc is made
+possible by leveraging tree-sitter and textobjects queries. For
+example to move to the next function use `]f`, to move to previous
+class use `[c`, and so on.
+
+![tree-sitter-nav-demo][tree-sitter-nav-demo]
+
+See the [unimpaired][unimpaired-keybinds] section of the keybind
+documentation for the full reference.
+
+> NOTE: This feature is dependent on tree-sitter based textobjects
+and therefore requires the corresponding query file to work properly.
+
+[lang-support]: ./lang-support.md
+[unimpaired-keybinds]: ./keymap.md#unimpaired
+[tree-sitter-nav-demo]: https://user-images.githubusercontent.com/23398472/152332550-7dfff043-36a2-4aec-b8f2-77c13eb56d6f.gif

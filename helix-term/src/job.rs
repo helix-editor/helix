@@ -93,8 +93,8 @@ impl Jobs {
     }
 
     /// Blocks until all the jobs that need to be waited on are done.
-    pub fn finish(&mut self) {
+    pub async fn finish(&mut self) {
         let wait_futures = std::mem::take(&mut self.wait_futures);
-        helix_lsp::block_on(wait_futures.for_each(|_| future::ready(())));
+        wait_futures.for_each(|_| future::ready(())).await
     }
 }

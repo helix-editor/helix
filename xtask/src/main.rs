@@ -120,7 +120,7 @@ pub mod md_gen {
     }
 
     fn md_table_row(cols: &[String]) -> String {
-        "| ".to_owned() + &cols.join(" | ") + " |\n"
+        format!("| {} |\n", cols.join(" | "))
     }
 
     fn md_mono(s: &str) -> String {

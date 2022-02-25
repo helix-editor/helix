@@ -3,6 +3,7 @@ pub(crate) mod editor;
 mod info;
 mod markdown;
 pub mod menu;
+pub mod overlay;
 mod picker;
 mod popup;
 mod prompt;
@@ -13,7 +14,7 @@ pub use completion::Completion;
 pub use editor::EditorView;
 pub use markdown::Markdown;
 pub use menu::Menu;
-pub use picker::{FilePicker, Picker};
+pub use picker::{FileLocation, FilePicker, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
@@ -29,7 +30,7 @@ pub fn regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     fun: impl Fn(&mut View, &mut Document, Regex, PromptEvent) + 'static,
 ) -> Prompt {
     let (view, doc) = current!(cx.editor);
@@ -37,7 +38,7 @@ pub fn regex_prompt(
     let snapshot = doc.selection(view_id).clone();
     let offset_snapshot = view.offset;
 
-    Prompt::new(
+    let mut prompt = Prompt::new(
         prompt,
         history_register,
         completion_fn,
@@ -65,7 +66,7 @@ pub fn regex_prompt(
                         return;
                     }
 
-                    let case_insensitive = if cx.editor.config.smart_case {
+                    let case_insensitive = if cx.editor.config.search.smart_case {
                         !input.chars().any(char::is_uppercase)
                     } else {
                         false
@@ -90,7 +91,10 @@ pub fn regex_prompt(
                 }
             }
         },
-    )
+    );
+    // Calculate initial completion
+    prompt.recalculate_completion(cx.editor);
+    prompt
 }
 
 pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
@@ -107,7 +111,11 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         .git_ignore(config.file_picker.git_ignore)
         .git_global(config.file_picker.git_global)
         .git_exclude(config.file_picker.git_exclude)
-        .max_depth(config.file_picker.max_depth);
+        .max_depth(config.file_picker.max_depth)
+        // We always want to ignore the .git directory, otherwise if
+        // `ignore` is turned off above, we end up with a lot of noise
+        // in our picker.
+        .filter_entry(|entry| entry.file_name() != ".git");
 
     let walk_builder = match type_builder.add(
         "compressed",
@@ -155,14 +163,10 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         files,
         move |path: &PathBuf| {
             // format_fn
-            path.strip_prefix(&root)
-                .unwrap_or(path)
-                .to_str()
-                .unwrap()
-                .into()
+            path.strip_prefix(&root).unwrap_or(path).to_string_lossy()
         },
-        move |editor: &mut Editor, path: &PathBuf, action| {
-            editor
+        move |cx, path: &PathBuf, action| {
+            cx.editor
                 .open(path.into(), action)
                 .expect("editor.open failed");
         },
@@ -174,15 +178,48 @@ pub mod completers {
     use crate::ui::prompt::Completion;
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
-    use helix_view::editor::Config;
+    use helix_view::document::SCRATCH_BUFFER_NAME;
     use helix_view::theme;
+    use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::cmp::Reverse;
 
-    pub type Completer = fn(&str) -> Vec<Completion>;
+    pub type Completer = fn(&Editor, &str) -> Vec<Completion>;
 
-    pub fn theme(input: &str) -> Vec<Completion> {
+    pub fn none(_editor: &Editor, _input: &str) -> Vec<Completion> {
+        Vec::new()
+    }
+
+    pub fn buffer(editor: &Editor, input: &str) -> Vec<Completion> {
+        let mut names: Vec<_> = editor
+            .documents
+            .iter()
+            .map(|(_id, doc)| {
+                let name = doc
+                    .relative_path()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|| String::from(SCRATCH_BUFFER_NAME));
+                ((0..), Cow::from(name))
+            })
+            .collect();
+
+        let matcher = Matcher::default();
+
+        let mut matches: Vec<_> = names
+            .into_iter()
+            .filter_map(|(_range, name)| {
+                matcher.fuzzy_match(&name, input).map(|score| (name, score))
+            })
+            .collect();
+
+        matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+        names = matches.into_iter().map(|(name, _)| ((0..), name)).collect();
+
+        names
+    }
+
+    pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
         let mut names = theme::Loader::read_names(&helix_core::runtime_dir().join("themes"));
         names.extend(theme::Loader::read_names(
             &helix_core::config_dir().join("themes"),
@@ -210,7 +247,7 @@ pub mod completers {
         names
     }
 
-    pub fn setting(input: &str) -> Vec<Completion> {
+    pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
             serde_json::to_value(Config::default())
                 .unwrap()
@@ -235,7 +272,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn filename(input: &str) -> Vec<Completion> {
+    pub fn filename(_editor: &Editor, input: &str) -> Vec<Completion> {
         filename_impl(input, |entry| {
             let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
@@ -247,7 +284,7 @@ pub mod completers {
         })
     }
 
-    pub fn directory(input: &str) -> Vec<Completion> {
+    pub fn directory(_editor: &Editor, input: &str) -> Vec<Completion> {
         filename_impl(input, |entry| {
             let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
@@ -288,7 +325,7 @@ pub mod completers {
         } else {
             let file_name = path
                 .file_name()
-                .map(|file| file.to_str().unwrap().to_owned());
+                .and_then(|file| file.to_str().map(|path| path.to_owned()));
 
             let path = match path.parent() {
                 Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
@@ -331,7 +368,7 @@ pub mod completers {
                         path.push("");
                     }
 
-                    let path = path.to_str().unwrap().to_owned();
+                    let path = path.to_str()?.to_owned();
                     Some((end.clone(), Cow::from(path)))
                 })
             }) // TODO: unwrap or skip

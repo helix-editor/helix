@@ -2,6 +2,7 @@ use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::{CursorKind, Rect},
+    info::Info,
     input::KeyEvent,
     theme::{self, Theme},
     tree::{self, Tree},
@@ -9,7 +10,12 @@ use crate::{
 };
 
 use futures_util::future;
+use futures_util::stream::select_all::SelectAll;
+use tokio_stream::wrappers::UnboundedReceiverStream;
+
+use log::debug;
 use std::{
+    borrow::Cow,
     collections::{BTreeMap, HashMap},
     io::stdin,
     num::NonZeroUsize,
@@ -24,8 +30,12 @@ use anyhow::{bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::syntax;
+use helix_core::{
+    auto_pairs::AutoPairs,
+    syntax::{self, AutoPairConfig},
+};
 use helix_core::{Position, Selection};
+use helix_dap as dap;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize};
 
@@ -92,10 +102,10 @@ pub struct Config {
     pub line_number: LineNumber,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
-    /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
-    pub smart_case: bool,
-    /// Automatic insertion of pairs to parentheses, brackets, etc. Defaults to true.
-    pub auto_pairs: bool,
+    /// Automatic insertion of pairs to parentheses, brackets,
+    /// etc. Optionally, this can be a list of 2-tuples to specify a
+    /// global list of characters to pair. Defaults to true.
+    pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
     /// Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. Defaults to 400ms.
@@ -109,6 +119,18 @@ pub struct Config {
     pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
     pub true_color: bool,
+    /// Search configuration.
+    #[serde(default)]
+    pub search: SearchConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct SearchConfig {
+    /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
+    pub smart_case: bool,
+    /// Whether the search should wrap after depleting the matches. Default to true.
+    pub wrap_around: bool,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -201,8 +223,7 @@ impl Default for Config {
             },
             line_number: LineNumber::Absolute,
             middle_click_paste: true,
-            smart_case: true,
-            auto_pairs: true,
+            auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
@@ -210,6 +231,16 @@ impl Default for Config {
             file_picker: FilePickerConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
+            search: SearchConfig::default(),
+        }
+    }
+}
+
+impl Default for SearchConfig {
+    fn default() -> Self {
+        Self {
+            wrap_around: true,
+            smart_case: true,
         }
     }
 }
@@ -226,6 +257,19 @@ impl std::fmt::Debug for Motion {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct Breakpoint {
+    pub id: Option<usize>,
+    pub verified: bool,
+    pub message: Option<String>,
+
+    pub line: usize,
+    pub column: Option<usize>,
+    pub condition: Option<String>,
+    pub hit_condition: Option<String>,
+    pub log_message: Option<String>,
+}
+
 #[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
@@ -237,14 +281,21 @@ pub struct Editor {
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
+
+    pub debugger: Option<dap::Client>,
+    pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
+    pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
+
     pub clipboard_provider: Box<dyn ClipboardProvider>,
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
 
-    pub status_msg: Option<(String, Severity)>,
+    pub status_msg: Option<(Cow<'static, str>, Severity)>,
+    pub autoinfo: Option<Info>,
 
     pub config: Config,
+    pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
     pub last_motion: Option<Motion>,
@@ -268,6 +319,9 @@ impl Editor {
         config: Config,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
+        let auto_pairs = (&config.auto_pairs).into();
+
+        debug!("Editor config: {config:#?}");
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
@@ -281,14 +335,19 @@ impl Editor {
             macro_recording: None,
             theme: theme_loader.default(),
             language_servers,
+            debugger: None,
+            debugger_events: SelectAll::new(),
+            breakpoints: HashMap::new(),
             syn_loader,
             theme_loader,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
+            autoinfo: None,
             idle_timer: Box::pin(sleep(config.idle_timeout)),
             last_motion: None,
             config,
+            auto_pairs,
             exit_code: 0,
         }
     }
@@ -310,18 +369,20 @@ impl Editor {
         self.status_msg = None;
     }
 
-    pub fn set_status(&mut self, status: String) {
-        self.status_msg = Some((status, Severity::Info));
+    #[inline]
+    pub fn set_status<T: Into<Cow<'static, str>>>(&mut self, status: T) {
+        self.status_msg = Some((status.into(), Severity::Info));
     }
 
-    pub fn set_error(&mut self, error: String) {
-        self.status_msg = Some((error, Severity::Error));
+    #[inline]
+    pub fn set_error<T: Into<Cow<'static, str>>>(&mut self, error: T) {
+        self.status_msg = Some((error.into(), Severity::Error));
     }
 
     pub fn set_theme(&mut self, theme: Theme) {
         // `ui.selection` is the only scope required to be able to render a theme.
         if theme.find_scope_index("ui.selection").is_none() {
-            self.set_error("Invalid theme: `ui.selection` required".to_owned());
+            self.set_error("Invalid theme: `ui.selection` required");
             return;
         }
 
@@ -442,7 +503,7 @@ impl Editor {
                         view.last_accessed_doc = Some(view.doc);
                         // Set last modified doc if modified and last modified doc is different
                         if std::mem::take(&mut doc.modified_since_accessed)
-                            && view.last_modified_docs[0] != Some(id)
+                            && view.last_modified_docs[0] != Some(view.doc)
                         {
                             view.last_modified_docs = [Some(view.doc), view.last_modified_docs[0]];
                         }

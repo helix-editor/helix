@@ -43,6 +43,9 @@ impl Client {
         root_markers: Vec<String>,
         id: usize,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
+        // Resolve path to the binary
+        let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
+
         let process = Command::new(cmd)
             .args(args)
             .stdin(Stdio::piped())
@@ -438,7 +441,7 @@ impl Client {
 
                     changes.push(lsp::TextDocumentContentChangeEvent {
                         range: Some(lsp::Range::new(start, end)),
-                        text: s.into(),
+                        text: s.to_string(),
                         range_length: None,
                     });
                 }

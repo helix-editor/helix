@@ -11,6 +11,7 @@
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | elixir | ✓ |  |  | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
+| erlang | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |
 | git-commit | ✓ |  |  |  |
 | git-config | ✓ |  |  |  |
@@ -20,12 +21,14 @@
 | go | ✓ | ✓ | ✓ | `gopls` |
 | graphql | ✓ |  |  |  |
 | haskell | ✓ |  |  | `haskell-language-server-wrapper` |
+| hcl | ✓ |  | ✓ |  |
 | html | ✓ |  |  |  |
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  |  |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
 | json | ✓ |  | ✓ |  |
 | julia | ✓ |  |  | `julia` |
+| kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ |  |  |  |
 | lean | ✓ |  |  | `lean` |
 | ledger | ✓ |  |  |  |
@@ -46,6 +49,7 @@
 | python | ✓ | ✓ | ✓ | `pylsp` |
 | racket |  |  |  | `racket` |
 | regex | ✓ |  |  |  |
+| rescript | ✓ | ✓ |  | `rescript-language-server` |
 | ruby | ✓ |  | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | scala | ✓ |  | ✓ | `metals` |
@@ -54,6 +58,7 @@
 | toml | ✓ |  |  |  |
 | tsq | ✓ |  |  |  |
 | tsx | ✓ |  |  | `typescript-language-server` |
+| twig | ✓ |  |  |  |
 | typescript | ✓ |  | ✓ | `typescript-language-server` |
 | vue | ✓ |  |  |  |
 | wgsl | ✓ |  |  |  |

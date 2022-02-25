@@ -202,7 +202,7 @@ impl<T: Item + 'static> Component for Menu<T> {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let event = match event {
             Event::Key(event) => event,
-            _ => return EventResult::Ignored,
+            _ => return EventResult::Ignored(None),
         };
 
         let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
@@ -252,7 +252,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         // for some events, we want to process them but send ignore, specifically all input except
         // tab/enter/ctrl-k or whatever will confirm the selection/ ctrl-n/ctrl-p for scroll.
         // EventResult::Consumed(None)
-        EventResult::Ignored
+        EventResult::Ignored(None)
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
