@@ -110,6 +110,10 @@ impl Client {
         self.offset_encoding
     }
 
+    pub fn config(&self) -> &Option<Value> {
+        &self.config
+    }
+
     /// Execute a RPC request on the language server.
     async fn request<R: lsp::request::Request>(&self, params: R::Params) -> Result<R::Result>
     where

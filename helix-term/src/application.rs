@@ -554,16 +554,9 @@ impl Application {
                         // Trigger a workspace/didChangeConfiguration notification after initialization.
                         // This might not be required by the spec but Neovim does this as well, so it's
                         // probably a good idea for compatibility.
-                        let config = self.editor.documents().find_map(|doc| {
-                            if doc.language_server().map(|server| server.id()) == Some(server_id) {
-                                doc.language_config()
-                                    .and_then(|config| config.config.clone())
-                            } else {
-                                None
-                            }
-                        });
+                        let config = language_server.config();
                         if let Some(config) = config {
-                            tokio::spawn(language_server.did_change_configuration(config));
+                            tokio::spawn(language_server.did_change_configuration(config.clone()));
                         }
 
                         let docs = self.editor.documents().filter(|doc| {
@@ -835,24 +828,17 @@ impl Application {
                             .items
                             .iter()
                             .map(|item| {
-                                let doc = self.editor.documents().find(|doc| {
-                                    if let Some(server) = doc.language_server() {
-                                        if server.id() != server_id {
-                                            return false;
-                                        }
-                                        // The server may request the config for a specific document.
-                                        // Currently, the configs should all be the same but we might
-                                        // suport per-document configuration in the future.
-                                        if let Some(scope) = &item.scope_uri {
-                                            if Some(scope) != doc.url().as_ref() {
-                                                return false;
-                                            }
-                                        }
-                                        true
-                                    } else {
-                                        false
+                                let doc = match &item.scope_uri {
+                                    Some(scope) => {
+                                        let path = scope.to_file_path().ok()?;
+                                        self.editor.document_by_path(path)?
                                     }
-                                })?;
+                                    None => self.editor.documents().find(|doc| {
+                                        doc.language_server()
+                                            .map(|server| server.id() == server_id)
+                                            .unwrap_or(false)
+                                    })?,
+                                };
                                 let mut config = doc.language_config()?.config.as_ref()?;
                                 if let Some(section) = item.section.as_ref() {
                                     for part in section.split('.') {
