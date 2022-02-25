@@ -229,22 +229,17 @@ fn get_first_in_line(mut node: Node, byte_pos: usize, new_line: bool) -> Vec<boo
 /// This is usually constructed in one of 2 ways:
 /// - Successively add indent captures to get the (added) indent from a single line
 /// - Successively add the indent results for each line
-struct IndentResult {
+#[derive(Default)]
+struct Indentation {
     /// The total indent (the number of indent levels) is defined as max(0, indent-outdent).
     /// The string that this results in depends on the indent style (spaces or tabs, etc.)
     indent: usize,
     outdent: usize,
 }
-impl IndentResult {
-    fn new() -> Self {
-        IndentResult {
-            indent: 0,
-            outdent: 0,
-        }
-    }
+impl Indentation {
     /// Add some other [IndentResult] to this.
     /// The added indent should be the total added indent from one line
-    fn add_line(&mut self, added: &IndentResult) {
+    fn add_line(&mut self, added: &Indentation) {
         if added.indent > 0 && added.outdent == 0 {
             self.indent += 1;
         } else if added.outdent > 0 && added.indent == 0 {
@@ -308,14 +303,13 @@ enum IndentScope {
 fn query_indents(
     query: &Query,
     syntax: &Syntax,
+    cursor: &mut QueryCursor,
     text: RopeSlice,
     range: std::ops::Range<usize>,
     // Position of the (optional) newly inserted line break.
     // Given as (line, byte_pos)
     new_line_break: Option<(usize, usize)>,
 ) -> HashMap<usize, Vec<IndentCapture>> {
-    // TODO Maybe reuse this cursor?
-    let mut cursor = QueryCursor::new();
     let mut indent_captures: HashMap<usize, Vec<IndentCapture>> = HashMap::new();
     cursor.set_byte_range(range);
     // Iterate over all captures from the query
@@ -421,7 +415,8 @@ fn query_indents(
             }
             indent_captures
                 .entry(capture.node.id())
-                .or_default()
+                // Most entries only need to contain a single IndentCapture
+                .or_insert_with(|| Vec::with_capacity(1))
                 .push(indent_capture);
         }
     }
@@ -484,13 +479,26 @@ pub fn treesitter_indent_for_pos(
     } else {
         None
     };
-    let query_result = query_indents(query, syntax, text, byte_pos..byte_pos + 1, new_line_break);
+    let query_result = crate::syntax::PARSER.with(|ts_parser| {
+        let mut ts_parser = ts_parser.borrow_mut();
+        let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
+        let query_result = query_indents(
+            query,
+            syntax,
+            &mut cursor,
+            text,
+            byte_pos..byte_pos + 1,
+            new_line_break,
+        );
+        ts_parser.cursors.push(cursor);
+        query_result
+    });
 
-    let mut result = IndentResult::new();
+    let mut result = Indentation::default();
     // We always keep track of all the indent changes on one line, in order to only indent once
     // even if there are multiple "indent" nodes on the same line
-    let mut indent_for_line = IndentResult::new();
-    let mut indent_for_line_below = IndentResult::new();
+    let mut indent_for_line = Indentation::default();
+    let mut indent_for_line_below = Indentation::default();
     loop {
         let is_first = *first_in_line.last().unwrap();
         // Apply all indent definitions for this node
@@ -532,9 +540,9 @@ pub fn treesitter_indent_for_pos(
                     indent_for_line_below = indent_for_line;
                 } else {
                     result.add_line(&indent_for_line);
-                    indent_for_line_below = IndentResult::new();
+                    indent_for_line_below = Indentation::default();
                 }
-                indent_for_line = IndentResult::new();
+                indent_for_line = Indentation::default();
             }
 
             node = parent;

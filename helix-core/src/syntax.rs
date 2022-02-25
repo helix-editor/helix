@@ -445,7 +445,7 @@ impl Loader {
 
 pub struct TsParser {
     parser: tree_sitter::Parser,
-    cursors: Vec<QueryCursor>,
+    pub cursors: Vec<QueryCursor>,
 }
 
 // could also just use a pool, or a single instance?
