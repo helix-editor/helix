@@ -2950,7 +2950,7 @@ pub mod cmd {
                 let call: job::Callback =
                     Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
                         let contents = ui::Markdown::new(
-                            format!("```sh\n{}\n```", output.to_string()),
+                            format!("```sh\n{}\n```", output),
                             editor.syn_loader.clone(),
                         );
                         let mut popup = Popup::new("shell", contents);
