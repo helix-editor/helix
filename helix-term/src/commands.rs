@@ -4045,22 +4045,19 @@ pub mod insert {
     use helix_core::auto_pairs;
 
     pub fn insert_char(cx: &mut Context, c: char) {
-        let (view, doc) = current!(cx.editor);
-
-        let hooks: &[Hook] = match cx.editor.config.auto_pairs {
-            true => &[auto_pairs::hook, insert],
-            false => &[insert],
-        };
-
+        let (view, doc) = current_ref!(cx.editor);
         let text = doc.text();
         let selection = doc.selection(view.id);
+        let auto_pairs = doc.auto_pairs(cx.editor);
 
-        // run through insert hooks, stopping on the first one that returns Some(t)
-        for hook in hooks {
-            if let Some(transaction) = hook(text, selection, c) {
-                doc.apply(&transaction, view.id);
-                break;
-            }
+        let transaction = auto_pairs
+            .as_ref()
+            .and_then(|ap| auto_pairs::hook(text, selection, c, ap))
+            .or_else(|| insert(text, selection, c));
+
+        let (view, doc) = current!(cx.editor);
+        if let Some(t) = transaction {
+            doc.apply(&t, view.id);
         }
 
         // TODO: need a post insert hook too for certain triggers (autocomplete, signature help, etc)
@@ -4087,7 +4084,7 @@ pub mod insert {
     }
 
     pub fn insert_newline(cx: &mut Context) {
-        let (view, doc) = current!(cx.editor);
+        let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
 
         let contents = doc.text();
@@ -4122,8 +4119,16 @@ pub mod insert {
 
             let indent = doc.indent_unit().repeat(indent_level);
             let mut text = String::new();
-            // If we are between pairs (such as brackets), we want to insert an additional line which is indented one level more and place the cursor there
-            let new_head_pos = if helix_core::auto_pairs::PAIRS.contains(&(prev, curr)) {
+            // If we are between pairs (such as brackets), we want to
+            // insert an additional line which is indented one level
+            // more and place the cursor there
+            let on_auto_pair = doc
+                .auto_pairs(cx.editor)
+                .and_then(|pairs| pairs.get(prev))
+                .and_then(|pair| if pair.close == curr { Some(pair) } else { None })
+                .is_some();
+
+            let new_head_pos = if on_auto_pair {
                 let inner_indent = doc.indent_unit().repeat(indent_level + 1);
                 text.reserve_exact(2 + indent.len() + inner_indent.len());
                 text.push_str(doc.line_ending.as_str());
@@ -4150,6 +4155,7 @@ pub mod insert {
 
         transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
+        let (view, doc) = current!(cx.editor);
         doc.apply(&transaction, view.id);
     }
 
