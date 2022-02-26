@@ -246,6 +246,7 @@ pub struct TextObjectQuery {
 
 pub enum CapturedNode<'a> {
     Single(Node<'a>),
+    /// Guarenteed to be not empty
     Grouped(Vec<Node<'a>>),
 }
 
@@ -318,7 +319,12 @@ impl TextObjectQuery {
 
             let iter: Box<dyn Iterator<Item = CapturedNode>> = match quantifier {
                 CaptureQuantifier::OneOrMore | CaptureQuantifier::ZeroOrMore => {
-                    Box::new(std::iter::once(CapturedNode::Grouped(nodes.collect())))
+                    let nodes: Vec<Node> = nodes.collect();
+                    if nodes.is_empty() {
+                        Box::new(std::iter::empty())
+                    } else {
+                        Box::new(std::iter::once(CapturedNode::Grouped(nodes)))
+                    }
                 }
                 _ => Box::new(nodes.map(CapturedNode::Single)),
             };
