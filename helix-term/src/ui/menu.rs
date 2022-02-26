@@ -1,5 +1,5 @@
 use crate::{
-    compositor::{Component, Compositor, Context, EventResult},
+    compositor::{Callback, Component, Compositor, Context, EventResult},
     ctrl, key, shift,
 };
 use crossterm::event::Event;
@@ -205,7 +205,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             _ => return EventResult::Ignored(None),
         };
 
-        let close_fn = Some(Box::new(|compositor: &mut Compositor, _| {
+        let close_fn: Option<Callback> = Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.pop();
         }));
