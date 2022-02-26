@@ -554,8 +554,7 @@ impl Application {
                         // Trigger a workspace/didChangeConfiguration notification after initialization.
                         // This might not be required by the spec but Neovim does this as well, so it's
                         // probably a good idea for compatibility.
-                        let config = language_server.config();
-                        if let Some(config) = config {
+                        if let Some(config) = language_server.config() {
                             tokio::spawn(language_server.did_change_configuration(config.clone()));
                         }
 
@@ -828,18 +827,14 @@ impl Application {
                             .items
                             .iter()
                             .map(|item| {
-                                let doc = match &item.scope_uri {
+                                let mut config = match &item.scope_uri {
                                     Some(scope) => {
                                         let path = scope.to_file_path().ok()?;
-                                        self.editor.document_by_path(path)?
+                                        let doc = self.editor.document_by_path(path)?;
+                                        doc.language_config()?.config.as_ref()?
                                     }
-                                    None => self.editor.documents().find(|doc| {
-                                        doc.language_server()
-                                            .map(|server| server.id() == server_id)
-                                            .unwrap_or(false)
-                                    })?,
+                                    None => language_server.config()?,
                                 };
-                                let mut config = doc.language_config()?.config.as_ref()?;
                                 if let Some(section) = item.section.as_ref() {
                                     for part in section.split('.') {
                                         config = config.get(part)?;

@@ -110,8 +110,8 @@ impl Client {
         self.offset_encoding
     }
 
-    pub fn config(&self) -> &Option<Value> {
-        &self.config
+    pub fn config(&self) -> Option<&Value> {
+        self.config.as_ref()
     }
 
     /// Execute a RPC request on the language server.
