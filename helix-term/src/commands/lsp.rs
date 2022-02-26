@@ -254,7 +254,7 @@ pub fn code_action(cx: &mut Context) {
                 vertical: 1,
                 horizontal: 1,
             });
-            compositor.replace_or_push("code-action", Box::new(popup));
+            compositor.replace_or_push("code-action", popup);
         },
     )
 }
@@ -637,7 +637,7 @@ pub fn hover(cx: &mut Context) {
 
                 let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
                 let popup = Popup::new("hover", contents).auto_close(true);
-                compositor.replace_or_push("hover", Box::new(popup));
+                compositor.replace_or_push("hover", popup);
             }
         },
     );
