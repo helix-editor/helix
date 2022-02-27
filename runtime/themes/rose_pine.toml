@@ -6,7 +6,7 @@
 "ui.menu.selected" = { fg = "iris", bg = "surface" }
 "ui.linenr" = {fg = "subtle" }
 "ui.liner.selected" = "highlightOverlay"
-"ui.selection" = "highlight"
+"ui.selection" = { bg = "highlight" }
 "comment" = "subtle"
 "ui.statusline" = {fg = "foam", bg = "surface" }
 "ui.statusline.inactive" = { fg = "iris", bg = "surface" }
