@@ -2079,10 +2079,10 @@ pub mod cmd {
 
     fn buffer_close_by_ids_impl(
         editor: &mut Editor,
-        doc_ids: impl IntoIterator<Item = DocumentId>,
+        doc_ids: &[DocumentId],
         force: bool,
     ) -> anyhow::Result<()> {
-        for doc_id in doc_ids {
+        for &doc_id in doc_ids {
             editor.close_document(doc_id, force)?;
         }
 
@@ -2132,7 +2132,7 @@ pub mod cmd {
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         let document_ids = buffer_gather_paths_impl(cx.editor, args);
-        buffer_close_by_ids_impl(cx.editor, document_ids, false)
+        buffer_close_by_ids_impl(cx.editor, &document_ids, false)
     }
 
     fn force_buffer_close(
@@ -2141,7 +2141,7 @@ pub mod cmd {
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         let document_ids = buffer_gather_paths_impl(cx.editor, args);
-        buffer_close_by_ids_impl(cx.editor, document_ids, true)
+        buffer_close_by_ids_impl(cx.editor, &document_ids, true)
     }
 
     fn buffer_gather_others_impl(editor: &mut Editor) -> Vec<DocumentId> {
@@ -2159,7 +2159,7 @@ pub mod cmd {
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         let document_ids = buffer_gather_others_impl(cx.editor);
-        buffer_close_by_ids_impl(cx.editor, document_ids, false)
+        buffer_close_by_ids_impl(cx.editor, &document_ids, false)
     }
 
     fn force_buffer_close_others(
@@ -2168,7 +2168,7 @@ pub mod cmd {
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         let document_ids = buffer_gather_others_impl(cx.editor);
-        buffer_close_by_ids_impl(cx.editor, document_ids, true)
+        buffer_close_by_ids_impl(cx.editor, &document_ids, true)
     }
 
     fn buffer_gather_all_impl(editor: &mut Editor) -> Vec<DocumentId> {
@@ -2181,7 +2181,7 @@ pub mod cmd {
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         let document_ids = buffer_gather_all_impl(cx.editor);
-        buffer_close_by_ids_impl(cx.editor, document_ids, false)
+        buffer_close_by_ids_impl(cx.editor, &document_ids, false)
     }
 
     fn force_buffer_close_all(
@@ -2190,7 +2190,7 @@ pub mod cmd {
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         let document_ids = buffer_gather_all_impl(cx.editor);
-        buffer_close_by_ids_impl(cx.editor, document_ids, true)
+        buffer_close_by_ids_impl(cx.editor, &document_ids, true)
     }
 
     fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::Result<()> {
