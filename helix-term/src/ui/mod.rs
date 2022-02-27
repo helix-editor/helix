@@ -123,9 +123,10 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
             "compressed",
             "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}",
         )
-        // We don't care if this fails, but we can't leave failures
-        // unhandled, so just convert to Option and ignore.
-        .ok();
+        // This shouldn't panic as the above is static, but if it ever
+        // is changed and becomes invalid it will catch here rather than
+        // being unnoticed.
+        .expect("Invalid type definition");
     type_builder.negate("all");
 
     if let Ok(excluded_types) = type_builder.build() {
