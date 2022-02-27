@@ -5410,7 +5410,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     if let Some((title, abbrev)) = match objtype {
         textobject::TextObject::Inside => Some(("Match inside", "mi")),
         textobject::TextObject::Around => Some(("Match around", "ma")),
-        textobject::TextObject::Movement => None,
+        _ => return,
     } {
         let help_text = [
             ("w", "Word"),
