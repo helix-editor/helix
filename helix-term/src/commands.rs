@@ -5407,76 +5407,90 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
 
 fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
-        if let Some(ch) = event.char() {
-            let (view, doc) = current!(cx.editor);
-            let selection = doc.selection(view.id);
-            let (open, close) = surround::get_pair(ch);
+        let ch = match event.char() {
+            Some(ch) => ch,
+            None => return,
+        };
+        let (view, doc) = current!(cx.editor);
+        let selection = doc.selection(view.id);
+        let (open, close) = surround::get_pair(ch);
 
-            let mut changes = Vec::with_capacity(selection.len() * 2);
-            for range in selection.iter() {
-                let mut o = Tendril::new();
-                o.push(open);
-                let mut c = Tendril::new();
-                c.push(close);
-                changes.push((range.from(), range.from(), Some(o)));
-                changes.push((range.to(), range.to(), Some(c)));
-            }
-
-            let transaction = Transaction::change(doc.text(), changes.into_iter());
-            doc.apply(&transaction, view.id);
+        let mut changes = Vec::with_capacity(selection.len() * 2);
+        for range in selection.iter() {
+            let mut o = Tendril::new();
+            o.push(open);
+            let mut c = Tendril::new();
+            c.push(close);
+            changes.push((range.from(), range.from(), Some(o)));
+            changes.push((range.to(), range.to(), Some(c)));
         }
+
+        let transaction = Transaction::change(doc.text(), changes.into_iter());
+        doc.apply(&transaction, view.id);
     })
 }
 
 fn surround_replace(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
-        if let Some(from) = event.char() {
-            cx.on_next_key(move |cx, event| {
-                if let Some(to) = event.char() {
-                    let (view, doc) = current!(cx.editor);
-                    let text = doc.text().slice(..);
-                    let selection = doc.selection(view.id);
+        let from = match event.char() {
+            Some(from) => from,
+            None => return,
+        };
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+        let selection = doc.selection(view.id);
 
-                    let change_pos = match surround::get_surround_pos(text, selection, from, count)
-                    {
-                        Some(c) => c,
-                        None => return,
-                    };
+        let change_pos = match surround::get_surround_pos(text, selection, from, count) {
+            Ok(c) => c,
+            Err(err) => {
+                cx.editor.set_error(err.to_string());
+                return;
+            }
+        };
 
-                    let (open, close) = surround::get_pair(to);
-                    let transaction = Transaction::change(
-                        doc.text(),
-                        change_pos.iter().enumerate().map(|(i, &pos)| {
-                            let mut t = Tendril::new();
-                            t.push(if i % 2 == 0 { open } else { close });
-                            (pos, pos + 1, Some(t))
-                        }),
-                    );
-                    doc.apply(&transaction, view.id);
-                }
-            });
-        }
+        cx.on_next_key(move |cx, event| {
+            let (view, doc) = current!(cx.editor);
+            let to = match event.char() {
+                Some(to) => to,
+                None => return,
+            };
+            let (open, close) = surround::get_pair(to);
+            let transaction = Transaction::change(
+                doc.text(),
+                change_pos.iter().enumerate().map(|(i, &pos)| {
+                    let mut t = Tendril::new();
+                    t.push(if i % 2 == 0 { open } else { close });
+                    (pos, pos + 1, Some(t))
+                }),
+            );
+            doc.apply(&transaction, view.id);
+        });
     })
 }
 
 fn surround_delete(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
-        if let Some(ch) = event.char() {
-            let (view, doc) = current!(cx.editor);
-            let text = doc.text().slice(..);
-            let selection = doc.selection(view.id);
+        let ch = match event.char() {
+            Some(ch) => ch,
+            None => return,
+        };
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+        let selection = doc.selection(view.id);
 
-            let change_pos = match surround::get_surround_pos(text, selection, ch, count) {
-                Some(c) => c,
-                None => return,
-            };
+        let change_pos = match surround::get_surround_pos(text, selection, ch, count) {
+            Ok(c) => c,
+            Err(err) => {
+                cx.editor.set_error(err.to_string());
+                return;
+            }
+        };
 
-            let transaction =
-                Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
-            doc.apply(&transaction, view.id);
-        }
+        let transaction =
+            Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
+        doc.apply(&transaction, view.id);
     })
 }
 
