@@ -449,6 +449,7 @@ dependencies = [
  "num_cpus",
  "once_cell",
  "pulldown-cmark",
+ "retain_mut",
  "serde",
  "serde_json",
  "signal-hook",
@@ -844,6 +845,12 @@ name = "regex-syntax"
 version = "0.6.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
+
+[[package]]
+name = "retain_mut"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c31b5c4033f8fdde8700e4657be2c497e7288f01515be52168c631e2e4d4086"
 
 [[package]]
 name = "ropey"
