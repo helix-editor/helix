@@ -113,6 +113,10 @@ impl Client {
         self.offset_encoding
     }
 
+    pub fn config(&self) -> Option<&Value> {
+        self.config.as_ref()
+    }
+
     /// Execute a RPC request on the language server.
     async fn request<R: lsp::request::Request>(&self, params: R::Params) -> Result<R::Result>
     where
@@ -246,6 +250,13 @@ impl Client {
             root_uri: root,
             initialization_options: self.config.clone(),
             capabilities: lsp::ClientCapabilities {
+                workspace: Some(lsp::WorkspaceClientCapabilities {
+                    configuration: Some(true),
+                    did_change_configuration: Some(lsp::DynamicRegistrationClientCapabilities {
+                        dynamic_registration: Some(false),
+                    }),
+                    ..Default::default()
+                }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
                     completion: Some(lsp::CompletionClientCapabilities {
                         completion_item: Some(lsp::CompletionItemCapability {
@@ -328,6 +339,16 @@ impl Client {
             log::warn!("language server failed to terminate gracefully - {}", e);
         }
         self.exit().await
+    }
+
+    // -------------------------------------------------------------------------------------------
+    // Workspace
+    // -------------------------------------------------------------------------------------------
+
+    pub fn did_change_configuration(&self, settings: Value) -> impl Future<Output = Result<()>> {
+        self.notify::<lsp::notification::DidChangeConfiguration>(
+            lsp::DidChangeConfigurationParams { settings },
+        )
     }
 
     // -------------------------------------------------------------------------------------------

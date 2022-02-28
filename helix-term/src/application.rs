@@ -532,6 +532,13 @@ impl Application {
                                 }
                             };
 
+                        // Trigger a workspace/didChangeConfiguration notification after initialization.
+                        // This might not be required by the spec but Neovim does this as well, so it's
+                        // probably a good idea for compatibility.
+                        if let Some(config) = language_server.config() {
+                            tokio::spawn(language_server.did_change_configuration(config.clone()));
+                        }
+
                         let docs = self.editor.documents().filter(|doc| {
                             doc.language_server().map(|server| server.id()) == Some(server_id)
                         });
@@ -787,6 +794,37 @@ impl Application {
                                 failed_change: None,
                             })),
                         ));
+                    }
+                    MethodCall::WorkspaceConfiguration(params) => {
+                        let language_server =
+                            match self.editor.language_servers.get_by_id(server_id) {
+                                Some(language_server) => language_server,
+                                None => {
+                                    warn!("can't find language server with id `{}`", server_id);
+                                    return;
+                                }
+                            };
+                        let result: Vec<_> = params
+                            .items
+                            .iter()
+                            .map(|item| {
+                                let mut config = match &item.scope_uri {
+                                    Some(scope) => {
+                                        let path = scope.to_file_path().ok()?;
+                                        let doc = self.editor.document_by_path(path)?;
+                                        doc.language_config()?.config.as_ref()?
+                                    }
+                                    None => language_server.config()?,
+                                };
+                                if let Some(section) = item.section.as_ref() {
+                                    for part in section.split('.') {
+                                        config = config.get(part)?;
+                                    }
+                                }
+                                Some(config)
+                            })
+                            .collect();
+                        tokio::spawn(language_server.reply(id, Ok(json!(result))));
                     }
                 }
             }
