@@ -1,0 +1,28 @@
+# Publish the Nix flake outputs to Cachix
+name: Cachix
+on:
+  push: master
+
+jobs:
+  publish:
+    name: Publish Flake
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Install nix
+      uses: cachix/install-nix-action@v16
+
+    - name: Authenticate with Cachix
+      uses: cachix/cachix-action@v10
+      with:
+        name: helix
+        authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+    - name: Build nix flake
+      run: |
+        nix build
+        nix flake check
