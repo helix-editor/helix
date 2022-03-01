@@ -5,6 +5,10 @@
 | `:open`, `:o` | Open a file from disk into the current view. |
 | `:buffer-close`, `:bc`, `:bclose` | Close the current buffer. |
 | `:buffer-close!`, `:bc!`, `:bclose!` | Close the current buffer forcefully (ignoring unsaved changes). |
+| `:buffer-close-others`, `:bco`, `:bcloseother` | Close all buffers but the currently focused one. |
+| `:buffer-close-others!`, `:bco!`, `:bcloseother!` | Close all buffers but the currently focused one. |
+| `:buffer-close-all`, `:bca`, `:bcloseall` | Close all buffers, without quiting. |
+| `:buffer-close-all!`, `:bca!`, `:bcloseall!` | Close all buffers forcefully (ignoring unsaved changes), without quiting. |
 | `:write`, `:w` | Write changes to disk. Accepts an optional path (:write some/path.txt) |
 | `:new`, `:n` | Create a new scratch buffer. |
 | `:format`, `:fmt` | Format the file using the LSP formatter. |
