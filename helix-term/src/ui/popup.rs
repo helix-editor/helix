@@ -43,6 +43,10 @@ impl<T: Component> Popup<T> {
         self.position = pos;
     }
 
+    pub fn position(&self) -> Option<&Position> {
+        self.position.as_ref()
+    }
+
     pub fn margin(mut self, margin: Margin) -> Self {
         self.margin = margin;
         self

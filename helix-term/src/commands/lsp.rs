@@ -660,7 +660,9 @@ pub fn signature_help(cx: &mut Context) {
                 };
                 contents.set_signature_doc(doc_text.clone());
             }
-            let popup = Popup::new("signature-help", contents);
+            let mut popup = Popup::new("signature-help", contents);
+            let old_popup = compositor.find_id::<Popup<SignatureHelp>>("signature-help");
+            popup.set_position(old_popup.and_then(|p| p.position().copied()));
             compositor.replace_or_push("signature-help", popup);
         },
     );
