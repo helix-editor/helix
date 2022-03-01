@@ -34,8 +34,8 @@ pub fn regex_prompt(
     fun: impl Fn(&mut View, &mut Document, Regex, PromptEvent) + 'static,
 ) -> Prompt {
     let (view, doc) = current!(cx.editor);
-    let view_id = view.id;
-    let snapshot = doc.selection(view_id).clone();
+    let doc_id = view.doc;
+    let snapshot = doc.selection(view.id).clone();
     let offset_snapshot = view.offset;
 
     let mut prompt = Prompt::new(
@@ -49,17 +49,16 @@ pub fn regex_prompt(
                     doc.set_selection(view.id, snapshot.clone());
                     view.offset = offset_snapshot;
                 }
-                PromptEvent::Validate => {
-                    // TODO: push_jump to store selection just before jump
-
-                    match Regex::new(input) {
-                        Ok(regex) => {
-                            let (view, doc) = current!(cx.editor);
-                            fun(view, doc, regex, event);
-                        }
-                        Err(_err) => (), // TODO: mark command line as error
+                PromptEvent::Validate => match Regex::new(input) {
+                    Ok(regex) => {
+                        let (view, doc) = current!(cx.editor);
+                        // Equivalent to push_jump to store selection just before jump
+                        view.jumps.push((doc_id, snapshot.clone()));
+                        fun(view, doc, regex, event);
                     }
-                }
+                    Err(_err) => (), // TODO: mark command line as error
+                },
+
                 PromptEvent::Update => {
                     // skip empty input, TODO: trigger default
                     if input.is_empty() {
