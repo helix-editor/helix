@@ -101,8 +101,6 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time;
 
-    // We want to exclude files that the editor can't handle yet
-    let mut type_builder = TypesBuilder::new();
     let mut walk_builder = WalkBuilder::new(&root);
     walk_builder
         .hidden(config.file_picker.hidden)
@@ -117,18 +115,25 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         // in our picker.
         .filter_entry(|entry| entry.file_name() != ".git");
 
-    let walk_builder = match type_builder.add(
-        "compressed",
-        "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}",
-    ) {
-        Err(_) => &walk_builder,
-        _ => {
-            type_builder.negate("all");
-            let excluded_types = type_builder.build().unwrap();
-            walk_builder.types(excluded_types)
-        }
-    };
+    // We want to exclude files that the editor can't handle yet
+    let mut type_builder = TypesBuilder::new();
 
+    type_builder
+        .add(
+            "compressed",
+            "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}",
+        )
+        // This shouldn't panic as the above is static, but if it ever
+        // is changed and becomes invalid it will catch here rather than
+        // being unnoticed.
+        .expect("Invalid type definition");
+    type_builder.negate("all");
+
+    if let Ok(excluded_types) = type_builder.build() {
+        walk_builder.types(excluded_types);
+    }
+
+    // We want files along with their modification date for sorting
     let files = walk_builder.build().filter_map(|entry| {
         let entry = entry.ok()?;
         // Path::is_dir() traverses symlinks, so we use it over DirEntry::is_dir
@@ -148,6 +153,8 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         Some((entry.into_path(), time))
     });
 
+    // Cap the number of files if we aren't in a git project, preventing
+    // hangs when using the picker in your home directory
     let mut files: Vec<_> = if root.join(".git").is_dir() {
         files.collect()
     } else {
@@ -155,8 +162,10 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         files.take(MAX).collect()
     };
 
+    // Most recently modified first
     files.sort_by_key(|file| std::cmp::Reverse(file.1));
 
+    // Strip the time data so we can send just the paths to the FilePicker
     let files = files.into_iter().map(|(path, _)| path).collect();
 
     FilePicker::new(
