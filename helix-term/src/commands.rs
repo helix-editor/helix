@@ -5466,6 +5466,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
             ("c", "Class (tree-sitter)"),
             ("f", "Function (tree-sitter)"),
             ("p", "Parameter (tree-sitter)"),
+            ("o", "Comment (tree-sitter)"),
             ("m", "Matching delimiter under cursor"),
             (" ", "... or any character acting as a pair"),
         ];
