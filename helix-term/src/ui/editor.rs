@@ -1212,7 +1212,7 @@ impl Component for EditorView {
                 }
             }
             if let Some(pseudo_pending) = &cx.editor.pseudo_pending {
-                disp.push_str(&*pseudo_pending)
+                disp.push_str(pseudo_pending.as_str())
             }
             let style = cx.editor.theme.get("ui.text");
             let macro_width = if cx.editor.macro_recording.is_some() {
