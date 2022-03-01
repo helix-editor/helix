@@ -3,48 +3,11 @@ use std::{env, error::Error};
 type DynError = Box<dyn Error>;
 
 pub mod helpers {
-    use std::{
-        fmt::Display,
-        path::{Path, PathBuf},
-    };
+    use std::path::{Path, PathBuf};
 
     use crate::path;
     use helix_core::syntax::Configuration as LangConfig;
-
-    #[derive(Copy, Clone)]
-    pub enum TsFeature {
-        Highlight,
-        TextObjects,
-        AutoIndent,
-    }
-
-    impl TsFeature {
-        pub fn all() -> &'static [Self] {
-            &[Self::Highlight, Self::TextObjects, Self::AutoIndent]
-        }
-
-        pub fn runtime_filename(&self) -> &'static str {
-            match *self {
-                Self::Highlight => "highlights.scm",
-                Self::TextObjects => "textobjects.scm",
-                Self::AutoIndent => "indents.toml",
-            }
-        }
-    }
-
-    impl Display for TsFeature {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(
-                f,
-                "{}",
-                match *self {
-                    Self::Highlight => "Syntax Highlighting",
-                    Self::TextObjects => "Treesitter Textobjects",
-                    Self::AutoIndent => "Auto Indent",
-                }
-            )
-        }
-    }
+    use helix_term::health::TsFeature;
 
     /// Get the list of languages that support a particular tree-sitter
     /// based feature.
@@ -108,6 +71,7 @@ pub mod md_gen {
     use std::fs;
 
     use helix_term::commands::cmd::TYPABLE_COMMAND_LIST;
+    use helix_term::health::TsFeature;
 
     pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
     pub const LANG_SUPPORT_MD_OUTPUT: &str = "lang-support.md";
@@ -151,13 +115,13 @@ pub mod md_gen {
 
     pub fn lang_features() -> Result<String, DynError> {
         let mut md = String::new();
-        let ts_features = helpers::TsFeature::all();
+        let ts_features = TsFeature::all();
 
         let mut cols = vec!["Language".to_owned()];
         cols.append(
             &mut ts_features
                 .iter()
-                .map(|t| t.to_string())
+                .map(|t| t.long_title().to_string())
                 .collect::<Vec<_>>(),
         );
         cols.push("Default LSP".to_owned());

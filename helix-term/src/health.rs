@@ -4,6 +4,43 @@ use helix_core::{
     syntax::load_runtime_file,
 };
 
+#[derive(Copy, Clone)]
+pub enum TsFeature {
+    Highlight,
+    TextObject,
+    AutoIndent,
+}
+
+impl TsFeature {
+    pub fn all() -> &'static [Self] {
+        &[Self::Highlight, Self::TextObject, Self::AutoIndent]
+    }
+
+    pub fn runtime_filename(&self) -> &'static str {
+        match *self {
+            Self::Highlight => "highlights.scm",
+            Self::TextObject => "textobjects.scm",
+            Self::AutoIndent => "indents.toml",
+        }
+    }
+
+    pub fn long_title(&self) -> &'static str {
+        match *self {
+            Self::Highlight => "Syntax Highlighting",
+            Self::TextObject => "Treesitter Textobjects",
+            Self::AutoIndent => "Auto Indent",
+        }
+    }
+
+    pub fn short_title(&self) -> &'static str {
+        match *self {
+            Self::Highlight => "Highlight",
+            Self::TextObject => "Textobject",
+            Self::AutoIndent => "Indent",
+        }
+    }
+}
+
 /// Display general diagnostics.
 pub fn general() {
     let config_file = helix_core::config_file();
@@ -43,14 +80,11 @@ pub fn languages_all() {
         default_syntax_loader()
     });
 
-    let headings = &[
-        "Language",
-        "LSP",
-        "DAP",
-        "Highlight",
-        "Textobject",
-        "Indent",
-    ];
+    let mut headings = vec!["Language", "LSP", "DAP"];
+
+    for feat in TsFeature::all() {
+        headings.push(feat.short_title())
+    }
 
     let terminal_cols = crossterm::terminal::size().map(|(c, _)| c).unwrap_or(80);
     let column_width = terminal_cols as usize / headings.len();
@@ -99,8 +133,8 @@ pub fn languages_all() {
         let dap = lang.debugger.as_ref().map(|dap| dap.command.to_string());
         check_binary(dap);
 
-        for query_filename in &["highlights.scm", "textobjects.scm", "indents.toml"] {
-            match load_runtime_file(&lang.language_id, query_filename).is_ok() {
+        for ts_feat in TsFeature::all() {
+            match load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok() {
                 true => column("Found", Color::Green),
                 false => column("Not Found", Color::Red),
             }
@@ -154,9 +188,9 @@ pub fn language(lang_str: String) {
         lang.debugger.as_ref().map(|dap| dap.command.to_string()),
     );
 
-    probe_treesitter_feature(&lang_str, "Highlight", "highlights.scm");
-    probe_treesitter_feature(&lang_str, "Textobject", "textobjects.scm");
-    probe_treesitter_feature(&lang_str, "Indent", "indents.toml");
+    for ts_feat in TsFeature::all() {
+        probe_treesitter_feature(&lang_str, *ts_feat)
+    }
 }
 
 /// Display diagnostics about LSP and DAP.
@@ -178,10 +212,10 @@ fn probe_protocol(protocol_name: &str, server_cmd: Option<String>) {
 
 /// Display diagnostics about a feature that requires tree-sitter
 /// query files (highlights, textobjects, etc).
-fn probe_treesitter_feature(lang: &str, feature: &str, query_filename: &str) {
-    let found = match load_runtime_file(lang, query_filename).is_ok() {
+fn probe_treesitter_feature(lang: &str, feature: TsFeature) {
+    let found = match load_runtime_file(lang, feature.runtime_filename()).is_ok() {
         true => "Found".green(),
         false => "Not found".red(),
     };
-    println!("{} queries: {}", feature, found);
+    println!("{} queries: {}", feature.short_title(), found);
 }
