@@ -299,6 +299,7 @@ pub struct Editor {
 
     pub idle_timer: Pin<Box<Sleep>>,
     pub last_motion: Option<Motion>,
+    pub pseudo_pending: Option<String>,
 
     pub exit_code: i32,
 }
@@ -346,6 +347,7 @@ impl Editor {
             autoinfo: None,
             idle_timer: Box::pin(sleep(config.idle_timeout)),
             last_motion: None,
+            pseudo_pending: None,
             config,
             auto_pairs,
             exit_code: 0,

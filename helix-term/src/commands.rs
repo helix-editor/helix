@@ -5353,7 +5353,10 @@ fn select_textobject_inner(cx: &mut Context) {
 
 fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     let count = cx.count();
+
     cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
+        cx.editor.pseudo_pending = None;
         if let Some(ch) = event.char() {
             let textobject = move |editor: &mut Editor| {
                 let (view, doc) = current!(editor);
@@ -5402,7 +5405,32 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
             textobject(cx.editor);
             cx.editor.last_motion = Some(Motion(Box::new(textobject)));
         }
-    })
+    });
+
+    if let Some((title, abbrev)) = match objtype {
+        textobject::TextObject::Inside => Some(("Match inside", "mi")),
+        textobject::TextObject::Around => Some(("Match around", "ma")),
+        _ => return,
+    } {
+        let help_text = [
+            ("w", "Word"),
+            ("W", "WORD"),
+            ("c", "Class (tree-sitter)"),
+            ("f", "Function (tree-sitter)"),
+            ("p", "Parameter (tree-sitter)"),
+            ("m", "Matching delimiter under cursor"),
+            (" ", "... or any character acting as a pair"),
+        ];
+
+        cx.editor.autoinfo = Some(Info::new(
+            title,
+            help_text
+                .into_iter()
+                .map(|(col1, col2)| (col1.to_string(), col2.to_string()))
+                .collect(),
+        ));
+        cx.editor.pseudo_pending = Some(abbrev.to_string());
+    };
 }
 
 fn surround_add(cx: &mut Context) {
