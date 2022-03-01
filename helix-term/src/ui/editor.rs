@@ -688,12 +688,12 @@ impl EditorView {
         surface.set_string_truncated(
             viewport.x + 8, // 8: 1 space + 3 char mode string + 1 space + 1 spinner + 1 space
             viewport.y,
-            title,
+            &title,
             viewport
                 .width
                 .saturating_sub(6)
                 .saturating_sub(right_side_text.width() as u16 + 1) as usize, // "+ 1": a space between the title and the selection info
-            base_style,
+            |_| base_style,
             true,
             true,
         );

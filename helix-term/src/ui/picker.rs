@@ -24,7 +24,7 @@ use crate::ui::{Prompt, PromptEvent};
 use helix_core::{movement::Direction, Position};
 use helix_view::{
     editor::Action,
-    graphics::{Color, CursorKind, Margin, Rect, Style},
+    graphics::{Color, CursorKind, Margin, Modifier, Rect, Style},
     Document, Editor,
 };
 
@@ -343,7 +343,7 @@ impl<T> Picker<T> {
                     }
                     // TODO: maybe using format_fn isn't the best idea here
                     let text = (self.format_fn)(option);
-                    // TODO: using fuzzy_indices could give us the char idx for match highlighting
+                    // Highlight indices are computed lazily in the render function
                     self.matcher
                         .fuzzy_match(&text, pattern)
                         .map(|score| (index, score))
@@ -483,6 +483,8 @@ impl<T: 'static> Component for Picker<T> {
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let text_style = cx.editor.theme.get("ui.text");
+        let selected = cx.editor.theme.get("ui.text.focus");
+        let highlighted = cx.editor.theme.get("special").add_modifier(Modifier::BOLD);
 
         // -- Render the frame:
         // clear area
@@ -525,29 +527,41 @@ impl<T: 'static> Component for Picker<T> {
         // subtract area of prompt from top and current item marker " > " from left
         let inner = inner.clip_top(2).clip_left(3);
 
-        let selected = cx.editor.theme.get("ui.text.focus");
-
         let rows = inner.height;
         let offset = self.cursor - (self.cursor % std::cmp::max(1, rows as usize));
 
-        let files = self.matches.iter().skip(offset).map(|(index, _score)| {
-            (index, self.options.get(*index).unwrap()) // get_unchecked
-        });
+        let files = self
+            .matches
+            .iter_mut()
+            .skip(offset)
+            .map(|(index, _score)| (*index, self.options.get(*index).unwrap()));
 
         for (i, (_index, option)) in files.take(rows as usize).enumerate() {
-            if i == (self.cursor - offset) {
+            let is_active = i == (self.cursor - offset);
+            if is_active {
                 surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
             }
+
+            let formatted = (self.format_fn)(option);
+
+            let (_score, highlights) = self
+                .matcher
+                .fuzzy_indices(&formatted, &self.prompt.line)
+                .unwrap_or_default();
 
             surface.set_string_truncated(
                 inner.x,
                 inner.y + i as u16,
-                (self.format_fn)(option),
+                &formatted,
                 inner.width as usize,
-                if i == (self.cursor - offset) {
-                    selected
-                } else {
-                    text_style
+                |idx| {
+                    if highlights.contains(&idx) {
+                        highlighted
+                    } else if is_active {
+                        selected
+                    } else {
+                        text_style
+                    }
                 },
                 true,
                 self.truncate_start,
