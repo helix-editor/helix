@@ -32,7 +32,8 @@ pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
 use helix_core::{
     auto_pairs::AutoPairs,
-    syntax::{self, Change, AutoPairConfig},
+    syntax::{self, AutoPairConfig},
+    Change,
 };
 use helix_core::{Position, Selection};
 use helix_dap as dap;
