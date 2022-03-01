@@ -11,10 +11,12 @@ use helix_view::editor::Action;
 
 use crate::{
     compositor::{self, Compositor},
-    ui::{self, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent},
+    ui::{
+        self, lsp::SignatureHelp, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent,
+    },
 };
 
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 
 /// Gets the language server that is attached to a document, and
 /// if it's not active displays a status message. Using this macro
@@ -633,20 +635,33 @@ pub fn signature_help(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |_editor, _compositor, response: Option<lsp::SignatureHelp>| {
-            if let Some(signature_help) = response {
-                log::info!("{:?}", signature_help);
-                // signatures
-                // active_signature
-                // active_parameter
-                // render as:
-
-                // signature
-                // ----------
-                // doc
-
-                // with active param highlighted
+        move |editor, compositor, response: Option<lsp::SignatureHelp>| {
+            let response = match response {
+                Some(s) => s,
+                None => return,
+            };
+            let doc = doc!(editor);
+            let language = doc
+                .language()
+                .and_then(|scope| scope.strip_prefix("source."))
+                .unwrap_or("");
+            // If there are no signatures, response will be None, therefore
+            // at least one signature exists.
+            let signature = &response.signatures[response.active_signature.unwrap_or(0) as usize];
+            let mut contents = SignatureHelp::new(
+                signature.label.clone(),
+                language.to_string(),
+                Arc::clone(&editor.syn_loader),
+            );
+            if let Some(ref signature_doc) = signature.documentation {
+                let doc_text = match signature_doc {
+                    lsp::Documentation::String(s) => &s,
+                    lsp::Documentation::MarkupContent(markup) => &markup.value,
+                };
+                contents.set_signature_doc(doc_text.clone());
             }
+            let popup = Popup::new("signature-help", contents);
+            compositor.replace_or_push("signature-help", popup);
         },
     );
 }

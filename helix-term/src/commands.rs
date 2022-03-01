@@ -2810,7 +2810,6 @@ pub mod insert {
         // this could also generically look at Transaction, but it's a bit annoying to look at
         // Operation instead of Change.
         for hook in &[language_server_completion, signature_help] {
-            // for hook in &[signature_help] {
             hook(cx, c);
         }
     }

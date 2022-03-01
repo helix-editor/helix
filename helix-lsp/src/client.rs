@@ -321,6 +321,16 @@ impl Client {
                         content_format: Some(vec![lsp::MarkupKind::Markdown]),
                         ..Default::default()
                     }),
+                    signature_help: Some(lsp::SignatureHelpClientCapabilities {
+                        signature_information: Some(lsp::SignatureInformationSettings {
+                            documentation_format: Some(vec![lsp::MarkupKind::Markdown]),
+                            parameter_information: Some(lsp::ParameterInformationSettings {
+                                label_offset_support: Some(true),
+                            }),
+                            active_parameter_support: Some(true),
+                        }),
+                        ..Default::default()
+                    }),
                     rename: Some(lsp::RenameClientCapabilities {
                         dynamic_registration: Some(false),
                         prepare_support: Some(false),
