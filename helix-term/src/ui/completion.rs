@@ -1,10 +1,11 @@
 use crate::compositor::{Component, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent};
+use helix_view::editor::CompleteAction;
 use tui::buffer::Buffer as Surface;
 
 use std::borrow::Cow;
 
-use helix_core::Transaction;
+use helix_core::{Change, Transaction};
 use helix_view::{graphics::Rect, Document, Editor};
 
 use crate::commands;
@@ -92,13 +93,14 @@ impl Completion {
                 start_offset: usize,
                 trigger_offset: usize,
             ) -> Transaction {
-                if let Some(edit) = &item.text_edit {
+                let transaction = if let Some(edit) = &item.text_edit {
                     let edit = match edit {
                         lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
                         lsp::CompletionTextEdit::InsertAndReplace(item) => {
                             unimplemented!("completion: insert_and_replace {:?}", item)
                         }
                     };
+
                     util::generate_transaction_from_edits(
                         doc.text(),
                         vec![edit],
@@ -114,7 +116,16 @@ impl Completion {
                         doc.text(),
                         vec![(trigger_offset, trigger_offset, Some(text.into()))].into_iter(),
                     )
-                }
+                };
+
+                transaction
+            }
+
+            fn completion_changes(transaction: &Transaction, trigger_offset: usize) -> Vec<Change> {
+                transaction
+                    .changes_iter()
+                    .filter(|(start, end, _)| (*start..=*end).contains(&trigger_offset))
+                    .collect()
             }
 
             let (view, doc) = current!(editor);
@@ -123,7 +134,9 @@ impl Completion {
             doc.restore(view.id);
 
             match event {
-                PromptEvent::Abort => {}
+                PromptEvent::Abort => {
+                    editor.last_completion = None;
+                }
                 PromptEvent::Update => {
                     // always present here
                     let item = item.unwrap();
@@ -138,8 +151,12 @@ impl Completion {
 
                     // initialize a savepoint
                     doc.savepoint();
-
                     doc.apply(&transaction, view.id);
+
+                    editor.last_completion = Some(CompleteAction {
+                        trigger_offset,
+                        changes: completion_changes(&transaction, trigger_offset),
+                    });
                 }
                 PromptEvent::Validate => {
                     // always present here
@@ -152,7 +169,13 @@ impl Completion {
                         start_offset,
                         trigger_offset,
                     );
+
                     doc.apply(&transaction, view.id);
+
+                    editor.last_completion = Some(CompleteAction {
+                        trigger_offset,
+                        changes: completion_changes(&transaction, trigger_offset),
+                    });
 
                     // apply additional edits, mostly used to auto import unqualified types
                     let resolved_additional_text_edits = if item.additional_text_edits.is_some() {

@@ -33,6 +33,7 @@ pub use helix_core::register::Registers;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig},
+    Change,
 };
 use helix_core::{Position, Selection};
 use helix_dap as dap;
@@ -301,7 +302,15 @@ pub struct Editor {
     pub last_motion: Option<Motion>,
     pub pseudo_pending: Option<String>,
 
+    pub last_completion: Option<CompleteAction>,
+
     pub exit_code: i32,
+}
+
+#[derive(Debug, Clone)]
+pub struct CompleteAction {
+    pub trigger_offset: usize,
+    pub changes: Vec<Change>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -347,6 +356,7 @@ impl Editor {
             autoinfo: None,
             idle_timer: Box::pin(sleep(config.idle_timeout)),
             last_motion: None,
+            last_completion: None,
             pseudo_pending: None,
             config,
             auto_pairs,
