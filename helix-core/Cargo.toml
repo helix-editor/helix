@@ -17,7 +17,7 @@ helix-syntax = { version = "0.6", path = "../helix-syntax" }
 
 ropey = "1.3"
 smallvec = "1.8"
-smartstring = "0.2.10"
+smartstring = "1.0.0"
 unicode-segmentation = "1.9"
 unicode-width = "0.1"
 unicode-general-category = "0.5"
