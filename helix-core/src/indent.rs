@@ -192,10 +192,7 @@ fn get_highest_syntax_node_at_bytepos(syntax: &Syntax, pos: usize) -> Option<Nod
     let tree = syntax.tree();
 
     // named_descendant
-    let mut node = match tree.root_node().descendant_for_byte_range(pos, pos) {
-        Some(node) => node,
-        None => return None,
-    };
+    let mut node = tree.root_node().descendant_for_byte_range(pos, pos)?;
 
     while let Some(parent) = node.parent() {
         if parent.start_byte() == node.start_byte() {
@@ -444,6 +441,8 @@ where
                 }),
                 indent_query: OnceCell::new(),
                 textobject_query: OnceCell::new(),
+                debugger: None,
+                auto_pairs: None,
             }],
         });
 

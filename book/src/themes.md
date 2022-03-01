@@ -166,6 +166,8 @@ We use a similar set of scopes as
 
 - `markup`
   - `heading`
+    - `marker`
+    - `1`, `2`, `3`, `4`, `5`, `6` - heading text for h1 through h6
   - `list`
     - `unnumbered`
     - `numbered`

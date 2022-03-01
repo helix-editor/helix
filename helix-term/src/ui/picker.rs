@@ -1,7 +1,7 @@
 use crate::{
     compositor::{Component, Compositor, Context, EventResult},
     ctrl, key, shift,
-    ui::EditorView,
+    ui::{self, EditorView},
 };
 use crossterm::event::Event;
 use tui::{
@@ -21,19 +21,19 @@ use std::{
 };
 
 use crate::ui::{Prompt, PromptEvent};
-use helix_core::Position;
+use helix_core::{movement::Direction, Position};
 use helix_view::{
     editor::Action,
-    graphics::{Color, CursorKind, Margin, Rect, Style},
+    graphics::{Color, CursorKind, Margin, Modifier, Rect, Style},
     Document, Editor,
 };
 
-pub const MIN_SCREEN_WIDTH_FOR_PREVIEW: u16 = 80;
+pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
 /// File path and range of lines (used to align and highlight lines)
-type FileLocation = (PathBuf, Option<(usize, usize)>);
+pub type FileLocation = (PathBuf, Option<(usize, usize)>);
 
 pub struct FilePicker<T> {
     picker: Picker<T>,
@@ -86,11 +86,11 @@ impl<T> FilePicker<T> {
     pub fn new(
         options: Vec<T>,
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
-        callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
+        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
         Self {
-            picker: Picker::new(false, options, format_fn, callback_fn),
+            picker: Picker::new(options, format_fn, callback_fn),
             truncate_start: true,
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
@@ -160,8 +160,7 @@ impl<T: 'static> Component for FilePicker<T> {
         // |         | |         |
         // +---------+ +---------+
 
-        let render_preview = area.width > MIN_SCREEN_WIDTH_FOR_PREVIEW;
-        let area = inner_rect(area);
+        let render_preview = area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
@@ -260,6 +259,16 @@ impl<T: 'static> Component for FilePicker<T> {
     fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
         self.picker.cursor(area, ctx)
     }
+
+    fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
+        let picker_width = if width > MIN_AREA_WIDTH_FOR_PREVIEW {
+            width / 2
+        } else {
+            width
+        };
+        self.picker.required_size((picker_width, height))?;
+        Some((width, height))
+    }
 }
 
 pub struct Picker<T> {
@@ -271,29 +280,29 @@ pub struct Picker<T> {
     /// Filter over original options.
     filters: Vec<usize>, // could be optimized into bit but not worth it now
 
+    /// Current height of the completions box
+    completion_height: u16,
+
     cursor: usize,
     // pattern: String,
     prompt: Prompt,
-    /// Whether to render in the middle of the area
-    render_centered: bool,
     /// Wheather to truncate the start (default true)
     pub truncate_start: bool,
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
-    callback_fn: Box<dyn Fn(&mut Editor, &T, Action)>,
+    callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
 }
 
 impl<T> Picker<T> {
     pub fn new(
-        render_centered: bool,
         options: Vec<T>,
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
-        callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
+        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".into(),
             None,
-            |_pattern: &str| Vec::new(),
+            ui::completers::none,
             |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {
                 //
             },
@@ -306,10 +315,10 @@ impl<T> Picker<T> {
             filters: Vec::new(),
             cursor: 0,
             prompt,
-            render_centered,
             truncate_start: true,
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
+            completion_height: 0,
         };
 
         // TODO: scoring on empty input should just use a fastpath
@@ -334,7 +343,7 @@ impl<T> Picker<T> {
                     }
                     // TODO: maybe using format_fn isn't the best idea here
                     let text = (self.format_fn)(option);
-                    // TODO: using fuzzy_indices could give us the char idx for match highlighting
+                    // Highlight indices are computed lazily in the render function
                     self.matcher
                         .fuzzy_match(&text, pattern)
                         .map(|score| (index, score))
@@ -346,22 +355,38 @@ impl<T> Picker<T> {
         self.cursor = 0;
     }
 
-    pub fn move_up(&mut self) {
-        if self.matches.is_empty() {
-            return;
-        }
+    /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
+    pub fn move_by(&mut self, amount: usize, direction: Direction) {
         let len = self.matches.len();
-        let pos = ((self.cursor + len.saturating_sub(1)) % len) % len;
-        self.cursor = pos;
+
+        match direction {
+            Direction::Forward => {
+                self.cursor = self.cursor.saturating_add(amount) % len;
+            }
+            Direction::Backward => {
+                self.cursor = self.cursor.saturating_add(len).saturating_sub(amount) % len;
+            }
+        }
     }
 
-    pub fn move_down(&mut self) {
-        if self.matches.is_empty() {
-            return;
-        }
-        let len = self.matches.len();
-        let pos = (self.cursor + 1) % len;
-        self.cursor = pos;
+    /// Move the cursor down by exactly one page. After the last page comes the first page.
+    pub fn page_up(&mut self) {
+        self.move_by(self.completion_height as usize, Direction::Backward);
+    }
+
+    /// Move the cursor up by exactly one page. After the first page comes the last page.
+    pub fn page_down(&mut self) {
+        self.move_by(self.completion_height as usize, Direction::Forward);
+    }
+
+    /// Move the cursor to the first entry
+    pub fn to_start(&mut self) {
+        self.cursor = 0;
+    }
+
+    /// Move the cursor to the last entry
+    pub fn to_end(&mut self) {
+        self.cursor = self.matches.len().saturating_sub(1);
     }
 
     pub fn selection(&self) -> Option<&T> {
@@ -370,12 +395,12 @@ impl<T> Picker<T> {
             .map(|(index, _score)| &self.options[*index])
     }
 
-    pub fn save_filter(&mut self) {
+    pub fn save_filter(&mut self, cx: &Context) {
         self.filters.clear();
         self.filters
             .extend(self.matches.iter().map(|(index, _)| *index));
         self.filters.sort_unstable(); // used for binary search later
-        self.prompt.clear();
+        self.prompt.clear(cx);
     }
 }
 
@@ -384,30 +409,17 @@ impl<T> Picker<T> {
 // - on input change:
 //  - score all the names in relation to input
 
-fn inner_rect(area: Rect) -> Rect {
-    let margin = Margin {
-        vertical: area.height * 10 / 100,
-        horizontal: area.width * 10 / 100,
-    };
-    area.inner(&margin)
-}
-
 impl<T: 'static> Component for Picker<T> {
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        let max_width = 50.min(viewport.0);
-        let max_height = 10.min(viewport.1.saturating_sub(2)); // add some spacing in the viewport
-
-        let height = (self.options.len() as u16 + 4) // add some spacing for input + padding
-            .min(max_height);
-        let width = max_width;
-        Some((width, height))
+        self.completion_height = viewport.1.saturating_sub(4);
+        Some(viewport)
     }
 
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let key_event = match event {
             Event::Key(event) => event,
             Event::Resize(..) => return EventResult::Consumed(None),
-            _ => return EventResult::Ignored,
+            _ => return EventResult::Ignored(None),
         };
 
         let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
@@ -417,34 +429,46 @@ impl<T: 'static> Component for Picker<T> {
 
         match key_event.into() {
             shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
-                self.move_up();
+                self.move_by(1, Direction::Backward);
             }
             key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
-                self.move_down();
+                self.move_by(1, Direction::Forward);
+            }
+            key!(PageDown) | ctrl!('f') => {
+                self.page_down();
+            }
+            key!(PageUp) | ctrl!('b') => {
+                self.page_up();
+            }
+            key!(Home) => {
+                self.to_start();
+            }
+            key!(End) => {
+                self.to_end();
             }
             key!(Esc) | ctrl!('c') => {
                 return close_fn;
             }
             key!(Enter) => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx.editor, option, Action::Replace);
+                    (self.callback_fn)(cx, option, Action::Replace);
                 }
                 return close_fn;
             }
             ctrl!('s') => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx.editor, option, Action::HorizontalSplit);
+                    (self.callback_fn)(cx, option, Action::HorizontalSplit);
                 }
                 return close_fn;
             }
             ctrl!('v') => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx.editor, option, Action::VerticalSplit);
+                    (self.callback_fn)(cx, option, Action::VerticalSplit);
                 }
                 return close_fn;
             }
             ctrl!(' ') => {
-                self.save_filter();
+                self.save_filter(cx);
             }
             _ => {
                 if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
@@ -458,13 +482,9 @@ impl<T: 'static> Component for Picker<T> {
     }
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        let area = if self.render_centered {
-            inner_rect(area)
-        } else {
-            area
-        };
-
         let text_style = cx.editor.theme.get("ui.text");
+        let selected = cx.editor.theme.get("ui.text.focus");
+        let highlighted = cx.editor.theme.get("special").add_modifier(Modifier::BOLD);
 
         // -- Render the frame:
         // clear area
@@ -507,29 +527,41 @@ impl<T: 'static> Component for Picker<T> {
         // subtract area of prompt from top and current item marker " > " from left
         let inner = inner.clip_top(2).clip_left(3);
 
-        let selected = cx.editor.theme.get("ui.text.focus");
-
         let rows = inner.height;
         let offset = self.cursor - (self.cursor % std::cmp::max(1, rows as usize));
 
-        let files = self.matches.iter().skip(offset).map(|(index, _score)| {
-            (index, self.options.get(*index).unwrap()) // get_unchecked
-        });
+        let files = self
+            .matches
+            .iter_mut()
+            .skip(offset)
+            .map(|(index, _score)| (*index, self.options.get(*index).unwrap()));
 
         for (i, (_index, option)) in files.take(rows as usize).enumerate() {
-            if i == (self.cursor - offset) {
+            let is_active = i == (self.cursor - offset);
+            if is_active {
                 surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
             }
+
+            let formatted = (self.format_fn)(option);
+
+            let (_score, highlights) = self
+                .matcher
+                .fuzzy_indices(&formatted, &self.prompt.line)
+                .unwrap_or_default();
 
             surface.set_string_truncated(
                 inner.x,
                 inner.y + i as u16,
-                (self.format_fn)(option),
+                &formatted,
                 inner.width as usize,
-                if i == (self.cursor - offset) {
-                    selected
-                } else {
-                    text_style
+                |idx| {
+                    if highlights.contains(&idx) {
+                        highlighted
+                    } else if is_active {
+                        selected
+                    } else {
+                        text_style
+                    }
                 },
                 true,
                 self.truncate_start,
@@ -538,8 +570,6 @@ impl<T: 'static> Component for Picker<T> {
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        // TODO: this is mostly duplicate code
-        let area = inner_rect(area);
         let block = Block::default().borders(Borders::ALL);
         // calculate the inner area inside the box
         let inner = block.inner(area);

@@ -3,6 +3,7 @@ pub use encoding_rs as encoding;
 pub mod auto_pairs;
 pub mod chars;
 pub mod comment;
+pub mod config;
 pub mod diagnostic;
 pub mod diff;
 pub mod graphemes;
@@ -212,7 +213,10 @@ use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 
 pub use ropey::{Rope, RopeBuilder, RopeSlice};
 
-pub use tendril::StrTendril as Tendril;
+// pub use tendril::StrTendril as Tendril;
+pub use smartstring::SmartString;
+
+pub type Tendril = SmartString<smartstring::LazyCompact>;
 
 #[doc(inline)]
 pub use {regex, tree_sitter};
@@ -220,7 +224,7 @@ pub use {regex, tree_sitter};
 pub use graphemes::RopeGraphemes;
 pub use position::{coords_at_pos, pos_at_coords, visual_coords_at_pos, Position};
 pub use selection::{Range, Selection};
-pub use smallvec::SmallVec;
+pub use smallvec::{smallvec, SmallVec};
 pub use syntax::Syntax;
 
 pub use diagnostic::Diagnostic;

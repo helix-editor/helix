@@ -21,7 +21,8 @@
       defaultOutputs = { app = "hx"; package = "helix"; };
       overrides = {
         crateOverrides = common: _: rec {
-          # link languages and theme toml files since helix-view expects them
+          # link languages and theme toml files since helix-core/helix-view expects them
+          helix-core = _: { preConfigure = "ln -s ${common.root}/{languages.toml,theme.toml,base16_theme.toml} .."; };
           helix-view = _: { preConfigure = "ln -s ${common.root}/{languages.toml,theme.toml,base16_theme.toml} .."; };
           helix-syntax = prev: {
             src =

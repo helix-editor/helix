@@ -64,7 +64,10 @@ impl JumpList {
     }
 }
 
-const GUTTERS: &[(Gutter, usize)] = &[(gutter::diagnostic, 1), (gutter::line_number, 5)];
+const GUTTERS: &[(Gutter, usize)] = &[
+    (gutter::diagnostics_or_breakpoints, 1),
+    (gutter::line_number, 5),
+];
 
 #[derive(Debug)]
 pub struct View {
@@ -273,6 +276,26 @@ impl View {
     pub fn pos_at_screen_coords(&self, doc: &Document, row: u16, column: u16) -> Option<usize> {
         self.text_pos_at_screen_coords(&doc.text().slice(..), row, column, doc.tab_width())
     }
+
+    /// Translates screen coordinates into coordinates on the gutter of the view.
+    /// Returns a tuple of usize typed line and column numbers starting with 0.
+    /// Returns None if coordinates are not on the gutter.
+    pub fn gutter_coords_at_screen_coords(&self, row: u16, column: u16) -> Option<Position> {
+        // 1 for status
+        if row < self.area.top() || row >= self.area.bottom() {
+            return None;
+        }
+
+        if column < self.area.left() || column > self.area.right() {
+            return None;
+        }
+
+        Some(Position::new(
+            (row - self.area.top()) as usize,
+            (column - self.area.left()) as usize,
+        ))
+    }
+
     // pub fn traverse<F>(&self, text: RopeSlice, start: usize, end: usize, fun: F)
     // where
     //     F: Fn(usize, usize),

@@ -19,7 +19,7 @@ pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
 
 // Cursive-inspired
 pub enum EventResult {
-    Ignored,
+    Ignored(Option<Callback>),
     Consumed(Option<Callback>),
 }
 
@@ -36,7 +36,7 @@ pub struct Context<'a> {
 pub trait Component: Any + AnyComponent {
     /// Process input events, return true if handled.
     fn handle_event(&mut self, _event: Event, _ctx: &mut Context) -> EventResult {
-        EventResult::Ignored
+        EventResult::Ignored(None)
     }
     // , args: ()
 
@@ -146,19 +146,34 @@ impl Compositor {
             keys.push(key.into());
         }
 
+        let mut callbacks = Vec::new();
+        let mut consumed = false;
+
         // propagate events through the layers until we either find a layer that consumes it or we
         // run out of layers (event bubbling)
         for layer in self.layers.iter_mut().rev() {
             match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {
-                    callback(self, cx);
-                    return true;
+                    callbacks.push(callback);
+                    consumed = true;
+                    break;
                 }
-                EventResult::Consumed(None) => return true,
-                EventResult::Ignored => false,
+                EventResult::Consumed(None) => {
+                    consumed = true;
+                    break;
+                }
+                EventResult::Ignored(Some(callback)) => {
+                    callbacks.push(callback);
+                }
+                EventResult::Ignored(None) => {}
             };
         }
-        false
+
+        for callback in callbacks {
+            callback(self, cx)
+        }
+
+        consumed
     }
 
     pub fn render(&mut self, cx: &mut Context) {

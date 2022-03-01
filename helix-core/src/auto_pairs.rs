@@ -4,12 +4,14 @@
 use crate::{
     graphemes, movement::Direction, Range, Rope, RopeGraphemes, Selection, Tendril, Transaction,
 };
+use std::collections::HashMap;
+
 use log::debug;
 use smallvec::SmallVec;
 
 // Heavily based on https://github.com/codemirror/closebrackets/
 
-pub const PAIRS: &[(char, char)] = &[
+pub const DEFAULT_PAIRS: &[(char, char)] = &[
     ('(', ')'),
     ('{', '}'),
     ('[', ']'),
@@ -18,9 +20,95 @@ pub const PAIRS: &[(char, char)] = &[
     ('`', '`'),
 ];
 
-// [TODO] build this dynamically in language config. see #992
-const OPEN_BEFORE: &str = "([{'\":;,> \n\r\u{000B}\u{000C}\u{0085}\u{2028}\u{2029}";
-const CLOSE_BEFORE: &str = ")]}'\":;,> \n\r\u{000B}\u{000C}\u{0085}\u{2028}\u{2029}"; // includes space and newlines
+/// The type that represents the collection of auto pairs,
+/// keyed by the opener.
+#[derive(Debug, Clone)]
+pub struct AutoPairs(HashMap<char, Pair>);
+
+/// Represents the config for a particular pairing.
+#[derive(Debug, Clone, Copy)]
+pub struct Pair {
+    pub open: char,
+    pub close: char,
+}
+
+impl Pair {
+    /// true if open == close
+    pub fn same(&self) -> bool {
+        self.open == self.close
+    }
+
+    /// true if all of the pair's conditions hold for the given document and range
+    pub fn should_close(&self, doc: &Rope, range: &Range) -> bool {
+        let mut should_close = Self::next_is_not_alpha(doc, range);
+
+        if self.same() {
+            should_close &= Self::prev_is_not_alpha(doc, range);
+        }
+
+        should_close
+    }
+
+    pub fn next_is_not_alpha(doc: &Rope, range: &Range) -> bool {
+        let cursor = range.cursor(doc.slice(..));
+        let next_char = doc.get_char(cursor);
+        next_char.map(|c| !c.is_alphanumeric()).unwrap_or(true)
+    }
+
+    pub fn prev_is_not_alpha(doc: &Rope, range: &Range) -> bool {
+        let cursor = range.cursor(doc.slice(..));
+        let prev_char = prev_char(doc, cursor);
+        prev_char.map(|c| !c.is_alphanumeric()).unwrap_or(true)
+    }
+}
+
+impl From<&(char, char)> for Pair {
+    fn from(&(open, close): &(char, char)) -> Self {
+        Self { open, close }
+    }
+}
+
+impl From<(&char, &char)> for Pair {
+    fn from((open, close): (&char, &char)) -> Self {
+        Self {
+            open: *open,
+            close: *close,
+        }
+    }
+}
+
+impl AutoPairs {
+    /// Make a new AutoPairs set with the given pairs and default conditions.
+    pub fn new<'a, V: 'a, A>(pairs: V) -> Self
+    where
+        V: IntoIterator<Item = A>,
+        A: Into<Pair>,
+    {
+        let mut auto_pairs = HashMap::new();
+
+        for pair in pairs.into_iter() {
+            let auto_pair = pair.into();
+
+            auto_pairs.insert(auto_pair.open, auto_pair);
+
+            if auto_pair.open != auto_pair.close {
+                auto_pairs.insert(auto_pair.close, auto_pair);
+            }
+        }
+
+        Self(auto_pairs)
+    }
+
+    pub fn get(&self, ch: char) -> Option<&Pair> {
+        self.0.get(&ch)
+    }
+}
+
+impl Default for AutoPairs {
+    fn default() -> Self {
+        AutoPairs::new(DEFAULT_PAIRS.iter())
+    }
+}
 
 // insert hook:
 // Fn(doc, selection, char) => Option<Transaction>
@@ -36,21 +124,17 @@ const CLOSE_BEFORE: &str = ")]}'\":;,> \n\r\u{000B}\u{000C}\u{0085}\u{2028}\u{20
 //   middle of triple quotes, and more exotic pairs like Jinja's {% %}
 
 #[must_use]
-pub fn hook(doc: &Rope, selection: &Selection, ch: char) -> Option<Transaction> {
+pub fn hook(doc: &Rope, selection: &Selection, ch: char, pairs: &AutoPairs) -> Option<Transaction> {
     debug!("autopairs hook selection: {:#?}", selection);
 
-    for &(open, close) in PAIRS {
-        if open == ch {
-            if open == close {
-                return Some(handle_same(doc, selection, open, CLOSE_BEFORE, OPEN_BEFORE));
-            } else {
-                return Some(handle_open(doc, selection, open, close, CLOSE_BEFORE));
-            }
-        }
-
-        if close == ch {
+    if let Some(pair) = pairs.get(ch) {
+        if pair.same() {
+            return Some(handle_same(doc, selection, pair));
+        } else if pair.open == ch {
+            return Some(handle_open(doc, selection, pair));
+        } else if pair.close == ch {
             // && char_at pos == close
-            return Some(handle_close(doc, selection, open, close));
+            return Some(handle_close(doc, selection, pair));
         }
     }
 
@@ -196,13 +280,7 @@ fn get_next_range(
     Range::new(end_anchor, end_head)
 }
 
-fn handle_open(
-    doc: &Rope,
-    selection: &Selection,
-    open: char,
-    close: char,
-    close_before: &str,
-) -> Transaction {
+fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     let mut end_ranges = SmallVec::with_capacity(selection.len());
     let mut offs = 0;
 
@@ -212,20 +290,21 @@ fn handle_open(
         let len_inserted;
 
         let change = match next_char {
-            Some(ch) if !close_before.contains(ch) => {
-                len_inserted = open.len_utf8();
-                (cursor, cursor, Some(Tendril::from_char(open)))
+            Some(_) if !pair.should_close(doc, start_range) => {
+                len_inserted = pair.open.len_utf8();
+                let mut tendril = Tendril::new();
+                tendril.push(pair.open);
+                (cursor, cursor, Some(tendril))
             }
-            // None | Some(ch) if close_before.contains(ch) => {}
             _ => {
                 // insert open & close
-                let pair = Tendril::from_iter([open, close]);
-                len_inserted = open.len_utf8() + close.len_utf8();
-                (cursor, cursor, Some(pair))
+                let pair_str = Tendril::from_iter([pair.open, pair.close]);
+                len_inserted = pair.open.len_utf8() + pair.close.len_utf8();
+                (cursor, cursor, Some(pair_str))
             }
         };
 
-        let next_range = get_next_range(doc, start_range, offs, open, len_inserted);
+        let next_range = get_next_range(doc, start_range, offs, pair.open, len_inserted);
         end_ranges.push(next_range);
         offs += len_inserted;
 
@@ -237,7 +316,7 @@ fn handle_open(
     t
 }
 
-fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> Transaction {
+fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     let mut end_ranges = SmallVec::with_capacity(selection.len());
 
     let mut offs = 0;
@@ -247,15 +326,17 @@ fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> 
         let next_char = doc.get_char(cursor);
         let mut len_inserted = 0;
 
-        let change = if next_char == Some(close) {
+        let change = if next_char == Some(pair.close) {
             // return transaction that moves past close
             (cursor, cursor, None) // no-op
         } else {
-            len_inserted += close.len_utf8();
-            (cursor, cursor, Some(Tendril::from_char(close)))
+            len_inserted += pair.close.len_utf8();
+            let mut tendril = Tendril::new();
+            tendril.push(pair.close);
+            (cursor, cursor, Some(tendril))
         };
 
-        let next_range = get_next_range(doc, start_range, offs, close, len_inserted);
+        let next_range = get_next_range(doc, start_range, offs, pair.close, len_inserted);
         end_ranges.push(next_range);
         offs += len_inserted;
 
@@ -268,13 +349,7 @@ fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> 
 }
 
 /// handle cases where open and close is the same, or in triples ("""docstring""")
-fn handle_same(
-    doc: &Rope,
-    selection: &Selection,
-    token: char,
-    close_before: &str,
-    open_before: &str,
-) -> Transaction {
+fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     let mut end_ranges = SmallVec::with_capacity(selection.len());
 
     let mut offs = 0;
@@ -282,30 +357,26 @@ fn handle_same(
     let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
         let cursor = start_range.cursor(doc.slice(..));
         let mut len_inserted = 0;
-
         let next_char = doc.get_char(cursor);
-        let prev_char = prev_char(doc, cursor);
 
-        let change = if next_char == Some(token) {
+        let change = if next_char == Some(pair.open) {
             //  return transaction that moves past close
             (cursor, cursor, None) // no-op
         } else {
-            let mut pair = Tendril::with_capacity(2 * token.len_utf8() as u32);
-            pair.push_char(token);
+            let mut pair_str = Tendril::new();
+            pair_str.push(pair.open);
 
             // for equal pairs, don't insert both open and close if either
             // side has a non-pair char
-            if (next_char.is_none() || close_before.contains(next_char.unwrap()))
-                && (prev_char.is_none() || open_before.contains(prev_char.unwrap()))
-            {
-                pair.push_char(token);
+            if pair.should_close(doc, start_range) {
+                pair_str.push(pair.close);
             }
 
-            len_inserted += pair.len();
-            (cursor, cursor, Some(pair))
+            len_inserted += pair_str.len();
+            (cursor, cursor, Some(pair_str))
         };
 
-        let next_range = get_next_range(doc, start_range, offs, token, len_inserted);
+        let next_range = get_next_range(doc, start_range, offs, pair.open, len_inserted);
         end_ranges.push(next_range);
         offs += len_inserted;
 
@@ -325,21 +396,23 @@ mod test {
     const LINE_END: &str = crate::DEFAULT_LINE_ENDING.as_str();
 
     fn differing_pairs() -> impl Iterator<Item = &'static (char, char)> {
-        PAIRS.iter().filter(|(open, close)| open != close)
+        DEFAULT_PAIRS.iter().filter(|(open, close)| open != close)
     }
 
     fn matching_pairs() -> impl Iterator<Item = &'static (char, char)> {
-        PAIRS.iter().filter(|(open, close)| open == close)
+        DEFAULT_PAIRS.iter().filter(|(open, close)| open == close)
     }
 
     fn test_hooks(
         in_doc: &Rope,
         in_sel: &Selection,
         ch: char,
+        pairs: &[(char, char)],
         expected_doc: &Rope,
         expected_sel: &Selection,
     ) {
-        let trans = hook(in_doc, in_sel, ch).unwrap();
+        let pairs = AutoPairs::new(pairs.iter());
+        let trans = hook(in_doc, in_sel, ch, &pairs).unwrap();
         let mut actual_doc = in_doc.clone();
         assert!(trans.apply(&mut actual_doc));
         assert_eq!(expected_doc, &actual_doc);
@@ -349,7 +422,8 @@ mod test {
     fn test_hooks_with_pairs<I, F, R>(
         in_doc: &Rope,
         in_sel: &Selection,
-        pairs: I,
+        test_pairs: I,
+        pairs: &[(char, char)],
         get_expected_doc: F,
         actual_sel: &Selection,
     ) where
@@ -358,11 +432,12 @@ mod test {
         R: Into<Rope>,
         Rope: From<R>,
     {
-        pairs.into_iter().for_each(|(open, close)| {
+        test_pairs.into_iter().for_each(|(open, close)| {
             test_hooks(
                 in_doc,
                 in_sel,
                 *open,
+                pairs,
                 &Rope::from(get_expected_doc(*open, *close)),
                 actual_sel,
             )
@@ -377,7 +452,8 @@ mod test {
         test_hooks_with_pairs(
             &Rope::from(LINE_END),
             &Selection::single(1, 0),
-            PAIRS,
+            DEFAULT_PAIRS,
+            DEFAULT_PAIRS,
             |open, close| format!("{}{}{}", open, close, LINE_END),
             &Selection::single(2, 1),
         );
@@ -387,7 +463,8 @@ mod test {
         test_hooks_with_pairs(
             &empty_doc,
             &Selection::single(empty_doc.len_chars(), LINE_END.len()),
-            PAIRS,
+            DEFAULT_PAIRS,
+            DEFAULT_PAIRS,
             |open, close| {
                 format!(
                     "{line_end}{open}{close}{line_end}",
@@ -402,13 +479,16 @@ mod test {
 
     #[test]
     fn test_insert_before_multi_code_point_graphemes() {
-        test_hooks_with_pairs(
-            &Rope::from(format!("hello 👨‍👩‍👧‍👦 goodbye{}", LINE_END)),
-            &Selection::single(13, 6),
-            PAIRS,
-            |open, _| format!("hello {}👨‍👩‍👧‍👦 goodbye{}", open, LINE_END),
-            &Selection::single(14, 7),
-        );
+        for (_, close) in differing_pairs() {
+            test_hooks(
+                &Rope::from(format!("hello 👨‍👩‍👧‍👦 goodbye{}", LINE_END)),
+                &Selection::single(13, 6),
+                *close,
+                DEFAULT_PAIRS,
+                &Rope::from(format!("hello {}👨‍👩‍👧‍👦 goodbye{}", close, LINE_END)),
+                &Selection::single(14, 7),
+            );
+        }
     }
 
     #[test]
@@ -416,7 +496,8 @@ mod test {
         test_hooks_with_pairs(
             &Rope::from(LINE_END),
             &Selection::single(LINE_END.len(), LINE_END.len()),
-            PAIRS,
+            DEFAULT_PAIRS,
+            DEFAULT_PAIRS,
             |open, close| format!("{}{}{}", LINE_END, open, close),
             &Selection::single(LINE_END.len() + 1, LINE_END.len() + 1),
         );
@@ -424,7 +505,8 @@ mod test {
         test_hooks_with_pairs(
             &Rope::from(format!("foo{}", LINE_END)),
             &Selection::single(3 + LINE_END.len(), 3 + LINE_END.len()),
-            PAIRS,
+            DEFAULT_PAIRS,
+            DEFAULT_PAIRS,
             |open, close| format!("foo{}{}{}", LINE_END, open, close),
             &Selection::single(LINE_END.len() + 4, LINE_END.len() + 4),
         );
@@ -438,7 +520,8 @@ mod test {
             &Rope::from(format!("{line_end}{line_end}", line_end = LINE_END)),
             // before inserting the pair, the cursor covers all of both empty lines
             &Selection::single(0, LINE_END.len() * 2),
-            PAIRS,
+            DEFAULT_PAIRS,
+            DEFAULT_PAIRS,
             |open, close| {
                 format!(
                     "{line_end}{open}{close}{line_end}",
@@ -463,7 +546,8 @@ mod test {
                 smallvec!(Range::new(1, 0), Range::new(2, 1), Range::new(3, 2),),
                 0,
             ),
-            PAIRS,
+            DEFAULT_PAIRS,
+            DEFAULT_PAIRS,
             |open, close| {
                 format!(
                     "{open}{close}\n{open}{close}\n{open}{close}\n",
@@ -485,6 +569,7 @@ mod test {
             &Rope::from("foo\n"),
             &Selection::single(2, 4),
             differing_pairs(),
+            DEFAULT_PAIRS,
             |open, close| format!("foo{}{}\n", open, close),
             &Selection::single(2, 5),
         );
@@ -497,6 +582,7 @@ mod test {
             &Rope::from(format!("foo{}", LINE_END)),
             &Selection::single(3, 3 + LINE_END.len()),
             differing_pairs(),
+            DEFAULT_PAIRS,
             |open, close| format!("foo{}{}{}", open, close, LINE_END),
             &Selection::single(4, 5),
         );
@@ -514,6 +600,7 @@ mod test {
                 0,
             ),
             differing_pairs(),
+            DEFAULT_PAIRS,
             |open, close| {
                 format!(
                     "foo{open}{close}\nfoo{open}{close}\nfoo{open}{close}\n",
@@ -531,13 +618,14 @@ mod test {
     /// ([)] -> insert ) -> ()[]
     #[test]
     fn test_insert_close_inside_pair() {
-        for (open, close) in PAIRS {
+        for (open, close) in DEFAULT_PAIRS {
             let doc = Rope::from(format!("{}{}{}", open, close, LINE_END));
 
             test_hooks(
                 &doc,
                 &Selection::single(2, 1),
                 *close,
+                DEFAULT_PAIRS,
                 &doc,
                 &Selection::single(2 + LINE_END.len(), 2),
             );
@@ -547,13 +635,14 @@ mod test {
     /// [(]) -> append ) -> [()]
     #[test]
     fn test_append_close_inside_pair() {
-        for (open, close) in PAIRS {
+        for (open, close) in DEFAULT_PAIRS {
             let doc = Rope::from(format!("{}{}{}", open, close, LINE_END));
 
             test_hooks(
                 &doc,
                 &Selection::single(0, 2),
                 *close,
+                DEFAULT_PAIRS,
                 &doc,
                 &Selection::single(0, 2 + LINE_END.len()),
             );
@@ -575,14 +664,14 @@ mod test {
             0,
         );
 
-        for (open, close) in PAIRS {
+        for (open, close) in DEFAULT_PAIRS {
             let doc = Rope::from(format!(
                 "{open}{close}\n{open}{close}\n{open}{close}\n",
                 open = open,
                 close = close
             ));
 
-            test_hooks(&doc, &sel, *close, &doc, &expected_sel);
+            test_hooks(&doc, &sel, *close, DEFAULT_PAIRS, &doc, &expected_sel);
         }
     }
 
@@ -601,14 +690,14 @@ mod test {
             0,
         );
 
-        for (open, close) in PAIRS {
+        for (open, close) in DEFAULT_PAIRS {
             let doc = Rope::from(format!(
                 "{open}{close}\n{open}{close}\n{open}{close}\n",
                 open = open,
                 close = close
             ));
 
-            test_hooks(&doc, &sel, *close, &doc, &expected_sel);
+            test_hooks(&doc, &sel, *close, DEFAULT_PAIRS, &doc, &expected_sel);
         }
     }
 
@@ -626,7 +715,14 @@ mod test {
                 close = close
             ));
 
-            test_hooks(&doc, &sel, *open, &expected_doc, &expected_sel);
+            test_hooks(
+                &doc,
+                &sel,
+                *open,
+                DEFAULT_PAIRS,
+                &expected_doc,
+                &expected_sel,
+            );
         }
     }
 
@@ -644,7 +740,14 @@ mod test {
                 close = close
             ));
 
-            test_hooks(&doc, &sel, *open, &expected_doc, &expected_sel);
+            test_hooks(
+                &doc,
+                &sel,
+                *open,
+                DEFAULT_PAIRS,
+                &expected_doc,
+                &expected_sel,
+            );
         }
     }
 
@@ -663,7 +766,14 @@ mod test {
                     outer_open, inner_open, inner_close, outer_close
                 ));
 
-                test_hooks(&doc, &sel, *inner_open, &expected_doc, &expected_sel);
+                test_hooks(
+                    &doc,
+                    &sel,
+                    *inner_open,
+                    DEFAULT_PAIRS,
+                    &expected_doc,
+                    &expected_sel,
+                );
             }
         }
     }
@@ -683,7 +793,14 @@ mod test {
                     outer_open, inner_open, inner_close, outer_close
                 ));
 
-                test_hooks(&doc, &sel, *inner_open, &expected_doc, &expected_sel);
+                test_hooks(
+                    &doc,
+                    &sel,
+                    *inner_open,
+                    DEFAULT_PAIRS,
+                    &expected_doc,
+                    &expected_sel,
+                );
             }
         }
     }
@@ -694,7 +811,8 @@ mod test {
         test_hooks_with_pairs(
             &Rope::from("word"),
             &Selection::single(1, 0),
-            PAIRS,
+            DEFAULT_PAIRS,
+            DEFAULT_PAIRS,
             |open, _| format!("{}word", open),
             &Selection::single(2, 1),
         )
@@ -706,7 +824,8 @@ mod test {
         test_hooks_with_pairs(
             &Rope::from("word"),
             &Selection::single(3, 0),
-            PAIRS,
+            DEFAULT_PAIRS,
+            DEFAULT_PAIRS,
             |open, _| format!("{}word", open),
             &Selection::single(4, 1),
         )
@@ -718,10 +837,17 @@ mod test {
         let sel = Selection::single(0, 4);
         let expected_sel = Selection::single(0, 5);
 
-        for (_, close) in PAIRS {
+        for (_, close) in DEFAULT_PAIRS {
             let doc = Rope::from("word");
             let expected_doc = Rope::from(format!("wor{}d", close));
-            test_hooks(&doc, &sel, *close, &expected_doc, &expected_sel);
+            test_hooks(
+                &doc,
+                &sel,
+                *close,
+                DEFAULT_PAIRS,
+                &expected_doc,
+                &expected_sel,
+            );
         }
     }
 
@@ -732,6 +858,7 @@ mod test {
             &Rope::from("foo word"),
             &Selection::single(7, 3),
             differing_pairs(),
+            DEFAULT_PAIRS,
             |open, close| format!("foo{}{} word", open, close),
             &Selection::single(9, 4),
         )
@@ -745,6 +872,7 @@ mod test {
                 &Rope::from(format!("foo{}{} word{}", open, close, LINE_END)),
                 &Selection::single(9, 4),
                 *close,
+                DEFAULT_PAIRS,
                 &Rope::from(format!("foo{}{} word{}", open, close, LINE_END)),
                 &Selection::single(9, 5),
             )
@@ -767,6 +895,7 @@ mod test {
             &doc,
             &sel,
             differing_pairs(),
+            DEFAULT_PAIRS,
             |open, close| format!("word{}{}{}", open, close, LINE_END),
             &expected_sel,
         );
@@ -775,8 +904,34 @@ mod test {
             &doc,
             &sel,
             matching_pairs(),
+            DEFAULT_PAIRS,
             |open, _| format!("word{}{}", open, LINE_END),
             &expected_sel,
         );
+    }
+
+    #[test]
+    fn test_configured_pairs() {
+        let test_pairs = &[('`', ':'), ('+', '-')];
+
+        test_hooks_with_pairs(
+            &Rope::from(LINE_END),
+            &Selection::single(1, 0),
+            test_pairs,
+            test_pairs,
+            |open, close| format!("{}{}{}", open, close, LINE_END),
+            &Selection::single(2, 1),
+        );
+
+        let doc = Rope::from(format!("foo`: word{}", LINE_END));
+
+        test_hooks(
+            &doc,
+            &Selection::single(9, 4),
+            ':',
+            test_pairs,
+            &doc,
+            &Selection::single(9, 5),
+        )
     }
 }

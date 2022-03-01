@@ -43,6 +43,9 @@ impl Client {
         root_markers: Vec<String>,
         id: usize,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
+        // Resolve path to the binary
+        let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
+
         let process = Command::new(cmd)
             .args(args)
             .stdin(Stdio::piped())
@@ -108,6 +111,10 @@ impl Client {
 
     pub fn offset_encoding(&self) -> OffsetEncoding {
         self.offset_encoding
+    }
+
+    pub fn config(&self) -> Option<&Value> {
+        self.config.as_ref()
     }
 
     /// Execute a RPC request on the language server.
@@ -243,6 +250,13 @@ impl Client {
             root_uri: root,
             initialization_options: self.config.clone(),
             capabilities: lsp::ClientCapabilities {
+                workspace: Some(lsp::WorkspaceClientCapabilities {
+                    configuration: Some(true),
+                    did_change_configuration: Some(lsp::DynamicRegistrationClientCapabilities {
+                        dynamic_registration: Some(false),
+                    }),
+                    ..Default::default()
+                }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
                     completion: Some(lsp::CompletionClientCapabilities {
                         completion_item: Some(lsp::CompletionItemCapability {
@@ -325,6 +339,16 @@ impl Client {
             log::warn!("language server failed to terminate gracefully - {}", e);
         }
         self.exit().await
+    }
+
+    // -------------------------------------------------------------------------------------------
+    // Workspace
+    // -------------------------------------------------------------------------------------------
+
+    pub fn did_change_configuration(&self, settings: Value) -> impl Future<Output = Result<()>> {
+        self.notify::<lsp::notification::DidChangeConfiguration>(
+            lsp::DidChangeConfigurationParams { settings },
+        )
     }
 
     // -------------------------------------------------------------------------------------------
@@ -438,7 +462,7 @@ impl Client {
 
                     changes.push(lsp::TextDocumentContentChangeEvent {
                         range: Some(lsp::Range::new(start, end)),
-                        text: s.into(),
+                        text: s.to_string(),
                         range_length: None,
                     });
                 }
