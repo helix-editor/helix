@@ -1,4 +1,4 @@
-use crossterm::style::Stylize;
+use crossterm::style::{Color, Print, Stylize};
 use helix_core::{
     config::{default_syntax_loader, user_syntax_loader},
     syntax::load_runtime_file,
@@ -33,6 +33,80 @@ pub fn general() {
     }
     if rt_dir.read_dir().ok().map(|it| it.count()) == Some(0) {
         println!("{}", "Runtime directory is empty.".red());
+    }
+}
+
+pub fn languages_all() {
+    let mut syn_loader_conf = user_syntax_loader().unwrap_or_else(|err| {
+        eprintln!("{}: {}", "Error parsing user language config".red(), err);
+        eprintln!("{}", "Using default language config".yellow());
+        default_syntax_loader()
+    });
+
+    let headings = &[
+        "Language",
+        "LSP",
+        "DAP",
+        "Highlight",
+        "Textobject",
+        "Indent",
+    ];
+
+    let terminal_cols = crossterm::terminal::size().map(|(c, _)| c).unwrap_or(80);
+    let column_width = terminal_cols as usize / headings.len();
+
+    let column = |item: &str, color: Color| {
+        let data = format!(
+            "{:column_width$}",
+            item.get(..column_width - 2)
+                .map(|s| format!("{s}…"))
+                .unwrap_or_else(|| item.to_string())
+        )
+        .stylize()
+        .with(color);
+
+        // We can't directly use println!() because of
+        // https://github.com/crossterm-rs/crossterm/issues/589
+        let _ = crossterm::execute!(std::io::stdout(), Print(data));
+    };
+
+    for heading in headings {
+        column(heading, Color::White);
+    }
+    println!();
+
+    syn_loader_conf
+        .language
+        .sort_unstable_by_key(|l| l.language_id.clone());
+
+    let check_binary = |cmd: Option<String>| match cmd {
+        Some(cmd) => match which::which(&cmd) {
+            Ok(_) => column(&cmd, Color::Green),
+            Err(_) => column(&cmd, Color::Red),
+        },
+        None => column("None", Color::Yellow),
+    };
+
+    for lang in &syn_loader_conf.language {
+        column(&lang.language_id, Color::Reset);
+
+        let lsp = lang
+            .language_server
+            .as_ref()
+            .map(|lsp| lsp.command.to_string());
+        check_binary(lsp);
+
+        let dap = lang.debugger.as_ref().map(|dap| dap.command.to_string());
+        check_binary(dap);
+
+        for query_filename in &["highlights.scm", "textobjects.scm", "indents.toml"] {
+            match load_runtime_file(&lang.language_id, query_filename).is_ok() {
+                true => column("Found", Color::Green),
+                false => column("Not Found", Color::Red),
+            }
+        }
+
+        println!();
     }
 }
 

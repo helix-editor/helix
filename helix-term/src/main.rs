@@ -89,9 +89,14 @@ FLAGS:
 
     if args.health {
         if let Some(lang) = args.health_arg {
-            helix_term::health::language(lang);
+            match lang.as_str() {
+                "all" => helix_term::health::languages_all(),
+                _ => helix_term::health::language(lang),
+            }
         } else {
             helix_term::health::general();
+            println!();
+            helix_term::health::languages_all();
         }
         std::process::exit(0);
     }
