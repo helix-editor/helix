@@ -19,7 +19,12 @@ brew install helix
 
 A [flake](https://nixos.wiki/wiki/Flakes) containing the package is available in
 the project root. The flake can also be used to spin up a reproducible development
-shell for working on Helix.
+shell for working on Helix with `nix develop`.
+
+Flake outputs are cached for each push to master using
+[Cachix](https://www.cachix.org/). With Cachix
+[installed](https://docs.cachix.org/installation), `cachix use helix` will
+configure Nix to use cached outputs when possible.
 
 ### Arch Linux
 
