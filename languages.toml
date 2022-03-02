@@ -939,15 +939,15 @@ source = { git = "https://github.com/jaredramirez/tree-sitter-rescript", rev = "
 [[language]]
 name = "erlang"
 scope = "source.erlang"
-injection-regex = "^erl$"
-file-types = ["erl", "hrl", "app", "rebar.config"]
+injection-regex = "erl(ang)?"
+file-types = ["erl", "hrl", "app", "rebar.config", "rebar.lock"]
 roots = ["rebar.config"]
 comment-token = "%%"
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "erlang"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "86985bde399c5f40b00bc75f7ab70a6c69a5f9c3" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "2774d5a7106081c576dce711d2ed39bb2dc7c795" }
 
 [[language]]
 name = "kotlin"
