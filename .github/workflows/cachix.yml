@@ -21,6 +21,4 @@ jobs:
         authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
     - name: Build nix flake
-      run: |
-        nix build
-        nix flake check
+      run: nix build
