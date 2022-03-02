@@ -22,7 +22,7 @@
       (tuple
         (binary_operator
           left: (atom) @variable.other.member
-          operator: "="))
+          operator: ["=" "::"]))
       (tuple
         (binary_operator
           left:
@@ -74,7 +74,7 @@
   @keyword
   "^(define|export|export_type|include|include_lib|ifdef|ifndef|if|elif|else|endif|vsn|on_load|behaviour|record|file|type|opaque|spec)$"))
 
-["case" "fun" "if" "of" "when" "end" "receive" "try" "catch" "after"] @keyword
+["case" "fun" "if" "of" "when" "end" "receive" "try" "catch" "after" "begin" "maybe"] @keyword
 
 ; Operators
 (binary_operator
