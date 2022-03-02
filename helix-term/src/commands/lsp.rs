@@ -645,6 +645,7 @@ pub fn signature_help(cx: &mut Context) {
                 .language()
                 .and_then(|scope| scope.strip_prefix("source."))
                 .unwrap_or("");
+
             // If there are no signatures, response will be None, therefore
             // at least one signature exists.
             let signature = &response.signatures[response.active_signature.unwrap_or(0) as usize];
@@ -653,13 +654,31 @@ pub fn signature_help(cx: &mut Context) {
                 language.to_string(),
                 Arc::clone(&editor.syn_loader),
             );
-            if let Some(ref signature_doc) = signature.documentation {
-                let doc_text = match signature_doc {
-                    lsp::Documentation::String(s) => &s,
-                    lsp::Documentation::MarkupContent(markup) => &markup.value,
-                };
-                contents.set_signature_doc(doc_text.clone());
-            }
+
+            let signature_doc = signature.documentation.as_ref().map(|doc| match doc {
+                lsp::Documentation::String(s) => s.clone(),
+                lsp::Documentation::MarkupContent(markup) => markup.value.clone(),
+            });
+            contents.set_signature_doc(signature_doc);
+
+            let active_param_range = || -> Option<(usize, usize)> {
+                let param_idx = signature
+                    .active_parameter
+                    .or(response.active_parameter)
+                    .unwrap_or(0) as usize;
+                let param = signature.parameters.as_ref()?.get(param_idx)?;
+                match &param.label {
+                    lsp::ParameterLabel::Simple(string) => {
+                        let start = signature.label.find(string.as_str())?;
+                        Some((start, string.len()))
+                    }
+                    lsp::ParameterLabel::LabelOffsets([start, end]) => {
+                        Some((*start as usize, *end as usize))
+                    }
+                }
+            };
+            contents.set_active_param_range(active_param_range());
+
             let mut popup = Popup::new("signature-help", contents);
             let old_popup = compositor.find_id::<Popup<SignatureHelp>>("signature-help");
             popup.set_position(old_popup.and_then(|p| p.position().copied()));

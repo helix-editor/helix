@@ -46,12 +46,21 @@ impl Component for SignatureHelp {
             horizontal: 1,
         };
 
+        let active_param_span = self.active_param_range.map(|(start, end)| {
+            vec![(
+                cx.editor.theme.find_scope_index("ui.selection").unwrap(),
+                start..end,
+            )]
+        });
+
         let sig_text = crate::ui::markdown::highlighted_code_block(
             self.signature.clone(),
             &self.language,
             Some(&cx.editor.theme),
             Arc::clone(&self.config_loader),
+            active_param_span,
         );
+
         let (_, sig_text_height) = crate::ui::text::required_size(&sig_text, area.width);
         let sig_text_area = area.clip_top(1).with_height(sig_text_height);
         let sig_text_para = Paragraph::new(sig_text).wrap(Wrap { trim: false });
@@ -95,6 +104,7 @@ impl Component for SignatureHelp {
             &self.language,
             None,
             Arc::clone(&self.config_loader),
+            None,
         );
         let (sig_width, sig_height) =
             crate::ui::text::required_size(&signature_text, max_text_width);
