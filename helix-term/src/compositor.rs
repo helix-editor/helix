@@ -221,10 +221,9 @@ impl Compositor {
     }
 
     pub fn find_id<T: 'static>(&mut self, id: &'static str) -> Option<&mut T> {
-        let type_name = std::any::type_name::<T>();
         self.layers
             .iter_mut()
-            .find(|component| component.type_name() == type_name && component.id() == Some(id))
+            .find(|component| component.id() == Some(id))
             .and_then(|component| component.as_any_mut().downcast_mut())
     }
 }
