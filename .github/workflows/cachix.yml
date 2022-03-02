@@ -10,8 +10,6 @@ jobs:
     steps:
     - name: Checkout sources
       uses: actions/checkout@v2
-      with:
-        submodules: true
 
     - name: Install nix
       uses: cachix/install-nix-action@v16
