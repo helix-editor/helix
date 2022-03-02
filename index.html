@@ -149,7 +149,11 @@ brew install helix
 <h3 id="nixos"><a class="header" href="#nixos">NixOS</a></h3>
 <p>A <a href="https://nixos.wiki/wiki/Flakes">flake</a> containing the package is available in
 the project root. The flake can also be used to spin up a reproducible development
-shell for working on Helix.</p>
+shell for working on Helix with <code>nix develop</code>.</p>
+<p>Flake outputs are cached for each push to master using
+<a href="https://www.cachix.org/">Cachix</a>. With Cachix
+<a href="https://docs.cachix.org/installation">installed</a>, <code>cachix use helix</code> will
+configure Nix to use cached outputs when possible.</p>
 <h3 id="arch-linux"><a class="header" href="#arch-linux">Arch Linux</a></h3>
 <p>Releases are available in the <code>community</code> repository.</p>
 <p>A <a href="https://aur.archlinux.org/packages/helix-git/">helix-git</a> package is also available on the AUR, which builds the master branch.</p>
