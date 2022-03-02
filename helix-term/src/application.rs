@@ -187,17 +187,13 @@ impl Application {
     }
 
     fn render(&mut self) {
-        let editor = &mut self.editor;
-        let compositor = &mut self.compositor;
-        let jobs = &mut self.jobs;
-
         let mut cx = crate::compositor::Context {
-            editor,
-            jobs,
+            editor: &mut self.editor,
+            jobs: &mut self.jobs,
             scroll: None,
         };
 
-        compositor.render(&mut cx);
+        self.compositor.render(&mut cx);
     }
 
     pub async fn event_loop(&mut self) {
@@ -278,31 +274,20 @@ impl Application {
     }
 
     pub fn handle_idle_timeout(&mut self) {
-        use crate::commands::{insert::idle_completion, Context};
-        use helix_view::document::Mode;
-
-        if doc!(self.editor).mode != Mode::Insert || !self.config.editor.auto_completion {
-            return;
-        }
+        use crate::compositor::EventResult;
         let editor_view = self
             .compositor
             .find::<ui::EditorView>()
             .expect("expected at least one EditorView");
 
-        if editor_view.completion.is_some() {
-            return;
-        }
-
-        let mut cx = Context {
-            register: None,
+        let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
-            count: None,
-            callback: None,
-            on_next_key_callback: None,
+            scroll: None,
         };
-        idle_completion(&mut cx);
-        self.render();
+        if let EventResult::Consumed(_) = editor_view.handle_idle_timeout(&mut cx) {
+            self.render();
+        }
     }
 
     pub fn handle_terminal_events(&mut self, event: Option<Result<Event, crossterm::ErrorKind>>) {

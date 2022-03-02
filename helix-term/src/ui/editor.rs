@@ -856,6 +856,27 @@ impl EditorView {
         doc.savepoint = None;
         editor.clear_idle_timer(); // don't retrigger
     }
+
+    pub fn handle_idle_timeout(&mut self, cx: &mut crate::compositor::Context) -> EventResult {
+        if self.completion.is_some()
+            || !cx.editor.config.auto_completion
+            || doc!(cx.editor).mode != Mode::Insert
+        {
+            return EventResult::Ignored(None);
+        }
+
+        let mut cx = commands::Context {
+            register: None,
+            editor: cx.editor,
+            jobs: cx.jobs,
+            count: None,
+            callback: None,
+            on_next_key_callback: None,
+        };
+        crate::commands::insert::idle_completion(&mut cx);
+
+        EventResult::Consumed(None)
+    }
 }
 
 impl EditorView {
