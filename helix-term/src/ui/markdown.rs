@@ -31,6 +31,7 @@ pub fn highlighted_code_block<'a>(
     language: &str,
     theme: Option<&Theme>,
     config_loader: Arc<syntax::Loader>,
+    additional_highlight_spans: Option<Vec<(usize, std::ops::Range<usize>)>>,
 ) -> Text<'a> {
     let mut spans = Vec::new();
     let mut lines = Vec::new();
@@ -55,10 +56,19 @@ pub fn highlighted_code_block<'a>(
         None => return styled_multiline_text(text, code_style),
     };
 
-    let mut highlights = Vec::new();
+    let highlight_iter = syntax
+        .highlight_iter(rope.slice(..), None, None)
+        .map(|e| e.unwrap());
+    let highlight_iter: Box<dyn Iterator<Item = HighlightEvent>> =
+        if let Some(spans) = additional_highlight_spans {
+            Box::new(helix_core::syntax::merge(highlight_iter, spans))
+        } else {
+            Box::new(highlight_iter)
+        };
 
-    for event in syntax.highlight_iter(rope.slice(..), None, None) {
-        match event.unwrap() {
+    let mut highlights = Vec::new();
+    for event in highlight_iter {
+        match event {
             HighlightEvent::HighlightStart(span) => {
                 highlights.push(span);
             }
@@ -66,10 +76,9 @@ pub fn highlighted_code_block<'a>(
                 highlights.pop();
             }
             HighlightEvent::Source { start, end } => {
-                let style = match highlights.first() {
-                    Some(span) => theme.get(&theme.scopes()[span.0]),
-                    None => text_style,
-                };
+                let style = highlights
+                    .iter()
+                    .fold(text_style, |acc, span| acc.patch(theme.highlight(span.0)));
 
                 let mut slice = &text[start..end];
                 // TODO: do we need to handle all unicode line endings
@@ -195,6 +204,7 @@ impl Markdown {
                             language,
                             theme,
                             Arc::clone(&self.config_loader),
+                            None,
                         );
                         lines.extend(tui_text.lines.into_iter());
                     } else {
