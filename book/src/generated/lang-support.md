@@ -8,6 +8,7 @@
 | cpp | ✓ | ✓ | ✓ | `clangd` |
 | css | ✓ |  |  |  |
 | dart | ✓ |  | ✓ | `dart` |
+| diff |  |  |  |  |
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | elixir | ✓ |  |  | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
@@ -15,7 +16,6 @@
 | fish | ✓ | ✓ | ✓ |  |
 | git-commit | ✓ |  |  |  |
 | git-config | ✓ |  |  |  |
-| git-diff | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
