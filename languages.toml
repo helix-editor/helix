@@ -78,8 +78,8 @@ source = { git = "https://github.com/yusdacra/tree-sitter-protobuf", rev = "19c2
 [[language]]
 name = "elixir"
 scope = "source.elixir"
-injection-regex = "elixir"
-file-types = ["ex", "exs"]
+injection-regex = "(elixir|ex)"
+file-types = ["ex", "exs", "mix.lock"]
 shebangs = ["elixir"]
 roots = []
 comment-token = "#"
@@ -88,7 +88,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "elixir"
-source = { git = "https://github.com/elixir-lang/tree-sitter-elixir", rev = "f5d7bda543da788bd507b05bd722627dde66c9ec"  }
+source = { git = "https://github.com/elixir-lang/tree-sitter-elixir", rev = "60863fc6e27d60cf4b1917499ed2259f92c7800e"  }
 
 [[language]]
 name = "fish"
