@@ -1,7 +1,9 @@
 # Publish the Nix flake outputs to Cachix
 name: Cachix
 on:
-  push: master
+  push:
+    branches:
+      - master
 
 jobs:
   publish:
