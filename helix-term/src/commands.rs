@@ -777,64 +777,62 @@ fn align_selections(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
-    let mut column_widths: Vec<Vec<_>> = vec![];
+
+    let mut column_widths: Vec<Vec<_>> = Vec::new();
     let mut last_line = text.len_lines() + 1;
-    let mut column = 0;
-    // first of all, we need compute all column's width, let use max width of the selections in a column
-    for sel in selection {
-        let (l1, l2) = sel.line_range(text);
-        if l1 != l2 {
+    let mut col = 0;
+
+    for range in selection {
+        let coords = coords_at_pos(text, range.head);
+        let anchor_coords = coords_at_pos(text, range.anchor);
+
+        if coords.row != anchor_coords.row {
             cx.editor
                 .set_error("align cannot work with multi line selections");
             return;
         }
-        // if the selection is not in the same line with last selection, we set the column to 0
-        column = if l1 != last_line { 0 } else { column + 1 };
-        last_line = l1;
 
-        // save all max line cursor of selections
-        let cursor = sel.to() - text.line_to_char(l1);
-        if column < column_widths.len() {
-            column_widths[column].push((l1, cursor));
-        } else {
-            column_widths.push(vec![(l1, cursor)]);
+        col = if coords.row == last_line { col + 1 } else { 0 };
+
+        if col >= column_widths.len() {
+            column_widths.push(Vec::new());
         }
+        column_widths[col].push((range.from(), coords.col));
+
+        last_line = coords.row;
     }
-    let mut max_curs = vec![];
-    for i in 0..column_widths.len() {
-        // compute max cursor of current column
-        let max_cur = column_widths[i]
-            .iter()
-            .fold(0, |max, &(_, cur)| max.max(cur));
-        max_curs.push(max_cur);
 
-        let mut pads = std::collections::HashMap::new();
-        for item in column_widths[i].iter_mut() {
-            pads.insert(item.0, max_cur - item.1);
-        }
-        // add pad to right columns
-        for col in column_widths[i + 1..].iter_mut() {
-            for item in col.iter_mut() {
-                item.1 += pads.get(&item.0).unwrap_or(&0);
+    let mut changes = Vec::with_capacity(selection.len());
+
+    // Account for changes on each row
+    let len = column_widths.first().map(|cols| cols.len()).unwrap_or(0);
+    let mut offs = vec![0; len];
+
+    for col in column_widths {
+        let max_col = col
+            .iter()
+            .enumerate()
+            .map(|(row, (_, cursor))| *cursor + offs[row])
+            .max()
+            .unwrap_or(0);
+
+        for (row, (insert_pos, last_col)) in col.into_iter().enumerate() {
+            let ins_count = max_col - (last_col + offs[row]);
+
+            if ins_count == 0 {
+                continue;
             }
+
+            offs[row] += ins_count;
+
+            changes.push((insert_pos, insert_pos, Some(" ".repeat(ins_count).into())));
         }
     }
 
-    last_line = text.len_lines();
-    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        let line = range.cursor_line(text);
-        column = if line != last_line { 0 } else { column + 1 };
-        last_line = line;
-        let max_cur = max_curs[column];
-        let new_cur = column_widths[column]
-            .iter()
-            .fold(max_cur, |c, (l, cur)| if *l == line { *cur } else { c });
-        let mut new_str = " ".repeat(max_cur - new_cur);
-        new_str.push_str(&range.fragment(text));
+    // The changeset has to be sorted
+    changes.sort_unstable_by_key(|(from, _, _)| *from);
 
-        (range.from(), range.to(), Some(new_str.into()))
-    });
-
+    let transaction = Transaction::change(doc.text(), changes.into_iter());
     doc.apply(&transaction, view.id);
 }
 
