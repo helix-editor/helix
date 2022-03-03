@@ -1492,7 +1492,7 @@ fn search_impl(
     let selection = doc.selection(view.id);
 
     // Get the right side of the primary block cursor for forward search, or the
-    //grapheme before the start of the selection for reverse search.
+    // grapheme before the start of the selection for reverse search.
     let start = match direction {
         Direction::Forward => text.char_to_byte(graphemes::next_grapheme_boundary(
             text,
@@ -1504,10 +1504,10 @@ fn search_impl(
         )),
     };
 
-    //A regex::Match returns byte-positions in the str. In the case where we
-    //do a reverse search and wraparound to the end, we don't need to search
-    //the text before the current cursor position for matches, but by slicing
-    //it out, we need to add it back to the position of the selection.
+    // A regex::Match returns byte-positions in the str. In the case where we
+    // do a reverse search and wraparound to the end, we don't need to search
+    // the text before the current cursor position for matches, but by slicing
+    // it out, we need to add it back to the position of the selection.
     let mut offset = 0;
 
     // use find_at to find the next match after the cursor, loop around the end
@@ -4352,9 +4352,6 @@ pub mod insert {
 
 // Undo / Redo
 
-// TODO: each command could simply return a Option<transaction>, then the higher level handles
-// storing it?
-
 fn undo(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
@@ -4929,42 +4926,6 @@ fn remove_primary_selection(cx: &mut Context) {
 
 pub fn completion(cx: &mut Context) {
     use helix_lsp::{lsp, util::pos_to_lsp_pos};
-
-    // trigger on trigger char, or if user calls it
-    // (or on word char typing??)
-    // after it's triggered, if response marked is_incomplete, update on every subsequent keypress
-    //
-    // lsp calls are done via a callback: it sends a request and doesn't block.
-    // when we get the response similarly to notification, trigger a call to the completion popup
-    //
-    // language_server.completion(params, |cx: &mut Context, _meta, response| {
-    //    // called at response time
-    //    // compositor, lookup completion layer
-    //    // downcast dyn Component to Completion component
-    //    // emit response to completion (completion.complete/handle(response))
-    // })
-    //
-    // typing after prompt opens: usually start offset is tracked and everything between
-    // start_offset..cursor is replaced. For our purposes we could keep the start state (doc,
-    // selection) and revert to them before applying. This needs to properly reset changes/history
-    // though...
-    //
-    // company-mode does this by matching the prefix of the completion and removing it.
-
-    // ignore isIncomplete for now
-    // keep state while typing
-    // the behavior should be, filter the menu based on input
-    // if items returns empty at any point, remove the popup
-    // if backspace past initial offset point, remove the popup
-    //
-    // debounce requests!
-    //
-    // need an idle timeout thing.
-    // https://github.com/company-mode/company-mode/blob/master/company.el#L620-L622
-    //
-    //  "The idle delay in seconds until completion starts automatically.
-    // The prefix still has to satisfy `company-minimum-prefix-length' before that
-    // happens.  The value of nil means no idle completion."
 
     let (view, doc) = current!(cx.editor);
 

@@ -280,18 +280,6 @@ impl Completion {
     }
 }
 
-// need to:
-// - trigger on the right trigger char
-//   - detect previous open instance and recycle
-// - update after input, but AFTER the document has changed
-// - if no more matches, need to auto close
-//
-// missing bits:
-// - a more robust hook system: emit to a channel, process in main loop
-// - a way to find specific layers in compositor
-// - components register for hooks, then unregister when terminated
-// ... since completion is a special case, maybe just build it into doc/render?
-
 impl Component for Completion {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         // let the Editor handle Esc instead

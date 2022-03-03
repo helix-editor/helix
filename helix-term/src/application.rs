@@ -42,16 +42,11 @@ pub struct Application {
     compositor: Compositor,
     editor: Editor,
 
-    // TODO should be separate to take only part of the config
+    // TODO: share an ArcSwap with Editor?
     config: Config,
 
-    // Currently never read from.  Remove the `allow(dead_code)` when
-    // that changes.
     #[allow(dead_code)]
     theme_loader: Arc<theme::Loader>,
-
-    // Currently never read from.  Remove the `allow(dead_code)` when
-    // that changes.
     #[allow(dead_code)]
     syn_loader: Arc<syntax::Loader>,
 
@@ -719,15 +714,6 @@ impl Application {
                     Some(call) => call,
                     None => {
                         error!("Method not found {}", method);
-                        // language_server.reply(
-                        //     call.id,
-                        //     // TODO: make a Into trait that can cast to Err(jsonrpc::Error)
-                        //     Err(helix_lsp::jsonrpc::Error {
-                        //         code: helix_lsp::jsonrpc::ErrorCode::MethodNotFound,
-                        //         message: "Method not found".to_string(),
-                        //         data: None,
-                        //     }),
-                        // );
                         return;
                     }
                 };

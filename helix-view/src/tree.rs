@@ -45,8 +45,6 @@ impl Node {
     }
 }
 
-// TODO: screen coord to container + container coordinate helpers
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Layout {
     Horizontal,
@@ -514,27 +512,6 @@ impl Tree {
         // (we'd be able to go parent.next_sibling() recursively until we find something)
         // For now that's okay though, since it's unlikely you'll be able to open a large enough
         // number of splits to notice.
-
-        // current = focus
-        // let found = loop do {
-        //   node = focus.parent;
-        //   let found = node.next_sibling_of(current)
-        //   if some {
-        //       break found;
-        //   }
-        //   // else
-        //   if node == root {
-        //       return first child of root;
-        //   };
-        //   current = parent;
-        //  }
-        // }
-        //
-        // use found next sibling
-        // loop do {
-        //   if found = view -> focus = found, return
-        //   if found = container -> found = first child
-        // }
 
         let mut views = self
             .traverse()
