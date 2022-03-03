@@ -4682,7 +4682,7 @@ fn replace_selections_with_primary_clipboard(cx: &mut Context) {
     let _ = replace_selections_with_clipboard_impl(cx.editor, ClipboardType::Selection, cx.count());
 }
 
-fn paste_after(cx: &mut Context) {
+fn paste(cx: &mut Context, pos: Paste) {
     let count = cx.count();
     let reg_name = cx.register.unwrap_or('"');
     let (view, doc) = current!(cx.editor);
@@ -4690,24 +4690,18 @@ fn paste_after(cx: &mut Context) {
 
     if let Some(transaction) = registers
         .read(reg_name)
-        .and_then(|values| paste_impl(values, doc, view, Paste::After, count))
+        .and_then(|values| paste_impl(values, doc, view, pos, count))
     {
         doc.apply(&transaction, view.id);
     }
 }
 
-fn paste_before(cx: &mut Context) {
-    let count = cx.count();
-    let reg_name = cx.register.unwrap_or('"');
-    let (view, doc) = current!(cx.editor);
-    let registers = &mut cx.editor.registers;
+fn paste_after(cx: &mut Context) {
+    paste(cx, Paste::After)
+}
 
-    if let Some(transaction) = registers
-        .read(reg_name)
-        .and_then(|values| paste_impl(values, doc, view, Paste::Before, count))
-    {
-        doc.apply(&transaction, view.id);
-    }
+fn paste_before(cx: &mut Context) {
+    paste(cx, Paste::Before)
 }
 
 fn get_lines(doc: &Document, view_id: ViewId) -> Vec<usize> {
