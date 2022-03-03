@@ -1255,15 +1255,24 @@ mod test {
     #[test]
     fn test_behaviour_when_moving_to_prev_paragraph_single() {
         let tests = [
-            ("^@", "^@"),
-            ("^s@tart at\nfirst char\n", "@s^tart at\nfirst char\n"),
-            ("start at\nlast char^\n@", "@start at\nlast char\n^"),
-            ("goto\nfirst\n\n^p@aragraph", "@goto\nfirst\n\n^paragraph"),
-            ("goto\nfirst\n^\n@paragraph", "@goto\nfirst\n\n^paragraph"),
-            ("goto\nsecond\n\np^a@ragraph", "goto\nsecond\n\n@pa^ragraph"),
+            ("#[|]#", "#[|]#"),
+            ("#[s|]#tart at\nfirst char\n", "#[|s]#tart at\nfirst char\n"),
+            ("start at\nlast char#[\n|]#", "#[|start at\nlast char\n]#"),
             (
-                "here\n\nhave\nmultiple\nparagraph\n\n\n\n\n^@",
-                "here\n\n@have\nmultiple\nparagraph\n\n\n\n\n^",
+                "goto\nfirst\n\n#[p|]#aragraph",
+                "#[|goto\nfirst\n\n]#paragraph",
+            ),
+            (
+                "goto\nfirst\n#[\n|]#paragraph",
+                "#[|goto\nfirst\n\n]#paragraph",
+            ),
+            (
+                "goto\nsecond\n\np#[a|]#ragraph",
+                "goto\nsecond\n\n#[|pa]#ragraph",
+            ),
+            (
+                "here\n\nhave\nmultiple\nparagraph\n\n\n\n\n#[|]#",
+                "here\n\n#[|have\nmultiple\nparagraph\n\n\n\n\n]#",
             ),
         ];
 
@@ -1280,8 +1289,14 @@ mod test {
     #[test]
     fn test_behaviour_when_moving_to_prev_paragraph_double() {
         let tests = [
-            ("on^e@\n\ntwo\n\nthree\n\n", "@one^\n\ntwo\n\nthree\n\n"),
-            ("one\n\ntwo\n\nth^r@ee\n\n", "one\n\n@two\n\nthr^ee\n\n"),
+            (
+                "on#[e|]#\n\ntwo\n\nthree\n\n",
+                "#[|one]#\n\ntwo\n\nthree\n\n",
+            ),
+            (
+                "one\n\ntwo\n\nth#[r|]#ee\n\n",
+                "one\n\n#[|two\n\nthr]#ee\n\n",
+            ),
         ];
 
         for (before, expected) in tests {
@@ -1297,8 +1312,14 @@ mod test {
     #[test]
     fn test_behaviour_when_moving_to_prev_paragraph_extend() {
         let tests = [
-            ("one\n\n@two\n\n^three\n\n", "@one\n\ntwo\n\n^three\n\n"),
-            ("@one\n\ntwo\n\n^three\n\n", "@one\n\ntwo\n\n^three\n\n"),
+            (
+                "one\n\n#[|two\n\n]#three\n\n",
+                "#[|one\n\ntwo\n\n]#three\n\n",
+            ),
+            (
+                "#[|one\n\ntwo\n\n]#three\n\n",
+                "#[|one\n\ntwo\n\n]#three\n\n",
+            ),
         ];
 
         for (before, expected) in tests {
@@ -1314,24 +1335,24 @@ mod test {
     #[test]
     fn test_behaviour_when_moving_to_next_paragraph_single() {
         let tests = [
-            ("^@", "^@"),
-            ("^s@tart at\nfirst char\n", "^start at\nfirst char\n@"),
-            ("start at\nlast char^\n@", "start at\nlast char^\n@"),
+            ("#[|]#", "#[|]#"),
+            ("#[s|]#tart at\nfirst char\n", "#[start at\nfirst char\n|]#"),
+            ("start at\nlast char#[\n|]#", "start at\nlast char#[\n|]#"),
             (
-                "a\nb\n\n^g@oto\nthird\n\nparagraph",
-                "a\nb\n\n^goto\nthird\n\n@paragraph",
+                "a\nb\n\n#[g|]#oto\nthird\n\nparagraph",
+                "a\nb\n\n#[goto\nthird\n\n|]#paragraph",
             ),
             (
-                "a\nb\n^\n@goto\nthird\n\nparagraph",
-                "a\nb\n\n^goto\nthird\n\n@paragraph",
+                "a\nb\n#[\n|]#goto\nthird\n\nparagraph",
+                "a\nb\n\n#[goto\nthird\n\n|]#paragraph",
             ),
             (
-                "a\nb^\n@\ngoto\nsecond\n\nparagraph",
-                "a\nb^\n\n@goto\nsecond\n\nparagraph",
+                "a\nb#[\n|]#\ngoto\nsecond\n\nparagraph",
+                "a\nb#[\n\n|]#goto\nsecond\n\nparagraph",
             ),
             (
-                "here\n\nhave\n^m@ultiple\nparagraph\n\n\n\n\n",
-                "here\n\nhave\n^multiple\nparagraph\n\n\n\n\n@",
+                "here\n\nhave\n#[m|]#ultiple\nparagraph\n\n\n\n\n",
+                "here\n\nhave\n#[multiple\nparagraph\n\n\n\n\n|]#",
             ),
         ];
 
@@ -1348,8 +1369,14 @@ mod test {
     #[test]
     fn test_behaviour_when_moving_to_next_paragraph_double() {
         let tests = [
-            ("one\n\ntwo\n\nth^r@ee\n\n", "one\n\ntwo\n\nth^ree\n\n@"),
-            ("on^e@\n\ntwo\n\nthree\n\n", "on^e\n\ntwo\n\n@three\n\n"),
+            (
+                "one\n\ntwo\n\nth#[r|]#ee\n\n",
+                "one\n\ntwo\n\nth#[ree\n\n|]#",
+            ),
+            (
+                "on#[e|]#\n\ntwo\n\nthree\n\n",
+                "on#[e\n\ntwo\n\n|]#three\n\n",
+            ),
         ];
 
         for (before, expected) in tests {
@@ -1365,8 +1392,14 @@ mod test {
     #[test]
     fn test_behaviour_when_moving_to_next_paragraph_extend() {
         let tests = [
-            ("one\n\n^two\n\n@three\n\n", "one\n\n^two\n\nthree\n\n@"),
-            ("one\n\n^two\n\nthree\n\n@", "one\n\n^two\n\nthree\n\n@"),
+            (
+                "one\n\n#[two\n\n|]#three\n\n",
+                "one\n\n#[two\n\nthree\n\n|]#",
+            ),
+            (
+                "one\n\n#[two\n\nthree\n\n|]#",
+                "one\n\n#[two\n\nthree\n\n|]#",
+            ),
         ];
 
         for (before, expected) in tests {
