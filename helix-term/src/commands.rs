@@ -2980,7 +2980,7 @@ pub mod cmd {
                         Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
                             let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
                             let popup = Popup::new("hover", contents).auto_close(true);
-                            compositor.replace_or_push("hover", Box::new(popup));
+                            compositor.replace_or_push("hover", popup);
                         });
                     Ok(call)
                 };

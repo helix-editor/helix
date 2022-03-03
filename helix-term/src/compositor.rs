@@ -128,11 +128,11 @@ impl Compositor {
 
     /// Replace a component that has the given `id` with the new layer and if
     /// no component is found, push the layer normally.
-    pub fn replace_or_push(&mut self, id: &'static str, layer: Box<dyn Component>) {
+    pub fn replace_or_push<T: Component>(&mut self, id: &'static str, layer: T) {
         if let Some(component) = self.find_id(id) {
             *component = layer;
         } else {
-            self.push(layer)
+            self.push(Box::new(layer))
         }
     }
 
@@ -221,10 +221,9 @@ impl Compositor {
     }
 
     pub fn find_id<T: 'static>(&mut self, id: &'static str) -> Option<&mut T> {
-        let type_name = std::any::type_name::<T>();
         self.layers
             .iter_mut()
-            .find(|component| component.type_name() == type_name && component.id() == Some(id))
+            .find(|component| component.id() == Some(id))
             .and_then(|component| component.as_any_mut().downcast_mut())
     }
 }
