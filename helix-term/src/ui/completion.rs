@@ -78,6 +78,8 @@ pub struct Completion {
 }
 
 impl Completion {
+    pub const ID: &'static str = "completion";
+
     pub fn new(
         editor: &Editor,
         items: Vec<CompletionItem>,
@@ -207,7 +209,7 @@ impl Completion {
                 }
             };
         });
-        let popup = Popup::new("completion", menu);
+        let popup = Popup::new(Self::ID, menu);
         let mut completion = Self {
             popup,
             start_offset,

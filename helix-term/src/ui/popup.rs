@@ -43,8 +43,8 @@ impl<T: Component> Popup<T> {
         self.position = pos;
     }
 
-    pub fn position(&self) -> Option<&Position> {
-        self.position.as_ref()
+    pub fn position(&self) -> Option<Position> {
+        self.position
     }
 
     pub fn margin(mut self, margin: Margin) -> Self {
@@ -121,7 +121,7 @@ impl<T: Component> Component for Popup<T> {
 
         let close_fn: Callback = Box::new(|compositor, _| {
             // remove the layer
-            compositor.pop();
+            compositor.remove(self.id.as_ref());
         });
 
         match key.into() {

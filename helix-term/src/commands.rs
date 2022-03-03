@@ -2756,26 +2756,15 @@ pub mod insert {
         {
             // TODO: what if trigger is multiple chars long
             let is_trigger = triggers.iter().any(|trigger| trigger.contains(ch));
+            // lsp doesn't tell us when to close the signature help, so we request
+            // the help information again after common close triggers which should
+            // return None, which in turn closes the popup.
+            let close_triggers = &[')', ';'];
 
-            if is_trigger {
+            if is_trigger || close_triggers.contains(&ch) {
                 super::signature_help(cx);
             }
         }
-
-        // SignatureHelp {
-        // signatures: [
-        //  SignatureInformation {
-        //      label: "fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error>",
-        //      documentation: None,
-        //      parameters: Some(
-        //          [ParameterInformation { label: Simple("path: PathBuf"), documentation: None },
-        //          ParameterInformation { label: Simple("action: Action"), documentation: None }]
-        //      ),
-        //      active_parameter: Some(0)
-        //  }
-        // ],
-        // active_signature: None, active_parameter: Some(0)
-        // }
     }
 
     // The default insert hook: simply insert the character

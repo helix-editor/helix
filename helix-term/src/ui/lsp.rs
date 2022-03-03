@@ -20,6 +20,8 @@ pub struct SignatureHelp {
 }
 
 impl SignatureHelp {
+    pub const ID: &'static str = "signature-help";
+
     pub fn new(signature: String, language: String, config_loader: Arc<syntax::Loader>) -> Self {
         Self {
             signature,
@@ -73,7 +75,7 @@ impl Component for SignatureHelp {
         let sep_style = Style::default();
         let borders = BorderType::line_symbols(BorderType::Plain);
         for x in sig_text_area.left()..sig_text_area.right() {
-            if let Some(cell) = surface.get_mut(x, sig_text_area.y + 1) {
+            if let Some(cell) = surface.get_mut(x, sig_text_area.bottom()) {
                 cell.set_symbol(borders.horizontal).set_style(sep_style);
             }
         }

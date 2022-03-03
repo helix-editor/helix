@@ -638,7 +638,10 @@ pub fn signature_help(cx: &mut Context) {
         move |editor, compositor, response: Option<lsp::SignatureHelp>| {
             let response = match response {
                 Some(s) => s,
-                None => return,
+                None => {
+                    compositor.remove(SignatureHelp::ID);
+                    return;
+                }
             };
             let doc = doc!(editor);
             let language = doc
@@ -670,7 +673,7 @@ pub fn signature_help(cx: &mut Context) {
                 match &param.label {
                     lsp::ParameterLabel::Simple(string) => {
                         let start = signature.label.find(string.as_str())?;
-                        Some((start, string.len()))
+                        Some((start, start + string.len()))
                     }
                     lsp::ParameterLabel::LabelOffsets([start, end]) => {
                         Some((*start as usize, *end as usize))
@@ -679,10 +682,10 @@ pub fn signature_help(cx: &mut Context) {
             };
             contents.set_active_param_range(active_param_range());
 
-            let mut popup = Popup::new("signature-help", contents);
-            let old_popup = compositor.find_id::<Popup<SignatureHelp>>("signature-help");
-            popup.set_position(old_popup.and_then(|p| p.position().copied()));
-            compositor.replace_or_push("signature-help", popup);
+            let mut popup = Popup::new(SignatureHelp::ID, contents);
+            let old_popup = compositor.find_id::<Popup<SignatureHelp>>(SignatureHelp::ID);
+            popup.set_position(old_popup.and_then(|p| p.position()));
+            compositor.replace_or_push(SignatureHelp::ID, popup);
         },
     );
 }
