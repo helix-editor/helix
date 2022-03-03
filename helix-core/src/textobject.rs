@@ -357,18 +357,21 @@ mod test {
     #[test]
     fn test_textobject_paragraph_inside_single() {
         let tests = [
-            ("^@", "^@"),
-            ("firs^t@\n\nparagraph\n\n", "^first\n@\nparagraph\n\n"),
-            ("second\n\npa^r@agraph\n\n", "second\n\n^paragraph\n@\n"),
-            ("^f@irst char\n\n", "^first char\n@\n"),
-            ("last char\n^\n@", "last char\n\n^@"),
+            ("#[|]#", "#[|]#"),
+            ("firs#[t|]#\n\nparagraph\n\n", "#[first\n|]#\nparagraph\n\n"),
             (
-                "empty to line\n^\n@paragraph boundary\n\n",
-                "empty to line\n\n^paragraph boundary\n@\n",
+                "second\n\npa#[r|]#agraph\n\n",
+                "second\n\n#[paragraph\n|]#\n",
+            ),
+            ("#[f|]#irst char\n\n", "#[first char\n|]#\n"),
+            ("last char\n#[\n|]#", "last char\n\n#[|]#"),
+            (
+                "empty to line\n#[\n|]#paragraph boundary\n\n",
+                "empty to line\n\n#[paragraph boundary\n|]#\n",
             ),
             (
-                "line to empty\n\n^p@aragraph boundary\n\n",
-                "line to empty\n\n^paragraph boundary\n@\n",
+                "line to empty\n\n#[p|]#aragraph boundary\n\n",
+                "line to empty\n\n#[paragraph boundary\n|]#\n",
             ),
         ];
 
@@ -386,12 +389,12 @@ mod test {
     fn test_textobject_paragraph_inside_double() {
         let tests = [
             (
-                "last two\n\n^p@aragraph\n\nwithout whitespaces\n\n",
-                "last two\n\n^paragraph\n\nwithout whitespaces\n@\n",
+                "last two\n\n#[p|]#aragraph\n\nwithout whitespaces\n\n",
+                "last two\n\n#[paragraph\n\nwithout whitespaces\n|]#\n",
             ),
             (
-                "last two\n^\n@paragraph\n\nwithout whitespaces\n\n",
-                "last two\n\n^paragraph\n\nwithout whitespaces\n@\n",
+                "last two\n#[\n|]#paragraph\n\nwithout whitespaces\n\n",
+                "last two\n\n#[paragraph\n\nwithout whitespaces\n|]#\n",
             ),
         ];
 
@@ -408,18 +411,21 @@ mod test {
     #[test]
     fn test_textobject_paragraph_around_single() {
         let tests = [
-            ("^@", "^@"),
-            ("firs^t@\n\nparagraph\n\n", "^first\n\n@paragraph\n\n"),
-            ("second\n\npa^r@agraph\n\n", "second\n\n^paragraph\n\n@"),
-            ("^f@irst char\n\n", "^first char\n\n@"),
-            ("last char\n^\n@", "last char\n\n^@"),
+            ("#[|]#", "#[|]#"),
+            ("firs#[t|]#\n\nparagraph\n\n", "#[first\n\n|]#paragraph\n\n"),
             (
-                "empty to line\n^\n@paragraph boundary\n\n",
-                "empty to line\n\n^paragraph boundary\n\n@",
+                "second\n\npa#[r|]#agraph\n\n",
+                "second\n\n#[paragraph\n\n|]#",
+            ),
+            ("#[f|]#irst char\n\n", "#[first char\n\n|]#"),
+            ("last char\n#[\n|]#", "last char\n\n#[|]#"),
+            (
+                "empty to line\n#[\n|]#paragraph boundary\n\n",
+                "empty to line\n\n#[paragraph boundary\n\n|]#",
             ),
             (
-                "line to empty\n\n^p@aragraph boundary\n\n",
-                "line to empty\n\n^paragraph boundary\n\n@",
+                "line to empty\n\n#[p|]#aragraph boundary\n\n",
+                "line to empty\n\n#[paragraph boundary\n\n|]#",
             ),
         ];
 
