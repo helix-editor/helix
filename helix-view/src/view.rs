@@ -204,19 +204,9 @@ impl View {
             return None;
         }
 
-        let line_start = text.line_to_char(line);
-        let line_slice = text.slice(line_start..pos);
-        let mut col = 0;
         let tab_width = doc.tab_width();
-
-        for grapheme in RopeGraphemes::new(line_slice) {
-            if grapheme == "\t" {
-                col += tab_width;
-            } else {
-                let grapheme = Cow::from(grapheme);
-                col += grapheme_width(&grapheme);
-            }
-        }
+        // TODO: visual_coords_at_pos also does char_to_line which we ignore, can we reuse the call?
+        let Position { col, .. } = visual_coords_at_pos(text, pos, tab_width);
 
         // It is possible for underflow to occur if the buffer length is larger than the terminal width.
         let row = line.saturating_sub(self.offset.row);

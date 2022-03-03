@@ -1551,6 +1551,7 @@ fn search_impl(
         };
 
         doc.set_selection(view.id, selection);
+        // TODO: is_cursor_in_view does the same calculation as ensure_cursor_in_view
         if view.is_cursor_in_view(doc, 0) {
             view.ensure_cursor_in_view(doc, scrolloff);
         } else {
