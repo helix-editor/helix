@@ -199,8 +199,15 @@ fn main() {
     // drop(tx);
     assert_eq!(rx.try_iter().sum::<usize>(), n_jobs);
 
-    build_dir("tree-sitter-typescript/tsx", "tsx");
-    build_dir("tree-sitter-typescript/typescript", "typescript");
-    build_dir("tree-sitter-ocaml/ocaml", "ocaml");
-    build_dir("tree-sitter-ocaml/interface", "ocaml-interface")
+    for (dir, lang) in [
+        ("tree-sitter-typescript/tsx", "tsx"),
+        ("tree-sitter-typescript/typescript", "typescript"),
+        ("tree-sitter-ocaml/ocaml", "ocaml"),
+        ("tree-sitter-ocaml/interface", "ocaml-interface"),
+    ]
+    .iter()
+    .filter(|(dir, _)| Path::new(dir).exists())
+    {
+        build_dir(dir, lang);
+    }
 }
