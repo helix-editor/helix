@@ -36,14 +36,6 @@
 | `Ctrl-i`              | Jump forward on the jumplist                       | `jump_forward`              |
 | `Ctrl-o`              | Jump backward on the jumplist                      | `jump_backward`             |
 | `Ctrl-s`              | Save the current selection to the jumplist         | `save_selection`            |
-| `v`                   | Enter [select (extend) mode](#select--extend-mode) | `select_mode`               |
-| `g`                   | Enter [goto mode](#goto-mode)                      | N/A                         |
-| `m`                   | Enter [match mode](#match-mode)                    | N/A                         |
-| `:`                   | Enter command mode                                 | `command_mode`              |
-| `z`                   | Enter [view mode](#view-mode)                      | N/A                         |
-| `Z`                   | Enter sticky [view mode](#view-mode)               | N/A                         |
-| `Ctrl-w`              | Enter [window mode](#window-mode)                  | N/A                         |
-| `Space`               | Enter [space mode](#space-mode)                    | N/A                         |
 
 ### Changes
 
@@ -138,6 +130,17 @@
 ### Minor modes
 
 These sub-modes are accessible from normal mode and typically switch back to normal mode after a command.
+
+| Key      | Description                                        | Command        |
+| -----    | -----------                                        | -------        |
+| `v`      | Enter [select (extend) mode](#select--extend-mode) | `select_mode`  |
+| `g`      | Enter [goto mode](#goto-mode)                      | N/A            |
+| `m`      | Enter [match mode](#match-mode)                    | N/A            |
+| `:`      | Enter command mode                                 | `command_mode` |
+| `z`      | Enter [view mode](#view-mode)                      | N/A            |
+| `Z`      | Enter sticky [view mode](#view-mode)               | N/A            |
+| `Ctrl-w` | Enter [window mode](#window-mode)                  | N/A            |
+| `Space`  | Enter [space mode](#space-mode)                    | N/A            |
 
 #### View mode
 
