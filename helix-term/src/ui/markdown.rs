@@ -27,16 +27,15 @@ pub struct Markdown {
 // better yet, just use Tendril + subtendril for references
 
 impl Markdown {
-    // theme keys, including fallbacks
-    const TEXT_STYLE: [&'static str; 2] = ["ui.text", "ui"];
-    const BLOCK_STYLE: [&'static str; 3] = ["markup.raw.inline", "markup.raw", "markup"];
-    const HEADING_STYLES: [[&'static str; 3]; 6] = [
-        ["markup.heading.1", "markup.heading", "markup"],
-        ["markup.heading.2", "markup.heading", "markup"],
-        ["markup.heading.3", "markup.heading", "markup"],
-        ["markup.heading.4", "markup.heading", "markup"],
-        ["markup.heading.5", "markup.heading", "markup"],
-        ["markup.heading.6", "markup.heading", "markup"],
+    const TEXT_STYLE: &'static str = "ui.text";
+    const BLOCK_STYLE: &'static str = "markup.raw.inline";
+    const HEADING_STYLES: [&'static str; 6] = [
+        "markup.heading.1",
+        "markup.heading.2",
+        "markup.heading.3",
+        "markup.heading.4",
+        "markup.heading.5",
+        "markup.heading.6",
     ];
 
     pub fn new(contents: String, config_loader: Arc<syntax::Loader>) -> Self {
@@ -59,15 +58,9 @@ impl Markdown {
         let mut spans = Vec::new();
         let mut lines = Vec::new();
 
-        let get_theme = |keys: &[&str]| match theme {
-            Some(theme) => keys
-                .iter()
-                .find_map(|key| theme.try_get(key))
-                .unwrap_or_default(),
-            None => Default::default(),
-        };
-        let text_style = get_theme(&Self::TEXT_STYLE);
-        let code_style = get_theme(&Self::BLOCK_STYLE);
+        let get_theme = |key: &str| -> Style { theme.map(|t| t.get(key)).unwrap_or_default() };
+        let text_style = get_theme(Self::TEXT_STYLE);
+        let code_style = get_theme(Self::BLOCK_STYLE);
         let heading_styles: Vec<Style> = Self::HEADING_STYLES
             .iter()
             .map(|key| get_theme(key))
