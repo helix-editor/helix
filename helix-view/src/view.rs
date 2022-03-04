@@ -260,7 +260,7 @@ impl View {
 
             // If pos is in the middle of a wider grapheme (tab for example)
             // return the starting offset.
-            if col + width >= target {
+            if col + width > target {
                 break;
             }
 
@@ -356,7 +356,7 @@ mod tests {
 
         assert_eq!(
             view.text_pos_at_screen_coords(&text, 41, 40 + OFFSET + 1, 4),
-            Some(5)
+            Some(4)
         );
 
         assert_eq!(
@@ -385,8 +385,12 @@ mod tests {
         );
 
         assert_eq!(
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 4, 4),
+            Some(4)
+        );
+        assert_eq!(
             view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 5, 4),
-            Some(5)
+            Some(4)
         );
 
         assert_eq!(
@@ -396,7 +400,7 @@ mod tests {
 
         assert_eq!(
             view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 7, 4),
-            Some(6)
+            Some(5)
         );
 
         assert_eq!(
