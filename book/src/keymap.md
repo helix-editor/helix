@@ -27,7 +27,6 @@
 | `F`                   | Find previous char                                 | `find_prev_char`            |
 | `G`                   | Go to line number `<n>`                            | `goto_line`                 |
 | `Alt-.`               | Repeat last motion (`f`, `t` or `m`)               | `repeat_last_motion`        |
-| `Alt-:`               | Ensures the selection is in forward direction      | `ensure_selections_forward` |
 | `Home`                | Move to the start of the line                      | `goto_line_start`           |
 | `End`                 | Move to the end of the line                        | `goto_line_end`             |
 | `Ctrl-b`, `PageUp`    | Move page up                                       | `page_up`                   |
@@ -95,30 +94,31 @@
 
 ### Selection manipulation
 
-| Key                  | Description                                                       | Command                              |
-| -----                | -----------                                                       | -------                              |
-| `s`                  | Select all regex matches inside selections                        | `select_regex`                       |
-| `S`                  | Split selection into subselections on regex matches               | `split_selection`                    |
-| `Alt-s`              | Split selection on newlines                                       | `split_selection_on_newline`         |
-| `&`                  | Align selection in columns                                        | `align_selections`                   |
-| `_`                  | Trim whitespace from the selection                                | `trim_selections`                    |
-| `;`                  | Collapse selection onto a single cursor                           | `collapse_selection`                 |
-| `Alt-;`              | Flip selection cursor and anchor                                  | `flip_selections`                    |
-| `,`                  | Keep only the primary selection                                   | `keep_primary_selection`             |
-| `Alt-,`              | Remove the primary selection                                      | `remove_primary_selection`           |
-| `C`                  | Copy selection onto the next line (Add cursor below)              | `copy_selection_on_next_line`        |
-| `Alt-C`              | Copy selection onto the previous line (Add cursor above)          | `copy_selection_on_prev_line`        |
-| `(`                  | Rotate main selection backward                                    | `rotate_selections_backward`         |
-| `)`                  | Rotate main selection forward                                     | `rotate_selections_forward`          |
-| `Alt-(`              | Rotate selection contents backward                                | `rotate_selection_contents_backward` |
-| `Alt-)`              | Rotate selection contents forward                                 | `rotate_selection_contents_forward`  |
-| `%`                  | Select entire file                                                | `select_all`                         |
-| `x`                  | Select current line, if already selected, extend to next line     | `extend_line`                        |
-| `X`                  | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
-| `J`                  | Join lines inside selection                                       | `join_selections`                    |
-| `K`                  | Keep selections matching the regex                                | `keep_selections`                    |
-| `Alt-K`              | Remove selections matching the regex                              | `remove_selections`                  |
-| `Ctrl-c`             | Comment/uncomment the selections                                  | `toggle_comments`                    |
+| Key      | Description                                                       | Command                              |
+| -----    | -----------                                                       | -------                              |
+| `s`      | Select all regex matches inside selections                        | `select_regex`                       |
+| `S`      | Split selection into subselections on regex matches               | `split_selection`                    |
+| `Alt-s`  | Split selection on newlines                                       | `split_selection_on_newline`         |
+| `&`      | Align selection in columns                                        | `align_selections`                   |
+| `_`      | Trim whitespace from the selection                                | `trim_selections`                    |
+| `;`      | Collapse selection onto a single cursor                           | `collapse_selection`                 |
+| `Alt-;`  | Flip selection cursor and anchor                                  | `flip_selections`                    |
+| `Alt-:`  | Ensures the selection is in forward direction                     | `ensure_selections_forward`          |
+| `,`      | Keep only the primary selection                                   | `keep_primary_selection`             |
+| `Alt-,`  | Remove the primary selection                                      | `remove_primary_selection`           |
+| `C`      | Copy selection onto the next line (Add cursor below)              | `copy_selection_on_next_line`        |
+| `Alt-C`  | Copy selection onto the previous line (Add cursor above)          | `copy_selection_on_prev_line`        |
+| `(`      | Rotate main selection backward                                    | `rotate_selections_backward`         |
+| `)`      | Rotate main selection forward                                     | `rotate_selections_forward`          |
+| `Alt-(`  | Rotate selection contents backward                                | `rotate_selection_contents_backward` |
+| `Alt-)`  | Rotate selection contents forward                                 | `rotate_selection_contents_forward`  |
+| `%`      | Select entire file                                                | `select_all`                         |
+| `x`      | Select current line, if already selected, extend to next line     | `extend_line`                        |
+| `X`      | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
+| `J`      | Join lines inside selection                                       | `join_selections`                    |
+| `K`      | Keep selections matching the regex                                | `keep_selections`                    |
+| `Alt-K`  | Remove selections matching the regex                              | `remove_selections`                  |
+| `Ctrl-c` | Comment/uncomment the selections                                  | `toggle_comments`                    |
 | `Alt-k`/`Alt-up`     | Expand selection to parent syntax node (**TS**)                   | `expand_selection`                   |
 | `Alt-j`/`Alt-down`   | Shrink syntax tree object selection (**TS**)                      | `shrink_selection`                   |
 | `Alt-h`/`Alt-left`   | Select previous sibling node in syntax tree (**TS**)              | `select_prev_sibling`                |
