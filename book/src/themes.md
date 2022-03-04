@@ -218,12 +218,12 @@ These scopes are used for theming the editor interface.
 | `ui.statusline`          | Statusline                          |
 | `ui.statusline.inactive` | Statusline (unfocused document)     |
 | `ui.popup`               |                                     |
+| `ui.popup.info`          |                                     |
 | `ui.window`              |                                     |
 | `ui.help`                |                                     |
 | `ui.text`                |                                     |
 | `ui.text.focus`          |                                     |
-| `ui.info`                |                                     |
-| `ui.info.text`           |                                     |
+| `ui.text.info`           |                                     |
 | `ui.menu`                |                                     |
 | `ui.menu.selected`       |                                     |
 | `ui.selection`           | For selections in the editing area  |
