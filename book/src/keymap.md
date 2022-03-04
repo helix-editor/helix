@@ -288,7 +288,7 @@ undo-able "save point" until you return to normal mode.
 | `Escape`                  | Switch to normal mode       | `normal_mode`           |
 | `Ctrl-x`                  | Autocomplete                | `completion`            |
 | `Ctrl-r`                  | Insert a register content   | `insert_register`       |
-| `Ctrl-w`, `Alt-backspace` | Delete previous word        | `delete_word_backward`  |
+| `Ctrl-w`, `Alt-Backspace` | Delete previous word        | `delete_word_backward`  |
 | `Alt-d`                   | Delete next word            | `delete_word_forward`   |
 | `Alt-b`, `Alt-Left`       | Backward a word             | `move_prev_word_end`    |
 | `Ctrl-b`, `Left`          | Backward a char             | `move_char_left`        |
@@ -299,8 +299,8 @@ undo-able "save point" until you return to normal mode.
 | `Ctrl-u`                  | Delete to start of line     | `kill_to_line_start`    |
 | `Ctrl-k`                  | Delete to end of line       | `kill_to_line_end`      |
 | `Ctrl-j`, `Enter`         | Insert new line             | `insert_newline`        |
-| `backspace`, `Ctrl-h`     | Delete previous char        | `delete_char_backward`  |
-| `delete`, `Ctrl-d`        | Delete previous char        | `delete_char_forward`   |
+| `Backspace`, `Ctrl-h`     | Delete previous char        | `delete_char_backward`  |
+| `Delete`, `Ctrl-d`        | Delete previous char        | `delete_char_forward`   |
 | `Ctrl-p`, `Up`            | Move to previous line       | `move_line_up`          |
 | `Ctrl-n`, `Down`          | Move to next line           | `move_line_down`        |
 | `PageUp`                  | Move one page up            | `page_up`               |
