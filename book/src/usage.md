@@ -69,6 +69,7 @@ Currently supported: `word`, `surround`, `function`, `class`, `parameter`.
 | `f`                    | Function                 |
 | `c`                    | Class                    |
 | `p`                    | Parameter                |
+| `o`                    | Comment                  |
 
 > NOTE: `f`, `c`, etc need a tree-sitter grammar active for the current
 document and a special tree-sitter query file to work properly. [Only
