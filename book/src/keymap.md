@@ -206,19 +206,19 @@ TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
 This layer is similar to vim keybindings as kakoune does not support window.
 
-| Key                    | Description                    | Command           |
-| -----                  | -------------                  | -------           |
-| `w`, `Ctrl-w`          | Switch to next window          | `rotate_view`     |
-| `v`, `Ctrl-v`          | Vertical right split           | `vsplit`          |
-| `s`, `Ctrl-s`          | Horizontal bottom split        | `hsplit`          |
-| `f`                    | Go to files in the selection in horizontal splits  | `goto_file`                |
-| `F`                    | Go to files in the selection in vertical splits    | `goto_file`                |
-| `h`, `Ctrl-h`, `left`  | Move to left split             | `jump_view_left`  |
-| `j`, `Ctrl-j`, `down`  | Move to split below            | `jump_view_down`  |
-| `k`, `Ctrl-k`, `up`    | Move to split above            | `jump_view_up`    |
-| `l`, `Ctrl-l`, `right` | Move to right split            | `jump_view_right` |
-| `q`, `Ctrl-q`          | Close current window           | `wclose`          |
-| `o`, `Ctrl-o`          | Only keep the current window, closing all the others            | `wonly`           |
+| Key                    | Description                                          | Command           |
+| -----                  | -------------                                        | -------           |
+| `w`, `Ctrl-w`          | Switch to next window                                | `rotate_view`     |
+| `v`, `Ctrl-v`          | Vertical right split                                 | `vsplit`          |
+| `s`, `Ctrl-s`          | Horizontal bottom split                              | `hsplit`          |
+| `f`                    | Go to files in the selection in horizontal splits    | `goto_file`       |
+| `F`                    | Go to files in the selection in vertical splits      | `goto_file`       |
+| `h`, `Ctrl-h`, `left`  | Move to left split                                   | `jump_view_left`  |
+| `j`, `Ctrl-j`, `down`  | Move to split below                                  | `jump_view_down`  |
+| `k`, `Ctrl-k`, `up`    | Move to split above                                  | `jump_view_up`    |
+| `l`, `Ctrl-l`, `right` | Move to right split                                  | `jump_view_right` |
+| `q`, `Ctrl-q`          | Close current window                                 | `wclose`          |
+| `o`, `Ctrl-o`          | Only keep the current window, closing all the others | `wonly`           |
 
 #### Space mode
 
@@ -298,15 +298,15 @@ undo-able "save point" until you return to normal mode.
 | `Ctrl-a`, `Home`          | move to line start          | `goto_line_start`       |
 | `Ctrl-u`                  | delete to start of line     | `kill_to_line_start`    |
 | `Ctrl-k`                  | delete to end of line       | `kill_to_line_end`      |
-| `Ctrl-j`, `Enter`         | Insert new line             | `insert_newline`
+| `Ctrl-j`, `Enter`         | Insert new line             | `insert_newline`        |
 | `backspace`, `Ctrl-h`     | delete previous char        | `delete_char_backward`  |
 | `delete`, `Ctrl-d`        | delete previous char        | `delete_char_forward`   |
 | `Ctrl-p`, `Up`            | move to previous line       | `move_line_up`          |
 | `Ctrl-n`, `Down`          | move to next line           | `move_line_down`        |
-| `PageUp`                  | Move one page up            | `page_up`
-| `PageDown`                | Move one page down          | `page_down`
-| `Alt->`                   | Go to end of buffer         | `goto_file_end`
-| `Alt-<`                   | Go to start of buffer       | `goto_file_start`
+| `PageUp`                  | Move one page up            | `page_up`               |
+| `PageDown`                | Move one page down          | `page_down`             |
+| `Alt->`                   | Go to end of buffer         | `goto_file_end`         |
+| `Alt-<`                   | Go to start of buffer       | `goto_file_start`       |
 
 ## Select / extend mode
 
