@@ -83,7 +83,7 @@ pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Po
 
     for grapheme in RopeGraphemes::new(text.slice(line_start..pos)) {
         if grapheme == "\t" {
-            col += tab_width;
+            col += tab_width - (col % tab_width);
         } else {
             let grapheme = Cow::from(grapheme);
             col += grapheme_width(&grapheme);

@@ -243,18 +243,29 @@ impl View {
         let current_line = text.line(line_number);
 
         let target = (column - inner.x) as usize + self.offset.col;
-        let mut selected = 0;
+        let mut col = 0;
 
+        // TODO: extract this part as pos_at_visual_coords
         for grapheme in RopeGraphemes::new(current_line) {
-            if selected >= target {
+            if col >= target {
                 break;
             }
-            if grapheme == "\t" {
-                selected += tab_width;
+
+            let width = if grapheme == "\t" {
+                tab_width - (col % tab_width)
             } else {
-                let width = grapheme_width(&Cow::from(grapheme));
-                selected += width;
+                let grapheme = Cow::from(grapheme);
+                grapheme_width(&grapheme)
+            };
+
+            // If pos is in the middle of a wider grapheme (tab for example)
+            // return the starting offset.
+            if col + width >= target {
+                break;
             }
+
+            col += width;
+            // TODO: use byte pos that converts back to char pos?
             pos += grapheme.chars().count();
         }
 
