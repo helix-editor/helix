@@ -84,12 +84,12 @@
 
 #### Shell
 
-| Key                     | Description                                                      | Command               |
-| ------                  | -----------                                                      | -------               |
-| <code>&#124;</code>     | Pipe each selection through shell command, replacing with output | `shell_pipe`          |
-| <code>Alt-&#124;</code> | Pipe each selection into shell command, ignoring output          | `shell_pipe_to`       |
-| `!`                     | Run shell command, inserting output before each selection        | `shell_insert_output` |
-| `Alt-!`                 | Run shell command, appending output after each selection         | `shell_append_output` |
+| Key     | Description                                                                      | Command               |
+| ------  | -----------                                                                      | -------               |
+| `|`     | Pipe each selection through shell command, replacing with output                 | `shell_pipe`          |
+| `Alt-|` | Pipe each selection into shell command, ignoring output                          | `shell_pipe_to`       |
+| `!`     | Run shell command, inserting output before each selection                        | `shell_insert_output` |
+| `Alt-!` | Run shell command, appending output after each selection                         | `shell_append_output` |
 | `$`     | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
 
 
