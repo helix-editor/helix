@@ -294,15 +294,15 @@ undo-able "save point" until you return to normal mode.
 | `Ctrl-b`, `Left`          | Backward a char             | `move_char_left`        |
 | `Alt-f`, `Alt-Right`      | Forward a word              | `move_next_word_start`  |
 | `Ctrl-f`, `Right`         | Forward a char              | `move_char_right`       |
-| `Ctrl-e`, `End`           | move to line end            | `goto_line_end_newline` |
-| `Ctrl-a`, `Home`          | move to line start          | `goto_line_start`       |
-| `Ctrl-u`                  | delete to start of line     | `kill_to_line_start`    |
-| `Ctrl-k`                  | delete to end of line       | `kill_to_line_end`      |
+| `Ctrl-e`, `End`           | Move to line end            | `goto_line_end_newline` |
+| `Ctrl-a`, `Home`          | Move to line start          | `goto_line_start`       |
+| `Ctrl-u`                  | Delete to start of line     | `kill_to_line_start`    |
+| `Ctrl-k`                  | Delete to end of line       | `kill_to_line_end`      |
 | `Ctrl-j`, `Enter`         | Insert new line             | `insert_newline`        |
-| `backspace`, `Ctrl-h`     | delete previous char        | `delete_char_backward`  |
-| `delete`, `Ctrl-d`        | delete previous char        | `delete_char_forward`   |
-| `Ctrl-p`, `Up`            | move to previous line       | `move_line_up`          |
-| `Ctrl-n`, `Down`          | move to next line           | `move_line_down`        |
+| `backspace`, `Ctrl-h`     | Delete previous char        | `delete_char_backward`  |
+| `delete`, `Ctrl-d`        | Delete previous char        | `delete_char_forward`   |
+| `Ctrl-p`, `Up`            | Move to previous line       | `move_line_up`          |
+| `Ctrl-n`, `Down`          | Move to next line           | `move_line_down`        |
 | `PageUp`                  | Move one page up            | `page_up`               |
 | `PageDown`                | Move one page down          | `page_down`             |
 | `Alt->`                   | Go to end of buffer         | `goto_file_end`         |
