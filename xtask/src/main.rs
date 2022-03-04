@@ -107,7 +107,7 @@ pub mod md_gen {
     use crate::path;
     use std::fs;
 
-    use helix_term::commands::cmd::TYPABLE_COMMAND_LIST;
+    use helix_term::commands::TYPABLE_COMMAND_LIST;
 
     pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
     pub const LANG_SUPPORT_MD_OUTPUT: &str = "lang-support.md";
