@@ -54,15 +54,19 @@ A `Document` ties together the `Rope`, `Selection`(s), `Syntax`, document
 file.
 
 A `View` represents an open split in the UI. It holds the currently open
-document ID and other related state.
+document ID and other related state. Views encapsulate the gutter, status line,
+diagnostics, and the inner area where the code is displayed.
 
 > NOTE: Multiple views are able to display the same document, so the document
 > contains selections for each view. To retrieve, `document.selection()` takes
 > a `ViewId`.
 
+`Info` is the autoinfo box that shows hints when awaiting another key with bindings
+like `g` and `m`. It is attached to the viewport as a whole.
+
 The `Editor` holds the global state: all the open documents, a tree
-representation of all the view splits, and a registry of language servers. To
-open or close files, interact with the editor.
+representation of all the view splits, the configuration, and a registry of 
+language servers. To open or close files, interact with the editor.
 
 ## LSP
 
