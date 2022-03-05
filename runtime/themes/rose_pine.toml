@@ -13,8 +13,9 @@
 "ui.help" = { fg = "foam", bg = "surface" }
 "ui.cursor" = { fg = "rose", modifiers = ["reversed"] }
 "ui.text" = { fg = "text" }
+"ui.text.focus" = { fg = "foam", modifiers = ["bold"]}
+"ui.text.info" = {fg = "pine", modifiers = ["bold"]}
 "operator" = "rose"
-"ui.text.focus" = { fg = "base05" }
 "variable" = "text"
 "constant.numeric" = "iris"
 "constant" = "gold"
@@ -33,6 +34,7 @@
 "label" = "iris"
 "namespace" = "pine"
 "ui.popup" = { bg = "surface" }
+"ui.popup.info" = { bg = "surface" }
 "ui.window" = { bg = "base" }
 "ui.help" = { bg = "overlay", fg = "foam" }
 "text" = "text"
