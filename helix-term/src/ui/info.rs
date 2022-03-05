@@ -14,9 +14,17 @@ impl Component for Info {
         // which evaluate to the most bottom right coordinate.
         let width = self.width + 2 + 2; // +2 for border, +2 for margin
         let height = self.height + 2; // +2 for border
+
+        // Adjust y position based on statusline
+        let y_offset = if true {
+            viewport.y + 1
+        } else {
+            viewport.height.saturating_sub(height + 2)
+        };
+
         let area = viewport.intersection(Rect::new(
             viewport.width.saturating_sub(width),
-            viewport.height.saturating_sub(height + 2), // +2 for statusline
+            y_offset,
             width,
             height,
         ));

@@ -113,7 +113,13 @@ impl View {
             .map(|(_, width)| *width as u16)
             .sum::<u16>()
             + 1; // +1 for some space between gutters and line
-        self.area.clip_left(offset).clip_bottom(1) // -1 for statusline
+
+        // Adjust for statusline too
+        if true {
+            self.area.clip_left(offset).clip_top(1)
+        } else {
+            self.area.clip_left(offset).clip_bottom(1)
+        }
     }
 
     //

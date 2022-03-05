@@ -145,10 +145,15 @@ impl EditorView {
 
         self.render_diagnostics(doc, view, inner, surface, theme);
 
-        let statusline_area = view
-            .area
-            .clip_top(view.area.height.saturating_sub(1))
-            .clip_bottom(1); // -1 from bottom to remove commandline
+        let statusline_area = if true {
+            view.area
+        } else {
+            // -1 from bottom to remove commandline
+            view.area
+                .clip_top(view.area.height.saturating_sub(1))
+                .clip_bottom(1)
+        };
+
         self.render_statusline(doc, view, statusline_area, surface, theme, is_focused);
     }
 
@@ -477,11 +482,16 @@ impl EditorView {
             text.reserve(*width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
                 let selected = cursors.contains(&line);
+                let y_offset = if true {
+                    viewport.y + i as u16 + 1
+                } else {
+                    viewport.y + i as u16
+                };
 
                 if let Some(style) = gutter(line, selected, &mut text) {
                     surface.set_stringn(
                         viewport.x + offset,
-                        viewport.y + i as u16,
+                        y_offset,
                         &text,
                         *width,
                         gutter_style.patch(style),
