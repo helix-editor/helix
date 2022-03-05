@@ -8,3 +8,7 @@ specific indent settings, etc see the default
 {{#include ./generated/lang-support.md}}
 
 [languages.toml]: https://github.com/helix-editor/helix/blob/master/languages.toml
+
+# Local Configuration
+
+A local `languages.toml` can be created within a `.helix` directory. Its settings will be merged with both the global and default configs.

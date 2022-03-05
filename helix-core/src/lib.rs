@@ -48,7 +48,12 @@ pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
 /// * Top-most folder containing a root marker if not git repository detected
 /// * Current working directory as fallback
 pub fn find_root(root: Option<&str>, root_markers: &[String]) -> Option<std::path::PathBuf> {
+    find_root_impl(root, root_markers).first().cloned()
+}
+
+fn find_root_impl(root: Option<&str>, root_markers: &[String]) -> Vec<std::path::PathBuf> {
     let current_dir = std::env::current_dir().expect("unable to determine current directory");
+    let mut directories = Vec::new();
 
     let root = match root {
         Some(root) => {
@@ -59,30 +64,25 @@ pub fn find_root(root: Option<&str>, root_markers: &[String]) -> Option<std::pat
                 current_dir.join(root)
             }
         }
-        None => current_dir.clone(),
+        None => current_dir,
     };
 
-    let mut top_marker = None;
     for ancestor in root.ancestors() {
-        for marker in root_markers {
-            if ancestor.join(marker).exists() {
-                top_marker = Some(ancestor);
-                break;
-            }
-        }
         // don't go higher than repo
         if ancestor.join(".git").is_dir() {
             // Use workspace if detected from marker
-            return Some(top_marker.unwrap_or(ancestor).to_path_buf());
+            directories.push(ancestor.to_path_buf());
+            break;
+        }
+
+        for marker in root_markers {
+            if ancestor.join(marker).exists() {
+                directories.push(ancestor.to_path_buf());
+                break;
+            }
         }
     }
-
-    // In absence of git repo, use workspace if detected
-    if top_marker.is_some() {
-        top_marker.map(|a| a.to_path_buf())
-    } else {
-        Some(current_dir)
-    }
+    directories
 }
 
 pub fn runtime_dir() -> std::path::PathBuf {
@@ -114,6 +114,15 @@ pub fn config_dir() -> std::path::PathBuf {
     let mut path = strategy.config_dir();
     path.push("helix");
     path
+}
+
+pub fn local_config_dirs() -> Vec<std::path::PathBuf> {
+    let directories = find_root_impl(None, &[".helix".to_string()])
+        .into_iter()
+        .map(|path| path.join(".helix"))
+        .collect();
+    log::debug!("Located configuration folders: {:?}", directories);
+    directories
 }
 
 pub fn cache_dir() -> std::path::PathBuf {

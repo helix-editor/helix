@@ -58,13 +58,11 @@ pub struct Application {
 impl Application {
     pub fn new(args: Args, mut config: Config) -> Result<Self, Error> {
         use helix_view::editor::Action;
-        let mut compositor = Compositor::new()?;
-        let size = compositor.size();
 
-        let conf_dir = helix_core::config_dir();
+        let config_dir = helix_core::config_dir();
 
         let theme_loader =
-            std::sync::Arc::new(theme::Loader::new(&conf_dir, &helix_core::runtime_dir()));
+            std::sync::Arc::new(theme::Loader::new(&config_dir, &helix_core::runtime_dir()));
 
         // load default and user config, and merge both
         let true_color = config.editor.true_color || crate::true_color();
@@ -99,8 +97,9 @@ impl Application {
         });
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
+        let mut compositor = Compositor::new()?;
         let mut editor = Editor::new(
-            size,
+            compositor.size(),
             theme_loader.clone(),
             syn_loader.clone(),
             config.editor.clone(),

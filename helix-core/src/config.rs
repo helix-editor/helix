@@ -8,17 +8,23 @@ pub fn default_lang_config() -> toml::Value {
 
 /// User configured languages.toml file, merged with the default config.
 pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
-    let def_lang_conf = default_lang_config();
-    let data = std::fs::read(crate::config_dir().join("languages.toml"));
-    let user_lang_conf = match data {
-        Ok(raw) => {
-            let value = toml::from_slice(&raw)?;
-            merge_toml_values(def_lang_conf, value)
-        }
-        Err(_) => def_lang_conf,
-    };
+    let config = crate::local_config_dirs()
+        .into_iter()
+        .chain([crate::config_dir()].into_iter())
+        .map(|path| path.join("languages.toml"))
+        .filter_map(|file| {
+            std::fs::read(&file)
+                .map(|config| toml::from_slice(&config))
+                .ok()
+        })
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .chain([default_lang_config()].into_iter())
+        .fold(toml::Value::Table(toml::value::Table::default()), |a, b| {
+            merge_toml_values(b, a)
+        });
 
-    Ok(user_lang_conf)
+    Ok(config)
 }
 
 /// Syntax configuration loader based on built-in languages.toml.
