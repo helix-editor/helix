@@ -68,7 +68,7 @@ Currently supported: `word`, `surround`, `function`, `class`, `parameter`.
 | `(`, `[`, `'`, etc     | Specified surround pairs |
 | `f`                    | Function                 |
 | `c`                    | Class                    |
-| `p`                    | Parameter                |
+| `a`                    | Argument/parameter       |
 | `o`                    | Comment                  |
 
 > NOTE: `f`, `c`, etc need a tree-sitter grammar active for the current
