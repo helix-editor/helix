@@ -608,6 +608,7 @@ impl Default for Keymaps {
                 "f" => goto_prev_function,
                 "c" => goto_prev_class,
                 "p" => goto_prev_parameter,
+                "o" => goto_prev_comment,
                 "space" => add_newline_above,
             },
             "]" => { "Right bracket"
@@ -616,6 +617,7 @@ impl Default for Keymaps {
                 "f" => goto_next_function,
                 "c" => goto_next_class,
                 "p" => goto_next_parameter,
+                "o" => goto_next_comment,
                 "space" => add_newline_below,
             },
 

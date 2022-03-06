@@ -401,6 +401,8 @@ impl MappableCommand {
         goto_prev_class, "Goto previous class",
         goto_next_parameter, "Goto next parameter",
         goto_prev_parameter, "Goto previous parameter",
+        goto_next_comment, "Goto next comment",
+        goto_prev_comment, "Goto previous comment",
         dap_launch, "Launch debug target",
         dap_toggle_breakpoint, "Toggle breakpoint",
         dap_continue, "Continue program execution",
@@ -5381,6 +5383,14 @@ fn goto_prev_parameter(cx: &mut Context) {
     goto_ts_object_impl(cx, "parameter", Direction::Backward)
 }
 
+fn goto_next_comment(cx: &mut Context) {
+    goto_ts_object_impl(cx, "comment", Direction::Forward)
+}
+
+fn goto_prev_comment(cx: &mut Context) {
+    goto_ts_object_impl(cx, "comment", Direction::Backward)
+}
+
 fn select_textobject_around(cx: &mut Context) {
     select_textobject(cx, textobject::TextObject::Around);
 }
@@ -5423,6 +5433,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'c' => textobject_treesitter("class", range),
                         'f' => textobject_treesitter("function", range),
                         'p' => textobject_treesitter("parameter", range),
+                        'o' => textobject_treesitter("comment", range),
                         'm' => {
                             let ch = text.char(range.cursor(text));
                             if !ch.is_ascii_alphanumeric() {
@@ -5456,6 +5467,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
             ("c", "Class (tree-sitter)"),
             ("f", "Function (tree-sitter)"),
             ("p", "Parameter (tree-sitter)"),
+            ("o", "Comment (tree-sitter)"),
             ("m", "Matching delimiter under cursor"),
             (" ", "... or any character acting as a pair"),
         ];
