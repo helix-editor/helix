@@ -771,6 +771,26 @@ fn hsplit(
     Ok(())
 }
 
+fn vsplit_new(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor.new_file(Action::VerticalSplit);
+
+    Ok(())
+}
+
+fn hsplit_new(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor.new_file(Action::HorizontalSplit);
+
+    Ok(())
+}
+
 fn debug_eval(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1294,11 +1314,25 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: Some(completers::filename),
         },
         TypableCommand {
+            name: "vsplit-new",
+            aliases: &["vnew"],
+            doc: "Open a scratch buffer in a vertical split.",
+            fun: vsplit_new,
+            completer: None,
+        },
+        TypableCommand {
             name: "hsplit",
             aliases: &["hs", "sp"],
             doc: "Open the file in a horizontal split.",
             fun: hsplit,
             completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "hsplit-new",
+            aliases: &["hnew"],
+            doc: "Open a scratch buffer in a horizontal split.",
+            fun: hsplit_new,
+            completer: None,
         },
         TypableCommand {
             name: "tutor",
