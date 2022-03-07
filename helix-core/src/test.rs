@@ -28,88 +28,69 @@ use std::cmp::Reverse;
 /// Panics when missing head or anchor.
 /// Panics when head come after head or anchor come after anchor.
 pub fn print(s: &str) -> (String, Selection) {
-    let mut primary = None;
+    let mut primary_idx = None;
     let mut ranges = SmallVec::new();
     let mut iter = s.chars().peekable();
     let mut left = String::with_capacity(s.len());
+
     'outer: while let Some(c) = iter.next() {
         let start = left.len();
-        if c == '#' {
-            if iter.next_if_eq(&'[').is_some() {
-                if primary.is_some() {
-                    panic!("primary `#[` already appeared {left:?} {s:?}");
-                }
-                if iter.next_if_eq(&'|').is_some() {
-                    while let Some(c) = iter.next() {
-                        if c == ']' && iter.next_if_eq(&'#').is_some() {
-                            primary = Some(ranges.len());
-                            ranges.push(Range::new(left.len(), start));
-                            continue 'outer;
-                        } else {
-                            left.push(c);
-                        }
-                    }
-                    panic!("missing primary end `]#` {left:?} {s:?}");
-                } else {
-                    while let Some(c) = iter.next() {
-                        if c == '|' {
-                            if let Some(cc) = iter.next_if_eq(&']') {
-                                if iter.next_if_eq(&'#').is_some() {
-                                    primary = Some(ranges.len());
-                                    ranges.push(Range::new(start, left.len()));
-                                    continue 'outer;
-                                } else {
-                                    left.push(c);
-                                    left.push(cc);
-                                }
-                            } else {
-                                left.push(c);
-                            }
-                        } else {
-                            left.push(c);
-                        }
-                    }
-                    panic!("missing primary end `|]#` {left:?} {s:?}");
-                }
-            } else if iter.next_if_eq(&'(').is_some() {
-                if iter.next_if_eq(&'|').is_some() {
-                    while let Some(c) = iter.next() {
-                        if c == ')' && iter.next_if_eq(&'#').is_some() {
-                            ranges.push(Range::new(left.len(), start));
-                            continue 'outer;
-                        } else {
-                            left.push(c);
-                        }
-                    }
-                    panic!("missing end `)#` {left:?} {s:?}");
-                } else {
-                    while let Some(c) = iter.next() {
-                        if c == '|' {
-                            if let Some(cc) = iter.next_if_eq(&')') {
-                                if iter.next_if_eq(&'#').is_some() {
-                                    ranges.push(Range::new(start, left.len()));
-                                    continue 'outer;
-                                } else {
-                                    left.push(c);
-                                    left.push(cc);
-                                }
-                            } else {
-                                left.push(c);
-                            }
-                        } else {
-                            left.push(c);
-                        }
-                    }
-                    panic!("missing end `|)#` {left:?} {s:?}");
-                }
-            } else {
-                left.push(c);
-            }
-        } else {
+
+        if c != '#' {
             left.push(c);
+            continue;
+        }
+
+        let (is_primary, close_pair) = match iter.next() {
+            Some('[') => (true, ']'),
+            Some('(') => (false, ')'),
+            Some(ch) => {
+                left.push(ch);
+                continue;
+            }
+            None => break,
+        };
+
+        if is_primary && primary_idx.is_some() {
+            panic!("primary `#[` already appeared {left:?} {s:?}");
+        }
+
+        let head_at_beg = iter.next_if_eq(&'|').is_some();
+
+        while let Some(c) = iter.next() {
+            if !(c == close_pair && iter.peek() == Some(&'#')) {
+                left.push(c);
+                continue;
+            }
+            if !head_at_beg {
+                let prev = left.pop().unwrap();
+                if prev != '|' {
+                    left.push(prev);
+                    left.push(c);
+                    continue;
+                }
+            }
+            iter.next(); // skip "#"
+
+            if is_primary {
+                primary_idx = Some(ranges.len());
+            }
+            let (anchor, head) = match head_at_beg {
+                true => (left.len(), start),
+                false => (start, left.len()),
+            };
+            ranges.push(Range::new(anchor, head));
+            continue 'outer;
+        }
+
+        if head_at_beg {
+            panic!("missing end `{close_pair}#` {left:?} {s:?}");
+        } else {
+            panic!("missing end `|{close_pair}#` {left:?} {s:?}");
         }
     }
-    let primary = match primary {
+
+    let primary = match primary_idx {
         Some(i) => i,
         None => panic!("missing primary `#[|]#` {s:?}"),
     };
