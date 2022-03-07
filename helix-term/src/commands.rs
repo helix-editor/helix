@@ -3965,7 +3965,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'W' => textobject::textobject_word(text, range, objtype, count, true),
                         'c' => textobject_treesitter("class", range),
                         'f' => textobject_treesitter("function", range),
-                        'p' => textobject_treesitter("parameter", range),
+                        'a' => textobject_treesitter("parameter", range),
                         'o' => textobject_treesitter("comment", range),
                         'm' => {
                             let ch = text.char(range.cursor(text));
@@ -3999,7 +3999,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
             ("W", "WORD"),
             ("c", "Class (tree-sitter)"),
             ("f", "Function (tree-sitter)"),
-            ("p", "Parameter (tree-sitter)"),
+            ("a", "Argument/parameter (tree-sitter)"),
             ("o", "Comment (tree-sitter)"),
             ("m", "Matching delimiter under cursor"),
             (" ", "... or any character acting as a pair"),
