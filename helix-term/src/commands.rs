@@ -209,8 +209,8 @@ impl MappableCommand {
         move_next_long_word_start, "Move to beginning of next long word",
         move_prev_long_word_start, "Move to beginning of previous long word",
         move_next_long_word_end, "Move to end of next long word",
-        move_prev_para, "Move to previous paragraph",
-        move_next_para, "Move to next paragraph",
+        move_prev_paragraph, "Move to previous paragraph",
+        move_next_paragraph, "Move to next paragraph",
         extend_next_word_start, "Extend to beginning of next word",
         extend_prev_word_start, "Extend to beginning of previous word",
         extend_next_long_word_start, "Extend to beginning of next long word",
@@ -924,12 +924,12 @@ where
     doc.set_selection(view.id, selection);
 }
 
-fn move_prev_para(cx: &mut Context) {
-    move_para_impl(cx, movement::move_prev_para)
+fn move_prev_paragraph(cx: &mut Context) {
+    move_para_impl(cx, movement::move_prev_paragraph)
 }
 
-fn move_next_para(cx: &mut Context) {
-    move_para_impl(cx, movement::move_next_para)
+fn move_next_paragraph(cx: &mut Context) {
+    move_para_impl(cx, movement::move_next_paragraph)
 }
 
 fn goto_file_start(cx: &mut Context) {
@@ -3991,7 +3991,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'f' => textobject_treesitter("function", range),
                         'a' => textobject_treesitter("parameter", range),
                         'o' => textobject_treesitter("comment", range),
-                        'p' => textobject::textobject_para(text, range, objtype, count),
+                        'p' => textobject::textobject_paragraph(text, range, objtype, count),
                         'm' => {
                             let ch = text.char(range.cursor(text));
                             if !ch.is_ascii_alphanumeric() {

@@ -150,7 +150,12 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
     })
 }
 
-pub fn move_prev_para(slice: RopeSlice, range: Range, count: usize, behavior: Movement) -> Range {
+pub fn move_prev_paragraph(
+    slice: RopeSlice,
+    range: Range,
+    count: usize,
+    behavior: Movement,
+) -> Range {
     let mut line = range.cursor_line(slice);
     let first_char = slice.line_to_char(line) == range.cursor(slice);
     let prev_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
@@ -187,7 +192,12 @@ pub fn move_prev_para(slice: RopeSlice, range: Range, count: usize, behavior: Mo
     Range::new(anchor, head)
 }
 
-pub fn move_next_para(slice: RopeSlice, range: Range, count: usize, behavior: Movement) -> Range {
+pub fn move_next_paragraph(
+    slice: RopeSlice,
+    range: Range,
+    count: usize,
+    behavior: Movement,
+) -> Range {
     let mut line = range.cursor_line(slice);
     let last_char =
         prev_grapheme_boundary(slice, slice.line_to_char(line + 1)) == range.cursor(slice);
@@ -1280,7 +1290,7 @@ mod test {
             let (s, selection) = crate::test::print(before);
             let text = Rope::from(s.as_str());
             let selection =
-                selection.transform(|r| move_prev_para(text.slice(..), r, 1, Movement::Move));
+                selection.transform(|r| move_prev_paragraph(text.slice(..), r, 1, Movement::Move));
             let actual = crate::test::plain(&s, selection);
             assert_eq!(actual, expected, "\nbefore: `{before:?}`");
         }
@@ -1303,7 +1313,7 @@ mod test {
             let (s, selection) = crate::test::print(before);
             let text = Rope::from(s.as_str());
             let selection =
-                selection.transform(|r| move_prev_para(text.slice(..), r, 2, Movement::Move));
+                selection.transform(|r| move_prev_paragraph(text.slice(..), r, 2, Movement::Move));
             let actual = crate::test::plain(&s, selection);
             assert_eq!(actual, expected, "\nbefore: `{before:?}`");
         }
@@ -1325,8 +1335,8 @@ mod test {
         for (before, expected) in tests {
             let (s, selection) = crate::test::print(before);
             let text = Rope::from(s.as_str());
-            let selection =
-                selection.transform(|r| move_prev_para(text.slice(..), r, 1, Movement::Extend));
+            let selection = selection
+                .transform(|r| move_prev_paragraph(text.slice(..), r, 1, Movement::Extend));
             let actual = crate::test::plain(&s, selection);
             assert_eq!(actual, expected, "\nbefore: `{before:?}`");
         }
@@ -1360,7 +1370,7 @@ mod test {
             let (s, selection) = crate::test::print(before);
             let text = Rope::from(s.as_str());
             let selection =
-                selection.transform(|r| move_next_para(text.slice(..), r, 1, Movement::Move));
+                selection.transform(|r| move_next_paragraph(text.slice(..), r, 1, Movement::Move));
             let actual = crate::test::plain(&s, selection);
             assert_eq!(actual, expected, "\nbefore: `{before:?}`");
         }
@@ -1383,7 +1393,7 @@ mod test {
             let (s, selection) = crate::test::print(before);
             let text = Rope::from(s.as_str());
             let selection =
-                selection.transform(|r| move_next_para(text.slice(..), r, 2, Movement::Move));
+                selection.transform(|r| move_next_paragraph(text.slice(..), r, 2, Movement::Move));
             let actual = crate::test::plain(&s, selection);
             assert_eq!(actual, expected, "\nbefore: `{before:?}`");
         }
@@ -1405,8 +1415,8 @@ mod test {
         for (before, expected) in tests {
             let (s, selection) = crate::test::print(before);
             let text = Rope::from(s.as_str());
-            let selection =
-                selection.transform(|r| move_next_para(text.slice(..), r, 1, Movement::Extend));
+            let selection = selection
+                .transform(|r| move_next_paragraph(text.slice(..), r, 1, Movement::Extend));
             let actual = crate::test::plain(&s, selection);
             assert_eq!(actual, expected, "\nbefore: `{before:?}`");
         }
