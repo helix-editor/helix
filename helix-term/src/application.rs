@@ -56,10 +56,28 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(args: Args, mut config: Config) -> Result<Self, Error> {
+    pub fn new(args: Args) -> Result<Self, Error> {
         use helix_view::editor::Action;
 
         let config_dir = helix_core::config_dir();
+        if !config_dir.exists() {
+            std::fs::create_dir_all(&config_dir).ok();
+        }
+
+        let mut config = match std::fs::read_to_string(config_dir.join("config.toml")) {
+            Ok(config) => toml::from_str(&config)
+                .map(crate::keymap::merge_keys)
+                .unwrap_or_else(|err| {
+                    eprintln!("Bad config: {}", err);
+                    eprintln!("Press <ENTER> to continue with default config");
+                    use std::io::Read;
+                    // This waits for an enter press.
+                    let _ = std::io::stdin().read(&mut []);
+                    Config::default()
+                }),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
+            Err(err) => return Err(Error::new(err)),
+        };
 
         let theme_loader =
             std::sync::Arc::new(theme::Loader::new(&config_dir, &helix_core::runtime_dir()));
