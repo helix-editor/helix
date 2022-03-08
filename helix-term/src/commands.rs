@@ -236,14 +236,14 @@ impl MappableCommand {
         extend_prev_long_word_start, "Extend to beginning of previous long word",
         extend_next_long_word_end, "Extend to end of next long word",
         extend_next_word_end, "Extend to end of next word",
-        find_till_char, "Move till next occurance of char",
-        find_next_char, "Move to next occurance of char",
-        extend_till_char, "Extend till next occurance of char",
-        extend_next_char, "Extend to next occurance of char",
-        till_prev_char, "Move till previous occurance of char",
-        find_prev_char, "Move to previous occurance of char",
-        extend_till_prev_char, "Extend till previous occurance of char",
-        extend_prev_char, "Extend to previous occurance of char",
+        select_until_char, "Select until next occurance of char",
+        select_to_next_char, "Select to next occurance of char",
+        extend_until_char, "Extend until next occurance of char",
+        extend_to_next_char, "Extend to next occurance of char",
+        select_until_prev_char, "Select until previous occurance of char",
+        select_to_prev_char, "Select to previous occurance of char",
+        extend_until_prev_char, "Extend until previous occurance of char",
+        extend_to_prev_char, "Extend to previous occurance of char",
         repeat_last_motion, "repeat last motion(extend_next_char, extend_till_char, find_next_char, find_till_char...)",
         replace, "Replace with new char",
         switch_case, "Switch (toggle) case",
@@ -1143,35 +1143,35 @@ fn find_prev_char_impl(
     }
 }
 
-fn find_till_char(cx: &mut Context) {
+fn select_until_char(cx: &mut Context) {
     will_find_char(cx, find_next_char_impl, false, false)
 }
 
-fn find_next_char(cx: &mut Context) {
+fn select_to_next_char(cx: &mut Context) {
     will_find_char(cx, find_next_char_impl, true, false)
 }
 
-fn extend_till_char(cx: &mut Context) {
+fn extend_until_char(cx: &mut Context) {
     will_find_char(cx, find_next_char_impl, false, true)
 }
 
-fn extend_next_char(cx: &mut Context) {
+fn extend_to_next_char(cx: &mut Context) {
     will_find_char(cx, find_next_char_impl, true, true)
 }
 
-fn till_prev_char(cx: &mut Context) {
+fn select_until_prev_char(cx: &mut Context) {
     will_find_char(cx, find_prev_char_impl, false, false)
 }
 
-fn find_prev_char(cx: &mut Context) {
+fn select_to_prev_char(cx: &mut Context) {
     will_find_char(cx, find_prev_char_impl, true, false)
 }
 
-fn extend_till_prev_char(cx: &mut Context) {
+fn extend_until_prev_char(cx: &mut Context) {
     will_find_char(cx, find_prev_char_impl, false, true)
 }
 
-fn extend_prev_char(cx: &mut Context) {
+fn extend_to_prev_char(cx: &mut Context) {
     will_find_char(cx, find_prev_char_impl, true, true)
 }
 
