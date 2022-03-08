@@ -435,7 +435,6 @@ name = "helix-term"
 version = "0.6.0"
 dependencies = [
  "anyhow",
- "cc",
  "chrono",
  "content_inspector",
  "crossterm",
@@ -460,7 +459,6 @@ dependencies = [
  "serde_json",
  "signal-hook",
  "signal-hook-tokio",
- "threadpool",
  "tokio",
  "tokio-stream",
  "toml",

@@ -58,5 +58,5 @@ via the `HELIX_RUNTIME` environment variable.
 ## Building tree-sitter grammars
 
 Tree-sitter grammars must be fetched and compiled if not pre-packaged.
-Fetch grammars with `hx --fetch-grammars` (requires `git`) and compile them
-with `hx --build-grammars` (requires a C compiler).
+Fetch grammars with `hx --grammar fetch` (requires `git`) and compile them
+with `hx --grammar build` (requires a C compiler).
