@@ -21,10 +21,10 @@
 | `W`         | Move next WORD start                               | `move_next_long_word_start` |
 | `B`         | Move previous WORD start                           | `move_prev_long_word_start` |
 | `E`         | Move next WORD end                                 | `move_next_long_word_end`   |
-| `t`         | Find 'till next char                               | `find_till_char`            |
-| `f`         | Find next char                                     | `find_next_char`            |
-| `T`         | Find 'till previous char                           | `till_prev_char`            |
-| `F`         | Find previous char                                 | `find_prev_char`            |
+| `t`         | Select until next char                             | `select_until_next_char`    |
+| `f`         | Select to next char                                | `select_to_next_char`       |
+| `T`         | Select until previous char                         | `select_until_prev_char`    |
+| `F`         | Select to previous char                            | `select_to_prev_char`       |
 | `G`         | Go to line number `<n>`                            | `goto_line`                 |
 | `Alt-.`     | Repeat last motion (`f`, `t` or `m`)               | `repeat_last_motion`        |
 | `Alt-:`     | Ensures the selection is in forward direction      | `ensure_selections_forward` |
