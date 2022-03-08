@@ -60,7 +60,7 @@ git repository:
 | ---    | -----------                                               |
 | `git`  | A git remote URL from which the grammar should be cloned  |
 | `rev`  | The revision (commit hash or tag) which should be fetched |
-| `subpath` | A path within the grammar directory which should be built. Some grammar repositories host multiple grammars (for example `tree-sitter-typescript` and `tree-sitter-ocaml`) in subdirectories. This key is used to point `hx --build-grammars` to the correct path for compilation. When omitted, the root of repository is used |
+| `subpath` | A path within the grammar directory which should be built. Some grammar repositories host multiple grammars (for example `tree-sitter-typescript` and `tree-sitter-ocaml`) in subdirectories. This key is used to point `hx --grammar build` to the correct path for compilation. When omitted, the root of repository is used |
 
 Or a `path` key with an absolute path to a locally available grammar directory.
 
@@ -79,7 +79,7 @@ the last matching query supersedes the ones before it. See
 
 ## Common Issues
 
-- If you get errors when running after switching branches, you may have to update the tree-sitter grammars. Run `hx --fetch-grammars` to fetch the grammars and `hx --build-grammars` to build any out-of-date grammars.
+- If you get errors when running after switching branches, you may have to update the tree-sitter grammars. Run `hx --grammar fetch` to fetch the grammars and `hx --grammar build` to build any out-of-date grammars.
 
 - If a parser is segfaulting or you want to remove the parser, make sure to remove the compiled parser in `runtime/grammar/<name>.so`
 

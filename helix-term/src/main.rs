@@ -59,16 +59,15 @@ ARGS:
     <files>...    Sets the input file to use, position can also be specified via file[:row[:col]]
 
 FLAGS:
-    -h, --help        Prints help information
-    --edit-config     Opens the helix config file
-    --tutor           Loads the tutorial
-    --health [LANG]   Checks for potential errors in editor setup
-                      If given, checks for config errors in language LANG
-    --fetch-grammars  Fetches tree-sitter grammars listed in languages.toml
-    --build-grammars  Builds tree-sitter grammars fetched with --fetch-grammars
-    -v                Increases logging verbosity each use for up to 3 times
-                      (default file: {})
-    -V, --version     Prints version information
+    -h, --help                     Prints help information
+    --edit-config                  Opens the helix config file
+    --tutor                        Loads the tutorial
+    --health [LANG]                Checks for potential errors in editor setup
+                                   If given, checks for config errors in language LANG
+    -g, --grammars {{fetch|build}}   Fetches or builds tree-sitter grammars listed in languages.toml
+    -v                             Increases logging verbosity each use for up to 3 times
+                                   (default file: {})
+    -V, --version                  Prints version information
 ",
         env!("CARGO_PKG_NAME"),
         env!("VERSION_AND_GIT_HASH"),

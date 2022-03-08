@@ -388,7 +388,7 @@ impl LanguageConfiguration {
                 &injections_query,
                 &locals_query,
             )
-            .unwrap_or_else(|query_error| panic!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --fetch-grammars' and 'hx --build-grammars'. This query could not be parsed: {:?}", self.language_id, query_error));
+            .unwrap_or_else(|query_error| panic!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar build' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, query_error));
 
             config.configure(scopes);
             Some(Arc::new(config))

@@ -39,8 +39,8 @@ build from source.
 git clone https://github.com/helix-editor/helix
 cd helix
 cargo install --path helix-term
-hx --fetch-grammars
-hx --build-grammars
+hx --grammar fetch
+hx --grammar build
 ```
 
 This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars.
