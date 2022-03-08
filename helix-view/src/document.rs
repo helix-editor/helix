@@ -371,14 +371,54 @@ impl Document {
         encoding: Option<&'static encoding::Encoding>,
         config_loader: Option<Arc<syntax::Loader>>,
     ) -> Result<Self, Error> {
+        Self::open_with_editorconfig(path, encoding, config_loader, false)
+    }
+
+    // TODO: async fn?
+    /// Create a new document from `path`,
+    /// optionally using settings from EditorConfig.
+    ///
+    /// If the `encoding` parameter is specified,
+    /// it overrides the encoding obtained from EditorConfig
+    /// and auto-detection.
+    pub fn open_with_editorconfig(
+        path: &Path,
+        encoding: Option<&'static encoding::Encoding>,
+        config_loader: Option<Arc<syntax::Loader>>,
+        use_editorconfig: bool,
+    ) -> Result<Self, Error> {
+        // Closure to read the editorconfig files that apply to `path`.
+        // Ideally this should be done after an existing file is already opened.
+        let get_editorconfig = || {
+            if use_editorconfig {
+                let mut ecfg = ec4rs::config_for(path).unwrap_or_default();
+                ecfg.use_fallbacks();
+                ecfg
+            } else {
+                Default::default()
+            }
+        };
+        // Adds editorconfig values to encoding as a fallback.
+        let encoding_with_ecfg = move |ecfg: &ec4rs::Properties| {
+            encoding.or_else(|| {
+                ecfg.get_raw::<ec4rs::property::Charset>()
+                    .filter_unset()
+                    .into_result()
+                    .ok()
+                    .map(|string| string.as_bytes())
+                    .and_then(encoding::Encoding::for_label)
+            })
+        };
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
-        let (rope, encoding) = if path.exists() {
+        let ((rope, encoding), ecfg) = if path.exists() {
             let mut file =
                 std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
-            from_reader(&mut file, encoding)?
+            let ecfg = get_editorconfig();
+            (from_reader(&mut file, encoding_with_ecfg(&ecfg))?, ecfg)
         } else {
-            let encoding = encoding.unwrap_or(encoding::UTF_8);
-            (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding)
+            let ecfg = get_editorconfig();
+            let encoding = encoding_with_ecfg(&ecfg).unwrap_or(encoding::UTF_8);
+            ((Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding), get_editorconfig())
         };
 
         let mut doc = Self::from(rope, Some(encoding));
@@ -389,7 +429,28 @@ impl Document {
             doc.detect_language(loader);
         }
 
-        doc.detect_indent_and_line_ending();
+        // Set the indent style.
+        use ec4rs::property::{IndentSize, IndentStyle as EcIndentStyle};
+        match (ecfg.get::<EcIndentStyle>(), ecfg.get::<IndentSize>()) {
+            (Ok(EcIndentStyle::Tabs), _) => {
+                doc.indent_style = IndentStyle::Tabs;
+            }
+            (Ok(EcIndentStyle::Spaces), Ok(IndentSize::Value(n))) => {
+                doc.indent_style = IndentStyle::Spaces(
+                    n.try_into().unwrap_or(u8::MAX)
+                );
+            }
+            _ => doc.detect_indent_impl()
+        }
+
+        // Set the line ending.
+        use ec4rs::property::EndOfLine;
+        match ecfg.get::<EndOfLine>() {
+            Ok(EndOfLine::Cr) => {doc.line_ending = LineEnding::CR},
+            Ok(EndOfLine::Lf) => {doc.line_ending = LineEnding::LF},
+            Ok(EndOfLine::CrLf) => {doc.line_ending = LineEnding::Crlf},
+            Err(_) => doc.detect_line_ending_impl()
+        }
 
         Ok(doc)
     }
@@ -517,11 +578,19 @@ impl Document {
     /// specified. Line ending is likewise auto-detected, and will fallback to the default OS
     /// line ending.
     pub fn detect_indent_and_line_ending(&mut self) {
+        self.detect_indent_impl();
+        self.detect_line_ending_impl();
+    }
+
+    fn detect_indent_impl(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
             self.language_config()
                 .and_then(|config| config.indent.as_ref())
                 .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
         });
+    }
+
+    fn detect_line_ending_impl(&mut self) {
         self.line_ending = auto_detect_line_ending(&self.text).unwrap_or(DEFAULT_LINE_ENDING);
     }
 

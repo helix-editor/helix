@@ -177,6 +177,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ec4rs"
+version = "1.0.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0255cdb161744c81c8a656dbdd2f6f0eec392e64bcf80770c638f1882fed1da5"
+
+[[package]]
 name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -481,6 +487,7 @@ dependencies = [
  "chardetng",
  "clipboard-win",
  "crossterm",
+ "ec4rs",
  "futures-util",
  "helix-core",
  "helix-dap",
