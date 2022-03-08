@@ -21,7 +21,6 @@ pub enum Assoc {
     After,
 }
 
-// ChangeSpec = Change | ChangeSet | Vec<Change>
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ChangeSet {
     pub(crate) changes: Vec<Operation>,
@@ -50,7 +49,6 @@ impl ChangeSet {
     }
 
     // TODO: from iter
-    //
 
     #[doc(hidden)] // used by lsp to convert to LSP changes
     pub fn changes(&self) -> &[Operation] {
@@ -415,8 +413,6 @@ impl ChangeSet {
 pub struct Transaction {
     changes: ChangeSet,
     selection: Option<Selection>,
-    // effects, annotations
-    // scroll_into_view
 }
 
 impl Transaction {
@@ -440,14 +436,12 @@ impl Transaction {
 
     /// Returns true if applied successfully.
     pub fn apply(&self, doc: &mut Rope) -> bool {
-        if !self.changes.is_empty() {
-            // apply changes to the document
-            if !self.changes.apply(doc) {
-                return false;
-            }
+        if self.changes.is_empty() {
+            return true;
         }
 
-        true
+        // apply changes to the document
+        self.changes.apply(doc)
     }
 
     /// Generate a transaction that reverts this one.
@@ -475,7 +469,7 @@ impl Transaction {
     /// Generate a transaction from a set of changes.
     pub fn change<I>(doc: &Rope, changes: I) -> Self
     where
-        I: IntoIterator<Item = Change> + Iterator,
+        I: Iterator<Item = Change>,
     {
         let len = doc.len_chars();
 
@@ -483,12 +477,11 @@ impl Transaction {
         let size = upper.unwrap_or(lower);
         let mut changeset = ChangeSet::with_capacity(2 * size + 1); // rough estimate
 
-        // TODO: verify ranges are ordered and not overlapping or change will panic.
-
-        // TODO: test for (pos, pos, None) to factor out as nothing
-
         let mut last = 0;
         for (from, to, tendril) in changes {
+            // Verify ranges are ordered and not overlapping
+            debug_assert!(last <= from);
+
             // Retain from last "to" to current "from"
             changeset.retain(from - last);
             let span = to - from;
@@ -694,7 +687,7 @@ mod test {
         let mut doc = Rope::from("hello world!\ntest 123");
         let transaction = Transaction::change(
             &doc,
-            // (1, 1, None) is a useless 0-width delete
+            // (1, 1, None) is a useless 0-width delete that gets factored out
             vec![(1, 1, None), (6, 11, Some("void".into())), (12, 17, None)].into_iter(),
         );
         transaction.apply(&mut doc);

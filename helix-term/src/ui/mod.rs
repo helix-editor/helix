@@ -34,8 +34,8 @@ pub fn regex_prompt(
     fun: impl Fn(&mut View, &mut Document, Regex, PromptEvent) + 'static,
 ) -> Prompt {
     let (view, doc) = current!(cx.editor);
-    let view_id = view.id;
-    let snapshot = doc.selection(view_id).clone();
+    let doc_id = view.doc;
+    let snapshot = doc.selection(view.id).clone();
     let offset_snapshot = view.offset;
 
     let mut prompt = Prompt::new(
@@ -49,17 +49,16 @@ pub fn regex_prompt(
                     doc.set_selection(view.id, snapshot.clone());
                     view.offset = offset_snapshot;
                 }
-                PromptEvent::Validate => {
-                    // TODO: push_jump to store selection just before jump
-
-                    match Regex::new(input) {
-                        Ok(regex) => {
-                            let (view, doc) = current!(cx.editor);
-                            fun(view, doc, regex, event);
-                        }
-                        Err(_err) => (), // TODO: mark command line as error
+                PromptEvent::Validate => match Regex::new(input) {
+                    Ok(regex) => {
+                        let (view, doc) = current!(cx.editor);
+                        // Equivalent to push_jump to store selection just before jump
+                        view.jumps.push((doc_id, snapshot.clone()));
+                        fun(view, doc, regex, event);
                     }
-                }
+                    Err(_err) => (), // TODO: mark command line as error
+                },
+
                 PromptEvent::Update => {
                     // skip empty input, TODO: trigger default
                     if input.is_empty() {
@@ -99,10 +98,10 @@ pub fn regex_prompt(
 
 pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
     use ignore::{types::TypesBuilder, WalkBuilder};
-    use std::time;
+    use std::time::Instant;
 
-    // We want to exclude files that the editor can't handle yet
-    let mut type_builder = TypesBuilder::new();
+    let now = Instant::now();
+
     let mut walk_builder = WalkBuilder::new(&root);
     walk_builder
         .hidden(config.file_picker.hidden)
@@ -117,47 +116,46 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         // in our picker.
         .filter_entry(|entry| entry.file_name() != ".git");
 
-    let walk_builder = match type_builder.add(
-        "compressed",
-        "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}",
-    ) {
-        Err(_) => &walk_builder,
-        _ => {
-            type_builder.negate("all");
-            let excluded_types = type_builder.build().unwrap();
-            walk_builder.types(excluded_types)
-        }
-    };
+    // We want to exclude files that the editor can't handle yet
+    let mut type_builder = TypesBuilder::new();
+    type_builder
+        .add(
+            "compressed",
+            "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}",
+        )
+        .expect("Invalid type definition");
+    type_builder.negate("all");
+    let excluded_types = type_builder
+        .build()
+        .expect("failed to build excluded_types");
+    walk_builder.types(excluded_types);
 
+    // We want files along with their modification date for sorting
     let files = walk_builder.build().filter_map(|entry| {
         let entry = entry.ok()?;
-        // Path::is_dir() traverses symlinks, so we use it over DirEntry::is_dir
-        if entry.path().is_dir() {
+
+        // This is faster than entry.path().is_dir() since it uses cached fs::Metadata fetched by ignore/walkdir
+        let is_dir = entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
+
+        if is_dir {
             // Will give a false positive if metadata cannot be read (eg. permission error)
             return None;
         }
 
-        let time = entry.metadata().map_or(time::UNIX_EPOCH, |metadata| {
-            metadata
-                .accessed()
-                .or_else(|_| metadata.modified())
-                .or_else(|_| metadata.created())
-                .unwrap_or(time::UNIX_EPOCH)
-        });
-
-        Some((entry.into_path(), time))
+        Some(entry.into_path())
     });
 
-    let mut files: Vec<_> = if root.join(".git").is_dir() {
+    // Cap the number of files if we aren't in a git project, preventing
+    // hangs when using the picker in your home directory
+    let files: Vec<_> = if root.join(".git").is_dir() {
         files.collect()
     } else {
-        const MAX: usize = 8192;
+        // const MAX: usize = 8192;
+        const MAX: usize = 100_000;
         files.take(MAX).collect()
     };
 
-    files.sort_by_key(|file| std::cmp::Reverse(file.1));
-
-    let files = files.into_iter().map(|(path, _)| path).collect();
+    log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
     FilePicker::new(
         files,

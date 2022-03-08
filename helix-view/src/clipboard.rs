@@ -56,16 +56,29 @@ macro_rules! command_provider {
     }};
 }
 
+#[cfg(windows)]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
-    // TODO: support for user-defined provider, probably when we have plugin support by setting a
-    // variable?
+    Box::new(provider::WindowsProvider::default())
+}
 
+#[cfg(target_os = "macos")]
+pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     if exists("pbcopy") && exists("pbpaste") {
         command_provider! {
             paste => "pbpaste";
             copy => "pbcopy";
         }
-    } else if env_var_is_set("WAYLAND_DISPLAY") && exists("wl-copy") && exists("wl-paste") {
+    } else {
+        Box::new(provider::NopProvider::new())
+    }
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
+pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
+    // TODO: support for user-defined provider, probably when we have plugin support by setting a
+    // variable?
+
+    if env_var_is_set("WAYLAND_DISPLAY") && exists("wl-copy") && exists("wl-paste") {
         command_provider! {
             paste => "wl-paste", "--no-newline";
             copy => "wl-copy", "--type", "text/plain";
@@ -88,22 +101,6 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
             primary_paste => "xsel", "-o";
             primary_copy => "xsel", "-i";
         }
-    } else if exists("lemonade") {
-        command_provider! {
-            paste => "lemonade", "paste";
-            copy => "lemonade", "copy";
-        }
-    } else if exists("doitclient") {
-        command_provider! {
-            paste => "doitclient", "wclip", "-r";
-            copy => "doitclient", "wclip";
-        }
-    } else if exists("win32yank.exe") {
-        // FIXME: does it work within WSL?
-        command_provider! {
-            paste => "win32yank.exe", "-o", "--lf";
-            copy => "win32yank.exe", "-i", "--crlf";
-        }
     } else if exists("termux-clipboard-set") && exists("termux-clipboard-get") {
         command_provider! {
             paste => "termux-clipboard-get";
@@ -115,11 +112,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
             copy => "tmux", "load-buffer", "-";
         }
     } else {
-        #[cfg(target_os = "windows")]
-        return Box::new(provider::WindowsProvider::default());
-
-        #[cfg(not(target_os = "windows"))]
-        return Box::new(provider::NopProvider::new());
+        Box::new(provider::NopProvider::new())
     }
 }
 

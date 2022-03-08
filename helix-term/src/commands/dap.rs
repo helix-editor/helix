@@ -190,7 +190,7 @@ pub fn dap_start_impl(
     let config = doc
         .language_config()
         .and_then(|config| config.debugger.as_ref())
-        .ok_or(anyhow!("No debug adapter available for language"))?;
+        .ok_or_else(|| anyhow!("No debug adapter available for language"))?;
 
     let result = match socket {
         Some(socket) => block_on(Client::tcp(socket, 0)),
@@ -220,7 +220,7 @@ pub fn dap_start_impl(
         Some(name) => config.templates.iter().find(|t| t.name == name),
         None => config.templates.get(0),
     }
-    .ok_or(anyhow!("No debug config with given name"))?;
+    .ok_or_else(|| anyhow!("No debug config with given name"))?;
 
     let mut args: HashMap<&str, Value> = HashMap::new();
 

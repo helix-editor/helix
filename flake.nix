@@ -3,7 +3,10 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    rust-overlay.url = "github:oxalica/rust-overlay";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nixCargoIntegration = {
       url = "github:yusdacra/nix-cargo-integration";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -30,9 +33,9 @@
                 pkgs = common.pkgs;
                 helix = pkgs.fetchgit {
                   url = "https://github.com/helix-editor/helix.git";
-                  rev = "a8fd33ac012a79069ef1409503a2edcf3a585153";
+                  rev = "d62ad8b595a4f901b9c5dba1bb6e8f70ece395bf";
                   fetchSubmodules = true;
-                  sha256 = "sha256-5AtOC55ttWT+7RYMboaFxpGZML51ix93wAkYJTt+8JI=";
+                  sha256 = "sha256-X0N2clg2DQQ2bwyBrZVeaXLoSKaQ7NALydnd2eJzECg=";
                 };
               in
               pkgs.runCommand prev.src.name { } ''
