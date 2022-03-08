@@ -68,9 +68,9 @@ pub mod md_gen {
 
     use crate::helpers;
     use crate::path;
-    use std::fs;
-    use helix_term::health::TsFeature;
     use helix_term::commands::TYPABLE_COMMAND_LIST;
+    use helix_term::health::TsFeature;
+    use std::fs;
 
     pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
     pub const LANG_SUPPORT_MD_OUTPUT: &str = "lang-support.md";
