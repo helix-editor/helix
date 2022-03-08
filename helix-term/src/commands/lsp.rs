@@ -286,6 +286,13 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
             if ignore_if_exists && path.exists() {
                 Ok(())
             } else {
+                // Create directory if it does not exist
+                if let Some(dir) = path.parent() {
+                    if !dir.is_dir() {
+                        fs::create_dir_all(&dir)?;
+                    }
+                }
+
                 fs::write(&path, [])
             }
         }
