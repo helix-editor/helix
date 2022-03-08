@@ -66,7 +66,6 @@ impl Application {
         let theme_loader =
             std::sync::Arc::new(theme::Loader::new(&conf_dir, &helix_core::runtime_dir()));
 
-        // load default and user config, and merge both
         let true_color = config.editor.true_color || crate::true_color();
         let theme = config
             .theme

@@ -124,6 +124,18 @@ pub fn cache_dir() -> std::path::PathBuf {
     path
 }
 
+pub fn config_file() -> std::path::PathBuf {
+    config_dir().join("config.toml")
+}
+
+pub fn lang_config_file() -> std::path::PathBuf {
+    config_dir().join("languages.toml")
+}
+
+pub fn log_file() -> std::path::PathBuf {
+    cache_dir().join("helix.log")
+}
+
 // right overrides left
 pub fn merge_toml_values(left: toml::Value, right: toml::Value) -> toml::Value {
     use toml::Value;

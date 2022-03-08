@@ -40,12 +40,12 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let cache_dir = helix_core::cache_dir();
-    if !cache_dir.exists() {
-        std::fs::create_dir_all(&cache_dir).ok();
+    let logpath = helix_core::log_file();
+    let parent = logpath.parent().unwrap();
+    if !parent.exists() {
+        std::fs::create_dir_all(parent).ok();
     }
 
-    let logpath = cache_dir.join("helix.log");
     let help = format!(
         "\
 {} {}
@@ -61,6 +61,8 @@ ARGS:
 FLAGS:
     -h, --help       Prints help information
     --tutor          Loads the tutorial
+    --health [LANG]  Checks for potential errors in editor setup
+                     If given, checks for config errors in language LANG
     -v               Increases logging verbosity each use for up to 3 times
                      (default file: {})
     -V, --version    Prints version information
@@ -85,12 +87,26 @@ FLAGS:
         std::process::exit(0);
     }
 
+    if args.health {
+        if let Some(lang) = args.health_arg {
+            match lang.as_str() {
+                "all" => helix_term::health::languages_all(),
+                _ => helix_term::health::language(lang),
+            }
+        } else {
+            helix_term::health::general();
+            println!();
+            helix_term::health::languages_all();
+        }
+        std::process::exit(0);
+    }
+
     let conf_dir = helix_core::config_dir();
     if !conf_dir.exists() {
         std::fs::create_dir_all(&conf_dir).ok();
     }
 
-    let config = match std::fs::read_to_string(conf_dir.join("config.toml")) {
+    let config = match std::fs::read_to_string(helix_core::config_file()) {
         Ok(config) => toml::from_str(&config)
             .map(merge_keys)
             .unwrap_or_else(|err| {
