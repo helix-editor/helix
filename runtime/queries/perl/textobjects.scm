@@ -6,3 +6,12 @@
 
 (argument 
   (_) @parameter.inside)
+
+[
+  (comments)
+  (pod_statement)
+] @comment.inside
+
+(comments)+ @comment.around
+
+(pod_statement) @comment.around

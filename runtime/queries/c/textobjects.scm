@@ -11,3 +11,7 @@
   body: (_) @class.inside) @class.around
 
 (parameter_declaration) @parameter.inside
+
+(comment) @comment.inside
+
+(comment)+ @comment.around

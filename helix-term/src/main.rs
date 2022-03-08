@@ -38,12 +38,12 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let cache_dir = helix_core::cache_dir();
-    if !cache_dir.exists() {
-        std::fs::create_dir_all(&cache_dir).ok();
+    let logpath = helix_core::log_file();
+    let parent = logpath.parent().unwrap();
+    if !parent.exists() {
+        std::fs::create_dir_all(parent).ok();
     }
 
-    let logpath = cache_dir.join("helix.log");
     let help = format!(
         "\
 {} {}
@@ -59,6 +59,8 @@ ARGS:
 FLAGS:
     -h, --help       Prints help information
     --tutor          Loads the tutorial
+    --health [LANG]  Checks for potential errors in editor setup
+                     If given, checks for config errors in language LANG
     -v               Increases logging verbosity each use for up to 3 times
                      (default file: {})
     -V, --version    Prints version information

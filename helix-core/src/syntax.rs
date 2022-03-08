@@ -335,7 +335,7 @@ impl TextObjectQuery {
     }
 }
 
-fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
+pub fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
     let path = crate::RUNTIME_DIR
         .join("queries")
         .join(language)
