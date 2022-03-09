@@ -654,7 +654,7 @@ fn show_clipboard_provider(
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
     cx.editor
-        .set_status(cx.editor.clipboard_provider.name().to_string());
+        .set_status(cx.editor.clipboard_provider.to_string());
     Ok(())
 }
 

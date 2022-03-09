@@ -1,15 +1,15 @@
 // Implementation reference: https://github.com/neovim/neovim/blob/f2906a4669a2eef6d7bf86a29648793d63c98949/runtime/autoload/provider/clipboard.vim#L68-L152
 
+use std::fmt;
+
 use anyhow::Result;
-use std::borrow::Cow;
 
 pub enum ClipboardType {
     Clipboard,
     Selection,
 }
 
-pub trait ClipboardProvider: std::fmt::Debug {
-    fn name(&self) -> Cow<str>;
+pub trait ClipboardProvider: fmt::Debug + fmt::Display {
     fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String>;
     fn set_contents(&mut self, contents: String, clipboard_type: ClipboardType) -> Result<()>;
 }
@@ -136,7 +136,7 @@ fn is_exit_success(program: &str, args: &[&str]) -> bool {
 mod provider {
     use super::{ClipboardProvider, ClipboardType};
     use anyhow::{bail, Context as _, Result};
-    use std::borrow::Cow;
+    use std::fmt;
 
     #[cfg(not(target_os = "windows"))]
     #[derive(Debug)]
@@ -156,11 +156,14 @@ mod provider {
     }
 
     #[cfg(not(target_os = "windows"))]
-    impl ClipboardProvider for NopProvider {
-        fn name(&self) -> Cow<str> {
-            Cow::Borrowed("none")
+    impl fmt::Display for NopProvider {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("none")
         }
+    }
 
+    #[cfg(not(target_os = "windows"))]
+    impl ClipboardProvider for NopProvider {
         fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String> {
             let value = match clipboard_type {
                 ClipboardType::Clipboard => self.buf.clone(),
@@ -184,11 +187,14 @@ mod provider {
     pub struct WindowsProvider;
 
     #[cfg(target_os = "windows")]
-    impl ClipboardProvider for WindowsProvider {
-        fn name(&self) -> Cow<str> {
-            Cow::Borrowed("clipboard-win")
+    impl fmt::Display for WindowsProvider {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("clipboard-win")
         }
+    }
 
+    #[cfg(target_os = "windows")]
+    impl ClipboardProvider for WindowsProvider {
         fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String> {
             match clipboard_type {
                 ClipboardType::Clipboard => {
@@ -261,15 +267,18 @@ mod provider {
         pub set_primary_cmd: Option<CommandConfig>,
     }
 
-    impl ClipboardProvider for CommandProvider {
-        fn name(&self) -> Cow<str> {
-            if self.get_cmd.prg != self.set_cmd.prg {
-                Cow::Owned(format!("{}+{}", self.get_cmd.prg, self.set_cmd.prg))
+    impl fmt::Display for CommandProvider {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let (get, set) = (self.get_cmd.prg, self.set_cmd.prg);
+            if get == set {
+                f.write_str(get)
             } else {
-                Cow::Borrowed(self.get_cmd.prg)
+                write!(f, "{}+{}", get, set)
             }
         }
+    }
 
+    impl ClipboardProvider for CommandProvider {
         fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String> {
             match clipboard_type {
                 ClipboardType::Clipboard => Ok(self
