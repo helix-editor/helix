@@ -54,15 +54,40 @@ A `Document` ties together the `Rope`, `Selection`(s), `Syntax`, document
 file.
 
 A `View` represents an open split in the UI. It holds the currently open
-document ID and other related state.
+document ID and other related state. Views encapsulate the gutter, status line,
+diagnostics, and the inner area where the code is displayed.
 
 > NOTE: Multiple views are able to display the same document, so the document
 > contains selections for each view. To retrieve, `document.selection()` takes
 > a `ViewId`.
 
+`Info` is the autoinfo box that shows hints when awaiting another key with bindings
+like `g` and `m`. It is attached to the viewport as a whole.
+
+`Surface` is like a buffer to which widgets draw themselves to, and the
+surface is then rendered on the screen on each cycle.
+
+`Rect`s are areas (simply an x and y coordinate with the origin at the
+screen top left and then a height and width) which are part of a
+`Surface`. They can be used to limit the area to which a `Component` can
+render. For example if we wrap a `Markdown` component in a `Popup`
+(think the documentation popup with space+k), Markdown's render method
+will get a Rect that is the exact size of the popup.
+
+Widgets are called `Component`s internally, and you can see most of them
+in `helix-term/src/ui`. Some components like `Popup` and `Overlay` can take
+other components as children.
+
+`Layer`s are how multiple components are displayed, and is simply a
+`Vec<Component>`. Layers are managed by the `Compositor`. On each top
+level render call, the compositor renders each component in the order
+they were pushed into the stack. This makes multiple components "layer"
+on top of one another. Hence we get a file picker displayed over the
+editor, etc.
+
 The `Editor` holds the global state: all the open documents, a tree
-representation of all the view splits, and a registry of language servers. To
-open or close files, interact with the editor.
+representation of all the view splits, the configuration, and a registry of 
+language servers. To open or close files, interact with the editor.
 
 ## LSP
 
