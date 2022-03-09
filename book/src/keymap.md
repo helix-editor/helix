@@ -314,9 +314,6 @@ undo-able "save point" until you return to normal mode.
 
 ## Select / extend mode
 
-I'm still pondering whether to keep this mode or not. It changes movement
-commands (including goto) to extend the existing selection instead of replacing it.
-
 This mode echoes Normal mode, but changes any movements to extend
 selections rather than replace them. Goto motions are also changed to
 extend, so that `vgl` for example extends the selection to the end of
