@@ -12,17 +12,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rustOverlay.follows = "rust-overlay";
     };
-    # NOTE: the flake looks like it is hanging when it pulls this input because
-    # the submodules take a long time to clone. This will be fixed in #1659.
-    helix = {
-      url = "https://github.com/helix-editor/helix.git";
-      type = "git";
-      submodules = true;
-      flake = false;
-    };
   };
 
-  outputs = inputs@{ nixCargoIntegration, helix, ... }:
+  outputs = inputs@{ nixCargoIntegration, ... }:
     nixCargoIntegration.lib.makeOutputs {
       root = ./.;
       renameOutputs = { "helix-term" = "helix"; };
