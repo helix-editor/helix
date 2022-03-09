@@ -13,10 +13,12 @@ let
   gitGrammars = builtins.filter isGitGrammar languagesConfig.grammar;
   buildGrammar = grammar:
     let
-      source = builtins.fetchGit {
+      source = builtins.fetchTree {
+        type = "git";
         url = grammar.source.git;
         rev = grammar.source.rev;
-        allRefs = true;
+        ref = grammar.source.ref or "HEAD";
+        shallow = true;
       };
     in stdenv.mkDerivation rec {
       # see https://github.com/NixOS/nixpkgs/blob/fbdd1a7c0bc29af5325e0d7dd70e804a972eb465/pkgs/development/tools/parsing/tree-sitter/grammar.nix
