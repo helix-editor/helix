@@ -5,6 +5,8 @@ To override global configuration parameters, create a `config.toml` file located
 * Linux and Mac: `~/.config/helix/config.toml`
 * Windows: `%AppData%\helix\config.toml`
 
+> Note: You may use `hx --edit-config` to create and edit the `config.toml` file.
+
 Example config:
 
 ```toml
