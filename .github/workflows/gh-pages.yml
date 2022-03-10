@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+  release:
+    types: [published]
 
 jobs:
   deploy:
@@ -19,9 +21,17 @@ jobs:
 
       - run: mdbook build book
 
-      - name: Deploy
+      - name: Deploy master
         uses: peaceiris/actions-gh-pages@v3
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./book/book
+          destination_dir: ./master
+
+      - name: Deploy tagged release
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.event_name == 'release'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./book/book
