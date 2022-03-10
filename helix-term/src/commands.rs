@@ -4340,10 +4340,16 @@ fn find_next_char_until_newline<M: CharMatcher>(
     text: RopeSlice,
     char_matcher: M,
     pos: usize,
-    n: usize,
+    _count: usize,
     _inclusive: bool,
 ) -> Option<usize> {
-    search::find_nth_next_until_newline(text, char_matcher, pos, n)
+    // Since we send the current line to find_nth_next instead of the whole text, we need to adjust
+    // the position we send to this function so that it's relative to that line and its returned
+    // position since it's expected this function returns a global position.
+    let line_index = text.char_to_line(pos);
+    let pos_delta = text.line_to_char(line_index);
+    let pos = pos - pos_delta;
+    search::find_nth_next(text.line(line_index), char_matcher, pos, 1).map(|pos| pos + pos_delta)
 }
 
 /// Decrement object under cursor by `amount`.

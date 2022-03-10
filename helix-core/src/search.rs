@@ -17,30 +17,7 @@ impl<F: Fn(&char) -> bool> CharMatcher for F {
     }
 }
 
-pub fn find_nth_next(text: RopeSlice, ch: char, mut pos: usize, n: usize) -> Option<usize> {
-    if pos >= text.len_chars() || n == 0 {
-        return None;
-    }
-
-    let mut chars = text.chars_at(pos);
-
-    for _ in 0..n {
-        loop {
-            let c = chars.next()?;
-
-            pos += 1;
-
-            if c == ch {
-                break;
-            }
-        }
-    }
-
-    Some(pos - 1)
-}
-
-/// Like find_nth_next, but stops at the first newline character.
-pub fn find_nth_next_until_newline<M: CharMatcher>(
+pub fn find_nth_next<M: CharMatcher>(
     text: RopeSlice,
     char_matcher: M,
     mut pos: usize,
@@ -57,10 +34,6 @@ pub fn find_nth_next_until_newline<M: CharMatcher>(
             let c = chars.next()?;
 
             pos += 1;
-
-            if c == '\n' || c == '\r' {
-                return None;
-            }
 
             if char_matcher.char_match(c) {
                 break;
