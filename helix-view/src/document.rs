@@ -628,7 +628,7 @@ impl Document {
             .as_ref()
             .and_then(|v| v.try_borrow_mut().ok());
         if let Some((mut vcs, path)) = vcs.zip(self.path()) {
-            self.line_diffs = vcs.line_diff_with_head(path, &self.text().to_string());
+            self.line_diffs = vcs.line_diff_with_head(path, self.text());
         }
     }
 

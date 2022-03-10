@@ -2,12 +2,14 @@ use std::{
     collections::HashMap,
     ops::Range,
     path::{Path, PathBuf},
+    time::{Duration, Instant},
 };
 
 use git2::{Oid, Repository};
+use ropey::Rope;
 use similar::DiffTag;
 
-use crate::{LineDiff, LineDiffs, RepoRoot};
+use crate::{rope::RopeLine, LineDiff, LineDiffs, RepoRoot};
 
 pub struct Git {
     repo: Repository,
@@ -17,7 +19,7 @@ pub struct Git {
 
     /// A cache mapping absolute file paths to file contents
     /// in the HEAD commit.
-    head_cache: HashMap<PathBuf, String>,
+    head_cache: HashMap<PathBuf, Rope>,
 }
 
 impl std::fmt::Debug for Git {
@@ -54,7 +56,7 @@ impl Git {
         path.strip_prefix(&self.root).ok()
     }
 
-    pub fn read_file_from_head(&mut self, file: &Path) -> Option<&str> {
+    pub fn read_file_from_head(&mut self, file: &Path) -> Option<&Rope> {
         let current_head = Self::head_commit_id(&self.repo)?;
         // TODO: Check cache validity on events like WindowChange
         // instead of on every keypress ? Will require hooks.
@@ -70,30 +72,35 @@ impl Git {
             let blob = object.peel_to_blob().ok()?;
             let contents = std::str::from_utf8(blob.content()).ok()?;
             self.head_cache
-                .insert(file.to_path_buf(), contents.to_string());
+                .insert(file.to_path_buf(), Rope::from_str(contents));
         }
 
-        self.head_cache.get(file).map(|s| s.as_str())
+        self.head_cache.get(file)
     }
 
-    pub fn line_diff_with_head(&mut self, file: &Path, contents: &str) -> LineDiffs {
-        let base = match self.read_file_from_head(file) {
-            Some(b) => b,
+    pub fn line_diff_with_head(&mut self, file: &Path, contents: &Rope) -> LineDiffs {
+        let old = match self.read_file_from_head(file) {
+            Some(rope) => RopeLine::from_rope(rope),
             None => return LineDiffs::new(),
         };
-        let mut config = similar::TextDiff::configure();
-        config.timeout(std::time::Duration::from_millis(250));
+        let new = RopeLine::from_rope(contents);
 
         let mut line_diffs: LineDiffs = HashMap::new();
-
         let mut mark_lines = |range: Range<usize>, change: LineDiff| {
             for line in range {
                 line_diffs.insert(line, change);
             }
         };
 
-        let diff = config.diff_lines(base, contents);
-        for op in diff.ops() {
+        let timeout = Duration::from_millis(250);
+        let diff = similar::capture_diff_slices_deadline(
+            similar::Algorithm::Myers,
+            &old,
+            &new,
+            Some(Instant::now() + timeout),
+        );
+
+        for op in diff {
             let (tag, _, line_range) = op.as_tag_tuple();
             let start = line_range.start;
             match tag {
@@ -173,15 +180,16 @@ mod test {
         exec_git_cmd("commit -m message", git_dir);
 
         let mut git = Git::discover_from_path(&file).unwrap();
+        let rope = Rope::from_str(contents);
         assert_eq!(
-            Some(contents),
+            Some(&rope),
             git.read_file_from_head(&file),
             "Wrong blob contents from HEAD on clean index"
         );
 
         fs::write(&file, "new text").expect("Could not write to file");
         assert_eq!(
-            Some(contents),
+            Some(&rope),
             git.read_file_from_head(&file),
             "Wrong blob contents from HEAD when index is dirty"
         );

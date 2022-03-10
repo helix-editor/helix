@@ -509,6 +509,7 @@ name = "helix-vcs"
 version = "0.6.0"
 dependencies = [
  "git2",
+ "ropey",
  "similar",
  "tempfile",
 ]

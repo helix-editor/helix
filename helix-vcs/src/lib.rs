@@ -1,4 +1,5 @@
 mod git;
+mod rope;
 
 use std::{
     cell::RefCell,
