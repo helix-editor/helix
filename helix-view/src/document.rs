@@ -1036,9 +1036,10 @@ impl Config {
 
     /// Wraps an optional encoding in a `Config`, using default values for everything else.
     pub fn from_encoding(encoding: Option<&'static encoding::Encoding>) -> Config {
-        let mut config: Config = Config::default();
-        config.encoding = encoding;
-        config
+        Config {
+            encoding,
+            ..Default::default()
+        }
     }
 
     /// Tries to parse a config from editorconfig properties.
@@ -1046,36 +1047,28 @@ impl Config {
         let mut ecfg = ec4rs::config_for(for_file_at)?;
         ecfg.use_fallbacks();
 
-        let mut config: Config = Default::default();
-
-        // Encoding.
-        config.encoding = ecfg
-            .get_raw::<ec4rs::property::Charset>()
-            .filter_unset()
-            .into_result()
-            .ok()
-            .and_then(|string| encoding::Encoding::for_label(string.to_lowercase().as_bytes()));
-
-        // Indent Style.
-        use ec4rs::property::{IndentSize, IndentStyle as EcIndentStyle};
-        config.indent_style = match (ecfg.get::<EcIndentStyle>(), ecfg.get::<IndentSize>()) {
-            (Ok(EcIndentStyle::Tabs), _) => Some(IndentStyle::Tabs),
-            (Ok(EcIndentStyle::Spaces), Ok(IndentSize::Value(n))) => {
-                Some(IndentStyle::Spaces(n.try_into().unwrap_or(u8::MAX)))
-            }
-            _ => None,
-        };
-
-        // Line Ending.
-        use ec4rs::property::EndOfLine;
-        config.line_ending = match ecfg.get::<EndOfLine>() {
-            Ok(EndOfLine::Cr) => Some(LineEnding::CR),
-            Ok(EndOfLine::Lf) => Some(LineEnding::LF),
-            Ok(EndOfLine::CrLf) => Some(LineEnding::Crlf),
-            Err(_) => None,
-        };
-
-        Ok(config)
+        use ec4rs::property::{Charset, EndOfLine, IndentSize, IndentStyle as EcIndentStyle};
+        Ok(Config {
+            encoding: ecfg
+                .get_raw::<Charset>()
+                .filter_unset()
+                .into_result()
+                .ok()
+                .and_then(|string| encoding::Encoding::for_label(string.to_lowercase().as_bytes())),
+            indent_style: match (ecfg.get::<EcIndentStyle>(), ecfg.get::<IndentSize>()) {
+                (Ok(EcIndentStyle::Tabs), _) => Some(IndentStyle::Tabs),
+                (Ok(EcIndentStyle::Spaces), Ok(IndentSize::Value(n))) => {
+                    Some(IndentStyle::Spaces(n.try_into().unwrap_or(u8::MAX)))
+                }
+                _ => None,
+            },
+            line_ending: match ecfg.get::<EndOfLine>() {
+                Ok(EndOfLine::Cr) => Some(LineEnding::CR),
+                Ok(EndOfLine::Lf) => Some(LineEnding::LF),
+                Ok(EndOfLine::CrLf) => Some(LineEnding::Crlf),
+                Err(_) => None,
+            },
+        })
     }
 }
 
