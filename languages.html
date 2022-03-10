@@ -140,12 +140,31 @@
                         <h1 id="languages"><a class="header" href="#languages">Languages</a></h1>
 <p>Language-specific settings and settings for particular language servers can be configured in a <code>languages.toml</code> file placed in your <a href="./configuration.html">configuration directory</a>. Helix actually uses two <code>languages.toml</code> files, the <a href="https://github.com/helix-editor/helix/blob/master/languages.toml">first one</a> is in the main helix repository; it contains the default settings for each language and is included in the helix binary at compile time. Users who want to see the available settings and options can either reference the helix repo's <code>languages.toml</code> file, or consult the table in the <a href="./guides/adding_languages.html">adding languages</a> section.</p>
 <p>Changes made to the <code>languages.toml</code> file in a user's <a href="./configuration.html">configuration directory</a> are merged with helix's defaults on start-up, such that a user's settings will take precedence over defaults in the event of a collision. For example, the default <code>languages.toml</code> sets rust's <code>auto-format</code> to <code>true</code>. If a user wants to disable auto-format, they can change the <code>languages.toml</code> in their <a href="./configuration.html">configuration directory</a> to make the rust entry read like the example below; the new key/value pair <code>auto-format = false</code> will override the default when the two sets of settings are merged on start-up:</p>
-<pre><code># in &lt;config_dir&gt;/helix/languages.toml
+<pre><code class="language-toml"># in &lt;config_dir&gt;/helix/languages.toml
 
 [[language]]
 name = &quot;rust&quot;
 auto-format = false
 </code></pre>
+<h2 id="tree-sitter-grammars"><a class="header" href="#tree-sitter-grammars">Tree-sitter grammars</a></h2>
+<p>Tree-sitter grammars can also be configured in <code>languages.toml</code>:</p>
+<pre><code class="language-toml"># in &lt;config_dir&gt;/helix/languages.toml
+
+[[grammar]]
+name = &quot;rust&quot;
+source = { git = &quot;https://github.com/tree-sitter/tree-sitter-rust&quot;, rev = &quot;a250c4582510ff34767ec3b7dcdd3c24e8c8aa68&quot; }
+
+[[grammar]]
+name = &quot;c&quot;
+source = { path = &quot;/path/to/tree-sitter-c&quot; }
+</code></pre>
+<p>You may use a top-level <code>use-grammars</code> key to control which grammars are fetched and built.</p>
+<pre><code class="language-toml"># Note: this key must come **before** the [[language]] and [[grammar]] sections
+use-grammars = { only = [ &quot;rust&quot;, &quot;c&quot;, &quot;cpp&quot; ] }
+# or
+use-grammars = { except = [ &quot;yaml&quot;, &quot;json&quot; ] }
+</code></pre>
+<p>When omitted, all grammars are fetched and built.</p>
 
                     </main>
 

@@ -163,7 +163,7 @@ configure Nix to use cached outputs when possible.</p>
 sudo dnf install helix
 </code></pre>
 <h2 id="build-from-source"><a class="header" href="#build-from-source">Build from source</a></h2>
-<pre><code>git clone --recurse-submodules --shallow-submodules -j8 https://github.com/helix-editor/helix
+<pre><code>git clone https://github.com/helix-editor/helix
 cd helix
 cargo install --path helix-term
 </code></pre>
@@ -171,6 +171,10 @@ cargo install --path helix-term
 <p>Helix also needs it's runtime files so make sure to copy/symlink the <code>runtime/</code> directory into the
 config directory (for example <code>~/.config/helix/runtime</code> on Linux/macOS). This location can be overriden
 via the <code>HELIX_RUNTIME</code> environment variable.</p>
+<h2 id="building-tree-sitter-grammars"><a class="header" href="#building-tree-sitter-grammars">Building tree-sitter grammars</a></h2>
+<p>Tree-sitter grammars must be fetched and compiled if not pre-packaged.
+Fetch grammars with <code>hx --grammar fetch</code> (requires <code>git</code>) and compile them
+with <code>hx --grammar build</code> (requires a C compiler).</p>
 
                     </main>
 
