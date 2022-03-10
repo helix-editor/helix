@@ -941,7 +941,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "rescript"
-source = { git = "https://github.com/jaredramirez/tree-sitter-rescript", rev = "789a171d9bcf73f6d76e67aca39ed14a75375b04" }
+source = { git = "https://github.com/jaredramirez/tree-sitter-rescript", rev = "4cd7ba91696886fdaca086fb32b5fd8cc294a129" }
 
 [[language]]
 name = "erlang"
