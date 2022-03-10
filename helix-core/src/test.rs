@@ -45,6 +45,7 @@ pub fn print(s: &str) -> (String, Selection) {
             Some('[') => (true, ']'),
             Some('(') => (false, ')'),
             Some(ch) => {
+                left.push('#');
                 left.push(ch);
                 continue;
             }
