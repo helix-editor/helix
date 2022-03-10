@@ -371,85 +371,56 @@ impl Document {
         encoding: Option<&'static encoding::Encoding>,
         config_loader: Option<Arc<syntax::Loader>>,
     ) -> Result<Self, Error> {
-        Self::open_with_editorconfig(path, encoding, config_loader, false)
+        Self::open_with_config(path, config_loader, move |_| {
+            Config::from_encoding(encoding)
+        })
     }
 
     // TODO: async fn?
     /// Create a new document from `path`,
-    /// optionally using settings from EditorConfig.
-    ///
-    /// If the `encoding` parameter is specified,
-    /// it overrides the encoding obtained from EditorConfig
-    /// and auto-detection.
-    pub fn open_with_editorconfig(
+    /// using document settings from a [Config].
+    pub fn open_with_config(
         path: &Path,
-        encoding: Option<&'static encoding::Encoding>,
-        config_loader: Option<Arc<syntax::Loader>>,
-        use_editorconfig: bool,
+        lang_config_loader: Option<Arc<syntax::Loader>>,
+        doc_config_fn: impl FnOnce(&Path) -> Config,
     ) -> Result<Self, Error> {
         // Closure to read the editorconfig files that apply to `path`.
         // Ideally this should be done after an existing file is already opened.
-        let get_editorconfig = || {
-            if use_editorconfig {
-                let mut ecfg = ec4rs::config_for(path).unwrap_or_default();
-                ecfg.use_fallbacks();
-                ecfg
-            } else {
-                Default::default()
-            }
-        };
-        // Adds editorconfig values to encoding as a fallback.
-        let encoding_with_ecfg = move |ecfg: &ec4rs::Properties| {
-            encoding.or_else(|| {
-                ecfg.get_raw::<ec4rs::property::Charset>()
-                    .filter_unset()
-                    .into_result()
-                    .ok()
-                    .map(|string| string.as_bytes())
-                    .and_then(encoding::Encoding::for_label)
-            })
-        };
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
-        let ((rope, encoding), ecfg) = if path.exists() {
+        let (rope, config) = if path.exists() {
             let mut file =
                 std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
-            let ecfg = get_editorconfig();
-            (from_reader(&mut file, encoding_with_ecfg(&ecfg))?, ecfg)
+            let mut config = doc_config_fn(path);
+            // Not using destructuring assignment here.
+            let (rope, encoding) = from_reader(&mut file, config.encoding)?;
+            config.encoding = Some(encoding);
+            (rope, config)
         } else {
-            let ecfg = get_editorconfig();
-            let encoding = encoding_with_ecfg(&ecfg).unwrap_or(encoding::UTF_8);
-            ((Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding), get_editorconfig())
+            let mut config = doc_config_fn(path);
+            config.encoding = config.encoding.or(Some(encoding::UTF_8));
+            (Rope::from(DEFAULT_LINE_ENDING.as_str()), config)
         };
 
-        let mut doc = Self::from(rope, Some(encoding));
+        let mut doc = Self::from(rope, config.encoding);
 
-        // set the path and try detecting the language
+        // Set the path and try detecting the language.
         doc.set_path(Some(path))?;
-        if let Some(loader) = config_loader {
+        if let Some(loader) = lang_config_loader {
             doc.detect_language(loader);
         }
 
         // Set the indent style.
-        use ec4rs::property::{IndentSize, IndentStyle as EcIndentStyle};
-        match (ecfg.get::<EcIndentStyle>(), ecfg.get::<IndentSize>()) {
-            (Ok(EcIndentStyle::Tabs), _) => {
-                doc.indent_style = IndentStyle::Tabs;
-            }
-            (Ok(EcIndentStyle::Spaces), Ok(IndentSize::Value(n))) => {
-                doc.indent_style = IndentStyle::Spaces(
-                    n.try_into().unwrap_or(u8::MAX)
-                );
-            }
-            _ => doc.detect_indent_impl()
+        if let Some(indent_style) = config.indent_style {
+            doc.indent_style = indent_style;
+        } else {
+            doc.detect_indent_impl();
         }
 
         // Set the line ending.
-        use ec4rs::property::EndOfLine;
-        match ecfg.get::<EndOfLine>() {
-            Ok(EndOfLine::Cr) => {doc.line_ending = LineEnding::CR},
-            Ok(EndOfLine::Lf) => {doc.line_ending = LineEnding::LF},
-            Ok(EndOfLine::CrLf) => {doc.line_ending = LineEnding::Crlf},
-            Err(_) => doc.detect_line_ending_impl()
+        if let Some(line_ending) = config.line_ending {
+            doc.line_ending = line_ending;
+        } else {
+            doc.detect_line_ending_impl();
         }
 
         Ok(doc)
@@ -1044,6 +1015,70 @@ impl Default for Document {
     fn default() -> Self {
         let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
         Self::from(text, None)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub struct Config {
+    pub encoding: Option<&'static encoding::Encoding>,
+    pub line_ending: Option<LineEnding>,
+    pub indent_style: Option<IndentStyle>,
+}
+
+impl Config {
+    /// Create a version of this config with any `None` fields
+    /// filled in with values from the config passed to `other`.
+    pub fn merged(self, other: Config) -> Config {
+        // Crate `merge` isn't used here, so this will do.
+        Config {
+            encoding: self.encoding.or(other.encoding),
+            line_ending: self.line_ending.or(other.line_ending),
+            indent_style: self.indent_style.or(other.indent_style),
+        }
+    }
+
+    /// Wraps an optional encoding in a `Config`, using default values for everything else.
+    pub fn from_encoding(encoding: Option<&'static encoding::Encoding>) -> Config {
+        let mut config: Config = Config::default();
+        config.encoding = encoding;
+        config
+    }
+
+    /// Tries to parse a config from editorconfig properties.
+    pub fn try_from_editorconfig(for_file_at: &std::path::Path) -> Result<Config, ec4rs::Error> {
+        let mut ecfg = ec4rs::config_for(for_file_at)?;
+        ecfg.use_fallbacks();
+
+        let mut config: Config = Default::default();
+
+        // Encoding.
+        config.encoding = ecfg
+            .get_raw::<ec4rs::property::Charset>()
+            .filter_unset()
+            .into_result()
+            .ok()
+            .and_then(|string| encoding::Encoding::for_label(string.to_lowercase().as_bytes()));
+
+        // Indent Style.
+        use ec4rs::property::{IndentSize, IndentStyle as EcIndentStyle};
+        config.indent_style = match (ecfg.get::<EcIndentStyle>(), ecfg.get::<IndentSize>()) {
+            (Ok(EcIndentStyle::Tabs), _) => Some(IndentStyle::Tabs),
+            (Ok(EcIndentStyle::Spaces), Ok(IndentSize::Value(n))) => {
+                Some(IndentStyle::Spaces(n.try_into().unwrap_or(u8::MAX)))
+            }
+            _ => None,
+        };
+
+        // Line Ending.
+        use ec4rs::property::EndOfLine;
+        config.line_ending = match ecfg.get::<EndOfLine>() {
+            Ok(EndOfLine::Cr) => Some(LineEnding::CR),
+            Ok(EndOfLine::Lf) => Some(LineEnding::LF),
+            Ok(EndOfLine::CrLf) => Some(LineEnding::Crlf),
+            Err(_) => None,
+        };
+
+        Ok(config)
     }
 }
 

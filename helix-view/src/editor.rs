@@ -587,13 +587,8 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            // TODO: Config variable instead of `false`.
-            let mut doc = Document::open_with_editorconfig(
-                &path,
-                None,
-                Some(self.syn_loader.clone()),
-                false
-            )?;
+            // TODO: Config variable to enable editorconfig.
+            let mut doc = Document::open(&path, None, Some(self.syn_loader.clone()))?;
 
             let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
 
