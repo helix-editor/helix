@@ -75,6 +75,7 @@ available, which is not defined by default.
 |`git-global` | Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option. | true
 |`git-exclude` | Enables reading `.git/info/exclude` files. | true
 |`max-depth` | Set with an integer value for maximum depth to recurse. | Defaults to `None`.
+|`root` | Set the option decide how to find root dir, values: "pwd", "git", "file". | Defaults to `git`.
 
 ### `[editor.auto-pairs]` Section
 
