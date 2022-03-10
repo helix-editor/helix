@@ -1642,6 +1642,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
         let wrap_around = search_config.wrap_around;
         if let Ok(regex) = RegexBuilder::new(query)
             .case_insensitive(case_insensitive)
+            .multi_line(true)
             .build()
         {
             search_impl(
