@@ -384,9 +384,6 @@ impl Document {
         lang_config_loader: Option<Arc<syntax::Loader>>,
         doc_config_fn: impl FnOnce(&Path) -> Config,
     ) -> Result<Self, Error> {
-        // Closure to read the editorconfig files that apply to `path`.
-        // Ideally this should be done after an existing file is already opened.
-        // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, config) = if path.exists() {
             let mut file =
                 std::fs::File::open(path).context(format!("unable to open {:?}", path))?;

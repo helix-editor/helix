@@ -1,6 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::{self, Mode, SCRATCH_BUFFER_NAME},
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
@@ -123,6 +123,9 @@ pub struct Config {
     /// Search configuration.
     #[serde(default)]
     pub search: SearchConfig,
+    /// Whether to use [EditorConfig](https://editorconfig.org/).
+    /// Defaults to `true`.
+    pub editorconfig: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -233,6 +236,7 @@ impl Default for Config {
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             search: SearchConfig::default(),
+            editorconfig: true,
         }
     }
 }
@@ -587,8 +591,20 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            // TODO: Config variable to enable editorconfig.
-            let mut doc = Document::open(&path, None, Some(self.syn_loader.clone()))?;
+            let syn_loader = Some(self.syn_loader.clone());
+            let mut doc = if self.config.editorconfig {
+                Document::open_with_config(&path, syn_loader, |path| {
+                    match document::Config::try_from_editorconfig(path) {
+                        Ok(cfg) => cfg,
+                        Err(_) => {
+                            //TODO: Log error.
+                            document::Config::default()
+                        }
+                    }
+                })?
+            } else {
+                Document::open(&path, None, syn_loader)?
+            };
 
             let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
 
