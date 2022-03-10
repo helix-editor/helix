@@ -64,7 +64,7 @@ FLAGS:
     --tutor                        Loads the tutorial
     --health [LANG]                Checks for potential errors in editor setup
                                    If given, checks for config errors in language LANG
-    -g, --grammars {{fetch|build}}   Fetches or builds tree-sitter grammars listed in languages.toml
+    -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
     -v                             Increases logging verbosity each use for up to 3 times
                                    (default file: {})
     -V, --version                  Prints version information
