@@ -23,6 +23,7 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
+use crate::decorations::TextAnnotationGroup;
 use crate::Editor;
 use crate::{decorations::TextAnnotation, DocumentId, ViewId};
 
@@ -120,7 +121,7 @@ pub struct Document {
     pub(crate) modified_since_accessed: bool,
 
     diagnostics: Vec<Diagnostic>,
-    text_annotations: Vec<TextAnnotation>,
+    text_annotations: HashMap<TextAnnotationGroup, Vec<TextAnnotation>>,
     language_server: Option<Arc<helix_lsp::Client>>,
 }
 
@@ -353,7 +354,7 @@ impl Document {
             language: None,
             changes,
             old_state,
-            text_annotations: vec![],
+            text_annotations: HashMap::new(),
             diagnostics: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
@@ -1041,20 +1042,25 @@ impl Document {
             .map(helix_core::path::get_relative_path)
     }
 
-    pub fn text_annotations(&self) -> &[TextAnnotation] {
+    pub fn text_annotations(&self) -> &HashMap<TextAnnotationGroup, Vec<TextAnnotation>> {
         &self.text_annotations
     }
 
-    pub fn extend_text_annotations(&mut self, annots: Vec<TextAnnotation>) {
-        self.text_annotations.extend(annots)
+    pub fn push_text_annotations<I: Iterator<Item = TextAnnotation>>(
+        &mut self,
+        group: TextAnnotationGroup,
+        annots: I,
+    ) {
+        self.text_annotations
+            .entry(group)
+            .or_default()
+            .extend(annots);
     }
 
-    /// Remove annotations that return true for the given predicate
-    pub fn remove_text_annotations<F>(&mut self, predicate: F)
-    where
-        F: Fn(&TextAnnotation) -> bool,
-    {
-        self.text_annotations.retain(|t| !predicate(t))
+    pub fn clear_text_annotations(&mut self, group: TextAnnotationGroup) {
+        if let Some(annots) = self.text_annotations.get_mut(group) {
+            annots.clear()
+        }
     }
 
     // pub fn slice<R>(&self, range: R) -> RopeSlice where R: RangeBounds {

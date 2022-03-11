@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::graphics::Style;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -19,10 +21,11 @@ impl TextAnnotationKind {
     }
 }
 
+/// Namespaces and identifes similar annotations
+pub type TextAnnotationGroup = &'static str;
+
 pub struct TextAnnotation {
-    /// Used to namespace and identify similar annotations
-    pub scope: &'static str,
-    pub text: String,
+    pub text: Cow<'static, str>,
     pub style: Style,
     pub line: usize,
     pub kind: TextAnnotationKind,

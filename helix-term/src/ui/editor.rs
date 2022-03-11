@@ -12,7 +12,7 @@ use helix_core::{
     },
     movement::Direction,
     syntax::{self, HighlightEvent},
-    unicode::{width::UnicodeWidthStr, segmentation::UnicodeSegmentation},
+    unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr},
     LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
@@ -483,7 +483,8 @@ impl EditorView {
         let text_annotations = doc
             .text_annotations()
             .iter()
-            .filter(|t| (offset.row..last_line).contains(&t.line))
+            .flat_map(|(_, annots)| annots)
+            .filter(|annot| (offset.row..last_line).contains(&annot.line))
             .collect::<Vec<_>>();
 
         'outer: for event in highlights {
