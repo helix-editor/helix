@@ -1,6 +1,6 @@
 [
- (function_body)
- (instruction)
+  (function_body)
+  (instruction)
 ] @indent
 
 "}" @outdent
