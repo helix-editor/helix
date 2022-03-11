@@ -10,6 +10,7 @@
   "rec"
   "with"
   "assert"
+  "or"
 ] @keyword
 
 ((identifier) @variable.builtin
