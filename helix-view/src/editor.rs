@@ -412,6 +412,12 @@ impl Editor {
         Self::launch_language_server(&mut self.language_servers, doc)
     }
 
+    pub fn set_language_server(&mut self, doc_id: DocumentId, scope: &str) -> Option<()> {
+        let doc = self.documents.get_mut(&doc_id)?;
+        doc.set_language2(scope, self.syn_loader.clone());
+        Self::launch_language_server(&mut self.language_servers, doc)
+    }
+
     /// Launch a language server for a given document
     fn launch_language_server(ls: &mut helix_lsp::Registry, doc: &mut Document) -> Option<()> {
         // try to find a language server based on the language name

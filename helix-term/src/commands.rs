@@ -431,6 +431,7 @@ impl MappableCommand {
         decrement, "Decrement",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
+        language_server_picker, "Set language server",
         command_palette, "Open command pallete",
     );
 }
@@ -2092,6 +2093,30 @@ fn buffer_picker(cx: &mut Context) {
         },
     );
     cx.push_layer(Box::new(overlayed(picker)));
+}
+
+
+pub fn language_server_picker(cx: &mut Context) {
+    cx.callback = Some(Box::new(
+        move |compositor: &mut Compositor, cx: &mut compositor::Context| {
+            let mut opts = cx.editor.syn_loader.clone().language_configs();
+            opts.sort_by(|a, b| {
+                a.language_id.cmp(&b.language_id)
+            });
+            let picker = Picker::new(
+                opts,
+                move |c| {
+                    Cow::Borrowed(c.language_id.as_str())
+                },
+                |cx, config, _action| {
+                    let doc = doc!(cx.editor).id();
+                    cx.editor.set_language_server(doc, config.scope());
+                },
+            );
+            compositor.push(Box::new(picker));
+        } 
+    ));
+
 }
 
 pub fn command_palette(cx: &mut Context) {

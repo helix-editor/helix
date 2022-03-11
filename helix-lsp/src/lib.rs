@@ -362,6 +362,10 @@ impl Registry {
     pub fn iter_clients(&self) -> impl Iterator<Item = &Arc<Client>> {
         self.inner.values().map(|(_, client)| client)
     }
+
+    pub fn language_ids(&self) -> Vec<LanguageId> {
+        self.inner.keys().cloned().collect()
+    }
 }
 
 #[derive(Debug)]
