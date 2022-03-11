@@ -500,6 +500,8 @@ pub fn treesitter_indent_for_pos(
     let mut indent_for_line = Indentation::default();
     let mut indent_for_line_below = Indentation::default();
     loop {
+        // This can safely be unwrapped because `first_in_line` contains
+        // one entry for each ancestor of the node (which is what we iterate over)
         let is_first = *first_in_line.last().unwrap();
         // Apply all indent definitions for this node
         if let Some(definitions) = query_result.get(&node.id()) {
