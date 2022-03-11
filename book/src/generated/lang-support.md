@@ -2,7 +2,7 @@
 | --- | --- | --- | --- | --- |
 | bash | ✓ |  |  | `bash-language-server` |
 | c | ✓ | ✓ | ✓ | `clangd` |
-| c-sharp | ✓ |  |  |  |
+| c-sharp | ✓ |  |  | `OmniSharp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
 | cpp | ✓ | ✓ | ✓ | `clangd` |
