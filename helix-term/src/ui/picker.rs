@@ -484,16 +484,16 @@ impl<T: 'static> Component for Picker<T> {
         })));
 
         match key_event.into() {
-            shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
+            shift!(Tab) | key!(Up) | ctrl!('p') => {
                 self.move_by(1, Direction::Backward);
             }
-            key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
+            key!(Tab) | key!(Down) | ctrl!('n') => {
                 self.move_by(1, Direction::Forward);
             }
-            key!(PageDown) | ctrl!('f') => {
+            key!(PageDown) | ctrl!('d') => {
                 self.page_down();
             }
-            key!(PageUp) | ctrl!('b') => {
+            key!(PageUp) | ctrl!('u') => {
                 self.page_up();
             }
             key!(Home) => {
