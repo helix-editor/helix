@@ -26,6 +26,13 @@
       };
       overrides = {
         crateOverrides = common: _: {
+          helix-term-deps = _: {
+            hardeningDisable =
+              let
+                inherit (common.pkgs) lib stdenv;
+              in
+                lib.optionals (stdenv.isAarch64 && stdenv.isDarwin) [ "stackprotector" ];
+          };
           helix-term = prev:
             let
               inherit (common) pkgs;
@@ -57,7 +64,13 @@
           env = prev.env ++ [
             { name = "HELIX_RUNTIME"; eval = "$PWD/runtime"; }
             { name = "RUST_BACKTRACE"; value = "1"; }
-            { name = "RUSTFLAGS"; value = "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment"; }
+            { name = "RUSTFLAGS"; value = "-C link-arg=-fuse-ld=lld -C target-cpu=native"; }
+            {
+              name = "CFLAGS";
+              value = let inherit (common.pkgs) lib stdenv;
+              in lib.optionalString (stdenv.isAarch64 && stdenv.isDarwin)
+              "-mno-outline-atomics";
+            }
           ];
         };
       };
