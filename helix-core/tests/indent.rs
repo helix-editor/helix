@@ -40,7 +40,7 @@ fn test_treesitter_indent(file_name: &str, lang_scope: &str) {
             comment_token: None,
             auto_format: false,
             diagnostic_severity: Severity::Warning,
-            tree_sitter_library: None,
+            grammar: None,
             language_server: None,
             indent: Some(IndentationConfiguration {
                 tab_width: 4,

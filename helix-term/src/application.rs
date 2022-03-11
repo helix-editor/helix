@@ -42,16 +42,11 @@ pub struct Application {
     compositor: Compositor,
     editor: Editor,
 
-    // TODO should be separate to take only part of the config
+    // TODO: share an ArcSwap with Editor?
     config: Config,
 
-    // Currently never read from.  Remove the `allow(dead_code)` when
-    // that changes.
     #[allow(dead_code)]
     theme_loader: Arc<theme::Loader>,
-
-    // Currently never read from.  Remove the `allow(dead_code)` when
-    // that changes.
     #[allow(dead_code)]
     syn_loader: Arc<syntax::Loader>,
 
@@ -66,12 +61,11 @@ impl Application {
         let mut compositor = Compositor::new()?;
         let size = compositor.size();
 
-        let conf_dir = helix_core::config_dir();
+        let conf_dir = helix_loader::config_dir();
 
         let theme_loader =
-            std::sync::Arc::new(theme::Loader::new(&conf_dir, &helix_core::runtime_dir()));
+            std::sync::Arc::new(theme::Loader::new(&conf_dir, &helix_loader::runtime_dir()));
 
-        // load default and user config, and merge both
         let true_color = config.editor.true_color || crate::true_color();
         let theme = config
             .theme
@@ -115,10 +109,13 @@ impl Application {
         compositor.push(editor_view);
 
         if args.load_tutor {
-            let path = helix_core::runtime_dir().join("tutor.txt");
+            let path = helix_loader::runtime_dir().join("tutor.txt");
             editor.open(path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
+        } else if args.edit_config {
+            let path = conf_dir.join("config.toml");
+            editor.open(path, Action::VerticalSplit)?;
         } else if !args.files.is_empty() {
             let first = &args.files[0].0; // we know it's not empty
             if first.is_dir() {
@@ -187,17 +184,13 @@ impl Application {
     }
 
     fn render(&mut self) {
-        let editor = &mut self.editor;
-        let compositor = &mut self.compositor;
-        let jobs = &mut self.jobs;
-
         let mut cx = crate::compositor::Context {
-            editor,
-            jobs,
+            editor: &mut self.editor,
+            jobs: &mut self.jobs,
             scroll: None,
         };
 
-        compositor.render(&mut cx);
+        self.compositor.render(&mut cx);
     }
 
     pub async fn event_loop(&mut self) {
@@ -278,31 +271,20 @@ impl Application {
     }
 
     pub fn handle_idle_timeout(&mut self) {
-        use crate::commands::{insert::idle_completion, Context};
-        use helix_view::document::Mode;
-
-        if doc!(self.editor).mode != Mode::Insert || !self.config.editor.auto_completion {
-            return;
-        }
+        use crate::compositor::EventResult;
         let editor_view = self
             .compositor
             .find::<ui::EditorView>()
             .expect("expected at least one EditorView");
 
-        if editor_view.completion.is_some() {
-            return;
-        }
-
-        let mut cx = Context {
-            register: None,
+        let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
-            count: None,
-            callback: None,
-            on_next_key_callback: None,
+            scroll: None,
         };
-        idle_completion(&mut cx);
-        self.render();
+        if let EventResult::Consumed(_) = editor_view.handle_idle_timeout(&mut cx) {
+            self.render();
+        }
     }
 
     pub fn handle_terminal_events(&mut self, event: Option<Result<Event, crossterm::ErrorKind>>) {
@@ -532,6 +514,13 @@ impl Application {
                                 }
                             };
 
+                        // Trigger a workspace/didChangeConfiguration notification after initialization.
+                        // This might not be required by the spec but Neovim does this as well, so it's
+                        // probably a good idea for compatibility.
+                        if let Some(config) = language_server.config() {
+                            tokio::spawn(language_server.did_change_configuration(config.clone()));
+                        }
+
                         let docs = self.editor.documents().filter(|doc| {
                             doc.language_server().map(|server| server.id()) == Some(server_id)
                         });
@@ -727,15 +716,6 @@ impl Application {
                     Some(call) => call,
                     None => {
                         error!("Method not found {}", method);
-                        // language_server.reply(
-                        //     call.id,
-                        //     // TODO: make a Into trait that can cast to Err(jsonrpc::Error)
-                        //     Err(helix_lsp::jsonrpc::Error {
-                        //         code: helix_lsp::jsonrpc::ErrorCode::MethodNotFound,
-                        //         message: "Method not found".to_string(),
-                        //         data: None,
-                        //     }),
-                        // );
                         return;
                     }
                 };
@@ -787,6 +767,37 @@ impl Application {
                                 failed_change: None,
                             })),
                         ));
+                    }
+                    MethodCall::WorkspaceConfiguration(params) => {
+                        let language_server =
+                            match self.editor.language_servers.get_by_id(server_id) {
+                                Some(language_server) => language_server,
+                                None => {
+                                    warn!("can't find language server with id `{}`", server_id);
+                                    return;
+                                }
+                            };
+                        let result: Vec<_> = params
+                            .items
+                            .iter()
+                            .map(|item| {
+                                let mut config = match &item.scope_uri {
+                                    Some(scope) => {
+                                        let path = scope.to_file_path().ok()?;
+                                        let doc = self.editor.document_by_path(path)?;
+                                        doc.language_config()?.config.as_ref()?
+                                    }
+                                    None => language_server.config()?,
+                                };
+                                if let Some(section) = item.section.as_ref() {
+                                    for part in section.split('.') {
+                                        config = config.get(part)?;
+                                    }
+                                }
+                                Some(config)
+                            })
+                            .collect();
+                        tokio::spawn(language_server.reply(id, Ok(json!(result))));
                     }
                 }
             }

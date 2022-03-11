@@ -17,6 +17,104 @@ use helix_view::{
     Theme,
 };
 
+fn styled_multiline_text<'a>(text: String, style: Style) -> Text<'a> {
+    let spans: Vec<_> = text
+        .lines()
+        .map(|line| Span::styled(line.to_string(), style))
+        .map(Spans::from)
+        .collect();
+    Text::from(spans)
+}
+
+pub fn highlighted_code_block<'a>(
+    text: String,
+    language: &str,
+    theme: Option<&Theme>,
+    config_loader: Arc<syntax::Loader>,
+    additional_highlight_spans: Option<Vec<(usize, std::ops::Range<usize>)>>,
+) -> Text<'a> {
+    let mut spans = Vec::new();
+    let mut lines = Vec::new();
+
+    let get_theme = |key: &str| -> Style { theme.map(|t| t.get(key)).unwrap_or_default() };
+    let text_style = get_theme(Markdown::TEXT_STYLE);
+    let code_style = get_theme(Markdown::BLOCK_STYLE);
+
+    let theme = match theme {
+        Some(t) => t,
+        None => return styled_multiline_text(text, code_style),
+    };
+
+    let rope = Rope::from(text.as_ref());
+    let syntax = config_loader
+        .language_configuration_for_injection_string(language)
+        .and_then(|config| config.highlight_config(theme.scopes()))
+        .map(|config| Syntax::new(&rope, config, Arc::clone(&config_loader)));
+
+    let syntax = match syntax {
+        Some(s) => s,
+        None => return styled_multiline_text(text, code_style),
+    };
+
+    let highlight_iter = syntax
+        .highlight_iter(rope.slice(..), None, None)
+        .map(|e| e.unwrap());
+    let highlight_iter: Box<dyn Iterator<Item = HighlightEvent>> =
+        if let Some(spans) = additional_highlight_spans {
+            Box::new(helix_core::syntax::merge(highlight_iter, spans))
+        } else {
+            Box::new(highlight_iter)
+        };
+
+    let mut highlights = Vec::new();
+    for event in highlight_iter {
+        match event {
+            HighlightEvent::HighlightStart(span) => {
+                highlights.push(span);
+            }
+            HighlightEvent::HighlightEnd => {
+                highlights.pop();
+            }
+            HighlightEvent::Source { start, end } => {
+                let style = highlights
+                    .iter()
+                    .fold(text_style, |acc, span| acc.patch(theme.highlight(span.0)));
+
+                let mut slice = &text[start..end];
+                // TODO: do we need to handle all unicode line endings
+                // here, or is just '\n' okay?
+                while let Some(end) = slice.find('\n') {
+                    // emit span up to newline
+                    let text = &slice[..end];
+                    let text = text.replace('\t', "    "); // replace tabs
+                    let span = Span::styled(text, style);
+                    spans.push(span);
+
+                    // truncate slice to after newline
+                    slice = &slice[end + 1..];
+
+                    // make a new line
+                    let spans = std::mem::take(&mut spans);
+                    lines.push(Spans::from(spans));
+                }
+
+                // if there's anything left, emit it too
+                if !slice.is_empty() {
+                    let span = Span::styled(slice.replace('\t', "    "), style);
+                    spans.push(span);
+                }
+            }
+        }
+    }
+
+    if !spans.is_empty() {
+        let spans = std::mem::take(&mut spans);
+        lines.push(Spans::from(spans));
+    }
+
+    Text::from(lines)
+}
+
 pub struct Markdown {
     contents: String,
 
@@ -27,16 +125,15 @@ pub struct Markdown {
 // better yet, just use Tendril + subtendril for references
 
 impl Markdown {
-    // theme keys, including fallbacks
-    const TEXT_STYLE: [&'static str; 2] = ["ui.text", "ui"];
-    const BLOCK_STYLE: [&'static str; 3] = ["markup.raw.inline", "markup.raw", "markup"];
-    const HEADING_STYLES: [[&'static str; 3]; 6] = [
-        ["markup.heading.1", "markup.heading", "markup"],
-        ["markup.heading.2", "markup.heading", "markup"],
-        ["markup.heading.3", "markup.heading", "markup"],
-        ["markup.heading.4", "markup.heading", "markup"],
-        ["markup.heading.5", "markup.heading", "markup"],
-        ["markup.heading.6", "markup.heading", "markup"],
+    const TEXT_STYLE: &'static str = "ui.text";
+    const BLOCK_STYLE: &'static str = "markup.raw.inline";
+    const HEADING_STYLES: [&'static str; 6] = [
+        "markup.heading.1",
+        "markup.heading.2",
+        "markup.heading.3",
+        "markup.heading.4",
+        "markup.heading.5",
+        "markup.heading.6",
     ];
 
     pub fn new(contents: String, config_loader: Arc<syntax::Loader>) -> Self {
@@ -59,15 +156,9 @@ impl Markdown {
         let mut spans = Vec::new();
         let mut lines = Vec::new();
 
-        let get_theme = |keys: &[&str]| match theme {
-            Some(theme) => keys
-                .iter()
-                .find_map(|key| theme.try_get(key))
-                .unwrap_or_default(),
-            None => Default::default(),
-        };
-        let text_style = get_theme(&Self::TEXT_STYLE);
-        let code_style = get_theme(&Self::BLOCK_STYLE);
+        let get_theme = |key: &str| -> Style { theme.map(|t| t.get(key)).unwrap_or_default() };
+        let text_style = get_theme(Self::TEXT_STYLE);
+        let code_style = get_theme(Self::BLOCK_STYLE);
         let heading_styles: Vec<Style> = Self::HEADING_STYLES
             .iter()
             .map(|key| get_theme(key))
@@ -108,75 +199,14 @@ impl Markdown {
                 Event::Text(text) => {
                     // TODO: temp workaround
                     if let Some(Tag::CodeBlock(CodeBlockKind::Fenced(language))) = tags.last() {
-                        if let Some(theme) = theme {
-                            let rope = Rope::from(text.as_ref());
-                            let syntax = self
-                                .config_loader
-                                .language_configuration_for_injection_string(language)
-                                .and_then(|config| config.highlight_config(theme.scopes()))
-                                .map(|config| {
-                                    Syntax::new(&rope, config, self.config_loader.clone())
-                                });
-
-                            if let Some(syntax) = syntax {
-                                // if we have a syntax available, highlight_iter and generate spans
-                                let mut highlights = Vec::new();
-
-                                for event in syntax.highlight_iter(rope.slice(..), None, None) {
-                                    match event.unwrap() {
-                                        HighlightEvent::HighlightStart(span) => {
-                                            highlights.push(span);
-                                        }
-                                        HighlightEvent::HighlightEnd => {
-                                            highlights.pop();
-                                        }
-                                        HighlightEvent::Source { start, end } => {
-                                            let style = match highlights.first() {
-                                                Some(span) => theme.get(&theme.scopes()[span.0]),
-                                                None => text_style,
-                                            };
-
-                                            let mut slice = &text[start..end];
-                                            // TODO: do we need to handle all unicode line endings
-                                            // here, or is just '\n' okay?
-                                            while let Some(end) = slice.find('\n') {
-                                                // emit span up to newline
-                                                let text = &slice[..end];
-                                                let text = text.replace('\t', "    "); // replace tabs
-                                                let span = Span::styled(text, style);
-                                                spans.push(span);
-
-                                                // truncate slice to after newline
-                                                slice = &slice[end + 1..];
-
-                                                // make a new line
-                                                let spans = std::mem::take(&mut spans);
-                                                lines.push(Spans::from(spans));
-                                            }
-
-                                            // if there's anything left, emit it too
-                                            if !slice.is_empty() {
-                                                let span = Span::styled(
-                                                    slice.replace('\t', "    "),
-                                                    style,
-                                                );
-                                                spans.push(span);
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                for line in text.lines() {
-                                    let span = Span::styled(line.to_string(), code_style);
-                                    lines.push(Spans::from(span));
-                                }
-                            }
-                        } else {
-                            for line in text.lines() {
-                                let span = Span::styled(line.to_string(), code_style);
-                                lines.push(Spans::from(span));
-                            }
-                        }
+                        let tui_text = highlighted_code_block(
+                            text.to_string(),
+                            language,
+                            theme,
+                            Arc::clone(&self.config_loader),
+                            None,
+                        );
+                        lines.extend(tui_text.lines.into_iter());
                     } else {
                         let style = if let Some(Tag::Heading(level, ..)) = tags.last() {
                             match level {

@@ -15,11 +15,11 @@ use helix_core::{
     syntax::{self, HighlightEvent},
     unicode::segmentation::UnicodeSegmentation,
     unicode::width::UnicodeWidthStr,
-    LineEnding, Position, Range, Selection,
+    LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::CursorShapeConfig,
+    editor::{CompleteAction, CursorShapeConfig},
     graphics::{CursorKind, Modifier, Rect, Style},
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
@@ -33,9 +33,16 @@ use tui::buffer::Buffer as Surface;
 pub struct EditorView {
     pub keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
-    last_insert: (commands::MappableCommand, Vec<KeyEvent>),
+    last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
+}
+
+#[derive(Debug, Clone)]
+pub enum InsertEvent {
+    Key(KeyEvent),
+    CompletionApply(CompleteAction),
+    TriggerCompletion,
 }
 
 impl Default for EditorView {
@@ -371,7 +378,8 @@ impl EditorView {
 
                             let (grapheme, width) = if grapheme == "\t" {
                                 // make sure we display tab as appropriate amount of spaces
-                                (tab.as_str(), tab_width)
+                                let visual_tab_width = tab_width - (visual_x as usize % tab_width);
+                                (&tab[..visual_tab_width], visual_tab_width)
                             } else {
                                 // Cow will prevent allocations if span contained in a single slice
                                 // which should really be the majority case
@@ -515,7 +523,6 @@ impl EditorView {
         let info = theme.get("info");
         let hint = theme.get("hint");
 
-        // Vec::with_capacity(diagnostics.len()); // rough estimate
         let mut lines = Vec::new();
         for diagnostic in diagnostics {
             let text = Text::styled(
@@ -630,19 +637,6 @@ impl EditorView {
             base_style,
         ));
 
-        // let indent_info = match doc.indent_style {
-        //     IndentStyle::Tabs => "tabs",
-        //     IndentStyle::Spaces(1) => "spaces:1",
-        //     IndentStyle::Spaces(2) => "spaces:2",
-        //     IndentStyle::Spaces(3) => "spaces:3",
-        //     IndentStyle::Spaces(4) => "spaces:4",
-        //     IndentStyle::Spaces(5) => "spaces:5",
-        //     IndentStyle::Spaces(6) => "spaces:6",
-        //     IndentStyle::Spaces(7) => "spaces:7",
-        //     IndentStyle::Spaces(8) => "spaces:8",
-        //     _ => "indent:ERROR",
-        // };
-
         // Position
         let pos = coords_at_pos(
             doc.text().slice(..),
@@ -688,12 +682,12 @@ impl EditorView {
         surface.set_string_truncated(
             viewport.x + 8, // 8: 1 space + 3 char mode string + 1 space + 1 spinner + 1 space
             viewport.y,
-            title,
+            &title,
             viewport
                 .width
                 .saturating_sub(6)
                 .saturating_sub(right_side_text.width() as u16 + 1) as usize, // "+ 1": a space between the title and the selection info
-            base_style,
+            |_| base_style,
             true,
             true,
         );
@@ -766,8 +760,33 @@ impl EditorView {
                 // first execute whatever put us into insert mode
                 self.last_insert.0.execute(cxt);
                 // then replay the inputs
-                for &key in &self.last_insert.1.clone() {
-                    self.insert_mode(cxt, key)
+                for key in self.last_insert.1.clone() {
+                    match key {
+                        InsertEvent::Key(key) => self.insert_mode(cxt, key),
+                        InsertEvent::CompletionApply(compl) => {
+                            let (view, doc) = current!(cxt.editor);
+
+                            doc.restore(view.id);
+
+                            let text = doc.text().slice(..);
+                            let cursor = doc.selection(view.id).primary().cursor(text);
+
+                            let shift_position =
+                                |pos: usize| -> usize { pos + cursor - compl.trigger_offset };
+
+                            let tx = Transaction::change(
+                                doc.text(),
+                                compl.changes.iter().cloned().map(|(start, end, t)| {
+                                    (shift_position(start), shift_position(end), t)
+                                }),
+                            );
+                            doc.apply(&tx, view.id);
+                        }
+                        InsertEvent::TriggerCompletion => {
+                            let (_, doc) = current!(cxt.editor);
+                            doc.savepoint();
+                        }
+                    }
                 }
             }
             _ => {
@@ -808,6 +827,9 @@ impl EditorView {
         // Immediately initialize a savepoint
         doc_mut!(editor).savepoint();
 
+        editor.last_completion = None;
+        self.last_insert.1.push(InsertEvent::TriggerCompletion);
+
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
         self.completion = Some(completion);
@@ -820,6 +842,27 @@ impl EditorView {
         let doc = doc_mut!(editor);
         doc.savepoint = None;
         editor.clear_idle_timer(); // don't retrigger
+    }
+
+    pub fn handle_idle_timeout(&mut self, cx: &mut crate::compositor::Context) -> EventResult {
+        if self.completion.is_some()
+            || !cx.editor.config.auto_completion
+            || doc!(cx.editor).mode != Mode::Insert
+        {
+            return EventResult::Ignored(None);
+        }
+
+        let mut cx = commands::Context {
+            register: None,
+            editor: cx.editor,
+            jobs: cx.jobs,
+            count: None,
+            callback: None,
+            on_next_key_callback: None,
+        };
+        crate::commands::insert::idle_completion(&mut cx);
+
+        EventResult::Consumed(None)
     }
 }
 
@@ -1067,9 +1110,6 @@ impl Component for EditorView {
                 } else {
                     match mode {
                         Mode::Insert => {
-                            // record last_insert key
-                            self.last_insert.1.push(key);
-
                             // let completion swallow the event if necessary
                             let mut consumed = false;
                             if let Some(completion) = &mut self.completion {
@@ -1093,7 +1133,14 @@ impl Component for EditorView {
 
                             // if completion didn't take the event, we pass it onto commands
                             if !consumed {
+                                if let Some(compl) = cx.editor.last_completion.take() {
+                                    self.last_insert.1.push(InsertEvent::CompletionApply(compl));
+                                }
+
                                 self.insert_mode(&mut cx, key);
+
+                                // record last_insert key
+                                self.last_insert.1.push(InsertEvent::Key(key));
 
                                 // lastly we recalculate completion
                                 if let Some(completion) = &mut self.completion {
@@ -1210,6 +1257,9 @@ impl Component for EditorView {
                 } else {
                     disp.push_str(&s);
                 }
+            }
+            if let Some(pseudo_pending) = &cx.editor.pseudo_pending {
+                disp.push_str(pseudo_pending.as_str())
             }
             let style = cx.editor.theme.get("ui.text");
             let macro_width = if cx.editor.macro_recording.is_some() {

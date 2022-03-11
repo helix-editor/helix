@@ -19,7 +19,12 @@ brew install helix
 
 A [flake](https://nixos.wiki/wiki/Flakes) containing the package is available in
 the project root. The flake can also be used to spin up a reproducible development
-shell for working on Helix.
+shell for working on Helix with `nix develop`.
+
+Flake outputs are cached for each push to master using
+[Cachix](https://www.cachix.org/). With Cachix
+[installed](https://docs.cachix.org/installation), `cachix use helix` will
+configure Nix to use cached outputs when possible.
 
 ### Arch Linux
 
@@ -39,7 +44,7 @@ sudo dnf install helix
 ## Build from source
 
 ```
-git clone --recurse-submodules --shallow-submodules -j8 https://github.com/helix-editor/helix
+git clone https://github.com/helix-editor/helix
 cd helix
 cargo install --path helix-term
 ```
@@ -49,3 +54,9 @@ This will install the `hx` binary to `$HOME/.cargo/bin`.
 Helix also needs it's runtime files so make sure to copy/symlink the `runtime/` directory into the
 config directory (for example `~/.config/helix/runtime` on Linux/macOS). This location can be overriden
 via the `HELIX_RUNTIME` environment variable.
+
+## Building tree-sitter grammars
+
+Tree-sitter grammars must be fetched and compiled if not pre-packaged.
+Fetch grammars with `hx --grammar fetch` (requires `git`) and compile them
+with `hx --grammar build` (requires a C compiler).

@@ -7,8 +7,6 @@ use crate::{
     Rope, RopeSlice, Tendril,
 };
 
-pub use helix_syntax::get_language;
-
 use arc_swap::{ArcSwap, Guard};
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
@@ -24,6 +22,8 @@ use std::{
 
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
+
+use helix_loader::grammar::{get_language, load_runtime_file};
 
 fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
 where
@@ -51,7 +51,6 @@ where
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
 }
@@ -77,7 +76,7 @@ pub struct LanguageConfiguration {
     #[serde(default)]
     pub diagnostic_severity: Severity,
 
-    pub tree_sitter_library: Option<String>, // tree-sitter library name, defaults to language_id
+    pub grammar: Option<String>, // tree-sitter grammar name, defaults to language_id
 
     // content_regex
     #[serde(default, skip_serializing, deserialize_with = "deserialize_regex")]
@@ -233,16 +232,56 @@ pub struct TextObjectQuery {
     pub query: Query,
 }
 
+pub enum CapturedNode<'a> {
+    Single(Node<'a>),
+    /// Guarenteed to be not empty
+    Grouped(Vec<Node<'a>>),
+}
+
+impl<'a> CapturedNode<'a> {
+    pub fn start_byte(&self) -> usize {
+        match self {
+            Self::Single(n) => n.start_byte(),
+            Self::Grouped(ns) => ns[0].start_byte(),
+        }
+    }
+
+    pub fn end_byte(&self) -> usize {
+        match self {
+            Self::Single(n) => n.end_byte(),
+            Self::Grouped(ns) => ns.last().unwrap().end_byte(),
+        }
+    }
+
+    pub fn byte_range(&self) -> std::ops::Range<usize> {
+        self.start_byte()..self.end_byte()
+    }
+}
+
 impl TextObjectQuery {
     /// Run the query on the given node and return sub nodes which match given
     /// capture ("function.inside", "class.around", etc).
+    ///
+    /// Captures may contain multiple nodes by using quantifiers (+, *, etc),
+    /// and support for this is partial and could use improvement.
+    ///
+    /// ```query
+    /// ;; supported:
+    /// (comment)+ @capture
+    ///
+    /// ;; unsupported:
+    /// (
+    ///   (comment)+
+    ///   (function)
+    /// ) @capture
+    /// ```
     pub fn capture_nodes<'a>(
         &'a self,
         capture_name: &str,
         node: Node<'a>,
         slice: RopeSlice<'a>,
         cursor: &'a mut QueryCursor,
-    ) -> Option<impl Iterator<Item = Node<'a>>> {
+    ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
         self.capture_nodes_any(&[capture_name], node, slice, cursor)
     }
 
@@ -254,26 +293,34 @@ impl TextObjectQuery {
         node: Node<'a>,
         slice: RopeSlice<'a>,
         cursor: &'a mut QueryCursor,
-    ) -> Option<impl Iterator<Item = Node<'a>>> {
+    ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
         let capture_idx = capture_names
             .iter()
             .find_map(|cap| self.query.capture_index_for_name(cap))?;
-        let captures = cursor.captures(&self.query, node, RopeProvider(slice));
+        let captures = cursor.matches(&self.query, node, RopeProvider(slice));
 
-        captures
-            .filter_map(move |(mat, idx)| {
-                (mat.captures[idx].index == capture_idx).then(|| mat.captures[idx].node)
-            })
-            .into()
+        let nodes = captures.flat_map(move |mat| {
+            let captures = mat.captures.iter().filter(move |c| c.index == capture_idx);
+            let nodes = captures.map(|c| c.node);
+            let pattern_idx = mat.pattern_index;
+            let quantifier = self.query.capture_quantifiers(pattern_idx)[capture_idx as usize];
+
+            let iter: Box<dyn Iterator<Item = CapturedNode>> = match quantifier {
+                CaptureQuantifier::OneOrMore | CaptureQuantifier::ZeroOrMore => {
+                    let nodes: Vec<Node> = nodes.collect();
+                    if nodes.is_empty() {
+                        Box::new(std::iter::empty())
+                    } else {
+                        Box::new(std::iter::once(CapturedNode::Grouped(nodes)))
+                    }
+                }
+                _ => Box::new(nodes.map(CapturedNode::Single)),
+            };
+
+            iter
+        });
+        Some(nodes)
     }
-}
-
-fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
-    let path = crate::RUNTIME_DIR
-        .join("queries")
-        .join(language)
-        .join(filename);
-    std::fs::read_to_string(&path)
 }
 
 fn read_query(language: &str, filename: &str) -> String {
@@ -321,21 +368,16 @@ impl LanguageConfiguration {
         if highlights_query.is_empty() {
             None
         } else {
-            let language = get_language(
-                &crate::RUNTIME_DIR,
-                self.tree_sitter_library
-                    .as_deref()
-                    .unwrap_or(&self.language_id),
-            )
-            .map_err(|e| log::info!("{}", e))
-            .ok()?;
+            let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
+                .map_err(|e| log::info!("{}", e))
+                .ok()?;
             let config = HighlightConfiguration::new(
                 language,
                 &highlights_query,
                 &injections_query,
                 &locals_query,
             )
-            .unwrap(); // TODO: avoid panic
+            .unwrap_or_else(|query_error| panic!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar build' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, query_error));
 
             config.configure(scopes);
             Some(Arc::new(config))
@@ -1064,8 +1106,8 @@ pub(crate) fn generate_edits(
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{iter, mem, ops, str, usize};
 use tree_sitter::{
-    Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError,
-    QueryMatch, Range, TextProvider, Tree,
+    CaptureQuantifier, Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor,
+    QueryError, QueryMatch, Range, TextProvider, Tree,
 };
 
 const CANCELLATION_CHECK_INTERVAL: usize = 100;
@@ -1918,6 +1960,50 @@ mod test {
     use crate::{Rope, Transaction};
 
     #[test]
+    fn test_textobject_queries() {
+        let query_str = r#"
+        (line_comment)+ @quantified_nodes
+        ((line_comment)+) @quantified_nodes_grouped
+        ((line_comment) (line_comment)) @multiple_nodes_grouped
+        "#;
+        let source = Rope::from_str(
+            r#"
+/// a comment on
+/// mutiple lines
+        "#,
+        );
+
+        let loader = Loader::new(Configuration { language: vec![] });
+        let language = get_language("Rust").unwrap();
+
+        let query = Query::new(language, query_str).unwrap();
+        let textobject = TextObjectQuery { query };
+        let mut cursor = QueryCursor::new();
+
+        let config = HighlightConfiguration::new(language, "", "", "").unwrap();
+        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader));
+
+        let root = syntax.tree().root_node();
+        let mut test = |capture, range| {
+            let matches: Vec<_> = textobject
+                .capture_nodes(capture, root, source.slice(..), &mut cursor)
+                .unwrap()
+                .collect();
+
+            assert_eq!(
+                matches[0].byte_range(),
+                range,
+                "@{capture} expected {range:?}"
+            )
+        };
+
+        test("quantified_nodes", 1..35);
+        // NOTE: Enable after implementing proper node group capturing
+        // test("quantified_nodes_grouped", 1..35);
+        // test("multiple_nodes_grouped", 1..35);
+    }
+
+    #[test]
     fn test_parser() {
         let highlight_names: Vec<String> = [
             "attribute",
@@ -1946,17 +2032,13 @@ mod test {
 
         let loader = Loader::new(Configuration { language: vec![] });
 
-        let language = get_language(&crate::RUNTIME_DIR, "Rust").unwrap();
+        let language = get_language("Rust").unwrap();
         let config = HighlightConfiguration::new(
             language,
-            &std::fs::read_to_string(
-                "../helix-syntax/languages/tree-sitter-rust/queries/highlights.scm",
-            )
-            .unwrap(),
-            &std::fs::read_to_string(
-                "../helix-syntax/languages/tree-sitter-rust/queries/injections.scm",
-            )
-            .unwrap(),
+            &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/highlights.scm")
+                .unwrap(),
+            &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/injections.scm")
+                .unwrap(),
             "", // locals.scm
         )
         .unwrap();
