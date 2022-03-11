@@ -229,7 +229,6 @@ where
 }
 
 fn build_grammar(grammar: GrammarConfiguration) -> Result<()> {
-    println!("{:#?}", grammar);
     let grammar_dir = if let GrammarSource::Local { path } = &grammar.source {
         PathBuf::from(&path)
     } else {
