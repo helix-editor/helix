@@ -84,7 +84,7 @@ pub struct LanguageConfiguration {
     // first_line_regex
     //
     #[serde(skip)]
-    pub highlight_config: OnceCell<Option<Arc<HighlightConfiguration>>>,
+    pub(crate) highlight_config: OnceCell<Option<Arc<HighlightConfiguration>>>,
     // tags_config OnceCell<> https://github.com/tree-sitter/tree-sitter/pull/583
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language_server: Option<LanguageServerConfiguration>,
@@ -92,9 +92,9 @@ pub struct LanguageConfiguration {
     pub indent: Option<IndentationConfiguration>,
 
     #[serde(skip)]
-    pub indent_query: OnceCell<Option<Query>>,
+    pub(crate) indent_query: OnceCell<Option<Query>>,
     #[serde(skip)]
-    pub textobject_query: OnceCell<Option<TextObjectQuery>>,
+    pub(crate) textobject_query: OnceCell<Option<TextObjectQuery>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub debugger: Option<DebugAdapterConfig>,
 

@@ -1,10 +1,8 @@
 use helix_core::{
-    diagnostic::Severity,
     indent::{treesitter_indent_for_pos, IndentStyle},
-    syntax::{Configuration, IndentationConfiguration, LanguageConfiguration, Loader},
+    syntax::Loader,
     Syntax,
 };
-use once_cell::sync::OnceCell;
 use std::path::PathBuf;
 
 #[test]
@@ -20,38 +18,19 @@ fn test_treesitter_indent_rust_2() {
 }
 
 fn test_treesitter_indent(file_name: &str, lang_scope: &str) {
-    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    path.push("tests/data/indent");
-    path.push(file_name);
-    let file = std::fs::File::open(path).unwrap();
-    let doc = ropey::Rope::from_reader(file).unwrap();
+    let mut test_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    test_dir.push("tests/data/indent");
 
-    let loader = Loader::new(Configuration {
-        language: vec![LanguageConfiguration {
-            scope: "source.rust".to_string(),
-            file_types: vec!["rs".to_string()],
-            shebangs: vec![],
-            language_id: "Rust".to_string(),
-            highlight_config: OnceCell::new(),
-            config: None,
-            //
-            injection_regex: None,
-            roots: vec![],
-            comment_token: None,
-            auto_format: false,
-            diagnostic_severity: Severity::Warning,
-            grammar: None,
-            language_server: None,
-            indent: Some(IndentationConfiguration {
-                tab_width: 4,
-                unit: String::from("    "),
-            }),
-            indent_query: OnceCell::new(),
-            textobject_query: OnceCell::new(),
-            debugger: None,
-            auto_pairs: None,
-        }],
-    });
+    let mut test_file = test_dir.clone();
+    test_file.push(file_name);
+    let test_file = std::fs::File::open(test_file).unwrap();
+    let doc = ropey::Rope::from_reader(test_file).unwrap();
+
+    let mut config_file = test_dir;
+    config_file.push("languages.toml");
+    let config = std::fs::read(config_file).unwrap();
+    let config = toml::from_slice(&config).unwrap();
+    let loader = Loader::new(config);
 
     // set runtime path so we can find the queries
     let mut runtime = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
