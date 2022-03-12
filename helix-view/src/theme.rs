@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, sync::{Arc, Mutex},
 };
 
 use anyhow::Context;
@@ -24,6 +24,7 @@ pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
 pub struct Loader {
     user_dir: PathBuf,
     default_dir: PathBuf,
+    theme_cache: Arc<Mutex<HashMap<String, Theme>>>,
 }
 impl Loader {
     /// Creates a new loader that can load themes from two directories.
@@ -31,6 +32,7 @@ impl Loader {
         Self {
             user_dir: user_dir.as_ref().join("themes"),
             default_dir: default_dir.as_ref().join("themes"),
+            theme_cache: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -51,8 +53,31 @@ impl Loader {
             self.default_dir.join(filename)
         };
 
+        let path_str = path.to_str();
+
+        // We can return the theme from the cache if it already exists
+        if let Some(path_str) = path_str {
+            let tc = self.theme_cache.lock().unwrap();
+            if tc.contains_key(path_str) {
+                let theme = tc.get(path_str).unwrap().clone();
+                return Result::Ok(theme);
+            }
+        }
+
         let data = std::fs::read(&path)?;
-        toml::from_slice(data.as_slice()).context("Failed to deserialize theme")
+        let theme = toml::from_slice::<Theme>(data.as_slice());
+        match theme {
+            Ok(theme) => {
+                if let Some(p) = path_str {
+                    let mut tc = self.theme_cache.lock().unwrap();
+                    tc.insert(p.to_string(), theme.clone());
+                }
+                Ok(theme)
+            },
+            Result::Err(e) => {
+                Err(e).context("Failed to deserialize theme")
+            }
+        }
     }
 
     pub fn read_names(path: &Path) -> Vec<String> {

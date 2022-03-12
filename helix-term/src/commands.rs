@@ -31,6 +31,7 @@ use helix_view::{
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
+    theme,
     view::View,
     Document, DocumentId, Editor, ViewId,
 };
@@ -431,6 +432,7 @@ impl MappableCommand {
         decrement, "Decrement",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
+        theme_picker, "Set the current theme",
         command_palette, "Open command pallete",
     );
 }
@@ -1794,7 +1796,7 @@ fn global_search(cx: &mut Context) {
 
                 let picker = FilePicker::new(
                     all_matches,
-                    move |(_line_num, path)| {
+                    move |_, (_line_num, path)| {
                         let relative_path = helix_core::path::get_relative_path(path)
                             .to_string_lossy()
                             .into_owned();
@@ -2077,7 +2079,7 @@ fn buffer_picker(cx: &mut Context) {
             .iter()
             .map(|(_, doc)| new_meta(doc))
             .collect(),
-        BufferMeta::format,
+        |_, a| BufferMeta::format(a),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
         },
@@ -2092,6 +2094,55 @@ fn buffer_picker(cx: &mut Context) {
         },
     );
     cx.push_layer(Box::new(overlayed(picker)));
+}
+
+pub fn theme_picker(cx: &mut Context) {
+    let names = [
+        theme::Loader::read_names(&helix_loader::runtime_dir().join("themes")),
+        theme::Loader::read_names(&helix_loader::config_dir().join("themes")),
+        vec!["default".into(), "base16_default".into()],
+    ]
+    .concat();
+
+    cx.callback = Some(Box::new(
+        move |compositor: &mut Compositor, cx: &mut compositor::Context| {
+            let true_color = cx.editor.config.true_color || crate::true_color();
+
+            let original_theme = cx.editor.current_theme.clone();
+            let picker = Picker::new(
+                names,
+                move |_cx, theme_name| Cow::from(theme_name),
+                |_cx, _theme, _action| {},
+                move |cx, theme_name| {
+                    let theme = cx
+                        .editor
+                        .theme_loader
+                        .load(theme_name)
+                        .with_context(|| format!("Failed setting theme {}", theme_name));
+                    match theme {
+                        Ok(theme) => {
+                            if true_color || theme.is_16_color() {
+                                cx.editor.set_theme(theme, theme_name.clone());
+                            }
+                        }
+                        _ => {}
+                    }
+                },
+                move |cx| {
+                    let theme = cx
+                        .editor
+                        .theme_loader
+                        .load(&original_theme)
+                        .with_context(|| {
+                            format!("Failed reverting to previously set theme {}", &original_theme)
+                        })
+                        .unwrap();
+                    cx.editor.set_theme(theme, original_theme.clone());
+                },
+            );
+            compositor.push(Box::new(picker));
+        },
+    ));
 }
 
 pub fn command_palette(cx: &mut Context) {
@@ -2127,7 +2178,7 @@ pub fn command_palette(cx: &mut Context) {
 
             let picker = Picker::new(
                 commands,
-                move |command| match command {
+                move |_, command| match command {
                     MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String)
                     {
                         Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
@@ -2149,6 +2200,8 @@ pub fn command_palette(cx: &mut Context) {
                     };
                     command.execute(&mut ctx);
                 },
+                |_, _| {},
+                |_| {},
             );
             compositor.push(Box::new(picker));
         },

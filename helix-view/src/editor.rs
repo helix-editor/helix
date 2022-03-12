@@ -291,7 +291,7 @@ pub struct Editor {
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
-
+    pub current_theme: String,
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
@@ -327,6 +327,7 @@ impl Editor {
         theme_loader: Arc<theme::Loader>,
         syn_loader: Arc<syntax::Loader>,
         config: Config,
+        current_theme: String,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
         let auto_pairs = (&config.auto_pairs).into();
@@ -350,6 +351,7 @@ impl Editor {
             breakpoints: HashMap::new(),
             syn_loader,
             theme_loader,
+            current_theme,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
@@ -391,7 +393,7 @@ impl Editor {
         self.status_msg = Some((error.into(), Severity::Error));
     }
 
-    pub fn set_theme(&mut self, theme: Theme) {
+    pub fn set_theme(&mut self, theme: Theme, theme_name: String) {
         // `ui.selection` is the only scope required to be able to render a theme.
         if theme.find_scope_index("ui.selection").is_none() {
             self.set_error("Invalid theme: `ui.selection` required");
@@ -400,7 +402,7 @@ impl Editor {
 
         let scopes = theme.scopes();
         self.syn_loader.set_scopes(scopes.to_vec());
-
+        self.current_theme = theme_name;
         self.theme = theme;
         self._refresh();
     }

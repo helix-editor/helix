@@ -87,12 +87,12 @@ impl Preview<'_, '_> {
 impl<T> FilePicker<T> {
     pub fn new(
         options: Vec<T>,
-        format_fn: impl Fn(&T) -> Cow<str> + 'static,
+        format_fn: impl for<'a> Fn(&'a mut Context, &'a T) -> Cow<'a, str> + 'static,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
         Self {
-            picker: Picker::new(options, format_fn, callback_fn),
+            picker: Picker::new(options, format_fn, callback_fn, |_, _| {}, |_| {}),
             truncate_start: true,
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
@@ -292,15 +292,19 @@ pub struct Picker<T> {
     /// Whether to truncate the start (default true)
     pub truncate_start: bool,
 
-    format_fn: Box<dyn Fn(&T) -> Cow<str>>,
+    format_fn: Box<dyn for<'a> Fn(&'a mut Context, &'a T) -> Cow<'a, str>>,
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
+    highlighted_fn: Box<dyn Fn(&mut Context, &T)>,
+    close_fn: Box<dyn Fn(&mut Context)>,
 }
 
 impl<T> Picker<T> {
     pub fn new(
         options: Vec<T>,
-        format_fn: impl Fn(&T) -> Cow<str> + 'static,
+        format_fn: impl for<'a> Fn(&'a mut Context, &'a T) -> Cow<'a, str> + 'static,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
+        highlighted_fn: impl Fn(&mut Context, &T) + 'static,
+        close_fn: impl Fn(&mut Context) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".into(),
@@ -320,6 +324,8 @@ impl<T> Picker<T> {
             truncate_start: true,
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
+            highlighted_fn: Box::new(highlighted_fn),
+            close_fn: Box::new(close_fn),
             completion_height: 0,
         };
 
@@ -336,7 +342,7 @@ impl<T> Picker<T> {
         picker
     }
 
-    pub fn score(&mut self) {
+    pub fn score(&mut self, cx: &mut Context) {
         let now = Instant::now();
 
         let pattern = &self.prompt.line;
@@ -364,7 +370,7 @@ impl<T> Picker<T> {
             self.matches.retain_mut(|(index, score)| {
                 let option = &self.options[*index];
                 // TODO: maybe using format_fn isn't the best idea here
-                let text = (self.format_fn)(option);
+                let text = (self.format_fn)(cx, option);
 
                 match self.matcher.fuzzy_match(&text, pattern) {
                     Some(s) => {
@@ -393,7 +399,7 @@ impl<T> Picker<T> {
                         }
 
                         // TODO: maybe using format_fn isn't the best idea here
-                        let text = (self.format_fn)(option);
+                        let text = (self.format_fn)(cx, option);
 
                         self.matcher
                             .fuzzy_match(&text, pattern)
@@ -478,7 +484,7 @@ impl<T: 'static> Component for Picker<T> {
             _ => return EventResult::Ignored(None),
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _cx| {
             // remove the layer
             compositor.last_picker = compositor.pop();
         })));
@@ -503,6 +509,7 @@ impl<T: 'static> Component for Picker<T> {
                 self.to_end();
             }
             key!(Esc) | ctrl!('c') => {
+                (self.close_fn)(cx);
                 return close_fn;
             }
             key!(Enter) => {
@@ -529,7 +536,10 @@ impl<T: 'static> Component for Picker<T> {
             _ => {
                 if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
                     // TODO: recalculate only if pattern changed
-                    self.score();
+                    self.score(cx);
+                    if let Some(option) = self.selection() {
+                        (self.highlighted_fn)(cx, option);
+                    }
                 }
             }
         }
@@ -598,7 +608,7 @@ impl<T: 'static> Component for Picker<T> {
                 surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
             }
 
-            let formatted = (self.format_fn)(option);
+            let formatted = (self.format_fn)(cx, option);
 
             let (_score, highlights) = self
                 .matcher
