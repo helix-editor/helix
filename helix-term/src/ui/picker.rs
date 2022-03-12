@@ -273,6 +273,8 @@ impl<T: 'static> Component for FilePicker<T> {
     }
 }
 
+type FormatFn<T> = dyn for<'a> Fn(&'a mut Context, &'a T) -> Cow<'a, str>;
+
 pub struct Picker<T> {
     options: Vec<T>,
     // filter: String,
@@ -292,7 +294,7 @@ pub struct Picker<T> {
     /// Whether to truncate the start (default true)
     pub truncate_start: bool,
 
-    format_fn: Box<dyn for<'a> Fn(&'a mut Context, &'a T) -> Cow<'a, str>>,
+    format_fn: Box<FormatFn<T>>,
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
     highlighted_fn: Box<dyn Fn(&mut Context, &T)>,
     close_fn: Box<dyn Fn(&mut Context)>,

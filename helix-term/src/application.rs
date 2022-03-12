@@ -169,7 +169,7 @@ impl Application {
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
 
-        editor.set_theme(theme, theme_name.clone());
+        editor.set_theme(theme, theme_name);
 
         #[cfg(windows)]
         let signals = futures_util::stream::empty();

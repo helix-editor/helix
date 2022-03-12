@@ -2119,13 +2119,10 @@ pub fn theme_picker(cx: &mut Context) {
                         .theme_loader
                         .load(theme_name)
                         .with_context(|| format!("Failed setting theme {}", theme_name));
-                    match theme {
-                        Ok(theme) => {
-                            if true_color || theme.is_16_color() {
-                                cx.editor.set_theme(theme, theme_name.clone());
-                            }
+                    if let Ok(theme) = theme {
+                        if true_color || theme.is_16_color() {
+                            cx.editor.set_theme(theme, theme_name.clone());
                         }
-                        _ => {}
                     }
                 },
                 move |cx| {
