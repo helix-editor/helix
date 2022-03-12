@@ -393,7 +393,24 @@ impl Editor {
         self.status_msg = Some((error.into(), Severity::Error));
     }
 
+    pub fn unset_theme_preview(&mut self) {
+        let theme = self
+            .theme_loader
+            .load(&self.current_theme)
+            .unwrap();
+        self.set_theme(theme, self.current_theme.clone());
+    }
+
+    pub fn set_theme_preview(&mut self, theme: Theme) {
+        self.set_theme_impl(theme);
+    }
+
     pub fn set_theme(&mut self, theme: Theme, theme_name: String) {
+        self.current_theme = theme_name;
+        self.set_theme_impl(theme);
+    }
+
+    fn set_theme_impl(&mut self, theme: Theme) {
         // `ui.selection` is the only scope required to be able to render a theme.
         if theme.find_scope_index("ui.selection").is_none() {
             self.set_error("Invalid theme: `ui.selection` required");
@@ -402,7 +419,6 @@ impl Editor {
 
         let scopes = theme.scopes();
         self.syn_loader.set_scopes(scopes.to_vec());
-        self.current_theme = theme_name;
         self.theme = theme;
         self._refresh();
     }
