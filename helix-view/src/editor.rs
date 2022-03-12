@@ -394,10 +394,7 @@ impl Editor {
     }
 
     pub fn unset_theme_preview(&mut self) {
-        let theme = self
-            .theme_loader
-            .load(&self.current_theme)
-            .unwrap();
+        let theme = self.theme_loader.load(&self.current_theme).unwrap();
         self.set_theme(theme, self.current_theme.clone());
     }
 

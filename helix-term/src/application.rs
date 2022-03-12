@@ -38,12 +38,14 @@ use {
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
-
 fn default_theme(theme_loader: Arc<theme::Loader>, true_color: bool) -> (String, theme::Theme) {
     if true_color {
         (String::from("default"), theme_loader.default())
     } else {
-        (String::from("base16_default"), theme_loader.base16_default())
+        (
+            String::from("base16_default"),
+            theme_loader.base16_default(),
+        )
     }
 }
 
@@ -86,15 +88,13 @@ impl Application {
                         e
                     })
                     .ok()
-                    .filter(|theme| (true_color || theme.is_16_color())) {
-                        Some(theme) => (theme_name.clone(), theme),
-                        None => default_theme(theme_loader.clone(), true_color)
-                    }
-
+                    .filter(|theme| (true_color || theme.is_16_color()))
+                {
+                    Some(theme) => (theme_name.clone(), theme),
+                    None => default_theme(theme_loader.clone(), true_color),
+                }
             }
-            None => {
-                default_theme(theme_loader.clone(), true_color)
-            }
+            None => default_theme(theme_loader.clone(), true_color),
         };
 
         let syn_loader_conf = user_syntax_loader().unwrap_or_else(|err| {

@@ -2134,7 +2134,10 @@ pub fn theme_picker(cx: &mut Context) {
                         .theme_loader
                         .load(&original_theme)
                         .with_context(|| {
-                            format!("Failed reverting to previously set theme {}", &original_theme)
+                            format!(
+                                "Failed reverting to previously set theme {}",
+                                &original_theme
+                            )
                         })
                         .unwrap();
                     cx.editor.set_theme(theme, original_theme.clone());

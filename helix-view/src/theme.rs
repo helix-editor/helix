@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
-    path::{Path, PathBuf}, sync::{Arc, Mutex},
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex},
 };
 
 use anyhow::Context;
@@ -73,10 +74,8 @@ impl Loader {
                     tc.insert(p.to_string(), theme.clone());
                 }
                 Ok(theme)
-            },
-            Result::Err(e) => {
-                Err(e).context("Failed to deserialize theme")
             }
+            Result::Err(e) => Err(e).context("Failed to deserialize theme"),
         }
     }
 
