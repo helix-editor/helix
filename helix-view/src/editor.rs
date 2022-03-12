@@ -110,7 +110,7 @@ pub struct Config {
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
     /// Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. Defaults to 400ms.
-    #[serde(skip_serializing, deserialize_with = "deserialize_duration_millis")]
+    #[serde(deserialize_with = "deserialize_duration_millis")]
     pub idle_timeout: Duration,
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.

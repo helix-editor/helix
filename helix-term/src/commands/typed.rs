@@ -852,34 +852,32 @@ pub(super) fn goto_line_number(
     Ok(())
 }
 
+/// Change config at runtime. Access nested values by dot syntax, for
+/// example to disable smart case search, use `:set search.smart-case false`.
 fn setting(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    let runtime_config = &mut cx.editor.config;
-
     if args.len() != 2 {
         anyhow::bail!("Bad arguments. Usage: `:set key field`");
     }
-
     let (key, arg) = (&args[0].to_lowercase(), &args[1]);
 
-    match key.as_ref() {
-        "scrolloff" => runtime_config.scrolloff = arg.parse()?,
-        "scroll-lines" => runtime_config.scroll_lines = arg.parse()?,
-        "mouse" => runtime_config.mouse = arg.parse()?,
-        "line-number" => runtime_config.line_number = arg.parse()?,
-        "middle-click_paste" => runtime_config.middle_click_paste = arg.parse()?,
-        "auto-pairs" => runtime_config.auto_pairs = arg.parse()?,
-        "auto-completion" => runtime_config.auto_completion = arg.parse()?,
-        "completion-trigger-len" => runtime_config.completion_trigger_len = arg.parse()?,
-        "auto-info" => runtime_config.auto_info = arg.parse()?,
-        "true-color" => runtime_config.true_color = arg.parse()?,
-        "search.smart-case" => runtime_config.search.smart_case = arg.parse()?,
-        "search.wrap-around" => runtime_config.search.wrap_around = arg.parse()?,
-        _ => anyhow::bail!("Unknown key `{}`.", args[0]),
-    }
+    let key_error = || anyhow::anyhow!("Unknown key `{key}`");
+    let field_error = |_| anyhow::anyhow!("Could not parse field `{arg}`");
+
+    let mut config = serde_json::to_value(&cx.editor.config).unwrap();
+    let pointer = format!("/{}", key.replace('.', "/"));
+    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+
+    *value = if value.is_string() {
+        // JSON strings require quotes, so we can't .parse() directly
+        serde_json::Value::String(arg.to_string())
+    } else {
+        arg.parse().map_err(field_error)?
+    };
+    cx.editor.config = serde_json::from_value(config).map_err(field_error)?;
 
     Ok(())
 }
