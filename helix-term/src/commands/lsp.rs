@@ -12,7 +12,8 @@ use helix_view::editor::Action;
 use crate::{
     compositor::{self, Compositor},
     ui::{
-        self, lsp::SignatureHelp, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent,
+        self, lsp::SignatureHelp, overlay::overlayed, popup, FileLocation, FilePicker, Popup,
+        Prompt, PromptEvent,
     },
 };
 
@@ -682,9 +683,10 @@ pub fn signature_help(cx: &mut Context) {
             };
             contents.set_active_param_range(active_param_range());
 
-            let mut popup = Popup::new(SignatureHelp::ID, contents);
             let old_popup = compositor.find_id::<Popup<SignatureHelp>>(SignatureHelp::ID);
-            popup.set_position(old_popup.and_then(|p| p.position()));
+            let popup = Popup::new(SignatureHelp::ID, contents)
+                .position(old_popup.and_then(|p| p.get_position()))
+                .position_bias(popup::PositionBias::Above);
             compositor.replace_or_push(SignatureHelp::ID, popup);
         },
     );
