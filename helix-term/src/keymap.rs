@@ -34,6 +34,18 @@ impl<'de> Deserialize<'de> for KeyTrieNode {
         D: serde::Deserializer<'de>,
     {
         let map = HashMap::<KeyEvent, KeyTrie>::deserialize(deserializer)?;
+        let map: HashMap<_, _> = map
+            .into_iter()
+            .filter_map(|(key, value)| {
+                // Filter the KeyEvents that has an invalid value because those come from a
+                // parsing error and we should just ignore them.
+                if key == KeyEvent::invalid() {
+                    None
+                } else {
+                    Some((key, value))
+                }
+            })
+            .collect();
         let order = map.keys().copied().collect::<Vec<_>>(); // NOTE: map.keys() has arbitrary order
         Ok(Self {
             map,

@@ -1,10 +1,25 @@
 //! Input event handling, currently backed by crossterm.
 use anyhow::{anyhow, Error};
 use helix_core::unicode::width::UnicodeWidthStr;
-use serde::de::{self, Deserialize, Deserializer};
+use serde::de::{Deserialize, Deserializer};
 use std::fmt;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::keyboard::{KeyCode, KeyModifiers};
+
+static HAD_CONFIG_ERROR: AtomicBool = AtomicBool::new(false);
+
+/// To be called by the Config deserializer when there's an error so that the editor knows it
+/// should wait the user to press Enter in order for the user to have the time to see the error
+/// before the editor shows up.
+pub fn set_config_error() {
+    HAD_CONFIG_ERROR.store(true, Ordering::SeqCst);
+}
+
+/// Return true if there was an error during the Config deserialization.
+pub fn get_config_error() -> bool {
+    HAD_CONFIG_ERROR.load(Ordering::SeqCst)
+}
 
 /// Represents a key event.
 // We use a newtype here because we want to customize Deserialize and Display.
@@ -20,6 +35,14 @@ impl KeyEvent {
         match self.code {
             KeyCode::Char(ch) => Some(ch),
             _ => None,
+        }
+    }
+
+    /// Return an invalid KeyEvent to use for cases where an event key cannot be parsed.
+    pub fn invalid() -> Self {
+        Self {
+            code: KeyCode::Null,
+            modifiers: KeyModifiers::NONE,
         }
     }
 }
@@ -210,7 +233,13 @@ impl<'de> Deserialize<'de> for KeyEvent {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        s.parse().map_err(de::Error::custom)
+        let key_event = s.parse();
+        if let Err(ref error) = key_event {
+            // TODO: show error position.
+            eprintln!("Bad config for key: {}", error);
+            set_config_error();
+        }
+        Ok(key_event.unwrap_or_else(|_| KeyEvent::invalid()))
     }
 }
 

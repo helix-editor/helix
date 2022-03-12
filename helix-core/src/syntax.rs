@@ -179,7 +179,7 @@ pub struct IndentationConfiguration {
 
 /// Configuration for auto pairs
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields, untagged)]
+#[serde(rename_all = "kebab-case", untagged)]
 pub enum AutoPairConfig {
     /// Enables or disables auto pairing. False means disabled. True means to use the default pairs.
     Enable(bool),

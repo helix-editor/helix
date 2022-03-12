@@ -3,7 +3,7 @@ use crate::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::{CursorKind, Rect},
     info::Info,
-    input::KeyEvent,
+    input::{set_config_error, KeyEvent},
     theme::{self, Theme},
     tree::{self, Tree},
     Document, DocumentId, View, ViewId,
@@ -44,6 +44,20 @@ use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer}
 
 use arc_swap::access::{DynAccess, DynGuard};
 
+pub fn ok_or_default<'a, T, D>(deserializer: D) -> Result<T, D::Error>
+where
+    T: Deserialize<'a> + Default,
+    D: Deserializer<'a>,
+{
+    let result = T::deserialize(deserializer);
+    if let Err(ref error) = result {
+        // FIXME: the error message does not contain the key or the position.
+        eprintln!("Bad config for value: {}", error);
+        set_config_error();
+    }
+    Ok(result.unwrap_or_default())
+}
+
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -65,7 +79,7 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+#[serde(rename_all = "kebab-case", default)]
 pub struct FilePickerConfig {
     /// IgnoreOptions
     /// Enables ignoring hidden files.
@@ -104,26 +118,36 @@ impl Default for FilePickerConfig {
     }
 }
 
+// NOTE: The fields in this struct use the deserializer ok_or_default to continue parsing when
+// there is an error. In that case, it will use the default value.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+#[serde(rename_all = "kebab-case", default)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
+    #[serde(deserialize_with = "ok_or_default")]
     pub scrolloff: usize,
     /// Number of lines to scroll at once. Defaults to 3
+    #[serde(deserialize_with = "ok_or_default")]
     pub scroll_lines: isize,
     /// Mouse support. Defaults to true.
+    #[serde(deserialize_with = "ok_or_default")]
     pub mouse: bool,
     /// Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise.
+    #[serde(deserialize_with = "ok_or_default")]
     pub shell: Vec<String>,
     /// Line number mode.
+    #[serde(deserialize_with = "ok_or_default")]
     pub line_number: LineNumber,
     /// Middle click paste support. Defaults to true.
+    #[serde(deserialize_with = "ok_or_default")]
     pub middle_click_paste: bool,
     /// Automatic insertion of pairs to parentheses, brackets,
     /// etc. Optionally, this can be a list of 2-tuples to specify a
     /// global list of characters to pair. Defaults to true.
+    #[serde(deserialize_with = "ok_or_default")]
     pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
+    #[serde(deserialize_with = "ok_or_default")]
     pub auto_completion: bool,
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
@@ -132,28 +156,35 @@ pub struct Config {
         deserialize_with = "deserialize_duration_millis"
     )]
     pub idle_timeout: Duration,
+    #[serde(deserialize_with = "ok_or_default")]
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
+    #[serde(deserialize_with = "ok_or_default")]
     pub auto_info: bool,
+    #[serde(deserialize_with = "ok_or_default")]
     pub file_picker: FilePickerConfig,
     /// Shape for cursor in each mode
+    #[serde(deserialize_with = "ok_or_default")]
     pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
+    #[serde(deserialize_with = "ok_or_default")]
     pub true_color: bool,
     /// Search configuration.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "ok_or_default")]
     pub search: SearchConfig,
+    #[serde(default, deserialize_with = "ok_or_default")]
     pub lsp: LspConfig,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+#[serde(rename_all = "kebab-case")]
 pub struct LspConfig {
+    #[serde(deserialize_with = "ok_or_default")]
     pub display_messages: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+#[serde(rename_all = "kebab-case", default)]
 pub struct SearchConfig {
     /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
     pub smart_case: bool,
@@ -224,6 +255,12 @@ pub enum LineNumber {
     /// If focused and in normal/select mode, show relative line number to the primary cursor.
     /// If unfocused or in insert mode, show absolute line number.
     Relative,
+}
+
+impl Default for LineNumber {
+    fn default() -> Self {
+        Self::Absolute
+    }
 }
 
 impl std::str::FromStr for LineNumber {

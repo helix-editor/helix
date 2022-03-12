@@ -2,6 +2,8 @@ use anyhow::{Context, Error, Result};
 use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::{Config, ConfigLoadError};
+use helix_view::input::{get_config_error, set_config_error};
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
@@ -114,7 +116,8 @@ FLAGS:
         std::fs::create_dir_all(&conf_dir).ok();
     }
 
-    let config = match Config::load_default() {
+    let mut ignored_keys = BTreeSet::new();
+    let config = match Config::load_default(&mut ignored_keys) {
         Ok(config) => config,
         Err(err) => {
             match err {
@@ -133,6 +136,19 @@ FLAGS:
             }
         }
     };
+
+    if !ignored_keys.is_empty() {
+        let keys = ignored_keys.into_iter().collect::<Vec<_>>().join(", ");
+        eprintln!("Ignored keys in config: {}", keys);
+        set_config_error();
+    }
+
+    if get_config_error() {
+        eprintln!("Press <ENTER> to continue");
+        use std::io::Read;
+        // This waits for an enter press.
+        let _ = std::io::stdin().read(&mut []);
+    }
 
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 

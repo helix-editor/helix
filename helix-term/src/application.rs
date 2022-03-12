@@ -19,6 +19,7 @@ use crate::{
 
 use log::{error, warn};
 use std::{
+    collections::BTreeSet,
     io::{stdin, stdout, Write},
     sync::Arc,
     time::{Duration, Instant},
@@ -271,10 +272,11 @@ impl Application {
     }
 
     fn refresh_config(&mut self) {
-        let config = Config::load(helix_loader::config_file()).unwrap_or_else(|err| {
-            self.editor.set_error(err.to_string());
-            Config::default()
-        });
+        let config = Config::load(helix_loader::config_file(), &mut BTreeSet::new())
+            .unwrap_or_else(|err| {
+                self.editor.set_error(err.to_string());
+                Config::default()
+            });
 
         // Refresh theme
         if let Some(theme) = config.theme.clone() {
