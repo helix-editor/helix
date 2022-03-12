@@ -14,6 +14,8 @@ pub struct Args {
     pub verbosity: u64,
     pub files: Vec<(PathBuf, Position)>,
     pub edit_config: bool,
+    pub edit_lang_config: bool,
+    pub view_log: bool
 }
 
 impl Args {
@@ -30,6 +32,8 @@ impl Args {
                 "--help" => args.display_help = true,
                 "--tutor" => args.load_tutor = true,
                 "--edit-config" => args.edit_config = true,
+                "--edit-lang-config" => args.edit_lang_config = true,
+                "--view-log" => args.view_log = true,
                 "--health" => {
                     args.health = true;
                     args.health_arg = argv.next_if(|opt| !opt.starts_with('-'));

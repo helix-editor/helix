@@ -60,7 +60,9 @@ ARGS:
 
 FLAGS:
     -h, --help                     Prints help information
-    --edit-config                  Opens the helix config file
+    --edit-config                  Opens the helix configuration file
+    --edit-lang-config             Opens the helix languages configuration file
+    --view-log                     Opens the helix log file for viewing
     --tutor                        Loads the tutorial
     --health [LANG]                Checks for potential errors in editor setup
                                    If given, checks for config errors in language LANG

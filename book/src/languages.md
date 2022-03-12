@@ -4,6 +4,8 @@ Language-specific settings and settings for particular language servers can be c
 
 Changes made to the `languages.toml` file in a user's [configuration directory](./configuration.md) are merged with helix's defaults on start-up, such that a user's settings will take precedence over defaults in the event of a collision. For example, the default `languages.toml` sets rust's `auto-format` to `true`. If a user wants to disable auto-format, they can change the `languages.toml` in their [configuration directory](./configuration.md) to make the rust entry read like the example below; the new key/value pair `auto-format = false` will override the default when the two sets of settings are merged on start-up:
 
+> Note: You may use `hx --edit-languages` to create and edit `languages.toml`.
+
 ```toml
 # in <config_dir>/helix/languages.toml
 

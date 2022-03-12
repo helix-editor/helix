@@ -61,10 +61,8 @@ impl Application {
         let mut compositor = Compositor::new()?;
         let size = compositor.size();
 
-        let conf_dir = helix_loader::config_dir();
-
         let theme_loader =
-            std::sync::Arc::new(theme::Loader::new(&conf_dir, &helix_loader::runtime_dir()));
+            std::sync::Arc::new(theme::Loader::new(&helix_loader::config_dir(), &helix_loader::runtime_dir()));
 
         let true_color = config.editor.true_color || crate::true_color();
         let theme = config
@@ -114,8 +112,13 @@ impl Application {
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
         } else if args.edit_config {
-            let path = conf_dir.join("config.toml");
-            editor.open(path, Action::VerticalSplit)?;
+            editor.open(helix_loader::config_file(), Action::VerticalSplit)?;
+        } else if args.edit_lang_config {
+            // What if multiple from {--edit-config, --edit-lang-config, --view-log} are passed?
+            editor.open(helix_loader::lang_config_file(), Action::VerticalSplit)?;
+        } else if args.view_log {
+            // Can this be viewed in read-only mode?
+            editor.open(helix_loader::log_file(), Action::VerticalSplit)?;
         } else if !args.files.is_empty() {
             let first = &args.files[0].0; // we know it's not empty
             if first.is_dir() {
