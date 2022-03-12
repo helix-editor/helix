@@ -36,12 +36,14 @@ We provide packaging for various distributions, but here's a quick method to
 build from source.
 
 ```
-git clone --recurse-submodules --shallow-submodules -j8 https://github.com/helix-editor/helix
+git clone https://github.com/helix-editor/helix
 cd helix
 cargo install --path helix-term
+hx --grammar fetch
+hx --grammar build
 ```
 
-This will install the `hx` binary to `$HOME/.cargo/bin`.
+This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars.
 
 Helix also needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
 config directory (for example `~/.config/helix/runtime` on Linux/macOS, or `%AppData%/helix/runtime` on Windows).
@@ -56,6 +58,7 @@ that sets the variable to the install dir.
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
 ## MacOS
+
 Helix can be installed on MacOS through homebrew via:
 
 ```

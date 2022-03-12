@@ -362,7 +362,7 @@ dependencies = [
  "chrono",
  "encoding_rs",
  "etcetera",
- "helix-syntax",
+ "helix-loader",
  "log",
  "once_cell",
  "quickcheck",
@@ -397,6 +397,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "helix-loader"
+version = "0.6.0"
+dependencies = [
+ "anyhow",
+ "cc",
+ "etcetera",
+ "libloading",
+ "log",
+ "once_cell",
+ "serde",
+ "threadpool",
+ "toml",
+ "tree-sitter",
+]
+
+[[package]]
 name = "helix-lsp"
 version = "0.6.0"
 dependencies = [
@@ -416,17 +432,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "helix-syntax"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "cc",
- "libloading",
- "threadpool",
- "tree-sitter",
-]
-
-[[package]]
 name = "helix-term"
 version = "0.6.0"
 dependencies = [
@@ -441,6 +446,7 @@ dependencies = [
  "grep-searcher",
  "helix-core",
  "helix-dap",
+ "helix-loader",
  "helix-lsp",
  "helix-tui",
  "helix-view",

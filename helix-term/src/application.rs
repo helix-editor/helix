@@ -59,7 +59,7 @@ impl Application {
     pub fn new(args: Args) -> Result<Self, Error> {
         use helix_view::editor::Action;
 
-        let config_dir = helix_core::config_dir();
+        let config_dir = helix_loader::config_dir();
         if !config_dir.exists() {
             std::fs::create_dir_all(&config_dir).ok();
         }
@@ -79,8 +79,10 @@ impl Application {
             Err(err) => return Err(Error::new(err)),
         };
 
-        let theme_loader =
-            std::sync::Arc::new(theme::Loader::new(&config_dir, &helix_core::runtime_dir()));
+        let theme_loader = std::sync::Arc::new(theme::Loader::new(
+            &config_dir,
+            &helix_loader::runtime_dir(),
+        ));
 
         let true_color = config.editor.true_color || crate::true_color();
         let theme = config
@@ -126,10 +128,13 @@ impl Application {
         compositor.push(editor_view);
 
         if args.load_tutor {
-            let path = helix_core::runtime_dir().join("tutor.txt");
+            let path = helix_loader::runtime_dir().join("tutor.txt");
             editor.open(path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
+        } else if args.edit_config {
+            let path = config_dir.join("config.toml");
+            editor.open(path, Action::VerticalSplit)?;
         } else if !args.files.is_empty() {
             let first = &args.files[0].0; // we know it's not empty
             if first.is_dir() {

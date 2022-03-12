@@ -1,9 +1,10 @@
+use etcetera::home_dir;
 use std::path::{Component, Path, PathBuf};
 
 /// Replaces users home directory from `path` with tilde `~` if the directory
 /// is available, otherwise returns the path unchanged.
 pub fn fold_home_dir(path: &Path) -> PathBuf {
-    if let Ok(home) = super::home_dir() {
+    if let Ok(home) = home_dir() {
         if path.starts_with(&home) {
             // it's ok to unwrap, the path starts with home dir
             return PathBuf::from("~").join(path.strip_prefix(&home).unwrap());
@@ -20,7 +21,7 @@ pub fn expand_tilde(path: &Path) -> PathBuf {
     let mut components = path.components().peekable();
     if let Some(Component::Normal(c)) = components.peek() {
         if c == &"~" {
-            if let Ok(home) = super::home_dir() {
+            if let Ok(home) = home_dir() {
                 // it's ok to unwrap, the path starts with `~`
                 return home.join(path.strip_prefix("~").unwrap());
             }
