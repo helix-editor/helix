@@ -31,7 +31,6 @@ use helix_view::{
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
-    theme,
     view::View,
     Document, DocumentId, Editor, ViewId,
 };
