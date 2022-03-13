@@ -24,7 +24,7 @@ pub struct LspConfig {
 impl Config {
     pub fn load(config_path: PathBuf) -> Result<Config, Error> {
         match std::fs::read_to_string(config_path) {
-            Ok(config) => Result::Ok(toml::from_str(&config)
+            Ok(config) => Ok(toml::from_str(&config)
                 .map(merge_keys)
                 .unwrap_or_else(|err| {
                     eprintln!("Bad config: {}", err);
