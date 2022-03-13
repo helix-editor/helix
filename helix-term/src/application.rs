@@ -271,8 +271,7 @@ impl Application {
                         } else {
                             self.theme_loader.base16_default()
                         }
-                    })
-                    .clone(),
+                    }),
             );
         }
         self.config.store(Arc::new(config));
