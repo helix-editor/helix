@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - master
-  release:
-    types: [published]
+    tags:
+      - '*'
 
 jobs:
   deploy:
@@ -20,18 +20,22 @@ jobs:
           # mdbook-version: '0.4.8'
 
       - run: mdbook build book
+      
+      - name: Set ouput directory
+        run: |
+          OUTDIR=$(basename ${{ github.ref }})
+          echo "OUTDIR=$OUTDIR" >> $GITHUB_ENV
 
-      - name: Deploy master
+      - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./book/book
-          destination_dir: ./master
+          destination_dir: ./${{ env.OUTDIR }}
 
-      - name: Deploy tagged release
+      - name: Deploy stable
         uses: peaceiris/actions-gh-pages@v3
-        if: github.event_name == 'release'
+        if: startswith(github.ref, 'refs/tags/')
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./book/book
