@@ -13,7 +13,6 @@ use futures_util::future;
 use futures_util::stream::select_all::SelectAll;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use log::debug;
 use std::{
     borrow::Cow,
     collections::{BTreeMap, HashMap},
@@ -39,6 +38,8 @@ use helix_core::{Position, Selection};
 use helix_dap as dap;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize};
+
+use arc_swap::{access::{DynAccess}, ArcSwap};
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -271,6 +272,8 @@ pub struct Breakpoint {
     pub log_message: Option<String>,
 }
 
+pub trait DynAccessDebug<T>: DynAccess<T> + std::fmt::Debug {}
+
 #[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
@@ -295,7 +298,7 @@ pub struct Editor {
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
-    pub config: Config,
+    pub config: ArcSwap<Config>,
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
@@ -305,7 +308,12 @@ pub struct Editor {
     pub last_completion: Option<CompleteAction>,
 
     pub exit_code: i32,
+
+    pub config_events: SelectAll<tokio_stream::Once<ConfigEvent>>,
 }
+
+#[derive(Debug)]
+pub struct ConfigEvent;
 
 #[derive(Debug, Clone)]
 pub struct CompleteAction {
@@ -326,12 +334,11 @@ impl Editor {
         mut area: Rect,
         theme_loader: Arc<theme::Loader>,
         syn_loader: Arc<syntax::Loader>,
-        config: Config,
+        config: ArcSwap<Config>,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
-        let auto_pairs = (&config.auto_pairs).into();
-
-        debug!("Editor config: {config:#?}");
+        let conf = config.load();
+        let auto_pairs = (&conf.auto_pairs).into();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
@@ -354,13 +361,14 @@ impl Editor {
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
             autoinfo: None,
-            idle_timer: Box::pin(sleep(config.idle_timeout)),
+            idle_timer: Box::pin(sleep(conf.idle_timeout)),
             last_motion: None,
             last_completion: None,
             pseudo_pending: None,
             config,
             auto_pairs,
             exit_code: 0,
+            config_events: SelectAll::new(),
         }
     }
 
@@ -374,7 +382,7 @@ impl Editor {
     pub fn reset_idle_timer(&mut self) {
         self.idle_timer
             .as_mut()
-            .reset(Instant::now() + self.config.idle_timeout);
+            .reset(Instant::now() + self.config.load().idle_timeout);
     }
 
     pub fn clear_status(&mut self) {
@@ -452,7 +460,7 @@ impl Editor {
     fn _refresh(&mut self) {
         for (view, _) in self.tree.views_mut() {
             let doc = &self.documents[&view.doc];
-            view.ensure_cursor_in_view(doc, self.config.scrolloff)
+            view.ensure_cursor_in_view(doc, self.config.load().scrolloff)
         }
     }
 
@@ -702,7 +710,7 @@ impl Editor {
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let view = self.tree.get_mut(id);
         let doc = &self.documents[&view.doc];
-        view.ensure_cursor_in_view(doc, self.config.scrolloff)
+        view.ensure_cursor_in_view(doc, self.config.load().scrolloff)
     }
 
     #[inline]
@@ -745,7 +753,7 @@ impl Editor {
             let inner = view.inner_area();
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            let cursorkind = self.config.cursor_shape.from_mode(doc.mode());
+            let cursorkind = self.config.load().cursor_shape.from_mode(doc.mode());
             (Some(pos), cursorkind)
         } else {
             (None, CursorKind::default())

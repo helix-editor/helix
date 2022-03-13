@@ -848,7 +848,7 @@ fn goto_window(cx: &mut Context, align: Align) {
     // - 1 so we have at least one gap in the middle.
     // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
     // as we type
-    let scrolloff = cx.editor.config.scrolloff.min(height.saturating_sub(1) / 2);
+    let scrolloff = cx.editor.config.load().scrolloff.min(height.saturating_sub(1) / 2);
 
     let last_line = view.last_line(doc);
 
@@ -1290,7 +1290,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
 
     let height = view.inner_area().height;
 
-    let scrolloff = cx.editor.config.scrolloff.min(height as usize / 2);
+    let scrolloff = cx.editor.config.load().scrolloff.min(height as usize / 2);
 
     view.offset.row = match direction {
         Forward => view.offset.row + offset,
@@ -1583,8 +1583,8 @@ fn rsearch(cx: &mut Context) {
 
 fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
-    let scrolloff = cx.editor.config.scrolloff;
-    let wrap_around = cx.editor.config.search.wrap_around;
+    let scrolloff = cx.editor.config.load().scrolloff;
+    let wrap_around = cx.editor.config.load().search.wrap_around;
 
     let doc = doc!(cx.editor);
 
@@ -1627,13 +1627,13 @@ fn searcher(cx: &mut Context, direction: Direction) {
 }
 
 fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Direction) {
-    let scrolloff = cx.editor.config.scrolloff;
+    let scrolloff = cx.editor.config.load().scrolloff;
     let (view, doc) = current!(cx.editor);
     let registers = &cx.editor.registers;
     if let Some(query) = registers.read('/') {
         let query = query.last().unwrap();
         let contents = doc.text().slice(..).to_string();
-        let search_config = &cx.editor.config.search;
+        let search_config = &cx.editor.config.load().search;
         let case_insensitive = if search_config.smart_case {
             !query.chars().any(char::is_uppercase)
         } else {
@@ -1693,8 +1693,8 @@ fn search_selection(cx: &mut Context) {
 fn global_search(cx: &mut Context) {
     let (all_matches_sx, all_matches_rx) =
         tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
-    let smart_case = cx.editor.config.search.smart_case;
-    let file_picker_config = cx.editor.config.file_picker.clone();
+    let smart_case = cx.editor.config.load().search.smart_case;
+    let file_picker_config = cx.editor.config.load().file_picker.clone();
 
     let completions = search_completions(cx, None);
     let prompt = ui::regex_prompt(
@@ -2023,7 +2023,7 @@ fn append_mode(cx: &mut Context) {
 fn file_picker(cx: &mut Context) {
     // We don't specify language markers, root will be the root of the current git repo
     let root = find_root(None, &[]).unwrap_or_else(|| PathBuf::from("./"));
-    let picker = ui::file_picker(root, &cx.editor.config);
+    let picker = ui::file_picker(root, &cx.editor.config.load());
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
@@ -2573,7 +2573,7 @@ pub mod insert {
         use helix_core::chars::char_is_word;
         let mut iter = text.chars_at(cursor);
         iter.reverse();
-        for _ in 0..cx.editor.config.completion_trigger_len {
+        for _ in 0..cx.editor.config.load().completion_trigger_len {
             match iter.next() {
                 Some(c) if char_is_word(c) => {}
                 _ => return,
@@ -4136,7 +4136,7 @@ fn shell_keep_pipe(cx: &mut Context) {
         Some('|'),
         ui::completers::none,
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            let shell = &cx.editor.config.shell;
+            let shell = &cx.editor.config.load().shell;
             if event != PromptEvent::Validate {
                 return;
             }
@@ -4232,7 +4232,7 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
         Some('|'),
         ui::completers::none,
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            let shell = &cx.editor.config.shell;
+            let shell = &cx.editor.config.load().shell;
             if event != PromptEvent::Validate {
                 return;
             }
@@ -4277,7 +4277,7 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
 
             // after replace cursor may be out of bounds, do this to
             // make sure cursor is in view and update scroll as well
-            view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
+            view.ensure_cursor_in_view(doc, cx.editor.config.load().scrolloff);
         },
     );
 

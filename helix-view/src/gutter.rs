@@ -60,7 +60,7 @@ pub fn line_number<'doc>(
         .text()
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
-    let config = editor.config.line_number;
+    let config = editor.config.load().line_number;
     let mode = doc.mode;
 
     Box::new(move |line: usize, selected: bool, out: &mut String| {

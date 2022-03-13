@@ -2,7 +2,6 @@ use anyhow::{Context, Error, Result};
 use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::Config;
-use helix_term::keymap::merge_keys;
 use std::path::PathBuf;
 
 fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
@@ -118,20 +117,7 @@ FLAGS:
         std::fs::create_dir_all(&conf_dir).ok();
     }
 
-    let config = match std::fs::read_to_string(helix_loader::config_file()) {
-        Ok(config) => toml::from_str(&config)
-            .map(merge_keys)
-            .unwrap_or_else(|err| {
-                eprintln!("Bad config: {}", err);
-                eprintln!("Press <ENTER> to continue with default config");
-                use std::io::Read;
-                // This waits for an enter press.
-                let _ = std::io::stdin().read(&mut []);
-                Config::default()
-            }),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
-        Err(err) => return Err(Error::new(err)),
-    };
+    let config = Config::load(helix_loader::config_file())?;
 
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 

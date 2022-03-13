@@ -1,6 +1,8 @@
+use std::{borrow::BorrowMut, sync::Arc};
+
 use super::*;
 
-use helix_view::editor::Action;
+use helix_view::editor::{Action, ConfigEvent};
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -533,7 +535,7 @@ fn theme(
         .theme_loader
         .load(theme)
         .with_context(|| format!("Failed setting theme {}", theme))?;
-    let true_color = cx.editor.config.true_color || crate::true_color();
+    let true_color = cx.editor.config.load().true_color || crate::true_color();
     if !(true_color || theme.is_16_color()) {
         bail!("Unsupported theme: theme requires true color support");
     }
@@ -857,28 +859,28 @@ fn setting(
     args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    let runtime_config = &mut cx.editor.config;
-
     if args.len() != 2 {
         anyhow::bail!("Bad arguments. Usage: `:set key field`");
     }
-
     let (key, arg) = (&args[0].to_lowercase(), &args[1]);
 
-    match key.as_ref() {
-        "scrolloff" => runtime_config.scrolloff = arg.parse()?,
-        "scroll-lines" => runtime_config.scroll_lines = arg.parse()?,
-        "mouse" => runtime_config.mouse = arg.parse()?,
-        "line-number" => runtime_config.line_number = arg.parse()?,
-        "middle-click_paste" => runtime_config.middle_click_paste = arg.parse()?,
-        "auto-pairs" => runtime_config.auto_pairs = arg.parse()?,
-        "auto-completion" => runtime_config.auto_completion = arg.parse()?,
-        "completion-trigger-len" => runtime_config.completion_trigger_len = arg.parse()?,
-        "auto-info" => runtime_config.auto_info = arg.parse()?,
-        "true-color" => runtime_config.true_color = arg.parse()?,
-        "search.smart-case" => runtime_config.search.smart_case = arg.parse()?,
-        "search.wrap-around" => runtime_config.search.wrap_around = arg.parse()?,
-        _ => anyhow::bail!("Unknown key `{}`.", args[0]),
+    if let Ok(runtime_config) = &mut std::sync::Arc::try_unwrap(cx.editor.config.load().clone()) {
+        match key.as_ref() {
+            "scrolloff" => runtime_config.scrolloff = arg.parse()?,
+            "scroll-lines" => runtime_config.scroll_lines = arg.parse()?,
+            "mouse" => runtime_config.mouse = arg.parse()?,
+            "line-number" => runtime_config.line_number = arg.parse()?,
+            "middle-click_paste" => runtime_config.middle_click_paste = arg.parse()?,
+            "auto-pairs" => runtime_config.auto_pairs = arg.parse()?,
+            "auto-completion" => runtime_config.auto_completion = arg.parse()?,
+            "completion-trigger-len" => runtime_config.completion_trigger_len = arg.parse()?,
+            "auto-info" => runtime_config.auto_info = arg.parse()?,
+            "true-color" => runtime_config.true_color = arg.parse()?,
+            "search.smart-case" => runtime_config.search.smart_case = arg.parse()?,
+            "search.wrap-around" => runtime_config.search.wrap_around = arg.parse()?,
+            _ => anyhow::bail!("Unknown key `{}`.", args[0]),
+        }
+        cx.editor.config.store(Arc::new(runtime_config.clone()));
     }
 
     Ok(())
@@ -967,6 +969,24 @@ fn tree_sitter_subtree(
         }
     }
 
+    Ok(())
+}
+
+fn open_config(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor.open(helix_loader::config_file(), Action::Replace)?;
+    Ok(())
+}
+
+fn refresh_config(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor.config_events.push(tokio_stream::once(ConfigEvent));
     Ok(())
 }
 
@@ -1340,6 +1360,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["ts-subtree"],
             doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
             fun: tree_sitter_subtree,
+            completer: None,
+        },
+        TypableCommand {
+            name: "refresh-config",
+            aliases: &[],
+            doc: "Refreshes helix's config.",
+            fun: refresh_config,
+            completer: None,
+        },
+        TypableCommand {
+            name: "open-config",
+            aliases: &[],
+            doc: "Open the helix config.toml file.",
+            fun: open_config,
             completer: None,
         },
     ];

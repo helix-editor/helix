@@ -1,10 +1,11 @@
+use arc_swap::{access::Map, ArcSwap};
 use helix_core::{
     config::{default_syntax_loader, user_syntax_loader},
     pos_at_coords, syntax, Selection,
 };
 use helix_dap::{self as dap, Payload, Request};
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{editor::Breakpoint, theme, Editor};
+use helix_view::{editor::{Breakpoint, ConfigEvent}, theme, Editor};
 use serde_json::json;
 
 use crate::{
@@ -42,8 +43,7 @@ pub struct Application {
     compositor: Compositor,
     editor: Editor,
 
-    // TODO: share an ArcSwap with Editor?
-    config: Config,
+    config: Arc<ArcSwap<Config>>,
 
     #[allow(dead_code)]
     theme_loader: Arc<theme::Loader>,
@@ -56,7 +56,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(args: Args, mut config: Config) -> Result<Self, Error> {
+    pub fn new(args: Args, config: Config) -> Result<Self, Error> {
         use helix_view::editor::Action;
         let mut compositor = Compositor::new()?;
         let size = compositor.size();
@@ -98,14 +98,16 @@ impl Application {
         });
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
+        let config = Arc::new(ArcSwap::from_pointee(config));
         let mut editor = Editor::new(
             size,
             theme_loader.clone(),
             syn_loader.clone(),
-            config.editor.clone(),
+            ArcSwap::from_pointee(config.load().editor.clone())
+            // config.clone(),
         );
 
-        let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
+        let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.load().keys.clone())));
         compositor.push(editor_view);
 
         if args.load_tutor {
@@ -121,7 +123,7 @@ impl Application {
             if first.is_dir() {
                 std::env::set_current_dir(&first)?;
                 editor.new_file(Action::VerticalSplit);
-                let picker = ui::file_picker(".".into(), &config.editor);
+                let picker = ui::file_picker(".".into(), &config.load().editor);
                 compositor.push(Box::new(overlayed(picker)));
             } else {
                 let nr_of_files = args.files.len();
@@ -228,6 +230,10 @@ impl Application {
                 Some(payload) = self.editor.debugger_events.next() => {
                     self.handle_debugger_message(payload).await;
                 }
+                Some(ConfigEvent) = self.editor.config_events.next() => {
+                    self.refresh_config();
+                    self.render();
+                }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
@@ -243,6 +249,39 @@ impl Application {
                 }
             }
         }
+    }
+
+    pub fn refresh_config(&mut self) {
+        let config = Config::load(helix_loader::config_file()).unwrap();
+        // Just an example to start; Some config properties like "theme" are a bit more involved and require a reload
+        if let Some(theme) = config.theme.clone() {
+            let true_color = self.true_color();
+            self.editor.set_theme(
+                self.theme_loader
+                    .load(&theme)
+                    .map_err(|e| {
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        e
+                    })
+                    .ok()
+                    .filter(|theme| (true_color || theme.is_16_color()))
+                    .unwrap_or_else(|| {
+                        if true_color {
+                            self.theme_loader.default()
+                        } else {
+                            self.theme_loader.base16_default()
+                        }
+                    })
+                    .clone(),
+            );
+        }
+        self.config.store(Arc::new(config));
+        // Is it possible to not do this manually? Presumably I've completely butchered using ArcSwap?
+        self.editor.config.store(Arc::new(self.config.load().editor.clone()));
+    }
+
+    fn true_color(&self) -> bool {
+        self.config.load().editor.true_color || crate::true_color()
     }
 
     #[cfg(windows)]
@@ -700,7 +739,7 @@ impl Application {
                             self.lsp_progress.update(server_id, token, work);
                         }
 
-                        if self.config.lsp.display_messages {
+                        if self.config.load().lsp.display_messages {
                             self.editor.set_status(status);
                         }
                     }
@@ -809,7 +848,7 @@ impl Application {
         terminal::enable_raw_mode()?;
         let mut stdout = stdout();
         execute!(stdout, terminal::EnterAlternateScreen)?;
-        if self.config.editor.mouse {
+        if self.config.load().editor.mouse {
             execute!(stdout, EnableMouseCapture)?;
         }
         Ok(())

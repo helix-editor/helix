@@ -1,6 +1,7 @@
+use crate::keymap::{merge_keys, Keymaps};
+use anyhow::{Error, Result};
 use serde::Deserialize;
-
-use crate::keymap::Keymaps;
+use std::path::PathBuf;
 
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -18,6 +19,25 @@ pub struct Config {
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
     pub display_messages: bool,
+}
+
+impl Config {
+    pub fn load(config_path: PathBuf) -> Result<Config, Error> {
+        match std::fs::read_to_string(config_path) {
+            Ok(config) => Result::Ok(toml::from_str(&config)
+                .map(merge_keys)
+                .unwrap_or_else(|err| {
+                    eprintln!("Bad config: {}", err);
+                    eprintln!("Press <ENTER> to continue with default config");
+                    use std::io::Read;
+                    // This waits for an enter press.
+                    let _ = std::io::stdin().read(&mut []);
+                    Config::default()
+                })),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Result::Ok(Config::default()),
+            Err(err) => return Err(Error::new(err)),
+        }
+    }
 }
 
 #[cfg(test)]
