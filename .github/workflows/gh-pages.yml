@@ -21,7 +21,7 @@ jobs:
 
       - run: mdbook build book
       
-      - name: Set ouput directory
+      - name: Set output directory
         run: |
           OUTDIR=$(basename ${{ github.ref }})
           echo "OUTDIR=$OUTDIR" >> $GITHUB_ENV
