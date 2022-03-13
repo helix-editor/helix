@@ -3038,6 +3038,7 @@ fn yank_main_selection_to_primary_clipboard(cx: &mut Context) {
 enum Paste {
     Before,
     After,
+    Cursor,
 }
 
 fn paste_impl(
@@ -3084,6 +3085,8 @@ fn paste_impl(
             (Paste::Before, false) => range.from(),
             // paste append
             (Paste::After, false) => range.to(),
+            // paste at cursor
+            (Paste::Cursor, _) => range.cursor(text.slice(..)),
         };
         (pos, pos, values.next())
     });
@@ -3829,10 +3832,12 @@ fn select_register(cx: &mut Context) {
 }
 
 fn insert_register(cx: &mut Context) {
+    cx.editor.autoinfo = Some(Info::from_registers(&cx.editor.registers));
     cx.on_next_key(move |cx, event| {
         if let Some(ch) = event.char() {
-            cx.editor.selected_register = Some(ch);
-            paste_before(cx);
+            cx.editor.autoinfo = None;
+            cx.register = Some(ch);
+            paste(cx, Paste::Cursor);
         }
     })
 }
