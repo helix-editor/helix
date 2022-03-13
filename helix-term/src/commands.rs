@@ -432,7 +432,6 @@ impl MappableCommand {
         decrement, "Decrement",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
-        theme_picker, "Set the current theme",
         command_palette, "Open command pallete",
     );
 }
@@ -2096,55 +2095,6 @@ fn buffer_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
-pub fn theme_picker(cx: &mut Context) {
-    let names = [
-        theme::Loader::read_names(&helix_loader::runtime_dir().join("themes")),
-        theme::Loader::read_names(&helix_loader::config_dir().join("themes")),
-        vec!["default".into(), "base16_default".into()],
-    ]
-    .concat();
-
-    cx.callback = Some(Box::new(
-        move |compositor: &mut Compositor, cx: &mut compositor::Context| {
-            let true_color = cx.editor.config.true_color || crate::true_color();
-
-            let original_theme = cx.editor.current_theme.clone();
-            let picker = Picker::new(
-                names,
-                move |_cx, theme_name| Cow::from(theme_name),
-                |_cx, _theme, _action| {},
-                move |cx, theme_name| {
-                    let theme = cx
-                        .editor
-                        .theme_loader
-                        .load(theme_name)
-                        .with_context(|| format!("Failed setting theme {}", theme_name));
-                    if let Ok(theme) = theme {
-                        if true_color || theme.is_16_color() {
-                            cx.editor.set_theme(theme, theme_name.clone());
-                        }
-                    }
-                },
-                move |cx| {
-                    let theme = cx
-                        .editor
-                        .theme_loader
-                        .load(&original_theme)
-                        .with_context(|| {
-                            format!(
-                                "Failed reverting to previously set theme {}",
-                                &original_theme
-                            )
-                        })
-                        .unwrap();
-                    cx.editor.set_theme(theme, original_theme.clone());
-                },
-            );
-            compositor.push(Box::new(picker));
-        },
-    ));
-}
-
 pub fn command_palette(cx: &mut Context) {
     cx.callback = Some(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
@@ -2200,8 +2150,6 @@ pub fn command_palette(cx: &mut Context) {
                     };
                     command.execute(&mut ctx);
                 },
-                |_, _| {},
-                |_| {},
             );
             compositor.push(Box::new(picker));
         },

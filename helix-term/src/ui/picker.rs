@@ -92,7 +92,7 @@ impl<T> FilePicker<T> {
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
         Self {
-            picker: Picker::new(options, format_fn, callback_fn, |_, _| {}, |_| {}),
+            picker: Picker::new(options, format_fn, callback_fn),
             truncate_start: true,
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
@@ -296,8 +296,6 @@ pub struct Picker<T> {
 
     format_fn: Box<FormatFn<T>>,
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
-    highlighted_fn: Box<dyn Fn(&mut Context, &T)>,
-    close_fn: Box<dyn Fn(&mut Context)>,
 }
 
 impl<T> Picker<T> {
@@ -305,8 +303,6 @@ impl<T> Picker<T> {
         options: Vec<T>,
         format_fn: impl for<'a> Fn(&'a mut Context, &'a T) -> Cow<'a, str> + 'static,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
-        highlighted_fn: impl Fn(&mut Context, &T) + 'static,
-        close_fn: impl Fn(&mut Context) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".into(),
@@ -326,8 +322,6 @@ impl<T> Picker<T> {
             truncate_start: true,
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
-            highlighted_fn: Box::new(highlighted_fn),
-            close_fn: Box::new(close_fn),
             completion_height: 0,
         };
 
@@ -511,7 +505,6 @@ impl<T: 'static> Component for Picker<T> {
                 self.to_end();
             }
             key!(Esc) | ctrl!('c') => {
-                (self.close_fn)(cx);
                 return close_fn;
             }
             key!(Enter) => {
@@ -539,9 +532,6 @@ impl<T: 'static> Component for Picker<T> {
                 if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
                     // TODO: recalculate only if pattern changed
                     self.score(cx);
-                    if let Some(option) = self.selection() {
-                        (self.highlighted_fn)(cx, option);
-                    }
                 }
             }
         }

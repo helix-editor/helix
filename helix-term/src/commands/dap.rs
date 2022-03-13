@@ -334,8 +334,6 @@ pub fn dap_launch(cx: &mut Context) {
             });
             cx.jobs.callback(callback);
         },
-        |_, _| {},
-        |_| {},
     ))));
 }
 
