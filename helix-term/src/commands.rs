@@ -1841,17 +1841,20 @@ fn extend_line(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let text = doc.text();
-    let range = doc.selection(view.id).primary();
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let (start_line, end_line) = range.line_range(text.slice(..));
 
-    let (start_line, end_line) = range.line_range(text.slice(..));
-    let start = text.line_to_char(start_line);
-    let mut end = text.line_to_char((end_line + count).min(text.len_lines()));
+        let start = text.line_to_char(start_line);
+        let mut end = text.line_to_char((end_line + count).min(text.len_lines()));
 
-    if range.from() == start && range.to() == end {
-        end = text.line_to_char((end_line + count + 1).min(text.len_lines()));
-    }
+        // go to next line if current line is selected
+        if range.from() == start && range.to() == end {
+            end = text.line_to_char((end_line + count + 1).min(text.len_lines()));
+        }
+        Range::new(start, end)
+    });
 
-    doc.set_selection(view.id, Selection::single(start, end));
+    doc.set_selection(view.id, selection);
 }
 
 fn extend_to_line_bounds(cx: &mut Context) {
