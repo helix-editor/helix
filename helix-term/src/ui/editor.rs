@@ -118,7 +118,12 @@ impl EditorView {
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
-                Self::doc_selection_highlights(doc, view, theme, &editor.config.load().cursor_shape),
+                Self::doc_selection_highlights(
+                    doc,
+                    view,
+                    theme,
+                    &editor.config.load().cursor_shape,
+                ),
             ))
         } else {
             Box::new(highlights)

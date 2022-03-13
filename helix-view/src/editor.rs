@@ -39,7 +39,7 @@ use helix_dap as dap;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize};
 
-use arc_swap::{access::DynAccess};
+use arc_swap::access::DynAccess;
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where

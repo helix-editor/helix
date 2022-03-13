@@ -259,7 +259,7 @@ impl Application {
 
     pub fn handle_config_events(&mut self, config_event: ConfigEvent) {
         match config_event {
-            ConfigEvent::Refresh => { self.refresh_config() }
+            ConfigEvent::Refresh => self.refresh_config(),
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
                 app_config.editor = editor_config;

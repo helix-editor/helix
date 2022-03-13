@@ -848,7 +848,12 @@ fn goto_window(cx: &mut Context, align: Align) {
     // - 1 so we have at least one gap in the middle.
     // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
     // as we type
-    let scrolloff = cx.editor.config.load().scrolloff.min(height.saturating_sub(1) / 2);
+    let scrolloff = cx
+        .editor
+        .config
+        .load()
+        .scrolloff
+        .min(height.saturating_sub(1) / 2);
 
     let last_line = view.last_line(doc);
 
