@@ -1,7 +1,8 @@
 use crate::keymap::{merge_keys, Keymaps};
-use anyhow::{Error, Result};
 use serde::Deserialize;
+use std::io::Error as IOError;
 use std::path::PathBuf;
+use toml::de::Error as TomlError;
 
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -15,6 +16,12 @@ pub struct Config {
     pub editor: helix_view::editor::Config,
 }
 
+#[derive(Debug)]
+pub enum ConfigLoadError {
+    BadConfig(TomlError),
+    Error(IOError),
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
@@ -22,21 +29,17 @@ pub struct LspConfig {
 }
 
 impl Config {
-    pub fn load(config_path: PathBuf) -> Result<Config, Error> {
+    pub fn load(config_path: PathBuf) -> Result<Config, ConfigLoadError> {
         match std::fs::read_to_string(config_path) {
-            Ok(config) => Ok(toml::from_str(&config)
+            Ok(config) => toml::from_str(&config)
                 .map(merge_keys)
-                .unwrap_or_else(|err| {
-                    eprintln!("Bad config: {}", err);
-                    eprintln!("Press <ENTER> to continue with default config");
-                    use std::io::Read;
-                    // This waits for an enter press.
-                    let _ = std::io::stdin().read(&mut []);
-                    Config::default()
-                })),
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Result::Ok(Config::default()),
-            Err(err) => Err(err.into()),
+                .map_err(ConfigLoadError::BadConfig),
+            Err(err) => Err(ConfigLoadError::Error(err)),
         }
+    }
+
+    pub fn load_default() -> Result<Config, ConfigLoadError> {
+        Config::load(helix_loader::config_file())
     }
 }
 

@@ -269,7 +269,7 @@ impl Application {
     }
 
     fn refresh_config(&mut self) {
-        let config = Config::load(helix_loader::config_file()).unwrap();
+        let config = Config::load(helix_loader::config_file()).unwrap_or_default();
         // Just an example to start; Some config properties like "theme" are a bit more involved and require a reload
         if let Some(theme) = config.theme.clone() {
             let true_color = self.true_color();

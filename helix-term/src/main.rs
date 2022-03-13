@@ -1,7 +1,7 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, Error};
 use helix_term::application::Application;
 use helix_term::args::Args;
-use helix_term::config::Config;
+use helix_term::config::{Config, ConfigLoadError};
 use std::path::PathBuf;
 
 fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
@@ -117,7 +117,25 @@ FLAGS:
         std::fs::create_dir_all(&conf_dir).ok();
     }
 
-    let config = Config::load(helix_loader::config_file())?;
+    let config = match Config::load_default() {
+        Ok(config) => config,
+        Err(err) => {
+            match err {
+                ConfigLoadError::BadConfig(err) => {
+                    eprintln!("Bad config: {}", err);
+                    eprintln!("Press <ENTER> to continue with default config");
+                    use std::io::Read;
+                    // This waits for an enter press.
+                    let _ = std::io::stdin().read(&mut []);
+                    Config::default()
+                }
+                ConfigLoadError::Error(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                    Config::default()
+                }
+                ConfigLoadError::Error(err) => return Err(Error::new(err)),
+            }
+        }
+    };
 
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 
