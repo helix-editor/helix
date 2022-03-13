@@ -1,5 +1,6 @@
 use crate::keymap::{merge_keys, Keymaps};
 use serde::Deserialize;
+use std::fmt::Display;
 use std::io::Error as IOError;
 use std::path::PathBuf;
 use toml::de::Error as TomlError;
@@ -20,6 +21,15 @@ pub struct Config {
 pub enum ConfigLoadError {
     BadConfig(TomlError),
     Error(IOError),
+}
+
+impl Display for ConfigLoadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConfigLoadError::BadConfig(err) => err.fmt(f),
+            ConfigLoadError::Error(err) => err.fmt(f),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
