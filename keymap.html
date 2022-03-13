@@ -148,10 +148,10 @@
 <p>NOTE: Unlike vim, <code>f</code>, <code>F</code>, <code>t</code> and <code>T</code> are not confined to the current line.</p>
 </blockquote>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
-<tr><td><code>h</code>/<code>Left</code></td><td>Move left</td><td><code>move_char_left</code></td></tr>
-<tr><td><code>j</code>/<code>Down</code></td><td>Move down</td><td><code>move_line_down</code></td></tr>
-<tr><td><code>k</code>/<code>Up</code></td><td>Move up</td><td><code>move_line_up</code></td></tr>
-<tr><td><code>l</code>/<code>Right</code></td><td>Move right</td><td><code>move_char_right</code></td></tr>
+<tr><td><code>h</code>, <code>Left</code></td><td>Move left</td><td><code>move_char_left</code></td></tr>
+<tr><td><code>j</code>, <code>Down</code></td><td>Move down</td><td><code>move_line_down</code></td></tr>
+<tr><td><code>k</code>, <code>Up</code></td><td>Move up</td><td><code>move_line_up</code></td></tr>
+<tr><td><code>l</code>, <code>Right</code></td><td>Move right</td><td><code>move_char_right</code></td></tr>
 <tr><td><code>w</code></td><td>Move next word start</td><td><code>move_next_word_start</code></td></tr>
 <tr><td><code>b</code></td><td>Move previous word start</td><td><code>move_prev_word_start</code></td></tr>
 <tr><td><code>e</code></td><td>Move next word end</td><td><code>move_next_word_end</code></td></tr>
@@ -164,24 +164,15 @@
 <tr><td><code>F</code></td><td>Find previous char</td><td><code>find_prev_char</code></td></tr>
 <tr><td><code>G</code></td><td>Go to line number <code>&lt;n&gt;</code></td><td><code>goto_line</code></td></tr>
 <tr><td><code>Alt-.</code></td><td>Repeat last motion (<code>f</code>, <code>t</code> or <code>m</code>)</td><td><code>repeat_last_motion</code></td></tr>
-<tr><td><code>Alt-:</code></td><td>Ensures the selection is in forward direction</td><td><code>ensure_selections_forward</code></td></tr>
 <tr><td><code>Home</code></td><td>Move to the start of the line</td><td><code>goto_line_start</code></td></tr>
 <tr><td><code>End</code></td><td>Move to the end of the line</td><td><code>goto_line_end</code></td></tr>
-<tr><td><code>PageUp</code></td><td>Move page up</td><td><code>page_up</code></td></tr>
-<tr><td><code>PageDown</code></td><td>Move page down</td><td><code>page_down</code></td></tr>
+<tr><td><code>Ctrl-b</code>, <code>PageUp</code></td><td>Move page up</td><td><code>page_up</code></td></tr>
+<tr><td><code>Ctrl-f</code>, <code>PageDown</code></td><td>Move page down</td><td><code>page_down</code></td></tr>
 <tr><td><code>Ctrl-u</code></td><td>Move half page up</td><td><code>half_page_up</code></td></tr>
 <tr><td><code>Ctrl-d</code></td><td>Move half page down</td><td><code>half_page_down</code></td></tr>
 <tr><td><code>Ctrl-i</code></td><td>Jump forward on the jumplist</td><td><code>jump_forward</code></td></tr>
 <tr><td><code>Ctrl-o</code></td><td>Jump backward on the jumplist</td><td><code>jump_backward</code></td></tr>
 <tr><td><code>Ctrl-s</code></td><td>Save the current selection to the jumplist</td><td><code>save_selection</code></td></tr>
-<tr><td><code>v</code></td><td>Enter <a href="#select--extend-mode">select (extend) mode</a></td><td><code>select_mode</code></td></tr>
-<tr><td><code>g</code></td><td>Enter <a href="#goto-mode">goto mode</a></td><td>N/A</td></tr>
-<tr><td><code>m</code></td><td>Enter <a href="#match-mode">match mode</a></td><td>N/A</td></tr>
-<tr><td><code>:</code></td><td>Enter command mode</td><td><code>command_mode</code></td></tr>
-<tr><td><code>z</code></td><td>Enter <a href="#view-mode">view mode</a></td><td>N/A</td></tr>
-<tr><td><code>Z</code></td><td>Enter sticky <a href="#view-mode">view mode</a></td><td>N/A</td></tr>
-<tr><td><code>Ctrl-w</code></td><td>Enter <a href="#window-mode">window mode</a></td><td>N/A</td></tr>
-<tr><td><code>Space</code></td><td>Enter <a href="#space-mode">space mode</a></td><td>N/A</td></tr>
 </tbody></table>
 <h3 id="changes"><a class="header" href="#changes">Changes</a></h3>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
@@ -219,8 +210,8 @@
 </tbody></table>
 <h4 id="shell"><a class="header" href="#shell">Shell</a></h4>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
-<tr><td><code>|</code></td><td>Pipe each selection through shell command, replacing with output</td><td><code>shell_pipe</code></td></tr>
-<tr><td><code>Alt-|</code></td><td>Pipe each selection into shell command, ignoring output</td><td><code>shell_pipe_to</code></td></tr>
+<tr><td>`</td><td>`</td><td>Pipe each selection through shell command, replacing with output</td></tr>
+<tr><td>`Alt-</td><td>`</td><td>Pipe each selection into shell command, ignoring output</td></tr>
 <tr><td><code>!</code></td><td>Run shell command, inserting output before each selection</td><td><code>shell_insert_output</code></td></tr>
 <tr><td><code>Alt-!</code></td><td>Run shell command, appending output after each selection</td><td><code>shell_append_output</code></td></tr>
 <tr><td><code>$</code></td><td>Pipe each selection into shell command, keep selections where command returned 0</td><td><code>shell_keep_pipe</code></td></tr>
@@ -234,6 +225,7 @@
 <tr><td><code>_</code></td><td>Trim whitespace from the selection</td><td><code>trim_selections</code></td></tr>
 <tr><td><code>;</code></td><td>Collapse selection onto a single cursor</td><td><code>collapse_selection</code></td></tr>
 <tr><td><code>Alt-;</code></td><td>Flip selection cursor and anchor</td><td><code>flip_selections</code></td></tr>
+<tr><td><code>Alt-:</code></td><td>Ensures the selection is in forward direction</td><td><code>ensure_selections_forward</code></td></tr>
 <tr><td><code>,</code></td><td>Keep only the primary selection</td><td><code>keep_primary_selection</code></td></tr>
 <tr><td><code>Alt-,</code></td><td>Remove the primary selection</td><td><code>remove_primary_selection</code></td></tr>
 <tr><td><code>C</code></td><td>Copy selection onto the next line (Add cursor below)</td><td><code>copy_selection_on_next_line</code></td></tr>
@@ -249,12 +241,13 @@
 <tr><td><code>K</code></td><td>Keep selections matching the regex</td><td><code>keep_selections</code></td></tr>
 <tr><td><code>Alt-K</code></td><td>Remove selections matching the regex</td><td><code>remove_selections</code></td></tr>
 <tr><td><code>Ctrl-c</code></td><td>Comment/uncomment the selections</td><td><code>toggle_comments</code></td></tr>
-<tr><td><code>Alt-k</code>/<code>Alt-up</code></td><td>Expand selection to parent syntax node (<strong>TS</strong>)</td><td><code>expand_selection</code></td></tr>
-<tr><td><code>Alt-j</code>/<code>Alt-down</code></td><td>Shrink syntax tree object selection (<strong>TS</strong>)</td><td><code>shrink_selection</code></td></tr>
-<tr><td><code>Alt-h</code>/<code>Alt-left</code></td><td>Select previous sibling node in syntax tree (<strong>TS</strong>)</td><td><code>select_prev_sibling</code></td></tr>
-<tr><td><code>Alt-l</code>/<code>Alt-right</code></td><td>Select next sibling node in syntax tree (<strong>TS</strong>)</td><td><code>select_next_sibling</code></td></tr>
+<tr><td><code>Alt-k</code>, <code>Alt-up</code></td><td>Expand selection to parent syntax node (<strong>TS</strong>)</td><td><code>expand_selection</code></td></tr>
+<tr><td><code>Alt-j</code>, <code>Alt-down</code></td><td>Shrink syntax tree object selection (<strong>TS</strong>)</td><td><code>shrink_selection</code></td></tr>
+<tr><td><code>Alt-h</code>, <code>Alt-left</code></td><td>Select previous sibling node in syntax tree (<strong>TS</strong>)</td><td><code>select_prev_sibling</code></td></tr>
+<tr><td><code>Alt-l</code>, <code>Alt-right</code></td><td>Select next sibling node in syntax tree (<strong>TS</strong>)</td><td><code>select_next_sibling</code></td></tr>
 </tbody></table>
 <h3 id="search"><a class="header" href="#search">Search</a></h3>
+<p>Search commands all operate on the <code>/</code> register by default. Use <code>&quot;&lt;char&gt;</code> to operate on a different one.</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>/</code></td><td>Search for regex pattern</td><td><code>search</code></td></tr>
 <tr><td><code>?</code></td><td>Search for previous pattern</td><td><code>rsearch</code></td></tr>
@@ -264,20 +257,30 @@
 </tbody></table>
 <h3 id="minor-modes"><a class="header" href="#minor-modes">Minor modes</a></h3>
 <p>These sub-modes are accessible from normal mode and typically switch back to normal mode after a command.</p>
+<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>v</code></td><td>Enter <a href="#select--extend-mode">select (extend) mode</a></td><td><code>select_mode</code></td></tr>
+<tr><td><code>g</code></td><td>Enter <a href="#goto-mode">goto mode</a></td><td>N/A</td></tr>
+<tr><td><code>m</code></td><td>Enter <a href="#match-mode">match mode</a></td><td>N/A</td></tr>
+<tr><td><code>:</code></td><td>Enter command mode</td><td><code>command_mode</code></td></tr>
+<tr><td><code>z</code></td><td>Enter <a href="#view-mode">view mode</a></td><td>N/A</td></tr>
+<tr><td><code>Z</code></td><td>Enter sticky <a href="#view-mode">view mode</a></td><td>N/A</td></tr>
+<tr><td><code>Ctrl-w</code></td><td>Enter <a href="#window-mode">window mode</a></td><td>N/A</td></tr>
+<tr><td><code>Space</code></td><td>Enter <a href="#space-mode">space mode</a></td><td>N/A</td></tr>
+</tbody></table>
 <h4 id="view-mode"><a class="header" href="#view-mode">View mode</a></h4>
 <p>View mode is intended for scrolling and manipulating the view without changing
 the selection. The &quot;sticky&quot; variant of this mode is persistent; use the Escape
 key to return to normal mode after usage (useful when you're simply looking
 over text and not actively editing it).</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
-<tr><td><code>z</code> , <code>c</code></td><td>Vertically center the line</td><td><code>align_view_center</code></td></tr>
+<tr><td><code>z</code>, <code>c</code></td><td>Vertically center the line</td><td><code>align_view_center</code></td></tr>
 <tr><td><code>t</code></td><td>Align the line to the top of the screen</td><td><code>align_view_top</code></td></tr>
 <tr><td><code>b</code></td><td>Align the line to the bottom of the screen</td><td><code>align_view_bottom</code></td></tr>
 <tr><td><code>m</code></td><td>Align the line to the middle of the screen (horizontally)</td><td><code>align_view_middle</code></td></tr>
-<tr><td><code>j</code> , <code>down</code></td><td>Scroll the view downwards</td><td><code>scroll_down</code></td></tr>
-<tr><td><code>k</code> , <code>up</code></td><td>Scroll the view upwards</td><td><code>scroll_up</code></td></tr>
-<tr><td><code>Ctrl-f</code></td><td>Move page down</td><td><code>page_down</code></td></tr>
-<tr><td><code>Ctrl-b</code></td><td>Move page up</td><td><code>page_up</code></td></tr>
+<tr><td><code>j</code>, <code>down</code></td><td>Scroll the view downwards</td><td><code>scroll_down</code></td></tr>
+<tr><td><code>k</code>, <code>up</code></td><td>Scroll the view upwards</td><td><code>scroll_up</code></td></tr>
+<tr><td><code>Ctrl-f</code>, <code>PageDown</code></td><td>Move page down</td><td><code>page_down</code></td></tr>
+<tr><td><code>Ctrl-b</code>, <code>PageUp</code></td><td>Move page up</td><td><code>page_up</code></td></tr>
 <tr><td><code>Ctrl-d</code></td><td>Move half page down</td><td><code>half_page_down</code></td></tr>
 <tr><td><code>Ctrl-u</code></td><td>Move half page up</td><td><code>half_page_up</code></td></tr>
 </tbody></table>
@@ -322,12 +325,12 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>w</code>, <code>Ctrl-w</code></td><td>Switch to next window</td><td><code>rotate_view</code></td></tr>
 <tr><td><code>v</code>, <code>Ctrl-v</code></td><td>Vertical right split</td><td><code>vsplit</code></td></tr>
 <tr><td><code>s</code>, <code>Ctrl-s</code></td><td>Horizontal bottom split</td><td><code>hsplit</code></td></tr>
-<tr><td><code>h</code>, <code>Ctrl-h</code>, <code>left</code></td><td>Move to left split</td><td><code>jump_view_left</code></td></tr>
 <tr><td><code>f</code></td><td>Go to files in the selection in horizontal splits</td><td><code>goto_file</code></td></tr>
 <tr><td><code>F</code></td><td>Go to files in the selection in vertical splits</td><td><code>goto_file</code></td></tr>
-<tr><td><code>j</code>, <code>Ctrl-j</code>, <code>down</code></td><td>Move to split below</td><td><code>jump_view_down</code></td></tr>
-<tr><td><code>k</code>, <code>Ctrl-k</code>, <code>up</code></td><td>Move to split above</td><td><code>jump_view_up</code></td></tr>
-<tr><td><code>l</code>, <code>Ctrl-l</code>, <code>right</code></td><td>Move to right split</td><td><code>jump_view_right</code></td></tr>
+<tr><td><code>h</code>, <code>Ctrl-h</code>, <code>Left</code></td><td>Move to left split</td><td><code>jump_view_left</code></td></tr>
+<tr><td><code>j</code>, <code>Ctrl-j</code>, <code>Down</code></td><td>Move to split below</td><td><code>jump_view_down</code></td></tr>
+<tr><td><code>k</code>, <code>Ctrl-k</code>, <code>Up</code></td><td>Move to split above</td><td><code>jump_view_up</code></td></tr>
+<tr><td><code>l</code>, <code>Ctrl-l</code>, <code>Right</code></td><td>Move to right split</td><td><code>jump_view_right</code></td></tr>
 <tr><td><code>q</code>, <code>Ctrl-q</code></td><td>Close current window</td><td><code>wclose</code></td></tr>
 <tr><td><code>o</code>, <code>Ctrl-o</code></td><td>Only keep the current window, closing all the others</td><td><code>wonly</code></td></tr>
 </tbody></table>
@@ -349,6 +352,7 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>Y</code></td><td>Yank main selection to clipboard</td><td><code>yank_main_selection_to_clipboard</code></td></tr>
 <tr><td><code>R</code></td><td>Replace selections by clipboard contents</td><td><code>replace_selections_with_clipboard</code></td></tr>
 <tr><td><code>/</code></td><td>Global search in workspace folder</td><td><code>global_search</code></td></tr>
+<tr><td><code>?</code></td><td>Open command palette</td><td><code>command_palette</code></td></tr>
 </tbody></table>
 <blockquote>
 <p>TIP: Global search displays results in a fuzzy picker, use <code>space + '</code> to bring it back up after opening a file.</p>
@@ -378,32 +382,44 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>]space</code></td><td>Add newline below</td><td><code>add_newline_below</code></td></tr>
 </tbody></table>
 <h2 id="insert-mode"><a class="header" href="#insert-mode">Insert Mode</a></h2>
+<p>We support many readline/emacs style bindings in insert mode for
+convenience. These can be helpful for making simple modifications
+without escaping to normal mode, but beware that you will not have an
+undo-able &quot;save point&quot; until you return to normal mode.</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>Escape</code></td><td>Switch to normal mode</td><td><code>normal_mode</code></td></tr>
 <tr><td><code>Ctrl-x</code></td><td>Autocomplete</td><td><code>completion</code></td></tr>
 <tr><td><code>Ctrl-r</code></td><td>Insert a register content</td><td><code>insert_register</code></td></tr>
-<tr><td><code>Ctrl-w</code></td><td>Delete previous word</td><td><code>delete_word_backward</code></td></tr>
+<tr><td><code>Ctrl-w</code>, <code>Alt-Backspace</code></td><td>Delete previous word</td><td><code>delete_word_backward</code></td></tr>
 <tr><td><code>Alt-d</code></td><td>Delete next word</td><td><code>delete_word_forward</code></td></tr>
 <tr><td><code>Alt-b</code>, <code>Alt-Left</code></td><td>Backward a word</td><td><code>move_prev_word_end</code></td></tr>
 <tr><td><code>Ctrl-b</code>, <code>Left</code></td><td>Backward a char</td><td><code>move_char_left</code></td></tr>
 <tr><td><code>Alt-f</code>, <code>Alt-Right</code></td><td>Forward a word</td><td><code>move_next_word_start</code></td></tr>
 <tr><td><code>Ctrl-f</code>, <code>Right</code></td><td>Forward a char</td><td><code>move_char_right</code></td></tr>
-<tr><td><code>Ctrl-e</code>, <code>End</code></td><td>move to line end</td><td><code>goto_line_end_newline</code></td></tr>
-<tr><td><code>Ctrl-a</code>, <code>Home</code></td><td>move to line start</td><td><code>goto_line_start</code></td></tr>
-<tr><td><code>Ctrl-u</code></td><td>delete to start of line</td><td><code>kill_to_line_start</code></td></tr>
-<tr><td><code>Ctrl-k</code></td><td>delete to end of line</td><td><code>kill_to_line_end</code></td></tr>
-<tr><td><code>backspace</code>, <code>Ctrl-h</code></td><td>delete previous char</td><td><code>delete_char_backward</code></td></tr>
-<tr><td><code>delete</code>, <code>Ctrl-d</code></td><td>delete previous char</td><td><code>delete_char_forward</code></td></tr>
-<tr><td><code>Ctrl-p</code>, <code>Up</code></td><td>move to previous line</td><td><code>move_line_up</code></td></tr>
-<tr><td><code>Ctrl-n</code>, <code>Down</code></td><td>move to next line</td><td><code>move_line_down</code></td></tr>
+<tr><td><code>Ctrl-e</code>, <code>End</code></td><td>Move to line end</td><td><code>goto_line_end_newline</code></td></tr>
+<tr><td><code>Ctrl-a</code>, <code>Home</code></td><td>Move to line start</td><td><code>goto_line_start</code></td></tr>
+<tr><td><code>Ctrl-u</code></td><td>Delete to start of line</td><td><code>kill_to_line_start</code></td></tr>
+<tr><td><code>Ctrl-k</code></td><td>Delete to end of line</td><td><code>kill_to_line_end</code></td></tr>
+<tr><td><code>Ctrl-j</code>, <code>Enter</code></td><td>Insert new line</td><td><code>insert_newline</code></td></tr>
+<tr><td><code>Backspace</code>, <code>Ctrl-h</code></td><td>Delete previous char</td><td><code>delete_char_backward</code></td></tr>
+<tr><td><code>Delete</code>, <code>Ctrl-d</code></td><td>Delete previous char</td><td><code>delete_char_forward</code></td></tr>
+<tr><td><code>Ctrl-p</code>, <code>Up</code></td><td>Move to previous line</td><td><code>move_line_up</code></td></tr>
+<tr><td><code>Ctrl-n</code>, <code>Down</code></td><td>Move to next line</td><td><code>move_line_down</code></td></tr>
+<tr><td><code>PageUp</code></td><td>Move one page up</td><td><code>page_up</code></td></tr>
+<tr><td><code>PageDown</code></td><td>Move one page down</td><td><code>page_down</code></td></tr>
+<tr><td><code>Alt-&gt;</code></td><td>Go to end of buffer</td><td><code>goto_file_end</code></td></tr>
+<tr><td><code>Alt-&lt;</code></td><td>Go to start of buffer</td><td><code>goto_file_start</code></td></tr>
 </tbody></table>
 <h2 id="select--extend-mode"><a class="header" href="#select--extend-mode">Select / extend mode</a></h2>
-<p>I'm still pondering whether to keep this mode or not. It changes movement
-commands (including goto) to extend the existing selection instead of replacing it.</p>
-<blockquote>
-<p>NOTE: It's a bit confusing at the moment because extend hasn't been
-implemented for all movement commands yet.</p>
-</blockquote>
+<p>This mode echoes Normal mode, but changes any movements to extend
+selections rather than replace them. Goto motions are also changed to
+extend, so that <code>vgl</code> for example extends the selection to the end of
+the line.</p>
+<p>Search is also affected. By default, <code>n</code> and <code>N</code> will remove the current
+selection and select the next instance of the search term. Toggling this
+mode before pressing <code>n</code> or <code>N</code> makes it possible to keep the current
+selection. Toggling it on and off during your iterative searching allows
+you to selectively add search terms to your selections.</p>
 <h1 id="picker"><a class="header" href="#picker">Picker</a></h1>
 <p>Keys to use within picker. Remapping currently not supported.</p>
 <table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
