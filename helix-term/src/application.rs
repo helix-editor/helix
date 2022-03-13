@@ -22,7 +22,6 @@ use crate::{
 
 use log::{error, warn};
 use std::{
-    fmt::Debug,
     io::{stdin, stdout, Write},
     sync::Arc,
     time::{Duration, Instant},

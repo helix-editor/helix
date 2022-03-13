@@ -309,7 +309,7 @@ pub struct Editor {
     pub config_events: SelectAll<tokio_stream::Once<ConfigEvent>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ConfigEvent {
     Refresh,
     Update(Config),
