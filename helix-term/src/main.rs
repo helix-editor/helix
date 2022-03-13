@@ -1,4 +1,4 @@
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Result};
 use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::Config;

@@ -39,7 +39,7 @@ use helix_dap as dap;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize};
 
-use arc_swap::{access::{DynAccess}, ArcSwap};
+use arc_swap::{access::{DynAccess, DynGuard}};
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -272,9 +272,6 @@ pub struct Breakpoint {
     pub log_message: Option<String>,
 }
 
-pub trait DynAccessDebug<T>: DynAccess<T> + std::fmt::Debug {}
-
-#[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
     pub next_document_id: DocumentId,
@@ -298,7 +295,7 @@ pub struct Editor {
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
-    pub config: ArcSwap<Config>,
+    pub config: Box<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
@@ -313,7 +310,10 @@ pub struct Editor {
 }
 
 #[derive(Debug)]
-pub struct ConfigEvent;
+pub enum ConfigEvent {
+    Refresh,
+    Update(Config),
+}
 
 #[derive(Debug, Clone)]
 pub struct CompleteAction {
@@ -334,7 +334,7 @@ impl Editor {
         mut area: Rect,
         theme_loader: Arc<theme::Loader>,
         syn_loader: Arc<syntax::Loader>,
-        config: ArcSwap<Config>,
+        config: Box<dyn DynAccess<Config>>,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
         let conf = config.load();

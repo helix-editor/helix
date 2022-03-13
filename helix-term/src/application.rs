@@ -5,7 +5,10 @@ use helix_core::{
 };
 use helix_dap::{self as dap, Payload, Request};
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{editor::{Breakpoint, ConfigEvent}, theme, Editor};
+use helix_view::{
+    editor::{Breakpoint, ConfigEvent},
+    theme, Editor,
+};
 use serde_json::json;
 
 use crate::{
@@ -103,11 +106,14 @@ impl Application {
             size,
             theme_loader.clone(),
             syn_loader.clone(),
-            ArcSwap::from_pointee(config.load().editor.clone())
-            // config.clone(),
+            Box::new(Map::new(Arc::clone(&config), |config: &Config| {
+                &config.editor
+            })),
         );
 
-        let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.load().keys.clone())));
+        let editor_view = Box::new(ui::EditorView::new(std::mem::take(
+            &mut config.load().keys.clone(),
+        )));
         compositor.push(editor_view);
 
         if args.load_tutor {
@@ -230,8 +236,8 @@ impl Application {
                 Some(payload) = self.editor.debugger_events.next() => {
                     self.handle_debugger_message(payload).await;
                 }
-                Some(ConfigEvent) = self.editor.config_events.next() => {
-                    self.refresh_config();
+                Some(config_event) = self.editor.config_events.next() => {
+                    self.handle_config_events(config_event);
                     self.render();
                 }
                 Some(callback) = self.jobs.futures.next() => {
@@ -251,7 +257,18 @@ impl Application {
         }
     }
 
-    pub fn refresh_config(&mut self) {
+    pub fn handle_config_events(&mut self, config_event: ConfigEvent) {
+        match config_event {
+            ConfigEvent::Refresh => { self.refresh_config() }
+            ConfigEvent::Update(editor_config) => {
+                let mut app_config = (*self.config.load().clone()).clone();
+                app_config.editor = editor_config;
+                self.config.swap(Arc::new(app_config));
+            }
+        }
+    }
+
+    fn refresh_config(&mut self) {
         let config = Config::load(helix_loader::config_file()).unwrap();
         // Just an example to start; Some config properties like "theme" are a bit more involved and require a reload
         if let Some(theme) = config.theme.clone() {
@@ -275,8 +292,6 @@ impl Application {
             );
         }
         self.config.store(Arc::new(config));
-        // Is it possible to not do this manually? Presumably I've completely butchered using ArcSwap?
-        self.editor.config.store(Arc::new(self.config.load().editor.clone()));
     }
 
     fn true_color(&self) -> bool {

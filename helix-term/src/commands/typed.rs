@@ -1,5 +1,3 @@
-use std::{borrow::BorrowMut, sync::Arc};
-
 use super::*;
 
 use helix_view::editor::{Action, ConfigEvent};
@@ -864,25 +862,26 @@ fn setting(
     }
     let (key, arg) = (&args[0].to_lowercase(), &args[1]);
 
-    if let Ok(runtime_config) = &mut std::sync::Arc::try_unwrap(cx.editor.config.load().clone()) {
-        match key.as_ref() {
-            "scrolloff" => runtime_config.scrolloff = arg.parse()?,
-            "scroll-lines" => runtime_config.scroll_lines = arg.parse()?,
-            "mouse" => runtime_config.mouse = arg.parse()?,
-            "line-number" => runtime_config.line_number = arg.parse()?,
-            "middle-click_paste" => runtime_config.middle_click_paste = arg.parse()?,
-            "auto-pairs" => runtime_config.auto_pairs = arg.parse()?,
-            "auto-completion" => runtime_config.auto_completion = arg.parse()?,
-            "completion-trigger-len" => runtime_config.completion_trigger_len = arg.parse()?,
-            "auto-info" => runtime_config.auto_info = arg.parse()?,
-            "true-color" => runtime_config.true_color = arg.parse()?,
-            "search.smart-case" => runtime_config.search.smart_case = arg.parse()?,
-            "search.wrap-around" => runtime_config.search.wrap_around = arg.parse()?,
-            _ => anyhow::bail!("Unknown key `{}`.", args[0]),
-        }
-        cx.editor.config.store(Arc::new(runtime_config.clone()));
+    let mut runtime_config = cx.editor.config.load().clone();
+    match key.as_ref() {
+        "scrolloff" => runtime_config.scrolloff = arg.parse()?,
+        "scroll-lines" => runtime_config.scroll_lines = arg.parse()?,
+        "mouse" => runtime_config.mouse = arg.parse()?,
+        "line-number" => runtime_config.line_number = arg.parse()?,
+        "middle-click_paste" => runtime_config.middle_click_paste = arg.parse()?,
+        "auto-pairs" => runtime_config.auto_pairs = arg.parse()?,
+        "auto-completion" => runtime_config.auto_completion = arg.parse()?,
+        "completion-trigger-len" => runtime_config.completion_trigger_len = arg.parse()?,
+        "auto-info" => runtime_config.auto_info = arg.parse()?,
+        "true-color" => runtime_config.true_color = arg.parse()?,
+        "search.smart-case" => runtime_config.search.smart_case = arg.parse()?,
+        "search.wrap-around" => runtime_config.search.wrap_around = arg.parse()?,
+        _ => anyhow::bail!("Unknown key `{}`.", args[0]),
     }
 
+    cx.editor
+        .config_events
+        .push(tokio_stream::once(ConfigEvent::Update(runtime_config)));
     Ok(())
 }
 
@@ -977,7 +976,8 @@ fn open_config(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    cx.editor.open(helix_loader::config_file(), Action::Replace)?;
+    cx.editor
+        .open(helix_loader::config_file(), Action::Replace)?;
     Ok(())
 }
 
@@ -986,7 +986,9 @@ fn refresh_config(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    cx.editor.config_events.push(tokio_stream::once(ConfigEvent));
+    cx.editor
+        .config_events
+        .push(tokio_stream::once(ConfigEvent::Refresh));
     Ok(())
 }
 

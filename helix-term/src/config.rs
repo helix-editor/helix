@@ -35,7 +35,7 @@ impl Config {
                     Config::default()
                 })),
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => Result::Ok(Config::default()),
-            Err(err) => return Err(Error::new(err)),
+            Err(err) => Err(err.into()),
         }
     }
 }
