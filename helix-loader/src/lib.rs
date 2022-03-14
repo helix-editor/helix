@@ -88,13 +88,11 @@ pub fn find_root_impl(root: Option<&str>, root_markers: &[String]) -> Vec<std::p
             // Use workspace if detected from marker
             directories.push(ancestor.to_path_buf());
             break;
-        }
-
-        for marker in root_markers {
-            if ancestor.join(marker).exists() {
-                directories.push(ancestor.to_path_buf());
-                break;
-            }
+        } else if root_markers
+            .iter()
+            .any(|marker| ancestor.join(marker).exists())
+        {
+            directories.push(ancestor.to_path_buf());
         }
     }
     directories
