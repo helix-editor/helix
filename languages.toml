@@ -467,7 +467,7 @@ language-server = { command = "julia", args = [
     "--startup-file=no",
     "--history-file=no",
     "--quiet",
-    "-e", 
+    "-e",
     "using LanguageServer; runserver()",
     ] }
 indent = { tab-width = 4, unit = "    " }
