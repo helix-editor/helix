@@ -380,7 +380,9 @@ impl MappableCommand {
         jump_view_down, "Jump to the split below",
         rotate_view, "Goto next window",
         hsplit, "Horizontal bottom split",
+        hsplit_new, "Horizontal bottom split scratch buffer",
         vsplit, "Vertical right split",
+        vsplit_new, "Vertical right split scratch buffer",
         wclose, "Close window",
         wonly, "Current window only",
         select_register, "Select register",
@@ -3794,8 +3796,16 @@ fn hsplit(cx: &mut Context) {
     split(cx, Action::HorizontalSplit);
 }
 
+fn hsplit_new(cx: &mut Context) {
+    cx.editor.new_file(Action::HorizontalSplit);
+}
+
 fn vsplit(cx: &mut Context) {
     split(cx, Action::VerticalSplit);
+}
+
+fn vsplit_new(cx: &mut Context) {
+    cx.editor.new_file(Action::VerticalSplit);
 }
 
 fn wclose(cx: &mut Context) {
