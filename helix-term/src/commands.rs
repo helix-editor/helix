@@ -3702,7 +3702,7 @@ fn match_brackets(cx: &mut Context) {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id).clone().transform(|range| {
             if let Some(pos) =
-                match_brackets::find_matching_bracket_fuzzy(syntax, doc.text(), range.anchor)
+                match_brackets::find_matching_bracket_fuzzy(syntax, doc.text(), range.cursor(text))
             {
                 range.put_cursor(text, pos, doc.mode == Mode::Select)
             } else {
