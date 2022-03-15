@@ -159,7 +159,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     FilePicker::new(
         files,
-        move |_, path: &PathBuf| {
+        move |path: &PathBuf| {
             // format_fn
             path.strip_prefix(&root).unwrap_or(path).to_string_lossy()
         },

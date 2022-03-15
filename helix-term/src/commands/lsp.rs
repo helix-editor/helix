@@ -73,7 +73,7 @@ fn sym_picker(
     let current_path2 = current_path.clone();
     let mut picker = FilePicker::new(
         symbols,
-        move |_, symbol| {
+        move |symbol| {
             if current_path.as_ref() == Some(&symbol.location.uri) {
                 symbol.name.as_str().into()
             } else {
@@ -455,7 +455,7 @@ fn goto_impl(
         _locations => {
             let picker = FilePicker::new(
                 locations,
-                move |_, location| {
+                move |location| {
                     let file: Cow<'_, str> = (location.uri.scheme() == "file")
                         .then(|| {
                             location

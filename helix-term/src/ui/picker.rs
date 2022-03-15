@@ -87,7 +87,7 @@ impl Preview<'_, '_> {
 impl<T> FilePicker<T> {
     pub fn new(
         options: Vec<T>,
-        format_fn: impl for<'a> Fn(&'a mut Context, &'a T) -> Cow<'a, str> + 'static,
+        format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
@@ -273,8 +273,6 @@ impl<T: 'static> Component for FilePicker<T> {
     }
 }
 
-type FormatFn<T> = dyn for<'a> Fn(&'a mut Context, &'a T) -> Cow<'a, str>;
-
 pub struct Picker<T> {
     options: Vec<T>,
     // filter: String,
@@ -294,14 +292,14 @@ pub struct Picker<T> {
     /// Whether to truncate the start (default true)
     pub truncate_start: bool,
 
-    format_fn: Box<FormatFn<T>>,
+    format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
 }
 
 impl<T> Picker<T> {
     pub fn new(
         options: Vec<T>,
-        format_fn: impl for<'a> Fn(&'a mut Context, &'a T) -> Cow<'a, str> + 'static,
+        format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
@@ -338,7 +336,7 @@ impl<T> Picker<T> {
         picker
     }
 
-    pub fn score(&mut self, cx: &mut Context) {
+    pub fn score(&mut self) {
         let now = Instant::now();
 
         let pattern = &self.prompt.line;
@@ -366,7 +364,7 @@ impl<T> Picker<T> {
             self.matches.retain_mut(|(index, score)| {
                 let option = &self.options[*index];
                 // TODO: maybe using format_fn isn't the best idea here
-                let text = (self.format_fn)(cx, option);
+                let text = (self.format_fn)(option);
 
                 match self.matcher.fuzzy_match(&text, pattern) {
                     Some(s) => {
@@ -395,7 +393,7 @@ impl<T> Picker<T> {
                         }
 
                         // TODO: maybe using format_fn isn't the best idea here
-                        let text = (self.format_fn)(cx, option);
+                        let text = (self.format_fn)(option);
 
                         self.matcher
                             .fuzzy_match(&text, pattern)
@@ -531,7 +529,7 @@ impl<T: 'static> Component for Picker<T> {
             _ => {
                 if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
                     // TODO: recalculate only if pattern changed
-                    self.score(cx);
+                    self.score();
                 }
             }
         }
@@ -600,7 +598,7 @@ impl<T: 'static> Component for Picker<T> {
                 surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
             }
 
-            let formatted = (self.format_fn)(cx, option);
+            let formatted = (self.format_fn)(option);
 
             let (_score, highlights) = self
                 .matcher

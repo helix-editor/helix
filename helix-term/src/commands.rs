@@ -1794,7 +1794,7 @@ fn global_search(cx: &mut Context) {
 
                 let picker = FilePicker::new(
                     all_matches,
-                    move |_, (_line_num, path)| {
+                    move |(_line_num, path)| {
                         let relative_path = helix_core::path::get_relative_path(path)
                             .to_string_lossy()
                             .into_owned();
@@ -2077,7 +2077,7 @@ fn buffer_picker(cx: &mut Context) {
             .iter()
             .map(|(_, doc)| new_meta(doc))
             .collect(),
-        |_, a| BufferMeta::format(a),
+        BufferMeta::format,
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
         },
@@ -2127,7 +2127,7 @@ pub fn command_palette(cx: &mut Context) {
 
             let picker = Picker::new(
                 commands,
-                move |_, command| match command {
+                move |command| match command {
                     MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String)
                     {
                         Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
