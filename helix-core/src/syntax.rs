@@ -216,14 +216,7 @@ impl FromStr for AutoPairConfig {
     // only do bool parsing for runtime setting
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let enable: bool = s.parse()?;
-
-        let enable = if enable {
-            AutoPairConfig::Enable(true)
-        } else {
-            AutoPairConfig::Enable(false)
-        };
-
-        Ok(enable)
+        Ok(AutoPairConfig::Enable(enable))
     }
 }
 

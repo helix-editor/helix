@@ -38,7 +38,7 @@ use helix_core::{
 use helix_core::{Position, Selection};
 use helix_dap as dap;
 
-use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize};
+use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -46,6 +46,18 @@ where
 {
     let millis = u64::deserialize(deserializer)?;
     Ok(Duration::from_millis(millis))
+}
+
+fn serialize_duration_millis<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_u64(
+        duration
+            .as_millis()
+            .try_into()
+            .map_err(|_| serde::ser::Error::custom("duration value overflowed u64"))?,
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -109,8 +121,12 @@ pub struct Config {
     pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
-    /// Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. Defaults to 400ms.
-    #[serde(skip_serializing, deserialize_with = "deserialize_duration_millis")]
+    /// Time in milliseconds since last keypress before idle timers trigger.
+    /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
+    #[serde(
+        serialize_with = "serialize_duration_millis",
+        deserialize_with = "deserialize_duration_millis"
+    )]
     pub idle_timeout: Duration,
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
