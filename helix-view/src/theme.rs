@@ -14,10 +14,19 @@ use toml::Value;
 pub use crate::graphics::{Color, Modifier, Style};
 
 pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
-    toml::from_slice(include_bytes!("../../theme.toml")).expect("Failed to parse default theme")
+    toml::from_slice::<Theme>(include_bytes!("../../theme.toml"))
+        .map(|mut theme| {
+            theme.name = "default".to_string();
+            theme
+        })
+        .expect("Failed to parse default theme")
 });
 pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
-    toml::from_slice(include_bytes!("../../base16_theme.toml"))
+    toml::from_slice::<Theme>(include_bytes!("../../base16_theme.toml"))
+        .map(|mut theme| {
+            theme.name = "base16_default".to_string();
+            theme
+        })
         .expect("Failed to parse base 16 default theme")
 });
 
@@ -60,7 +69,8 @@ impl Loader {
         if let Some(path_str) = path_str {
             let tc = self.theme_cache.lock().unwrap();
             if tc.contains_key(path_str) {
-                let theme = tc.get(path_str).unwrap().clone();
+                let mut theme = tc.get(path_str).unwrap().clone();
+                theme.name = name.to_string();
                 return Result::Ok(theme);
             }
         }
@@ -68,11 +78,12 @@ impl Loader {
         let data = std::fs::read(&path)?;
         let theme = toml::from_slice::<Theme>(data.as_slice());
         match theme {
-            Ok(theme) => {
+            Ok(mut theme) => {
                 if let Some(p) = path_str {
                     let mut tc = self.theme_cache.lock().unwrap();
                     tc.insert(p.to_string(), theme.clone());
                 }
+                theme.name = name.to_string();
                 Ok(theme)
             }
             Result::Err(e) => Err(e).context("Failed to deserialize theme"),
@@ -114,6 +125,7 @@ impl Loader {
 
 #[derive(Clone, Debug)]
 pub struct Theme {
+    pub name: String,
     // UI styles are stored in a HashMap
     styles: HashMap<String, Style>,
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
@@ -160,6 +172,7 @@ impl<'de> Deserialize<'de> for Theme {
         }
 
         Ok(Self {
+            name: String::new(),
             scopes,
             styles,
             highlights,

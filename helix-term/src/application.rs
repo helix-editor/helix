@@ -38,17 +38,6 @@ use {
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
-fn default_theme(theme_loader: Arc<theme::Loader>, true_color: bool) -> (String, theme::Theme) {
-    if true_color {
-        (String::from("default"), theme_loader.default())
-    } else {
-        (
-            String::from("base16_default"),
-            theme_loader.base16_default(),
-        )
-    }
-}
-
 pub struct Application {
     compositor: Compositor,
     editor: Editor,
@@ -79,7 +68,7 @@ impl Application {
 
         let true_color = config.editor.true_color || crate::true_color();
 
-        let (theme_name, theme) = match config.theme.as_ref() {
+        let theme = match config.theme.as_ref() {
             Some(theme_name) => {
                 match theme_loader
                     .load(theme_name)
@@ -90,11 +79,11 @@ impl Application {
                     .ok()
                     .filter(|theme| (true_color || theme.is_16_color()))
                 {
-                    Some(theme) => (theme_name.clone(), theme),
-                    None => default_theme(theme_loader.clone(), true_color),
+                    Some(theme) => theme,
+                    None => Application::default_theme(theme_loader.clone(), true_color),
                 }
             }
-            None => default_theme(theme_loader.clone(), true_color),
+            None => Application::default_theme(theme_loader.clone(), true_color),
         };
 
         let syn_loader_conf = user_syntax_loader().unwrap_or_else(|err| {
@@ -112,7 +101,7 @@ impl Application {
             theme_loader.clone(),
             syn_loader.clone(),
             config.editor.clone(),
-            theme_name.clone(),
+            theme.name.clone(),
         );
 
         let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
@@ -169,7 +158,7 @@ impl Application {
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
 
-        editor.set_theme(theme, theme_name);
+        editor.set_theme(theme);
 
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
@@ -191,6 +180,14 @@ impl Application {
         };
 
         Ok(app)
+    }
+
+    fn default_theme(theme_loader: Arc<theme::Loader>, true_color: bool) -> theme::Theme {
+        if true_color {
+            theme_loader.default()
+        } else {
+            theme_loader.base16_default()
+        }
     }
 
     fn render(&mut self) {

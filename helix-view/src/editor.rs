@@ -291,7 +291,7 @@ pub struct Editor {
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
-    pub current_theme: String,
+    pub last_theme: Option<String>,
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
@@ -351,7 +351,7 @@ impl Editor {
             breakpoints: HashMap::new(),
             syn_loader,
             theme_loader,
-            current_theme,
+            last_theme: Some(current_theme),
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
@@ -394,16 +394,24 @@ impl Editor {
     }
 
     pub fn unset_theme_preview(&mut self) {
-        let theme = self.theme_loader.load(&self.current_theme).unwrap();
-        self.set_theme(theme, self.current_theme.clone());
+        if let Some(last_theme) = &self.last_theme.clone() {
+            match self.theme_loader.load(last_theme) {
+                Ok(theme) => {
+                    self.set_theme(theme);
+                }
+                Err(_e) => {
+                    self.set_error(format!("Failed to set theme: '{}'", last_theme));
+                }
+            };
+        }
     }
 
     pub fn set_theme_preview(&mut self, theme: Theme) {
         self.set_theme_impl(theme);
     }
 
-    pub fn set_theme(&mut self, theme: Theme, theme_name: String) {
-        self.current_theme = theme_name;
+    pub fn set_theme(&mut self, theme: Theme) {
+        self.last_theme = Some(theme.name.clone());
         self.set_theme_impl(theme);
     }
 

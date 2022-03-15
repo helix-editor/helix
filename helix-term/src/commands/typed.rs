@@ -623,7 +623,7 @@ fn theme(
             if !(true_color || theme.is_16_color()) {
                 bail!("Unsupported theme: theme requires true color support");
             }
-            cx.editor.set_theme(theme, theme_name.to_string());
+            cx.editor.set_theme(theme);
         }
     };
 
