@@ -419,7 +419,7 @@ fn force_write_quit(
 }
 
 /// Results an error if there are modified buffers remaining and sets editor error,
-// otherwise returns `Ok(())`
+/// otherwise returns `Ok(())`
 pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> {
     let modified: Vec<_> = editor
         .documents()
