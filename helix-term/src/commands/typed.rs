@@ -288,11 +288,15 @@ fn set_line_ending(
         cx.editor.set_status(match line_ending {
             Crlf => "crlf",
             LF => "line feed",
+            #[cfg(feature = "unicode-lines")]
             FF => "form feed",
+            #[cfg(feature = "unicode-lines")]
             CR => "carriage return",
+            #[cfg(feature = "unicode-lines")]
             Nel => "next line",
 
             // These should never be a document's default line ending.
+            #[cfg(feature = "unicode-lines")]
             VT | LS | PS => "error",
         });
 
@@ -307,10 +311,13 @@ fn set_line_ending(
     // Attempt to parse argument as a line ending.
     let line_ending = match arg {
         // We check for CR first because it shares a common prefix with CRLF.
+        #[cfg(feature = "unicode-lines")]
         arg if arg.starts_with("cr") => CR,
         arg if arg.starts_with("crlf") => Crlf,
         arg if arg.starts_with("lf") => LF,
+        #[cfg(feature = "unicode-lines")]
         arg if arg.starts_with("ff") => FF,
+        #[cfg(feature = "unicode-lines")]
         arg if arg.starts_with("nel") => Nel,
         _ => bail!("invalid line ending"),
     };
