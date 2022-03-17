@@ -13,7 +13,9 @@ pub fn runtime_dir() -> std::path::PathBuf {
 
     if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
         // this is the directory of the crate being run by cargo, we need the workspace path so we take the parent
-        return std::path::PathBuf::from(dir).parent().unwrap().join(RT_DIR);
+        let path = std::path::PathBuf::from(dir).parent().unwrap().join(RT_DIR);
+        log::debug!("runtime dir: {}", path.to_string_lossy());
+        return path;
     }
 
     const RT_DIR: &str = "runtime";

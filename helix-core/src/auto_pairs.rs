@@ -1,9 +1,7 @@
 //! When typing the opening character of one of the possible pairs defined below,
 //! this module provides the functionality to insert the paired closing character.
 
-use crate::{
-    graphemes, movement::Direction, Range, Rope, RopeGraphemes, Selection, Tendril, Transaction,
-};
+use crate::{graphemes, movement::Direction, Range, Rope, Selection, Tendril, Transaction};
 use std::collections::HashMap;
 
 use log::debug;
@@ -149,14 +147,6 @@ fn prev_char(doc: &Rope, pos: usize) -> Option<char> {
     doc.get_char(pos - 1)
 }
 
-fn is_single_grapheme(doc: &Rope, range: &Range) -> bool {
-    let mut graphemes = RopeGraphemes::new(doc.slice(range.from()..range.to()));
-    let first = graphemes.next();
-    let second = graphemes.next();
-    debug!("first: {:#?}, second: {:#?}", first, second);
-    first.is_some() && second.is_none()
-}
-
 /// calculate what the resulting range should be for an auto pair insertion
 fn get_next_range(
     doc: &Rope,
@@ -189,8 +179,8 @@ fn get_next_range(
         );
     }
 
-    let single_grapheme = is_single_grapheme(doc, start_range);
     let doc_slice = doc.slice(..);
+    let single_grapheme = start_range.is_single_grapheme(doc_slice);
 
     // just skip over graphemes
     if len_inserted == 0 {

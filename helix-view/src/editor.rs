@@ -32,12 +32,12 @@ use anyhow::{bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
+use helix_core::Position;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig},
     Change,
 };
-use helix_core::{Position, Selection};
 use helix_dap as dap;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
@@ -645,11 +645,8 @@ impl Editor {
         view.offset = Position::default();
 
         let doc = self.documents.get_mut(&doc_id).unwrap();
+        doc.ensure_view_init(view.id);
 
-        // initialize selection for view
-        doc.selections
-            .entry(view.id)
-            .or_insert_with(|| Selection::point(0));
         // TODO: reuse align_view
         let pos = doc
             .selection(view.id)
@@ -719,9 +716,7 @@ impl Editor {
             Action::Load => {
                 let view_id = view!(self).id;
                 let doc = self.documents.get_mut(&id).unwrap();
-                if doc.selections().is_empty() {
-                    doc.set_selection(view_id, Selection::point(0));
-                }
+                doc.ensure_view_init(view_id);
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
@@ -736,7 +731,7 @@ impl Editor {
                 );
                 // initialize selection for view
                 let doc = self.documents.get_mut(&id).unwrap();
-                doc.set_selection(view_id, Selection::point(0));
+                doc.ensure_view_init(view_id);
             }
         }
 
@@ -769,7 +764,7 @@ impl Editor {
         Ok(self.new_file_from_document(action, Document::from(rope, Some(encoding))))
     }
 
-    // ???
+    // ??? possible use for integration tests
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
         let path = helix_core::path::get_canonicalized_path(&path)?;
         let id = self.document_by_path(&path).map(|doc| doc.id);
@@ -791,12 +786,7 @@ impl Editor {
     pub fn close(&mut self, id: ViewId) {
         let view = self.tree.get(self.tree.focus);
         // remove selection
-        self.documents
-            .get_mut(&view.doc)
-            .unwrap()
-            .selections
-            .remove(&id);
-
+        self.documents.get_mut(&view.doc).unwrap().remove_view(id);
         self.tree.remove(id);
         self._refresh();
     }
@@ -871,7 +861,7 @@ impl Editor {
             let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
             let doc = self.documents.get_mut(&doc_id).unwrap();
-            doc.set_selection(view_id, Selection::point(0));
+            doc.ensure_view_init(view_id);
         }
 
         self._refresh();

@@ -2094,10 +2094,17 @@ fn insert_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     enter_insert_mode(doc);
 
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| Range::new(range.to(), range.from()));
+    log::trace!(
+        "entering insert mode with sel: {:?}, text: {:?}",
+        doc.selection(view.id),
+        doc.text().to_string()
+    );
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let new_range = Range::new(range.to(), range.from());
+        new_range
+    });
+
     doc.set_selection(view.id, selection);
 }
 
@@ -2444,8 +2451,8 @@ fn normal_mode(cx: &mut Context) {
                 graphemes::prev_grapheme_boundary(text, range.to()),
             )
         });
-        doc.set_selection(view.id, selection);
 
+        doc.set_selection(view.id, selection);
         doc.restore_cursor = false;
     }
 }

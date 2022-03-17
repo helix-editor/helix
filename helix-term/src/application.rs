@@ -55,8 +55,29 @@ pub struct Application {
     lsp_progress: LspProgressMap,
 }
 
+#[cfg(feature = "integration")]
+fn setup_integration_logging() {
+    // Separate file config so we can include year, month and day in file logs
+    let _ = fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "{} {} [{}] {}",
+                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
+                record.target(),
+                record.level(),
+                message
+            ))
+        })
+        .level(log::LevelFilter::Debug)
+        .chain(std::io::stdout())
+        .apply();
+}
+
 impl Application {
     pub fn new(args: Args, config: Config) -> Result<Self, Error> {
+        #[cfg(feature = "integration")]
+        setup_integration_logging();
+
         use helix_view::editor::Action;
 
         let config_dir = helix_loader::config_dir();
