@@ -7,8 +7,6 @@ use crate::{
     Rope, RopeSlice, Tendril,
 };
 
-pub use helix_syntax::get_language;
-
 use arc_swap::{ArcSwap, Guard};
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
@@ -24,6 +22,8 @@ use std::{
 
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
+
+use helix_loader::grammar::{get_language, load_runtime_file};
 
 fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
 where
@@ -51,7 +51,6 @@ where
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
 }
@@ -77,7 +76,7 @@ pub struct LanguageConfiguration {
     #[serde(default)]
     pub diagnostic_severity: Severity,
 
-    pub tree_sitter_library: Option<String>, // tree-sitter library name, defaults to language_id
+    pub grammar: Option<String>, // tree-sitter grammar name, defaults to language_id
 
     // content_regex
     #[serde(default, skip_serializing, deserialize_with = "deserialize_regex")]
@@ -217,14 +216,7 @@ impl FromStr for AutoPairConfig {
     // only do bool parsing for runtime setting
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let enable: bool = s.parse()?;
-
-        let enable = if enable {
-            AutoPairConfig::Enable(true)
-        } else {
-            AutoPairConfig::Enable(false)
-        };
-
-        Ok(enable)
+        Ok(AutoPairConfig::Enable(enable))
     }
 }
 
@@ -335,14 +327,6 @@ impl TextObjectQuery {
     }
 }
 
-pub fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
-    let path = crate::RUNTIME_DIR
-        .join("queries")
-        .join(language)
-        .join(filename);
-    std::fs::read_to_string(&path)
-}
-
 fn read_query(language: &str, filename: &str) -> String {
     static INHERITS_REGEX: Lazy<Regex> =
         Lazy::new(|| Regex::new(r";+\s*inherits\s*:?\s*([a-z_,()]+)\s*").unwrap());
@@ -388,21 +372,16 @@ impl LanguageConfiguration {
         if highlights_query.is_empty() {
             None
         } else {
-            let language = get_language(
-                &crate::RUNTIME_DIR,
-                self.tree_sitter_library
-                    .as_deref()
-                    .unwrap_or(&self.language_id),
-            )
-            .map_err(|e| log::info!("{}", e))
-            .ok()?;
+            let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
+                .map_err(|e| log::info!("{}", e))
+                .ok()?;
             let config = HighlightConfiguration::new(
                 language,
                 &highlights_query,
                 &injections_query,
                 &locals_query,
             )
-            .unwrap(); // TODO: avoid panic
+            .unwrap_or_else(|query_error| panic!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar build' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, query_error));
 
             config.configure(scopes);
             Some(Arc::new(config))
@@ -597,9 +576,7 @@ pub struct Syntax {
 }
 
 fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<str> {
-    let start_char = source.byte_to_char(range.start);
-    let end_char = source.byte_to_char(range.end);
-    Cow::from(source.slice(start_char..end_char))
+    Cow::from(source.byte_slice(range))
 }
 
 impl Syntax {
@@ -1218,9 +1195,7 @@ impl<'a> TextProvider<'a> for RopeProvider<'a> {
     type I = ChunksBytes<'a>;
 
     fn text(&mut self, node: Node) -> Self::I {
-        let start_char = self.0.byte_to_char(node.start_byte());
-        let end_char = self.0.byte_to_char(node.end_byte());
-        let fragment = self.0.slice(start_char..end_char);
+        let fragment = self.0.byte_slice(node.start_byte()..node.end_byte());
         ChunksBytes {
             chunks: fragment.chunks(),
         }
@@ -1999,7 +1974,7 @@ mod test {
         );
 
         let loader = Loader::new(Configuration { language: vec![] });
-        let language = get_language(&crate::RUNTIME_DIR, "Rust").unwrap();
+        let language = get_language("Rust").unwrap();
 
         let query = Query::new(language, query_str).unwrap();
         let textobject = TextObjectQuery { query };
@@ -2057,17 +2032,13 @@ mod test {
 
         let loader = Loader::new(Configuration { language: vec![] });
 
-        let language = get_language(&crate::RUNTIME_DIR, "Rust").unwrap();
+        let language = get_language("Rust").unwrap();
         let config = HighlightConfiguration::new(
             language,
-            &std::fs::read_to_string(
-                "../helix-syntax/languages/tree-sitter-rust/queries/highlights.scm",
-            )
-            .unwrap(),
-            &std::fs::read_to_string(
-                "../helix-syntax/languages/tree-sitter-rust/queries/injections.scm",
-            )
-            .unwrap(),
+            &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/highlights.scm")
+                .unwrap(),
+            &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/injections.scm")
+                .unwrap(),
             "", // locals.scm
         )
         .unwrap();

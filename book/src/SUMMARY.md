@@ -1,5 +1,7 @@
 # Summary
 
+[Helix](./title-page.md)
+
 - [Installation](./install.md)
 - [Usage](./usage.md)
   - [Keymap](./keymap.md)

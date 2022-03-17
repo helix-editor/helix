@@ -131,6 +131,7 @@ Search specific options.
 ## LSP
 
 To display all language server messages in the status line add the following to your `config.toml`:
+
 ```toml
 [lsp]
 display-messages = true

@@ -40,7 +40,7 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let logpath = helix_core::log_file();
+    let logpath = helix_loader::log_file();
     let parent = logpath.parent().unwrap();
     if !parent.exists() {
         std::fs::create_dir_all(parent).ok();
@@ -59,14 +59,15 @@ ARGS:
     <files>...    Sets the input file to use, position can also be specified via file[:row[:col]]
 
 FLAGS:
-    -h, --help       Prints help information
-    --edit-config    Opens the helix config file
-    --tutor          Loads the tutorial
-    --health [LANG]  Checks for potential errors in editor setup
-                     If given, checks for config errors in language LANG
-    -v               Increases logging verbosity each use for up to 3 times
-                     (default file: {})
-    -V, --version    Prints version information
+    -h, --help                     Prints help information
+    --edit-config                  Opens the helix config file
+    --tutor                        Loads the tutorial
+    --health [LANG]                Checks for potential errors in editor setup
+                                   If given, checks for config errors in language LANG
+    -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
+    -v                             Increases logging verbosity each use for up to 3 times
+                                   (default file: {})
+    -V, --version                  Prints version information
 ",
         env!("CARGO_PKG_NAME"),
         env!("VERSION_AND_GIT_HASH"),
@@ -102,12 +103,22 @@ FLAGS:
         std::process::exit(0);
     }
 
-    let conf_dir = helix_core::config_dir();
+    if args.fetch_grammars {
+        helix_loader::grammar::fetch_grammars()?;
+        return Ok(0);
+    }
+
+    if args.build_grammars {
+        helix_loader::grammar::build_grammars()?;
+        return Ok(0);
+    }
+
+    let conf_dir = helix_loader::config_dir();
     if !conf_dir.exists() {
         std::fs::create_dir_all(&conf_dir).ok();
     }
 
-    let config = match std::fs::read_to_string(helix_core::config_file()) {
+    let config = match std::fs::read_to_string(helix_loader::config_file()) {
         Ok(config) => toml::from_str(&config)
             .map(merge_keys)
             .unwrap_or_else(|err| {

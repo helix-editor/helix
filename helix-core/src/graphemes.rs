@@ -333,10 +333,7 @@ impl<'a> Iterator for RopeGraphemes<'a> {
         }
 
         if a < self.cur_chunk_start {
-            let a_char = self.text.byte_to_char(a);
-            let b_char = self.text.byte_to_char(b);
-
-            Some(self.text.slice(a_char..b_char))
+            Some(self.text.byte_slice(a..b))
         } else {
             let a2 = a - self.cur_chunk_start;
             let b2 = b - self.cur_chunk_start;

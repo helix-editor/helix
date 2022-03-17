@@ -9,6 +9,8 @@ pub struct Args {
     pub health: bool,
     pub health_arg: Option<String>,
     pub load_tutor: bool,
+    pub fetch_grammars: bool,
+    pub build_grammars: bool,
     pub verbosity: u64,
     pub files: Vec<(PathBuf, Position)>,
     pub edit_config: bool,
@@ -32,6 +34,13 @@ impl Args {
                     args.health = true;
                     args.health_arg = argv.next_if(|opt| !opt.starts_with('-'));
                 }
+                "-g" | "--grammar" => match argv.next().as_deref() {
+                    Some("fetch") => args.fetch_grammars = true,
+                    Some("build") => args.build_grammars = true,
+                    _ => {
+                        anyhow::bail!("--grammar must be followed by either 'fetch' or 'build'")
+                    }
+                },
                 arg if arg.starts_with("--") => {
                     anyhow::bail!("unexpected double dash argument: {}", arg)
                 }
