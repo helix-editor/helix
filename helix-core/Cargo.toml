@@ -11,6 +11,7 @@ homepage = "https://helix-editor.com"
 include = ["src/**/*", "README.md"]
 
 [features]
+default = ["unicode-lines"]
 unicode-lines = ["ropey/unicode_lines"]
 
 [dependencies]
