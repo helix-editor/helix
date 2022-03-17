@@ -16,7 +16,6 @@ build = true
 app = true
 
 [features]
-default = ["unicode-lines"]
 unicode-lines = ["helix-core/unicode-lines"]
 
 [[bin]]

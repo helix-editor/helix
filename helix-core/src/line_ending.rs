@@ -300,9 +300,8 @@ mod line_ending_tests {
     fn line_end_char_index_rope_slice() {
         let r = Rope::from_str("Hello\rworld\nhow\r\nare you?");
         let s = &r.slice(..);
-        assert_eq!(line_end_char_index(s, 0), 5);
-        assert_eq!(line_end_char_index(s, 1), 11);
-        assert_eq!(line_end_char_index(s, 2), 15);
-        assert_eq!(line_end_char_index(s, 3), 25);
+        assert_eq!(line_end_char_index(s, 0), 11);
+        assert_eq!(line_end_char_index(s, 1), 15);
+        assert_eq!(line_end_char_index(s, 2), 25);
     }
 }
