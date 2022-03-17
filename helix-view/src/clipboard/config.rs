@@ -53,6 +53,7 @@ macro_rules! command_provider_spec {
         $( env: $($env:literal),+ ; )?
         $( test: $($test:literal),+ ; )*
     ) => {
+        #[allow(clippy::needless_update)]
         ClipboardProviderSpec {
             copy: vec![$($get.to_owned()),+],
             paste: vec![$($set.to_owned()),+],
