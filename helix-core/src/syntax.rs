@@ -216,14 +216,7 @@ impl FromStr for AutoPairConfig {
     // only do bool parsing for runtime setting
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let enable: bool = s.parse()?;
-
-        let enable = if enable {
-            AutoPairConfig::Enable(true)
-        } else {
-            AutoPairConfig::Enable(false)
-        };
-
-        Ok(enable)
+        Ok(AutoPairConfig::Enable(enable))
     }
 }
 
@@ -583,9 +576,7 @@ pub struct Syntax {
 }
 
 fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<str> {
-    let start_char = source.byte_to_char(range.start);
-    let end_char = source.byte_to_char(range.end);
-    Cow::from(source.slice(start_char..end_char))
+    Cow::from(source.byte_slice(range))
 }
 
 impl Syntax {
@@ -1204,9 +1195,7 @@ impl<'a> TextProvider<'a> for RopeProvider<'a> {
     type I = ChunksBytes<'a>;
 
     fn text(&mut self, node: Node) -> Self::I {
-        let start_char = self.0.byte_to_char(node.start_byte());
-        let end_char = self.0.byte_to_char(node.end_byte());
-        let fragment = self.0.slice(start_char..end_char);
+        let fragment = self.0.byte_slice(node.start_byte()..node.end_byte());
         ChunksBytes {
             chunks: fragment.chunks(),
         }

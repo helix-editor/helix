@@ -415,6 +415,11 @@ impl<T> Picker<T> {
     pub fn move_by(&mut self, amount: usize, direction: Direction) {
         let len = self.matches.len();
 
+        if len == 0 {
+            // No results, can't move.
+            return;
+        }
+
         match direction {
             Direction::Forward => {
                 self.cursor = self.cursor.saturating_add(amount) % len;

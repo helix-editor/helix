@@ -206,9 +206,10 @@ name = "c-sharp"
 scope = "source.csharp"
 injection-regex = "c-?sharp"
 file-types = ["cs"]
-roots = []
+roots = ["sln", "csproj"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "\t" }
+language-server = { command = "OmniSharp", args = [ "--languageserver", "--stdio" ] }
 
 [[grammar]]
 name = "c-sharp"
@@ -463,21 +464,13 @@ file-types = ["jl"]
 roots = []
 comment-token = "#"
 language-server = { command = "julia", args = [
-        "--startup-file=no",
-        "--history-file=no",
-        "--quiet",
-        "-e",
-        """
-                using LanguageServer;
-                using Pkg;
-                import StaticLint;
-                env_path = dirname(Pkg.Types.Context().env.project_file);
-                server = LanguageServer.LanguageServerInstance(stdin, stdout, env_path, "");
-                server.runlinter = true;
-                run(server);
-        """,
-        ] }
-indent = { tab-width = 2, unit = "  " }
+    "--startup-file=no",
+    "--history-file=no",
+    "--quiet",
+    "-e",
+    "using LanguageServer; runserver()",
+    ] }
+indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "julia"

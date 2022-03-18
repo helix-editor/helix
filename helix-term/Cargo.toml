@@ -16,6 +16,7 @@ build = true
 app = true
 
 [features]
+unicode-lines = ["helix-core/unicode-lines"]
 
 [[bin]]
 name = "hx"

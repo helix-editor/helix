@@ -183,6 +183,7 @@ impl EditorView {
                     .highlight_iter(text.slice(..), Some(range), None)
                     .map(|event| event.unwrap())
                     .map(move |event| match event {
+                        // TODO: use byte slices directly
                         // convert byte offsets to char offset
                         HighlightEvent::Source { start, end } => {
                             let start =
@@ -317,6 +318,8 @@ impl EditorView {
         theme: &Theme,
         highlights: H,
     ) {
+        // It's slightly more efficient to produce a full RopeSlice from the Rope, then slice that a bunch
+        // of times than it is to always call Rope::slice/get_slice (it will internally always hit RSEnum::Light).
         let text = doc.text().slice(..);
 
         let mut spans = Vec::new();
@@ -326,10 +329,6 @@ impl EditorView {
         let tab = " ".repeat(tab_width);
 
         let text_style = theme.get("ui.text");
-
-        // It's slightly more efficient to produce a full RopeSlice from the Rope, then slice that a bunch
-        // of times than it is to always call Rope::slice/get_slice (it will internally always hit RSEnum::Light).
-        let text = text.slice(..);
 
         'outer: for event in highlights {
             match event {

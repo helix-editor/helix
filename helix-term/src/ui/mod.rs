@@ -73,6 +73,7 @@ pub fn regex_prompt(
 
                     match RegexBuilder::new(input)
                         .case_insensitive(case_insensitive)
+                        .multi_line(true)
                         .build()
                     {
                         Ok(regex) => {
