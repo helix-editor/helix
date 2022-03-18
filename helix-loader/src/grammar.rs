@@ -27,8 +27,8 @@ struct Configuration {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase", untagged)]
 pub enum GrammarSelection {
-    Only(HashSet<String>),
-    Except(HashSet<String>),
+    Only { only: HashSet<String> },
+    Except { except: HashSet<String> },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -97,12 +97,12 @@ fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
         .try_into()?;
 
     let grammars = match config.grammar_selection {
-        Some(GrammarSelection::Only(selections)) => config
+        Some(GrammarSelection::Only { only: selections }) => config
             .grammar
             .into_iter()
             .filter(|grammar| selections.contains(&grammar.grammar_id))
             .collect(),
-        Some(GrammarSelection::Except(rejections)) => config
+        Some(GrammarSelection::Except { except: rejections }) => config
             .grammar
             .into_iter()
             .filter(|grammar| !rejections.contains(&grammar.grammar_id))

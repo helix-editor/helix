@@ -288,11 +288,15 @@ fn set_line_ending(
         cx.editor.set_status(match line_ending {
             Crlf => "crlf",
             LF => "line feed",
+            #[cfg(feature = "unicode-lines")]
             FF => "form feed",
+            #[cfg(feature = "unicode-lines")]
             CR => "carriage return",
+            #[cfg(feature = "unicode-lines")]
             Nel => "next line",
 
             // These should never be a document's default line ending.
+            #[cfg(feature = "unicode-lines")]
             VT | LS | PS => "error",
         });
 
@@ -307,10 +311,13 @@ fn set_line_ending(
     // Attempt to parse argument as a line ending.
     let line_ending = match arg {
         // We check for CR first because it shares a common prefix with CRLF.
+        #[cfg(feature = "unicode-lines")]
         arg if arg.starts_with("cr") => CR,
         arg if arg.starts_with("crlf") => Crlf,
         arg if arg.starts_with("lf") => LF,
+        #[cfg(feature = "unicode-lines")]
         arg if arg.starts_with("ff") => FF,
+        #[cfg(feature = "unicode-lines")]
         arg if arg.starts_with("nel") => Nel,
         _ => bail!("invalid line ending"),
     };
@@ -771,6 +778,26 @@ fn hsplit(
     Ok(())
 }
 
+fn vsplit_new(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor.new_file(Action::VerticalSplit);
+
+    Ok(())
+}
+
+fn hsplit_new(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor.new_file(Action::HorizontalSplit);
+
+    Ok(())
+}
+
 fn debug_eval(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -852,6 +879,8 @@ pub(super) fn goto_line_number(
     Ok(())
 }
 
+/// Change config at runtime. Access nested values by dot syntax, for
+/// example to disable smart case search, use `:set search.smart-case false`.
 fn setting(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -862,26 +891,24 @@ fn setting(
     }
     let (key, arg) = (&args[0].to_lowercase(), &args[1]);
 
-    let mut runtime_config = cx.editor.config().clone();
-    match key.as_ref() {
-        "scrolloff" => runtime_config.scrolloff = arg.parse()?,
-        "scroll-lines" => runtime_config.scroll_lines = arg.parse()?,
-        "mouse" => runtime_config.mouse = arg.parse()?,
-        "line-number" => runtime_config.line_number = arg.parse()?,
-        "middle-click_paste" => runtime_config.middle_click_paste = arg.parse()?,
-        "auto-pairs" => runtime_config.auto_pairs = arg.parse()?,
-        "auto-completion" => runtime_config.auto_completion = arg.parse()?,
-        "completion-trigger-len" => runtime_config.completion_trigger_len = arg.parse()?,
-        "auto-info" => runtime_config.auto_info = arg.parse()?,
-        "true-color" => runtime_config.true_color = arg.parse()?,
-        "search.smart-case" => runtime_config.search.smart_case = arg.parse()?,
-        "search.wrap-around" => runtime_config.search.wrap_around = arg.parse()?,
-        _ => anyhow::bail!("Unknown key `{}`.", args[0]),
-    }
+    let key_error = || anyhow::anyhow!("Unknown key `{key}`");
+    let field_error = |_| anyhow::anyhow!("Could not parse field `{arg}`");
+
+    let mut config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
+    let pointer = format!("/{}", key.replace('.', "/"));
+    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+
+    *value = if value.is_string() {
+        // JSON strings require quotes, so we can't .parse() directly
+        serde_json::Value::String(arg.to_string())
+    } else {
+        arg.parse().map_err(field_error)?
+    };
+    let config = serde_json::from_value(config).map_err(field_error)?;
 
     cx.editor
         .config_events
-        .push(tokio_stream::once(ConfigEvent::Update(runtime_config)));
+        .push(tokio_stream::once(ConfigEvent::Update(config)));
     Ok(())
 }
 
@@ -1316,11 +1343,25 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: Some(completers::filename),
         },
         TypableCommand {
+            name: "vsplit-new",
+            aliases: &["vnew"],
+            doc: "Open a scratch buffer in a vertical split.",
+            fun: vsplit_new,
+            completer: None,
+        },
+        TypableCommand {
             name: "hsplit",
             aliases: &["hs", "sp"],
             doc: "Open the file in a horizontal split.",
             fun: hsplit,
             completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "hsplit-new",
+            aliases: &["hnew"],
+            doc: "Open a scratch buffer in a horizontal split.",
+            fun: hsplit_new,
+            completer: None,
         },
         TypableCommand {
             name: "tutor",
