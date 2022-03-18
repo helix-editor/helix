@@ -60,7 +60,7 @@ pub fn line_number<'doc>(
         .text()
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
-    let config = editor.config.load().line_number;
+    let line_number = editor.config().line_number;
     let mode = doc.mode;
 
     Box::new(move |line: usize, selected: bool, out: &mut String| {
@@ -70,7 +70,7 @@ pub fn line_number<'doc>(
         } else {
             use crate::{document::Mode, editor::LineNumber};
 
-            let relative = config == LineNumber::Relative
+            let relative = line_number == LineNumber::Relative
                 && mode != Mode::Insert
                 && is_focused
                 && current_line != line;

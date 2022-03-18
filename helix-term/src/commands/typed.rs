@@ -533,7 +533,7 @@ fn theme(
         .theme_loader
         .load(theme)
         .with_context(|| format!("Failed setting theme {}", theme))?;
-    let true_color = cx.editor.config.load().true_color || crate::true_color();
+    let true_color = cx.editor.config().true_color || crate::true_color();
     if !(true_color || theme.is_16_color()) {
         bail!("Unsupported theme: theme requires true color support");
     }
@@ -862,7 +862,7 @@ fn setting(
     }
     let (key, arg) = (&args[0].to_lowercase(), &args[1]);
 
-    let mut runtime_config = cx.editor.config.load().clone();
+    let mut runtime_config = cx.editor.config().clone();
     match key.as_ref() {
         "scrolloff" => runtime_config.scrolloff = arg.parse()?,
         "scroll-lines" => runtime_config.scroll_lines = arg.parse()?,

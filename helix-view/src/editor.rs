@@ -40,7 +40,7 @@ use helix_dap as dap;
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize};
 
 use arc_swap::access::DynAccess;
-
+use arc_swap::access::DynGuard;
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -372,6 +372,10 @@ impl Editor {
         }
     }
 
+    pub fn config(&self) -> DynGuard<Config> {
+        self.config.load()
+    }
+
     pub fn clear_idle_timer(&mut self) {
         // equivalent to internal Instant::far_future() (30 years)
         self.idle_timer
@@ -380,9 +384,10 @@ impl Editor {
     }
 
     pub fn reset_idle_timer(&mut self) {
+        let config = self.config();
         self.idle_timer
             .as_mut()
-            .reset(Instant::now() + self.config.load().idle_timeout);
+            .reset(Instant::now() + config.idle_timeout);
     }
 
     pub fn clear_status(&mut self) {
@@ -458,9 +463,10 @@ impl Editor {
     }
 
     fn _refresh(&mut self) {
+        let config = self.config();
         for (view, _) in self.tree.views_mut() {
             let doc = &self.documents[&view.doc];
-            view.ensure_cursor_in_view(doc, self.config.load().scrolloff)
+            view.ensure_cursor_in_view(doc, config.scrolloff)
         }
     }
 
@@ -708,9 +714,10 @@ impl Editor {
     }
 
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
+        let config = self.config();
         let view = self.tree.get_mut(id);
         let doc = &self.documents[&view.doc];
-        view.ensure_cursor_in_view(doc, self.config.load().scrolloff)
+        view.ensure_cursor_in_view(doc, config.scrolloff)
     }
 
     #[inline]
@@ -753,7 +760,8 @@ impl Editor {
             let inner = view.inner_area();
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            let cursorkind = self.config.load().cursor_shape.from_mode(doc.mode());
+            let config = self.config();
+            let cursorkind = config.cursor_shape.from_mode(doc.mode());
             (Some(pos), cursorkind)
         } else {
             (None, CursorKind::default())

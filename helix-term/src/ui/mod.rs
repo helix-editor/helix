@@ -37,7 +37,7 @@ pub fn regex_prompt(
     let doc_id = view.doc;
     let snapshot = doc.selection(view.id).clone();
     let offset_snapshot = view.offset;
-    let config = cx.editor.config.load();
+    let config = cx.editor.config();
 
     let mut prompt = Prompt::new(
         prompt,
