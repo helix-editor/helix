@@ -23,7 +23,10 @@ use std::{
     sync::Arc,
 };
 
-use tokio::time::{sleep, Duration, Instant, Sleep};
+use tokio::{
+    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    time::{sleep, Duration, Instant, Sleep},
+};
 
 use anyhow::{bail, Error};
 
@@ -322,7 +325,7 @@ pub struct Editor {
 
     pub exit_code: i32,
 
-    pub config_events: SelectAll<tokio_stream::Once<ConfigEvent>>,
+    pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
 }
 
 #[derive(Debug, Clone)]
@@ -384,7 +387,7 @@ impl Editor {
             config,
             auto_pairs,
             exit_code: 0,
-            config_events: SelectAll::new(),
+            config_events: unbounded_channel(),
         }
     }
 

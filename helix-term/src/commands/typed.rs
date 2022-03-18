@@ -908,7 +908,8 @@ fn setting(
 
     cx.editor
         .config_events
-        .push(tokio_stream::once(ConfigEvent::Update(config)));
+        .0
+        .send(ConfigEvent::Update(config))?;
     Ok(())
 }
 
@@ -1013,9 +1014,7 @@ fn refresh_config(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    cx.editor
-        .config_events
-        .push(tokio_stream::once(ConfigEvent::Refresh));
+    cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
     Ok(())
 }
 

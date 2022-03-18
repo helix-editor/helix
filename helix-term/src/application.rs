@@ -238,7 +238,7 @@ impl Application {
                 Some(payload) = self.editor.debugger_events.next() => {
                     self.handle_debugger_message(payload).await;
                 }
-                Some(config_event) = self.editor.config_events.next() => {
+                Some(config_event) = self.editor.config_events.1.recv() => {
                     self.handle_config_events(config_event);
                     self.render();
                 }
@@ -262,6 +262,10 @@ impl Application {
     pub fn handle_config_events(&mut self, config_event: ConfigEvent) {
         match config_event {
             ConfigEvent::Refresh => self.refresh_config(),
+
+            // Since only the Application can make changes to Editor's config,
+            // the Editor must send up a new copy of a modified config so that
+            // the Application can apply it.
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
                 app_config.editor = editor_config;
@@ -271,12 +275,12 @@ impl Application {
     }
 
     fn refresh_config(&mut self) {
-        let config = Config::load(helix_loader::config_file())
-            .unwrap_or_else(|err| {
-                self.editor.set_error(err.to_string());
-                Config::default()
-            });
-        // Just an example to start; Some config properties like "theme" are a bit more involved and require a reload
+        let config = Config::load(helix_loader::config_file()).unwrap_or_else(|err| {
+            self.editor.set_error(err.to_string());
+            Config::default()
+        });
+
+        // Refresh theme
         if let Some(theme) = config.theme.clone() {
             let true_color = self.true_color();
             self.editor.set_theme(
