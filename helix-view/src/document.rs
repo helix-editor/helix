@@ -471,7 +471,7 @@ impl Document {
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
-                    bail!("can't save file, parent directory does not exist");
+                    std::fs::DirBuilder::new().recursive(true).create(parent)?;
                 }
             }
 
