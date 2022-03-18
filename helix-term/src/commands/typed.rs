@@ -1365,14 +1365,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: None,
         },
         TypableCommand {
-            name: "refresh-config",
+            name: "config-reload",
             aliases: &[],
             doc: "Refreshes helix's config.",
             fun: refresh_config,
             completer: None,
         },
         TypableCommand {
-            name: "open-config",
+            name: "config-open",
             aliases: &[],
             doc: "Open the helix config.toml file.",
             fun: open_config,
