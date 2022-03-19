@@ -315,7 +315,7 @@ pub enum KeymapResultKind {
 
 /// Returned after looking up a key in [`Keymap`]. The `sticky` field has a
 /// reference to the sticky node if one is currently active.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub struct KeymapResult<'a> {
     pub kind: KeymapResultKind,
     pub sticky: Option<&'a KeyTrieNode>,

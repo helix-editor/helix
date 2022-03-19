@@ -111,11 +111,9 @@ impl Application {
             })),
         );
 
-        let keymaps = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
-            &config.keys
-        }));
-
-        let editor_view = Box::new(ui::EditorView::new(keymaps));
+        let editor_view = Box::new(ui::EditorView::new(std::mem::take(
+            &mut config.load().keys.clone(),
+        )));
         compositor.push(editor_view);
 
         if args.load_tutor {
@@ -266,7 +264,7 @@ impl Application {
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
                 app_config.editor = editor_config;
-                self.config.store(Arc::new(app_config));
+                self.config.swap(Arc::new(app_config));
             }
         }
     }

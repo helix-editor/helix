@@ -42,8 +42,8 @@ use helix_dap as dap;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 
-use arc_swap::access::DynAccess;
-use arc_swap::access::DynGuard;
+use arc_swap::access::{DynAccess, DynGuard};
+
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -770,6 +770,7 @@ impl Editor {
     }
 
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
+        let config = self.config();
         let (view, doc) = current_ref!(self);
         let cursor = doc
             .selection(view.id)
@@ -779,7 +780,6 @@ impl Editor {
             let inner = view.inner_area();
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            let config = self.config();
             let cursorkind = config.cursor_shape.from_mode(doc.mode());
             (Some(pos), cursorkind)
         } else {

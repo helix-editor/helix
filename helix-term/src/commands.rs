@@ -1586,8 +1586,8 @@ fn rsearch(cx: &mut Context) {
 }
 
 fn searcher(cx: &mut Context, direction: Direction) {
-    let config = cx.editor.config();
     let reg = cx.register.unwrap_or('/');
+    let config = cx.editor.config();
     let scrolloff = config.scrolloff;
     let wrap_around = config.search.wrap_around;
 
@@ -2110,7 +2110,7 @@ pub fn command_palette(cx: &mut Context) {
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
             let doc = doc_mut!(cx.editor);
             let keymap =
-                compositor.find::<ui::EditorView>().unwrap().keymaps()[&doc.mode].reverse_map();
+                compositor.find::<ui::EditorView>().unwrap().keymaps[&doc.mode].reverse_map();
 
             let mut commands: Vec<MappableCommand> = MappableCommand::STATIC_COMMAND_LIST.into();
             commands.extend(typed::TYPABLE_COMMAND_LIST.iter().map(|cmd| {
