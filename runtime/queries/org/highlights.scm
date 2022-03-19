@@ -17,3 +17,6 @@
 
  ((expr) @markup.raw.inline
   (#match? @markup.raw.inline "~.*~"))
+ 
+ ((expr) @markup.quote
+  (#match? @markup.quote "=.*="))
