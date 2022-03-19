@@ -31,10 +31,7 @@ use crossterm::{
     tty::IsTty,
 };
 #[cfg(not(windows))]
-use {
-    signal_hook::{consts::signal, low_level},
-    signal_hook_tokio::Signals,
-};
+use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
@@ -254,9 +251,19 @@ impl Application {
         use helix_view::graphics::Rect;
         match signal {
             signal::SIGTSTP => {
+                use nix::{
+                    sys::signal::{self, Signal},
+                    unistd::Pid,
+                };
                 self.compositor.save_cursor();
                 self.restore_term().unwrap();
-                low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
+                // low_level::emulate_default_handler(signal::SIGSTSP) only
+                // send SIGSTOP to the current process but since we use
+                // multi-process tokio, at times like using helix within
+                // git suspend will not work since only the current process
+                // is suspended, so we had to send SIGSTOP signal to the
+                // whole process to make sure it is suspended correctly.
+                signal::kill(Pid::from_raw(0), Signal::SIGSTOP).unwrap();
             }
             signal::SIGCONT => {
                 self.claim_term().await.unwrap();

@@ -67,6 +67,7 @@ grep-searcher = "0.1.8"
 
 # Remove once retain_mut lands in stable rust
 retain_mut = "0.1.7"
+nix = "0.23"
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
