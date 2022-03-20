@@ -703,7 +703,7 @@ impl EditorView {
         event: KeyEvent,
     ) -> Option<KeymapResult> {
         cxt.editor.autoinfo = None;
-        let key_result = self.keymaps.get_mut(&mode).unwrap().get(event);
+        let key_result = self.keymaps.get(mode, event);
         cxt.editor.autoinfo = key_result.sticky.map(|node| node.infobox());
 
         match &key_result.kind {
@@ -733,7 +733,7 @@ impl EditorView {
                             Some(ch) => commands::insert::insert_char(cx, ch),
                             None => {
                                 if let KeymapResultKind::Matched(command) =
-                                    self.keymaps.get_mut(&Mode::Insert).unwrap().get(ev).kind
+                                    self.keymaps.get(Mode::Insert, ev).kind
                                 {
                                     command.execute(cx);
                                 }
@@ -1182,12 +1182,11 @@ impl Component for EditorView {
                         // how we entered insert mode is important, and we should track that so
                         // we can repeat the side effect.
 
-                        self.last_insert.0 =
-                            match self.keymaps.get_mut(&mode).unwrap().get(key).kind {
-                                KeymapResultKind::Matched(command) => command,
-                                // FIXME: insert mode can only be entered through single KeyCodes
-                                _ => unimplemented!(),
-                            };
+                        self.last_insert.0 = match self.keymaps.get(mode, key).kind {
+                            KeymapResultKind::Matched(command) => command,
+                            // FIXME: insert mode can only be entered through single KeyCodes
+                            _ => unimplemented!(),
+                        };
                         self.last_insert.1.clear();
                     }
                     (Mode::Insert, Mode::Normal) => {
