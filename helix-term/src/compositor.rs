@@ -26,6 +26,7 @@ pub enum EventResult {
 use helix_view::Editor;
 
 use crate::job::Jobs;
+use crate::ui;
 
 pub struct Context<'a> {
     pub editor: &'a mut Editor,
@@ -206,25 +207,28 @@ impl Compositor {
         (None, CursorKind::Hidden)
     }
 
-    pub fn has_component(&self, type_name: &str) -> bool {
+    pub fn has_component<T: 'static>(&self) -> bool {
         self.layers
             .iter()
-            .any(|component| component.type_name() == type_name)
+            .any(|component| component.as_any().is::<T>())
     }
 
     pub fn find<T: 'static>(&mut self) -> Option<&mut T> {
-        let type_name = std::any::type_name::<T>();
         self.layers
             .iter_mut()
-            .find(|component| component.type_name() == type_name)
-            .and_then(|component| component.as_any_mut().downcast_mut())
+            .find_map(|component| component.as_any_mut().downcast_mut::<T>())
     }
 
     pub fn find_id<T: 'static>(&mut self, id: &'static str) -> Option<&mut T> {
         self.layers
             .iter_mut()
-            .find(|component| component.id() == Some(id))
-            .and_then(|component| component.as_any_mut().downcast_mut())
+            .filter(|component| component.id() == Some(id))
+            .find_map(|component| component.as_any_mut().downcast_mut::<T>())
+    }
+
+    pub fn editor_view(&mut self) -> &mut ui::EditorView {
+        self.find::<ui::EditorView>()
+            .expect("Expected at least one EditorView")
     }
 }
 

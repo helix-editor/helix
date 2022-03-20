@@ -2104,8 +2104,7 @@ pub fn command_palette(cx: &mut Context) {
     cx.callback = Some(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
             let doc = doc_mut!(cx.editor);
-            let keymap =
-                compositor.find::<ui::EditorView>().unwrap().keymaps.map[&doc.mode].reverse_map();
+            let keymap = compositor.editor_view().keymaps.map[&doc.mode].reverse_map();
 
             let mut commands: Vec<MappableCommand> = MappableCommand::STATIC_COMMAND_LIST.into();
             commands.extend(typed::TYPABLE_COMMAND_LIST.iter().map(|cmd| {
@@ -3537,8 +3536,7 @@ pub fn completion(cx: &mut Context) {
                 return;
             }
             let size = compositor.size();
-            let ui = compositor.find::<ui::EditorView>().unwrap();
-            ui.set_completion(
+            compositor.editor_view().set_completion(
                 editor,
                 items,
                 offset_encoding,
