@@ -323,6 +323,7 @@ impl KeyTrie {
     }
 }
 
+#[derive(Debug, PartialEq)]
 enum KeyTrieResult<'a> {
     Pending(&'a KeyTrieNode),
     Matched(&'a MappableCommand),
@@ -359,7 +360,7 @@ pub enum KeymapResult {
     Cancelled(Vec<KeyEvent>),
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Binding {
     pub keys: Vec<KeyEvent>,
     pub is_fallback: bool,
@@ -455,7 +456,7 @@ impl Keymap {
                     }
                     if let Some(fallback) = &next.fallback {
                         cmd_map
-                            .entry(fallback.name.into())
+                            .entry(fallback.with_prompt.name().into())
                             .or_default()
                             .add_fallback(&keys)
                     }
@@ -1012,20 +1013,20 @@ mod tests {
         let keymap = merged_config.keys.map.get_mut(&Mode::Normal).unwrap();
         // Assumes that `g` is a node in default keymap
         assert_eq!(
-            keymap.root().search(&[key!('g'), key!('$')]).unwrap(),
-            &KeyTrie::Leaf(MappableCommand::goto_line_end),
+            keymap.root().search(&[key!('g'), key!('$')]),
+            KeyTrieResult::Matched(&MappableCommand::goto_line_end),
             "Leaf should be present in merged subnode"
         );
         // Assumes that `gg` is in default keymap
         assert_eq!(
-            keymap.root().search(&[key!('g'), key!('g')]).unwrap(),
-            &KeyTrie::Leaf(MappableCommand::delete_char_forward),
+            keymap.root().search(&[key!('g'), key!('g')]),
+            KeyTrieResult::Matched(&MappableCommand::delete_char_forward),
             "Leaf should replace old leaf in merged subnode"
         );
         // Assumes that `ge` is in default keymap
         assert_eq!(
-            keymap.root().search(&[key!('g'), key!('e')]).unwrap(),
-            &KeyTrie::Leaf(MappableCommand::goto_last_line),
+            keymap.root().search(&[key!('g'), key!('e')]),
+            KeyTrieResult::Matched(&MappableCommand::goto_last_line),
             "Old leaves in subnode should be present in merged node"
         );
 
@@ -1055,16 +1056,16 @@ mod tests {
         let keymap = merged_config.keys.map.get_mut(&Mode::Normal).unwrap();
         // Make sure mapping works
         assert_eq!(
-            keymap
-                .root()
-                .search(&[key!(' '), key!('s'), key!('v')])
-                .unwrap(),
-            &KeyTrie::Leaf(MappableCommand::vsplit),
+            keymap.root().search(&[key!(' '), key!('s'), key!('v')]),
+            KeyTrieResult::Matched(&MappableCommand::vsplit),
             "Leaf should be present in merged subnode"
         );
+        let node = match keymap.root().search(&[key!(' ')]) {
+            KeyTrieResult::Pending(n) => n,
+            _ => panic!("Expected node"),
+        };
         // Make sure an order was set during merge
-        let node = keymap.root().search(&[crate::key!(' ')]).unwrap();
-        assert!(!node.node().unwrap().order().is_empty())
+        assert!(!node.order().is_empty())
     }
 
     #[test]
@@ -1072,13 +1073,13 @@ mod tests {
         let keymaps = Keymaps::default();
         let root = keymaps.map.get(&Mode::Normal).unwrap().root();
         assert_eq!(
-            root.search(&[key!(' '), key!('w')]).unwrap(),
-            root.search(&["C-w".parse::<KeyEvent>().unwrap()]).unwrap(),
+            root.search(&[key!(' '), key!('w')]),
+            root.search(&["C-w".parse::<KeyEvent>().unwrap()]),
             "Mismatch for window mode on `Space-w` and `Ctrl-w`"
         );
         assert_eq!(
-            root.search(&[key!('z')]).unwrap(),
-            root.search(&[key!('Z')]).unwrap(),
+            root.search(&[key!('z')]),
+            root.search(&[key!('Z')]),
             "Mismatch for view mode on `z` and `Z`"
         );
     }
@@ -1092,6 +1093,14 @@ mod tests {
                 "e" => goto_file_end,
             },
             "j" | "k" => move_line_down,
+            "m" => { "Match"
+                "m" => match_brackets,
+                "a" => { "Select around"
+                    "w" => select_around_word,
+                    "W" => select_around_long_word,
+                    _ => select_around_pair,
+                },
+            },
         });
         let keymap = Keymap::new(normal_mode);
         let mut reverse_map = keymap.reverse_map();
@@ -1100,27 +1109,34 @@ mod tests {
         // HashMaps can be compared but we can still get different ordering of bindings
         // for commands that have multiple bindings assigned
         for v in reverse_map.values_mut() {
-            v.sort()
+            v.bindings.sort()
         }
 
-        assert_eq!(
-            reverse_map,
-            HashMap::from([
-                ("insert_mode".to_string(), vec![vec![key!('i')]]),
-                (
-                    "goto_file_start".to_string(),
-                    vec![vec![key!('g'), key!('g')]]
-                ),
-                (
-                    "goto_file_end".to_string(),
-                    vec![vec![key!('g'), key!('e')]]
-                ),
-                (
-                    "move_line_down".to_string(),
-                    vec![vec![key!('j')], vec![key!('k')]]
-                ),
-            ]),
-            "Mistmatch"
-        )
+        fn make_binding(pair: &(&str, bool)) -> Binding {
+            Binding {
+                keys: pair.0.chars().map(|k| key!(k,)).collect(),
+                is_fallback: pair.1,
+            }
+        }
+
+        let expected_map = [
+            ("insert_mode", &[("i", false)][..]),
+            ("goto_file_start", &[("gg", false)]),
+            ("goto_file_end", &[("ge", false)]),
+            ("move_line_down", &[("j", false), ("k", false)]),
+            ("match_brackets", &[("mm", false)]),
+            ("select_around_word", &[("maw", false)]),
+            ("select_around_long_word", &[("maW", false)]),
+            ("prompt_and_select_around_pair", &[("ma", true)]),
+        ]
+        .into_iter()
+        .map(|(command, bindings)| {
+            let mut bindings = bindings.iter().map(make_binding).collect::<Vec<_>>();
+            bindings.sort();
+            (command.to_owned(), Bindings { bindings })
+        })
+        .collect::<HashMap<String, Bindings>>();
+
+        assert_eq!(reverse_map, expected_map, "Mismatch");
     }
 }
