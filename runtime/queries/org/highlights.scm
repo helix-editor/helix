@@ -21,3 +21,4 @@
 
 ((expr) @markup.quote
  (#match? @markup.quote "=.*="))
+
