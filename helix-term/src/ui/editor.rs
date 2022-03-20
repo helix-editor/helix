@@ -708,6 +708,7 @@ impl EditorView {
 
         match &key_result {
             KeymapResult::Matched(command) => command.execute(cxt),
+            KeymapResult::MatchedFallback(command) => command.execute(cxt, event),
             KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
             KeymapResult::MatchedSequence(commands) => {
                 for command in commands {

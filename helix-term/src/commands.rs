@@ -482,11 +482,8 @@ impl std::str::FromStr for MappableCommand {
 }
 
 impl<'de> Deserialize<'de> for MappableCommand {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s: &'de str = Deserialize::deserialize(deserializer)?;
         s.parse().map_err(de::Error::custom)
     }
 }
@@ -512,6 +509,88 @@ impl PartialEq for MappableCommand {
             ) => first_name == second_name,
             _ => false,
         }
+    }
+}
+
+#[derive(Clone)]
+pub struct FallbackCommand {
+    pub name: &'static str,
+    pub fun: fn(cx: &mut Context, event: KeyEvent),
+    pub with_prompt: MappableCommand,
+    pub doc: &'static str,
+}
+
+macro_rules! fallback_commands {
+    ( $($name:ident, $prompting_name:ident, $doc:literal,)* ) => {
+        $(
+            #[allow(non_upper_case_globals)]
+            pub const $name: Self = Self {
+                name: stringify!($name),
+                fun: $name,
+                with_prompt: MappableCommand::$prompting_name,
+                doc: $doc
+            };
+        )*
+
+        pub const FALLBACK_COMMAND_LIST: &'static [Self] = &[
+            $( Self::$name, )*
+        ];
+    }
+}
+impl FallbackCommand {
+    pub fn execute(&self, cx: &mut Context, event: KeyEvent) {
+        (self.fun)(cx, event)
+    }
+
+    pub fn name(&self) -> &str {
+        self.name
+    }
+
+    pub fn doc(&self) -> &str {
+        self.doc
+    }
+
+    #[rustfmt::skip]
+    fallback_commands!(
+    );
+}
+
+impl fmt::Debug for FallbackCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("FallbackCommand")
+            .field(&self.name())
+            .finish()
+    }
+}
+
+impl fmt::Display for FallbackCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.name())
+    }
+}
+
+impl std::str::FromStr for FallbackCommand {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        FallbackCommand::FALLBACK_COMMAND_LIST
+            .iter()
+            .find(|cmd| cmd.name() == s)
+            .cloned()
+            .ok_or_else(|| anyhow!("No command named '{}'", s))
+    }
+}
+
+impl<'de> Deserialize<'de> for FallbackCommand {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s: &'de str = Deserialize::deserialize(deserializer)?;
+        s.parse().map_err(de::Error::custom)
+    }
+}
+
+impl PartialEq for FallbackCommand {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
     }
 }
 
@@ -2115,33 +2194,14 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            // formats key bindings, multiple bindings are comma separated,
-            // individual key presses are joined with `+`
-            let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
-                bindings
-                    .iter()
-                    .map(|bind| {
-                        bind.iter()
-                            .map(|key| key.to_string())
-                            .collect::<Vec<String>>()
-                            .join("+")
-                    })
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            };
-
             let picker = Picker::new(
                 commands,
-                move |command| match command {
-                    MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String)
-                    {
-                        Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
+                move |command| {
+                    let doc = command.doc();
+                    match keymap.get(command.name()) {
+                        Some(bindings) => format!("{doc} ({bindings})").into(),
                         None => doc.into(),
-                    },
-                    MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
-                        Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
-                        None => (*doc).into(),
-                    },
+                    }
                 },
                 move |cx, command, _action| {
                     let mut ctx = Context {

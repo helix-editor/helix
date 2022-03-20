@@ -1,4 +1,4 @@
-pub use crate::commands::MappableCommand;
+pub use crate::commands::{FallbackCommand, MappableCommand};
 use crate::config::Config;
 use helix_core::hashmap;
 use helix_view::{document::Mode, info::Info, input::KeyEvent};
@@ -6,7 +6,7 @@ use serde::Deserialize;
 use std::{
     borrow::Cow,
     collections::{BTreeSet, HashMap},
-    ops::{Deref, DerefMut},
+    ops::Deref,
 };
 
 #[macro_export]
@@ -96,9 +96,19 @@ macro_rules! keymap {
     };
 
     (@trie
-        { $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }
+        {
+            $label:literal
+            $(sticky=$sticky:literal)?
+            $($($key:literal)|+ => $value:tt,)+
+            $(_ => $fallback:ident,)?
+        }
     ) => {
-        keymap!({ $label $(sticky=$sticky)? $($($key)|+ => $value,)+ })
+        keymap!({
+            $label
+            $(sticky=$sticky)?
+            $($($key)|+ => $value,)+
+            $(_ => $fallback,)?
+        })
     };
 
     (@trie [$($cmd:ident),* $(,)?]) => {
@@ -106,7 +116,12 @@ macro_rules! keymap {
     };
 
     (
-        { $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }
+        {
+            $label:literal
+            $(sticky=$sticky:literal)?
+            $($($key:literal)|+ => $value:tt,)+
+            $(_ => $fallback:ident,)?
+        }
     ) => {
         // modified from the hashmap! macro
         {
@@ -126,6 +141,7 @@ macro_rules! keymap {
             )*
             let mut _node = $crate::keymap::KeyTrieNode::new($label, _map, _order);
             $( _node.is_sticky = $sticky; )?
+            $( _node.fallback = Some($crate::commands::FallbackCommand::$fallback); )?
             $crate::keymap::KeyTrie::Node(_node)
         }
     };
@@ -136,6 +152,8 @@ pub struct KeyTrieNode {
     /// A label for keys coming under this node, like "Goto mode"
     name: String,
     map: HashMap<KeyEvent, KeyTrie>,
+    // TODO: Come up with a serialized representation of this
+    fallback: Option<FallbackCommand>,
     order: Vec<KeyEvent>,
     pub is_sticky: bool,
 }
@@ -160,6 +178,7 @@ impl KeyTrieNode {
         Self {
             name: name.to_string(),
             map,
+            fallback: None,
             order,
             is_sticky: false,
         }
@@ -167,6 +186,14 @@ impl KeyTrieNode {
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn len(&self) -> usize {
+        self.map.len() + self.fallback.is_some() as usize
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Merge another Node in. Leaves and subnodes from the other node replace
@@ -190,8 +217,8 @@ impl KeyTrieNode {
     }
 
     pub fn infobox(&self) -> Info {
-        let mut body: Vec<(&str, BTreeSet<KeyEvent>)> = Vec::with_capacity(self.len());
-        for (&key, trie) in self.iter() {
+        let mut body: Vec<(&str, BTreeSet<Option<KeyEvent>>)> = Vec::with_capacity(self.len());
+        for (&key, trie) in &self.map {
             let desc = match trie {
                 KeyTrie::Leaf(cmd) => {
                     if cmd.name() == "no_op" {
@@ -204,29 +231,43 @@ impl KeyTrieNode {
             };
             match body.iter().position(|(d, _)| d == &desc) {
                 Some(pos) => {
-                    body[pos].1.insert(key);
+                    body[pos].1.insert(Some(key));
                 }
-                None => body.push((desc, BTreeSet::from([key]))),
+                None => body.push((desc, [Some(key)].into())),
             }
         }
         body.sort_unstable_by_key(|(_, keys)| {
-            self.order
-                .iter()
-                .position(|&k| k == *keys.iter().next().unwrap())
-                .unwrap()
+            match keys.iter().next().unwrap() {
+                Some(key) => self.order.iter().position(|k| k == key).unwrap(),
+                None => usize::MAX, // fallback goes at the end
+            }
         });
         let prefix = format!("{} ", self.name());
         if body.iter().all(|(desc, _)| desc.starts_with(&prefix)) {
-            body = body
-                .into_iter()
-                .map(|(desc, keys)| (desc.strip_prefix(&prefix).unwrap(), keys))
-                .collect();
+            for (desc, _) in &mut body {
+                *desc = desc.strip_prefix(&prefix).unwrap();
+            }
         }
         Info::from_keymap(self.name(), body)
     }
     /// Get a reference to the key trie node's order.
     pub fn order(&self) -> &[KeyEvent] {
         self.order.as_slice()
+    }
+
+    fn search(&self, keys: &'_ [KeyEvent]) -> KeyTrieResult<'_> {
+        use KeyTrieResult::*;
+        match keys {
+            [] => Pending(self),
+            [k] => match self.map.get(k) {
+                Some(trie) => trie.search(&[]),
+                None => self.fallback.as_ref().map_or(NotFound, MatchedFallback),
+            },
+            [k, rest @ ..] => match self.map.get(k) {
+                Some(trie) => trie.search(rest),
+                None => NotFound,
+            },
+        }
     }
 }
 
@@ -238,21 +279,7 @@ impl Default for KeyTrieNode {
 
 impl PartialEq for KeyTrieNode {
     fn eq(&self, other: &Self) -> bool {
-        self.map == other.map
-    }
-}
-
-impl Deref for KeyTrieNode {
-    type Target = HashMap<KeyEvent, KeyTrie>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.map
-    }
-}
-
-impl DerefMut for KeyTrieNode {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.map
+        self.map == other.map && self.fallback == other.fallback
     }
 }
 
@@ -286,16 +313,33 @@ impl KeyTrie {
         self.node_mut().unwrap().merge(node);
     }
 
-    pub fn search(&self, keys: &[KeyEvent]) -> Option<&KeyTrie> {
-        let mut trie = self;
-        for key in keys {
-            trie = match trie {
-                KeyTrie::Node(map) => map.get(key),
-                // leaf encountered while keys left to process
-                KeyTrie::Leaf(_) | KeyTrie::Sequence(_) => None,
-            }?
+    fn search(&self, keys: &'_ [KeyEvent]) -> KeyTrieResult<'_> {
+        match self {
+            KeyTrie::Leaf(cmd) if keys.is_empty() => KeyTrieResult::Matched(cmd),
+            KeyTrie::Sequence(cmds) if keys.is_empty() => KeyTrieResult::MatchedSequence(cmds),
+            KeyTrie::Node(node) => node.search(keys),
+            _ => KeyTrieResult::NotFound,
         }
-        Some(trie)
+    }
+}
+
+enum KeyTrieResult<'a> {
+    Pending(&'a KeyTrieNode),
+    Matched(&'a MappableCommand),
+    MatchedFallback(&'a FallbackCommand),
+    MatchedSequence(&'a [MappableCommand]),
+    NotFound,
+}
+
+impl From<KeyTrieResult<'_>> for KeymapResult {
+    fn from(r: KeyTrieResult<'_>) -> Self {
+        match r {
+            KeyTrieResult::Pending(node) => Self::Pending(node.clone()),
+            KeyTrieResult::Matched(cmd) => Self::Matched(cmd.clone()),
+            KeyTrieResult::MatchedFallback(cmd) => Self::MatchedFallback(cmd.clone()),
+            KeyTrieResult::MatchedSequence(cmds) => Self::MatchedSequence(cmds.to_vec()),
+            KeyTrieResult::NotFound => Self::NotFound,
+        }
     }
 }
 
@@ -304,6 +348,8 @@ pub enum KeymapResult {
     /// Needs more keys to execute a command. Contains valid keys for next keystroke.
     Pending(KeyTrieNode),
     Matched(MappableCommand),
+    /// Matched a fallback command, which uses the last key event.
+    MatchedFallback(FallbackCommand),
     /// Matched a sequence of commands to execute.
     MatchedSequence(Vec<MappableCommand>),
     /// Key was not found in the root keymap
@@ -311,6 +357,70 @@ pub enum KeymapResult {
     /// Key is invalid in combination with previous keys. Contains keys leading upto
     /// and including current (invalid) key.
     Cancelled(Vec<KeyEvent>),
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Binding {
+    pub keys: Vec<KeyEvent>,
+    pub is_fallback: bool,
+}
+
+impl Binding {
+    pub fn new(keys: &[KeyEvent]) -> Self {
+        Self {
+            keys: keys.to_vec(),
+            is_fallback: false,
+        }
+    }
+
+    pub fn fallback(keys: &[KeyEvent]) -> Self {
+        Self {
+            keys: keys.to_vec(),
+            is_fallback: true,
+        }
+    }
+}
+
+impl std::fmt::Display for Binding {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        debug_assert!(!self.keys.is_empty());
+        self.keys[0].fmt(f)?;
+        for key in &self.keys[1..] {
+            write!(f, "+{key}")?;
+        }
+        if self.is_fallback {
+            write!(f, "+…")?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Bindings {
+    pub bindings: Vec<Binding>,
+}
+
+impl Bindings {
+    pub fn add_binding(&mut self, keys: &[KeyEvent]) {
+        self.bindings.push(Binding::new(keys));
+    }
+
+    pub fn add_fallback(&mut self, keys: &[KeyEvent]) {
+        self.bindings.push(Binding::fallback(keys));
+    }
+}
+
+impl std::fmt::Display for Bindings {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.bindings.is_empty() {
+            return Ok(());
+        }
+        self.bindings[0].fmt(f)?;
+        for binding in &self.bindings[1..] {
+            write!(f, ", {binding}")?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -325,28 +435,29 @@ impl Keymap {
         Keymap { root }
     }
 
-    pub fn reverse_map(&self) -> HashMap<String, Vec<Vec<KeyEvent>>> {
+    pub fn reverse_map(&self) -> HashMap<String, Bindings> {
         // recursively visit all nodes in keymap
         fn map_node(
-            cmd_map: &mut HashMap<String, Vec<Vec<KeyEvent>>>,
+            cmd_map: &mut HashMap<String, Bindings>,
             node: &KeyTrie,
             keys: &mut Vec<KeyEvent>,
         ) {
             match node {
-                KeyTrie::Leaf(cmd) => match cmd {
-                    MappableCommand::Typable { name, .. } => {
-                        cmd_map.entry(name.into()).or_default().push(keys.clone())
-                    }
-                    MappableCommand::Static { name, .. } => cmd_map
-                        .entry(name.to_string())
-                        .or_default()
-                        .push(keys.clone()),
-                },
+                KeyTrie::Leaf(cmd) => cmd_map
+                    .entry(cmd.name().into())
+                    .or_default()
+                    .add_binding(&keys),
                 KeyTrie::Node(next) => {
                     for (key, trie) in &next.map {
                         keys.push(*key);
                         map_node(cmd_map, trie, keys);
                         keys.pop();
+                    }
+                    if let Some(fallback) = &next.fallback {
+                        cmd_map
+                            .entry(fallback.name.into())
+                            .or_default()
+                            .add_fallback(&keys)
                     }
                 }
                 KeyTrie::Sequence(_) => {}
@@ -436,35 +547,26 @@ impl Keymaps {
         };
 
         let trie = match trie_node.search(&[*first]) {
-            Some(KeyTrie::Leaf(ref cmd)) => {
-                return KeymapResult::Matched(cmd.clone());
-            }
-            Some(KeyTrie::Sequence(ref cmds)) => {
-                return KeymapResult::MatchedSequence(cmds.clone());
-            }
-            None => return KeymapResult::NotFound,
-            Some(t) => t,
+            KeyTrieResult::Pending(node) => node,
+            res => return res.into(),
         };
 
         self.state.push(key);
-        match trie.search(&self.state[1..]) {
-            Some(&KeyTrie::Node(ref map)) => {
-                if map.is_sticky {
+        let res = trie.search(&self.state[1..]);
+        match res {
+            KeyTrieResult::Pending(node) => {
+                if node.is_sticky {
                     self.state.clear();
-                    self.sticky = Some(map.clone());
+                    self.sticky = Some(node.clone());
                 }
-                KeymapResult::Pending(map.clone())
             }
-            Some(&KeyTrie::Leaf(ref cmd)) => {
-                self.state.clear();
-                KeymapResult::Matched(cmd.clone())
+            KeyTrieResult::NotFound => {
+                let keys = std::mem::take(&mut self.state);
+                return KeymapResult::Cancelled(keys);
             }
-            Some(&KeyTrie::Sequence(ref cmds)) => {
-                self.state.clear();
-                KeymapResult::MatchedSequence(cmds.clone())
-            }
-            None => KeymapResult::Cancelled(self.state.drain(..).collect()),
+            _ => self.state.clear(),
         }
+        res.into()
     }
 }
 
