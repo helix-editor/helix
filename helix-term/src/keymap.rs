@@ -214,6 +214,9 @@ impl KeyTrieNode {
                 self.order.push(key);
             }
         }
+        if other.fallback.is_some() {
+            self.fallback = other.fallback;
+        }
     }
 
     pub fn infobox(&self) -> Info {
