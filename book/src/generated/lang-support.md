@@ -42,6 +42,7 @@
 | nix | ✓ |  | ✓ | `rnix-lsp` |
 | ocaml | ✓ |  | ✓ |  |
 | ocaml-interface | ✓ |  |  |  |
+| org | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |
 | php | ✓ | ✓ | ✓ |  |
 | prolog |  |  |  | `swipl` |
