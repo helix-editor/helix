@@ -300,7 +300,7 @@ impl KeyTrie {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum KeymapResultKind {
+pub enum KeymapResult {
     /// Needs more keys to execute a command. Contains valid keys for next keystroke.
     Pending(KeyTrieNode),
     Matched(MappableCommand),
@@ -311,20 +311,6 @@ pub enum KeymapResultKind {
     /// Key is invalid in combination with previous keys. Contains keys leading upto
     /// and including current (invalid) key.
     Cancelled(Vec<KeyEvent>),
-}
-
-/// Returned after looking up a key in [`Keymap`]. The `sticky` field has a
-/// reference to the sticky node if one is currently active.
-#[derive(Debug)]
-pub struct KeymapResult<'a> {
-    pub kind: KeymapResultKind,
-    pub sticky: Option<&'a KeyTrieNode>,
-}
-
-impl<'a> KeymapResult<'a> {
-    pub fn new(kind: KeymapResultKind, sticky: Option<&'a KeyTrieNode>) -> Self {
-        Self { kind, sticky }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -437,11 +423,8 @@ impl Keymaps {
 
         if key!(Esc) == key {
             if !self.state.is_empty() {
-                return KeymapResult::new(
-                    // Note that Esc is not included here
-                    KeymapResultKind::Cancelled(self.state.drain(..).collect()),
-                    self.sticky(),
-                );
+                // Note that Esc is not included here
+                return KeymapResult::Cancelled(self.state.drain(..).collect());
             }
             self.sticky = None;
         }
@@ -454,15 +437,12 @@ impl Keymaps {
 
         let trie = match trie_node.search(&[*first]) {
             Some(KeyTrie::Leaf(ref cmd)) => {
-                return KeymapResult::new(KeymapResultKind::Matched(cmd.clone()), self.sticky())
+                return KeymapResult::Matched(cmd.clone());
             }
             Some(KeyTrie::Sequence(ref cmds)) => {
-                return KeymapResult::new(
-                    KeymapResultKind::MatchedSequence(cmds.clone()),
-                    self.sticky(),
-                )
+                return KeymapResult::MatchedSequence(cmds.clone());
             }
-            None => return KeymapResult::new(KeymapResultKind::NotFound, self.sticky()),
+            None => return KeymapResult::NotFound,
             Some(t) => t,
         };
 
@@ -473,23 +453,17 @@ impl Keymaps {
                     self.state.clear();
                     self.sticky = Some(map.clone());
                 }
-                KeymapResult::new(KeymapResultKind::Pending(map.clone()), self.sticky())
+                KeymapResult::Pending(map.clone())
             }
             Some(&KeyTrie::Leaf(ref cmd)) => {
                 self.state.clear();
-                return KeymapResult::new(KeymapResultKind::Matched(cmd.clone()), self.sticky());
+                KeymapResult::Matched(cmd.clone())
             }
             Some(&KeyTrie::Sequence(ref cmds)) => {
                 self.state.clear();
-                KeymapResult::new(
-                    KeymapResultKind::MatchedSequence(cmds.clone()),
-                    self.sticky(),
-                )
+                KeymapResult::MatchedSequence(cmds.clone())
             }
-            None => KeymapResult::new(
-                KeymapResultKind::Cancelled(self.state.drain(..).collect()),
-                self.sticky(),
-            ),
+            None => KeymapResult::Cancelled(self.state.drain(..).collect()),
         }
     }
 }
@@ -901,19 +875,19 @@ mod tests {
 
         let keymap = &mut merged_config.keys;
         assert_eq!(
-            keymap.get(Mode::Normal, key!('i')).kind,
-            KeymapResultKind::Matched(MappableCommand::normal_mode),
+            keymap.get(Mode::Normal, key!('i')),
+            KeymapResult::Matched(MappableCommand::normal_mode),
             "Leaf should replace leaf"
         );
         assert_eq!(
-            keymap.get(Mode::Normal, key!('无')).kind,
-            KeymapResultKind::Matched(MappableCommand::insert_mode),
+            keymap.get(Mode::Normal, key!('无')),
+            KeymapResult::Matched(MappableCommand::insert_mode),
             "New leaf should be present in merged keymap"
         );
         // Assumes that z is a node in the default keymap
         assert_eq!(
-            keymap.get(Mode::Normal, key!('z')).kind,
-            KeymapResultKind::Matched(MappableCommand::jump_backward),
+            keymap.get(Mode::Normal, key!('z')),
+            KeymapResult::Matched(MappableCommand::jump_backward),
             "Leaf should replace node"
         );
 
