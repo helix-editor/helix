@@ -7,7 +7,9 @@
 
  (block) @markup.raw.block
  (list) @markup.list.unnumbered
- (property_drawer) @label
+ (directive) @markup.label
+ (property_drawer) @markup.label
+ 
 
  ((expr) @markup.bold
   (#match? @markup.bold "\\*.*\\*"))
