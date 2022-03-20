@@ -236,6 +236,15 @@ impl KeyTrieNode {
                 None => body.push((desc, [Some(key)].into())),
             }
         }
+        if let Some(cmd) = &self.fallback {
+            let desc = cmd.doc();
+            match body.iter().position(|(d, _)| d == &desc) {
+                Some(pos) => {
+                    body[pos].1.insert(None);
+                }
+                None => body.push((desc, [None].into())),
+            }
+        }
         body.sort_unstable_by_key(|(_, keys)| {
             match keys.iter().next().unwrap() {
                 Some(key) => self.order.iter().position(|k| k == key).unwrap(),
