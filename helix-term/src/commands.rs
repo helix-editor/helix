@@ -2194,7 +2194,7 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            let picker = Picker::new(
+            let picker = Picker::new_with_compositor_callback(
                 commands,
                 move |command| {
                     let doc = command.doc();
@@ -2213,6 +2213,13 @@ pub fn command_palette(cx: &mut Context) {
                         jobs: cx.jobs,
                     };
                     command.execute(&mut ctx);
+                    if let Some(cb) = ctx.on_next_key_callback {
+                        Some(Box::new(|compositor, _cx| {
+                            compositor.editor_view().on_next_key(cb)
+                        }))
+                    } else {
+                        None
+                    }
                 },
             );
             compositor.push(Box::new(picker));

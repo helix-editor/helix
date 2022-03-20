@@ -864,6 +864,10 @@ impl EditorView {
 
         EventResult::Consumed(None)
     }
+
+    pub fn on_next_key(&mut self, cb: Box<dyn FnOnce(&mut commands::Context, KeyEvent)>) {
+        self.on_next_key = Some(cb);
+    }
 }
 
 impl EditorView {
