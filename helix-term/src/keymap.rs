@@ -447,7 +447,7 @@ impl Keymap {
                 KeyTrie::Leaf(cmd) => cmd_map
                     .entry(cmd.name().into())
                     .or_default()
-                    .add_binding(&keys),
+                    .add_binding(keys),
                 KeyTrie::Node(next) => {
                     for (key, trie) in &next.map {
                         keys.push(*key);
@@ -458,7 +458,7 @@ impl Keymap {
                         cmd_map
                             .entry(fallback.with_prompt.name().into())
                             .or_default()
-                            .add_fallback(&keys)
+                            .add_fallback(keys)
                     }
                 }
                 KeyTrie::Sequence(_) => {}
