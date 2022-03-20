@@ -397,9 +397,20 @@ impl MappableCommand {
         surround_add, "Surround add",
         surround_replace, "Surround replace",
         surround_delete, "Surround delete",
-        select_textobject_around, "Select around object",
-        select_textobject_inner, "Select inside object",
-        goto_next_function, "Goto next function",
+        select_around_word, "Select around current word",
+        select_inside_word, "Select inside current word",
+        select_around_long_word, "Select around current long word",
+        select_inside_long_word, "Select inside current long word",
+        select_around_class, "Select around current class",
+        select_inside_class, "Select inside current class",
+        select_around_function, "Select around current function",
+        select_inside_function, "Select inside current function",
+        select_around_parameter, "Select around current argument/parameter",
+        select_inside_parameter, "Select inside current argument/parameter",
+        select_around_cursor_pair, "Select around matching delimiter under cursor",
+        select_inside_cursor_pair, "Select inside matching delimiter under cursor",
+        prompt_and_select_around_pair, "Select around matching delimiter",
+        prompt_and_select_inside_pair, "Select inside matching delimiter",        goto_next_function, "Goto next function",
         goto_prev_function, "Goto previous function",
         goto_next_class, "Goto next class",
         goto_prev_class, "Goto previous class",
@@ -552,6 +563,8 @@ impl FallbackCommand {
 
     #[rustfmt::skip]
     fallback_commands!(
+        select_around_pair, prompt_and_select_around_pair, "Select around matching delimiter",
+        select_inside_pair, prompt_and_select_inside_pair, "Select inside matching delimiter",
     );
 }
 
@@ -4008,96 +4021,111 @@ fn goto_prev_comment(cx: &mut Context) {
     goto_ts_object_impl(cx, "comment", Direction::Backward)
 }
 
-fn select_textobject_around(cx: &mut Context) {
-    select_textobject(cx, textobject::TextObject::Around);
+#[derive(Copy, Clone, Debug)]
+enum TextObjectSelector {
+    Word(bool),
+    Treesitter(&'static str),
+    Matching(Option<char>),
 }
 
-fn select_textobject_inner(cx: &mut Context) {
-    select_textobject(cx, textobject::TextObject::Inside);
-}
-
-fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
-    let count = cx.count();
-
-    cx.on_next_key(move |cx, event| {
-        cx.editor.autoinfo = None;
-        cx.editor.pseudo_pending = None;
-        if let Some(ch) = event.char() {
-            let textobject = move |editor: &mut Editor| {
-                let (view, doc) = current!(editor);
-                let text = doc.text().slice(..);
-
-                let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
-                    let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
-                        Some(t) => t,
-                        None => return range,
-                    };
-                    textobject::textobject_treesitter(
-                        text,
-                        range,
-                        objtype,
-                        obj_name,
-                        syntax.tree().root_node(),
-                        lang_config,
-                        count,
-                    )
-                };
-
-                let selection = doc.selection(view.id).clone().transform(|range| {
-                    match ch {
-                        'w' => textobject::textobject_word(text, range, objtype, count, false),
-                        'W' => textobject::textobject_word(text, range, objtype, count, true),
-                        'c' => textobject_treesitter("class", range),
-                        'f' => textobject_treesitter("function", range),
-                        'a' => textobject_treesitter("parameter", range),
-                        'o' => textobject_treesitter("comment", range),
-                        'm' => {
-                            let ch = text.char(range.cursor(text));
-                            if !ch.is_ascii_alphanumeric() {
-                                textobject::textobject_surround(text, range, objtype, ch, count)
-                            } else {
-                                range
-                            }
-                        }
-                        // TODO: cancel new ranges if inconsistent surround matches across lines
-                        ch if !ch.is_ascii_alphanumeric() => {
-                            textobject::textobject_surround(text, range, objtype, ch, count)
-                        }
-                        _ => range,
-                    }
-                });
-                doc.set_selection(view.id, selection);
-            };
-            textobject(cx.editor);
-            cx.editor.last_motion = Some(Motion(Box::new(textobject)));
+fn select_textobject_impl(
+    editor: &mut Editor,
+    obj_type: textobject::TextObject,
+    sel: TextObjectSelector,
+    count: usize,
+) {
+    let (view, doc) = current!(editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id).clone().transform(|range| match sel {
+        TextObjectSelector::Word(long) => {
+            textobject::textobject_word(text, range, obj_type, count, long)
+        }
+        TextObjectSelector::Treesitter(obj_name) => {
+            if let Some((lang_config, syntax)) = doc.language_config().zip(doc.syntax()) {
+                textobject::textobject_treesitter(
+                    text,
+                    range,
+                    obj_type,
+                    obj_name,
+                    syntax.tree().root_node(),
+                    lang_config,
+                    count,
+                )
+            } else {
+                range
+            }
+        }
+        TextObjectSelector::Matching(ch) => {
+            let ch = ch.unwrap_or_else(|| text.char(range.cursor(text)));
+            if !ch.is_ascii_alphanumeric() {
+                // TODO: cancel new ranges if inconsistent surround matches across lines
+                textobject::textobject_surround(text, range, obj_type, ch, count)
+            } else {
+                range
+            }
         }
     });
+    doc.set_selection(view.id, selection);
+}
 
-    if let Some((title, abbrev)) = match objtype {
-        textobject::TextObject::Inside => Some(("Match inside", "mi")),
-        textobject::TextObject::Around => Some(("Match around", "ma")),
-        _ => return,
-    } {
-        let help_text = [
-            ("w", "Word"),
-            ("W", "WORD"),
-            ("c", "Class (tree-sitter)"),
-            ("f", "Function (tree-sitter)"),
-            ("a", "Argument/parameter (tree-sitter)"),
-            ("o", "Comment (tree-sitter)"),
-            ("m", "Matching delimiter under cursor"),
-            (" ", "... or any character acting as a pair"),
-        ];
+fn select_textobject(cx: &mut Context, obj_type: textobject::TextObject, sel: TextObjectSelector) {
+    let count = cx.count();
+    let motion = move |editor: &mut Editor| select_textobject_impl(editor, obj_type, sel, count);
+    motion(cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
 
-        cx.editor.autoinfo = Some(Info::new(
-            title,
-            help_text
-                .into_iter()
-                .map(|(col1, col2)| (col1.to_string(), col2.to_string()))
-                .collect(),
-        ));
-        cx.editor.pseudo_pending = Some(abbrev.to_string());
+macro_rules! select_textobject_commands {
+    ( $($name:ident($objtype:ident, $objsel:ident($val:expr));)* ) => {
+        $(
+            fn $name(cx: &mut Context) {
+                select_textobject(
+                    cx,
+                    textobject::TextObject::$objtype,
+                    TextObjectSelector::$objsel($val),
+                )
+            }
+        )*
     };
+}
+
+select_textobject_commands! {
+    select_around_word(Around, Word(false));
+    select_inside_word(Inside, Word(false));
+    select_around_long_word(Around, Word(true));
+    select_inside_long_word(Inside, Word(true));
+    select_around_class(Around, Treesitter("class"));
+    select_inside_class(Inside, Treesitter("class"));
+    select_around_function(Around, Treesitter("function"));
+    select_inside_function(Inside, Treesitter("function"));
+    select_around_parameter(Around, Treesitter("parameter"));
+    select_inside_parameter(Inside, Treesitter("parameter"));
+    select_around_cursor_pair(Around, Matching(None));
+    select_inside_cursor_pair(Inside, Matching(None));
+}
+
+fn prompt_and_select_around_pair(cx: &mut Context) {
+    cx.editor.set_status("Select a delimiter...");
+    cx.on_next_key(select_around_pair);
+}
+
+fn prompt_and_select_inside_pair(cx: &mut Context) {
+    cx.editor.set_status("Select a delimiter...");
+    cx.on_next_key(select_inside_pair);
+}
+
+fn select_around_pair(cx: &mut Context, event: KeyEvent) {
+    select_pair(cx, textobject::TextObject::Around, event);
+}
+
+fn select_inside_pair(cx: &mut Context, event: KeyEvent) {
+    select_pair(cx, textobject::TextObject::Inside, event);
+}
+
+fn select_pair(cx: &mut Context, objtype: textobject::TextObject, event: KeyEvent) {
+    if let Some(ch) = event.char() {
+        select_textobject(cx, objtype, TextObjectSelector::Matching(Some(ch)));
+    }
 }
 
 fn surround_add(cx: &mut Context) {
