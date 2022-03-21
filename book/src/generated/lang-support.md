@@ -54,7 +54,7 @@
 | ruby | ✓ |  | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | scala | ✓ |  | ✓ | `metals` |
-| solidity | | | | `solc` |
+| solidity |  |  |  | `solc` |
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | tablegen | ✓ | ✓ | ✓ |  |
 | toml | ✓ |  |  |  |
