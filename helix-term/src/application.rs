@@ -28,8 +28,8 @@ use anyhow::Error;
 use crossterm::{
     event::{DisableMouseCapture, Event, EventStream},
     execute, terminal,
-    tty::IsTty,
 };
+use termwiz::istty::IsTty;
 #[cfg(not(windows))]
 use {
     signal_hook::{consts::signal, low_level},
