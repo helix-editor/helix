@@ -18,7 +18,7 @@ use crate::{
 
 use log::{error, warn};
 use std::{
-    io::{stdin, stdout, Write},
+    io::stdin,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -26,7 +26,7 @@ use std::{
 use anyhow::Error;
 
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream},
+    event::{DisableMouseCapture, Event, EventStream},
     execute, terminal,
     tty::IsTty,
 };
@@ -805,26 +805,12 @@ impl Application {
         }
     }
 
-    async fn claim_term(&mut self) -> Result<(), Error> {
-        terminal::enable_raw_mode()?;
-        let mut stdout = stdout();
-        execute!(stdout, terminal::EnterAlternateScreen)?;
-        if self.config.editor.mouse {
-            execute!(stdout, EnableMouseCapture)?;
-        }
-        Ok(())
+    async fn claim_term(&mut self) -> Result<(), termwiz::Error> {
+        self.compositor.claim_term()
     }
 
-    fn restore_term(&mut self) -> Result<(), Error> {
-        let mut stdout = stdout();
-        // reset cursor shape
-        write!(stdout, "\x1B[2 q")?;
-        // Ignore errors on disabling, this might trigger on windows if we call
-        // disable without calling enable previously
-        let _ = execute!(stdout, DisableMouseCapture);
-        execute!(stdout, terminal::LeaveAlternateScreen)?;
-        terminal::disable_raw_mode()?;
-        Ok(())
+    fn restore_term(&mut self) -> Result<(), termwiz::Error> {
+        self.compositor.clear()
     }
 
     pub async fn run(&mut self) -> Result<i32, Error> {

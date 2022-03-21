@@ -72,14 +72,14 @@ pub trait Component: Any + AnyComponent {
 }
 
 use termwiz::{
-    caps::Capabilities, surface::CursorVisibility, terminal::buffered::BufferedTerminal,
-    terminal::SystemTerminal,
+    caps::Capabilities,
+    surface::CursorVisibility,
+    terminal::{buffered::BufferedTerminal, SystemTerminal, Terminal},
 };
-type Terminal = BufferedTerminal<SystemTerminal>;
 
 pub struct Compositor {
     layers: Vec<Box<dyn Component>>,
-    terminal: Terminal,
+    terminal: BufferedTerminal<SystemTerminal>,
     surface: Surface,
 
     pub(crate) last_picker: Option<Box<dyn Component>>,
@@ -247,6 +247,17 @@ impl Compositor {
             .iter_mut()
             .find(|component| component.id() == Some(id))
             .and_then(|component| component.as_any_mut().downcast_mut())
+    }
+
+    pub fn claim_term(&mut self) -> Result<(), termwiz::Error> {
+        self.terminal.terminal().enter_alternate_screen()?;
+        self.terminal.terminal().set_raw_mode()
+    }
+
+    pub(crate) fn clear(&mut self) -> Result<(), termwiz::Error> {
+        let inner_term = self.terminal.terminal();
+        inner_term.exit_alternate_screen()?;
+        inner_term.set_cooked_mode()
     }
 }
 
