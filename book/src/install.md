@@ -44,9 +44,7 @@ sudo dnf install helix
 ## Build from source
 
 ```
-git clone https://github.com/helix-editor/helix
-cd helix
-cargo install --path helix-term
+cargo install helix-term --git https://github.com/helix-editor/helix
 ```
 
 This will install the `hx` binary to `$HOME/.cargo/bin`.
