@@ -2187,7 +2187,7 @@ async fn make_format_callback(
     format: impl Future<Output = helix_lsp::util::LspFormatting> + Send + 'static,
 ) -> anyhow::Result<job::Callback> {
     let format = format.await;
-    let call: job::Callback = Box::new(move |editor: &mut Editor, _compositor: &mut Compositor| {
+    let call: job::Callback = Box::new(move |editor, _compositor| {
         let view_id = view!(editor).id;
         if let Some(doc) = editor.document_mut(doc_id) {
             if doc.version() == doc_version {
@@ -3475,9 +3475,7 @@ pub fn completion(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |editor: &mut Editor,
-              compositor: &mut Compositor,
-              response: Option<lsp::CompletionResponse>| {
+        move |editor, compositor, response: Option<lsp::CompletionResponse>| {
             let doc = doc!(editor);
             if doc.mode() != Mode::Insert {
                 // we're not in insert mode anymore
@@ -4123,11 +4121,12 @@ fn shell_append_output(cx: &mut Context) {
 }
 
 fn shell_keep_pipe(cx: &mut Context) {
-    let prompt = Prompt::new(
+    ui::prompt(
+        cx,
         "keep-pipe:".into(),
         Some('|'),
         ui::completers::none,
-        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+        move |cx, input: &str, event: PromptEvent| {
             let shell = &cx.editor.config().shell;
             if event != PromptEvent::Validate {
                 return;
@@ -4171,8 +4170,6 @@ fn shell_keep_pipe(cx: &mut Context) {
             doc.set_selection(view.id, Selection::new(ranges, index));
         },
     );
-
-    cx.push_layer(Box::new(prompt));
 }
 
 fn shell_impl(
@@ -4219,11 +4216,13 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
         ShellBehavior::Replace | ShellBehavior::Ignore => true,
         ShellBehavior::Insert | ShellBehavior::Append => false,
     };
-    let prompt = Prompt::new(
+
+    ui::prompt(
+        cx,
         prompt,
         Some('|'),
         ui::completers::none,
-        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+        move |cx, input: &str, event: PromptEvent| {
             let config = cx.editor.config();
             let shell = &config.shell;
             if event != PromptEvent::Validate {
@@ -4273,8 +4272,6 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
             view.ensure_cursor_in_view(doc, config.scrolloff);
         },
     );
-
-    cx.push_layer(Box::new(prompt));
 }
 
 fn suspend(_cx: &mut Context) {
@@ -4420,13 +4417,11 @@ fn replay_macro(cx: &mut Context) {
     };
 
     let count = cx.count();
-    cx.callback = Some(Box::new(
-        move |compositor: &mut Compositor, cx: &mut compositor::Context| {
-            for _ in 0..count {
-                for &key in keys.iter() {
-                    compositor.handle_event(crossterm::event::Event::Key(key.into()), cx);
-                }
+    cx.callback = Some(Box::new(move |compositor, cx| {
+        for _ in 0..count {
+            for &key in keys.iter() {
+                compositor.handle_event(crossterm::event::Event::Key(key.into()), cx);
             }
-        },
-    ));
+        }
+    }));
 }
