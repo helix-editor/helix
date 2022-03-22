@@ -1411,7 +1411,7 @@ fn select_all(cx: &mut Context) {
 
 fn select_regex(cx: &mut Context) {
     let reg = cx.register.unwrap_or('/');
-    let prompt = ui::regex_prompt(
+    ui::regex_prompt(
         cx,
         "select:".into(),
         Some(reg),
@@ -1428,13 +1428,11 @@ fn select_regex(cx: &mut Context) {
             }
         },
     );
-
-    cx.push_layer(Box::new(prompt));
 }
 
 fn split_selection(cx: &mut Context) {
     let reg = cx.register.unwrap_or('/');
-    let prompt = ui::regex_prompt(
+    ui::regex_prompt(
         cx,
         "split:".into(),
         Some(reg),
@@ -1448,8 +1446,6 @@ fn split_selection(cx: &mut Context) {
             doc.set_selection(view.id, selection);
         },
     );
-
-    cx.push_layer(Box::new(prompt));
 }
 
 fn split_selection_on_newline(cx: &mut Context) {
@@ -1578,7 +1574,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
     let contents = doc.text().slice(..).to_string();
     let completions = search_completions(cx, Some(reg));
 
-    let prompt = ui::regex_prompt(
+    ui::regex_prompt(
         cx,
         "search:".into(),
         Some(reg),
@@ -1605,8 +1601,6 @@ fn searcher(cx: &mut Context, direction: Direction) {
             );
         },
     );
-
-    cx.push_layer(Box::new(prompt));
 }
 
 fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Direction) {
@@ -1682,7 +1676,7 @@ fn global_search(cx: &mut Context) {
     let file_picker_config = config.file_picker.clone();
 
     let completions = search_completions(cx, None);
-    let prompt = ui::regex_prompt(
+    ui::regex_prompt(
         cx,
         "global-search:".into(),
         None,
@@ -1763,8 +1757,6 @@ fn global_search(cx: &mut Context) {
             }
         },
     );
-
-    cx.push_layer(Box::new(prompt));
 
     let current_path = doc_mut!(cx.editor).path().cloned();
 
@@ -3400,7 +3392,7 @@ fn join_selections(cx: &mut Context) {
 fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
     // keep or remove selections matching regex
     let reg = cx.register.unwrap_or('/');
-    let prompt = ui::regex_prompt(
+    ui::regex_prompt(
         cx,
         if remove { "remove:" } else { "keep:" }.into(),
         Some(reg),
@@ -3417,9 +3409,7 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
                 doc.set_selection(view.id, selection);
             }
         },
-    );
-
-    cx.push_layer(Box::new(prompt));
+    )
 }
 
 fn keep_selections(cx: &mut Context) {

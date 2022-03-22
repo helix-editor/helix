@@ -32,7 +32,7 @@ pub fn regex_prompt(
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     fun: impl Fn(&mut View, &mut Document, Regex, PromptEvent) + 'static,
-) -> Prompt {
+) {
     let (view, doc) = current!(cx.editor);
     let doc_id = view.doc;
     let snapshot = doc.selection(view.id).clone();
@@ -95,7 +95,8 @@ pub fn regex_prompt(
     );
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
-    prompt
+    // prompt
+    cx.push_layer(Box::new(prompt));
 }
 
 pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
