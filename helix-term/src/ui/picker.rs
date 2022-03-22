@@ -593,7 +593,7 @@ impl<T: 'static> Component for Picker<T> {
 
         let files = self
             .matches
-            .iter_mut()
+            .iter()
             .skip(offset)
             .map(|(index, _score)| (*index, self.options.get(*index).unwrap()));
 
