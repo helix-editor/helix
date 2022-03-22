@@ -1,14 +1,11 @@
-use super::{align_view, Align, Context, Editor};
+use super::{Context, Editor};
 use crate::{
     compositor::{self, Compositor},
     job::{Callback, Jobs},
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
 };
-use helix_core::{
-    syntax::{DebugArgumentValue, DebugConfigCompletion},
-    Selection,
-};
-use helix_dap::{self as dap, Client, ThreadId};
+use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion};
+use helix_dap::{self as dap, Client};
 use helix_lsp::block_on;
 use helix_view::editor::Breakpoint;
 
@@ -21,79 +18,7 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, bail};
 
-#[macro_export]
-macro_rules! debugger {
-    ($editor:expr) => {{
-        match &mut $editor.debugger {
-            Some(debugger) => debugger,
-            None => return,
-        }
-    }};
-}
-
-// general utils:
-pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Option<usize> {
-    // 1-indexing to 0 indexing
-    let line = doc.try_line_to_char(line - 1).ok()?;
-    let pos = line + column.saturating_sub(1);
-    // TODO: this is probably utf-16 offsets
-    Some(pos)
-}
-
-pub async fn select_thread_id(editor: &mut Editor, thread_id: ThreadId, force: bool) {
-    let debugger = debugger!(editor);
-
-    if !force && debugger.thread_id.is_some() {
-        return;
-    }
-
-    debugger.thread_id = Some(thread_id);
-    fetch_stack_trace(debugger, thread_id).await;
-
-    let frame = debugger.stack_frames[&thread_id].get(0).cloned();
-    if let Some(frame) = &frame {
-        jump_to_stack_frame(editor, frame);
-    }
-}
-
-pub async fn fetch_stack_trace(debugger: &mut Client, thread_id: ThreadId) {
-    let (frames, _) = match debugger.stack_trace(thread_id).await {
-        Ok(frames) => frames,
-        Err(_) => return,
-    };
-    debugger.stack_frames.insert(thread_id, frames);
-    debugger.active_frame = Some(0);
-}
-
-pub fn jump_to_stack_frame(editor: &mut Editor, frame: &helix_dap::StackFrame) {
-    let path = if let Some(helix_dap::Source {
-        path: Some(ref path),
-        ..
-    }) = frame.source
-    {
-        path.clone()
-    } else {
-        return;
-    };
-
-    if let Err(e) = editor.open(path, helix_view::editor::Action::Replace) {
-        editor.set_error(format!("Unable to jump to stack frame: {}", e));
-        return;
-    }
-
-    let (view, doc) = current!(editor);
-
-    let text_end = doc.text().len_chars().saturating_sub(1);
-    let start = dap_pos_to_pos(doc.text(), frame.line, frame.column).unwrap_or(0);
-    let end = frame
-        .end_line
-        .and_then(|end_line| dap_pos_to_pos(doc.text(), end_line, frame.end_column.unwrap_or(0)))
-        .unwrap_or(start);
-
-    let selection = Selection::single(start.min(text_end), end.min(text_end));
-    doc.set_selection(view.id, selection);
-    align_view(doc, view, Align::Center);
-}
+use helix_view::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select_thread_id};
 
 fn thread_picker(
     cx: &mut Context,
@@ -417,63 +342,6 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
     let text = doc.text().slice(..);
     let line = doc.selection(view.id).primary().cursor_line(text);
     dap_toggle_breakpoint_impl(cx, path, line);
-}
-
-pub fn breakpoints_changed(
-    debugger: &mut dap::Client,
-    path: PathBuf,
-    breakpoints: &mut [Breakpoint],
-) -> Result<(), anyhow::Error> {
-    // TODO: handle capabilities correctly again, by filterin breakpoints when emitting
-    // if breakpoint.condition.is_some()
-    //     && !debugger
-    //         .caps
-    //         .as_ref()
-    //         .unwrap()
-    //         .supports_conditional_breakpoints
-    //         .unwrap_or_default()
-    // {
-    //     bail!(
-    //         "Can't edit breakpoint: debugger does not support conditional breakpoints"
-    //     )
-    // }
-    // if breakpoint.log_message.is_some()
-    //     && !debugger
-    //         .caps
-    //         .as_ref()
-    //         .unwrap()
-    //         .supports_log_points
-    //         .unwrap_or_default()
-    // {
-    //     bail!("Can't edit breakpoint: debugger does not support logpoints")
-    // }
-    let source_breakpoints = breakpoints
-        .iter()
-        .map(|breakpoint| helix_dap::SourceBreakpoint {
-            line: breakpoint.line + 1, // convert from 0-indexing to 1-indexing (TODO: could set debugger to 0-indexing on init)
-            ..Default::default()
-        })
-        .collect::<Vec<_>>();
-
-    let request = debugger.set_breakpoints(path, source_breakpoints);
-    match block_on(request) {
-        Ok(Some(dap_breakpoints)) => {
-            for (breakpoint, dap_breakpoint) in breakpoints.iter_mut().zip(dap_breakpoints) {
-                breakpoint.id = dap_breakpoint.id;
-                breakpoint.verified = dap_breakpoint.verified;
-                breakpoint.message = dap_breakpoint.message;
-                // TODO: handle breakpoint.message
-                // TODO: verify source matches
-                breakpoint.line = dap_breakpoint.line.unwrap_or(0).saturating_sub(1); // convert to 0-indexing
-                                                                                      // TODO: no unwrap
-                breakpoint.column = dap_breakpoint.column;
-                // TODO: verify end_linef/col instruction reference, offset
-            }
-        }
-        Err(e) => anyhow::bail!("Failed to set breakpoints: {}", e),
-        _ => {}
-    };
-    Ok(())
 }
 
 pub fn dap_toggle_breakpoint_impl(cx: &mut Context, path: PathBuf, line: usize) {
