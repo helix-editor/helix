@@ -20,7 +20,7 @@
  (number_literal)
  (yul_decimal_number)
  (yul_hex_number)
-] @number
+] @constant.numeric
 [
  (true)
  (false)
@@ -76,10 +76,10 @@
 
 (meta_type_expression "type" @keyword)
 
-(member_expression (property_identifier) @property)
-(property_identifier) @property
-(struct_expression ((identifier) @property . ":"))
-(enum_value) @property
+(member_expression (property_identifier) @variable.other.member)
+(property_identifier) @variable.other.member
+(struct_expression ((identifier) @variable.other.member . ":"))
+(enum_value) @variable.other.member
 
 
 ; Keywords
