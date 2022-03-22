@@ -992,10 +992,13 @@ source = { git = "https://github.com/milisims/tree-sitter-org", rev = "1c3eb533a
 [[language]]
 name = "solidity"
 scope = "source.sol"
-injection-regex = "sol"
+injection-regex = "^(sol|solidity)$"
 file-types = ["sol"]
 roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
 language-server = { command = "solc", args = ["--lsp"] }
 
+[[grammar]]
+name = "solidity"
+source = { git = "https://github.com/slinlee/tree-sitter-solidity", rev = "f3a002274744e859bf64cf3524985f8c31ea84fd" }
