@@ -708,6 +708,8 @@ fn kill_to_line_start(cx: &mut Context) {
         Range::new(head, anchor)
     });
     delete_selection_insert_mode(doc, view, &selection);
+
+    lsp::signature_help(cx);
 }
 
 fn kill_to_line_end(cx: &mut Context) {
@@ -727,6 +729,8 @@ fn kill_to_line_end(cx: &mut Context) {
         new_range
     });
     delete_selection_insert_mode(doc, view, &selection);
+
+    lsp::signature_help(cx);
 }
 
 fn goto_first_nonwhitespace(cx: &mut Context) {
@@ -2759,7 +2763,7 @@ pub mod insert {
             // lsp doesn't tell us when to close the signature help, so we request
             // the help information again after common close triggers which should
             // return None, which in turn closes the popup.
-            let close_triggers = &[')', ';'];
+            let close_triggers = &[')', ';', '.'];
 
             if is_trigger || close_triggers.contains(&ch) {
                 super::signature_help(cx);
@@ -2970,6 +2974,8 @@ pub mod insert {
                 }
             });
         doc.apply(&transaction, view.id);
+
+        lsp::signature_help(cx);
     }
 
     pub fn delete_char_forward(cx: &mut Context) {
@@ -2986,6 +2992,8 @@ pub mod insert {
                 )
             });
         doc.apply(&transaction, view.id);
+
+        lsp::signature_help(cx);
     }
 
     pub fn delete_word_backward(cx: &mut Context) {
@@ -2999,6 +3007,8 @@ pub mod insert {
             exclude_cursor(text, next, range)
         });
         delete_selection_insert_mode(doc, view, &selection);
+
+        lsp::signature_help(cx);
     }
 
     pub fn delete_word_forward(cx: &mut Context) {
@@ -3011,6 +3021,8 @@ pub mod insert {
             .clone()
             .transform(|range| movement::move_next_word_start(text, range, count));
         delete_selection_insert_mode(doc, view, &selection);
+
+        lsp::signature_help(cx);
     }
 }
 
