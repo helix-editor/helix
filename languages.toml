@@ -992,7 +992,7 @@ source = { git = "https://github.com/milisims/tree-sitter-org", rev = "1c3eb533a
 [[language]]
 name = "solidity"
 scope = "source.sol"
-injection-regex = "sol"
+injection-regex = "^(sol|solidity)$"
 file-types = ["sol"]
 roots = []
 comment-token = "//"
