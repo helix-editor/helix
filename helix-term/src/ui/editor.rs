@@ -2,7 +2,7 @@ use crate::{
     commands,
     compositor::{Component, Context, EventResult},
     key,
-    keymap::{KeymapResult, KeymapResultKind, Keymaps},
+    keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
 
@@ -694,7 +694,7 @@ impl EditorView {
 
     /// Handle events by looking them up in `self.keymaps`. Returns None
     /// if event was handled (a command was executed or a subkeymap was
-    /// activated). Only KeymapResultKind::{NotFound, Cancelled} is returned
+    /// activated). Only KeymapResult::{NotFound, Cancelled} is returned
     /// otherwise.
     fn handle_keymap_event(
         &mut self,
@@ -703,37 +703,37 @@ impl EditorView {
         event: KeyEvent,
     ) -> Option<KeymapResult> {
         cxt.editor.autoinfo = None;
-        let key_result = self.keymaps.get_mut(&mode).unwrap().get(event);
-        cxt.editor.autoinfo = key_result.sticky.map(|node| node.infobox());
+        let key_result = self.keymaps.get(mode, event);
+        cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
-        match &key_result.kind {
-            KeymapResultKind::Matched(command) => command.execute(cxt),
-            KeymapResultKind::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
-            KeymapResultKind::MatchedSequence(commands) => {
+        match &key_result {
+            KeymapResult::Matched(command) => command.execute(cxt),
+            KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
+            KeymapResult::MatchedSequence(commands) => {
                 for command in commands {
                     command.execute(cxt);
                 }
             }
-            KeymapResultKind::NotFound | KeymapResultKind::Cancelled(_) => return Some(key_result),
+            KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
         }
         None
     }
 
     fn insert_mode(&mut self, cx: &mut commands::Context, event: KeyEvent) {
         if let Some(keyresult) = self.handle_keymap_event(Mode::Insert, cx, event) {
-            match keyresult.kind {
-                KeymapResultKind::NotFound => {
+            match keyresult {
+                KeymapResult::NotFound => {
                     if let Some(ch) = event.char() {
                         commands::insert::insert_char(cx, ch)
                     }
                 }
-                KeymapResultKind::Cancelled(pending) => {
+                KeymapResult::Cancelled(pending) => {
                     for ev in pending {
                         match ev.char() {
                             Some(ch) => commands::insert::insert_char(cx, ch),
                             None => {
-                                if let KeymapResultKind::Matched(command) =
-                                    self.keymaps.get_mut(&Mode::Insert).unwrap().get(ev).kind
+                                if let KeymapResult::Matched(command) =
+                                    self.keymaps.get(Mode::Insert, ev)
                                 {
                                     command.execute(cx);
                                 }
@@ -1183,12 +1183,11 @@ impl Component for EditorView {
                         // how we entered insert mode is important, and we should track that so
                         // we can repeat the side effect.
 
-                        self.last_insert.0 =
-                            match self.keymaps.get_mut(&mode).unwrap().get(key).kind {
-                                KeymapResultKind::Matched(command) => command,
-                                // FIXME: insert mode can only be entered through single KeyCodes
-                                _ => unimplemented!(),
-                            };
+                        self.last_insert.0 = match self.keymaps.get(mode, key) {
+                            KeymapResult::Matched(command) => command,
+                            // FIXME: insert mode can only be entered through single KeyCodes
+                            _ => unimplemented!(),
+                        };
                         self.last_insert.1.clear();
                     }
                     (Mode::Insert, Mode::Normal) => {

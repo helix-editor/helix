@@ -300,7 +300,7 @@ impl KeyTrie {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum KeymapResultKind {
+pub enum KeymapResult {
     /// Needs more keys to execute a command. Contains valid keys for next keystroke.
     Pending(KeyTrieNode),
     Matched(MappableCommand),
@@ -313,41 +313,16 @@ pub enum KeymapResultKind {
     Cancelled(Vec<KeyEvent>),
 }
 
-/// Returned after looking up a key in [`Keymap`]. The `sticky` field has a
-/// reference to the sticky node if one is currently active.
-#[derive(Debug)]
-pub struct KeymapResult<'a> {
-    pub kind: KeymapResultKind,
-    pub sticky: Option<&'a KeyTrieNode>,
-}
-
-impl<'a> KeymapResult<'a> {
-    pub fn new(kind: KeymapResultKind, sticky: Option<&'a KeyTrieNode>) -> Self {
-        Self { kind, sticky }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(transparent)]
 pub struct Keymap {
     /// Always a Node
-    #[serde(flatten)]
     root: KeyTrie,
-    /// Stores pending keys waiting for the next key. This is relative to a
-    /// sticky node if one is in use.
-    #[serde(skip)]
-    state: Vec<KeyEvent>,
-    /// Stores the sticky node if one is activated.
-    #[serde(skip)]
-    sticky: Option<KeyTrieNode>,
 }
 
 impl Keymap {
     pub fn new(root: KeyTrie) -> Self {
-        Keymap {
-            root,
-            state: Vec::new(),
-            sticky: None,
-        }
+        Keymap { root }
     }
 
     pub fn reverse_map(&self) -> HashMap<String, Vec<Vec<KeyEvent>>> {
@@ -387,77 +362,6 @@ impl Keymap {
         &self.root
     }
 
-    pub fn sticky(&self) -> Option<&KeyTrieNode> {
-        self.sticky.as_ref()
-    }
-
-    /// Returns list of keys waiting to be disambiguated.
-    pub fn pending(&self) -> &[KeyEvent] {
-        &self.state
-    }
-
-    /// Lookup `key` in the keymap to try and find a command to execute. Escape
-    /// key cancels pending keystrokes. If there are no pending keystrokes but a
-    /// sticky node is in use, it will be cleared.
-    pub fn get(&mut self, key: KeyEvent) -> KeymapResult {
-        if key!(Esc) == key {
-            if !self.state.is_empty() {
-                return KeymapResult::new(
-                    // Note that Esc is not included here
-                    KeymapResultKind::Cancelled(self.state.drain(..).collect()),
-                    self.sticky(),
-                );
-            }
-            self.sticky = None;
-        }
-
-        let first = self.state.get(0).unwrap_or(&key);
-        let trie_node = match self.sticky {
-            Some(ref trie) => Cow::Owned(KeyTrie::Node(trie.clone())),
-            None => Cow::Borrowed(&self.root),
-        };
-
-        let trie = match trie_node.search(&[*first]) {
-            Some(KeyTrie::Leaf(ref cmd)) => {
-                return KeymapResult::new(KeymapResultKind::Matched(cmd.clone()), self.sticky())
-            }
-            Some(KeyTrie::Sequence(ref cmds)) => {
-                return KeymapResult::new(
-                    KeymapResultKind::MatchedSequence(cmds.clone()),
-                    self.sticky(),
-                )
-            }
-            None => return KeymapResult::new(KeymapResultKind::NotFound, self.sticky()),
-            Some(t) => t,
-        };
-
-        self.state.push(key);
-        match trie.search(&self.state[1..]) {
-            Some(&KeyTrie::Node(ref map)) => {
-                if map.is_sticky {
-                    self.state.clear();
-                    self.sticky = Some(map.clone());
-                }
-                KeymapResult::new(KeymapResultKind::Pending(map.clone()), self.sticky())
-            }
-            Some(&KeyTrie::Leaf(ref cmd)) => {
-                self.state.clear();
-                return KeymapResult::new(KeymapResultKind::Matched(cmd.clone()), self.sticky());
-            }
-            Some(&KeyTrie::Sequence(ref cmds)) => {
-                self.state.clear();
-                KeymapResult::new(
-                    KeymapResultKind::MatchedSequence(cmds.clone()),
-                    self.sticky(),
-                )
-            }
-            None => KeymapResult::new(
-                KeymapResultKind::Cancelled(self.state.drain(..).collect()),
-                self.sticky(),
-            ),
-        }
-    }
-
     pub fn merge(&mut self, other: Self) {
         self.root.merge_nodes(other.root);
     }
@@ -478,33 +382,89 @@ impl Default for Keymap {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(transparent)]
-pub struct Keymaps(pub HashMap<Mode, Keymap>);
+pub struct Keymaps {
+    #[serde(flatten)]
+    pub map: HashMap<Mode, Keymap>,
+
+    /// Stores pending keys waiting for the next key. This is relative to a
+    /// sticky node if one is in use.
+    #[serde(skip)]
+    state: Vec<KeyEvent>,
+
+    /// Stores the sticky node if one is activated.
+    #[serde(skip)]
+    pub sticky: Option<KeyTrieNode>,
+}
 
 impl Keymaps {
+    pub fn new(map: HashMap<Mode, Keymap>) -> Self {
+        Self {
+            map,
+            state: Vec::new(),
+            sticky: None,
+        }
+    }
+
     /// Returns list of keys waiting to be disambiguated in current mode.
     pub fn pending(&self) -> &[KeyEvent] {
-        self.0
-            .values()
-            .find_map(|keymap| match keymap.pending().is_empty() {
-                true => None,
-                false => Some(keymap.pending()),
-            })
-            .unwrap_or_default()
+        &self.state
     }
-}
 
-impl Deref for Keymaps {
-    type Target = HashMap<Mode, Keymap>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    pub fn sticky(&self) -> Option<&KeyTrieNode> {
+        self.sticky.as_ref()
     }
-}
 
-impl DerefMut for Keymaps {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+    /// Lookup `key` in the keymap to try and find a command to execute. Escape
+    /// key cancels pending keystrokes. If there are no pending keystrokes but a
+    /// sticky node is in use, it will be cleared.
+    pub fn get(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
+        // TODO: remove the sticky part and look up manually
+        let keymap = &self.map[&mode];
+
+        if key!(Esc) == key {
+            if !self.state.is_empty() {
+                // Note that Esc is not included here
+                return KeymapResult::Cancelled(self.state.drain(..).collect());
+            }
+            self.sticky = None;
+        }
+
+        let first = self.state.get(0).unwrap_or(&key);
+        let trie_node = match self.sticky {
+            Some(ref trie) => Cow::Owned(KeyTrie::Node(trie.clone())),
+            None => Cow::Borrowed(&keymap.root),
+        };
+
+        let trie = match trie_node.search(&[*first]) {
+            Some(KeyTrie::Leaf(ref cmd)) => {
+                return KeymapResult::Matched(cmd.clone());
+            }
+            Some(KeyTrie::Sequence(ref cmds)) => {
+                return KeymapResult::MatchedSequence(cmds.clone());
+            }
+            None => return KeymapResult::NotFound,
+            Some(t) => t,
+        };
+
+        self.state.push(key);
+        match trie.search(&self.state[1..]) {
+            Some(&KeyTrie::Node(ref map)) => {
+                if map.is_sticky {
+                    self.state.clear();
+                    self.sticky = Some(map.clone());
+                }
+                KeymapResult::Pending(map.clone())
+            }
+            Some(&KeyTrie::Leaf(ref cmd)) => {
+                self.state.clear();
+                KeymapResult::Matched(cmd.clone())
+            }
+            Some(&KeyTrie::Sequence(ref cmds)) => {
+                self.state.clear();
+                KeymapResult::MatchedSequence(cmds.clone())
+            }
+            None => KeymapResult::Cancelled(self.state.drain(..).collect()),
+        }
     }
 }
 
@@ -856,7 +816,7 @@ impl Default for Keymaps {
             "C-x" => completion,
             "C-r" => insert_register,
         });
-        Self(hashmap!(
+        Self::new(hashmap!(
             Mode::Normal => Keymap::new(normal),
             Mode::Select => Keymap::new(select),
             Mode::Insert => Keymap::new(insert),
@@ -867,8 +827,8 @@ impl Default for Keymaps {
 /// Merge default config keys with user overwritten keys for custom user config.
 pub fn merge_keys(mut config: Config) -> Config {
     let mut delta = std::mem::take(&mut config.keys);
-    for (mode, keys) in &mut *config.keys {
-        keys.merge(delta.remove(mode).unwrap_or_default())
+    for (mode, keys) in &mut config.keys.map {
+        keys.merge(delta.map.remove(mode).unwrap_or_default())
     }
     config
 }
@@ -895,7 +855,7 @@ mod tests {
     #[test]
     fn merge_partial_keys() {
         let config = Config {
-            keys: Keymaps(hashmap! {
+            keys: Keymaps::new(hashmap! {
                 Mode::Normal => Keymap::new(
                     keymap!({ "Normal mode"
                         "i" => normal_mode,
@@ -913,23 +873,25 @@ mod tests {
         let mut merged_config = merge_keys(config.clone());
         assert_ne!(config, merged_config);
 
-        let keymap = merged_config.keys.0.get_mut(&Mode::Normal).unwrap();
+        let keymap = &mut merged_config.keys;
         assert_eq!(
-            keymap.get(key!('i')).kind,
-            KeymapResultKind::Matched(MappableCommand::normal_mode),
+            keymap.get(Mode::Normal, key!('i')),
+            KeymapResult::Matched(MappableCommand::normal_mode),
             "Leaf should replace leaf"
         );
         assert_eq!(
-            keymap.get(key!('无')).kind,
-            KeymapResultKind::Matched(MappableCommand::insert_mode),
+            keymap.get(Mode::Normal, key!('无')),
+            KeymapResult::Matched(MappableCommand::insert_mode),
             "New leaf should be present in merged keymap"
         );
         // Assumes that z is a node in the default keymap
         assert_eq!(
-            keymap.get(key!('z')).kind,
-            KeymapResultKind::Matched(MappableCommand::jump_backward),
+            keymap.get(Mode::Normal, key!('z')),
+            KeymapResult::Matched(MappableCommand::jump_backward),
             "Leaf should replace node"
         );
+
+        let keymap = merged_config.keys.map.get_mut(&Mode::Normal).unwrap();
         // Assumes that `g` is a node in default keymap
         assert_eq!(
             keymap.root().search(&[key!('g'), key!('$')]).unwrap(),
@@ -949,14 +911,14 @@ mod tests {
             "Old leaves in subnode should be present in merged node"
         );
 
-        assert!(merged_config.keys.0.get(&Mode::Normal).unwrap().len() > 1);
-        assert!(merged_config.keys.0.get(&Mode::Insert).unwrap().len() > 0);
+        assert!(merged_config.keys.map.get(&Mode::Normal).unwrap().len() > 1);
+        assert!(merged_config.keys.map.get(&Mode::Insert).unwrap().len() > 0);
     }
 
     #[test]
     fn order_should_be_set() {
         let config = Config {
-            keys: Keymaps(hashmap! {
+            keys: Keymaps::new(hashmap! {
                 Mode::Normal => Keymap::new(
                     keymap!({ "Normal mode"
                         "space" => { ""
@@ -972,7 +934,7 @@ mod tests {
         };
         let mut merged_config = merge_keys(config.clone());
         assert_ne!(config, merged_config);
-        let keymap = merged_config.keys.0.get_mut(&Mode::Normal).unwrap();
+        let keymap = merged_config.keys.map.get_mut(&Mode::Normal).unwrap();
         // Make sure mapping works
         assert_eq!(
             keymap
@@ -990,7 +952,7 @@ mod tests {
     #[test]
     fn aliased_modes_are_same_in_default_keymap() {
         let keymaps = Keymaps::default();
-        let root = keymaps.get(&Mode::Normal).unwrap().root();
+        let root = keymaps.map.get(&Mode::Normal).unwrap().root();
         assert_eq!(
             root.search(&[key!(' '), key!('w')]).unwrap(),
             root.search(&["C-w".parse::<KeyEvent>().unwrap()]).unwrap(),

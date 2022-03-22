@@ -76,7 +76,7 @@ mod tests {
         assert_eq!(
             toml::from_str::<Config>(sample_keymaps).unwrap(),
             Config {
-                keys: Keymaps(hashmap! {
+                keys: Keymaps::new(hashmap! {
                     Mode::Insert => Keymap::new(keymap!({ "Insert mode"
                         "y" => move_line_down,
                         "S-C-a" => delete_selection,

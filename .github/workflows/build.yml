@@ -23,21 +23,21 @@ jobs:
           override: true
 
       - name: Cache cargo registry
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-v2-cargo-registry-
 
       - name: Cache cargo index
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-v2-cargo-index-
 
       - name: Cache cargo target dir
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: target
           key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
@@ -63,21 +63,21 @@ jobs:
           override: true
 
       - name: Cache cargo registry
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-v2-cargo-registry-
 
       - name: Cache cargo index
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-v2-cargo-index-
 
       - name: Cache cargo target dir
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: target
           key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
@@ -87,7 +87,7 @@ jobs:
         run: cp .github/workflows/languages.toml ./languages.toml
 
       - name: Cache test tree-sitter grammar
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: runtime/grammars
           key: ${{ runner.os }}-v2-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
@@ -120,21 +120,21 @@ jobs:
           components: rustfmt, clippy
 
       - name: Cache cargo registry
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-v2-cargo-registry-
 
       - name: Cache cargo index
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-v2-cargo-index-
 
       - name: Cache cargo target dir
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: target
           key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
@@ -167,21 +167,21 @@ jobs:
           override: true
 
       - name: Cache cargo registry
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-v2-cargo-registry-
 
       - name: Cache cargo index
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-v2-cargo-index-
 
       - name: Cache cargo target dir
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v3
         with:
           path: target
           key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
