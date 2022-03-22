@@ -988,3 +988,14 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "org"
 source = { git = "https://github.com/milisims/tree-sitter-org", rev = "1c3eb533a9cf6800067357b59e03ac3f91fc3a54" }
+
+[[language]]
+name = "solidity"
+scope = "source.sol"
+injection-regex = "sol"
+file-types = ["sol"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+language-server = { command = "solc", args = ["--lsp"] }
+
