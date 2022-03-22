@@ -999,3 +999,6 @@ comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
 language-server = { command = "solc", args = ["--lsp"] }
 
+[[grammar]]
+name = "solidity"
+source = { git = "https://github.com/slinlee/tree-sitter-solidity", rev = "2bb4e92c30caeb5bbbbf306cee7c6c694e05a5b2" }
