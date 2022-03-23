@@ -120,8 +120,8 @@ macro_rules! keymap {
     };
 }
 
-pub use key;
-pub use shift;
-pub use ctrl;
 pub use alt;
+pub use ctrl;
+pub use key;
 pub use keymap;
+pub use shift;
