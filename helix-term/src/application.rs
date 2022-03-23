@@ -17,6 +17,7 @@ use crate::{
     compositor::Compositor,
     config::Config,
     job::Jobs,
+    keymap::Keymaps,
     ui::{self, overlay::overlayed},
 };
 
@@ -111,9 +112,10 @@ impl Application {
             })),
         );
 
-        let editor_view = Box::new(ui::EditorView::new(std::mem::take(
-            &mut config.load().keys.clone(),
-        )));
+        let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
+            &config.keys
+        }));
+        let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
         compositor.push(editor_view);
 
         if args.load_tutor {

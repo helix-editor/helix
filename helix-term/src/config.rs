@@ -1,5 +1,7 @@
-use crate::keymap::{merge_keys, Keymaps};
+use crate::keymap::{merge_keys, Keymap};
+use helix_view::document::Mode;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::io::Error as IOError;
 use std::path::PathBuf;
@@ -12,7 +14,7 @@ pub struct Config {
     #[serde(default)]
     pub lsp: LspConfig,
     #[serde(default)]
-    pub keys: Keymaps,
+    pub keys: HashMap<Mode, Keymap>,
     #[serde(default)]
     pub editor: helix_view::editor::Config,
 }
@@ -76,7 +78,7 @@ mod tests {
         assert_eq!(
             toml::from_str::<Config>(sample_keymaps).unwrap(),
             Config {
-                keys: Keymaps::new(hashmap! {
+                keys: hashmap! {
                     Mode::Insert => Keymap::new(keymap!({ "Insert mode"
                         "y" => move_line_down,
                         "S-C-a" => delete_selection,
@@ -84,7 +86,7 @@ mod tests {
                     Mode::Normal => Keymap::new(keymap!({ "Normal mode"
                         "A-F12" => move_next_word_end,
                     })),
-                }),
+                },
                 ..Default::default()
             }
         );
