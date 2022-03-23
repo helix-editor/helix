@@ -305,7 +305,7 @@ impl Keymaps {
     /// sticky node is in use, it will be cleared.
     pub fn get(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
         // TODO: remove the sticky part and look up manually
-        let keymaps = self.map().clone();
+        let keymaps = &*self.map();
         let keymap = &keymaps[&mode];
 
         if key!(Esc) == key {
@@ -358,13 +358,6 @@ impl Keymaps {
 impl Default for Keymaps {
     fn default() -> Self {
         Self::new(Box::new(ArcSwap::new(Arc::new(default_keymaps()))))
-    }
-}
-
-impl PartialEq for Keymaps {
-    fn eq(&self, other: &Self) -> bool {
-        let a = *self.map() == *other.map();
-        a && self.state == other.state && self.sticky == other.sticky
     }
 }
 
