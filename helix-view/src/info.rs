@@ -41,11 +41,12 @@ impl Info {
         }
     }
 
-    pub fn from_keymap(title: &str, body: Vec<(&str, BTreeSet<KeyEvent>)>) -> Self {
+    pub fn from_keymap(title: &str, body: Vec<(&str, BTreeSet<Option<KeyEvent>>)>) -> Self {
+        let fmt_key = |key: &Option<KeyEvent>| key.map_or("…".into(), |k| k.to_string());
         let body = body
             .into_iter()
             .map(|(desc, events)| {
-                let events = events.iter().map(ToString::to_string).collect::<Vec<_>>();
+                let events = events.iter().map(fmt_key).collect::<Vec<_>>();
                 (events.join(", "), desc.to_string())
             })
             .collect();

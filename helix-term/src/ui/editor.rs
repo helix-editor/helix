@@ -708,6 +708,7 @@ impl EditorView {
 
         match &key_result {
             KeymapResult::Matched(command) => command.execute(cxt),
+            KeymapResult::MatchedFallback(command) => command.execute(cxt, event),
             KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
             KeymapResult::MatchedSequence(commands) => {
                 for command in commands {
@@ -862,6 +863,10 @@ impl EditorView {
         crate::commands::insert::idle_completion(&mut cx);
 
         EventResult::Consumed(None)
+    }
+
+    pub fn on_next_key(&mut self, cb: Box<dyn FnOnce(&mut commands::Context, KeyEvent)>) {
+        self.on_next_key = Some(cb);
     }
 }
 
@@ -1255,9 +1260,6 @@ impl Component for EditorView {
                 } else {
                     disp.push_str(&s);
                 }
-            }
-            if let Some(pseudo_pending) = &cx.editor.pseudo_pending {
-                disp.push_str(pseudo_pending.as_str())
             }
             let style = cx.editor.theme.get("ui.text");
             let macro_width = if cx.editor.macro_recording.is_some() {

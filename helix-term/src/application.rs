@@ -272,10 +272,7 @@ impl Application {
 
     pub fn handle_idle_timeout(&mut self) {
         use crate::compositor::EventResult;
-        let editor_view = self
-            .compositor
-            .find::<ui::EditorView>()
-            .expect("expected at least one EditorView");
+        let editor_view = self.compositor.editor_view();
 
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
@@ -622,14 +619,9 @@ impl Application {
                         log::info!("window/logMessage: {:?}", params);
                     }
                     Notification::ProgressMessage(params)
-                        if !self
-                            .compositor
-                            .has_component(std::any::type_name::<ui::Prompt>()) =>
+                        if !self.compositor.has_component::<ui::Prompt>() =>
                     {
-                        let editor_view = self
-                            .compositor
-                            .find::<ui::EditorView>()
-                            .expect("expected at least one EditorView");
+                        let editor_view = self.compositor.editor_view();
                         let lsp::ProgressParams { token, value } = params;
 
                         let lsp::ProgressParamsValue::WorkDone(work) = value;
@@ -724,10 +716,7 @@ impl Application {
                     MethodCall::WorkDoneProgressCreate(params) => {
                         self.lsp_progress.create(server_id, params.token);
 
-                        let editor_view = self
-                            .compositor
-                            .find::<ui::EditorView>()
-                            .expect("expected at least one EditorView");
+                        let editor_view = self.compositor.editor_view();
                         let spinner = editor_view.spinners_mut().get_or_create(server_id);
                         if spinner.is_stopped() {
                             spinner.start();

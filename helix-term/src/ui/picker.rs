@@ -1,5 +1,5 @@
 use crate::{
-    compositor::{Component, Compositor, Context, EventResult},
+    compositor::{Callback, Component, Compositor, Context, EventResult},
     ctrl, key, shift,
     ui::{self, EditorView},
 };
@@ -293,14 +293,14 @@ pub struct Picker<T> {
     pub truncate_start: bool,
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
-    callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
+    callback_fn: Box<dyn Fn(&mut Context, &T, Action) -> Option<Callback>>,
 }
 
 impl<T> Picker<T> {
-    pub fn new(
+    pub fn new_with_compositor_callback(
         options: Vec<T>,
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
-        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
+        callback_fn: impl Fn(&mut Context, &T, Action) -> Option<Callback> + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".into(),
@@ -334,6 +334,18 @@ impl<T> Picker<T> {
         );
 
         picker
+    }
+
+    pub fn new(
+        options: Vec<T>,
+        format_fn: impl Fn(&T) -> Cow<str> + 'static,
+        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
+    ) -> Self {
+        let callback = move |ctx: &mut Context, option: &T, action: Action| {
+            callback_fn(ctx, option, action);
+            None
+        };
+        Self::new_with_compositor_callback(options, format_fn, callback)
     }
 
     pub fn score(&mut self) {
@@ -483,10 +495,19 @@ impl<T: 'static> Component for Picker<T> {
             _ => return EventResult::Ignored(None),
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
-            // remove the layer
-            compositor.last_picker = compositor.pop();
-        })));
+        let close_fn = |compositor_cb: Option<Callback>| {
+            let f = |compositor: &mut Compositor, cx: &mut Context| {
+                // remove the layer
+                compositor.last_picker = compositor.pop();
+                // if the selected option gave back a callback, run it
+                if let Some(cb) = compositor_cb {
+                    cb(compositor, cx)
+                }
+            };
+            EventResult::Consumed(Some(Box::new(f)))
+        };
+
+        let mut compositor_cb = None;
 
         match key_event.into() {
             shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
@@ -508,25 +529,25 @@ impl<T: 'static> Component for Picker<T> {
                 self.to_end();
             }
             key!(Esc) | ctrl!('c') => {
-                return close_fn;
+                return close_fn(None);
             }
             key!(Enter) => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx, option, Action::Replace);
+                    compositor_cb = (self.callback_fn)(cx, option, Action::Replace);
                 }
-                return close_fn;
+                return close_fn(compositor_cb);
             }
             ctrl!('s') => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx, option, Action::HorizontalSplit);
+                    compositor_cb = (self.callback_fn)(cx, option, Action::HorizontalSplit);
                 }
-                return close_fn;
+                return close_fn(compositor_cb);
             }
             ctrl!('v') => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx, option, Action::VerticalSplit);
+                    compositor_cb = (self.callback_fn)(cx, option, Action::VerticalSplit);
                 }
-                return close_fn;
+                return close_fn(compositor_cb);
             }
             ctrl!(' ') => {
                 self.save_filter(cx);
