@@ -19,7 +19,7 @@ pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
 
 pub struct Prompt {
     prompt: Cow<'static, str>,
-    pub line: String,
+    line: String,
     cursor: usize,
     completion: Vec<Completion>,
     selection: Option<usize>,
@@ -75,6 +75,10 @@ impl Prompt {
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
         }
+    }
+
+    pub fn line(&self) -> &String {
+        &self.line
     }
 
     pub fn recalculate_completion(&mut self, editor: &Editor) {
