@@ -62,7 +62,6 @@
 
 [
  (formal_parameters (value_identifier))
- (positional_parameter (value_identifier))
  (labeled_parameter (value_identifier))
 ] @variable.parameter
 
