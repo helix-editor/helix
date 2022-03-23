@@ -801,7 +801,7 @@ impl Application {
                     }
                 }
             }
-            e => unreachable!("{:?}", e),
+            Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
         }
     }
 
