@@ -1,4 +1,4 @@
-use crate::keymap::{merge_keys, Keymap};
+use crate::keymap::{default_keymaps::default_keymaps, merge_keys, Keymap};
 use helix_view::document::Mode;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -7,16 +7,27 @@ use std::io::Error as IOError;
 use std::path::PathBuf;
 use toml::de::Error as TomlError;
 
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
     pub theme: Option<String>,
     #[serde(default)]
     pub lsp: LspConfig,
-    #[serde(default)]
+    #[serde(default = "default_keymaps")]
     pub keys: HashMap<Mode, Keymap>,
     #[serde(default)]
     pub editor: helix_view::editor::Config,
+}
+
+impl Default for Config {
+    fn default() -> Config {
+        Config {
+            theme: None,
+            lsp: LspConfig::default(),
+            keys: default_keymaps(),
+            editor: helix_view::editor::Config::default(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -90,5 +101,16 @@ mod tests {
                 ..Default::default()
             }
         );
+    }
+
+    #[test]
+    fn keys_resolve_to_correct_defaults() {
+        // From serde default
+        let default_keys = toml::from_str::<Config>("").unwrap().keys;
+        assert_eq!(default_keys, default_keymaps());
+
+        // From the Default trait
+        let default_keys = Config::default().keys;
+        assert_eq!(default_keys, default_keymaps());
     }
 }
