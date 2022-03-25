@@ -1,5 +1,5 @@
 use crate::{
-    clipboard::{get_clipboard_provider, ClipboardProvider},
+    clipboard::{ClipboardConfig, ClipboardProvider},
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::{CursorKind, Rect},
     info::Info,
@@ -143,6 +143,9 @@ pub struct Config {
     /// Search configuration.
     #[serde(default)]
     pub search: SearchConfig,
+    /// Clipboard configuration.
+    #[serde(default)]
+    pub clipboard: ClipboardConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -152,6 +155,15 @@ pub struct SearchConfig {
     pub smart_case: bool,
     /// Whether the search should wrap after depleting the matches. Default to true.
     pub wrap_around: bool,
+}
+
+impl Default for SearchConfig {
+    fn default() -> Self {
+        Self {
+            wrap_around: true,
+            smart_case: true,
+        }
+    }
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -253,15 +265,7 @@ impl Default for Config {
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             search: SearchConfig::default(),
-        }
-    }
-}
-
-impl Default for SearchConfig {
-    fn default() -> Self {
-        Self {
-            wrap_around: true,
-            smart_case: true,
+            clipboard: ClipboardConfig::default(),
         }
     }
 }
@@ -377,7 +381,7 @@ impl Editor {
             syn_loader,
             theme_loader,
             registers: Registers::default(),
-            clipboard_provider: get_clipboard_provider(),
+            clipboard_provider: config.clipboard.get_provider(),
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
