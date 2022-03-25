@@ -1,4 +1,4 @@
-use crate::keymap::{default_keymaps::default_keymaps, merge_keys, Keymap};
+use crate::keymap::{default::default, merge_keys, Keymap};
 use helix_view::document::Mode;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -13,7 +13,7 @@ pub struct Config {
     pub theme: Option<String>,
     #[serde(default)]
     pub lsp: LspConfig,
-    #[serde(default = "default_keymaps")]
+    #[serde(default = "default")]
     pub keys: HashMap<Mode, Keymap>,
     #[serde(default)]
     pub editor: helix_view::editor::Config,
@@ -24,7 +24,7 @@ impl Default for Config {
         Config {
             theme: None,
             lsp: LspConfig::default(),
-            keys: default_keymaps(),
+            keys: default(),
             editor: helix_view::editor::Config::default(),
         }
     }
@@ -107,10 +107,10 @@ mod tests {
     fn keys_resolve_to_correct_defaults() {
         // From serde default
         let default_keys = toml::from_str::<Config>("").unwrap().keys;
-        assert_eq!(default_keys, default_keymaps());
+        assert_eq!(default_keys, default());
 
         // From the Default trait
         let default_keys = Config::default().keys;
-        assert_eq!(default_keys, default_keymaps());
+        assert_eq!(default_keys, default());
     }
 }

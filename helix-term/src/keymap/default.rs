@@ -4,7 +4,7 @@ use super::macros::keymap;
 use super::{Keymap, Mode};
 use helix_core::hashmap;
 
-pub fn default_keymaps() -> HashMap<Mode, Keymap> {
+pub fn default() -> HashMap<Mode, Keymap> {
     let normal = keymap!({ "Normal mode"
         "h" | "left" => move_char_left,
         "j" | "down" => move_line_down,

@@ -1,4 +1,4 @@
-pub mod default_keymaps;
+pub mod default;
 pub mod macros;
 
 pub use crate::commands::MappableCommand;
@@ -16,7 +16,7 @@ use std::{
     sync::Arc,
 };
 
-use default_keymaps::default_keymaps;
+use default::default;
 use macros::key;
 
 #[derive(Debug, Clone)]
@@ -357,13 +357,13 @@ impl Keymaps {
 
 impl Default for Keymaps {
     fn default() -> Self {
-        Self::new(Box::new(ArcSwap::new(Arc::new(default_keymaps()))))
+        Self::new(Box::new(ArcSwap::new(Arc::new(default()))))
     }
 }
 
 /// Merge default config keys with user overwritten keys for custom user config.
 pub fn merge_keys(mut config: Config) -> Config {
-    let mut delta = std::mem::replace(&mut config.keys, default_keymaps());
+    let mut delta = std::mem::replace(&mut config.keys, default());
     for (mode, keys) in &mut config.keys {
         keys.merge(delta.remove(mode).unwrap_or_default())
     }
