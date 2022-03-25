@@ -10,6 +10,7 @@ pub mod health;
 pub mod job;
 pub mod keymap;
 pub mod ui;
+pub use keymap::macros::*;
 
 #[cfg(not(windows))]
 fn true_color() -> bool {

@@ -1,6 +1,6 @@
 use super::*;
 
-use helix_view::editor::Action;
+use helix_view::editor::{Action, ConfigEvent};
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -540,7 +540,7 @@ fn theme(
         .theme_loader
         .load(theme)
         .with_context(|| format!("Failed setting theme {}", theme))?;
-    let true_color = cx.editor.config.true_color || crate::true_color();
+    let true_color = cx.editor.config().true_color || crate::true_color();
     if !(true_color || theme.is_16_color()) {
         bail!("Unsupported theme: theme requires true color support");
     }
@@ -894,7 +894,7 @@ fn setting(
     let key_error = || anyhow::anyhow!("Unknown key `{key}`");
     let field_error = |_| anyhow::anyhow!("Could not parse field `{arg}`");
 
-    let mut config = serde_json::to_value(&cx.editor.config).unwrap();
+    let mut config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
     let pointer = format!("/{}", key.replace('.', "/"));
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 
@@ -904,8 +904,12 @@ fn setting(
     } else {
         arg.parse().map_err(field_error)?
     };
-    cx.editor.config = serde_json::from_value(config).map_err(field_error)?;
+    let config = serde_json::from_value(config).map_err(field_error)?;
 
+    cx.editor
+        .config_events
+        .0
+        .send(ConfigEvent::Update(config))?;
     Ok(())
 }
 
@@ -992,6 +996,25 @@ fn tree_sitter_subtree(
         }
     }
 
+    Ok(())
+}
+
+fn open_config(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor
+        .open(helix_loader::config_file(), Action::Replace)?;
+    Ok(())
+}
+
+fn refresh_config(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
     Ok(())
 }
 
@@ -1379,6 +1402,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["ts-subtree"],
             doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
             fun: tree_sitter_subtree,
+            completer: None,
+        },
+        TypableCommand {
+            name: "config-reload",
+            aliases: &[],
+            doc: "Refreshes helix's config.",
+            fun: refresh_config,
+            completer: None,
+        },
+        TypableCommand {
+            name: "config-open",
+            aliases: &[],
+            doc: "Open the helix config.toml file.",
+            fun: open_config,
             completer: None,
         },
     ];

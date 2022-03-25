@@ -435,6 +435,7 @@ name = "helix-term"
 version = "0.6.0"
 dependencies = [
  "anyhow",
+ "arc-swap",
  "chrono",
  "content_inspector",
  "crossterm",
@@ -483,6 +484,7 @@ name = "helix-view"
 version = "0.6.0"
 dependencies = [
  "anyhow",
+ "arc-swap",
  "bitflags",
  "chardetng",
  "clipboard-win",

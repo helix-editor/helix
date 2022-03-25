@@ -1,10 +1,14 @@
+use arc_swap::{access::Map, ArcSwap};
 use helix_core::{
     config::{default_syntax_loader, user_syntax_loader},
     pos_at_coords, syntax, Selection,
 };
 use helix_dap::{self as dap, Payload, Request};
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{editor::Breakpoint, theme, Editor};
+use helix_view::{
+    editor::{Breakpoint, ConfigEvent},
+    theme, Editor,
+};
 use serde_json::json;
 
 use crate::{
@@ -13,6 +17,7 @@ use crate::{
     compositor::Compositor,
     config::Config,
     job::Jobs,
+    keymap::Keymaps,
     ui::{self, overlay::overlayed},
 };
 
@@ -42,8 +47,7 @@ pub struct Application {
     compositor: Compositor,
     editor: Editor,
 
-    // TODO: share an ArcSwap with Editor?
-    config: Config,
+    config: Arc<ArcSwap<Config>>,
 
     #[allow(dead_code)]
     theme_loader: Arc<theme::Loader>,
@@ -56,7 +60,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(args: Args, mut config: Config) -> Result<Self, Error> {
+    pub fn new(args: Args, config: Config) -> Result<Self, Error> {
         use helix_view::editor::Action;
         let mut compositor = Compositor::new()?;
         let size = compositor.size();
@@ -98,14 +102,20 @@ impl Application {
         });
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
+        let config = Arc::new(ArcSwap::from_pointee(config));
         let mut editor = Editor::new(
             size,
             theme_loader.clone(),
             syn_loader.clone(),
-            config.editor.clone(),
+            Box::new(Map::new(Arc::clone(&config), |config: &Config| {
+                &config.editor
+            })),
         );
 
-        let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
+        let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
+            &config.keys
+        }));
+        let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
         compositor.push(editor_view);
 
         if args.load_tutor {
@@ -113,15 +123,12 @@ impl Application {
             editor.open(path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
-        } else if args.edit_config {
-            let path = conf_dir.join("config.toml");
-            editor.open(path, Action::VerticalSplit)?;
         } else if !args.files.is_empty() {
             let first = &args.files[0].0; // we know it's not empty
             if first.is_dir() {
                 std::env::set_current_dir(&first)?;
                 editor.new_file(Action::VerticalSplit);
-                let picker = ui::file_picker(".".into(), &config.editor);
+                let picker = ui::file_picker(".".into(), &config.load().editor);
                 compositor.push(Box::new(overlayed(picker)));
             } else {
                 let nr_of_files = args.files.len();
@@ -228,6 +235,10 @@ impl Application {
                 Some(payload) = self.editor.debugger_events.next() => {
                     self.handle_debugger_message(payload).await;
                 }
+                Some(config_event) = self.editor.config_events.1.recv() => {
+                    self.handle_config_events(config_event);
+                    self.render();
+                }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
@@ -243,6 +254,55 @@ impl Application {
                 }
             }
         }
+    }
+
+    pub fn handle_config_events(&mut self, config_event: ConfigEvent) {
+        match config_event {
+            ConfigEvent::Refresh => self.refresh_config(),
+
+            // Since only the Application can make changes to Editor's config,
+            // the Editor must send up a new copy of a modified config so that
+            // the Application can apply it.
+            ConfigEvent::Update(editor_config) => {
+                let mut app_config = (*self.config.load().clone()).clone();
+                app_config.editor = editor_config;
+                self.config.store(Arc::new(app_config));
+            }
+        }
+    }
+
+    fn refresh_config(&mut self) {
+        let config = Config::load(helix_loader::config_file()).unwrap_or_else(|err| {
+            self.editor.set_error(err.to_string());
+            Config::default()
+        });
+
+        // Refresh theme
+        if let Some(theme) = config.theme.clone() {
+            let true_color = self.true_color();
+            self.editor.set_theme(
+                self.theme_loader
+                    .load(&theme)
+                    .map_err(|e| {
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        e
+                    })
+                    .ok()
+                    .filter(|theme| (true_color || theme.is_16_color()))
+                    .unwrap_or_else(|| {
+                        if true_color {
+                            self.theme_loader.default()
+                        } else {
+                            self.theme_loader.base16_default()
+                        }
+                    }),
+            );
+        }
+        self.config.store(Arc::new(config));
+    }
+
+    fn true_color(&self) -> bool {
+        self.config.load().editor.true_color || crate::true_color()
     }
 
     #[cfg(windows)]
@@ -700,7 +760,7 @@ impl Application {
                             self.lsp_progress.update(server_id, token, work);
                         }
 
-                        if self.config.lsp.display_messages {
+                        if self.config.load().lsp.display_messages {
                             self.editor.set_status(status);
                         }
                     }
@@ -809,7 +869,7 @@ impl Application {
         terminal::enable_raw_mode()?;
         let mut stdout = stdout();
         execute!(stdout, terminal::EnterAlternateScreen)?;
-        if self.config.editor.mouse {
+        if self.config.load().editor.mouse {
             execute!(stdout, EnableMouseCapture)?;
         }
         Ok(())

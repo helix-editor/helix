@@ -118,7 +118,7 @@ impl EditorView {
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
-                Self::doc_selection_highlights(doc, view, theme, &editor.config.cursor_shape),
+                Self::doc_selection_highlights(doc, view, theme, &editor.config().cursor_shape),
             ))
         } else {
             Box::new(highlights)
@@ -702,7 +702,6 @@ impl EditorView {
         cxt: &mut commands::Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
-        cxt.editor.autoinfo = None;
         let key_result = self.keymaps.get(mode, event);
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
@@ -845,7 +844,7 @@ impl EditorView {
 
     pub fn handle_idle_timeout(&mut self, cx: &mut crate::compositor::Context) -> EventResult {
         if self.completion.is_some()
-            || !cx.editor.config.auto_completion
+            || !cx.editor.config().auto_completion
             || doc!(cx.editor).mode != Mode::Insert
         {
             return EventResult::Ignored(None);
@@ -871,6 +870,7 @@ impl EditorView {
         event: MouseEvent,
         cxt: &mut commands::Context,
     ) -> EventResult {
+        let config = cxt.editor.config();
         match event {
             MouseEvent {
                 kind: MouseEventKind::Down(MouseButton::Left),
@@ -971,7 +971,7 @@ impl EditorView {
                     None => return EventResult::Ignored(None),
                 }
 
-                let offset = cxt.editor.config.scroll_lines.abs() as usize;
+                let offset = config.scroll_lines.abs() as usize;
                 commands::scroll(cxt, offset, direction);
 
                 cxt.editor.tree.focus = current_view;
@@ -983,7 +983,7 @@ impl EditorView {
                 kind: MouseEventKind::Up(MouseButton::Left),
                 ..
             } => {
-                if !cxt.editor.config.middle_click_paste {
+                if !config.middle_click_paste {
                     return EventResult::Ignored(None);
                 }
 
@@ -1039,7 +1039,7 @@ impl EditorView {
                 ..
             } => {
                 let editor = &mut cxt.editor;
-                if !editor.config.middle_click_paste {
+                if !config.middle_click_paste {
                     return EventResult::Ignored(None);
                 }
 
@@ -1163,9 +1163,9 @@ impl Component for EditorView {
                 if cx.editor.should_close() {
                     return EventResult::Ignored(None);
                 }
-
+                let config = cx.editor.config();
                 let (view, doc) = current!(cx.editor);
-                view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
+                view.ensure_cursor_in_view(doc, config.scrolloff);
 
                 // Store a history state if not in insert mode. This also takes care of
                 // commiting changes when leaving insert mode.
@@ -1206,7 +1206,7 @@ impl Component for EditorView {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // clear with background color
         surface.set_style(area, cx.editor.theme.get("ui.background"));
-
+        let config = cx.editor.config();
         // if the terminal size suddenly changed, we need to trigger a resize
         cx.editor.resize(area.clip_bottom(1)); // -1 from bottom for commandline
 
@@ -1215,7 +1215,7 @@ impl Component for EditorView {
             self.render_view(cx.editor, doc, view, area, surface, is_focused);
         }
 
-        if cx.editor.config.auto_info {
+        if config.auto_info {
             if let Some(mut info) = cx.editor.autoinfo.take() {
                 info.render(area, surface, cx);
                 cx.editor.autoinfo = Some(info)

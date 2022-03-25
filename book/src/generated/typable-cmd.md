@@ -55,3 +55,5 @@
 | `:sort` | Sort ranges in selection. |
 | `:rsort` | Sort ranges in selection in reverse order. |
 | `:tree-sitter-subtree`, `:ts-subtree` | Display tree sitter subtree under cursor, primarily for debugging queries. |
+| `:config-reload` | Refreshes helix's config. |
+| `:config-open` | Open the helix config.toml file. |
