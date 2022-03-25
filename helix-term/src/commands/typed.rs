@@ -913,6 +913,29 @@ fn setting(
     Ok(())
 }
 
+/// Change the language of the current buffer at runtime.
+fn language(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:set-language language`");
+    }
+
+    let doc = doc_mut!(cx.editor);
+    let loader = Some(cx.editor.syn_loader.clone());
+    let config = cx.editor.syn_loader.language_configs().find_map(|config| {
+        if config.language_id == args[0] {
+            Some(config.clone())
+        } else {
+            None
+        }
+    });
+    doc.set_language(config, loader);
+    Ok(())
+}
+
 fn sort(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1375,6 +1398,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Go to line number.",
             fun: goto_line_number,
             completer: None,
+        },
+        TypableCommand {
+            name: "set-language",
+            aliases: &["lang"],
+            doc: "Set the language of current buffer.",
+            fun: language,
+            completer: Some(completers::language),
         },
         TypableCommand {
             name: "set-option",

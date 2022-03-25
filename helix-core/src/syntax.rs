@@ -537,6 +537,10 @@ impl Loader {
         None
     }
 
+    pub fn language_configs(&self) -> impl Iterator<Item = &Arc<LanguageConfiguration>> {
+        self.language_configs.iter()
+    }
+
     pub fn set_scopes(&self, scopes: Vec<String>) {
         self.scopes.store(Arc::new(scopes));
 

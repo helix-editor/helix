@@ -51,6 +51,7 @@
 | `:hsplit-new`, `:hnew` | Open a scratch buffer in a horizontal split. |
 | `:tutor` | Open the tutorial. |
 | `:goto`, `:g` | Go to line number. |
+| `:set-language`, `:lang` | Set the language of current buffer. |
 | `:set-option`, `:set` | Set a config option at runtime |
 | `:sort` | Sort ranges in selection. |
 | `:rsort` | Sort ranges in selection in reverse order. |

@@ -284,6 +284,27 @@ pub mod completers {
         })
     }
 
+    pub fn language(editor: &Editor, input: &str) -> Vec<Completion> {
+        let matcher = Matcher::default();
+
+        let mut matches: Vec<_> = editor
+            .syn_loader
+            .language_configs()
+            .filter_map(|config| {
+                matcher
+                    .fuzzy_match(&config.language_id, input)
+                    .map(|score| (config.language_id.clone(), score))
+            })
+            .collect();
+
+        matches.sort_unstable_by_key(|(_language, score)| Reverse(*score));
+
+        matches
+            .into_iter()
+            .map(|(language, _score)| ((0..), language.into()))
+            .collect()
+    }
+
     pub fn directory(_editor: &Editor, input: &str) -> Vec<Completion> {
         filename_impl(input, |entry| {
             let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
