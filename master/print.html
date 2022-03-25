@@ -641,6 +641,8 @@ you to selectively add search terms to your selections.</p>
 <tr><td><code>:sort</code></td><td>Sort ranges in selection.</td></tr>
 <tr><td><code>:rsort</code></td><td>Sort ranges in selection in reverse order.</td></tr>
 <tr><td><code>:tree-sitter-subtree</code>, <code>:ts-subtree</code></td><td>Display tree sitter subtree under cursor, primarily for debugging queries.</td></tr>
+<tr><td><code>:config-reload</code></td><td>Refreshes helix's config.</td></tr>
+<tr><td><code>:config-open</code></td><td>Open the helix config.toml file.</td></tr>
 </tbody></table>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="language-support"><a class="header" href="#language-support">Language Support</a></h1>
 <p>For more information like arguments passed to default LSP server,
@@ -733,7 +735,7 @@ single width selection.</p>
 <li>Windows: <code>%AppData%\helix\config.toml</code></li>
 </ul>
 <blockquote>
-<p>Note: You may use <code>hx --edit-config</code> to create and edit the <code>config.toml</code> file.</p>
+<p>Hint: You can easily open the config file by typing <code>:config-open</code> within Helix normal mode.</p>
 </blockquote>
 <p>Example config:</p>
 <pre><code class="language-toml">theme = &quot;onedark&quot;
