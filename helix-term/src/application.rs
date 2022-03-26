@@ -760,7 +760,7 @@ impl Application {
                             self.lsp_progress.update(server_id, token, work);
                         }
 
-                        if self.config.load().lsp.display_messages {
+                        if self.config.load().editor.lsp.display_messages {
                             self.editor.set_status(status);
                         }
                     }
