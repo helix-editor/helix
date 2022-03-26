@@ -924,15 +924,10 @@ fn language(
     }
 
     let doc = doc_mut!(cx.editor);
-    let loader = Some(cx.editor.syn_loader.clone());
-    let config = cx.editor.syn_loader.language_configs().find_map(|config| {
-        if config.language_id == args[0] {
-            Some(config.clone())
-        } else {
-            None
-        }
-    });
-    doc.set_language(config, loader);
+    doc.set_language3(&args[0], cx.editor.syn_loader.clone());
+
+    let id = doc.id();
+    cx.editor.refresh_language_server(id);
     Ok(())
 }
 

@@ -512,6 +512,13 @@ impl Loader {
             .cloned()
     }
 
+    pub fn language_config_for_language_id(&self, id: &str) -> Option<Arc<LanguageConfiguration>> {
+        self.language_configs
+            .iter()
+            .find(|config| config.language_id == id)
+            .cloned()
+    }
+
     pub fn language_configuration_for_injection_string(
         &self,
         string: &str,
