@@ -11,7 +11,7 @@ use toml::de::Error as TomlError;
 #[serde(deny_unknown_fields)]
 pub struct Config {
     pub theme: Option<String>,
-    #[serde(default)]
+    #[serde(default = "default")]
     pub keys: HashMap<Mode, Keymap>,
     #[serde(default)]
     pub editor: helix_view::editor::Config,
