@@ -10,7 +10,8 @@ repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 
 [features]
-default = []
+# default = ["dap"]
+dap = ["helix-dap", "tokio-stream"]
 term = ["crossterm"]
 
 [dependencies]
@@ -18,7 +19,9 @@ bitflags = "1.3"
 anyhow = "1"
 helix-core = { version = "0.6", path = "../helix-core" }
 helix-lsp = { version = "0.6", path = "../helix-lsp" }
-helix-dap = { version = "0.6", path = "../helix-dap" }
+helix-dap = { version = "0.6", path = "../helix-dap", optional = true }
+tokio-stream = { version = "0.1", optional = true }
+
 crossterm = { version = "0.23", optional = true }
 
 # Conversion traits
@@ -28,7 +31,6 @@ url = "2"
 arc-swap = { version = "1.5.0" }
 
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
-tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 
 slotmap = "1"

@@ -5,7 +5,7 @@ use super::{Keymap, Mode};
 use helix_core::hashmap;
 
 pub fn default() -> HashMap<Mode, Keymap> {
-    let normal = keymap!({ "Normal mode"
+    let mut normal = keymap!({ "Normal mode"
         "h" | "left" => move_char_left,
         "j" | "down" => move_line_down,
         "k" | "up" => move_line_up,
@@ -202,26 +202,6 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "S" => workspace_symbol_picker,
             "a" => code_action,
             "'" => last_picker,
-            "d" => { "Debug (experimental)" sticky=true
-                "l" => dap_launch,
-                "b" => dap_toggle_breakpoint,
-                "c" => dap_continue,
-                "h" => dap_pause,
-                "i" => dap_step_in,
-                "o" => dap_step_out,
-                "n" => dap_next,
-                "v" => dap_variables,
-                "t" => dap_terminate,
-                "C-c" => dap_edit_condition,
-                "C-l" => dap_edit_log,
-                "s" => { "Switch"
-                    "t" => dap_switch_thread,
-                    "f" => dap_switch_stack_frame,
-                    // sl, sb
-                },
-                "e" => dap_enable_exceptions,
-                "E" => dap_disable_exceptions,
-            },
             "w" => { "Window"
                 "C-w" | "w" => rotate_view,
                 "C-s" | "s" => hsplit,
@@ -285,6 +265,34 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "C-a" => increment,
         "C-x" => decrement,
     });
+
+    // DAP
+    #[cfg(feature = "dap")]
+    normal.merge_nodes(keymap!({ "Normal mode"
+        "space" => { "Space"
+            "d" => { "Debug (experimental)" sticky=true
+                "l" => dap_launch,
+                "b" => dap_toggle_breakpoint,
+                "c" => dap_continue,
+                "h" => dap_pause,
+                "i" => dap_step_in,
+                "o" => dap_step_out,
+                "n" => dap_next,
+                "v" => dap_variables,
+                "t" => dap_terminate,
+                "C-c" => dap_edit_condition,
+                "C-l" => dap_edit_log,
+                "s" => { "Switch"
+                    "t" => dap_switch_thread,
+                    "f" => dap_switch_stack_frame,
+                    // sl, sb
+                },
+                "e" => dap_enable_exceptions,
+                "E" => dap_disable_exceptions,
+            },
+        },
+    }));
+
     let mut select = normal.clone();
     select.merge_nodes(keymap!({ "Select mode"
         "h" | "left" => extend_char_left,

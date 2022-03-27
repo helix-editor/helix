@@ -16,6 +16,8 @@ build = true
 app = true
 
 [features]
+# default = ["dap"]
+dap = ["helix-dap", "helix-view/dap"]
 unicode-lines = ["helix-core/unicode-lines"]
 
 [[bin]]
@@ -26,7 +28,7 @@ path = "src/main.rs"
 helix-core = { version = "0.6", path = "../helix-core" }
 helix-view = { version = "0.6", path = "../helix-view" }
 helix-lsp = { version = "0.6", path = "../helix-lsp" }
-helix-dap = { version = "0.6", path = "../helix-dap" }
+helix-dap = { version = "0.6", path = "../helix-dap", optional = true }
 helix-loader = { version = "0.6", path = "../helix-loader" }
 
 anyhow = "1"

@@ -7,6 +7,7 @@ pub mod editor;
 pub mod graphics;
 pub mod gutter;
 pub mod handlers {
+    #[cfg(feature = "dap")]
     pub mod dap;
     pub mod lsp;
 }

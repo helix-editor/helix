@@ -1,7 +1,9 @@
+#[cfg(feature = "dap")]
 pub(crate) mod dap;
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
+#[cfg(feature = "dap")]
 pub use dap::*;
 pub use lsp::*;
 pub use typed::*;
@@ -139,8 +141,10 @@ pub enum MappableCommand {
 }
 
 macro_rules! static_commands {
-    ( $($name:ident, $doc:literal,)* ) => {
+    ( $($(#[cfg($attr:meta)])? $name:ident, $doc:literal,)* ) => {
         $(
+
+            $(#[cfg($attr)])?
             #[allow(non_upper_case_globals)]
             pub const $name: Self = Self::Static {
                 name: stringify!($name),
@@ -150,7 +154,7 @@ macro_rules! static_commands {
         )*
 
         pub const STATIC_COMMAND_LIST: &'static [Self] = &[
-            $( Self::$name, )*
+             $( $(#[cfg($attr)])? Self::$name, )*
         ];
     }
 }
@@ -389,20 +393,35 @@ impl MappableCommand {
         goto_prev_comment, "Goto previous comment",
         goto_next_paragraph, "Goto next paragraph",
         goto_prev_paragraph, "Goto previous paragraph",
+        #[cfg(feature = "dap")]
         dap_launch, "Launch debug target",
+        #[cfg(feature = "dap")]
         dap_toggle_breakpoint, "Toggle breakpoint",
+        #[cfg(feature = "dap")]
         dap_continue, "Continue program execution",
+        #[cfg(feature = "dap")]
         dap_pause, "Pause program execution",
+        #[cfg(feature = "dap")]
         dap_step_in, "Step in",
+        #[cfg(feature = "dap")]
         dap_step_out, "Step out",
+        #[cfg(feature = "dap")]
         dap_next, "Step to next",
+        #[cfg(feature = "dap")]
         dap_variables, "List variables",
+        #[cfg(feature = "dap")]
         dap_terminate, "End debug session",
+        #[cfg(feature = "dap")]
         dap_edit_condition, "Edit condition of the breakpoint on the current line",
+        #[cfg(feature = "dap")]
         dap_edit_log, "Edit log message of the breakpoint on the current line",
+        #[cfg(feature = "dap")]
         dap_switch_thread, "Switch current thread",
+        #[cfg(feature = "dap")]
         dap_switch_stack_frame, "Switch stack frame",
+        #[cfg(feature = "dap")]
         dap_enable_exceptions, "Enable exception breakpoints",
+        #[cfg(feature = "dap")]
         dap_disable_exceptions, "Disable exception breakpoints",
         shell_pipe, "Pipe selections through shell command",
         shell_pipe_to, "Pipe selections into shell command, ignoring command output",

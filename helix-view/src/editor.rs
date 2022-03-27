@@ -10,8 +10,6 @@ use crate::{
 };
 
 use futures_util::future;
-use futures_util::stream::select_all::SelectAll;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
     borrow::Cow,
@@ -38,6 +36,13 @@ use helix_core::{
     Change,
 };
 use helix_core::{Position, Selection};
+
+#[cfg(feature = "dap")]
+use futures_util::stream::select_all::SelectAll;
+#[cfg(feature = "dap")]
+use tokio_stream::wrappers::UnboundedReceiverStream;
+
+#[cfg(feature = "dap")]
 use helix_dap as dap;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
@@ -433,8 +438,12 @@ pub struct Editor {
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
 
+    #[cfg(feature = "dap")]
     pub debugger: Option<dap::Client>,
+    #[cfg(feature = "dap")]
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
+    #[cfg(not(feature = "dap"))]
+    pub debugger_events: futures_util::stream::Empty<()>,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
 
     pub clipboard_provider: Box<dyn ClipboardProvider>,
@@ -502,8 +511,12 @@ impl Editor {
             macro_recording: None,
             theme: theme_loader.default(),
             language_servers,
+            #[cfg(feature = "dap")]
             debugger: None,
+            #[cfg(feature = "dap")]
             debugger_events: SelectAll::new(),
+            #[cfg(not(feature = "dap"))]
+            debugger_events: futures_util::stream::empty(),
             breakpoints: HashMap::new(),
             syn_loader,
             theme_loader,

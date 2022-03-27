@@ -247,7 +247,9 @@ impl Application {
                     }
                 }
                 Some(payload) = self.editor.debugger_events.next() => {
+                    #[cfg(feature = "dap")]
                     let needs_render = self.editor.handle_debugger_message(payload).await;
+                    #[cfg(feature = "dap")]
                     if needs_render {
                         self.render();
                     }
