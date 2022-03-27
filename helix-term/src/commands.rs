@@ -709,7 +709,7 @@ fn kill_to_line_start(cx: &mut Context) {
     });
     delete_selection_insert_mode(doc, view, &selection);
 
-    lsp::signature_help(cx);
+    lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
 }
 
 fn kill_to_line_end(cx: &mut Context) {
@@ -730,7 +730,7 @@ fn kill_to_line_end(cx: &mut Context) {
     });
     delete_selection_insert_mode(doc, view, &selection);
 
-    lsp::signature_help(cx);
+    lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
 }
 
 fn goto_first_nonwhitespace(cx: &mut Context) {
@@ -2766,7 +2766,7 @@ pub mod insert {
             let close_triggers = &[')', ';', '.'];
 
             if is_trigger || close_triggers.contains(&ch) {
-                super::signature_help(cx);
+                super::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
             }
         }
     }
@@ -2975,7 +2975,7 @@ pub mod insert {
             });
         doc.apply(&transaction, view.id);
 
-        lsp::signature_help(cx);
+        lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
     }
 
     pub fn delete_char_forward(cx: &mut Context) {
@@ -2993,7 +2993,7 @@ pub mod insert {
             });
         doc.apply(&transaction, view.id);
 
-        lsp::signature_help(cx);
+        lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
     }
 
     pub fn delete_word_backward(cx: &mut Context) {
@@ -3008,7 +3008,7 @@ pub mod insert {
         });
         delete_selection_insert_mode(doc, view, &selection);
 
-        lsp::signature_help(cx);
+        lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
     }
 
     pub fn delete_word_forward(cx: &mut Context) {
@@ -3022,7 +3022,7 @@ pub mod insert {
             .transform(|range| movement::move_next_word_start(text, range, count));
         delete_selection_insert_mode(doc, view, &selection);
 
-        lsp::signature_help(cx);
+        lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
     }
 }
 

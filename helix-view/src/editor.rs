@@ -154,10 +154,22 @@ pub struct Config {
     pub whitespace: WhitespaceConfig,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
+    /// Display LSP progress messages below statusline
     pub display_messages: bool,
+    /// Enable automatic pop up of signature help (parameter hints)
+    pub auto_signature_help: bool,
+}
+
+impl Default for LspConfig {
+    fn default() -> Self {
+        Self {
+            display_messages: false,
+            auto_signature_help: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

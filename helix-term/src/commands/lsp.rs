@@ -625,7 +625,17 @@ pub fn goto_reference(cx: &mut Context) {
     );
 }
 
+#[derive(PartialEq)]
+pub enum SignatureHelpInvoked {
+    Manual,
+    Automatic,
+}
+
 pub fn signature_help(cx: &mut Context) {
+    signature_help_impl(cx, SignatureHelpInvoked::Manual)
+}
+
+pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
@@ -633,10 +643,18 @@ pub fn signature_help(cx: &mut Context) {
     let pos = doc.position(view.id, offset_encoding);
 
     let future = language_server.text_document_signature_help(doc.identifier(), pos, None);
+    let was_manually_invoked = invoked == SignatureHelpInvoked::Manual;
 
     cx.callback(
         future,
         move |editor, compositor, response: Option<lsp::SignatureHelp>| {
+            if !(editor.config().lsp.auto_signature_help
+                || SignatureHelp::visible_popup(compositor).is_some()
+                || was_manually_invoked)
+            {
+                return;
+            }
+
             let response = match response {
                 Some(s) => s,
                 None => {

@@ -5,9 +5,11 @@ use helix_view::graphics::{Margin, Rect, Style};
 use tui::buffer::Buffer;
 use tui::widgets::{BorderType, Paragraph, Widget, Wrap};
 
-use crate::compositor::{Component, Context};
+use crate::compositor::{Component, Compositor, Context};
 
 use crate::ui::Markdown;
+
+use super::Popup;
 
 pub struct SignatureHelp {
     signature: String,
@@ -38,6 +40,10 @@ impl SignatureHelp {
 
     pub fn set_active_param_range(&mut self, offset: Option<(usize, usize)>) {
         self.active_param_range = offset;
+    }
+
+    pub fn visible_popup(compositor: &mut Compositor) -> Option<&mut Popup<Self>> {
+        compositor.find_id::<Popup<Self>>(Self::ID)
     }
 }
 
