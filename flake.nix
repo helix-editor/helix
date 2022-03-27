@@ -57,7 +57,7 @@
           env = prev.env ++ [
             { name = "HELIX_RUNTIME"; eval = "$PWD/runtime"; }
             { name = "RUST_BACKTRACE"; value = "1"; }
-            { name = "RUSTFLAGS"; value = "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment"; }
+            # { name = "RUSTFLAGS"; value = "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment"; }
             { name = "LD_LIBRARY_PATH"; value = nixpkgs.lib.makeLibraryPath (with common.pkgs; [ wayland libxkbcommon libGL ]); }
           ];
         };
