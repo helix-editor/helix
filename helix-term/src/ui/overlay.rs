@@ -6,7 +6,7 @@ use helix_view::{
 };
 use tui::buffer::Buffer;
 
-use crate::compositor::{Component, Context, EventResult};
+use crate::compositor::{Component, Context, EventResult, RenderContext};
 
 /// Contains a component placed in the center of the parent component
 pub struct Overlay<T> {
@@ -44,7 +44,7 @@ fn clip_rect_relative(rect: Rect, percent_horizontal: u8, percent_vertical: u8) 
 }
 
 impl<T: Component + 'static> Component for Overlay<T> {
-    fn render(&mut self, area: Rect, frame: &mut Buffer, ctx: &mut Context) {
+    fn render(&mut self, area: Rect, frame: &mut Buffer, ctx: &mut RenderContext<'_>) {
         let dimensions = (self.calc_child_size)(area);
         self.content.render(dimensions, frame, ctx)
     }

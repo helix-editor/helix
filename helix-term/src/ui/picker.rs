@@ -1,5 +1,5 @@
 use crate::{
-    compositor::{Component, Compositor, Context, EventResult},
+    compositor::{Component, Compositor, Context, EventResult, RenderContext},
     ctrl, key, shift,
     ui::{self, EditorView},
 };
@@ -164,7 +164,7 @@ impl<T> FilePicker<T> {
 }
 
 impl<T: 'static> Component for FilePicker<T> {
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
         // +---------+ +---------+
         // |prompt   | |preview  |
         // +---------+ |         |
@@ -552,7 +552,7 @@ impl<T: 'static> Component for Picker<T> {
         EventResult::Consumed(None)
     }
 
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
         let text_style = cx.editor.theme.get("ui.text");
         let selected = cx.editor.theme.get("ui.text.focus");
         let highlighted = cx.editor.theme.get("special").add_modifier(Modifier::BOLD);

@@ -1,5 +1,5 @@
 use crate::{
-    compositor::{Callback, Component, Compositor, Context, EventResult},
+    compositor::{Callback, Component, Compositor, Context, EventResult, RenderContext},
     ctrl, key, shift,
 };
 use crossterm::event::Event;
@@ -265,7 +265,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         Some(self.size)
     }
 
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
         let theme = &cx.editor.theme;
         let style = theme
             .try_get("ui.menu")

@@ -1,4 +1,4 @@
-use crate::compositor::{Component, Context, EventResult};
+use crate::compositor::{Component, Context, EventResult, RenderContext};
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use helix_view::editor::CompleteAction;
 use tui::buffer::Buffer as Surface;
@@ -301,7 +301,7 @@ impl Component for Completion {
         self.popup.required_size(viewport)
     }
 
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
         self.popup.render(area, surface, cx);
 
         // if we have a selection, render a markdown popup on top/below with info
@@ -311,7 +311,7 @@ impl Component for Completion {
             // ---
             // option.documentation
 
-            let (view, doc) = current!(cx.editor);
+            let (view, doc) = current_ref!(cx.editor);
             let language = doc
                 .language()
                 .and_then(|scope| scope.strip_prefix("source."))
@@ -369,7 +369,7 @@ impl Component for Completion {
                 None => return,
             };
 
-            let (popup_x, popup_y) = self.popup.get_rel_position(area, cx);
+            let (popup_x, popup_y) = self.popup.get_rel_position(area, cx.editor);
             let (popup_width, _popup_height) = self.popup.get_size();
             let mut width = area
                 .width

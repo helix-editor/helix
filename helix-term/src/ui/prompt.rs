@@ -1,4 +1,4 @@
-use crate::compositor::{Component, Compositor, Context, EventResult};
+use crate::compositor::{Component, Compositor, Context, EventResult, RenderContext};
 use crate::{alt, ctrl, key, shift, ui};
 use crossterm::event::Event;
 use helix_view::input::KeyEvent;
@@ -327,7 +327,7 @@ impl Prompt {
 const BASE_WIDTH: u16 = 30;
 
 impl Prompt {
-    pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
         let theme = &cx.editor.theme;
         let prompt_color = theme.get("ui.text");
         let completion_color = theme.get("ui.statusline");
@@ -547,7 +547,7 @@ impl Component for Prompt {
         EventResult::Consumed(None)
     }
 
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
         self.render_prompt(area, surface, cx)
     }
 

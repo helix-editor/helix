@@ -2,7 +2,7 @@ use crate::input::KeyEvent;
 use helix_core::{register::Registers, unicode::width::UnicodeWidthStr};
 use std::{collections::BTreeSet, fmt::Write};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Info box used in editor. Rendering logic will be in other crate.
 pub struct Info {
     /// Title shown at top.

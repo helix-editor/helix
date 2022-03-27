@@ -1,6 +1,6 @@
 use crate::{
     commands,
-    compositor::{Component, Context, EventResult},
+    compositor::{Component, Context, EventResult, RenderContext},
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
@@ -1201,7 +1201,6 @@ impl Component for EditorView {
                                 let mut cx = Context {
                                     editor: cx.editor,
                                     jobs: cx.jobs,
-                                    scroll: None,
                                 };
                                 let res = completion.handle_event(event, &mut cx);
 
@@ -1288,12 +1287,10 @@ impl Component for EditorView {
         }
     }
 
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
         // clear with background color
         surface.set_style(area, cx.editor.theme.get("ui.background"));
         let config = cx.editor.config();
-        // if the terminal size suddenly changed, we need to trigger a resize
-        cx.editor.resize(area.clip_bottom(1)); // -1 from bottom for commandline
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
@@ -1301,9 +1298,10 @@ impl Component for EditorView {
         }
 
         if config.auto_info {
-            if let Some(mut info) = cx.editor.autoinfo.take() {
+            // TODO: drop &mut self on render
+            if let Some(mut info) = cx.editor.autoinfo.clone() {
                 info.render(area, surface, cx);
-                cx.editor.autoinfo = Some(info)
+                // cx.editor.autoinfo = Some(info)
             }
         }
 

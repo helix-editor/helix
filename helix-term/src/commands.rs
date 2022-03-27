@@ -164,7 +164,6 @@ impl MappableCommand {
                     let mut cx = compositor::Context {
                         editor: cx.editor,
                         jobs: cx.jobs,
-                        scroll: None,
                     };
                     if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
                         cx.editor.set_error(format!("{}", e));

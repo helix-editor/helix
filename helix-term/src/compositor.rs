@@ -21,8 +21,12 @@ use crate::job::Jobs;
 
 pub struct Context<'a> {
     pub editor: &'a mut Editor,
-    pub scroll: Option<usize>,
     pub jobs: &'a mut Jobs,
+}
+
+pub struct RenderContext<'a> {
+    pub editor: &'a Editor,
+    pub scroll: Option<usize>,
 }
 
 pub trait Component: Any + AnyComponent {
@@ -38,7 +42,7 @@ pub trait Component: Any + AnyComponent {
     }
 
     /// Render the component onto the provided surface.
-    fn render(&mut self, area: Rect, frame: &mut Surface, ctx: &mut Context);
+    fn render(&mut self, area: Rect, frame: &mut Surface, ctx: &mut RenderContext);
 
     /// Get cursor position and cursor kind.
     fn cursor(&self, _area: Rect, _ctx: &Editor) -> (Option<Position>, CursorKind) {
@@ -169,18 +173,25 @@ impl Compositor {
     }
 
     pub fn render(&mut self, cx: &mut Context) {
-        self.terminal
+        let area = self
+            .terminal
             .autoresize()
             .expect("Unable to determine terminal size");
 
-        // TODO: need to recalculate view tree if necessary
+        // if the terminal size suddenly changed, we need to trigger a resize
+        cx.editor.resize(area.clip_bottom(1)); // -1 from bottom for commandline
 
         let surface = self.terminal.current_buffer_mut();
 
-        let area = *surface.area();
+        // let area = *surface.area();
+
+        let mut cx = RenderContext {
+            editor: cx.editor,
+            scroll: None,
+        };
 
         for layer in &mut self.layers {
-            layer.render(area, surface, cx);
+            layer.render(area, surface, &mut cx);
         }
 
         let (pos, kind) = self.cursor(area, cx.editor);
