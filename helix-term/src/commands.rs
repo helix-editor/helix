@@ -1,10 +1,12 @@
 #[cfg(feature = "dap")]
 pub(crate) mod dap;
+#[cfg(feature = "lsp")]
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
 #[cfg(feature = "dap")]
 pub use dap::*;
+#[cfg(feature = "lsp")]
 pub use lsp::*;
 pub use typed::*;
 
@@ -262,9 +264,12 @@ impl MappableCommand {
         command_mode, "Enter command mode",
         file_picker, "Open file picker",
         file_picker_in_current_directory, "Open file picker at current working directory",
+        #[cfg(feature = "lsp")]
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
+        #[cfg(feature = "lsp")]
         symbol_picker, "Open symbol picker",
+        #[cfg(feature = "lsp")]
         workspace_symbol_picker, "Open workspace symbol picker",
         last_picker, "Open last picker",
         prepend_to_line, "Insert at start of line",
@@ -274,16 +279,20 @@ impl MappableCommand {
         normal_mode, "Enter normal mode",
         select_mode, "Enter selection extend mode",
         exit_select_mode, "Exit selection mode",
+        #[cfg(feature = "lsp")]
         goto_definition, "Goto definition",
         add_newline_above, "Add newline above",
         add_newline_below, "Add newline below",
+        #[cfg(feature = "lsp")]
         goto_type_definition, "Goto type definition",
+        #[cfg(feature = "lsp")]
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto line number <n> else file start",
         goto_file_end, "Goto file end",
         goto_file, "Goto files in selection",
         goto_file_hsplit, "Goto files in selection (hsplit)",
         goto_file_vsplit, "Goto files in selection (vsplit)",
+        #[cfg(feature = "lsp")]
         goto_reference, "Goto references",
         goto_window_top, "Goto window top",
         goto_window_center, "Goto window center",
@@ -308,6 +317,7 @@ impl MappableCommand {
         extend_to_line_start, "Extend to line start",
         extend_to_line_end, "Extend to line end",
         extend_to_line_end_newline, "Extend to line end",
+        #[cfg(feature = "lsp")]
         signature_help, "Show signature help",
         insert_tab, "Insert tab char",
         insert_newline, "Insert newline char",
@@ -345,6 +355,7 @@ impl MappableCommand {
         keep_primary_selection, "Keep primary selection",
         remove_primary_selection, "Remove primary selection",
         completion, "Invoke completion popup",
+        #[cfg(feature = "lsp")]
         hover, "Show docs for item under cursor",
         toggle_comments, "Comment/uncomment selections",
         rotate_selections_forward, "Rotate selections forward",
@@ -429,6 +440,7 @@ impl MappableCommand {
         shell_append_output, "Append output of shell command after each selection",
         shell_keep_pipe, "Filter selections with shell predicate",
         suspend, "Suspend",
+        #[cfg(feature = "lsp")]
         rename_symbol, "Rename symbol",
         increment, "Increment",
         decrement, "Decrement",
@@ -2669,6 +2681,7 @@ pub mod insert {
         super::completion(cx);
     }
 
+    #[cfg(feature = "lsp")]
     fn language_server_completion(cx: &mut Context, ch: char) {
         use helix_lsp::lsp;
         // if ch matches completion char, trigger completion
@@ -2693,6 +2706,7 @@ pub mod insert {
         }
     }
 
+    #[cfg(feature = "lsp")]
     fn signature_help(cx: &mut Context, ch: char) {
         use helix_lsp::lsp;
         // if ch matches signature_help char, trigger
@@ -2769,6 +2783,7 @@ pub mod insert {
         // TODO: need a post insert hook too for certain triggers (autocomplete, signature help, etc)
         // this could also generically look at Transaction, but it's a bit annoying to look at
         // Operation instead of Change.
+        #[cfg(feature = "lsp")]
         for hook in &[language_server_completion, signature_help] {
             // for hook in &[signature_help] {
             hook(cx, c);
@@ -3402,6 +3417,10 @@ fn unindent(cx: &mut Context) {
     doc.apply(&transaction, view.id);
 }
 
+#[cfg(not(feature = "lsp"))]
+fn format_selections(_cx: &mut Context) {}
+
+#[cfg(feature = "lsp")]
 fn format_selections(cx: &mut Context) {
     use helix_lsp::{lsp, util::range_to_lsp_range};
 

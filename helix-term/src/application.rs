@@ -3,13 +3,18 @@ use helix_core::{
     config::{default_syntax_loader, user_syntax_loader},
     pos_at_coords, syntax, Selection,
 };
+
+#[cfg(feature = "lsp")]
+use crate::commands::apply_workspace_edit;
+#[cfg(feature = "lsp")]
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{align_view, editor::ConfigEvent, theme, Align, Editor};
+#[cfg(feature = "lsp")]
 use serde_json::json;
+
+use helix_view::{align_view, editor::ConfigEvent, theme, Align, Editor};
 
 use crate::{
     args::Args,
-    commands::apply_workspace_edit,
     compositor::Compositor,
     config::Config,
     job::Jobs,
@@ -17,7 +22,6 @@ use crate::{
     ui::{self, overlay::overlayed},
 };
 
-use log::{error, warn};
 use std::{
     io::{stdin, stdout, Write},
     sync::Arc,
@@ -52,6 +56,7 @@ pub struct Application {
 
     signals: Signals,
     jobs: Jobs,
+    #[cfg(feature = "lsp")]
     lsp_progress: LspProgressMap,
 }
 
@@ -199,6 +204,8 @@ impl Application {
 
             signals,
             jobs: Jobs::new(),
+
+            #[cfg(feature = "lsp")]
             lsp_progress: LspProgressMap::new(),
         };
 
@@ -238,9 +245,12 @@ impl Application {
                     self.handle_signals(signal).await;
                 }
                 Some((id, call)) = self.editor.language_servers.incoming.next() => {
+                    #[cfg(feature = "lsp")]
                     self.handle_language_server_message(call, id).await;
                     // limit render calls for fast language server messages
+                    #[cfg(feature = "lsp")]
                     let last = self.editor.language_servers.incoming.is_empty();
+                    #[cfg(feature = "lsp")]
                     if last || last_render.elapsed() > deadline {
                         self.render();
                         last_render = Instant::now();
@@ -388,6 +398,7 @@ impl Application {
         }
     }
 
+    #[cfg(feature = "lsp")]
     pub async fn handle_language_server_message(
         &mut self,
         call: helix_lsp::Call,
@@ -614,7 +625,7 @@ impl Application {
                 let call = match MethodCall::parse(&method, params) {
                     Some(call) => call,
                     None => {
-                        error!("Method not found {}", method);
+                        log::error!("Method not found {}", method);
                         return;
                     }
                 };
@@ -686,7 +697,7 @@ impl Application {
                 let language_server = match self.editor.language_servers.get_by_id(server_id) {
                     Some(language_server) => language_server,
                     None => {
-                        warn!("can't find language server with id `{}`", server_id);
+                        log::warn!("can't find language server with id `{}`", server_id);
                         return;
                     }
                 };
@@ -739,6 +750,7 @@ impl Application {
 
         self.jobs.finish().await;
 
+        #[cfg(feature = "lsp")]
         if self.editor.close_language_servers(None).await.is_err() {
             log::error!("Timed out waiting for language servers to shutdown");
         };
