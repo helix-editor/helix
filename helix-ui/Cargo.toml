@@ -1,0 +1,15 @@
+[package]
+name = "helix-ui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+femtovg = "0.3.3"
+winit = { version = "0.26.1", default-features = false, features = ["wayland"] } # TODO: figure out wayland-dlopen
+resource = "0.5.0"
+image = { version = "0.24.0", default-features = false, features = ["jpeg", "png"] }
+console_error_panic_hook = "0.1.7"
+glutin = "0.28.0"
+instant = "0.1.12"

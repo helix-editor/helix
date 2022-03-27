@@ -4,6 +4,7 @@ members = [
   "helix-view",
   "helix-term",
   "helix-tui",
+  "helix-ui",
   "helix-lsp",
   "helix-dap",
   "helix-loader",
