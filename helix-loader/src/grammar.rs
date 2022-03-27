@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Context, Result};
-use libloading::{Library, Symbol};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::time::SystemTime;
@@ -16,6 +15,9 @@ const DYLIB_EXTENSION: &str = "so";
 
 #[cfg(windows)]
 const DYLIB_EXTENSION: &str = "dll";
+
+#[cfg(target_arch = "wasm32")]
+const DYLIB_EXTENSION: &str = "wasm";
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Configuration {
@@ -57,7 +59,14 @@ pub enum GrammarSource {
 const BUILD_TARGET: &str = env!("BUILD_TARGET");
 const REMOTE_NAME: &str = "origin";
 
+#[cfg(target_arch = "wasm32")]
 pub fn get_language(name: &str) -> Result<Language> {
+    unimplemented!()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn get_language(name: &str) -> Result<Language> {
+    use libloading::{Library, Symbol};
     let name = name.to_ascii_lowercase();
     let mut library_path = crate::runtime_dir().join("grammars").join(&name);
     library_path.set_extension(DYLIB_EXTENSION);
