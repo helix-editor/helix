@@ -75,7 +75,13 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     }
 }
 
-#[cfg(not(any(windows, target_os = "macos")))]
+#[cfg(target_os = "wasm32")]
+pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
+    // TODO:
+    Box::new(provider::NopProvider::new())
+}
+
+#[cfg(not(any(windows, target_os = "wasm32", target_os = "macos")))]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     use provider::command::{env_var_is_set, exists, is_exit_success};
     // TODO: support for user-defined provider, probably when we have plugin support by setting a
@@ -201,6 +207,7 @@ mod provider {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub mod command {
         use super::*;
         use anyhow::{bail, Context as _, Result};
