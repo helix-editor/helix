@@ -26,6 +26,7 @@ pub struct Context<'a> {
 
 pub struct RenderContext<'a> {
     pub editor: &'a Editor,
+    pub surface: &'a mut Surface,
     pub scroll: Option<usize>,
 }
 
@@ -34,7 +35,6 @@ pub trait Component: Any + AnyComponent {
     fn handle_event(&mut self, _event: Event, _ctx: &mut Context) -> EventResult {
         EventResult::Ignored(None)
     }
-    // , args: ()
 
     /// Should redraw? Useful for saving redraw cycles if we know component didn't change.
     fn should_update(&self) -> bool {
@@ -42,7 +42,7 @@ pub trait Component: Any + AnyComponent {
     }
 
     /// Render the component onto the provided surface.
-    fn render(&mut self, area: Rect, frame: &mut Surface, ctx: &mut RenderContext);
+    fn render(&mut self, area: Rect, ctx: &mut RenderContext);
 
     /// Get cursor position and cursor kind.
     fn cursor(&self, _area: Rect, _ctx: &Editor) -> (Option<Position>, CursorKind) {
@@ -185,13 +185,14 @@ impl Compositor {
 
         // let area = *surface.area();
 
-        let mut cx = RenderContext {
+        let mut render_cx = RenderContext {
             editor: cx.editor,
+            surface,
             scroll: None,
         };
 
         for layer in &mut self.layers {
-            layer.render(area, surface, &mut cx);
+            layer.render(area, &mut render_cx);
         }
 
         let (pos, kind) = self.cursor(area, cx.editor);

@@ -3,7 +3,7 @@ use crate::{
     ctrl, key, shift,
 };
 use crossterm::event::Event;
-use tui::{buffer::Buffer as Surface, widgets::Table};
+use tui::widgets::Table;
 
 pub use tui::widgets::{Cell, Row};
 
@@ -265,7 +265,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         Some(self.size)
     }
 
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
+    fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
         let theme = &cx.editor.theme;
         let style = theme
             .try_get("ui.menu")
@@ -307,7 +307,7 @@ impl<T: Item + 'static> Component for Menu<T> {
 
         table.render_table(
             area,
-            surface,
+            cx.surface,
             &mut TableState {
                 offset: scroll,
                 selected: self.cursor,
@@ -320,7 +320,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
 
             if !fits && is_marked {
-                let cell = &mut surface[(area.x + area.width - 2, area.y + i as u16)];
+                let cell = &mut cx.surface[(area.x + area.width - 2, area.y + i as u16)];
                 cell.set_symbol("▐");
                 // cell.set_style(selected);
                 // cell.set_style(if is_marked { selected } else { style });

@@ -4,7 +4,6 @@ use helix_view::{
     graphics::{CursorKind, Rect},
     Editor,
 };
-use tui::buffer::Buffer;
 
 use crate::compositor::{Component, Context, EventResult, RenderContext};
 
@@ -44,9 +43,9 @@ fn clip_rect_relative(rect: Rect, percent_horizontal: u8, percent_vertical: u8) 
 }
 
 impl<T: Component + 'static> Component for Overlay<T> {
-    fn render(&mut self, area: Rect, frame: &mut Buffer, ctx: &mut RenderContext<'_>) {
+    fn render(&mut self, area: Rect, ctx: &mut RenderContext<'_>) {
         let dimensions = (self.calc_child_size)(area);
-        self.content.render(dimensions, frame, ctx)
+        self.content.render(dimensions, ctx)
     }
 
     fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {

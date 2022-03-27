@@ -4,7 +4,6 @@ use crossterm::event::Event;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
 use std::{borrow::Cow, ops::RangeFrom};
-use tui::buffer::Buffer as Surface;
 use tui::widgets::{Block, Borders, Widget};
 
 use helix_core::{
@@ -327,7 +326,7 @@ impl Prompt {
 const BASE_WIDTH: u16 = 30;
 
 impl Prompt {
-    pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
+    pub fn render_prompt(&self, area: Rect, cx: &mut RenderContext<'_>) {
         let theme = &cx.editor.theme;
         let prompt_color = theme.get("ui.text");
         let completion_color = theme.get("ui.statusline");
@@ -367,7 +366,7 @@ impl Prompt {
                 .map(|selection| selection / items * items)
                 .unwrap_or_default();
 
-            surface.clear_with(area, background);
+            cx.surface.clear_with(area, background);
 
             let mut row = 0;
             let mut col = 0;
@@ -380,7 +379,7 @@ impl Prompt {
                 } else {
                     completion_color
                 };
-                surface.set_stringn(
+                cx.surface.set_stringn(
                     area.x + col * (1 + col_width),
                     area.y + row,
                     &completion,
@@ -413,7 +412,7 @@ impl Prompt {
             ));
 
             let background = theme.get("ui.help");
-            surface.clear_with(area, background);
+            cx.surface.clear_with(area, background);
 
             let block = Block::default()
                 // .title(self.title.as_str())
@@ -425,14 +424,15 @@ impl Prompt {
                 horizontal: 1,
             });
 
-            block.render(area, surface);
-            text.render(inner, surface, cx);
+            block.render(area, cx.surface);
+            text.render(inner, cx);
         }
 
         let line = area.height - 1;
         // render buffer text
-        surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
-        surface.set_string(
+        cx.surface
+            .set_string(area.x, area.y + line, &self.prompt, prompt_color);
+        cx.surface.set_string(
             area.x + self.prompt.len() as u16,
             area.y + line,
             &self.line,
@@ -547,8 +547,8 @@ impl Component for Prompt {
         EventResult::Consumed(None)
     }
 
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
-        self.render_prompt(area, surface, cx)
+    fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
+        self.render_prompt(area, cx)
     }
 
     fn cursor(&self, area: Rect, _editor: &Editor) -> (Option<Position>, CursorKind) {

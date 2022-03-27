@@ -1287,20 +1287,21 @@ impl Component for EditorView {
         }
     }
 
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
+    fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
         // clear with background color
-        surface.set_style(area, cx.editor.theme.get("ui.background"));
+        cx.surface
+            .set_style(area, cx.editor.theme.get("ui.background"));
         let config = cx.editor.config();
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
-            self.render_view(cx.editor, doc, view, area, surface, is_focused);
+            self.render_view(cx.editor, doc, view, area, cx.surface, is_focused);
         }
 
         if config.auto_info {
             // TODO: drop &mut self on render
             if let Some(mut info) = cx.editor.autoinfo.clone() {
-                info.render(area, surface, cx);
+                info.render(area, cx);
                 // cx.editor.autoinfo = Some(info)
             }
         }
@@ -1318,7 +1319,7 @@ impl Component for EditorView {
                 cx.editor.theme.get("ui.text")
             };
 
-            surface.set_string(
+            cx.surface.set_string(
                 area.x,
                 area.y + area.height.saturating_sub(1),
                 status_msg,
@@ -1348,7 +1349,7 @@ impl Component for EditorView {
             } else {
                 0
             };
-            surface.set_string(
+            cx.surface.set_string(
                 area.x + area.width.saturating_sub(key_width + macro_width),
                 area.y + area.height.saturating_sub(1),
                 disp.get(disp.len().saturating_sub(key_width as usize)..)
@@ -1360,7 +1361,7 @@ impl Component for EditorView {
                 let style = style
                     .fg(helix_view::graphics::Color::Yellow)
                     .add_modifier(Modifier::BOLD);
-                surface.set_string(
+                cx.surface.set_string(
                     area.x + area.width.saturating_sub(3),
                     area.y + area.height.saturating_sub(1),
                     &disp,
@@ -1370,7 +1371,7 @@ impl Component for EditorView {
         }
 
         if let Some(completion) = self.completion.as_mut() {
-            completion.render(area, surface, cx);
+            completion.render(area, cx);
         }
     }
 

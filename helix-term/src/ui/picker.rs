@@ -4,10 +4,7 @@ use crate::{
     ui::{self, EditorView},
 };
 use crossterm::event::Event;
-use tui::{
-    buffer::Buffer as Surface,
-    widgets::{Block, BorderType, Borders},
-};
+use tui::widgets::{Block, BorderType, Borders};
 
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
@@ -164,7 +161,7 @@ impl<T> FilePicker<T> {
 }
 
 impl<T: 'static> Component for FilePicker<T> {
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
+    fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
         // +---------+ +---------+
         // |prompt   | |preview  |
         // +---------+ |         |
@@ -177,7 +174,7 @@ impl<T: 'static> Component for FilePicker<T> {
         // clear area
         let background = cx.editor.theme.get("ui.background");
         let text = cx.editor.theme.get("ui.text");
-        surface.clear_with(area, background);
+        cx.surface.clear_with(area, background);
 
         let picker_width = if render_preview {
             area.width / 2
@@ -186,7 +183,7 @@ impl<T: 'static> Component for FilePicker<T> {
         };
 
         let picker_area = area.with_width(picker_width);
-        self.picker.render(picker_area, surface, cx);
+        self.picker.render(picker_area, cx);
 
         if !render_preview {
             return;
@@ -205,7 +202,7 @@ impl<T: 'static> Component for FilePicker<T> {
             horizontal: 1,
         };
         let inner = inner.inner(&margin);
-        block.render(preview_area, surface);
+        block.render(preview_area, cx.surface);
 
         if let Some((path, range)) = self.current_file(cx.editor) {
             let preview = self.get_preview(&path, cx.editor);
@@ -215,7 +212,8 @@ impl<T: 'static> Component for FilePicker<T> {
                     let alt_text = preview.placeholder();
                     let x = inner.x + inner.width.saturating_sub(alt_text.len() as u16) / 2;
                     let y = inner.y + inner.height / 2;
-                    surface.set_stringn(x, y, alt_text, inner.width as usize, text);
+                    cx.surface
+                        .set_stringn(x, y, alt_text, inner.width as usize, text);
                     return;
                 }
             };
@@ -237,7 +235,7 @@ impl<T: 'static> Component for FilePicker<T> {
                 doc,
                 offset,
                 inner,
-                surface,
+                cx.surface,
                 &cx.editor.theme,
                 highlights,
                 &cx.editor.config().whitespace,
@@ -246,7 +244,7 @@ impl<T: 'static> Component for FilePicker<T> {
             // highlight the line
             if let Some((start, end)) = range {
                 let offset = start.saturating_sub(first_line) as u16;
-                surface.set_style(
+                cx.surface.set_style(
                     Rect::new(
                         inner.x,
                         inner.y + offset,
@@ -552,7 +550,7 @@ impl<T: 'static> Component for Picker<T> {
         EventResult::Consumed(None)
     }
 
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
+    fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
         let text_style = cx.editor.theme.get("ui.text");
         let selected = cx.editor.theme.get("ui.text.focus");
         let highlighted = cx.editor.theme.get("special").add_modifier(Modifier::BOLD);
@@ -560,7 +558,7 @@ impl<T: 'static> Component for Picker<T> {
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
-        surface.clear_with(area, background);
+        cx.surface.clear_with(area, background);
 
         // don't like this but the lifetime sucks
         let block = Block::default().borders(Borders::ALL);
@@ -568,14 +566,14 @@ impl<T: 'static> Component for Picker<T> {
         // calculate the inner area inside the box
         let inner = block.inner(area);
 
-        block.render(area, surface);
+        block.render(area, cx.surface);
 
         // -- Render the input bar:
 
         let area = inner.clip_left(1).with_height(1);
 
         let count = format!("{}/{}", self.matches.len(), self.options.len());
-        surface.set_stringn(
+        cx.surface.set_stringn(
             (area.x + area.width).saturating_sub(count.len() as u16 + 1),
             area.y,
             &count,
@@ -583,13 +581,13 @@ impl<T: 'static> Component for Picker<T> {
             text_style,
         );
 
-        self.prompt.render(area, surface, cx);
+        self.prompt.render(area, cx);
 
         // -- Separator
         let sep_style = Style::default().fg(Color::Rgb(90, 89, 119));
         let borders = BorderType::line_symbols(BorderType::Plain);
         for x in inner.left()..inner.right() {
-            if let Some(cell) = surface.get_mut(x, inner.y + 1) {
+            if let Some(cell) = cx.surface.get_mut(x, inner.y + 1) {
                 cell.set_symbol(borders.horizontal).set_style(sep_style);
             }
         }
@@ -610,7 +608,8 @@ impl<T: 'static> Component for Picker<T> {
         for (i, (_index, option)) in files.take(rows as usize).enumerate() {
             let is_active = i == (self.cursor - offset);
             if is_active {
-                surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
+                cx.surface
+                    .set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
             }
 
             let formatted = (self.format_fn)(option);
@@ -620,7 +619,7 @@ impl<T: 'static> Component for Picker<T> {
                 .fuzzy_indices(&formatted, self.prompt.line())
                 .unwrap_or_default();
 
-            surface.set_string_truncated(
+            cx.surface.set_string_truncated(
                 inner.x,
                 inner.y + i as u16,
                 &formatted,

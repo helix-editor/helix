@@ -1,8 +1,5 @@
 use crate::compositor::{Component, RenderContext};
-use tui::{
-    buffer::Buffer as Surface,
-    text::{Span, Spans, Text},
-};
+use tui::text::{Span, Spans, Text};
 
 use std::sync::Arc;
 
@@ -259,7 +256,7 @@ impl Markdown {
 }
 
 impl Component for Markdown {
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
+    fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
         use tui::widgets::{Paragraph, Widget, Wrap};
 
         let text = self.parse(Some(&cx.editor.theme));
@@ -272,7 +269,7 @@ impl Component for Markdown {
             vertical: 1,
             horizontal: 1,
         };
-        par.render(area.inner(&margin), surface);
+        par.render(area.inner(&margin), cx.surface);
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {

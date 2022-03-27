@@ -1,5 +1,4 @@
 use crate::compositor::{Component, RenderContext};
-use tui::buffer::Buffer as Surface;
 
 use helix_view::graphics::Rect;
 
@@ -30,13 +29,13 @@ impl From<tui::text::Text<'static>> for Text {
 }
 
 impl Component for Text {
-    fn render(&mut self, area: Rect, surface: &mut Surface, _cx: &mut RenderContext<'_>) {
+    fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
         use tui::widgets::{Paragraph, Widget, Wrap};
 
         let par = Paragraph::new(self.contents.clone()).wrap(Wrap { trim: false });
         // .scroll(x, y) offsets
 
-        par.render(area, surface);
+        par.render(area, cx.surface);
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {

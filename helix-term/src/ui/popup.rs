@@ -3,7 +3,6 @@ use crate::{
     ctrl, key,
 };
 use crossterm::event::Event;
-use tui::buffer::Buffer as Surface;
 
 use helix_core::Position;
 use helix_view::{
@@ -179,7 +178,7 @@ impl<T: Component> Component for Popup<T> {
         Some(self.size)
     }
 
-    fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
+    fn render(&mut self, viewport: Rect, cx: &mut RenderContext<'_>) {
         // trigger required_size so we recalculate if the child changed
         self.required_size((viewport.width, viewport.height));
 
@@ -192,10 +191,10 @@ impl<T: Component> Component for Popup<T> {
 
         // clear area
         let background = cx.editor.theme.get("ui.popup");
-        surface.clear_with(area, background);
+        cx.surface.clear_with(area, background);
 
         let inner = area.inner(&self.margin);
-        self.contents.render(inner, surface, cx);
+        self.contents.render(inner, cx);
     }
 
     fn id(&self) -> Option<&'static str> {

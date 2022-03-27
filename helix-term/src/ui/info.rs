@@ -1,11 +1,10 @@
 use crate::compositor::{Component, RenderContext};
 use helix_view::graphics::{Margin, Rect};
 use helix_view::info::Info;
-use tui::buffer::Buffer as Surface;
 use tui::widgets::{Block, Borders, Paragraph, Widget};
 
 impl Component for Info {
-    fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut RenderContext<'_>) {
+    fn render(&mut self, viewport: Rect, cx: &mut RenderContext<'_>) {
         let text_style = cx.editor.theme.get("ui.text.info");
         let popup_style = cx.editor.theme.get("ui.popup.info");
 
@@ -20,7 +19,7 @@ impl Component for Info {
             width,
             height,
         ));
-        surface.clear_with(area, popup_style);
+        cx.surface.clear_with(area, popup_style);
 
         let block = Block::default()
             .title(self.title.as_str())
@@ -32,10 +31,10 @@ impl Component for Info {
             horizontal: 1,
         };
         let inner = block.inner(area).inner(&margin);
-        block.render(area, surface);
+        block.render(area, cx.surface);
 
         Paragraph::new(self.text.as_str())
             .style(text_style)
-            .render(inner, surface);
+            .render(inner, cx.surface);
     }
 }
