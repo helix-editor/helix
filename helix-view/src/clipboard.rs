@@ -63,7 +63,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
 
 #[cfg(target_os = "macos")]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
-    use command::exists;
+    use provider::command::exists;
 
     if exists("pbcopy") && exists("pbpaste") {
         command_provider! {
