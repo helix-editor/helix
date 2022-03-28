@@ -11,8 +11,6 @@ use toml::de::Error as TomlError;
 #[serde(deny_unknown_fields)]
 pub struct Config {
     pub theme: Option<String>,
-    #[serde(default)]
-    pub lsp: LspConfig,
     #[serde(default = "default")]
     pub keys: HashMap<Mode, Keymap>,
     #[serde(default)]
@@ -23,7 +21,6 @@ impl Default for Config {
     fn default() -> Config {
         Config {
             theme: None,
-            lsp: LspConfig::default(),
             keys: default(),
             editor: helix_view::editor::Config::default(),
         }
@@ -43,12 +40,6 @@ impl Display for ConfigLoadError {
             ConfigLoadError::Error(err) => err.fmt(f),
         }
     }
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields)]
-pub struct LspConfig {
-    pub display_messages: bool,
 }
 
 impl Config {

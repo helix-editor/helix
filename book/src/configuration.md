@@ -43,6 +43,14 @@ hidden = false
 | `auto-info` | Whether to display infoboxes | `true` |
 | `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. | `false` |
 
+### `[editor.lsp]` Section
+
+| Key                | Description                                 | Default |
+| ---                | -----------                                 | ------- |
+| `display-messages` | Display LSP progress messages below statusline[^1] | `false` |
+
+[^1]: A progress spinner is always shown in the statusline beside the file path.
+
 ### `[editor.cursor-shape]` Section
 
 Defines the shape of cursor in each mode. Note that due to limitations
@@ -126,13 +134,3 @@ Search specific options.
 |--|--|---------|
 | `smart-case` | Enable smart case regex searching (case insensitive unless pattern contains upper case characters) | `true` |
 | `wrap-around`| Whether the search should wrap after depleting the matches | `true` |
-
-
-## LSP
-
-To display all language server messages in the status line add the following to your `config.toml`:
-
-```toml
-[lsp]
-display-messages = true
-```
