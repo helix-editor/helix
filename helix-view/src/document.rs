@@ -264,11 +264,12 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
 /// Encodes the text inside `rope` into the given `encoding` and writes the
 /// encoded output into `writer.` As a `Rope` can only contain valid UTF-8,
 /// replacement characters may appear in the encoded text.
-pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
+pub async fn to_writer<'a, W: tokio::io::AsyncWrite + Unpin + ?Sized>(
     writer: &'a mut W,
     encoding: &'static encoding::Encoding,
     rope: &'a Rope,
 ) -> Result<(), Error> {
+    use tokio::io::AsyncWriteExt;
     // Text inside a `Rope` is stored as non-contiguous blocks of data called
     // chunks. The absolute size of each chunk is unknown, thus it is impossible
     // to predict the end of the chunk iterator ahead of time. Instead, it is

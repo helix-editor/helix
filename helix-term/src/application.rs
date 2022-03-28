@@ -415,14 +415,17 @@ impl Application {
 
                 match notification {
                     Notification::Initialized => {
-                        let language_server =
-                            match self.editor.language_servers.get_by_id(server_id) {
-                                Some(language_server) => language_server,
-                                None => {
-                                    warn!("can't find language server with id `{}`", server_id);
-                                    return;
-                                }
-                            };
+                        let language_server = match self
+                            .editor
+                            .language_servers
+                            .get_by_id(server_id)
+                        {
+                            Some(language_server) => language_server,
+                            None => {
+                                log::warn!("can't find language server with id `{}`", server_id);
+                                return;
+                            }
+                        };
 
                         // Trigger a workspace/didChangeConfiguration notification after initialization.
                         // This might not be required by the spec but Neovim does this as well, so it's
