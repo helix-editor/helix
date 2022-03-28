@@ -280,6 +280,7 @@ fn set_line_ending(
     args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
+    use helix_core::line_ending;
     use LineEnding::*;
 
     // If no argument, report current line ending setting.
@@ -321,8 +322,28 @@ fn set_line_ending(
         arg if arg.starts_with("nel") => Nel,
         _ => bail!("invalid line ending"),
     };
+    let (view, doc) = current!(cx.editor);
+    doc.line_ending = line_ending;
 
-    doc_mut!(cx.editor).line_ending = line_ending;
+    let mut pos = 0;
+    let transaction = Transaction::change(
+        doc.text(),
+        doc.text().lines().filter_map(|line| {
+            let current_pos = pos;
+            pos += line.len_chars();
+            match line_ending::get_line_ending(&line) {
+                Some(ending) if ending != line_ending => {
+                    let start = current_pos + line_ending::rope_end_without_line_ending(&line);
+                    let end = pos;
+                    Some((start, end, Some(line_ending.as_str().into())))
+                }
+                _ => None,
+            }
+        }),
+    );
+
+    doc.apply(&transaction, view.id);
+
     Ok(())
 }
 
