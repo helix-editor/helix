@@ -71,7 +71,7 @@ fn sym_picker(
 ) -> FilePicker<lsp::SymbolInformation> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
     let current_path2 = current_path.clone();
-    let picker = FilePicker::new(
+    FilePicker::new(
         symbols,
         move |symbol| {
             if current_path.as_ref() == Some(&symbol.location.uri) {
@@ -105,8 +105,7 @@ fn sym_picker(
         },
         move |_editor, symbol| Some(location_to_file_location(&symbol.location)),
     )
-    .truncate_start(false);
-    picker
+    .truncate_start(false)
 }
 
 pub fn symbol_picker(cx: &mut Context) {
