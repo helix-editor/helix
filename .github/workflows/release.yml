@@ -1,32 +1,81 @@
 name: Release
 on:
-  # schedule:
-  # - cron: '0 0 * * *' # midnight UTC
-
   push:
     tags:
-    - 'v[0-9]+.[0-9]+.[0-9]+'
-    ## - release
+    - '[0-9]+.[0-9]+'
+    - '[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
+  fetch-grammars:
+    name: Fetch Grammars
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-registry-
+
+      - name: Cache cargo index
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-index-
+
+      - name: Cache cargo target dir
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-build-target-
+
+      - name: Fetch tree-sitter grammars
+        uses: actions-rs/cargo@v1
+        env:
+          HELIX_DISABLE_AUTO_GRAMMAR_BUILD: yes
+        with:
+          command: run
+          args: -- --grammar fetch
+
+      - name: Bundle grammars
+        run: tar cJf grammars.tar.xz -C runtime/grammars/sources .
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: grammars
+          path: grammars.tar.xz
+
   dist:
     name: Dist
+    needs: [fetch-grammars]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false # don't fail other jobs if one fails
       matrix:
-        build: [x86_64-linux, aarch64-linux, x86_64-macos, x86_64-windows] #, x86_64-win-gnu, win32-msvc
+        build: [x86_64-linux, x86_64-macos, x86_64-windows] #, x86_64-win-gnu, win32-msvc
         include:
         - build: x86_64-linux
           os: ubuntu-20.04
           rust: stable
           target: x86_64-unknown-linux-gnu
           cross: false
-        - build: aarch64-linux
-          os: ubuntu-20.04
-          rust: stable
-          target: aarch64-unknown-linux-gnu
-          cross: true
+        # - build: aarch64-linux
+        #   os: ubuntu-20.04
+        #   rust: stable
+        #   target: aarch64-unknown-linux-gnu
+        #   cross: true
         - build: x86_64-macos
           os: macos-latest
           rust: stable
@@ -53,6 +102,24 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
+
+      - name: Download grammars
+        uses: actions/download-artifact@v2
+
+      - name: Move grammars under runtime
+        if: "!startsWith(matrix.os, 'windows')"
+        run: |
+          mkdir -p runtime/grammars/sources
+          tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
+
+      - name: Write tag name to .version file
+        shell: bash
+        run: |
+          name=dev
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            name=${GITHUB_REF:10}
+          fi
+          echo -n $name > .version
 
       - name: Install ${{ matrix.rust }} toolchain
         uses: actions-rs/toolchain@v1
@@ -98,6 +165,7 @@ jobs:
           else
             cp "target/${{ matrix.target }}/release/hx" "dist/"
           fi
+          rm -rf runtime/grammars/sources
           cp -r runtime dist
 
       - uses: actions/upload-artifact@v3
@@ -118,7 +186,7 @@ jobs:
       - name: Calculate tag name
         run: |
           name=dev
-          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
             name=${GITHUB_REF:10}
           fi
           echo ::set-output name=val::$name
@@ -130,8 +198,14 @@ jobs:
         run: |
           set -ex
 
-          rm -rf tmp
-          mkdir tmp
+          source="$(pwd)"
+          mkdir -p runtime/grammars/sources
+          tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
+          echo -n "$TAG" > .version
+          rm -rf grammars
+
+          cd "$(mktemp -d)"
+          mv $source/bins-* .
           mkdir dist
 
           for dir in bins-* ; do
@@ -140,18 +214,21 @@ jobs:
                   exe=".exe"
               fi
               pkgname=helix-$TAG-$platform
-              mkdir tmp/$pkgname
-              cp LICENSE README.md tmp/$pkgname
-              mv bins-$platform/runtime tmp/$pkgname/
-              mv bins-$platform/hx$exe tmp/$pkgname
-              chmod +x tmp/$pkgname/hx$exe
+              mkdir $pkgname
+              cp $source/LICENSE $source/README.md $pkgname
+              mv bins-$platform/runtime $pkgname/
+              mv bins-$platform/hx$exe $pkgname
+              chmod +x $pkgname/hx$exe
 
               if [ "$exe" = "" ]; then
-                  tar cJf dist/$pkgname.tar.xz -C tmp $pkgname
+                  tar cJf dist/$pkgname.tar.xz $pkgname
               else
-                  (cd tmp && 7z a -r ../dist/$pkgname.zip $pkgname)
+                  7z a -r dist/$pkgname.zip $pkgname
               fi
           done
+
+          tar cJf dist/helix-$TAG-source.tar.xz -C $source .
+          mv dist $source/
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
