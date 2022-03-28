@@ -11,8 +11,9 @@ homepage = "https://helix-editor.com"
 
 [features]
 # default = ["dap", "lsp"]
-lsp = ["helix-lsp"]
-dap = ["helix-dap", "tokio-stream"]
+lsp = ["helix-lsp", "tokio-runtime"]
+dap = ["helix-dap", "tokio-stream", "tokio-runtime"]
+tokio-runtime = ["tokio"]
 term = ["crossterm"]
 
 [dependencies]
@@ -22,6 +23,7 @@ helix-core = { version = "0.6", path = "../helix-core" }
 helix-lsp = { version = "0.6", path = "../helix-lsp", optional = true }
 helix-dap = { version = "0.6", path = "../helix-dap", optional = true }
 tokio-stream = { version = "0.1", optional = true }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "sync"], optional = true }
 
 crossterm = { version = "0.23", optional = true }
 
@@ -31,7 +33,6 @@ url = "2"
 
 arc-swap = { version = "1.5.0" }
 
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "sync"] }
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 
 slotmap = "1"
@@ -43,10 +44,12 @@ serde_json = "1.0"
 toml = "0.5"
 log = "~0.4"
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 which = "4.2"
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "4.4", features = ["std"] }
 
-[dev-dependencies]
-helix-tui = { path = "../helix-tui" }
+# TODO: graphics.rs tests rely on this, but we should remove that
+# [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+# helix-tui = { path = "../helix-tui" }

@@ -14,6 +14,7 @@ pub trait ClipboardProvider: std::fmt::Debug {
     fn set_contents(&mut self, contents: String, clipboard_type: ClipboardType) -> Result<()>;
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 macro_rules! command_provider {
     (paste => $get_prg:literal $( , $get_arg:literal )* ; copy => $set_prg:literal $( , $set_arg:literal )* ; ) => {{
         Box::new(provider::command::Provider {
@@ -75,13 +76,13 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     }
 }
 
-#[cfg(target_os = "wasm32")]
+#[cfg(target_arch = "wasm32")]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     // TODO:
     Box::new(provider::NopProvider::new())
 }
 
-#[cfg(not(any(windows, target_os = "wasm32", target_os = "macos")))]
+#[cfg(not(any(windows, target_os = "macos", target_arch = "wasm32")))]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     use provider::command::{env_var_is_set, exists, is_exit_success};
     // TODO: support for user-defined provider, probably when we have plugin support by setting a

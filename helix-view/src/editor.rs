@@ -15,14 +15,18 @@ use std::{
     io::stdin,
     num::NonZeroUsize,
     path::{Path, PathBuf},
-    pin::Pin,
     sync::Arc,
 };
 
+#[cfg(feature = "tokio-runtime")]
+use std::pin::Pin;
+#[cfg(feature = "tokio-runtime")]
 use tokio::{
     sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-    time::{sleep, Duration, Instant, Sleep},
+    time::{sleep, Instant, Sleep},
 };
+
+use std::time::Duration;
 
 use anyhow::{bail, Error};
 
@@ -459,6 +463,7 @@ pub struct Editor {
     pub config: Box<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
 
+    #[cfg(feature = "tokio-runtime")]
     pub idle_timer: Pin<Box<Sleep>>,
     pub last_motion: Option<Motion>,
     pub pseudo_pending: Option<String>,
@@ -467,6 +472,8 @@ pub struct Editor {
 
     pub exit_code: i32,
 
+    // TODO: do this via a signal flag instead
+    #[cfg(feature = "tokio-runtime")]
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
 }
 
@@ -526,6 +533,7 @@ impl Editor {
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
             autoinfo: None,
+            #[cfg(feature = "tokio-runtime")]
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
             last_motion: None,
             last_completion: None,
@@ -533,6 +541,7 @@ impl Editor {
             config,
             auto_pairs,
             exit_code: 0,
+            #[cfg(feature = "tokio-runtime")]
             config_events: unbounded_channel(),
         }
     }
@@ -541,6 +550,7 @@ impl Editor {
         self.config.load()
     }
 
+    #[cfg(feature = "tokio-runtime")]
     pub fn clear_idle_timer(&mut self) {
         // equivalent to internal Instant::far_future() (30 years)
         self.idle_timer
@@ -548,6 +558,7 @@ impl Editor {
             .reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
     }
 
+    #[cfg(feature = "tokio-runtime")]
     pub fn reset_idle_timer(&mut self) {
         let config = self.config();
         self.idle_timer

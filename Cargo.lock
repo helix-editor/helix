@@ -938,7 +938,6 @@ dependencies = [
  "helix-core",
  "helix-dap",
  "helix-lsp",
- "helix-tui",
  "log",
  "once_cell",
  "serde",
