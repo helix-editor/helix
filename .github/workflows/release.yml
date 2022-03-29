@@ -112,15 +112,6 @@ jobs:
           mkdir -p runtime/grammars/sources
           tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
 
-      - name: Write tag name to .version file
-        shell: bash
-        run: |
-          name=dev
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            name=${GITHUB_REF:10}
-          fi
-          echo -n $name > .version
-
       - name: Install ${{ matrix.rust }} toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -201,7 +192,6 @@ jobs:
           source="$(pwd)"
           mkdir -p runtime/grammars/sources
           tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
-          echo -n "$TAG" > .version
           rm -rf grammars
 
           cd "$(mktemp -d)"
