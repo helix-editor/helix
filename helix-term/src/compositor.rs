@@ -93,6 +93,7 @@ type Terminal = tui::terminal::Terminal<TestBackend>;
 pub struct Compositor {
     layers: Vec<Box<dyn Component>>,
     terminal: Terminal,
+    area: Rect,
 
     pub(crate) last_picker: Option<Box<dyn Component>>,
 }
@@ -106,21 +107,25 @@ impl Compositor {
         let backend = TestBackend::new(120, 150);
 
         let terminal = Terminal::new(backend).context("build terminal")?;
+        let area = terminal.size().expect("couldn't get terminal size");
         Ok(Self {
             layers: Vec::new(),
+            area,
             terminal,
             last_picker: None,
         })
     }
 
     pub fn size(&self) -> Rect {
-        self.terminal.size().expect("couldn't get terminal size")
+        self.area
     }
 
     pub fn resize(&mut self, width: u16, height: u16) {
         self.terminal
             .resize(Rect::new(0, 0, width, height))
-            .expect("Unable to resize terminal")
+            .expect("Unable to resize terminal");
+
+        self.area = self.terminal.size().expect("couldn't get terminal size");
     }
 
     pub fn save_cursor(&mut self) {
