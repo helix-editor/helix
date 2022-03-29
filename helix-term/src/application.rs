@@ -310,6 +310,7 @@ impl Application {
 
     #[cfg(not(windows))]
     pub async fn handle_signals(&mut self, signal: i32) {
+        use helix_view::graphics::Rect;
         match signal {
             signal::SIGTSTP => {
                 self.compositor.save_cursor();
@@ -319,6 +320,8 @@ impl Application {
             signal::SIGCONT => {
                 self.claim_term().await.unwrap();
                 // redraw the terminal
+                let Rect { width, height, .. } = self.compositor.size();
+                self.compositor.resize(width, height);
                 self.compositor.load_cursor();
                 self.render();
             }
