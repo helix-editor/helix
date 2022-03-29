@@ -67,42 +67,28 @@ pub trait Component: Any + AnyComponent {
     }
 }
 
-use anyhow::Error;
-use std::io::stdout;
-use tui::backend::CrosstermBackend;
-type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
-
 pub struct Compositor {
     layers: Vec<Box<dyn Component>>,
-    pub terminal: Terminal,
     area: Rect,
 
     pub(crate) last_picker: Option<Box<dyn Component>>,
 }
 
 impl Compositor {
-    pub fn new() -> Result<Self, Error> {
-        let backend = CrosstermBackend::new(stdout());
-        let terminal = Terminal::new(backend)?;
-        let area = terminal.size().expect("couldn't get terminal size");
-        Ok(Self {
+    pub fn new(area: Rect) -> Self {
+        Self {
             layers: Vec::new(),
             area,
-            terminal,
             last_picker: None,
-        })
+        }
     }
 
     pub fn size(&self) -> Rect {
         self.area
     }
 
-    pub fn resize(&mut self, width: u16, height: u16) {
-        self.terminal
-            .resize(Rect::new(0, 0, width, height))
-            .expect("Unable to resize terminal");
-
-        self.area = self.terminal.size().expect("couldn't get terminal size");
+    pub fn resize(&mut self, area: Rect) {
+        self.area = area;
     }
 
     pub fn push(&mut self, mut layer: Box<dyn Component>) {
@@ -162,33 +148,10 @@ impl Compositor {
         consumed
     }
 
-    pub fn render(&mut self, cx: &mut Context) {
-        let area = self
-            .terminal
-            .autoresize()
-            .expect("Unable to determine terminal size");
-
-        // if the terminal size suddenly changed, we need to trigger a resize
-        cx.editor.resize(area.clip_bottom(1)); // -1 from bottom for commandline
-
-        let surface = self.terminal.current_buffer_mut();
-
-        // let area = *surface.area();
-
-        let mut render_cx = RenderContext {
-            editor: cx.editor,
-            surface,
-            scroll: None,
-        };
-
+    pub fn render(&mut self, area: Rect, cx: &mut RenderContext) {
         for layer in &mut self.layers {
-            layer.render(area, &mut render_cx);
+            layer.render(area, cx);
         }
-
-        let (pos, kind) = self.cursor(area, cx.editor);
-        let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
-
-        self.terminal.draw(pos, kind).unwrap();
     }
 
     pub fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {

@@ -11,7 +11,7 @@ use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 #[cfg(feature = "lsp")]
 use serde_json::json;
 
-use helix_view::{align_view, editor::ConfigEvent, theme, Align, Editor};
+use helix_view::{align_view, editor::ConfigEvent, graphics::Rect, theme, Align, Editor};
 
 use crate::{
     args::Args,
@@ -43,8 +43,12 @@ use {
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
+use tui::backend::{Backend, CrosstermBackend};
+type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
+
 pub struct Application {
     compositor: Compositor,
+    terminal: Terminal,
     editor: Editor,
 
     config: Arc<ArcSwap<Config>>,
@@ -121,10 +125,13 @@ impl Application {
         });
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
-        let mut compositor = Compositor::new()?;
+        let backend = CrosstermBackend::new(stdout());
+        let terminal = Terminal::new(backend)?;
+        let area = terminal.size().expect("couldn't get terminal size");
+        let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
         let mut editor = Editor::new(
-            compositor.size(),
+            area,
             theme_loader.clone(),
             syn_loader.clone(),
             Box::new(Map::new(Arc::clone(&config), |config: &Config| {
@@ -195,6 +202,7 @@ impl Application {
 
         let app = Self {
             compositor,
+            terminal,
             editor,
 
             config,
@@ -213,12 +221,28 @@ impl Application {
     }
 
     fn render(&mut self) {
-        let mut cx = crate::compositor::Context {
-            editor: &mut self.editor,
-            jobs: &mut self.jobs,
-        };
+        let area = self
+            .terminal
+            .autoresize()
+            .expect("Unable to determine terminal size");
 
-        self.compositor.render(&mut cx);
+        // if the terminal size suddenly changed, we need to trigger a resize
+        self.editor.resize(area.clip_bottom(1)); // -1 from bottom for commandline
+
+        let surface = self.terminal.current_buffer_mut();
+
+        // let area = *surface.area();
+
+        let mut render_cx = crate::compositor::RenderContext {
+            editor: &self.editor,
+            surface,
+            scroll: None,
+        };
+        self.compositor.render(area, &mut render_cx);
+
+        let (pos, kind) = self.compositor.cursor(area, &self.editor);
+        let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
+        self.terminal.draw(pos, kind).unwrap();
     }
 
     pub async fn event_loop(&mut self) {
@@ -349,8 +373,8 @@ impl Application {
             signal::SIGCONT => {
                 self.claim_term().await.unwrap();
                 // redraw the terminal
-                let Rect { width, height, .. } = self.compositor.size();
-                self.compositor.resize(width, height);
+                let area = self.compositor.size();
+                self.compositor.resize(area);
                 self.render();
             }
             _ => unreachable!(),
@@ -381,7 +405,13 @@ impl Application {
         // Handle key events
         let should_redraw = match event {
             Some(Ok(Event::Resize(width, height))) => {
-                self.compositor.resize(width, height);
+                self.terminal
+                    .resize(Rect::new(0, 0, width, height))
+                    .expect("Unable to resize terminal");
+
+                let area = self.terminal.size().expect("couldn't get terminal size");
+
+                self.compositor.resize(area);
 
                 self.compositor
                     .handle_event(Event::Resize(width, height), &mut cx)
@@ -711,10 +741,9 @@ impl Application {
 
     async fn claim_term(&mut self) -> Result<(), Error> {
         use helix_view::graphics::CursorKind;
-        use tui::backend::Backend;
         terminal::enable_raw_mode()?;
-        if self.compositor.terminal.cursor_kind() == CursorKind::Hidden {
-            self.compositor.terminal.backend_mut().hide_cursor().ok();
+        if self.terminal.cursor_kind() == CursorKind::Hidden {
+            self.terminal.backend_mut().hide_cursor().ok();
         }
         let mut stdout = stdout();
         execute!(stdout, terminal::EnterAlternateScreen)?;
@@ -727,10 +756,8 @@ impl Application {
 
     fn restore_term(&mut self) -> Result<(), Error> {
         use helix_view::graphics::CursorKind;
-        use tui::backend::Backend;
-        if self.compositor.terminal.cursor_kind() == CursorKind::Hidden {
-            self.compositor
-                .terminal
+        if self.terminal.cursor_kind() == CursorKind::Hidden {
+            self.terminal
                 .backend_mut()
                 .show_cursor(CursorKind::Block)
                 .ok();
