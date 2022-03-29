@@ -76,7 +76,6 @@ pub trait Component: Any + AnyComponent {
 }
 
 use anyhow::Context as AnyhowContext;
-use tui::backend::Backend;
 
 #[cfg(not(feature = "integration"))]
 use tui::backend::CrosstermBackend;
@@ -92,7 +91,7 @@ type Terminal = tui::terminal::Terminal<TestBackend>;
 
 pub struct Compositor {
     layers: Vec<Box<dyn Component>>,
-    terminal: Terminal,
+    pub terminal: Terminal,
     area: Rect,
 
     pub(crate) last_picker: Option<Box<dyn Component>>,
@@ -126,21 +125,6 @@ impl Compositor {
             .expect("Unable to resize terminal");
 
         self.area = self.terminal.size().expect("couldn't get terminal size");
-    }
-
-    pub fn save_cursor(&mut self) {
-        if self.terminal.cursor_kind() == CursorKind::Hidden {
-            self.terminal
-                .backend_mut()
-                .show_cursor(CursorKind::Block)
-                .ok();
-        }
-    }
-
-    pub fn load_cursor(&mut self) {
-        if self.terminal.cursor_kind() == CursorKind::Hidden {
-            self.terminal.backend_mut().hide_cursor().ok();
-        }
     }
 
     pub fn push(&mut self, mut layer: Box<dyn Component>) {
