@@ -2,7 +2,6 @@
 use anyhow::{anyhow, Error};
 use helix_core::unicode::width::UnicodeWidthStr;
 use serde::de::{self, Deserialize, Deserializer};
-use std::fmt;
 
 pub use crate::keyboard::{KeyCode, KeyModifiers};
 
@@ -94,8 +93,8 @@ pub(crate) mod keys {
     pub(crate) const PERCENT: &str = "percent";
 }
 
-impl fmt::Display for KeyEvent {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+impl std::fmt::Display for KeyEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "{}{}{}",
             if self.modifiers.contains(KeyModifiers::SHIFT) {
@@ -256,101 +255,6 @@ impl<'de> Deserialize<'de> for KeyEvent {
     {
         let s = String::deserialize(deserializer)?;
         s.parse().map_err(de::Error::custom)
-    }
-}
-
-#[cfg(feature = "term")]
-impl From<crossterm::event::Event> for Event {
-    fn from(event: crossterm::event::Event) -> Self {
-        match event {
-            crossterm::event::Event::Key(key) => Self::Key(key.into()),
-            crossterm::event::Event::Mouse(mouse) => Self::Mouse(mouse.into()),
-            crossterm::event::Event::Resize(w, h) => Self::Resize(w, h),
-        }
-    }
-}
-
-#[cfg(feature = "term")]
-impl From<crossterm::event::MouseEvent> for MouseEvent {
-    fn from(
-        crossterm::event::MouseEvent {
-            kind,
-            column,
-            row,
-            modifiers,
-        }: crossterm::event::MouseEvent,
-    ) -> Self {
-        Self {
-            kind: kind.into(),
-            column,
-            row,
-            modifiers: modifiers.into(),
-        }
-    }
-}
-
-#[cfg(feature = "term")]
-impl From<crossterm::event::MouseEventKind> for MouseEventKind {
-    fn from(kind: crossterm::event::MouseEventKind) -> Self {
-        match kind {
-            crossterm::event::MouseEventKind::Down(button) => Self::Down(button.into()),
-            crossterm::event::MouseEventKind::Up(button) => Self::Down(button.into()),
-            crossterm::event::MouseEventKind::Drag(button) => Self::Drag(button.into()),
-            crossterm::event::MouseEventKind::Moved => Self::Moved,
-            crossterm::event::MouseEventKind::ScrollDown => Self::ScrollDown,
-            crossterm::event::MouseEventKind::ScrollUp => Self::ScrollUp,
-        }
-    }
-}
-
-#[cfg(feature = "term")]
-impl From<crossterm::event::MouseButton> for MouseButton {
-    fn from(button: crossterm::event::MouseButton) -> Self {
-        match button {
-            crossterm::event::MouseButton::Left => MouseButton::Left,
-            crossterm::event::MouseButton::Right => MouseButton::Right,
-            crossterm::event::MouseButton::Middle => MouseButton::Middle,
-        }
-    }
-}
-
-#[cfg(feature = "term")]
-impl From<crossterm::event::KeyEvent> for KeyEvent {
-    fn from(crossterm::event::KeyEvent { code, modifiers }: crossterm::event::KeyEvent) -> Self {
-        if code == crossterm::event::KeyCode::BackTab {
-            // special case for BackTab -> Shift-Tab
-            let mut modifiers: KeyModifiers = modifiers.into();
-            modifiers.insert(KeyModifiers::SHIFT);
-            Self {
-                code: KeyCode::Tab,
-                modifiers,
-            }
-        } else {
-            Self {
-                code: code.into(),
-                modifiers: modifiers.into(),
-            }
-        }
-    }
-}
-
-#[cfg(feature = "term")]
-impl From<KeyEvent> for crossterm::event::KeyEvent {
-    fn from(KeyEvent { code, modifiers }: KeyEvent) -> Self {
-        if code == KeyCode::Tab && modifiers.contains(KeyModifiers::SHIFT) {
-            // special case for Shift-Tab -> BackTab
-            let mut modifiers = modifiers;
-            modifiers.remove(KeyModifiers::SHIFT);
-            crossterm::event::KeyEvent {
-                code: crossterm::event::KeyCode::BackTab,
-                modifiers: modifiers.into(),
-            }
-        } else {
-            crossterm::event::KeyEvent {
-                code: code.into(),
-                modifiers: modifiers.into(),
-            }
-        }
     }
 }
 

@@ -1,6 +1,10 @@
 #[macro_use]
 pub mod macros;
 
+pub mod backend {
+    #[cfg(feature = "term")]
+    pub mod term;
+}
 pub mod clipboard;
 pub mod document;
 pub mod editor;
