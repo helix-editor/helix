@@ -5,8 +5,10 @@ let
   languages-json = runCommand "languages-toml-to-json" { } ''
     ${yj}/bin/yj -t < ${./languages.toml} > $out
   '';
-  languagesConfig =
-    builtins.fromJSON (builtins.readFile (builtins.toPath languages-json));
+  languagesConfig = if lib.versionAtLeast builtins.nixVersion "2.6.0" then
+      builtins.fromTOML (builtins.readFile ./languages.toml)
+    else
+      builtins.fromJSON (builtins.readFile (builtins.toPath languages-json));
   isGitGrammar = (grammar:
     builtins.hasAttr "source" grammar && builtins.hasAttr "git" grammar.source
     && builtins.hasAttr "rev" grammar.source);
