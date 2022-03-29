@@ -1,11 +1,10 @@
-use crossterm::event::Event;
 use helix_core::Position;
 use helix_view::{
     graphics::{CursorKind, Rect},
     Editor,
 };
 
-use crate::compositor::{Component, Context, EventResult, RenderContext};
+use crate::compositor::{Component, Context, Event, EventResult, RenderContext};
 
 /// Contains a component placed in the center of the parent component
 pub struct Overlay<T> {

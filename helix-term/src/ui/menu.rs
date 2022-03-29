@@ -1,8 +1,7 @@
 use crate::{
-    compositor::{Callback, Component, Compositor, Context, EventResult, RenderContext},
+    compositor::{Callback, Component, Compositor, Context, Event, EventResult, RenderContext},
     ctrl, key, shift,
 };
-use crossterm::event::Event;
 use tui::widgets::Table;
 
 pub use tui::widgets::{Cell, Row};
@@ -210,7 +209,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             compositor.pop();
         }));
 
-        match event.into() {
+        match event {
             // esc or ctrl-c aborts the completion and closes the menu
             key!(Esc) | ctrl!('c') => {
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Abort);

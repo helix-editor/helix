@@ -4570,7 +4570,7 @@ fn replay_macro(cx: &mut Context) {
     cx.callback = Some(Box::new(move |compositor, cx| {
         for _ in 0..count {
             for &key in keys.iter() {
-                compositor.handle_event(crossterm::event::Event::Key(key.into()), cx);
+                compositor.handle_event(compositor::Event::Key(key), cx);
             }
         }
     }));

@@ -1,8 +1,7 @@
 use crate::{
-    compositor::{Callback, Component, Context, EventResult, RenderContext},
+    compositor::{Callback, Component, Context, Event, EventResult, RenderContext},
     ctrl, key,
 };
-use crossterm::event::Event;
 
 use helix_core::Position;
 use helix_view::{
@@ -124,7 +123,7 @@ impl<T: Component> Component for Popup<T> {
             compositor.pop();
         });
 
-        match key.into() {
+        match key {
             // esc or ctrl-c aborts the completion and closes the menu
             key!(Esc) | ctrl!('c') => {
                 let _ = self.contents.handle_event(event, cx);

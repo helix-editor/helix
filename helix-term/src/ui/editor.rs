@@ -1,6 +1,6 @@
 use crate::{
     commands,
-    compositor::{Component, Context, EventResult, RenderContext},
+    compositor::{Component, Context, Event, EventResult, RenderContext},
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
@@ -21,13 +21,12 @@ use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{CursorKind, Modifier, Rect, Style},
-    input::KeyEvent,
+    input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
 use std::borrow::Cow;
 
-use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
 
 pub struct EditorView {
@@ -977,7 +976,7 @@ impl EditorView {
                 if let Some((pos, view_id)) = result {
                     let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
 
-                    if modifiers == crossterm::event::KeyModifiers::ALT {
+                    if modifiers == KeyModifiers::ALT {
                         let selection = doc.selection(view_id).clone();
                         doc.set_selection(view_id, selection.push(Range::point(pos)));
                     } else {
@@ -1108,7 +1107,7 @@ impl EditorView {
                     let line = coords.row + view.offset.row;
                     if let Ok(pos) = doc.text().try_line_to_char(line) {
                         doc.set_selection(view_id, Selection::point(pos));
-                        if modifiers == crossterm::event::KeyModifiers::ALT {
+                        if modifiers == KeyModifiers::ALT {
                             commands::MappableCommand::dap_edit_log.execute(cxt);
                         } else {
                             commands::MappableCommand::dap_edit_condition.execute(cxt);
@@ -1132,7 +1131,7 @@ impl EditorView {
                     return EventResult::Ignored(None);
                 }
 
-                if modifiers == crossterm::event::KeyModifiers::ALT {
+                if modifiers == KeyModifiers::ALT {
                     commands::MappableCommand::replace_selections_with_primary_clipboard
                         .execute(cxt);
 
@@ -1181,9 +1180,8 @@ impl Component for EditorView {
                 // Handling it here but not re-rendering will cause flashing
                 EventResult::Consumed(None)
             }
-            Event::Key(key) => {
+            Event::Key(mut key) => {
                 cx.editor.reset_idle_timer();
-                let mut key = KeyEvent::from(key);
                 canonicalize_key(&mut key);
 
                 // clear status

@@ -4,9 +4,6 @@
 use helix_core::Position;
 use helix_view::graphics::{CursorKind, Rect};
 
-use crossterm::event::Event;
-use tui::buffer::Buffer as Surface;
-
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
 
 // Cursive-inspired
@@ -15,20 +12,28 @@ pub enum EventResult {
     Consumed(Option<Callback>),
 }
 
+use crate::job::Jobs;
 use helix_view::Editor;
 
-use crate::job::Jobs;
+pub use helix_view::input::Event;
 
 pub struct Context<'a> {
     pub editor: &'a mut Editor,
     pub jobs: &'a mut Jobs,
 }
 
-pub struct RenderContext<'a> {
-    pub editor: &'a Editor,
-    pub surface: &'a mut Surface,
-    pub scroll: Option<usize>,
+mod term {
+    use super::*;
+    pub use tui::buffer::Buffer as Surface;
+
+    pub struct RenderContext<'a> {
+        pub editor: &'a Editor,
+        pub surface: &'a mut Surface,
+        pub scroll: Option<usize>,
+    }
 }
+
+pub use term::*;
 
 pub trait Component: Any + AnyComponent {
     /// Process input events, return true if handled.
@@ -115,7 +120,7 @@ impl Compositor {
     pub fn handle_event(&mut self, event: Event, cx: &mut Context) -> bool {
         // If it is a key event and a macro is being recorded, push the key event to the recording.
         if let (Event::Key(key), Some((_, keys))) = (event, &mut cx.editor.macro_recording) {
-            keys.push(key.into());
+            keys.push(key);
         }
 
         let mut callbacks = Vec::new();

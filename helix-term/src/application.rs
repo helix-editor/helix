@@ -15,7 +15,7 @@ use helix_view::{align_view, editor::ConfigEvent, graphics::Rect, theme, Align, 
 
 use crate::{
     args::Args,
-    compositor::Compositor,
+    compositor::{Compositor, Event},
     config::Config,
     job::Jobs,
     keymap::Keymaps,
@@ -31,7 +31,7 @@ use std::{
 use anyhow::Error;
 
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream},
+    event::{DisableMouseCapture, EnableMouseCapture, Event as CrosstermEvent, EventStream},
     execute, terminal,
     tty::IsTty,
 };
@@ -397,14 +397,17 @@ impl Application {
         }
     }
 
-    pub fn handle_terminal_events(&mut self, event: Option<Result<Event, crossterm::ErrorKind>>) {
+    pub fn handle_terminal_events(
+        &mut self,
+        event: Option<Result<CrosstermEvent, crossterm::ErrorKind>>,
+    ) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
         };
         // Handle key events
         let should_redraw = match event {
-            Some(Ok(Event::Resize(width, height))) => {
+            Some(Ok(CrosstermEvent::Resize(width, height))) => {
                 self.terminal
                     .resize(Rect::new(0, 0, width, height))
                     .expect("Unable to resize terminal");
@@ -416,7 +419,7 @@ impl Application {
                 self.compositor
                     .handle_event(Event::Resize(width, height), &mut cx)
             }
-            Some(Ok(event)) => self.compositor.handle_event(event, &mut cx),
+            Some(Ok(event)) => self.compositor.handle_event(event.into(), &mut cx),
             Some(Err(x)) => panic!("{}", x),
             None => panic!(),
         };

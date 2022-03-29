@@ -1,11 +1,14 @@
-use crate::compositor::{Component, Context, EventResult, RenderContext};
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crate::compositor::{Component, Context, Event, EventResult, RenderContext};
 use helix_view::editor::CompleteAction;
 
 use std::borrow::Cow;
 
 use helix_core::{Change, Transaction};
-use helix_view::{graphics::Rect, Document, Editor};
+use helix_view::{
+    graphics::Rect,
+    input::{KeyCode, KeyEvent},
+    Document, Editor,
+};
 
 use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};

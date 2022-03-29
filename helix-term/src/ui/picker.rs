@@ -1,9 +1,8 @@
 use crate::{
-    compositor::{Component, Compositor, Context, EventResult, RenderContext},
+    compositor::{Component, Compositor, Context, Event, EventResult, RenderContext},
     ctrl, key, shift,
     ui::{self, EditorView},
 };
-use crossterm::event::Event;
 use tui::widgets::{Block, BorderType, Borders};
 
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
@@ -496,7 +495,7 @@ impl<T: 'static> Component for Picker<T> {
             compositor.last_picker = compositor.pop();
         })));
 
-        match key_event.into() {
+        match key_event {
             shift!(Tab) | key!(Up) | ctrl!('p') => {
                 self.move_by(1, Direction::Backward);
             }
