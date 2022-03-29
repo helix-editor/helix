@@ -77,7 +77,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html" class="active"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">4.3.</strong> Hooks</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.4.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html" class="active"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">4.3.</strong> Hooks</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.4.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -144,7 +144,7 @@
 <li>Windows: <code>%AppData%\helix\config.toml</code></li>
 </ul>
 <blockquote>
-<p>Note: You may use <code>hx --edit-config</code> to create and edit the <code>config.toml</code> file.</p>
+<p>Hint: You can easily open the config file by typing <code>:config-open</code> within Helix normal mode.</p>
 </blockquote>
 <p>Example config:</p>
 <pre><code class="language-toml">theme = &quot;onedark&quot;
@@ -176,6 +176,13 @@ hidden = false
 <tr><td><code>auto-info</code></td><td>Whether to display infoboxes</td><td><code>true</code></td></tr>
 <tr><td><code>true-color</code></td><td>Set to <code>true</code> to override automatic detection of terminal truecolor support in the event of a false negative.</td><td><code>false</code></td></tr>
 </tbody></table>
+<h3 id="editorlsp-section"><a class="header" href="#editorlsp-section"><code>[editor.lsp]</code> Section</a></h3>
+<table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>display-messages</code></td><td>Display LSP progress messages below statusline<sup class="footnote-reference"><a href="#1">1</a></sup></td><td><code>false</code></td></tr>
+</tbody></table>
+<div class="footnote-definition" id="1"><sup class="footnote-definition-label">1</sup>
+<p>A progress spinner is always shown in the statusline beside the file path.</p>
+</div>
 <h3 id="editorcursor-shape-section"><a class="header" href="#editorcursor-shape-section"><code>[editor.cursor-shape]</code> Section</a></h3>
 <p>Defines the shape of cursor in each mode. Note that due to limitations
 of the terminal environment, only the primary cursor can change shape.</p>
@@ -237,11 +244,6 @@ name = &quot;rust&quot;
 <tr><td><code>smart-case</code></td><td>Enable smart case regex searching (case insensitive unless pattern contains upper case characters)</td><td><code>true</code></td></tr>
 <tr><td><code>wrap-around</code></td><td>Whether the search should wrap after depleting the matches</td><td><code>true</code></td></tr>
 </tbody></table>
-<h2 id="lsp"><a class="header" href="#lsp">LSP</a></h2>
-<p>To display all language server messages in the status line add the following to your <code>config.toml</code>:</p>
-<pre><code class="language-toml">[lsp]
-display-messages = true
-</code></pre>
 
                     </main>
 
