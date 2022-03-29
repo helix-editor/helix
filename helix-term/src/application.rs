@@ -10,11 +10,13 @@ use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
     editor::{ConfigEvent, EditorEvent},
+    graphics::Rect,
     theme,
     tree::Layout,
     Align, Editor,
 };
 use serde_json::json;
+use tui::backend::Backend;
 
 use crate::{
     args::Args,
@@ -53,8 +55,18 @@ type Signals = futures_util::stream::Empty<()>;
 
 const LSP_DEADLINE: Duration = Duration::from_millis(16);
 
+#[cfg(not(feature = "integration"))]
+use tui::backend::CrosstermBackend;
+
+#[cfg(not(feature = "integration"))]
+type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
+
+#[cfg(feature = "integration")]
+type Terminal = tui::terminal::Terminal<TestBackend>;
+
 pub struct Application {
     compositor: Compositor,
+    terminal: Terminal,
     pub editor: Editor,
 
     config: Arc<ArcSwap<Config>>,
@@ -143,10 +155,18 @@ impl Application {
 
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
-        let mut compositor = Compositor::new().context("build compositor")?;
+        #[cfg(not(feature = "integration"))]
+        let backend = CrosstermBackend::new(stdout());
+
+        #[cfg(feature = "integration")]
+        let backend = TestBackend::new(120, 150);
+
+        let terminal = Terminal::new(backend)?;
+        let area = terminal.size().expect("couldn't get terminal size");
+        let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
         let mut editor = Editor::new(
-            compositor.size(),
+            area,
             theme_loader.clone(),
             syn_loader.clone(),
             Box::new(Map::new(Arc::clone(&config), |config: &Config| {
@@ -233,6 +253,7 @@ impl Application {
 
         let app = Self {
             compositor,
+            terminal,
             editor,
 
             config,
@@ -254,15 +275,26 @@ impl Application {
 
     #[cfg(not(feature = "integration"))]
     fn render(&mut self) {
-        let compositor = &mut self.compositor;
-
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,
         };
 
-        compositor.render(&mut cx);
+        let area = self
+            .terminal
+            .autoresize()
+            .expect("Unable to determine terminal size");
+
+        // TODO: need to recalculate view tree if necessary
+
+        let surface = self.terminal.current_buffer_mut();
+
+        self.compositor.render(area, surface, &mut cx);
+
+        let (pos, kind) = self.compositor.cursor(area, &self.editor);
+        let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
+        self.terminal.draw(pos, kind).unwrap();
     }
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
@@ -392,17 +424,24 @@ impl Application {
 
     #[cfg(not(windows))]
     pub async fn handle_signals(&mut self, signal: i32) {
-        use helix_view::graphics::Rect;
         match signal {
             signal::SIGTSTP => {
+                // restore cursor
+                use helix_view::graphics::CursorKind;
+                self.terminal
+                    .backend_mut()
+                    .show_cursor(CursorKind::Block)
+                    .ok();
                 restore_term().unwrap();
                 low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
             }
             signal::SIGCONT => {
                 self.claim_term().await.unwrap();
                 // redraw the terminal
-                let Rect { width, height, .. } = self.compositor.size();
-                self.compositor.resize(width, height);
+                let area = self.terminal.size().expect("couldn't get terminal size");
+                self.compositor.resize(area);
+                self.terminal.clear().expect("couldn't clear terminal");
+
                 self.render();
             }
             signal::SIGUSR1 => {
@@ -539,7 +578,14 @@ impl Application {
         // Handle key events
         let should_redraw = match event.unwrap() {
             CrosstermEvent::Resize(width, height) => {
-                self.compositor.resize(width, height);
+                self.terminal
+                    .resize(Rect::new(0, 0, width, height))
+                    .expect("Unable to resize terminal");
+
+                let area = self.terminal.size().expect("couldn't get terminal size");
+
+                self.compositor.resize(area);
+
                 self.compositor
                     .handle_event(&Event::Resize(width, height), &mut cx)
             }
@@ -923,10 +969,9 @@ impl Application {
 
     async fn claim_term(&mut self) -> Result<(), Error> {
         use helix_view::graphics::CursorKind;
-        use tui::backend::Backend;
         terminal::enable_raw_mode()?;
-        if self.compositor.terminal.cursor_kind() == CursorKind::Hidden {
-            self.compositor.terminal.backend_mut().hide_cursor().ok();
+        if self.terminal.cursor_kind() == CursorKind::Hidden {
+            self.terminal.backend_mut().hide_cursor().ok();
         }
         let mut stdout = stdout();
         execute!(
@@ -962,14 +1007,12 @@ impl Application {
 
         let close_errs = self.close().await;
 
+        // restore cursor
         use helix_view::graphics::CursorKind;
-        use tui::backend::Backend;
-        self.compositor
-            .terminal
+        self.terminal
             .backend_mut()
             .show_cursor(CursorKind::Block)
             .ok();
-
         restore_term()?;
 
         for err in close_errs {
