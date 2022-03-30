@@ -19,7 +19,7 @@ impl TsFeature {
         match *self {
             Self::Highlight => "highlights.scm",
             Self::TextObject => "textobjects.scm",
-            Self::AutoIndent => "indents.toml",
+            Self::AutoIndent => "indents.scm",
         }
     }
 
