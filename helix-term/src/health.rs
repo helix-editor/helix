@@ -89,10 +89,11 @@ pub fn languages_all() {
 
     let column = |item: &str, color: Color| {
         let data = format!(
-            "{:column_width$}",
+            "{:width$}",
             item.get(..column_width - 2)
-                .map(|s| format!("{s}…"))
-                .unwrap_or_else(|| item.to_string())
+                .map(|s| format!("{}…", s))
+                .unwrap_or_else(|| item.to_string()),
+            width = column_width,
         )
         .stylize()
         .with(color);
@@ -158,7 +159,7 @@ pub fn language(lang_str: String) {
     {
         Some(l) => l,
         None => {
-            let msg = format!("Language '{lang_str}' not found");
+            let msg = format!("Language '{}' not found", lang_str);
             println!("{}", msg.red());
             let suggestions: Vec<&str> = syn_loader_conf
                 .language

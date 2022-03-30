@@ -27,8 +27,8 @@ struct Configuration {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase", untagged)]
 pub enum GrammarSelection {
-    Only(HashSet<String>),
-    Except(HashSet<String>),
+    Only { only: HashSet<String> },
+    Except { except: HashSet<String> },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -63,12 +63,12 @@ pub fn get_language(name: &str) -> Result<Language> {
     library_path.set_extension(DYLIB_EXTENSION);
 
     let library = unsafe { Library::new(&library_path) }
-        .with_context(|| format!("Error opening dynamic library {library_path:?}"))?;
+        .with_context(|| format!("Error opening dynamic library {:?}", library_path))?;
     let language_fn_name = format!("tree_sitter_{}", name.replace('-', "_"));
     let language = unsafe {
         let language_fn: Symbol<unsafe extern "C" fn() -> Language> = library
             .get(language_fn_name.as_bytes())
-            .with_context(|| format!("Failed to load symbol {language_fn_name}"))?;
+            .with_context(|| format!("Failed to load symbol {}", language_fn_name))?;
         language_fn()
     };
     std::mem::forget(library);
@@ -97,12 +97,12 @@ fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
         .try_into()?;
 
     let grammars = match config.grammar_selection {
-        Some(GrammarSelection::Only(selections)) => config
+        Some(GrammarSelection::Only { only: selections }) => config
             .grammar
             .into_iter()
             .filter(|grammar| selections.contains(&grammar.grammar_id))
             .collect(),
-        Some(GrammarSelection::Except(rejections)) => config
+        Some(GrammarSelection::Except { except: rejections }) => config
             .grammar
             .into_iter()
             .filter(|grammar| !rejections.contains(&grammar.grammar_id))
@@ -133,7 +133,7 @@ where
     // TODO: print all failures instead of the first one found.
     rx.iter()
         .find(|result| result.is_err())
-        .map(|err| err.with_context(|| format!("Failed to {action} some grammar(s)")))
+        .map(|err| err.with_context(|| format!("Failed to {} some grammar(s)", action)))
         .unwrap_or(Ok(()))
 }
 
@@ -238,12 +238,16 @@ fn build_grammar(grammar: GrammarConfiguration) -> Result<()> {
     };
 
     let grammar_dir_entries = grammar_dir.read_dir().with_context(|| {
-        format!("Failed to read directory {grammar_dir:?}. Did you use 'hx --grammar fetch'?")
+        format!(
+            "Failed to read directory {:?}. Did you use 'hx --grammar fetch'?",
+            grammar_dir
+        )
     })?;
 
     if grammar_dir_entries.count() == 0 {
         return Err(anyhow!(
-            "Directory {grammar_dir:?} is empty. Did you use 'hx --grammar fetch'?"
+            "Directory {:?} is empty. Did you use 'hx --grammar fetch'?",
+            grammar_dir
         ));
     };
 

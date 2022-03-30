@@ -42,6 +42,7 @@
 | nix | ✓ |  | ✓ | `rnix-lsp` |
 | ocaml | ✓ |  | ✓ |  |
 | ocaml-interface | ✓ |  |  |  |
+| org | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |
 | php | ✓ | ✓ | ✓ |  |
 | prolog |  |  |  | `swipl` |
@@ -53,6 +54,7 @@
 | ruby | ✓ |  | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | scala | ✓ |  | ✓ | `metals` |
+| solidity | ✓ |  |  | `solc` |
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | tablegen | ✓ | ✓ | ✓ |  |
 | toml | ✓ |  |  |  |

@@ -5,7 +5,7 @@ To override global configuration parameters, create a `config.toml` file located
 * Linux and Mac: `~/.config/helix/config.toml`
 * Windows: `%AppData%\helix\config.toml`
 
-> Note: You may use `hx --edit-config` to create and edit the `config.toml` file.
+> Hint: You can easily open the config file by typing `:config-open` within Helix normal mode.
 
 Example config:
 
@@ -42,6 +42,14 @@ hidden = false
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
 | `auto-info` | Whether to display infoboxes | `true` |
 | `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. | `false` |
+
+### `[editor.lsp]` Section
+
+| Key                | Description                                 | Default |
+| ---                | -----------                                 | ------- |
+| `display-messages` | Display LSP progress messages below statusline[^1] | `false` |
+
+[^1]: A progress spinner is always shown in the statusline beside the file path.
 
 ### `[editor.cursor-shape]` Section
 
@@ -126,13 +134,3 @@ Search specific options.
 |--|--|---------|
 | `smart-case` | Enable smart case regex searching (case insensitive unless pattern contains upper case characters) | `true` |
 | `wrap-around`| Whether the search should wrap after depleting the matches | `true` |
-
-
-## LSP
-
-To display all language server messages in the status line add the following to your `config.toml`:
-
-```toml
-[lsp]
-display-messages = true
-```

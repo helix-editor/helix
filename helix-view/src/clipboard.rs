@@ -16,12 +16,12 @@ pub trait ClipboardProvider: std::fmt::Debug {
 
 macro_rules! command_provider {
     (paste => $get_prg:literal $( , $get_arg:literal )* ; copy => $set_prg:literal $( , $set_arg:literal )* ; ) => {{
-        Box::new(provider::CommandProvider {
-            get_cmd: provider::CommandConfig {
+        Box::new(provider::command::Provider {
+            get_cmd: provider::command::Config {
                 prg: $get_prg,
                 args: &[ $( $get_arg ),* ],
             },
-            set_cmd: provider::CommandConfig {
+            set_cmd: provider::command::Config {
                 prg: $set_prg,
                 args: &[ $( $set_arg ),* ],
             },
@@ -35,20 +35,20 @@ macro_rules! command_provider {
      primary_paste => $pr_get_prg:literal $( , $pr_get_arg:literal )* ;
      primary_copy => $pr_set_prg:literal $( , $pr_set_arg:literal )* ;
     ) => {{
-        Box::new(provider::CommandProvider {
-            get_cmd: provider::CommandConfig {
+        Box::new(provider::command::Provider {
+            get_cmd: provider::command::Config {
                 prg: $get_prg,
                 args: &[ $( $get_arg ),* ],
             },
-            set_cmd: provider::CommandConfig {
+            set_cmd: provider::command::Config {
                 prg: $set_prg,
                 args: &[ $( $set_arg ),* ],
             },
-            get_primary_cmd: Some(provider::CommandConfig {
+            get_primary_cmd: Some(provider::command::Config {
                 prg: $pr_get_prg,
                 args: &[ $( $pr_get_arg ),* ],
             }),
-            set_primary_cmd: Some(provider::CommandConfig {
+            set_primary_cmd: Some(provider::command::Config {
                 prg: $pr_set_prg,
                 args: &[ $( $pr_set_arg ),* ],
             }),
@@ -63,6 +63,8 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
 
 #[cfg(target_os = "macos")]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
+    use provider::command::exists;
+
     if exists("pbcopy") && exists("pbpaste") {
         command_provider! {
             paste => "pbpaste";
@@ -75,6 +77,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
 
 #[cfg(not(any(windows, target_os = "macos")))]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
+    use provider::command::{env_var_is_set, exists, is_exit_success};
     // TODO: support for user-defined provider, probably when we have plugin support by setting a
     // variable?
 
@@ -116,26 +119,9 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     }
 }
 
-fn exists(executable_name: &str) -> bool {
-    which::which(executable_name).is_ok()
-}
-
-fn env_var_is_set(env_var_name: &str) -> bool {
-    std::env::var_os(env_var_name).is_some()
-}
-
-fn is_exit_success(program: &str, args: &[&str]) -> bool {
-    std::process::Command::new(program)
-        .args(args)
-        .output()
-        .ok()
-        .and_then(|out| out.status.success().then(|| ())) // TODO: use then_some when stabilized
-        .is_some()
-}
-
 mod provider {
     use super::{ClipboardProvider, ClipboardType};
-    use anyhow::{bail, Context as _, Result};
+    use anyhow::Result;
     use std::borrow::Cow;
 
     #[cfg(not(target_os = "windows"))]
@@ -210,94 +196,116 @@ mod provider {
         }
     }
 
-    #[derive(Debug)]
-    pub struct CommandConfig {
-        pub prg: &'static str,
-        pub args: &'static [&'static str],
-    }
+    pub mod command {
+        use super::*;
+        use anyhow::{bail, Context as _, Result};
 
-    impl CommandConfig {
-        fn execute(&self, input: Option<&str>, pipe_output: bool) -> Result<Option<String>> {
-            use std::io::Write;
-            use std::process::{Command, Stdio};
-
-            let stdin = input.map(|_| Stdio::piped()).unwrap_or_else(Stdio::null);
-            let stdout = pipe_output.then(Stdio::piped).unwrap_or_else(Stdio::null);
-
-            let mut child = Command::new(self.prg)
-                .args(self.args)
-                .stdin(stdin)
-                .stdout(stdout)
-                .stderr(Stdio::null())
-                .spawn()?;
-
-            if let Some(input) = input {
-                let mut stdin = child.stdin.take().context("stdin is missing")?;
-                stdin
-                    .write_all(input.as_bytes())
-                    .context("couldn't write in stdin")?;
-            }
-
-            // TODO: add timer?
-            let output = child.wait_with_output()?;
-
-            if !output.status.success() {
-                bail!("clipboard provider {} failed", self.prg);
-            }
-
-            if pipe_output {
-                Ok(Some(String::from_utf8(output.stdout)?))
-            } else {
-                Ok(None)
-            }
-        }
-    }
-
-    #[derive(Debug)]
-    pub struct CommandProvider {
-        pub get_cmd: CommandConfig,
-        pub set_cmd: CommandConfig,
-        pub get_primary_cmd: Option<CommandConfig>,
-        pub set_primary_cmd: Option<CommandConfig>,
-    }
-
-    impl ClipboardProvider for CommandProvider {
-        fn name(&self) -> Cow<str> {
-            if self.get_cmd.prg != self.set_cmd.prg {
-                Cow::Owned(format!("{}+{}", self.get_cmd.prg, self.set_cmd.prg))
-            } else {
-                Cow::Borrowed(self.get_cmd.prg)
-            }
+        pub fn exists(executable_name: &str) -> bool {
+            which::which(executable_name).is_ok()
         }
 
-        fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String> {
-            match clipboard_type {
-                ClipboardType::Clipboard => Ok(self
-                    .get_cmd
-                    .execute(None, true)?
-                    .context("output is missing")?),
-                ClipboardType::Selection => {
-                    if let Some(cmd) = &self.get_primary_cmd {
-                        return cmd.execute(None, true)?.context("output is missing");
-                    }
+        pub fn env_var_is_set(env_var_name: &str) -> bool {
+            std::env::var_os(env_var_name).is_some()
+        }
 
-                    Ok(String::new())
+        pub fn is_exit_success(program: &str, args: &[&str]) -> bool {
+            std::process::Command::new(program)
+                .args(args)
+                .output()
+                .ok()
+                .and_then(|out| out.status.success().then(|| ())) // TODO: use then_some when stabilized
+                .is_some()
+        }
+
+        #[derive(Debug)]
+        pub struct Config {
+            pub prg: &'static str,
+            pub args: &'static [&'static str],
+        }
+
+        impl Config {
+            fn execute(&self, input: Option<&str>, pipe_output: bool) -> Result<Option<String>> {
+                use std::io::Write;
+                use std::process::{Command, Stdio};
+
+                let stdin = input.map(|_| Stdio::piped()).unwrap_or_else(Stdio::null);
+                let stdout = pipe_output.then(Stdio::piped).unwrap_or_else(Stdio::null);
+
+                let mut child = Command::new(self.prg)
+                    .args(self.args)
+                    .stdin(stdin)
+                    .stdout(stdout)
+                    .stderr(Stdio::null())
+                    .spawn()?;
+
+                if let Some(input) = input {
+                    let mut stdin = child.stdin.take().context("stdin is missing")?;
+                    stdin
+                        .write_all(input.as_bytes())
+                        .context("couldn't write in stdin")?;
+                }
+
+                // TODO: add timer?
+                let output = child.wait_with_output()?;
+
+                if !output.status.success() {
+                    bail!("clipboard provider {} failed", self.prg);
+                }
+
+                if pipe_output {
+                    Ok(Some(String::from_utf8(output.stdout)?))
+                } else {
+                    Ok(None)
                 }
             }
         }
 
-        fn set_contents(&mut self, value: String, clipboard_type: ClipboardType) -> Result<()> {
-            let cmd = match clipboard_type {
-                ClipboardType::Clipboard => &self.set_cmd,
-                ClipboardType::Selection => {
-                    if let Some(cmd) = &self.set_primary_cmd {
-                        cmd
-                    } else {
-                        return Ok(());
+        #[derive(Debug)]
+        pub struct Provider {
+            pub get_cmd: Config,
+            pub set_cmd: Config,
+            pub get_primary_cmd: Option<Config>,
+            pub set_primary_cmd: Option<Config>,
+        }
+
+        impl ClipboardProvider for Provider {
+            fn name(&self) -> Cow<str> {
+                if self.get_cmd.prg != self.set_cmd.prg {
+                    Cow::Owned(format!("{}+{}", self.get_cmd.prg, self.set_cmd.prg))
+                } else {
+                    Cow::Borrowed(self.get_cmd.prg)
+                }
+            }
+
+            fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String> {
+                match clipboard_type {
+                    ClipboardType::Clipboard => Ok(self
+                        .get_cmd
+                        .execute(None, true)?
+                        .context("output is missing")?),
+                    ClipboardType::Selection => {
+                        if let Some(cmd) = &self.get_primary_cmd {
+                            return cmd.execute(None, true)?.context("output is missing");
+                        }
+
+                        Ok(String::new())
                     }
                 }
-            };
-            cmd.execute(Some(&value), false).map(|_| ())
+            }
+
+            fn set_contents(&mut self, value: String, clipboard_type: ClipboardType) -> Result<()> {
+                let cmd = match clipboard_type {
+                    ClipboardType::Clipboard => &self.set_cmd,
+                    ClipboardType::Selection => {
+                        if let Some(cmd) = &self.set_primary_cmd {
+                            cmd
+                        } else {
+                            return Ok(());
+                        }
+                    }
+                };
+                cmd.execute(Some(&value), false).map(|_| ())
+            }
         }
     }
 }
