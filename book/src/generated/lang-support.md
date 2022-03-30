@@ -17,6 +17,7 @@
 | git-config | ✓ |  |  |  |
 | git-diff | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |
+| gleam | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | graphql | ✓ |  |  |  |
