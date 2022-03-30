@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Adding Textobject Queries</title>
+        <title>Adding Indent Queries</title>
         <!-- Custom HTML head -->
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="">
@@ -77,7 +77,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="../install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="../commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="../lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="../from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="../configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="../remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="../hooks.html"><strong aria-hidden="true">4.3.</strong> Hooks</a></li><li class="chapter-item expanded "><a href="../languages.html"><strong aria-hidden="true">4.4.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="../guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="../guides/textobject.html" class="active"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li><li class="chapter-item expanded "><a href="../guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding Indent Queries</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="../install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="../commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="../lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="../from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="../configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="../remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="../hooks.html"><strong aria-hidden="true">4.3.</strong> Hooks</a></li><li class="chapter-item expanded "><a href="../languages.html"><strong aria-hidden="true">4.4.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="../guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="../guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li><li class="chapter-item expanded "><a href="../guides/indent.html" class="active"><strong aria-hidden="true">5.3.</strong> Adding Indent Queries</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -137,50 +137,97 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="adding-textobject-queries"><a class="header" href="#adding-textobject-queries">Adding Textobject Queries</a></h1>
-<p>Textobjects that are language specific (<a href="../usage.html#textobjects">like functions, classes, etc</a>)
-require an accompanying tree-sitter grammar and a <code>textobjects.scm</code> query file
-to work properly. Tree-sitter allows us to query the source code syntax tree
-and capture specific parts of it. The queries are written in a lisp dialect.
-More information on how to write queries can be found in the <a href="https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax">official tree-sitter
-documentation</a>.</p>
-<p>Query files should be placed in <code>runtime/queries/{language}/textobjects.scm</code>
-when contributing. Note that to test the query files locally you should put
-them under your local runtime directory (<code>~/.config/helix/runtime</code> on Linux
-for example).</p>
-<p>The following <a href="https://tree-sitter.github.io/tree-sitter/using-parsers#capturing-nodes">captures</a> are recognized:</p>
-<table><thead><tr><th>Capture Name</th></tr></thead><tbody>
-<tr><td><code>function.inside</code></td></tr>
-<tr><td><code>function.around</code></td></tr>
-<tr><td><code>class.inside</code></td></tr>
-<tr><td><code>class.around</code></td></tr>
-<tr><td><code>parameter.inside</code></td></tr>
-<tr><td><code>comment.inside</code></td></tr>
-<tr><td><code>comment.around</code></td></tr>
-</tbody></table>
-<p><a href="https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+filename%3Atextobjects.scm&amp;type=Code&amp;ref=advsearch&amp;l=&amp;l=">Example query files</a> can be found in the helix GitHub repository.</p>
-<h2 id="queries-for-textobject-based-navigation"><a class="header" href="#queries-for-textobject-based-navigation">Queries for Textobject Based Navigation</a></h2>
-<p><a href="../usage.html#tree-sitter-textobject-based-navigation">Tree-sitter based navigation</a> is done using captures in the
-following order:</p>
+                        <h1 id="adding-indent-queries"><a class="header" href="#adding-indent-queries">Adding Indent Queries</a></h1>
+<p>Helix uses tree-sitter to correctly indent new lines. This requires
+a tree-sitter grammar and an <code>indent.scm</code> query file placed in
+<code>runtime/queries/{language}/indents.scm</code>. The indentation for a line
+is calculated by traversing the syntax tree from the lowest node at the
+beginning of the new line. Each of these nodes contributes to the total
+indent when it is captured by the query (in what way depends on the name
+of the capture).</p>
+<p>Note that it matters where these added indents begin. For example,
+multiple indent level increases that start on the same line only increase
+the total indent level by 1.</p>
+<h2 id="scopes"><a class="header" href="#scopes">Scopes</a></h2>
+<p>Added indents don't always apply to the whole node. For example, in most
+cases when a node should be indented, we actually only want everything
+except for its first line to be indented. For this, there are several
+scopes (more scopes may be added in the future if required):</p>
 <ul>
-<li><code>object.movement</code></li>
-<li><code>object.around</code></li>
-<li><code>object.inside</code></li>
+<li>
+<p><code>all</code>:
+This scope applies to the whole captured node. This is only different from
+<code>tail</code> when the captured node is the first node on its line.</p>
+</li>
+<li>
+<p><code>tail</code>:
+This scope applies to everything except for the first line of the
+captured node.</p>
+</li>
 </ul>
-<p>For example if a <code>function.around</code> capture has been already defined for a language
-in it's <code>textobjects.scm</code> file, function navigation should also work automatically.
-<code>function.movement</code> should be defined only if the node captured by <code>function.around</code>
-doesn't make sense in a navigation context.</p>
+<p>Every capture type has a default scope which should do the right thing
+in most situations. When a different scope is required, this can be
+changed by using a <code>#set!</code> declaration anywhere in the pattern:</p>
+<pre><code class="language-scm">(assignment_expression
+  right: (_) @indent
+  (#set! &quot;scope&quot; &quot;all&quot;))
+</code></pre>
+<h2 id="capture-types"><a class="header" href="#capture-types">Capture Types</a></h2>
+<ul>
+<li>
+<p><code>@indent</code> (default scope <code>tail</code>):
+Increase the indent level by 1. Multiple occurences in the same line
+don't stack. If there is at least one <code>@indent</code> and one <code>@outdent</code>
+capture on the same line, the indent level isn't changed at all.</p>
+</li>
+<li>
+<p><code>@outdent</code> (default scope <code>all</code>):
+Decrease the indent level by 1. The same rules as for <code>@indent</code> apply.</p>
+</li>
+</ul>
+<h2 id="predicates"><a class="header" href="#predicates">Predicates</a></h2>
+<p>In some cases, an S-expression cannot express exactly what pattern should be matched.
+For that, tree-sitter allows for predicates to appear anywhere within a pattern,
+similar to how <code>#set!</code> declarations work:</p>
+<pre><code class="language-scm">(some_kind
+  (child_kind) @indent
+  (#predicate? arg1 arg2 ...)
+)
+</code></pre>
+<p>The number of arguments depends on the predicate that's used.
+Each argument is either a capture (<code>@name</code>) or a string (<code>&quot;some string&quot;</code>).
+The following predicates are supported by tree-sitter:</p>
+<ul>
+<li>
+<p><code>#eq?</code>/<code>#not-eq?</code>:
+The first argument (a capture) must/must not be equal to the second argument
+(a capture or a string).</p>
+</li>
+<li>
+<p><code>#match?</code>/<code>#not-match?</code>:
+The first argument (a capture) must/must not match the regex given in the
+second argument (a string).</p>
+</li>
+</ul>
+<p>Additionally, we support some custom predicates for indent queries:</p>
+<ul>
+<li>
+<p><code>#not-kind-eq?</code>:
+The kind of the first argument (a capture) must not be equal to the second
+argument (a string).</p>
+</li>
+<li>
+<p><code>#same-line?</code>/<code>#not-same-line?</code>:
+The captures given by the 2 arguments must/must not start on the same line.</p>
+</li>
+</ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../guides/adding_languages.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../guides/textobject.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
-                            </a>
-                            <a rel="next" href="../guides/indent.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                                <i class="fa fa-angle-right"></i>
                             </a>
                         <div style="clear: both"></div>
                     </nav>
@@ -188,11 +235,8 @@ doesn't make sense in a navigation context.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../guides/adding_languages.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../guides/textobject.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
-                    </a>
-                    <a rel="next" href="../guides/indent.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                        <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
 

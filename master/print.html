@@ -78,7 +78,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">4.3.</strong> Hooks</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.4.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">4.3.</strong> Hooks</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.4.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li><li class="chapter-item expanded "><a href="guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding Indent Queries</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -1320,6 +1320,90 @@ following order:</p>
 in it's <code>textobjects.scm</code> file, function navigation should also work automatically.
 <code>function.movement</code> should be defined only if the node captured by <code>function.around</code>
 doesn't make sense in a navigation context.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="adding-indent-queries"><a class="header" href="#adding-indent-queries">Adding Indent Queries</a></h1>
+<p>Helix uses tree-sitter to correctly indent new lines. This requires
+a tree-sitter grammar and an <code>indent.scm</code> query file placed in
+<code>runtime/queries/{language}/indents.scm</code>. The indentation for a line
+is calculated by traversing the syntax tree from the lowest node at the
+beginning of the new line. Each of these nodes contributes to the total
+indent when it is captured by the query (in what way depends on the name
+of the capture).</p>
+<p>Note that it matters where these added indents begin. For example,
+multiple indent level increases that start on the same line only increase
+the total indent level by 1.</p>
+<h2 id="scopes-1"><a class="header" href="#scopes-1">Scopes</a></h2>
+<p>Added indents don't always apply to the whole node. For example, in most
+cases when a node should be indented, we actually only want everything
+except for its first line to be indented. For this, there are several
+scopes (more scopes may be added in the future if required):</p>
+<ul>
+<li>
+<p><code>all</code>:
+This scope applies to the whole captured node. This is only different from
+<code>tail</code> when the captured node is the first node on its line.</p>
+</li>
+<li>
+<p><code>tail</code>:
+This scope applies to everything except for the first line of the
+captured node.</p>
+</li>
+</ul>
+<p>Every capture type has a default scope which should do the right thing
+in most situations. When a different scope is required, this can be
+changed by using a <code>#set!</code> declaration anywhere in the pattern:</p>
+<pre><code class="language-scm">(assignment_expression
+  right: (_) @indent
+  (#set! &quot;scope&quot; &quot;all&quot;))
+</code></pre>
+<h2 id="capture-types"><a class="header" href="#capture-types">Capture Types</a></h2>
+<ul>
+<li>
+<p><code>@indent</code> (default scope <code>tail</code>):
+Increase the indent level by 1. Multiple occurences in the same line
+don't stack. If there is at least one <code>@indent</code> and one <code>@outdent</code>
+capture on the same line, the indent level isn't changed at all.</p>
+</li>
+<li>
+<p><code>@outdent</code> (default scope <code>all</code>):
+Decrease the indent level by 1. The same rules as for <code>@indent</code> apply.</p>
+</li>
+</ul>
+<h2 id="predicates"><a class="header" href="#predicates">Predicates</a></h2>
+<p>In some cases, an S-expression cannot express exactly what pattern should be matched.
+For that, tree-sitter allows for predicates to appear anywhere within a pattern,
+similar to how <code>#set!</code> declarations work:</p>
+<pre><code class="language-scm">(some_kind
+  (child_kind) @indent
+  (#predicate? arg1 arg2 ...)
+)
+</code></pre>
+<p>The number of arguments depends on the predicate that's used.
+Each argument is either a capture (<code>@name</code>) or a string (<code>&quot;some string&quot;</code>).
+The following predicates are supported by tree-sitter:</p>
+<ul>
+<li>
+<p><code>#eq?</code>/<code>#not-eq?</code>:
+The first argument (a capture) must/must not be equal to the second argument
+(a capture or a string).</p>
+</li>
+<li>
+<p><code>#match?</code>/<code>#not-match?</code>:
+The first argument (a capture) must/must not match the regex given in the
+second argument (a string).</p>
+</li>
+</ul>
+<p>Additionally, we support some custom predicates for indent queries:</p>
+<ul>
+<li>
+<p><code>#not-kind-eq?</code>:
+The kind of the first argument (a capture) must not be equal to the second
+argument (a string).</p>
+</li>
+<li>
+<p><code>#same-line?</code>/<code>#not-same-line?</code>:
+The captures given by the 2 arguments must/must not start on the same line.</p>
+</li>
+</ul>
 
                     </main>
 
