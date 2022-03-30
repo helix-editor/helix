@@ -891,8 +891,8 @@ fn setting(
     }
     let (key, arg) = (&args[0].to_lowercase(), &args[1]);
 
-    let key_error = || anyhow::anyhow!("Unknown key `{key}`");
-    let field_error = |_| anyhow::anyhow!("Could not parse field `{arg}`");
+    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+    let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
 
     let mut config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
     let pointer = format!("/{}", key.replace('.', "/"));
