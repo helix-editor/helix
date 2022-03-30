@@ -272,15 +272,14 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
 }
 
 pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
-    if let Some(lang) = health_arg {
-        match lang.as_str() {
-            "all" => languages_all(),
-            _ => language(lang),
-        }?;
-    } else {
-        general()
-            .and_then(|_| writeln!(std::io::stdout().lock()))
-            .and_then(|_| languages_all())?;
+    match health_arg.as_deref() {
+        Some("all") => languages_all()?,
+        Some(lang) => language(lang.to_string())?,
+        None => {
+            general()?;
+            writeln!(std::io::stdout().lock())?;
+            languages_all()?;
+        }
     }
     Ok(())
 }
