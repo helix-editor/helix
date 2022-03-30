@@ -412,7 +412,11 @@ impl Document {
         let offset_encoding = language_server.offset_encoding();
         let request = language_server.text_document_formatting(
             self.identifier(),
-            lsp::FormattingOptions::default(),
+            lsp::FormattingOptions {
+                tab_size: self.tab_width() as u32,
+                insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
+                ..Default::default()
+            },
             None,
         )?;
 
