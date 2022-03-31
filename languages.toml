@@ -266,7 +266,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-go", rev = "0fa917a
 name = "javascript"
 scope = "source.js"
 injection-regex = "^(js|javascript)$"
-file-types = ["js", "mjs"]
+file-types = ["js", "jsx", "mjs"]
 shebangs = ["node"]
 roots = []
 comment-token = "//"
@@ -318,19 +318,6 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "tsx"
 source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "3e897ea5925f037cfae2e551f8e6b12eec2a201a", subpath = "tsx" }
-
-[[language]]
-name = "jsx"
-scope = "source.jsx"
-injection-regex = "^(jsx)$"
-file-types = ["jsx"]
-roots = []
-language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "javascriptreact" }
-indent = { tab-width = 2, unit = "  " }
-
-[[grammar]]
-name = "jsx"
-source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "3e897ea5925f037cfae2e551f8e6b12eec2a201a", subpath = "jsx" }
 
 [[language]]
 name = "css"
