@@ -522,6 +522,11 @@ impl Component for Prompt {
             }
             key!(Tab) => {
                 self.change_completion_selection(CompletionDirection::Forward);
+                // if single completion candidate is a directory list content in completion
+                if self.completion.len() == 1 && self.line.ends_with(std::path::MAIN_SEPARATOR) {
+                    self.recalculate_completion(cx.editor);
+                    self.exit_selection();
+                }
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
             shift!(Tab) => {
