@@ -398,6 +398,9 @@ impl LanguageConfiguration {
             .get_or_init(|| {
                 let lang_name = self.language_id.to_ascii_lowercase();
                 let query_text = read_query(&lang_name, "indents.scm");
+                if query_text.is_empty() {
+                    return None;
+                }
                 let lang = self.highlight_config.get()?.as_ref()?.language;
                 Query::new(lang, &query_text).ok()
             })
