@@ -1,6 +1,8 @@
 use crate::compositor::{Component, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use helix_view::editor::CompleteAction;
+use helix_view::theme::{Modifier, Style};
+use helix_view::Theme;
 use tui::buffer::Buffer as Surface;
 
 use std::borrow::Cow;
@@ -27,38 +29,53 @@ impl menu::Item for CompletionItem {
         self.label.as_str()
     }
 
-    fn row(&self) -> menu::Row {
+    fn row(&self, theme: Option<&Theme>) -> menu::Row {
+        let (lsp_type_label, style) = match self.kind {
+            Some(lsp::CompletionItemKind::TEXT) => ("text", Some("ui.text")),
+            Some(lsp::CompletionItemKind::METHOD) => ("method", Some("function.method")),
+            Some(lsp::CompletionItemKind::FUNCTION) => ("function", Some("function")),
+            Some(lsp::CompletionItemKind::CONSTRUCTOR) => ("constructor", Some("constructor")),
+            Some(lsp::CompletionItemKind::FIELD) => ("field", Some("variable.other.member")),
+            Some(lsp::CompletionItemKind::VARIABLE) => ("variable", Some("variable")),
+            Some(lsp::CompletionItemKind::CLASS) => ("class", Some("type")),
+            Some(lsp::CompletionItemKind::INTERFACE) => ("interface", Some("type")),
+            Some(lsp::CompletionItemKind::MODULE) => ("module", Some("module")),
+            Some(lsp::CompletionItemKind::PROPERTY) => ("property", Some("attributes")),
+            Some(lsp::CompletionItemKind::UNIT) => ("unit", Some("constant")),
+            Some(lsp::CompletionItemKind::VALUE) => ("value", Some("string")),
+            Some(lsp::CompletionItemKind::ENUM) => ("enum", Some("type")),
+            Some(lsp::CompletionItemKind::KEYWORD) => ("keyword", Some("keyword")),
+            Some(lsp::CompletionItemKind::SNIPPET) => ("snippet", None),
+            Some(lsp::CompletionItemKind::COLOR) => ("color", None),
+            Some(lsp::CompletionItemKind::FILE) => ("file", None),
+            Some(lsp::CompletionItemKind::REFERENCE) => ("reference", None),
+            Some(lsp::CompletionItemKind::FOLDER) => ("folder", None),
+            Some(lsp::CompletionItemKind::ENUM_MEMBER) => {
+                ("enum_member", Some("type.enum.variant"))
+            }
+            Some(lsp::CompletionItemKind::CONSTANT) => ("constant", Some("constant")),
+            Some(lsp::CompletionItemKind::STRUCT) => ("struct", Some("type")),
+            Some(lsp::CompletionItemKind::EVENT) => ("event", None),
+            Some(lsp::CompletionItemKind::OPERATOR) => ("operator", Some("operator")),
+            Some(lsp::CompletionItemKind::TYPE_PARAMETER) => {
+                ("type_param", Some("function.parameter"))
+            }
+            Some(kind) => unimplemented!("{:?}", kind),
+            None => ("", None),
+        };
+
         menu::Row::new(vec![
             menu::Cell::from(self.label.as_str()),
-            menu::Cell::from(match self.kind {
-                Some(lsp::CompletionItemKind::TEXT) => "text",
-                Some(lsp::CompletionItemKind::METHOD) => "method",
-                Some(lsp::CompletionItemKind::FUNCTION) => "function",
-                Some(lsp::CompletionItemKind::CONSTRUCTOR) => "constructor",
-                Some(lsp::CompletionItemKind::FIELD) => "field",
-                Some(lsp::CompletionItemKind::VARIABLE) => "variable",
-                Some(lsp::CompletionItemKind::CLASS) => "class",
-                Some(lsp::CompletionItemKind::INTERFACE) => "interface",
-                Some(lsp::CompletionItemKind::MODULE) => "module",
-                Some(lsp::CompletionItemKind::PROPERTY) => "property",
-                Some(lsp::CompletionItemKind::UNIT) => "unit",
-                Some(lsp::CompletionItemKind::VALUE) => "value",
-                Some(lsp::CompletionItemKind::ENUM) => "enum",
-                Some(lsp::CompletionItemKind::KEYWORD) => "keyword",
-                Some(lsp::CompletionItemKind::SNIPPET) => "snippet",
-                Some(lsp::CompletionItemKind::COLOR) => "color",
-                Some(lsp::CompletionItemKind::FILE) => "file",
-                Some(lsp::CompletionItemKind::REFERENCE) => "reference",
-                Some(lsp::CompletionItemKind::FOLDER) => "folder",
-                Some(lsp::CompletionItemKind::ENUM_MEMBER) => "enum_member",
-                Some(lsp::CompletionItemKind::CONSTANT) => "constant",
-                Some(lsp::CompletionItemKind::STRUCT) => "struct",
-                Some(lsp::CompletionItemKind::EVENT) => "event",
-                Some(lsp::CompletionItemKind::OPERATOR) => "operator",
-                Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param",
-                Some(kind) => unimplemented!("{:?}", kind),
-                None => "",
-            }),
+            menu::Cell::from(lsp_type_label).style(
+                theme
+                    .and_then(|theme| style.and_then(|style| theme.try_get(style)))
+                    .map_or(Style::default(), |mut style| {
+                        style.bg = None;
+                        style
+                            .remove_modifier(Modifier::BOLD)
+                            .add_modifier(Modifier::ITALIC)
+                    }),
+            ),
             // self.detail.as_deref().unwrap_or("")
             // self.label_details
             //     .as_ref()
