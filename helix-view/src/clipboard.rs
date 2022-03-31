@@ -88,6 +88,11 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
             primary_paste => "wl-paste", "-p", "--no-newline";
             primary_copy => "wl-copy", "-p", "--type", "text/plain";
         }
+    } else if exists("win32yank.exe") {
+        command_provider! {
+            paste => "win32yank.exe", "-o", "--lf";
+            copy => "win32yank.exe", "-i", "--crlf";
+        }
     } else if env_var_is_set("DISPLAY") && exists("xclip") {
         command_provider! {
             paste => "xclip", "-o", "-selection", "clipboard";
