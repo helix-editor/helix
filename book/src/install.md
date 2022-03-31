@@ -44,7 +44,9 @@ sudo dnf install helix
 ## Build from source
 
 ```
-cargo install helix-term --git https://github.com/helix-editor/helix
+git clone https://github.com/helix-editor/helix
+cd helix
+cargo install --path helix-term
 ```
 
 This will install the `hx` binary to `$HOME/.cargo/bin`.
@@ -52,9 +54,3 @@ This will install the `hx` binary to `$HOME/.cargo/bin`.
 Helix also needs it's runtime files so make sure to copy/symlink the `runtime/` directory into the
 config directory (for example `~/.config/helix/runtime` on Linux/macOS). This location can be overriden
 via the `HELIX_RUNTIME` environment variable.
-
-## Building tree-sitter grammars
-
-Tree-sitter grammars must be fetched and compiled if not pre-packaged.
-Fetch grammars with `hx --grammar fetch` (requires `git`) and compile them
-with `hx --grammar build` (requires a C compiler).

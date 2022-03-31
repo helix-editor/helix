@@ -36,9 +36,9 @@ We provide packaging for various distributions, but here's a quick method to
 build from source.
 
 ```
-cargo install helix-term --git https://github.com/helix-editor/helix
-hx --grammar fetch
-hx --grammar build
+git clone https://github.com/helix-editor/helix
+cd helix
+cargo install --path helix-term
 ```
 
 This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars.
