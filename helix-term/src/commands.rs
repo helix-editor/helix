@@ -1350,6 +1350,7 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
             range.head
         };
 
+        // TODO: this should use visual offsets / pos_at_screen_coords
         let head_pos = coords_at_pos(text, head);
         let anchor_pos = coords_at_pos(text, range.anchor);
 
