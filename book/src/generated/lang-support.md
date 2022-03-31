@@ -11,12 +11,13 @@
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | elixir | ✓ |  |  | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
-| erlang | ✓ |  |  |  |
+| erlang | ✓ |  |  | `erlang_ls` |
 | fish | ✓ | ✓ | ✓ |  |
 | git-commit | ✓ |  |  |  |
 | git-config | ✓ |  |  |  |
 | git-diff | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |
+| gleam | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | graphql | ✓ |  |  |  |

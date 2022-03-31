@@ -87,16 +87,14 @@ FLAGS:
     }
 
     if args.health {
-        if let Some(lang) = args.health_arg {
-            match lang.as_str() {
-                "all" => helix_term::health::languages_all(),
-                _ => helix_term::health::language(lang),
+        if let Err(err) = helix_term::health::print_health(args.health_arg) {
+            // Piping to for example `head -10` requires special handling:
+            // https://stackoverflow.com/a/65760807/7115678
+            if err.kind() != std::io::ErrorKind::BrokenPipe {
+                return Err(err.into());
             }
-        } else {
-            helix_term::health::general();
-            println!();
-            helix_term::health::languages_all();
         }
+
         std::process::exit(0);
     }
 

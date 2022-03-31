@@ -78,8 +78,8 @@ source = { git = "https://github.com/yusdacra/tree-sitter-protobuf", rev = "19c2
 [[language]]
 name = "elixir"
 scope = "source.elixir"
-injection-regex = "elixir"
-file-types = ["ex", "exs"]
+injection-regex = "(elixir|ex)"
+file-types = ["ex", "exs", "mix.lock"]
 shebangs = ["elixir"]
 roots = []
 comment-token = "#"
@@ -88,7 +88,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "elixir"
-source = { git = "https://github.com/elixir-lang/tree-sitter-elixir", rev = "f5d7bda543da788bd507b05bd722627dde66c9ec"  }
+source = { git = "https://github.com/elixir-lang/tree-sitter-elixir", rev = "60863fc6e27d60cf4b1917499ed2259f92c7800e"  }
 
 [[language]]
 name = "fish"
@@ -939,15 +939,16 @@ source = { git = "https://github.com/jaredramirez/tree-sitter-rescript", rev = "
 [[language]]
 name = "erlang"
 scope = "source.erlang"
-injection-regex = "^erl$"
-file-types = ["erl", "hrl", "app", "rebar.config"]
+injection-regex = "erl(ang)?"
+file-types = ["erl", "hrl", "app", "rebar.config", "rebar.lock"]
 roots = ["rebar.config"]
 comment-token = "%%"
 indent = { tab-width = 4, unit = "    " }
+language-server = { command = "erlang_ls" }
 
 [[grammar]]
 name = "erlang"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "86985bde399c5f40b00bc75f7ab70a6c69a5f9c3" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "1e81393b8f0a81b35ff1679a9420fafbd2cf3511" }
 
 [[language]]
 name = "kotlin"
@@ -1002,3 +1003,16 @@ language-server = { command = "solc", args = ["--lsp"] }
 [[grammar]]
 name = "solidity"
 source = { git = "https://github.com/slinlee/tree-sitter-solidity", rev = "f3a002274744e859bf64cf3524985f8c31ea84fd" }
+
+[[language]]
+name = "gleam"
+scope = "source.gleam"
+injection-regex = "gleam"
+file-types = ["gleam"]
+roots = ["gleam.toml"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "gleam"
+source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "7159ce961592192b0e7cdf88782cda0fdf41a4cb" }
