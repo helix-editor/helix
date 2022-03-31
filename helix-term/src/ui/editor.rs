@@ -2,7 +2,7 @@ use crate::{
     commands,
     compositor::{Component, Context, EventResult},
     key,
-    keymap::{KeymapResult, KeymapResultKind, Keymaps},
+    keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
 
@@ -15,11 +15,11 @@ use helix_core::{
     syntax::{self, HighlightEvent},
     unicode::segmentation::UnicodeSegmentation,
     unicode::width::UnicodeWidthStr,
-    LineEnding, Position, Range, Selection,
+    LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::CursorShapeConfig,
+    editor::{CompleteAction, CursorShapeConfig},
     graphics::{CursorKind, Modifier, Rect, Style},
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
@@ -33,9 +33,16 @@ use tui::buffer::Buffer as Surface;
 pub struct EditorView {
     pub keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
-    last_insert: (commands::MappableCommand, Vec<KeyEvent>),
+    last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
+}
+
+#[derive(Debug, Clone)]
+pub enum InsertEvent {
+    Key(KeyEvent),
+    CompletionApply(CompleteAction),
+    TriggerCompletion,
 }
 
 impl Default for EditorView {
@@ -111,7 +118,7 @@ impl EditorView {
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
-                Self::doc_selection_highlights(doc, view, theme, &editor.config.cursor_shape),
+                Self::doc_selection_highlights(doc, view, theme, &editor.config().cursor_shape),
             ))
         } else {
             Box::new(highlights)
@@ -176,6 +183,7 @@ impl EditorView {
                     .highlight_iter(text.slice(..), Some(range), None)
                     .map(|event| event.unwrap())
                     .map(move |event| match event {
+                        // TODO: use byte slices directly
                         // convert byte offsets to char offset
                         HighlightEvent::Source { start, end } => {
                             let start =
@@ -310,6 +318,8 @@ impl EditorView {
         theme: &Theme,
         highlights: H,
     ) {
+        // It's slightly more efficient to produce a full RopeSlice from the Rope, then slice that a bunch
+        // of times than it is to always call Rope::slice/get_slice (it will internally always hit RSEnum::Light).
         let text = doc.text().slice(..);
 
         let mut spans = Vec::new();
@@ -319,10 +329,6 @@ impl EditorView {
         let tab = " ".repeat(tab_width);
 
         let text_style = theme.get("ui.text");
-
-        // It's slightly more efficient to produce a full RopeSlice from the Rope, then slice that a bunch
-        // of times than it is to always call Rope::slice/get_slice (it will internally always hit RSEnum::Light).
-        let text = text.slice(..);
 
         'outer: for event in highlights {
             match event {
@@ -371,7 +377,8 @@ impl EditorView {
 
                             let (grapheme, width) = if grapheme == "\t" {
                                 // make sure we display tab as appropriate amount of spaces
-                                (tab.as_str(), tab_width)
+                                let visual_tab_width = tab_width - (visual_x as usize % tab_width);
+                                (&tab[..visual_tab_width], visual_tab_width)
                             } else {
                                 // Cow will prevent allocations if span contained in a single slice
                                 // which should really be the majority case
@@ -515,7 +522,6 @@ impl EditorView {
         let info = theme.get("info");
         let hint = theme.get("hint");
 
-        // Vec::with_capacity(diagnostics.len()); // rough estimate
         let mut lines = Vec::new();
         for diagnostic in diagnostics {
             let text = Text::styled(
@@ -630,19 +636,6 @@ impl EditorView {
             base_style,
         ));
 
-        // let indent_info = match doc.indent_style {
-        //     IndentStyle::Tabs => "tabs",
-        //     IndentStyle::Spaces(1) => "spaces:1",
-        //     IndentStyle::Spaces(2) => "spaces:2",
-        //     IndentStyle::Spaces(3) => "spaces:3",
-        //     IndentStyle::Spaces(4) => "spaces:4",
-        //     IndentStyle::Spaces(5) => "spaces:5",
-        //     IndentStyle::Spaces(6) => "spaces:6",
-        //     IndentStyle::Spaces(7) => "spaces:7",
-        //     IndentStyle::Spaces(8) => "spaces:8",
-        //     _ => "indent:ERROR",
-        // };
-
         // Position
         let pos = coords_at_pos(
             doc.text().slice(..),
@@ -688,12 +681,12 @@ impl EditorView {
         surface.set_string_truncated(
             viewport.x + 8, // 8: 1 space + 3 char mode string + 1 space + 1 spinner + 1 space
             viewport.y,
-            title,
+            &title,
             viewport
                 .width
                 .saturating_sub(6)
                 .saturating_sub(right_side_text.width() as u16 + 1) as usize, // "+ 1": a space between the title and the selection info
-            base_style,
+            |_| base_style,
             true,
             true,
         );
@@ -701,7 +694,7 @@ impl EditorView {
 
     /// Handle events by looking them up in `self.keymaps`. Returns None
     /// if event was handled (a command was executed or a subkeymap was
-    /// activated). Only KeymapResultKind::{NotFound, Cancelled} is returned
+    /// activated). Only KeymapResult::{NotFound, Cancelled} is returned
     /// otherwise.
     fn handle_keymap_event(
         &mut self,
@@ -709,38 +702,37 @@ impl EditorView {
         cxt: &mut commands::Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
-        cxt.editor.autoinfo = None;
-        let key_result = self.keymaps.get_mut(&mode).unwrap().get(event);
-        cxt.editor.autoinfo = key_result.sticky.map(|node| node.infobox());
+        let key_result = self.keymaps.get(mode, event);
+        cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
-        match &key_result.kind {
-            KeymapResultKind::Matched(command) => command.execute(cxt),
-            KeymapResultKind::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
-            KeymapResultKind::MatchedSequence(commands) => {
+        match &key_result {
+            KeymapResult::Matched(command) => command.execute(cxt),
+            KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
+            KeymapResult::MatchedSequence(commands) => {
                 for command in commands {
                     command.execute(cxt);
                 }
             }
-            KeymapResultKind::NotFound | KeymapResultKind::Cancelled(_) => return Some(key_result),
+            KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
         }
         None
     }
 
     fn insert_mode(&mut self, cx: &mut commands::Context, event: KeyEvent) {
         if let Some(keyresult) = self.handle_keymap_event(Mode::Insert, cx, event) {
-            match keyresult.kind {
-                KeymapResultKind::NotFound => {
+            match keyresult {
+                KeymapResult::NotFound => {
                     if let Some(ch) = event.char() {
                         commands::insert::insert_char(cx, ch)
                     }
                 }
-                KeymapResultKind::Cancelled(pending) => {
+                KeymapResult::Cancelled(pending) => {
                     for ev in pending {
                         match ev.char() {
                             Some(ch) => commands::insert::insert_char(cx, ch),
                             None => {
-                                if let KeymapResultKind::Matched(command) =
-                                    self.keymaps.get_mut(&Mode::Insert).unwrap().get(ev).kind
+                                if let KeymapResult::Matched(command) =
+                                    self.keymaps.get(Mode::Insert, ev)
                                 {
                                     command.execute(cx);
                                 }
@@ -766,8 +758,33 @@ impl EditorView {
                 // first execute whatever put us into insert mode
                 self.last_insert.0.execute(cxt);
                 // then replay the inputs
-                for &key in &self.last_insert.1.clone() {
-                    self.insert_mode(cxt, key)
+                for key in self.last_insert.1.clone() {
+                    match key {
+                        InsertEvent::Key(key) => self.insert_mode(cxt, key),
+                        InsertEvent::CompletionApply(compl) => {
+                            let (view, doc) = current!(cxt.editor);
+
+                            doc.restore(view.id);
+
+                            let text = doc.text().slice(..);
+                            let cursor = doc.selection(view.id).primary().cursor(text);
+
+                            let shift_position =
+                                |pos: usize| -> usize { pos + cursor - compl.trigger_offset };
+
+                            let tx = Transaction::change(
+                                doc.text(),
+                                compl.changes.iter().cloned().map(|(start, end, t)| {
+                                    (shift_position(start), shift_position(end), t)
+                                }),
+                            );
+                            doc.apply(&tx, view.id);
+                        }
+                        InsertEvent::TriggerCompletion => {
+                            let (_, doc) = current!(cxt.editor);
+                            doc.savepoint();
+                        }
+                    }
                 }
             }
             _ => {
@@ -808,6 +825,9 @@ impl EditorView {
         // Immediately initialize a savepoint
         doc_mut!(editor).savepoint();
 
+        editor.last_completion = None;
+        self.last_insert.1.push(InsertEvent::TriggerCompletion);
+
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
         self.completion = Some(completion);
@@ -821,6 +841,27 @@ impl EditorView {
         doc.savepoint = None;
         editor.clear_idle_timer(); // don't retrigger
     }
+
+    pub fn handle_idle_timeout(&mut self, cx: &mut crate::compositor::Context) -> EventResult {
+        if self.completion.is_some()
+            || !cx.editor.config().auto_completion
+            || doc!(cx.editor).mode != Mode::Insert
+        {
+            return EventResult::Ignored(None);
+        }
+
+        let mut cx = commands::Context {
+            register: None,
+            editor: cx.editor,
+            jobs: cx.jobs,
+            count: None,
+            callback: None,
+            on_next_key_callback: None,
+        };
+        crate::commands::insert::idle_completion(&mut cx);
+
+        EventResult::Consumed(None)
+    }
 }
 
 impl EditorView {
@@ -829,6 +870,7 @@ impl EditorView {
         event: MouseEvent,
         cxt: &mut commands::Context,
     ) -> EventResult {
+        let config = cxt.editor.config();
         match event {
             MouseEvent {
                 kind: MouseEventKind::Down(MouseButton::Left),
@@ -872,9 +914,7 @@ impl EditorView {
 
                     let path = match doc.path() {
                         Some(path) => path.clone(),
-                        None => {
-                            return EventResult::Ignored;
-                        }
+                        None => return EventResult::Ignored(None),
                     };
 
                     let line = coords.row + view.offset.row;
@@ -884,7 +924,7 @@ impl EditorView {
                     }
                 }
 
-                EventResult::Ignored
+                EventResult::Ignored(None)
             }
 
             MouseEvent {
@@ -897,7 +937,7 @@ impl EditorView {
 
                 let pos = match view.pos_at_screen_coords(doc, row, column) {
                     Some(pos) => pos,
-                    None => return EventResult::Ignored,
+                    None => return EventResult::Ignored(None),
                 };
 
                 let mut selection = doc.selection(view.id).clone();
@@ -928,10 +968,10 @@ impl EditorView {
 
                 match result {
                     Some(view_id) => cxt.editor.tree.focus = view_id,
-                    None => return EventResult::Ignored,
+                    None => return EventResult::Ignored(None),
                 }
 
-                let offset = cxt.editor.config.scroll_lines.abs() as usize;
+                let offset = config.scroll_lines.abs() as usize;
                 commands::scroll(cxt, offset, direction);
 
                 cxt.editor.tree.focus = current_view;
@@ -943,15 +983,15 @@ impl EditorView {
                 kind: MouseEventKind::Up(MouseButton::Left),
                 ..
             } => {
-                if !cxt.editor.config.middle_click_paste {
-                    return EventResult::Ignored;
+                if !config.middle_click_paste {
+                    return EventResult::Ignored(None);
                 }
 
                 let (view, doc) = current!(cxt.editor);
                 let range = doc.selection(view.id).primary();
 
                 if range.to() - range.from() <= 1 {
-                    return EventResult::Ignored;
+                    return EventResult::Ignored(None);
                 }
 
                 commands::MappableCommand::yank_main_selection_to_primary_clipboard.execute(cxt);
@@ -988,7 +1028,7 @@ impl EditorView {
                         return EventResult::Consumed(None);
                     }
                 }
-                EventResult::Ignored
+                EventResult::Ignored(None)
             }
 
             MouseEvent {
@@ -999,8 +1039,8 @@ impl EditorView {
                 ..
             } => {
                 let editor = &mut cxt.editor;
-                if !editor.config.middle_click_paste {
-                    return EventResult::Ignored;
+                if !config.middle_click_paste {
+                    return EventResult::Ignored(None);
                 }
 
                 if modifiers == crossterm::event::KeyModifiers::ALT {
@@ -1023,10 +1063,10 @@ impl EditorView {
                     return EventResult::Consumed(None);
                 }
 
-                EventResult::Ignored
+                EventResult::Ignored(None)
             }
 
-            _ => EventResult::Ignored,
+            _ => EventResult::Ignored(None),
         }
     }
 }
@@ -1069,9 +1109,6 @@ impl Component for EditorView {
                 } else {
                     match mode {
                         Mode::Insert => {
-                            // record last_insert key
-                            self.last_insert.1.push(key);
-
                             // let completion swallow the event if necessary
                             let mut consumed = false;
                             if let Some(completion) = &mut self.completion {
@@ -1095,7 +1132,14 @@ impl Component for EditorView {
 
                             // if completion didn't take the event, we pass it onto commands
                             if !consumed {
+                                if let Some(compl) = cx.editor.last_completion.take() {
+                                    self.last_insert.1.push(InsertEvent::CompletionApply(compl));
+                                }
+
                                 self.insert_mode(&mut cx, key);
+
+                                // record last_insert key
+                                self.last_insert.1.push(InsertEvent::Key(key));
 
                                 // lastly we recalculate completion
                                 if let Some(completion) = &mut self.completion {
@@ -1117,11 +1161,11 @@ impl Component for EditorView {
                 // if the command consumed the last view, skip the render.
                 // on the next loop cycle the Application will then terminate.
                 if cx.editor.should_close() {
-                    return EventResult::Ignored;
+                    return EventResult::Ignored(None);
                 }
-
+                let config = cx.editor.config();
                 let (view, doc) = current!(cx.editor);
-                view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
+                view.ensure_cursor_in_view(doc, config.scrolloff);
 
                 // Store a history state if not in insert mode. This also takes care of
                 // commiting changes when leaving insert mode.
@@ -1138,12 +1182,11 @@ impl Component for EditorView {
                         // how we entered insert mode is important, and we should track that so
                         // we can repeat the side effect.
 
-                        self.last_insert.0 =
-                            match self.keymaps.get_mut(&mode).unwrap().get(key).kind {
-                                KeymapResultKind::Matched(command) => command,
-                                // FIXME: insert mode can only be entered through single KeyCodes
-                                _ => unimplemented!(),
-                            };
+                        self.last_insert.0 = match self.keymaps.get(mode, key) {
+                            KeymapResult::Matched(command) => command,
+                            // FIXME: insert mode can only be entered through single KeyCodes
+                            _ => unimplemented!(),
+                        };
                         self.last_insert.1.clear();
                     }
                     (Mode::Insert, Mode::Normal) => {
@@ -1163,7 +1206,7 @@ impl Component for EditorView {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // clear with background color
         surface.set_style(area, cx.editor.theme.get("ui.background"));
-
+        let config = cx.editor.config();
         // if the terminal size suddenly changed, we need to trigger a resize
         cx.editor.resize(area.clip_bottom(1)); // -1 from bottom for commandline
 
@@ -1172,7 +1215,7 @@ impl Component for EditorView {
             self.render_view(cx.editor, doc, view, area, surface, is_focused);
         }
 
-        if cx.editor.config.auto_info {
+        if config.auto_info {
             if let Some(mut info) = cx.editor.autoinfo.take() {
                 info.render(area, surface, cx);
                 cx.editor.autoinfo = Some(info)
@@ -1212,6 +1255,9 @@ impl Component for EditorView {
                 } else {
                     disp.push_str(&s);
                 }
+            }
+            if let Some(pseudo_pending) = &cx.editor.pseudo_pending {
+                disp.push_str(pseudo_pending.as_str())
             }
             let style = cx.editor.theme.get("ui.text");
             let macro_width = if cx.editor.macro_recording.is_some() {

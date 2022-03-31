@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Context, Error};
+use helix_core::auto_pairs::AutoPairs;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::cell::Cell;
@@ -20,7 +21,7 @@ use helix_core::{
 };
 use helix_lsp::util::LspFormatting;
 
-use crate::{DocumentId, ViewId};
+use crate::{DocumentId, Editor, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -98,7 +99,7 @@ pub struct Document {
     pub line_ending: LineEnding,
 
     syntax: Option<Syntax>,
-    // /// Corresponding language scope name. Usually `source.<lang>`.
+    /// Corresponding language scope name. Usually `source.<lang>`.
     pub(crate) language: Option<Arc<LanguageConfiguration>>,
 
     /// Pending changes since last history commit.
@@ -411,7 +412,11 @@ impl Document {
         let offset_encoding = language_server.offset_encoding();
         let request = language_server.text_document_formatting(
             self.identifier(),
-            lsp::FormattingOptions::default(),
+            lsp::FormattingOptions {
+                tab_size: self.tab_width() as u32,
+                insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
+                ..Default::default()
+            },
             None,
         )?;
 
@@ -922,6 +927,20 @@ impl Document {
         lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap(), self.version)
     }
 
+    pub fn position(
+        &self,
+        view_id: ViewId,
+        offset_encoding: helix_lsp::OffsetEncoding,
+    ) -> lsp::Position {
+        let text = self.text();
+
+        helix_lsp::util::pos_to_lsp_pos(
+            text,
+            self.selection(view_id).primary().cursor(text.slice(..)),
+            offset_encoding,
+        )
+    }
+
     #[inline]
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
@@ -931,6 +950,28 @@ impl Document {
         self.diagnostics = diagnostics;
         self.diagnostics
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
+    }
+
+    /// Get the document's auto pairs. If the document has a recognized
+    /// language config with auto pairs configured, returns that;
+    /// otherwise, falls back to the global auto pairs config. If the global
+    /// config is false, then ignore language settings.
+    pub fn auto_pairs<'a>(&'a self, editor: &'a Editor) -> Option<&'a AutoPairs> {
+        let global_config = (editor.auto_pairs).as_ref();
+
+        // NOTE: If the user specifies the global auto pairs config as false, then
+        //       we want to disable it globally regardless of language settings
+        #[allow(clippy::question_mark)]
+        {
+            if global_config.is_none() {
+                return None;
+            }
+        }
+
+        match &self.language {
+            Some(lang) => lang.as_ref().auto_pairs.as_ref().or(global_config),
+            None => global_config,
+        }
     }
 }
 

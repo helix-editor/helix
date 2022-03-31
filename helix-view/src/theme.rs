@@ -153,8 +153,12 @@ impl Theme {
         self.try_get(scope).unwrap_or_default()
     }
 
+    /// Get the style of a scope, falling back to dot separated broader
+    /// scopes. For example if `ui.text.focus` is not defined in the theme,
+    /// `ui.text` is tried and then `ui` is tried.
     pub fn try_get(&self, scope: &str) -> Option<Style> {
-        self.styles.get(scope).copied()
+        std::iter::successors(Some(scope), |s| Some(s.rsplit_once('.')?.0))
+            .find_map(|s| self.styles.get(s).copied())
     }
 
     #[inline]

@@ -1,7 +1,7 @@
 use crate::{
     compositor::{Component, Compositor, Context, EventResult},
     ctrl, key, shift,
-    ui::EditorView,
+    ui::{self, EditorView},
 };
 use crossterm::event::Event;
 use tui::{
@@ -13,8 +13,10 @@ use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 use tui::widgets::Widget;
 
+use std::time::Instant;
 use std::{
     borrow::Cow,
+    cmp::Reverse,
     collections::HashMap,
     io::Read,
     path::{Path, PathBuf},
@@ -24,7 +26,7 @@ use crate::ui::{Prompt, PromptEvent};
 use helix_core::{movement::Direction, Position};
 use helix_view::{
     editor::Action,
-    graphics::{Color, CursorKind, Margin, Rect, Style},
+    graphics::{Color, CursorKind, Margin, Modifier, Rect, Style},
     Document, Editor,
 };
 
@@ -33,7 +35,7 @@ pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
 /// File path and range of lines (used to align and highlight lines)
-type FileLocation = (PathBuf, Option<(usize, usize)>);
+pub type FileLocation = (PathBuf, Option<(usize, usize)>);
 
 pub struct FilePicker<T> {
     picker: Picker<T>,
@@ -89,13 +91,23 @@ impl<T> FilePicker<T> {
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
+        let truncate_start = true;
+        let mut picker = Picker::new(options, format_fn, callback_fn);
+        picker.truncate_start = truncate_start;
+
         Self {
-            picker: Picker::new(options, format_fn, callback_fn),
-            truncate_start: true,
+            picker,
+            truncate_start,
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: Box::new(preview_fn),
         }
+    }
+
+    pub fn truncate_start(mut self, truncate_start: bool) -> Self {
+        self.truncate_start = truncate_start;
+        self.picker.truncate_start = truncate_start;
+        self
     }
 
     fn current_file(&self, editor: &Editor) -> Option<FileLocation> {
@@ -174,7 +186,6 @@ impl<T: 'static> Component for FilePicker<T> {
         };
 
         let picker_area = area.with_width(picker_width);
-        self.picker.truncate_start = self.truncate_start;
         self.picker.render(picker_area, surface, cx);
 
         if !render_preview {
@@ -286,7 +297,8 @@ pub struct Picker<T> {
     cursor: usize,
     // pattern: String,
     prompt: Prompt,
-    /// Wheather to truncate the start (default true)
+    previous_pattern: String,
+    /// Whether to truncate the start (default true)
     pub truncate_start: bool,
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
@@ -302,10 +314,8 @@ impl<T> Picker<T> {
         let prompt = Prompt::new(
             "".into(),
             None,
-            |_pattern: &str| Vec::new(),
-            |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {
-                //
-            },
+            ui::completers::none,
+            |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {},
         );
 
         let mut picker = Self {
@@ -315,49 +325,109 @@ impl<T> Picker<T> {
             filters: Vec::new(),
             cursor: 0,
             prompt,
+            previous_pattern: String::new(),
             truncate_start: true,
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
             completion_height: 0,
         };
 
-        // TODO: scoring on empty input should just use a fastpath
-        picker.score();
+        // scoring on empty input:
+        // TODO: just reuse score()
+        picker.matches.extend(
+            picker
+                .options
+                .iter()
+                .enumerate()
+                .map(|(index, _option)| (index, 0)),
+        );
 
         picker
     }
 
     pub fn score(&mut self) {
-        let pattern = &self.prompt.line;
+        let now = Instant::now();
 
-        // reuse the matches allocation
-        self.matches.clear();
-        self.matches.extend(
-            self.options
-                .iter()
-                .enumerate()
-                .filter_map(|(index, option)| {
-                    // filter options first before matching
-                    if !self.filters.is_empty() {
-                        self.filters.binary_search(&index).ok()?;
+        let pattern = self.prompt.line();
+
+        if pattern == &self.previous_pattern {
+            return;
+        }
+
+        if pattern.is_empty() {
+            // Fast path for no pattern.
+            self.matches.clear();
+            self.matches.extend(
+                self.options
+                    .iter()
+                    .enumerate()
+                    .map(|(index, _option)| (index, 0)),
+            );
+        } else if pattern.starts_with(&self.previous_pattern) {
+            // TODO: remove when retain_mut is in stable rust
+            use retain_mut::RetainMut;
+
+            // optimization: if the pattern is a more specific version of the previous one
+            // then we can score the filtered set.
+            #[allow(unstable_name_collisions)]
+            self.matches.retain_mut(|(index, score)| {
+                let option = &self.options[*index];
+                // TODO: maybe using format_fn isn't the best idea here
+                let text = (self.format_fn)(option);
+
+                match self.matcher.fuzzy_match(&text, pattern) {
+                    Some(s) => {
+                        // Update the score
+                        *score = s;
+                        true
                     }
-                    // TODO: maybe using format_fn isn't the best idea here
-                    let text = (self.format_fn)(option);
-                    // TODO: using fuzzy_indices could give us the char idx for match highlighting
-                    self.matcher
-                        .fuzzy_match(&text, pattern)
-                        .map(|score| (index, score))
-                }),
-        );
-        self.matches.sort_unstable_by_key(|(_, score)| -score);
+                    None => false,
+                }
+            });
+
+            self.matches
+                .sort_unstable_by_key(|(_, score)| Reverse(*score));
+        } else {
+            self.matches.clear();
+            self.matches.extend(
+                self.options
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, option)| {
+                        // filter options first before matching
+                        if !self.filters.is_empty() {
+                            // TODO: this filters functionality seems inefficient,
+                            // instead store and operate on filters if any
+                            self.filters.binary_search(&index).ok()?;
+                        }
+
+                        // TODO: maybe using format_fn isn't the best idea here
+                        let text = (self.format_fn)(option);
+
+                        self.matcher
+                            .fuzzy_match(&text, pattern)
+                            .map(|score| (index, score))
+                    }),
+            );
+            self.matches
+                .sort_unstable_by_key(|(_, score)| Reverse(*score));
+        }
+
+        log::debug!("picker score {:?}", Instant::now().duration_since(now));
 
         // reset cursor position
         self.cursor = 0;
+        self.previous_pattern.clone_from(pattern);
     }
 
     /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
     pub fn move_by(&mut self, amount: usize, direction: Direction) {
         let len = self.matches.len();
+
+        if len == 0 {
+            // No results, can't move.
+            return;
+        }
 
         match direction {
             Direction::Forward => {
@@ -395,12 +465,12 @@ impl<T> Picker<T> {
             .map(|(index, _score)| &self.options[*index])
     }
 
-    pub fn save_filter(&mut self) {
+    pub fn save_filter(&mut self, cx: &Context) {
         self.filters.clear();
         self.filters
             .extend(self.matches.iter().map(|(index, _)| *index));
         self.filters.sort_unstable(); // used for binary search later
-        self.prompt.clear();
+        self.prompt.clear(cx);
     }
 }
 
@@ -419,7 +489,7 @@ impl<T: 'static> Component for Picker<T> {
         let key_event = match event {
             Event::Key(event) => event,
             Event::Resize(..) => return EventResult::Consumed(None),
-            _ => return EventResult::Ignored,
+            _ => return EventResult::Ignored(None),
         };
 
         let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
@@ -468,7 +538,7 @@ impl<T: 'static> Component for Picker<T> {
                 return close_fn;
             }
             ctrl!(' ') => {
-                self.save_filter();
+                self.save_filter(cx);
             }
             _ => {
                 if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
@@ -483,6 +553,8 @@ impl<T: 'static> Component for Picker<T> {
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let text_style = cx.editor.theme.get("ui.text");
+        let selected = cx.editor.theme.get("ui.text.focus");
+        let highlighted = cx.editor.theme.get("special").add_modifier(Modifier::BOLD);
 
         // -- Render the frame:
         // clear area
@@ -525,29 +597,41 @@ impl<T: 'static> Component for Picker<T> {
         // subtract area of prompt from top and current item marker " > " from left
         let inner = inner.clip_top(2).clip_left(3);
 
-        let selected = cx.editor.theme.get("ui.text.focus");
-
         let rows = inner.height;
         let offset = self.cursor - (self.cursor % std::cmp::max(1, rows as usize));
 
-        let files = self.matches.iter().skip(offset).map(|(index, _score)| {
-            (index, self.options.get(*index).unwrap()) // get_unchecked
-        });
+        let files = self
+            .matches
+            .iter()
+            .skip(offset)
+            .map(|(index, _score)| (*index, self.options.get(*index).unwrap()));
 
         for (i, (_index, option)) in files.take(rows as usize).enumerate() {
-            if i == (self.cursor - offset) {
+            let is_active = i == (self.cursor - offset);
+            if is_active {
                 surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
             }
+
+            let formatted = (self.format_fn)(option);
+
+            let (_score, highlights) = self
+                .matcher
+                .fuzzy_indices(&formatted, self.prompt.line())
+                .unwrap_or_default();
 
             surface.set_string_truncated(
                 inner.x,
                 inner.y + i as u16,
-                (self.format_fn)(option),
+                &formatted,
                 inner.width as usize,
-                if i == (self.cursor - offset) {
-                    selected
-                } else {
-                    text_style
+                |idx| {
+                    if highlights.contains(&idx) {
+                        highlighted
+                    } else if is_active {
+                        selected
+                    } else {
+                        text_style
+                    }
                 },
                 true,
                 self.truncate_start,

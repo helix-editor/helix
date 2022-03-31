@@ -23,17 +23,26 @@ use std::{
     sync::Arc,
 };
 
-use tokio::time::{sleep, Duration, Instant, Sleep};
+use tokio::{
+    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    time::{sleep, Duration, Instant, Sleep},
+};
 
 use anyhow::{bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::syntax;
+use helix_core::{
+    auto_pairs::AutoPairs,
+    syntax::{self, AutoPairConfig},
+    Change,
+};
 use helix_core::{Position, Selection};
 use helix_dap as dap;
 
-use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize};
+use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
+
+use arc_swap::access::{DynAccess, DynGuard};
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -41,6 +50,18 @@ where
 {
     let millis = u64::deserialize(deserializer)?;
     Ok(Duration::from_millis(millis))
+}
+
+fn serialize_duration_millis<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_u64(
+        duration
+            .as_millis()
+            .try_into()
+            .map_err(|_| serde::ser::Error::custom("duration value overflowed u64"))?,
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -98,12 +119,18 @@ pub struct Config {
     pub line_number: LineNumber,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
-    /// Automatic insertion of pairs to parentheses, brackets, etc. Defaults to true.
-    pub auto_pairs: bool,
+    /// Automatic insertion of pairs to parentheses, brackets,
+    /// etc. Optionally, this can be a list of 2-tuples to specify a
+    /// global list of characters to pair. Defaults to true.
+    pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
-    /// Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. Defaults to 400ms.
-    #[serde(skip_serializing, deserialize_with = "deserialize_duration_millis")]
+    /// Time in milliseconds since last keypress before idle timers trigger.
+    /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
+    #[serde(
+        serialize_with = "serialize_duration_millis",
+        deserialize_with = "deserialize_duration_millis"
+    )]
     pub idle_timeout: Duration,
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
@@ -116,6 +143,13 @@ pub struct Config {
     /// Search configuration.
     #[serde(default)]
     pub search: SearchConfig,
+    pub lsp: LspConfig,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct LspConfig {
+    pub display_messages: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -217,7 +251,7 @@ impl Default for Config {
             },
             line_number: LineNumber::Absolute,
             middle_click_paste: true,
-            auto_pairs: true,
+            auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
@@ -226,6 +260,7 @@ impl Default for Config {
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             search: SearchConfig::default(),
+            lsp: LspConfig::default(),
         }
     }
 }
@@ -264,7 +299,6 @@ pub struct Breakpoint {
     pub log_message: Option<String>,
 }
 
-#[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
     pub next_document_id: DocumentId,
@@ -288,12 +322,30 @@ pub struct Editor {
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
-    pub config: Config,
+    pub config: Box<dyn DynAccess<Config>>,
+    pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
     pub last_motion: Option<Motion>,
+    pub pseudo_pending: Option<String>,
+
+    pub last_completion: Option<CompleteAction>,
 
     pub exit_code: i32,
+
+    pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
+}
+
+#[derive(Debug, Clone)]
+pub enum ConfigEvent {
+    Refresh,
+    Update(Config),
+}
+
+#[derive(Debug, Clone)]
+pub struct CompleteAction {
+    pub trigger_offset: usize,
+    pub changes: Vec<Change>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -309,9 +361,11 @@ impl Editor {
         mut area: Rect,
         theme_loader: Arc<theme::Loader>,
         syn_loader: Arc<syntax::Loader>,
-        config: Config,
+        config: Box<dyn DynAccess<Config>>,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
+        let conf = config.load();
+        let auto_pairs = (&conf.auto_pairs).into();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
@@ -334,11 +388,19 @@ impl Editor {
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
             autoinfo: None,
-            idle_timer: Box::pin(sleep(config.idle_timeout)),
+            idle_timer: Box::pin(sleep(conf.idle_timeout)),
             last_motion: None,
+            last_completion: None,
+            pseudo_pending: None,
             config,
+            auto_pairs,
             exit_code: 0,
+            config_events: unbounded_channel(),
         }
+    }
+
+    pub fn config(&self) -> DynGuard<Config> {
+        self.config.load()
     }
 
     pub fn clear_idle_timer(&mut self) {
@@ -349,9 +411,10 @@ impl Editor {
     }
 
     pub fn reset_idle_timer(&mut self) {
+        let config = self.config();
         self.idle_timer
             .as_mut()
-            .reset(Instant::now() + self.config.idle_timeout);
+            .reset(Instant::now() + config.idle_timeout);
     }
 
     pub fn clear_status(&mut self) {
@@ -427,9 +490,10 @@ impl Editor {
     }
 
     fn _refresh(&mut self) {
+        let config = self.config();
         for (view, _) in self.tree.views_mut() {
             let doc = &self.documents[&view.doc];
-            view.ensure_cursor_in_view(doc, self.config.scrolloff)
+            view.ensure_cursor_in_view(doc, config.scrolloff)
         }
     }
 
@@ -677,9 +741,10 @@ impl Editor {
     }
 
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
+        let config = self.config();
         let view = self.tree.get_mut(id);
         let doc = &self.documents[&view.doc];
-        view.ensure_cursor_in_view(doc, self.config.scrolloff)
+        view.ensure_cursor_in_view(doc, config.scrolloff)
     }
 
     #[inline]
@@ -713,6 +778,7 @@ impl Editor {
     }
 
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
+        let config = self.config();
         let (view, doc) = current_ref!(self);
         let cursor = doc
             .selection(view.id)
@@ -722,7 +788,7 @@ impl Editor {
             let inner = view.inner_area();
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            let cursorkind = self.config.cursor_shape.from_mode(doc.mode());
+            let cursorkind = config.cursor_shape.from_mode(doc.mode());
             (Some(pos), cursorkind)
         } else {
             (None, CursorKind::default())

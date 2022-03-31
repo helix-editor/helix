@@ -13,9 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-        with:
-          submodules: true
+        uses: actions/checkout@v3
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -25,22 +23,25 @@ jobs:
           override: true
 
       - name: Cache cargo registry
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-registry-
 
       - name: Cache cargo index
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-index-
 
       - name: Cache cargo target dir
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: target
           key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-build-target-
 
       - name: Run cargo check
         uses: actions-rs/cargo@v1
@@ -52,9 +53,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-        with:
-          submodules: true
+        uses: actions/checkout@v3
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -64,27 +63,41 @@ jobs:
           override: true
 
       - name: Cache cargo registry
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-registry-
 
       - name: Cache cargo index
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-index-
 
       - name: Cache cargo target dir
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: target
           key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-build-target-
+
+      - name: Copy minimal languages config
+        run: cp .github/workflows/languages.toml ./languages.toml
+
+      - name: Cache test tree-sitter grammar
+        uses: actions/cache@v3
+        with:
+          path: runtime/grammars
+          key: ${{ runner.os }}-v2-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
+          restore-keys: ${{ runner.os }}-v2-tree-sitter-grammars-
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --workspace
 
     strategy:
       matrix:
@@ -96,9 +109,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-        with:
-          submodules: true
+        uses: actions/checkout@v3
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -109,22 +120,25 @@ jobs:
           components: rustfmt, clippy
 
       - name: Cache cargo registry
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-registry-
 
       - name: Cache cargo index
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-index-
 
       - name: Cache cargo target dir
-        uses: actions/cache@v2.1.7
+        uses: actions/cache@v3
         with:
           path: target
           key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-build-target-
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
@@ -143,9 +157,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-        with:
-          submodules: true
+        uses: actions/checkout@v3
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -155,22 +167,25 @@ jobs:
           override: true
 
       - name: Cache cargo registry
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-registry-
 
       - name: Cache cargo index
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-index-
 
       - name: Cache cargo target dir
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v3
         with:
           path: target
           key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-build-target-
 
       - name: Generate docs
         uses: actions-rs/cargo@v1

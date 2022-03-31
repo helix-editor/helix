@@ -204,19 +204,9 @@ impl View {
             return None;
         }
 
-        let line_start = text.line_to_char(line);
-        let line_slice = text.slice(line_start..pos);
-        let mut col = 0;
         let tab_width = doc.tab_width();
-
-        for grapheme in RopeGraphemes::new(line_slice) {
-            if grapheme == "\t" {
-                col += tab_width;
-            } else {
-                let grapheme = Cow::from(grapheme);
-                col += grapheme_width(&grapheme);
-            }
-        }
+        // TODO: visual_coords_at_pos also does char_to_line which we ignore, can we reuse the call?
+        let Position { col, .. } = visual_coords_at_pos(text, pos, tab_width);
 
         // It is possible for underflow to occur if the buffer length is larger than the terminal width.
         let row = line.saturating_sub(self.offset.row);
@@ -253,18 +243,29 @@ impl View {
         let current_line = text.line(line_number);
 
         let target = (column - inner.x) as usize + self.offset.col;
-        let mut selected = 0;
+        let mut col = 0;
 
+        // TODO: extract this part as pos_at_visual_coords
         for grapheme in RopeGraphemes::new(current_line) {
-            if selected >= target {
+            if col >= target {
                 break;
             }
-            if grapheme == "\t" {
-                selected += tab_width;
+
+            let width = if grapheme == "\t" {
+                tab_width - (col % tab_width)
             } else {
-                let width = grapheme_width(&Cow::from(grapheme));
-                selected += width;
+                let grapheme = Cow::from(grapheme);
+                grapheme_width(&grapheme)
+            };
+
+            // If pos is in the middle of a wider grapheme (tab for example)
+            // return the starting offset.
+            if col + width > target {
+                break;
             }
+
+            col += width;
+            // TODO: use byte pos that converts back to char pos?
             pos += grapheme.chars().count();
         }
 
@@ -355,7 +356,7 @@ mod tests {
 
         assert_eq!(
             view.text_pos_at_screen_coords(&text, 41, 40 + OFFSET + 1, 4),
-            Some(5)
+            Some(4)
         );
 
         assert_eq!(
@@ -384,8 +385,12 @@ mod tests {
         );
 
         assert_eq!(
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 4, 4),
+            Some(4)
+        );
+        assert_eq!(
             view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 5, 4),
-            Some(5)
+            Some(4)
         );
 
         assert_eq!(
@@ -395,7 +400,7 @@ mod tests {
 
         assert_eq!(
             view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 7, 4),
-            Some(6)
+            Some(5)
         );
 
         assert_eq!(

@@ -7,3 +7,10 @@
 ;----------
 
 (function body: (_) @function.inside) @function.around
+
+; Comments
+;---------
+
+(comment) @comment.inside
+
+(comment)+ @comment.around

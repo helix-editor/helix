@@ -166,6 +166,8 @@ We use a similar set of scopes as
 
 - `markup`
   - `heading`
+    - `marker`
+    - `1`, `2`, `3`, `4`, `5`, `6` - heading text for h1 through h6
   - `list`
     - `unnumbered`
     - `numbered`
@@ -216,12 +218,12 @@ These scopes are used for theming the editor interface.
 | `ui.statusline`          | Statusline                          |
 | `ui.statusline.inactive` | Statusline (unfocused document)     |
 | `ui.popup`               |                                     |
+| `ui.popup.info`          |                                     |
 | `ui.window`              |                                     |
 | `ui.help`                |                                     |
 | `ui.text`                |                                     |
 | `ui.text.focus`          |                                     |
-| `ui.info`                |                                     |
-| `ui.info.text`           |                                     |
+| `ui.text.info`           |                                     |
 | `ui.menu`                |                                     |
 | `ui.menu.selected`       |                                     |
 | `ui.selection`           | For selections in the editing area  |

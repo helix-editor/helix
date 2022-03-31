@@ -6,15 +6,16 @@
 "ui.menu.selected" = { fg = "iris", bg = "surface" }
 "ui.linenr" = {fg = "subtle" }
 "ui.liner.selected" = "highlightOverlay"
-"ui.selection" = "highlight"
+"ui.selection" = { bg = "highlight" }
 "comment" = "subtle"
 "ui.statusline" = {fg = "foam", bg = "surface" }
 "ui.statusline.inactive" = { fg = "iris", bg = "surface" }
 "ui.help" = { fg = "foam", bg = "surface" }
 "ui.cursor" = { fg = "rose", modifiers = ["reversed"] }
 "ui.text" = { fg = "text" }
+"ui.text.focus" = { fg = "foam", modifiers = ["bold"]}
+"ui.text.info" = {fg = "pine", modifiers = ["bold"]}
 "operator" = "rose"
-"ui.text.focus" = { fg = "base05" }
 "variable" = "text"
 "constant.numeric" = "iris"
 "constant" = "gold"
@@ -33,6 +34,7 @@
 "label" = "iris"
 "namespace" = "pine"
 "ui.popup" = { bg = "surface" }
+"ui.popup.info" = { bg = "surface" }
 "ui.window" = { bg = "base" }
 "ui.help" = { bg = "overlay", fg = "foam" }
 "text" = "text"
@@ -46,14 +48,20 @@
 "diagnostic" = "rose"
 "error" = "love"
 
-"markup.heading" = { fg = "rose" }
-"markup.raw.inline" = { fg = "foam" }
+"markup.heading.marker" = "subtle"
+"markup.heading.1" = { fg = "love", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "gold", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "rose", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "pine", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "form", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "fg", modifiers = ["bold"] }
+"markup.list" = { fg = "love" }
 "markup.bold" = { fg = "gold", modifiers = ["bold"] }
 "markup.italic" = { fg = "iris", modifiers = ["italic"] }
-"markup.list" = { fg = "love" }
-"markup.quote" = { fg = "rose" }
 "markup.link.url" = { fg = "pine", modifiers = ["underlined"]}
 "markup.link.text" = { fg = "foam" }
+"markup.quote" = { fg = "rose" }
+"markup.raw" = { fg = "foam" }
 
 [palette]
 base     = "#191724" 

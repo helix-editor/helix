@@ -9,17 +9,9 @@ use tui::buffer::Buffer as Surface;
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
 
-// --> EventResult should have a callback that takes a context with methods like .popup(),
-// .prompt() etc. That way we can abstract it from the renderer.
-// Q: How does this interact with popups where we need to be able to specify the rendering of the
-// popup?
-// A: It could just take a textarea.
-//
-// If Compositor was specified in the callback that's then problematic because of
-
 // Cursive-inspired
 pub enum EventResult {
-    Ignored,
+    Ignored(Option<Callback>),
     Consumed(Option<Callback>),
 }
 
@@ -36,7 +28,7 @@ pub struct Context<'a> {
 pub trait Component: Any + AnyComponent {
     /// Process input events, return true if handled.
     fn handle_event(&mut self, _event: Event, _ctx: &mut Context) -> EventResult {
-        EventResult::Ignored
+        EventResult::Ignored(None)
     }
     // , args: ()
 
@@ -128,11 +120,11 @@ impl Compositor {
 
     /// Replace a component that has the given `id` with the new layer and if
     /// no component is found, push the layer normally.
-    pub fn replace_or_push(&mut self, id: &'static str, layer: Box<dyn Component>) {
+    pub fn replace_or_push<T: Component>(&mut self, id: &'static str, layer: T) {
         if let Some(component) = self.find_id(id) {
             *component = layer;
         } else {
-            self.push(layer)
+            self.push(Box::new(layer))
         }
     }
 
@@ -146,19 +138,34 @@ impl Compositor {
             keys.push(key.into());
         }
 
+        let mut callbacks = Vec::new();
+        let mut consumed = false;
+
         // propagate events through the layers until we either find a layer that consumes it or we
         // run out of layers (event bubbling)
         for layer in self.layers.iter_mut().rev() {
             match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {
-                    callback(self, cx);
-                    return true;
+                    callbacks.push(callback);
+                    consumed = true;
+                    break;
                 }
-                EventResult::Consumed(None) => return true,
-                EventResult::Ignored => false,
+                EventResult::Consumed(None) => {
+                    consumed = true;
+                    break;
+                }
+                EventResult::Ignored(Some(callback)) => {
+                    callbacks.push(callback);
+                }
+                EventResult::Ignored(None) => {}
             };
         }
-        false
+
+        for callback in callbacks {
+            callback(self, cx)
+        }
+
+        consumed
     }
 
     pub fn render(&mut self, cx: &mut Context) {
@@ -206,10 +213,9 @@ impl Compositor {
     }
 
     pub fn find_id<T: 'static>(&mut self, id: &'static str) -> Option<&mut T> {
-        let type_name = std::any::type_name::<T>();
         self.layers
             .iter_mut()
-            .find(|component| component.type_name() == type_name && component.id() == Some(id))
+            .find(|component| component.id() == Some(id))
             .and_then(|component| component.as_any_mut().downcast_mut())
     }
 }

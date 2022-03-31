@@ -1,8 +1,9 @@
+use std::borrow::Cow;
+
 use crate::{
     chars::char_is_line_ending,
-    graphemes::{ensure_grapheme_boundary_prev, RopeGraphemes},
+    graphemes::{ensure_grapheme_boundary_prev, grapheme_width, RopeGraphemes},
     line_ending::line_end_char_index,
-    unicode::width::UnicodeWidthChar,
     RopeSlice,
 };
 
@@ -77,14 +78,17 @@ pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Po
 
     let line_start = text.line_to_char(line);
     let pos = ensure_grapheme_boundary_prev(text, pos);
-    let col = text
-        .slice(line_start..pos)
-        .chars()
-        .flat_map(|c| match c {
-            '\t' => Some(tab_width),
-            c => UnicodeWidthChar::width(c),
-        })
-        .sum();
+
+    let mut col = 0;
+
+    for grapheme in RopeGraphemes::new(text.slice(line_start..pos)) {
+        if grapheme == "\t" {
+            col += tab_width - (col % tab_width);
+        } else {
+            let grapheme = Cow::from(grapheme);
+            col += grapheme_width(&grapheme);
+        }
+    }
 
     Position::new(line, col)
 }

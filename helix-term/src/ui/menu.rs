@@ -1,5 +1,5 @@
 use crate::{
-    compositor::{Component, Compositor, Context, EventResult},
+    compositor::{Callback, Component, Compositor, Context, EventResult},
     ctrl, key, shift,
 };
 use crossterm::event::Event;
@@ -202,19 +202,19 @@ impl<T: Item + 'static> Component for Menu<T> {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let event = match event {
             Event::Key(event) => event,
-            _ => return EventResult::Ignored,
+            _ => return EventResult::Ignored(None),
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
+        let close_fn: Option<Callback> = Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.pop();
-        })));
+        }));
 
         match event.into() {
             // esc or ctrl-c aborts the completion and closes the menu
             key!(Esc) | ctrl!('c') => {
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Abort);
-                return close_fn;
+                return EventResult::Consumed(close_fn);
             }
             // arrow up/ctrl-p/shift-tab prev completion choice (including updating the doc)
             shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
@@ -231,8 +231,10 @@ impl<T: Item + 'static> Component for Menu<T> {
             key!(Enter) => {
                 if let Some(selection) = self.selection() {
                     (self.callback_fn)(cx.editor, Some(selection), MenuEvent::Validate);
+                    return EventResult::Consumed(close_fn);
+                } else {
+                    return EventResult::Ignored(close_fn);
                 }
-                return close_fn;
             }
             // KeyEvent {
             //     code: KeyCode::Char(c),
@@ -252,7 +254,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         // for some events, we want to process them but send ignore, specifically all input except
         // tab/enter/ctrl-k or whatever will confirm the selection/ ctrl-n/ctrl-p for scroll.
         // EventResult::Consumed(None)
-        EventResult::Ignored
+        EventResult::Ignored(None)
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
