@@ -331,10 +331,10 @@ Keys to use within picker. Remapping currently not supported.
 
 | Key                          | Description       |
 | -----                        | -------------     |
-| `Up`, `Ctrl-k`, `Ctrl-p`     | Previous entry    |
-| `PageUp`, `Ctrl-b`           | Page up           |
-| `Down`, `Ctrl-j`, `Ctrl-n`   | Next entry        |
-| `PageDown`, `Ctrl-f`         | Page down         |
+| `Up`, `Ctrl-p`               | Previous entry    |
+| `PageUp`, `Ctrl-u`           | Page up           |
+| `Down`, `Ctrl-n`             | Next entry        |
+| `PageDown`, `Ctrl-d`         | Page down         |
 | `Home`                       | Go to first entry |
 | `End`                        | Go to last entry  |
 | `Ctrl-space`                 | Filter options    |
