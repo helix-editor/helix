@@ -39,7 +39,7 @@ use helix_view::{
     keyboard::KeyCode,
     tree,
     view::View,
-    Document, DocumentId, Editor, ViewId,
+    Document, DocumentId, Editor, Theme, ViewId,
 };
 
 use anyhow::{anyhow, bail, ensure, Context as _};
@@ -1989,7 +1989,7 @@ fn global_search(cx: &mut Context) {
     impl ui::menu::Item for FileResult {
         type Data = Option<PathBuf>;
 
-        fn format(&self, current_path: &Self::Data) -> Row {
+        fn format(&self, current_path: &Self::Data, _theme: Option<&Theme>) -> Row {
             let relative_path = helix_core::path::get_relative_path(&self.path)
                 .to_string_lossy()
                 .into_owned();
@@ -2459,7 +2459,7 @@ fn buffer_picker(cx: &mut Context) {
     impl ui::menu::Item for BufferMeta {
         type Data = ();
 
-        fn format(&self, _data: &Self::Data) -> Row {
+        fn format(&self, _data: &Self::Data, _theme: Option<&Theme>) -> Row {
             let path = self
                 .path
                 .as_deref()
@@ -2523,7 +2523,7 @@ fn jumplist_picker(cx: &mut Context) {
     impl ui::menu::Item for JumpMeta {
         type Data = ();
 
-        fn format(&self, _data: &Self::Data) -> Row {
+        fn format(&self, _data: &Self::Data, _theme: Option<&Theme>) -> Row {
             let path = self
                 .path
                 .as_deref()
@@ -2603,7 +2603,7 @@ fn jumplist_picker(cx: &mut Context) {
 impl ui::menu::Item for MappableCommand {
     type Data = ReverseKeymap;
 
-    fn format(&self, keymap: &Self::Data) -> Row {
+    fn format(&self, keymap: &Self::Data, _theme: Option<&Theme>) -> Row {
         let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
             bindings.iter().fold(String::new(), |mut acc, bind| {
                 if !acc.is_empty() {
