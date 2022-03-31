@@ -320,6 +320,19 @@ name = "tsx"
 source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "3e897ea5925f037cfae2e551f8e6b12eec2a201a", subpath = "tsx" }
 
 [[language]]
+name = "jsx"
+scope = "source.jsx"
+injection-regex = "^(jsx)$"
+file-types = ["jsx"]
+roots = []
+language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "javascriptreact" }
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "jsx"
+source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "3e897ea5925f037cfae2e551f8e6b12eec2a201a", subpath = "jsx" }
+
+[[language]]
 name = "css"
 scope = "source.css"
 injection-regex = "css"
