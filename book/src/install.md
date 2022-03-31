@@ -41,6 +41,12 @@ sudo dnf copr enable varlad/helix
 sudo dnf install helix
 ```
 
+### Void Linux
+
+```
+sudo xbps-install helix
+```
+
 ## Build from source
 
 ```
