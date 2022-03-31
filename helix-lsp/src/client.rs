@@ -235,7 +235,10 @@ impl Client {
 
     pub(crate) async fn initialize(&self) -> Result<lsp::InitializeResult> {
         // TODO: delay any requests that are triggered prior to initialize
-        let root = find_root(None, &self.root_markers)
+        let root_path = find_root(None, &self.root_markers);
+
+        let root_uri = root_path
+            .clone()
             .and_then(|root| lsp::Url::from_file_path(root).ok());
 
         if self.config.is_some() {
@@ -245,9 +248,10 @@ impl Client {
         #[allow(deprecated)]
         let params = lsp::InitializeParams {
             process_id: Some(std::process::id()),
-            // root_path is obsolete, use root_uri
-            root_path: None,
-            root_uri: root,
+            // root_path is obsolete, but some clients like pyright still use it so we specify both.
+            // clients will prefer _uri if possible
+            root_path: root_path.and_then(|path| path.to_str().map(|path| path.to_owned())),
+            root_uri,
             initialization_options: self.config.clone(),
             capabilities: lsp::ClientCapabilities {
                 workspace: Some(lsp::WorkspaceClientCapabilities {
