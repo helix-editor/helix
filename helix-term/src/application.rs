@@ -814,7 +814,7 @@ impl Application {
     }
 
     pub async fn close(&mut self) -> anyhow::Result<()> {
-        self.jobs.finish().await;
+        self.jobs.finish().await?;
 
         if self.editor.close_language_servers(None).await.is_err() {
             log::error!("Timed out waiting for language servers to shutdown");

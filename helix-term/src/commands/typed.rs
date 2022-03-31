@@ -233,6 +233,7 @@ fn write_impl(
         doc.detect_language(cx.editor.syn_loader.clone());
         let _ = cx.editor.refresh_language_server(id);
     }
+
     Ok(())
 }
 
@@ -422,6 +423,7 @@ fn write_quit(
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     write_impl(cx, args.first(), false)?;
+    helix_lsp::block_on(cx.jobs.finish())?;
     quit(cx, &[], event)
 }
 

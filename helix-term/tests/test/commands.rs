@@ -9,7 +9,6 @@ use helix_term::application::Application;
 use super::*;
 
 #[tokio::test]
-#[ignore]
 async fn test_write_quit_fail() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
 
