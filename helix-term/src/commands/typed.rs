@@ -199,6 +199,7 @@ fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::
 
     if path.is_some() {
         let id = doc.id();
+        doc.detect_language(cx.editor.syn_loader.clone());
         let _ = cx.editor.refresh_language_server(id);
     }
     Ok(())
@@ -924,7 +925,7 @@ fn language(
     }
 
     let doc = doc_mut!(cx.editor);
-    doc.set_language3(&args[0], cx.editor.syn_loader.clone());
+    doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone());
 
     let id = doc.id();
     cx.editor.refresh_language_server(id);
