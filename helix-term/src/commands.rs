@@ -1342,8 +1342,17 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
     let mut primary_index = 0;
     for range in selection.iter() {
         let is_primary = *range == selection.primary();
-        let head_pos = coords_at_pos(text, range.head);
+
+        // The range is always head exclusive
+        let head = if range.anchor < range.head {
+            range.head - 1
+        } else {
+            range.head
+        };
+
+        let head_pos = coords_at_pos(text, head);
         let anchor_pos = coords_at_pos(text, range.anchor);
+
         let height = std::cmp::max(head_pos.row, anchor_pos.row)
             - std::cmp::min(head_pos.row, anchor_pos.row)
             + 1;
