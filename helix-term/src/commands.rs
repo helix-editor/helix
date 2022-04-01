@@ -18,7 +18,8 @@ use helix_core::{
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
-    search, selection, shellwords, surround, textobject,
+    search::{self, CharMatcher},
+    selection, shellwords, surround, textobject,
     tree_sitter::Node,
     unicode::width::UnicodeWidthChar,
     LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril,
@@ -1053,15 +1054,15 @@ where
 //
 
 #[inline]
-fn find_char_impl<F>(
+fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
     editor: &mut Editor,
     search_fn: &F,
     inclusive: bool,
     extend: bool,
-    ch: char,
+    char_matcher: M,
     count: usize,
 ) where
-    F: Fn(RopeSlice, char, usize, usize, bool) -> Option<usize> + 'static,
+    F: Fn(RopeSlice, M, usize, usize, bool) -> Option<usize> + 'static,
 {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
@@ -1076,7 +1077,7 @@ fn find_char_impl<F>(
             range.head
         };
 
-        search_fn(text, ch, search_start_pos, count, inclusive).map_or(range, |pos| {
+        search_fn(text, char_matcher, search_start_pos, count, inclusive).map_or(range, |pos| {
             if extend {
                 range.put_cursor(text, pos, true)
             } else {
@@ -4327,8 +4328,39 @@ fn decrement(cx: &mut Context) {
     increment_impl(cx, -(cx.count() as i64));
 }
 
+/// This function differs from find_next_char_impl in that it stops searching at the newline, but also
+/// starts searching at the current character, instead of the next.
+/// It does not want to start at the next character because this function is used for incrementing
+/// number and we don't want to move forward if we're already on a digit.
+fn find_next_char_until_newline<M: CharMatcher>(
+    text: RopeSlice,
+    char_matcher: M,
+    pos: usize,
+    _count: usize,
+    _inclusive: bool,
+) -> Option<usize> {
+    // Since we send the current line to find_nth_next instead of the whole text, we need to adjust
+    // the position we send to this function so that it's relative to that line and its returned
+    // position since it's expected this function returns a global position.
+    let line_index = text.char_to_line(pos);
+    let pos_delta = text.line_to_char(line_index);
+    let pos = pos - pos_delta;
+    search::find_nth_next(text.line(line_index), char_matcher, pos, 1).map(|pos| pos + pos_delta)
+}
+
 /// Decrement object under cursor by `amount`.
 fn increment_impl(cx: &mut Context, amount: i64) {
+    // TODO: when incrementing or decrementing a number that gets a new digit or lose one, the
+    // selection is updated improperly.
+    find_char_impl(
+        cx.editor,
+        &find_next_char_until_newline,
+        true,
+        true,
+        char::is_ascii_digit,
+        1,
+    );
+
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
     let text = doc.text().slice(..);
