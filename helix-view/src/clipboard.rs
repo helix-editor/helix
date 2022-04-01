@@ -104,6 +104,11 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
             primary_paste => "xsel", "-o";
             primary_copy => "xsel", "-i";
         }
+    } else if exists("win32yank.exe") {
+        command_provider! {
+            paste => "win32yank.exe", "-o", "--lf";
+            copy => "win32yank.exe", "-i", "--crlf";
+        }
     } else if exists("termux-clipboard-set") && exists("termux-clipboard-get") {
         command_provider! {
             paste => "termux-clipboard-get";
