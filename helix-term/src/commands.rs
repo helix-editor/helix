@@ -1392,7 +1392,8 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
                 if is_primary {
                     primary_index = ranges.len();
                 }
-                ranges.push(Range::new(anchor, head));
+                // This is Range::new(anchor, head), but it will place the cursor on the correct column
+                ranges.push(Range::point(anchor).put_cursor(text, head, true));
                 sels += 1;
             }
 
