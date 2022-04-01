@@ -1646,11 +1646,8 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
                 wrap_around,
             );
         } else {
-            // get around warning `mutable_borrow_reservation_conflict`
-            // which will be a hard error in the future
-            // see: https://github.com/rust-lang/rust/issues/59159
-            let query = query.clone();
-            cx.editor.set_error(format!("Invalid regex: {}", query));
+            let error = format!("Invalid regex: {}", query);
+            cx.editor.set_error(error);
         }
     }
 }
