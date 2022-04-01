@@ -46,6 +46,7 @@
   ">>"
   "<"
   "|"
+  (expansion_flags)
 ] @operator
 
 (
