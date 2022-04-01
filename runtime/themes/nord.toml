@@ -3,6 +3,7 @@
 "ui.linenr.selected" = { fg = "nord4" }
 "ui.text.focus" = { fg = "nord8", modifiers= ["bold"] }
 "ui.menu.selected" = { fg = "nord8", bg = "nord2" }
+"ui.virtual" = "gray"
 
 "info" = "nord8"
 "hint" = "nord8"
