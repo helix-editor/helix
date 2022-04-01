@@ -266,7 +266,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-go", rev = "0fa917a
 name = "javascript"
 scope = "source.js"
 injection-regex = "^(js|javascript)$"
-file-types = ["js", "mjs"]
+file-types = ["js", "jsx", "mjs"]
 shebangs = ["node"]
 roots = []
 comment-token = "//"
