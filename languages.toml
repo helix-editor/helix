@@ -270,7 +270,7 @@ file-types = ["js", "jsx", "mjs"]
 shebangs = ["node"]
 roots = []
 comment-token = "//"
-# TODO: highlights-jsx, highlights-params
+# TODO: highlights-params
 language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "javascript" }
 indent = { tab-width = 2, unit = "  " }
 
@@ -297,7 +297,7 @@ injection-regex = "^(ts|typescript)$"
 file-types = ["ts"]
 shebangs = []
 roots = []
-# TODO: highlights-jsx, highlights-params
+# TODO: highlights-params
 language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "typescript"}
 indent = { tab-width = 2, unit = "  " }
 
@@ -311,7 +311,7 @@ scope = "source.tsx"
 injection-regex = "^(tsx)$" # |typescript
 file-types = ["tsx"]
 roots = []
-# TODO: highlights-jsx, highlights-params
+# TODO: highlights-params
 language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "typescriptreact" }
 indent = { tab-width = 2, unit = "  " }
 
