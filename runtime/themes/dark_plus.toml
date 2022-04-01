@@ -78,6 +78,8 @@
 "ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "white" }
 
+"ui.virtual" = { fg = "dark_green" }
+
 "warning" = { fg = "gold2" }
 "error" = { fg = "red" }
 "info" = { fg = "light_blue" }
