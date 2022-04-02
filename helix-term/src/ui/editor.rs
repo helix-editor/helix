@@ -399,6 +399,23 @@ impl EditorView {
         let text_style = theme.get("ui.text");
         let whitespace_style = theme.get("ui.virtual.whitespace");
 
+        let mut is_in_indent_area = true;
+        let mut last_line_indent_level = 0;
+        let indent_style = theme
+            .try_get("ui.virtual.indent-guide")
+            .unwrap_or_else(|| theme.get("comment"));
+
+        let draw_indent_guides = |indent_level, line, surface: &mut Surface| {
+            for i in 0..(indent_level / tab_width as u16) {
+                surface.set_string(
+                    viewport.x + (i * tab_width as u16) - offset.col as u16,
+                    viewport.y + line,
+                    "│",
+                    indent_style,
+                );
+            }
+        };
+
         'outer: for event in highlights {
             match event {
                 HighlightEvent::HighlightStart(span) => {
@@ -451,8 +468,18 @@ impl EditorView {
                                 );
                             }
 
+                            // This is an empty line; draw indent guides at previous line's
+                            // indent level to avoid breaking the guides on blank lines.
+                            if visual_x == 0 {
+                                draw_indent_guides(last_line_indent_level, line, surface);
+                            } else if is_in_indent_area {
+                                // A line with whitespace only
+                                draw_indent_guides(visual_x, line, surface);
+                            }
+
                             visual_x = 0;
                             line += 1;
+                            is_in_indent_area = true;
 
                             // TODO: with proper iter this shouldn't be necessary
                             if line >= viewport.height {
@@ -496,6 +523,11 @@ impl EditorView {
                                         style
                                     },
                                 );
+                            }
+                            if is_in_indent_area && !(grapheme == " " || grapheme == "\t") {
+                                draw_indent_guides(visual_x, line, surface);
+                                is_in_indent_area = false;
+                                last_line_indent_level = visual_x;
                             }
 
                             visual_x = visual_x.saturating_add(width as u16);
