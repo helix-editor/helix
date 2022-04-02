@@ -1016,3 +1016,13 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "gleam"
 source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "7159ce961592192b0e7cdf88782cda0fdf41a4cb" }
+
+[[language]]
+name = "ron"
+scope = "source.ron"
+injection-regex = "ron"
+file-types = ["ron"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+grammar = "rust"
