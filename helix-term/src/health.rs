@@ -154,8 +154,8 @@ pub fn languages_all() -> std::io::Result<()> {
 
         for ts_feat in TsFeature::all() {
             match load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok() {
-                true => column("Found", Color::Green),
-                false => column("Not Found", Color::Red),
+                true => column("✔", Color::Green),
+                false => column("✘", Color::Red),
             }
         }
 
@@ -263,8 +263,8 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
     let mut stdout = stdout.lock();
 
     let found = match load_runtime_file(lang, feature.runtime_filename()).is_ok() {
-        true => "Found".green(),
-        false => "Not found".red(),
+        true => "✔".green(),
+        false => "✘".red(),
     };
     writeln!(stdout, "{} queries: {}", feature.short_title(), found)?;
 
