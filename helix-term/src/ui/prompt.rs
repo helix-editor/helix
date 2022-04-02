@@ -1,6 +1,7 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
 use crossterm::event::Event;
+use helix_view::info::Info;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::{KeyCode, KeyModifiers};
 use std::{borrow::Cow, ops::RangeFrom};
@@ -25,6 +26,7 @@ pub struct Prompt {
     selection: Option<usize>,
     history_register: Option<char>,
     history_pos: Option<usize>,
+    pending_register: bool,
     completion_fn: Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
     pub doc_fn: Box<dyn Fn(&str) -> Option<Cow<str>>>,
@@ -71,6 +73,7 @@ impl Prompt {
             selection: None,
             history_register,
             history_pos: None,
+            pending_register: false,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
@@ -450,6 +453,25 @@ impl Component for Prompt {
             compositor.pop();
         })));
 
+        if self.pending_register {
+            // C-r was pressed previously; this keystroke is the register
+            self.pending_register = false;
+            cx.editor.autoinfo = None;
+
+            if let KeyEvent {
+                code: KeyCode::Char(register),
+                modifiers: KeyModifiers::NONE,
+            } = event.into()
+            {
+                if let Some(text) = cx.editor.registers.get(register) {
+                    self.insert_str(&text.read()[0]);
+                }
+            }
+
+            (self.callback_fn)(cx, &self.line, PromptEvent::Update);
+            return EventResult::Consumed(None);
+        }
+
         match event.into() {
             ctrl!('c') | key!(Esc) => {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
@@ -526,6 +548,11 @@ impl Component for Prompt {
             }
             shift!(Tab) => {
                 self.change_completion_selection(CompletionDirection::Backward);
+                (self.callback_fn)(cx, &self.line, PromptEvent::Update)
+            }
+            ctrl!('r') => {
+                cx.editor.autoinfo = Some(Info::from_registers(&cx.editor.registers));
+                self.pending_register = true;
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
             ctrl!('q') => self.exit_selection(),
