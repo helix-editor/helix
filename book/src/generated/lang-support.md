@@ -31,7 +31,7 @@
 | jsx | ✓ |  | ✓ | `typescript-language-server` |
 | julia | ✓ |  |  | `julia` |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
-| latex | ✓ |  |  |  |
+| latex | ✓ |  |  | `texlab` |
 | lean | ✓ |  |  | `lean` |
 | ledger | ✓ |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |
