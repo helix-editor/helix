@@ -30,7 +30,7 @@
 | json | ✓ |  | ✓ |  |
 | julia | ✓ |  |  | `julia` |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
-| latex | ✓ |  |  |  |
+| latex | ✓ |  |  | `texlab` |
 | lean | ✓ |  |  | `lean` |
 | ledger | ✓ |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |
