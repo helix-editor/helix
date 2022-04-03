@@ -52,6 +52,45 @@ pub fn get_pair(ch: char) -> (char, char) {
         .unwrap_or((ch, ch))
 }
 
+pub fn find_nth_closest_pairs_pos(
+    text: RopeSlice,
+    range: Range,
+    n: usize,
+) -> Result<(usize, usize)> {
+    let is_open_pair = |ch| PAIRS.iter().any(|(open, _)| *open == ch);
+    let is_close_pair = |ch| PAIRS.iter().any(|(_, close)| *close == ch);
+
+    let mut stack = Vec::with_capacity(2);
+    let pos = range.cursor(text);
+
+    for ch in text.chars_at(pos) {
+        if is_open_pair(ch) {
+            // Track open pairs encountered so that we can step over
+            // the correspoding close pairs that will come up further
+            // down the loop. We want to find a lone close pair whose
+            // open pair is before the cursor position.
+            stack.push(ch);
+            continue;
+        } else if is_close_pair(ch) {
+            let (open, _) = get_pair(ch);
+            if stack.last() == Some(&open) {
+                stack.pop();
+                continue;
+            } else {
+                // In the ideal case the stack would be empty here and the
+                // current character would be the close pair that we are
+                // looking for. It could also be the case that the pairs
+                // are unbalanced and we encounter a close pair that doesn't
+                // close the last seen open pair. In either case use this
+                // char as the auto-detected closest pair.
+                return find_nth_pairs_pos(text, ch, range, n);
+            }
+        }
+    }
+
+    Err(Error::PairNotFound)
+}
+
 /// Find the position of surround pairs of `ch` which can be either a closing
 /// or opening pair. `n` will skip n - 1 pairs (eg. n=2 will discard (only)
 /// the first pair found and keep looking)
