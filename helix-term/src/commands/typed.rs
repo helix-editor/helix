@@ -105,29 +105,6 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -> Vec<Docum
     document_ids
 }
 
-fn buffer_next_or_previous_impl(editor: &mut Editor, direction: Direction) -> anyhow::Result<()> {
-    let current = view!(editor).doc;
-
-    let id = match direction {
-        Direction::Forward => {
-            let iter = editor.documents.keys();
-            let mut iter = iter.skip_while(|id| *id != &current);
-            iter.next(); // skip current item
-            iter.next().or_else(|| editor.documents.keys().next())
-        }
-        Direction::Backward => {
-            let iter = editor.documents.keys();
-            let mut iter = iter.rev().skip_while(|id| *id != &current);
-            iter.next(); // skip current item
-            iter.next().or_else(|| editor.documents.keys().rev().next())
-        }
-    }
-    .unwrap();
-    let id = *id;
-    editor.switch(id, Action::Replace);
-    Ok(())
-}
-
 fn buffer_close(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -200,7 +177,8 @@ fn buffer_next(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    buffer_next_or_previous_impl(cx.editor, Direction::Forward)
+    goto_buffer(cx.editor, Direction::Forward);
+    Ok(())
 }
 
 fn buffer_previous(
@@ -208,7 +186,8 @@ fn buffer_previous(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    buffer_next_or_previous_impl(cx.editor, Direction::Backward)
+    goto_buffer(cx.editor, Direction::Backward);
+    Ok(())
 }
 
 fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::Result<()> {
