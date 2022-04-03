@@ -106,6 +106,12 @@
 "ui.menu" = { fg = "black", bg = "light-white" }
 "ui.menu.selected" = { fg = "white", bg = "light-blue" }
 
+"ui.explorer.file" = { fg = "black" }
+"ui.explorer.dir" = { fg = "blue" }
+"ui.explorer.exe" = { fg = "black" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { bg = "light-white" }
+
 [palette]
 white = "#FAFAFA"
 yellow = "#A06600"

@@ -50,3 +50,9 @@
 "debug" = "gray"
 "warning" = "yellow"
 "error" = "light-red"
+
+# "ui.explorer.file" = { fg = "base05" }
+"ui.explorer.dir" = { fg = "light-blue" }
+# "ui.explorer.exe" = { fg = "base05" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { bg = "light-gray" }

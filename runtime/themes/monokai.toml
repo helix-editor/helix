@@ -85,6 +85,12 @@
 
 diagnostic = { modifiers = ["underlined"] }
 
+"ui.explorer.file" = { fg = "text" }
+"ui.explorer.dir" = { fg = "fn_declaration" }
+"ui.explorer.exe" = { fg = "text" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { bg = "#75715e" }
+
 [palette]
 type = "#A6E22E"
 keyword = "#F92672"

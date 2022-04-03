@@ -64,3 +64,9 @@
 "error" = "#D74E50"
 "info" = "#839A53"
 "hint" = "#A6B6CE"
+
+"ui.explorer.file" = { fg = "#7B91B3" }
+"ui.explorer.dir" = { fg = "#89BEB7" }
+"ui.explorer.exe" = { fg = "#7B91B3" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { bg = "#F3EAE9" }

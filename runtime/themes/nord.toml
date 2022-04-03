@@ -105,6 +105,12 @@
 "diff.delta" = "nord12"
 "diff.minus" = "nord11"
 
+"ui.explorer.file" = { fg = "nord6" }
+"ui.explorer.dir" = { fg = "nord8" }
+"ui.explorer.exe" = { fg = "nord6" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { bg = "nord2" }
+
 [palette]
 nord0 = "#2e3440"
 nord1 = "#3b4252"

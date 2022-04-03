@@ -68,6 +68,12 @@
 "warning" = "my_yellow2"
 "error" = "my_red"
 
+"ui.explorer.file" = { fg = "my_white" }
+"ui.explorer.dir" = { fg = "my_yellow1" }
+"ui.explorer.exe" = { fg = "my_green" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { modifiers = ["reversed"] }
+
 [palette]
 my_black      = "#212121" # Cursorline
 my_gray0      = "#262626" # Default Background

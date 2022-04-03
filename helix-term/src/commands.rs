@@ -432,7 +432,10 @@ impl MappableCommand {
         decrement, "Decrement item under cursor",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
-        command_palette, "Open command palette",
+        command_palette, "Open command pallete",
+        toggle_or_focus_explorer, "toggle or focus explorer",
+        open_explorer_recursion, "open explorer recursion",
+        close_explorer, "close explorer",
     );
 }
 
@@ -2211,6 +2214,43 @@ fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
     let picker = ui::file_picker(cwd, &cx.editor.config());
     cx.push_layer(Box::new(overlayed(picker)));
+}
+
+fn toggle_or_focus_explorer(cx: &mut Context) {
+    cx.callback = Some(Box::new(
+        |compositor: &mut Compositor, cx: &mut compositor::Context| {
+            if let Some(editor) = compositor.find::<ui::EditorView>() {
+                match editor.explorer.as_mut() {
+                    Some(explore) => explore.content.focus(),
+                    None => match ui::Explorer::new(cx) {
+                        Ok(explore) => editor.explorer = Some(overlayed(explore)),
+                        Err(err) => cx.editor.set_error(format!("{}", err)),
+                    },
+                }
+            }
+        },
+    ));
+}
+
+fn open_explorer_recursion(cx: &mut Context) {
+    cx.callback = Some(Box::new(
+        |compositor: &mut Compositor, cx: &mut compositor::Context| {
+            if let Some(editor) = compositor.find::<ui::EditorView>() {
+                match ui::Explorer::new_explorer_recursion() {
+                    Ok(explore) => editor.explorer = Some(overlayed(explore)),
+                    Err(err) => cx.editor.set_error(format!("{}", err)),
+                }
+            }
+        },
+    ));
+}
+
+fn close_explorer(cx: &mut Context) {
+    cx.callback = Some(Box::new(|compositor: &mut Compositor, _| {
+        if let Some(editor) = compositor.find::<ui::EditorView>() {
+            editor.explorer.take();
+        }
+    }));
 }
 
 fn buffer_picker(cx: &mut Context) {

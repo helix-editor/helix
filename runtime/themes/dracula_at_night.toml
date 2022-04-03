@@ -53,6 +53,12 @@
 "markup.quote" = { fg = "yellow", modifiers = ["italic"] }
 "markup.raw" = { fg = "foreground" }
 
+"ui.explorer.file" = { fg = "foreground" }
+"ui.explorer.dir" = { fg = "cyan" }
+"ui.explorer.exe" = { fg = "foreground" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { bg = "comment" }
+
 [palette]
 background = "#0e1419"
 background_dark = "#21222c"

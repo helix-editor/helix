@@ -87,6 +87,12 @@
 'diff.delta' = { fg = 'blue' }
 'diff.delta.moved' = { fg = 'blue', modifiers = ['italic'] }
 
+"ui.explorer.file" = { fg = "foreground" }
+"ui.explorer.dir" = { fg = "blue" }
+"ui.explorer.exe" = { fg = "foreground" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { bg = "selection" }
+
 [palette]
 background = '#011627'
 background2 = '#112630'

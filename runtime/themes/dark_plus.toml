@@ -90,6 +90,12 @@
 
 diagnostic = { modifiers = ["underlined"] }
 
+"ui.explorer.file" = { fg = "text" }
+"ui.explorer.dir" = { fg = "blue" }
+"ui.explorer.exe" = { fg = "text" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { bg = "dark_blue2" }
+
 [palette]
 white = "#ffffff"
 orange = "#ce9178"

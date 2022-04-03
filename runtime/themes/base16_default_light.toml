@@ -54,6 +54,12 @@
 "warning" = "base09"
 "error" = "base08"
 
+"ui.explorer.file" = { fg = "base05" }
+"ui.explorer.dir" = { fg = "base0D" }
+"ui.explorer.exe" = { fg = "base05" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { bg = "base02" }
+
 [palette]
 base00 = "#f8f8f8" # Default Background
 base01 = "#e8e8e8" # Lighter Background (Used for status bars, line number and folding marks)

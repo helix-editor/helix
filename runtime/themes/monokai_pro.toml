@@ -95,6 +95,12 @@ diagnostic = { modifiers = ["underlined"] }
 "markup.link.text" = "yellow"
 "markup.quote" = "green"
 
+"ui.explorer.file" = { fg = "base8" }
+"ui.explorer.dir" = { fg = "blue" }
+"ui.explorer.exe" = { fg = "base8" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { bg = "base4" }
+
 [palette]
 # primary colors
 "red" = "#ff6188"

@@ -120,6 +120,12 @@ namespace = { fg = 'orangeL' }
 'diff.delta' = { fg = '#4d4ddd' }
 'diff.delta.moved' = { fg = '#dd4ddd' }
 
+"ui.explorer.file" = { fg = "greyT" }
+"ui.explorer.dir" = { fg = "blueL" }
+"ui.explorer.exe" = { fg = "greyT" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { bg = "greyL" }
+
 [palette]
 white = '#FFFFFF'
 greyH = '#CFCFCF'

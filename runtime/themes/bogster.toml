@@ -70,3 +70,9 @@
 
 # make diagnostic underlined, to distinguish with selection text.
 diagnostic = { modifiers = ["underlined"] }
+
+"ui.explorer.file" = { fg = "#e5ded6" }
+"ui.explorer.dir" = { fg = "#59dcd8" }
+"ui.explorer.exe" = { fg = "#e5ded6" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { bg = "#313f4e" }

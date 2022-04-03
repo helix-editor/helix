@@ -101,6 +101,12 @@
 "hint" = { fg = "base01", modifiers= ["bold", "underlined"] }
 "diagnostic" = { modifiers = ["underlined"] }
 
+"ui.explorer.file" = { fg = "base1" }
+"ui.explorer.dir" = { fg = "blue" }
+"ui.explorer.exe" = { fg = "base1" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { bg = "base0175" }
+
 [palette]
 # 深色 越来越深
 base03   = "#002b36"

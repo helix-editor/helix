@@ -68,6 +68,12 @@
 "markup.link.text" = "red1"
 "markup.raw" = "red1"
 
+"ui.explorer.file" = { fg = "fg1" }
+"ui.explorer.dir" = { fg = "blue0" }
+"ui.explorer.exe" = { fg = "fg1" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { bg = "bg3" }
+
 [palette]
 bg0 = "#fbf1c7" # main background
 bg1 = "#ebdbb2"

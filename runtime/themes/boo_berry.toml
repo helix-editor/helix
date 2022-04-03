@@ -57,6 +57,12 @@
 "hint" = { fg = "lilac" }
 "diagnostic" = { modifiers = ["underlined"] }
 
+"ui.explorer.file" = { fg = "lilac" }
+"ui.explorer.dir" = { fg = "mint" }
+"ui.explorer.exe" = { fg = "lilac" }
+"ui.explorer.focus" = { modifiers = ["reversed"] }
+"ui.explorer.unfocus" = { bg = "berry_saturated" }
+
 [palette]
 berry = "#3A2A4D"
 berry_saturated = "#2B1C3D"
