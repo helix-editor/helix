@@ -212,17 +212,22 @@ fn find_nth_close_pair(
 /// Find position of surround characters around every cursor. Returns None
 /// if any positions overlap. Note that the positions are in a flat Vec.
 /// Use get_surround_pos().chunks(2) to get matching pairs of surround positions.
-/// `ch` can be either closing or opening pair.
+/// `ch` can be either closing or opening pair. If `ch` is None, surround pairs
+/// are automatically detected around each cursor (note that this may result
+/// in them selecting different surround characters for each selection).
 pub fn get_surround_pos(
     text: RopeSlice,
     selection: &Selection,
-    ch: char,
+    ch: Option<char>,
     skip: usize,
 ) -> Result<Vec<usize>> {
     let mut change_pos = Vec::new();
 
     for &range in selection {
-        let (open_pos, close_pos) = find_nth_pairs_pos(text, ch, range, skip)?;
+        let (open_pos, close_pos) = match ch {
+            Some(ch) => find_nth_pairs_pos(text, ch, range, skip)?,
+            None => find_nth_closest_pairs_pos(text, range, skip)?,
+        };
         if change_pos.contains(&open_pos) || change_pos.contains(&close_pos) {
             return Err(Error::CursorOverlap);
         }
