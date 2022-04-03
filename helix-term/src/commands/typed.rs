@@ -105,6 +105,29 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -> Vec<Docum
     document_ids
 }
 
+fn buffer_next_or_previous_impl(editor: &mut Editor, direction: Direction) -> anyhow::Result<()> {
+    let current = view!(editor).doc;
+
+    let id = match direction {
+        Direction::Forward => {
+            let iter = editor.documents.keys();
+            let mut iter = iter.skip_while(|id| *id != &current);
+            iter.next(); // skip current item
+            iter.next().or_else(|| editor.documents.keys().next())
+        }
+        Direction::Backward => {
+            let iter = editor.documents.keys();
+            let mut iter = iter.rev().skip_while(|id| *id != &current);
+            iter.next(); // skip current item
+            iter.next().or_else(|| editor.documents.keys().rev().next())
+        }
+    }
+    .unwrap();
+    let id = *id;
+    editor.switch(id, Action::Replace);
+    Ok(())
+}
+
 fn buffer_close(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -170,6 +193,22 @@ fn force_buffer_close_all(
 ) -> anyhow::Result<()> {
     let document_ids = buffer_gather_all_impl(cx.editor);
     buffer_close_by_ids_impl(cx.editor, &document_ids, true)
+}
+
+fn buffer_next(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    buffer_next_or_previous_impl(cx.editor, Direction::Forward)
+}
+
+fn buffer_previous(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    buffer_next_or_previous_impl(cx.editor, Direction::Backward)
 }
 
 fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::Result<()> {
@@ -1080,6 +1119,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["bca!", "bcloseall!"],
             doc: "Close all buffers forcefully (ignoring unsaved changes), without quiting.",
             fun: force_buffer_close_all,
+            completer: None,
+        },
+        TypableCommand {
+            name: "buffer-next",
+            aliases: &["bn", "bnext"],
+            doc: "Go to next buffer.",
+            fun: buffer_next,
+            completer: None,
+        },
+        TypableCommand {
+            name: "buffer-previous",
+            aliases: &["bp", "bprev"],
+            doc: "Go to previous buffer.",
+            fun: buffer_previous,
             completer: None,
         },
         TypableCommand {
