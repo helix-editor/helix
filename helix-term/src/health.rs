@@ -134,8 +134,8 @@ pub fn languages_all() -> std::io::Result<()> {
 
     let check_binary = |cmd: Option<String>| match cmd {
         Some(cmd) => match which::which(&cmd) {
-            Ok(_) => column(&cmd, Color::Green),
-            Err(_) => column(&cmd, Color::Red),
+            Ok(_) => column(&format!("✔ {}", cmd), Color::Green),
+            Err(_) => column(&format!("✘ {}", cmd), Color::Red),
         },
         None => column("None", Color::Yellow),
     };
