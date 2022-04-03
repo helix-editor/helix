@@ -184,7 +184,31 @@ pub fn textobject_surround(
     ch: char,
     count: usize,
 ) -> Range {
-    surround::find_nth_pairs_pos(slice, ch, range, count)
+    textobject_surround_impl(slice, range, textobject, Some(ch), count)
+}
+
+pub fn textobject_surround_closest(
+    slice: RopeSlice,
+    range: Range,
+    textobject: TextObject,
+    count: usize,
+) -> Range {
+    textobject_surround_impl(slice, range, textobject, None, count)
+}
+
+fn textobject_surround_impl(
+    slice: RopeSlice,
+    range: Range,
+    textobject: TextObject,
+    ch: Option<char>,
+    count: usize,
+) -> Range {
+    let pair_pos = match ch {
+        Some(ch) => surround::find_nth_pairs_pos(slice, ch, range, count),
+        // Automatically find the closest surround pairs
+        None => surround::find_nth_closest_pairs_pos(slice, range, count),
+    };
+    pair_pos
         .map(|(anchor, head)| match textobject {
             TextObject::Inside => Range::new(next_grapheme_boundary(slice, anchor), head),
             TextObject::Around => Range::new(anchor, next_grapheme_boundary(slice, head)),
