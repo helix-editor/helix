@@ -637,36 +637,35 @@ fn goto_line_start(cx: &mut Context) {
 }
 
 fn goto_next_buffer(cx: &mut Context) {
-    goto_buffer(cx, Direction::Forward);
+    goto_buffer(cx.editor, Direction::Forward);
 }
 
 fn goto_previous_buffer(cx: &mut Context) {
-    goto_buffer(cx, Direction::Backward);
+    goto_buffer(cx.editor, Direction::Backward);
 }
 
-fn goto_buffer(cx: &mut Context, direction: Direction) {
-    let current = view!(cx.editor).doc;
+fn goto_buffer(editor: &mut Editor, direction: Direction) {
+    let current = view!(editor).doc;
 
     let id = match direction {
         Direction::Forward => {
-            let iter = cx.editor.documents.keys();
+            let iter = editor.documents.keys();
             let mut iter = iter.skip_while(|id| *id != &current);
             iter.next(); // skip current item
-            iter.next().or_else(|| cx.editor.documents.keys().next())
+            iter.next().or_else(|| editor.documents.keys().next())
         }
         Direction::Backward => {
-            let iter = cx.editor.documents.keys();
+            let iter = editor.documents.keys();
             let mut iter = iter.rev().skip_while(|id| *id != &current);
             iter.next(); // skip current item
-            iter.next()
-                .or_else(|| cx.editor.documents.keys().rev().next())
+            iter.next().or_else(|| editor.documents.keys().rev().next())
         }
     }
     .unwrap();
 
     let id = *id;
 
-    cx.editor.switch(id, Action::Replace);
+    editor.switch(id, Action::Replace);
 }
 
 fn extend_to_line_start(cx: &mut Context) {

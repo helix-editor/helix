@@ -172,6 +172,24 @@ fn force_buffer_close_all(
     buffer_close_by_ids_impl(cx.editor, &document_ids, true)
 }
 
+fn buffer_next(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    goto_buffer(cx.editor, Direction::Forward);
+    Ok(())
+}
+
+fn buffer_previous(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    goto_buffer(cx.editor, Direction::Backward);
+    Ok(())
+}
+
 fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::Result<()> {
     let jobs = &mut cx.jobs;
     let doc = doc_mut!(cx.editor);
@@ -1080,6 +1098,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["bca!", "bcloseall!"],
             doc: "Close all buffers forcefully (ignoring unsaved changes), without quiting.",
             fun: force_buffer_close_all,
+            completer: None,
+        },
+        TypableCommand {
+            name: "buffer-next",
+            aliases: &["bn", "bnext"],
+            doc: "Go to next buffer.",
+            fun: buffer_next,
+            completer: None,
+        },
+        TypableCommand {
+            name: "buffer-previous",
+            aliases: &["bp", "bprev"],
+            doc: "Go to previous buffer.",
+            fun: buffer_previous,
             completer: None,
         },
         TypableCommand {
