@@ -66,7 +66,9 @@ pub struct LanguageConfiguration {
     #[serde(default)]
     pub shebangs: Vec<String>, // interpreter(s) associated with language
     pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
-    pub comment_token: Option<String>,
+    pub comment_token: Option<String>, // TODO: remove.
+    #[serde(default)]
+    pub comment_tokens: Vec<String>,
 
     #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
     pub config: Option<serde_json::Value>,

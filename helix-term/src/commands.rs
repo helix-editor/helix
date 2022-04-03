@@ -2293,6 +2293,16 @@ fn open(cx: &mut Context, open: Open) {
         let mut text = String::with_capacity(1 + indent_len);
         text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
+
+        let tokens = doc
+            .language_config()
+            .map(|lc| lc.comment_tokens.as_ref())
+            .unwrap_or_default();
+        if let Some(token) = comment::continue_comment(doc.text(), cursor_line, tokens) {
+            text.push_str(token);
+            text.push(' ');
+        }
+
         let text = text.repeat(count);
 
         // calculate new selection ranges
@@ -2312,6 +2322,9 @@ fn open(cx: &mut Context, open: Open) {
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
     doc.apply(&transaction, view.id);
+
+    // Since we might have added a comment token, move to the end of the line.
+    goto_line_end_newline(cx);
 }
 
 // o inserts a new line after each line with a selection
@@ -2774,6 +2787,16 @@ pub mod insert {
                 text.reserve_exact(1 + indent.len());
                 text.push_str(doc.line_ending.as_str());
                 text.push_str(&indent);
+
+                let tokens = doc
+                    .language_config()
+                    .map(|lc| lc.comment_tokens.as_ref())
+                    .unwrap_or_default();
+                if let Some(token) = comment::continue_comment(doc.text(), current_line, tokens) {
+                    text.push_str(token);
+                    text.push(' ');
+                }
+
                 pos + offs + text.chars().count()
             };
 
@@ -3560,7 +3583,7 @@ fn toggle_comments(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let token = doc
         .language_config()
-        .and_then(|lc| lc.comment_token.as_ref())
+        .and_then(|lc| lc.comment_tokens.get(0))
         .map(|tc| tc.as_ref());
     let transaction = comment::toggle_line_comments(doc.text(), doc.selection(view.id), token);
 
