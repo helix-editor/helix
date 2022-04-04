@@ -905,22 +905,26 @@ fn move_next_long_word_end(cx: &mut Context) {
 
 fn move_para_impl<F>(cx: &mut Context, move_fn: F)
 where
-    F: Fn(RopeSlice, Range, usize, Movement) -> Range,
+    F: Fn(RopeSlice, Range, usize, Movement) -> Range + 'static,
 {
     let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-    let behavior = if doc.mode == Mode::Select {
-        Movement::Extend
-    } else {
-        Movement::Move
-    };
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+        let text = doc.text().slice(..);
+        let behavior = if doc.mode == Mode::Select {
+            Movement::Extend
+        } else {
+            Movement::Move
+        };
 
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| move_fn(text, range, count, behavior));
-    doc.set_selection(view.id, selection);
+        let selection = doc
+            .selection(view.id)
+            .clone()
+            .transform(|range| move_fn(text, range, count, behavior));
+        doc.set_selection(view.id, selection);
+    };
+    motion(cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
 }
 
 fn move_prev_paragraph(cx: &mut Context) {
