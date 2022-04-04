@@ -293,7 +293,7 @@ pub mod completers {
             .filter_map(|config| {
                 matcher
                     .fuzzy_match(&config.language_id, input)
-                    .map(|score| (config.language_id.clone(), score))
+                    .map(|score| (&config.language_id, score))
             })
             .collect();
 
@@ -301,7 +301,7 @@ pub mod completers {
 
         matches
             .into_iter()
-            .map(|(language, _score)| ((0..), language.into()))
+            .map(|(language, _score)| ((0..), language.clone().into()))
             .collect()
     }
 
