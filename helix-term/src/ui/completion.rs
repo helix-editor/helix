@@ -4,6 +4,7 @@ use helix_view::editor::CompleteAction;
 use helix_view::theme::{Modifier, Style};
 use helix_view::Theme;
 use tui::buffer::Buffer as Surface;
+use tui::text::{Span, Spans};
 
 use std::borrow::Cow;
 
@@ -29,7 +30,7 @@ impl menu::Item for CompletionItem {
         self.label.as_str()
     }
 
-    fn row(&self, theme: Option<&Theme>) -> menu::Row {
+    fn row(&self, data: Option<(&Theme, &Vec<usize>)>) -> menu::Row {
         let (lsp_type_label, style) = match self.kind {
             Some(lsp::CompletionItemKind::TEXT) => ("text", Some("ui.text")),
             Some(lsp::CompletionItemKind::METHOD) => ("method", Some("function.method")),
@@ -64,11 +65,52 @@ impl menu::Item for CompletionItem {
             None => ("", None),
         };
 
+        // fuzzy_indices is a vector of indices, which can be
+        // not consecutives. These are two valid fuzzy_indices vectors
+        // [0,1]
+        // [1,2,3,7,8,10]
+        let spans = if let Some((theme, fuzzy_indices)) = data {
+            let mut fuzzy_start: usize = fuzzy_indices
+                .first()
+                .map_or(fuzzy_indices.len(), |first| *first);
+            let mut fuzzy_end = 0;
+            // In most cases we have three spans, start_match_end
+            let mut results = Vec::with_capacity(3);
+            for i in 1..fuzzy_indices.len() {
+                // We hit the end of a group of consecutive indices
+                if fuzzy_indices[i - 1] + 1 != fuzzy_indices[i] {
+                    results.push(Span::styled(
+                        &self.label[fuzzy_end..fuzzy_start],
+                        Style::default(),
+                    ));
+                    fuzzy_end = fuzzy_indices[i - 1] + 1;
+                    results.push(Span::styled(
+                        &self.label[fuzzy_start..fuzzy_end],
+                        theme.get("special").add_modifier(Modifier::BOLD),
+                    ));
+                    fuzzy_start = fuzzy_indices[i];
+                }
+            }
+            // Always add these three spans: start_match_end
+            results.push(Span::styled(
+                &self.label[fuzzy_end..fuzzy_start],
+                Style::default(),
+            ));
+            fuzzy_end = fuzzy_indices.last().map_or(0, |last| *last + 1);
+            results.push(Span::styled(
+                &self.label[fuzzy_start..fuzzy_end],
+                theme.get("special").add_modifier(Modifier::BOLD),
+            ));
+            results.push(Span::styled(&self.label[fuzzy_end..], Style::default()));
+            results
+        } else {
+            vec![Span::styled(self.label.as_str(), Style::default())]
+        };
+
         menu::Row::new(vec![
-            menu::Cell::from(self.label.as_str()),
+            menu::Cell::from(Spans::from(spans)),
             menu::Cell::from(lsp_type_label).style(
-                theme
-                    .and_then(|theme| style.and_then(|style| theme.try_get(style)))
+                data.and_then(|(theme, _)| style.and_then(|style| theme.try_get(style)))
                     .map_or(Style::default(), |mut style| {
                         style.bg = None;
                         style

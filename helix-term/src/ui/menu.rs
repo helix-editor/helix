@@ -23,7 +23,7 @@ pub trait Item {
         self.label()
     }
 
-    fn row(&self, _theme: Option<&Theme>) -> Row {
+    fn row(&self, _theme: Option<(&Theme, &Vec<usize>)>) -> Row {
         Row::new(vec![Cell::from(self.label())])
     }
 }
@@ -35,7 +35,7 @@ pub struct Menu<T: Item> {
 
     matcher: Box<Matcher>,
     /// (index, score)
-    matches: Vec<(usize, i64)>,
+    matches: Vec<(usize, i64, Vec<usize>)>,
 
     widths: Vec<Constraint>,
 
@@ -84,13 +84,13 @@ impl<T: Item> Menu<T> {
                     let text = option.filter_text();
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
                     self.matcher
-                        .fuzzy_match(text, pattern)
-                        .map(|score| (index, score))
+                        .fuzzy_indices(text, pattern)
+                        .map(|(score, fuzzy_indices)| (index, score, fuzzy_indices))
                 }),
         );
         // matches.sort_unstable_by_key(|(_, score)| -score);
         self.matches
-            .sort_unstable_by_key(|(index, _score)| self.options[*index].sort_text());
+            .sort_unstable_by_key(|(index, _score, _)| self.options[*index].sort_text());
 
         // reset cursor position
         self.cursor = None;
@@ -183,7 +183,7 @@ impl<T: Item> Menu<T> {
         self.cursor.and_then(|cursor| {
             self.matches
                 .get(cursor)
-                .map(|(index, _score)| &self.options[*index])
+                .map(|(index, _score, _)| &self.options[*index])
         })
     }
 
@@ -277,9 +277,9 @@ impl<T: Item + 'static> Component for Menu<T> {
         let options: Vec<_> = self
             .matches
             .iter()
-            .map(|(index, _score)| {
+            .map(|(index, _score, fuzzy_indices)| {
                 // (index, self.options.get(*index).unwrap()) // get_unchecked
-                &self.options[*index] // get_unchecked
+                (&self.options[*index], fuzzy_indices) // get_unchecked
             })
             .collect();
 
@@ -296,7 +296,9 @@ impl<T: Item + 'static> Component for Menu<T> {
         let scroll_line = (win_height - scroll_height) * scroll
             / std::cmp::max(1, len.saturating_sub(win_height));
 
-        let rows = options.iter().map(|option| option.row(Some(theme)));
+        let rows = options
+            .iter()
+            .map(|(option, fuzzy_indices)| option.row(Some((theme, fuzzy_indices))));
         let table = Table::new(rows)
             .style(style)
             .highlight_style(selected)
