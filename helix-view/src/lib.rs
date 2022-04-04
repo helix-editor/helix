@@ -1,17 +1,22 @@
 #[macro_use]
 pub mod macros;
 
+pub mod args;
 pub mod backend {
     #[cfg(feature = "term")]
     pub mod term;
 }
 pub mod clipboard;
+pub mod commands;
 pub mod compositor;
 pub mod document;
 pub mod editor;
+pub mod ui;
 pub use helix_graphics as graphics;
 pub mod gutter;
 pub mod job;
+pub mod keymap;
+pub use keymap::macros::*;
 pub mod handlers {
     #[cfg(feature = "dap")]
     pub mod dap;
@@ -45,6 +50,17 @@ impl std::fmt::Display for DocumentId {
 
 slotmap::new_key_type! {
     pub struct ViewId;
+}
+
+#[cfg(not(windows))]
+pub fn true_color() -> bool {
+    std::env::var("COLORTERM")
+        .map(|v| matches!(v.as_str(), "truecolor" | "24bit"))
+        .unwrap_or(false)
+}
+#[cfg(windows)]
+pub fn true_color() -> bool {
+    true
 }
 
 pub enum Align {

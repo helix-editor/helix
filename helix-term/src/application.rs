@@ -5,17 +5,19 @@ use helix_core::{
 };
 
 #[cfg(feature = "lsp")]
-use crate::commands::apply_workspace_edit;
-#[cfg(feature = "lsp")]
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
+#[cfg(feature = "lsp")]
+use helix_view::commands::apply_workspace_edit;
 #[cfg(feature = "lsp")]
 use serde_json::json;
 
-use helix_view::{align_view, editor::ConfigEvent, graphics::Rect, theme, Align, Editor};
+use helix_view::{
+    align_view, editor::ConfigEvent, graphics::Rect, theme, true_color, Align, Editor,
+};
 
-use crate::{
-    args::Args,
-    config::Config,
+use crate::{args::Args, config::Config};
+
+use helix_view::{
     keymap::Keymaps,
     ui::{self, overlay::overlayed},
 };
@@ -96,7 +98,7 @@ impl Application {
             &helix_loader::runtime_dir(),
         ));
 
-        let true_color = config.editor.true_color || crate::true_color();
+        let true_color = config.editor.true_color || true_color();
         let theme = config
             .theme
             .as_ref()
@@ -358,7 +360,7 @@ impl Application {
     }
 
     fn true_color(&self) -> bool {
-        self.config.load().editor.true_color || crate::true_color()
+        self.config.load().editor.true_color || true_color()
     }
 
     #[cfg(windows)]

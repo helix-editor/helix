@@ -7,10 +7,10 @@ use helix_lsp::{
 use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::Selection;
-use helix_view::editor::Action;
+use crate::editor::Action;
 
 use crate::ui::{self, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent};
-use helix_view::compositor::{self, Compositor};
+use crate::compositor::{self, Compositor};
 
 use std::borrow::Cow;
 
@@ -255,7 +255,7 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup = Popup::new("code-action", picker).margin(helix_view::graphics::Margin {
+            let popup = Popup::new("code-action", picker).margin(crate::graphics::Margin {
                 vertical: 1,
                 horizontal: 1,
             });

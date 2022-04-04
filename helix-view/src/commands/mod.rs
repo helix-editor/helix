@@ -10,6 +10,16 @@ pub use dap::*;
 pub use lsp::*;
 pub use typed::*;
 
+use crate::{
+    clipboard::ClipboardType,
+    document::{Mode, SCRATCH_BUFFER_NAME},
+    editor::{Action, Motion},
+    info::Info,
+    input::KeyEvent,
+    keyboard::KeyCode,
+    view::View,
+    Document, DocumentId, Editor, ViewId,
+};
 use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
@@ -29,18 +39,8 @@ use helix_core::{
     LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril,
     Transaction,
 };
-use helix_view::{
-    clipboard::ClipboardType,
-    document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{Action, Motion},
-    info::Info,
-    input::KeyEvent,
-    keyboard::KeyCode,
-    view::View,
-    Document, DocumentId, Editor, ViewId,
-};
 
-use helix_view::{
+use crate::{
     compositor::{self, Component, Compositor},
     job::{self, Job, Jobs},
 };
@@ -56,8 +56,13 @@ use crate::{
 };
 
 use futures_util::{FutureExt, StreamExt};
-use std::{collections::HashMap, fmt, future::Future};
-use std::{collections::HashSet, num::NonZeroUsize};
+
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+    future::Future,
+    num::NonZeroUsize,
+};
 
 use std::{
     borrow::Cow,
@@ -77,7 +82,7 @@ pub struct Context<'a> {
     pub count: Option<NonZeroUsize>,
     pub editor: &'a mut Editor,
 
-    pub callback: Option<helix_view::compositor::Callback>,
+    pub callback: Option<crate::compositor::Callback>,
     pub on_next_key_callback: Option<Box<dyn FnOnce(&mut Context, KeyEvent)>>,
     pub jobs: &'a mut Jobs,
 }
@@ -126,7 +131,7 @@ impl<'a> Context<'a> {
     }
 }
 
-use helix_view::{align_view, Align};
+use crate::{align_view, Align};
 
 /// A MappableCommand is either a static command like "jump_view_up" or a Typable command like
 /// :format. It causes a side-effect on the state (usually by creating and applying a transaction).
@@ -4397,8 +4402,8 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
 }
 
 fn suspend(_cx: &mut Context) {
-    #[cfg(not(windows))]
-    signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
+    // #[cfg(not(windows))]
+    // signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
 }
 
 fn add_newline_above(cx: &mut Context) {
@@ -4557,7 +4562,7 @@ fn record_macro(cx: &mut Context) {
 fn replay_macro(cx: &mut Context) {
     let reg = cx.register.unwrap_or('@');
     let keys: Vec<KeyEvent> = if let Some([keys_str]) = cx.editor.registers.read(reg) {
-        match helix_view::input::parse_macro(keys_str) {
+        match crate::input::parse_macro(keys_str) {
             Ok(keys) => keys,
             Err(err) => {
                 cx.editor.set_error(format!("Invalid macro: {}", err));

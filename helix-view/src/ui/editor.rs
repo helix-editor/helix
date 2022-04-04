@@ -4,7 +4,7 @@ use crate::{
     ui::{Completion, ProgressSpinners},
 };
 
-use helix_view::compositor::{Component, Context, Event, EventResult, RenderContext};
+use crate::compositor::{Component, Context, Event, EventResult, RenderContext};
 
 use helix_core::{
     coords_at_pos, encoding,
@@ -17,7 +17,7 @@ use helix_core::{
     unicode::width::UnicodeWidthStr,
     LineEnding, Position, Range, Selection, Transaction,
 };
-use helix_view::{
+use crate::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{CursorKind, Modifier, Rect, Style},
@@ -928,7 +928,7 @@ impl EditorView {
         editor.clear_idle_timer(); // don't retrigger
     }
 
-    pub fn handle_idle_timeout(&mut self, cx: &mut helix_view::compositor::Context) -> EventResult {
+    pub fn handle_idle_timeout(&mut self, cx: &mut crate::compositor::Context) -> EventResult {
         if self.completion.is_some()
             || !cx.editor.config().auto_completion
             || doc!(cx.editor).mode != Mode::Insert
@@ -1163,7 +1163,7 @@ impl Component for EditorView {
     fn handle_event(
         &mut self,
         event: Event,
-        context: &mut helix_view::compositor::Context,
+        context: &mut crate::compositor::Context,
     ) -> EventResult {
         let mut cx = commands::Context {
             editor: context.editor,
@@ -1314,7 +1314,7 @@ impl Component for EditorView {
         // render status msg
         if let Some((status_msg, severity)) = &cx.editor.status_msg {
             status_msg_width = status_msg.width();
-            use helix_view::editor::Severity;
+            use crate::editor::Severity;
             let style = if *severity == Severity::Error {
                 cx.editor.theme.get("error")
             } else {
@@ -1361,7 +1361,7 @@ impl Component for EditorView {
             if let Some((reg, _)) = cx.editor.macro_recording {
                 let disp = format!("[{}]", reg);
                 let style = style
-                    .fg(helix_view::graphics::Color::Yellow)
+                    .fg(crate::graphics::Color::Yellow)
                     .add_modifier(Modifier::BOLD);
                 cx.surface.set_string(
                     area.x + area.width.saturating_sub(3),

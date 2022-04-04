@@ -1,4 +1,4 @@
-use helix_view::compositor::{Component, RenderContext};
+use crate::compositor::{Component, RenderContext};
 use tui::text::{Span, Spans, Text};
 
 use std::sync::Arc;
@@ -9,7 +9,7 @@ use helix_core::{
     syntax::{self, HighlightEvent, Syntax},
     Rope,
 };
-use helix_view::{
+use crate::{
     graphics::{Margin, Rect, Style},
     Theme,
 };

@@ -1,13 +1,13 @@
 use super::{Context, Editor};
+use crate::editor::Breakpoint;
 use crate::ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent, Text};
-use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion};
-use helix_dap::{self as dap, Client};
-use helix_lsp::block_on;
-use helix_view::editor::Breakpoint;
-use helix_view::{
+use crate::{
     compositor::{self, Compositor},
     job::{Callback, Jobs},
 };
+use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion};
+use helix_dap::{self as dap, Client};
+use helix_lsp::block_on;
 
 use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -18,7 +18,8 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, bail};
 
-use helix_view::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select_thread_id};
+use crate::debugger;
+use crate::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select_thread_id};
 
 fn thread_picker(
     cx: &mut Context,
@@ -474,7 +475,7 @@ pub fn dap_variables(cx: &mut Context) {
     let text_style = theme.get("ui.text.focus");
 
     for scope in scopes.iter() {
-        // use helix_view::graphics::Style;
+        // use crate::graphics::Style;
         use tui::text::{Span, Spans};
         let response = block_on(debugger.variables(scope.variables_reference));
 

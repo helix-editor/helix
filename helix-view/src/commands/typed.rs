@@ -1,6 +1,6 @@
 use super::*;
 
-use helix_view::editor::{Action, ConfigEvent};
+use crate::editor::{Action, ConfigEvent};
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]

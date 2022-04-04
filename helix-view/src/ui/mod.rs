@@ -19,9 +19,9 @@ pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
+use crate::{Document, Editor, View};
 use helix_core::regex::Regex;
 use helix_core::regex::RegexBuilder;
-use helix_view::{Document, Editor, View};
 
 use std::path::PathBuf;
 
@@ -30,7 +30,7 @@ pub fn prompt(
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
-    callback_fn: impl FnMut(&mut helix_view::compositor::Context, &str, PromptEvent) + 'static,
+    callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
     let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
     // Calculate initial completion
@@ -55,7 +55,7 @@ pub fn regex_prompt(
         prompt,
         history_register,
         completion_fn,
-        move |cx: &mut helix_view::compositor::Context, input: &str, event: PromptEvent| {
+        move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
             match event {
                 PromptEvent::Abort => {
                     let (view, doc) = current!(cx.editor);
@@ -111,7 +111,7 @@ pub fn regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
+pub fn file_picker(root: PathBuf, config: &crate::editor::Config) -> FilePicker<PathBuf> {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time::Instant;
 
@@ -188,12 +188,12 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 }
 
 pub mod completers {
+    use crate::document::SCRATCH_BUFFER_NAME;
+    use crate::theme;
     use crate::ui::prompt::Completion;
+    use crate::{editor::Config, Editor};
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
-    use helix_view::document::SCRATCH_BUFFER_NAME;
-    use helix_view::theme;
-    use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::cmp::Reverse;

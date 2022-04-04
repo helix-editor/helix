@@ -61,3 +61,69 @@ macro_rules! doc {
         $crate::current_ref!($editor).1
     }};
 }
+
+// Keymap macros
+
+#[macro_export]
+macro_rules! key {
+    ($key:ident) => {
+        $crate::input::KeyEvent {
+            code: $crate::keyboard::KeyCode::$key,
+            modifiers: $crate::keyboard::KeyModifiers::NONE,
+        }
+    };
+    ($($ch:tt)*) => {
+        $crate::input::KeyEvent {
+            code: $crate::keyboard::KeyCode::Char($($ch)*),
+            modifiers: $crate::keyboard::KeyModifiers::NONE,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! shift {
+    ($key:ident) => {
+        $crate::input::KeyEvent {
+            code: $crate::keyboard::KeyCode::$key,
+            modifiers: $crate::keyboard::KeyModifiers::SHIFT,
+        }
+    };
+    ($($ch:tt)*) => {
+        $crate::input::KeyEvent {
+            code: $crate::keyboard::KeyCode::Char($($ch)*),
+            modifiers: $crate::keyboard::KeyModifiers::SHIFT,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! ctrl {
+    ($key:ident) => {
+        $crate::input::KeyEvent {
+            code: $crate::keyboard::KeyCode::$key,
+            modifiers: $crate::keyboard::KeyModifiers::CONTROL,
+        }
+    };
+    ($($ch:tt)*) => {
+        $crate::input::KeyEvent {
+            code: $crate::keyboard::KeyCode::Char($($ch)*),
+            modifiers: $crate::keyboard::KeyModifiers::CONTROL,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! alt {
+    ($key:ident) => {
+        $crate::input::KeyEvent {
+            code: $crate::keyboard::KeyCode::$key,
+            modifiers: $crate::keyboard::KeyModifiers::ALT,
+        }
+    };
+    ($($ch:tt)*) => {
+        $crate::input::KeyEvent {
+            code: $crate::keyboard::KeyCode::Char($($ch)*),
+            modifiers: $crate::keyboard::KeyModifiers::ALT,
+        }
+    };
+}

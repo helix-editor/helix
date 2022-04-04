@@ -2,7 +2,7 @@ use crate::{
     ctrl, key, shift,
     ui::{self, EditorView},
 };
-use helix_view::compositor::{Component, Compositor, Context, Event, EventResult, RenderContext};
+use crate::compositor::{Component, Compositor, Context, Event, EventResult, RenderContext};
 use tui::widgets::{Block, BorderType, Borders};
 
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
@@ -20,7 +20,7 @@ use std::{
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::{movement::Direction, Position};
-use helix_view::{
+use crate::{
     editor::Action,
     graphics::{Color, CursorKind, Margin, Modifier, Rect, Style},
     Document, Editor,

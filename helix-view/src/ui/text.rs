@@ -1,6 +1,5 @@
-use helix_view::compositor::{Component, RenderContext};
-
-use helix_view::graphics::Rect;
+use crate::compositor::{Component, RenderContext};
+use crate::graphics::Rect;
 
 pub struct Text {
     pub(crate) contents: tui::text::Text<'static>,

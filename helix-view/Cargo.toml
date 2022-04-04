@@ -23,6 +23,7 @@ helix-core = { version = "0.6", path = "../helix-core" }
 helix-graphics = { version = "0.6", path = "../helix-graphics" }
 helix-lsp = { version = "0.6", path = "../helix-lsp", optional = true }
 helix-dap = { version = "0.6", path = "../helix-dap", optional = true }
+helix-loader = { version = "0.6", path = "../helix-loader" }
 tokio-stream = { version = "0.1", optional = true }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "sync"], optional = true }
 
@@ -45,6 +46,23 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.5"
 log = "~0.4"
+
+# Command dependencies
+
+# File picker
+fuzzy-matcher = "0.3"
+ignore = "0.4"
+# markdown doc rendering
+pulldown-cmark = { version = "0.9", default-features = false }
+# file type detection
+content_inspector = "0.2.4"
+
+# ripgrep for global search
+grep-regex = "0.1.9"
+grep-searcher = "0.1.8"
+
+# Remove once retain_mut lands in stable rust
+retain_mut = "0.1.7"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 which = "4.2"

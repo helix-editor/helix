@@ -1,10 +1,10 @@
-use helix_view::compositor::{Component, Context, Event, EventResult, RenderContext};
-use helix_view::editor::CompleteAction;
+use crate::compositor::{Component, Context, Event, EventResult, RenderContext};
+use crate::editor::CompleteAction;
 
 use std::borrow::Cow;
 
 use helix_core::{Change, Transaction};
-use helix_view::{
+use crate::{
     graphics::Rect,
     input::{KeyCode, KeyEvent},
     Document, Editor,

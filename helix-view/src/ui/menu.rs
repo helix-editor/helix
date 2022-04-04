@@ -1,5 +1,5 @@
 use crate::{ctrl, key, shift};
-use helix_view::compositor::{
+use crate::compositor::{
     Callback, Component, Compositor, Context, Event, EventResult, RenderContext,
 };
 use tui::widgets::Table;
@@ -9,7 +9,7 @@ pub use tui::widgets::{Cell, Row};
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 
-use helix_view::{graphics::Rect, Editor};
+use crate::{graphics::Rect, Editor};
 use tui::layout::Constraint;
 
 pub trait Item {
