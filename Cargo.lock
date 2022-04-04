@@ -453,7 +453,6 @@ dependencies = [
  "helix-view",
  "ignore",
  "log",
- "num_cpus",
  "once_cell",
  "pulldown-cmark",
  "retain_mut",
