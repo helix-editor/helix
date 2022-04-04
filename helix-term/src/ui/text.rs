@@ -1,4 +1,4 @@
-use crate::compositor::{Component, RenderContext};
+use helix_view::compositor::{Component, RenderContext};
 
 use helix_view::graphics::Rect;
 

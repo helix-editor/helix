@@ -1,6 +1,6 @@
-use crate::{
-    compositor::{Callback, Component, Compositor, Context, Event, EventResult, RenderContext},
-    ctrl, key, shift,
+use crate::{ctrl, key, shift};
+use helix_view::compositor::{
+    Callback, Component, Compositor, Context, Event, EventResult, RenderContext,
 };
 use tui::widgets::Table;
 

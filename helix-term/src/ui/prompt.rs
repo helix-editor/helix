@@ -1,4 +1,4 @@
-use crate::compositor::{Component, Compositor, Context, Event, EventResult, RenderContext};
+use helix_view::compositor::{Component, Compositor, Context, Event, EventResult, RenderContext};
 use crate::{alt, ctrl, key, shift, ui};
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;

@@ -23,7 +23,7 @@ pub use self::table::{Cell, Row, Table, TableState};
 use crate::buffer::Buffer;
 use bitflags::bitflags;
 
-use helix_view::graphics::Rect;
+use helix_graphics::Rect;
 
 bitflags! {
     /// Bitflags that can be composed to set the visible borders essentially on the block widget.

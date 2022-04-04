@@ -8,7 +8,7 @@ use crate::{
     },
 };
 use helix_core::unicode::width::UnicodeWidthStr;
-use helix_view::graphics::{Rect, Style};
+use helix_graphics::{Rect, Style};
 use std::iter;
 
 fn get_line_offset(line_width: u16, text_area_width: u16, alignment: Alignment) -> u16 {
@@ -27,7 +27,7 @@ fn get_line_offset(line_width: u16, text_area_width: u16, alignment: Alignment) 
 /// # use helix_tui::text::{Text, Spans, Span};
 /// # use helix_tui::widgets::{Block, Borders, Paragraph, Wrap};
 /// # use helix_tui::layout::{Alignment};
-/// # use helix_view::graphics::{Style, Color, Modifier};
+/// # use helix_graphics::{Style, Color, Modifier};
 /// let text = vec![
 ///     Spans::from(vec![
 ///         Span::raw("First"),

@@ -3,7 +3,7 @@ use helix_core::unicode::width::UnicodeWidthStr;
 use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
 
-use helix_view::graphics::{Color, Modifier, Rect, Style};
+use helix_graphics::{Color, Modifier, Rect, Style};
 
 /// A buffer cell
 #[derive(Debug, Clone, PartialEq)]
@@ -87,7 +87,7 @@ impl Default for Cell {
 ///
 /// ```
 /// use helix_tui::buffer::{Buffer, Cell};
-/// use helix_view::graphics::{Rect, Color, Style, Modifier};
+/// use helix_graphics::{Rect, Color, Style, Modifier};
 ///
 /// let mut buf = Buffer::empty(Rect{x: 0, y: 0, width: 10, height: 5});
 /// buf[(0, 2)].set_symbol("x");
@@ -179,7 +179,7 @@ impl Buffer {
     ///
     /// ```
     /// # use helix_tui::buffer::Buffer;
-    /// # use helix_view::graphics::Rect;
+    /// # use helix_graphics::Rect;
     /// let rect = Rect::new(200, 100, 10, 10);
     /// let buffer = Buffer::empty(rect);
     /// // Global coordinates inside the Buffer's area
@@ -204,7 +204,7 @@ impl Buffer {
     ///
     /// ```
     /// # use helix_tui::buffer::Buffer;
-    /// # use helix_view::graphics::Rect;
+    /// # use helix_graphics::Rect;
     /// let rect = Rect::new(200, 100, 10, 10);
     /// let buffer = Buffer::empty(rect);
     /// // Global coordinates to the top corner of this Buffer's area
@@ -243,7 +243,7 @@ impl Buffer {
     ///
     /// ```
     /// # use helix_tui::buffer::Buffer;
-    /// # use helix_view::graphics::Rect;
+    /// # use helix_graphics::Rect;
     /// let rect = Rect::new(200, 100, 10, 10);
     /// let buffer = Buffer::empty(rect);
     /// assert_eq!(buffer.pos_of(0), (200, 100));

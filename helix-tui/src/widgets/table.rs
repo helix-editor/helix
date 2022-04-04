@@ -10,7 +10,7 @@ use cassowary::{
     {Expression, Solver},
 };
 use helix_core::unicode::width::UnicodeWidthStr;
-use helix_view::graphics::{Rect, Style};
+use helix_graphics::{Rect, Style};
 use std::collections::HashMap;
 
 /// A [`Cell`] contains the [`Text`] to be displayed in a [`Row`] of a [`Table`].
@@ -19,7 +19,7 @@ use std::collections::HashMap;
 /// ```rust
 /// # use helix_tui::widgets::Cell;
 /// # use helix_tui::text::{Span, Spans, Text};
-/// # use helix_view::graphics::{Style, Modifier};
+/// # use helix_graphics::{Style, Modifier};
 /// Cell::from("simple string");
 ///
 /// Cell::from(Span::from("span"));
@@ -71,7 +71,7 @@ where
 /// But if you need a bit more control over individual cells, you can explicitly create [`Cell`]s:
 /// ```rust
 /// # use helix_tui::widgets::{Row, Cell};
-/// # use helix_view::graphics::{Style, Color};
+/// # use helix_graphics::{Style, Color};
 /// Row::new(vec![
 ///     Cell::from("Cell1"),
 ///     Cell::from("Cell2").style(Style::default().fg(Color::Yellow)),
@@ -134,7 +134,7 @@ impl<'a> Row<'a> {
 /// ```rust
 /// # use helix_tui::widgets::{Block, Borders, Table, Row, Cell};
 /// # use helix_tui::layout::Constraint;
-/// # use helix_view::graphics::{Style, Color, Modifier};
+/// # use helix_graphics::{Style, Color, Modifier};
 /// # use helix_tui::text::{Text, Spans, Span};
 /// Table::new(vec![
 ///     // Row can be created from simple strings.

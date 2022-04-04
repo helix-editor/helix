@@ -4,7 +4,7 @@ use helix_view::{
     Editor,
 };
 
-use crate::compositor::{Component, Context, Event, EventResult, RenderContext};
+use helix_view::compositor::{Component, Context, Event, EventResult, RenderContext};
 
 /// Contains a component placed in the center of the parent component
 pub struct Overlay<T> {

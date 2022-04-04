@@ -40,6 +40,11 @@ use helix_view::{
     Document, DocumentId, Editor, ViewId,
 };
 
+use helix_view::{
+    compositor::{self, Component, Compositor},
+    job::{self, Job, Jobs},
+};
+
 use anyhow::{anyhow, bail, ensure, Context as _};
 use fuzzy_matcher::FuzzyMatcher;
 use insert::*;
@@ -47,11 +52,9 @@ use movement::Movement;
 
 use crate::{
     args,
-    compositor::{self, Component, Compositor},
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 
-use crate::job::{self, Job, Jobs};
 use futures_util::{FutureExt, StreamExt};
 use std::{collections::HashMap, fmt, future::Future};
 use std::{collections::HashSet, num::NonZeroUsize};
@@ -74,7 +77,7 @@ pub struct Context<'a> {
     pub count: Option<NonZeroUsize>,
     pub editor: &'a mut Editor,
 
-    pub callback: Option<crate::compositor::Callback>,
+    pub callback: Option<helix_view::compositor::Callback>,
     pub on_next_key_callback: Option<Box<dyn FnOnce(&mut Context, KeyEvent)>>,
     pub jobs: &'a mut Jobs,
 }

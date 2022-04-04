@@ -1,7 +1,5 @@
-use crate::{
-    compositor::{Callback, Component, Context, Event, EventResult, RenderContext},
-    ctrl, key,
-};
+use crate::{ctrl, key};
+use helix_view::compositor::{Callback, Component, Context, Event, EventResult, RenderContext};
 
 use helix_core::Position;
 use helix_view::{

@@ -15,11 +15,14 @@ use helix_view::{align_view, editor::ConfigEvent, graphics::Rect, theme, Align, 
 
 use crate::{
     args::Args,
-    compositor::{Compositor, Event},
     config::Config,
-    job::Jobs,
     keymap::Keymaps,
     ui::{self, overlay::overlayed},
+};
+
+use helix_view::{
+    compositor::{Compositor, Event},
+    job::Jobs,
 };
 
 use std::{
@@ -233,7 +236,7 @@ impl Application {
 
         // let area = *surface.area();
 
-        let mut render_cx = crate::compositor::RenderContext {
+        let mut render_cx = helix_view::compositor::RenderContext {
             editor: &self.editor,
             surface,
             scroll: None,
@@ -384,13 +387,13 @@ impl Application {
     }
 
     pub fn handle_idle_timeout(&mut self) {
-        use crate::compositor::EventResult;
+        use helix_view::compositor::EventResult;
         let editor_view = self
             .compositor
             .find::<ui::EditorView>()
             .expect("expected at least one EditorView");
 
-        let mut cx = crate::compositor::Context {
+        let mut cx = helix_view::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
         };
@@ -403,7 +406,7 @@ impl Application {
         &mut self,
         event: Option<Result<CrosstermEvent, crossterm::ErrorKind>>,
     ) {
-        let mut cx = crate::compositor::Context {
+        let mut cx = helix_view::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
         };

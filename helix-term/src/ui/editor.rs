@@ -1,10 +1,10 @@
 use crate::{
-    commands,
-    compositor::{Component, Context, Event, EventResult, RenderContext},
-    key,
+    commands, key,
     keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
+
+use helix_view::compositor::{Component, Context, Event, EventResult, RenderContext};
 
 use helix_core::{
     coords_at_pos, encoding,
@@ -928,7 +928,7 @@ impl EditorView {
         editor.clear_idle_timer(); // don't retrigger
     }
 
-    pub fn handle_idle_timeout(&mut self, cx: &mut crate::compositor::Context) -> EventResult {
+    pub fn handle_idle_timeout(&mut self, cx: &mut helix_view::compositor::Context) -> EventResult {
         if self.completion.is_some()
             || !cx.editor.config().auto_completion
             || doc!(cx.editor).mode != Mode::Insert
@@ -1163,7 +1163,7 @@ impl Component for EditorView {
     fn handle_event(
         &mut self,
         event: Event,
-        context: &mut crate::compositor::Context,
+        context: &mut helix_view::compositor::Context,
     ) -> EventResult {
         let mut cx = commands::Context {
             editor: context.editor,

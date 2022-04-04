@@ -1,13 +1,13 @@
 use super::{Context, Editor};
-use crate::{
-    compositor::{self, Compositor},
-    job::{Callback, Jobs},
-    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
-};
+use crate::ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent, Text};
 use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion};
 use helix_dap::{self as dap, Client};
 use helix_lsp::block_on;
 use helix_view::editor::Breakpoint;
+use helix_view::{
+    compositor::{self, Compositor},
+    job::{Callback, Jobs},
+};
 
 use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;

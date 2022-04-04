@@ -8,7 +8,7 @@ use crossterm::{
     },
     terminal::{self, Clear, ClearType},
 };
-use helix_view::graphics::{Color, CursorKind, Modifier, Rect};
+use helix_graphics::{Color, CursorKind, Modifier, Rect};
 use std::io::{self, Write};
 
 pub struct CrosstermBackend<W: Write> {

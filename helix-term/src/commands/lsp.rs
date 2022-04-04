@@ -9,10 +9,8 @@ use super::{align_view, push_jump, Align, Context, Editor};
 use helix_core::Selection;
 use helix_view::editor::Action;
 
-use crate::{
-    compositor::{self, Compositor},
-    ui::{self, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent},
-};
+use crate::ui::{self, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent};
+use helix_view::compositor::{self, Compositor};
 
 use std::borrow::Cow;
 

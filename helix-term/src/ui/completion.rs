@@ -1,4 +1,4 @@
-use crate::compositor::{Component, Context, Event, EventResult, RenderContext};
+use helix_view::compositor::{Component, Context, Event, EventResult, RenderContext};
 use helix_view::editor::CompleteAction;
 
 use std::borrow::Cow;

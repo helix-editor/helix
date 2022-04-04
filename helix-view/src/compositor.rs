@@ -1,8 +1,8 @@
 // Each component declares it's own size constraints and gets fitted based on it's parent.
 // Q: how does this work with popups?
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
+use crate::graphics::{CursorKind, Rect};
 use helix_core::Position;
-use helix_view::graphics::{CursorKind, Rect};
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
 
@@ -13,15 +13,16 @@ pub enum EventResult {
 }
 
 use crate::job::Jobs;
-use helix_view::Editor;
+use crate::Editor;
 
-pub use helix_view::input::Event;
+pub use crate::input::Event;
 
 pub struct Context<'a> {
     pub editor: &'a mut Editor,
     pub jobs: &'a mut Jobs,
 }
 
+#[cfg(feature = "term")]
 mod term {
     use super::*;
     pub use tui::buffer::Buffer as Surface;
@@ -33,6 +34,7 @@ mod term {
     }
 }
 
+#[cfg(feature = "term")]
 pub use term::*;
 
 pub trait Component: Any + AnyComponent {
@@ -76,7 +78,8 @@ pub struct Compositor {
     layers: Vec<Box<dyn Component>>,
     area: Rect,
 
-    pub(crate) last_picker: Option<Box<dyn Component>>,
+    // TODO: remove pub
+    pub last_picker: Option<Box<dyn Component>>,
 }
 
 impl Compositor {

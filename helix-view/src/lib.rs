@@ -6,10 +6,12 @@ pub mod backend {
     pub mod term;
 }
 pub mod clipboard;
+pub mod compositor;
 pub mod document;
 pub mod editor;
-pub mod graphics;
+pub use helix_graphics as graphics;
 pub mod gutter;
+pub mod job;
 pub mod handlers {
     #[cfg(feature = "dap")]
     pub mod dap;

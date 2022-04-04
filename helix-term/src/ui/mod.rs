@@ -1,6 +1,5 @@
 mod completion;
 pub(crate) mod editor;
-mod info;
 mod markdown;
 pub mod menu;
 pub mod overlay;
@@ -31,7 +30,7 @@ pub fn prompt(
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
-    callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
+    callback_fn: impl FnMut(&mut helix_view::compositor::Context, &str, PromptEvent) + 'static,
 ) {
     let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
     // Calculate initial completion
@@ -56,7 +55,7 @@ pub fn regex_prompt(
         prompt,
         history_register,
         completion_fn,
-        move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
+        move |cx: &mut helix_view::compositor::Context, input: &str, event: PromptEvent| {
             match event {
                 PromptEvent::Abort => {
                     let (view, doc) = current!(cx.editor);

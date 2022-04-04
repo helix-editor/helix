@@ -1,6 +1,5 @@
-use helix_view::Editor;
-
 use crate::compositor::Compositor;
+use crate::Editor;
 
 use futures_util::future::{self, BoxFuture, Future, FutureExt};
 use futures_util::stream::{FuturesUnordered, StreamExt};

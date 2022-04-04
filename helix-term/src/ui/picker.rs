@@ -1,8 +1,8 @@
 use crate::{
-    compositor::{Component, Compositor, Context, Event, EventResult, RenderContext},
     ctrl, key, shift,
     ui::{self, EditorView},
 };
+use helix_view::compositor::{Component, Compositor, Context, Event, EventResult, RenderContext};
 use tui::widgets::{Block, BorderType, Borders};
 
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
