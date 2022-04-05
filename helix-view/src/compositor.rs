@@ -190,6 +190,7 @@ impl Compositor {
         }
     }
 
+    #[cfg(feature = "term")]
     pub fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         for layer in self.layers.iter().rev() {
             if let (Some(pos), kind) = layer.cursor(area, editor) {

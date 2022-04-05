@@ -994,6 +994,7 @@ fn set_option(
     };
     let config = serde_json::from_value(config).map_err(field_error)?;
 
+    #[cfg(feature = "tokio")]
     cx.editor
         .config_events
         .0
@@ -1121,6 +1122,7 @@ fn refresh_config(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
+    #[cfg(feature = "tokio")]
     cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
     Ok(())
 }

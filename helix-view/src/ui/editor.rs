@@ -55,6 +55,7 @@ impl EditorView {
             keymaps,
             on_next_key: None,
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
+            #[cfg(feature = "term")]
             completion: None,
             spinners: ProgressSpinners::default(),
         }
@@ -1189,6 +1190,7 @@ impl Component for EditorView {
                 EventResult::Consumed(None)
             }
             Event::Key(mut key) => {
+                #[cfg(feature = "term")]
                 cx.editor.reset_idle_timer();
                 canonicalize_key(&mut key);
 
@@ -1206,6 +1208,7 @@ impl Component for EditorView {
                         Mode::Insert => {
                             // let completion swallow the event if necessary
                             let mut consumed = false;
+                            #[cfg(feature = "term")]
                             if let Some(completion) = &mut self.completion {
                                 // use a fake context here
                                 let mut cx = Context {
@@ -1226,6 +1229,7 @@ impl Component for EditorView {
 
                             // if completion didn't take the event, we pass it onto commands
                             if !consumed {
+                                #[cfg(feature = "term")]
                                 if let Some(compl) = cx.editor.last_completion.take() {
                                     self.last_insert.1.push(InsertEvent::CompletionApply(compl));
                                 }
@@ -1236,6 +1240,7 @@ impl Component for EditorView {
                                 self.last_insert.1.push(InsertEvent::Key(key));
 
                                 // lastly we recalculate completion
+                                #[cfg(feature = "term")]
                                 if let Some(completion) = &mut self.completion {
                                     completion.update(&mut cx);
                                     if completion.is_empty() {
@@ -1283,6 +1288,7 @@ impl Component for EditorView {
                         };
                         self.last_insert.1.clear();
                     }
+                    #[cfg(feature = "term")]
                     (Mode::Insert, Mode::Normal) => {
                         // if exiting insert mode, remove completion
                         self.completion = None;
