@@ -52,6 +52,7 @@
 | racket |  |  |  | `racket` |
 | regex | ✓ |  |  |  |
 | rescript | ✓ | ✓ |  | `rescript-language-server` |
+| ron | ✓ |  | ✓ |  |
 | ruby | ✓ |  | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | scala | ✓ |  | ✓ | `metals` |
