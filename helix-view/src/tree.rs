@@ -578,22 +578,22 @@ mod test {
             width: 180,
             height: 80,
         });
-        let mut view = View::new(DocumentId::default());
+        let mut view = View::new(DocumentId::default(), false);
         view.area = Rect::new(0, 0, 180, 80);
         tree.insert(view);
 
         let l0 = tree.focus;
-        let view = View::new(DocumentId::default());
+        let view = View::new(DocumentId::default(), false);
         tree.split(view, Layout::Vertical);
         let r0 = tree.focus;
 
         tree.focus = l0;
-        let view = View::new(DocumentId::default());
+        let view = View::new(DocumentId::default(), false);
         tree.split(view, Layout::Horizontal);
         let l1 = tree.focus;
 
         tree.focus = l0;
-        let view = View::new(DocumentId::default());
+        let view = View::new(DocumentId::default(), false);
         tree.split(view, Layout::Vertical);
         let l2 = tree.focus;
 
