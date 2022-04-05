@@ -624,7 +624,6 @@ impl Document {
         self.set_language(language_config, Some(config_loader));
     }
 
-    #[cfg(feature = "lsp")]
     /// Set the programming language for the file if you know the language but don't have the
     /// [`syntax::LanguageConfiguration`] for it.
     pub fn set_language_by_language_id(

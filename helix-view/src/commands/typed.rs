@@ -205,23 +205,31 @@ fn write_impl(
     if doc.path().is_none() {
         bail!("cannot write a buffer without a filename");
     }
-    let fmt = doc.auto_format().map(|fmt| {
-        let shared = fmt.shared();
-        let callback = make_format_callback(
-            doc.id(),
-            doc.version(),
-            Modified::SetUnmodified,
-            shared.clone(),
-        );
-        jobs.callback(callback);
-        shared
-    });
-    let future = doc.format_and_save(fmt, force);
+
+    #[cfg(feature = "lsp")]
+    let future = {
+        let fmt = doc.auto_format().map(|fmt| {
+            let shared = fmt.shared();
+            let callback = make_format_callback(
+                doc.id(),
+                doc.version(),
+                Modified::SetUnmodified,
+                shared.clone(),
+            );
+            jobs.callback(callback);
+            shared
+        });
+        doc.format_and_save(fmt, force)
+    };
+    #[cfg(not(feature = "lsp"))]
+    let future = doc.save(force);
+
     cx.jobs.add(Job::new(future).wait_before_exiting());
 
     if path.is_some() {
         let id = doc.id();
         doc.detect_language(cx.editor.syn_loader.clone());
+        #[cfg(feature = "lsp")]
         let _ = cx.editor.refresh_language_server(id);
     }
     Ok(())
@@ -259,6 +267,7 @@ fn format(
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
     let doc = doc!(cx.editor);
+    #[cfg(feature = "lsp")]
     if let Some(format) = doc.format() {
         let callback =
             make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
@@ -466,18 +475,24 @@ fn write_all_impl(
             continue;
         }
 
-        let fmt = doc.auto_format().map(|fmt| {
-            let shared = fmt.shared();
-            let callback = make_format_callback(
-                doc.id(),
-                doc.version(),
-                Modified::SetUnmodified,
-                shared.clone(),
-            );
-            jobs.callback(callback);
-            shared
-        });
-        let future = doc.format_and_save(fmt, force);
+        #[cfg(feature = "lsp")]
+        let future = {
+            let fmt = doc.auto_format().map(|fmt| {
+                let shared = fmt.shared();
+                let callback = make_format_callback(
+                    doc.id(),
+                    doc.version(),
+                    Modified::SetUnmodified,
+                    shared.clone(),
+                );
+                jobs.callback(callback);
+                shared
+            });
+            doc.format_and_save(fmt, force)
+        };
+        #[cfg(not(feature = "lsp"))]
+        let future = doc.save(force);
+
         jobs.add(Job::new(future).wait_before_exiting());
     }
 
@@ -1000,6 +1015,7 @@ fn language(
     doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone());
 
     let id = doc.id();
+    #[cfg(feature = "lsp")]
     cx.editor.refresh_language_server(id);
     Ok(())
 }
