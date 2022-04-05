@@ -1,7 +1,7 @@
 use crate::{
     commands, compositor, key,
     keymap::{KeymapResult, Keymaps},
-    ui::{Completion, ProgressSpinners},
+    ui::{self, ProgressSpinners},
 };
 
 use crate::compositor::{Component, Context, Event, EventResult};
@@ -31,7 +31,8 @@ pub struct EditorView {
     pub keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::MappableCommand, Vec<InsertEvent>),
-    pub(crate) completion: Option<Completion>,
+    #[cfg(feature = "term")]
+    pub(crate) completion: Option<ui::Completion>,
     spinners: ProgressSpinners,
 }
 
@@ -897,6 +898,7 @@ impl EditorView {
         }
     }
 
+    #[cfg(feature = "term")]
     pub fn set_completion(
         &mut self,
         editor: &mut Editor,
@@ -907,7 +909,7 @@ impl EditorView {
         size: Rect,
     ) {
         let mut completion =
-            Completion::new(editor, items, offset_encoding, start_offset, trigger_offset);
+            ui::Completion::new(editor, items, offset_encoding, start_offset, trigger_offset);
 
         if completion.is_empty() {
             // skip if we got no completion results
@@ -925,6 +927,7 @@ impl EditorView {
         self.completion = Some(completion);
     }
 
+    #[cfg(feature = "term")]
     pub fn clear_completion(&mut self, editor: &mut Editor) {
         self.completion = None;
 
@@ -934,6 +937,7 @@ impl EditorView {
         editor.clear_idle_timer(); // don't retrigger
     }
 
+    #[cfg(feature = "term")]
     pub fn handle_idle_timeout(&mut self, cx: &mut crate::compositor::Context) -> EventResult {
         if self.completion.is_some()
             || !cx.editor.config().auto_completion

@@ -48,6 +48,11 @@ impl<T: Component + 'static> compositor::term::Render for Overlay<T> {
         let dimensions = (self.calc_child_size)(area);
         self.content.render(dimensions, ctx)
     }
+
+    fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
+        let dimensions = (self.calc_child_size)(area);
+        self.content.cursor(dimensions, ctx)
+    }
 }
 
 impl<T: Component + 'static> Component for Overlay<T> {
@@ -66,10 +71,5 @@ impl<T: Component + 'static> Component for Overlay<T> {
 
     fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
         self.content.handle_event(event, ctx)
-    }
-
-    fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
-        let dimensions = (self.calc_child_size)(area);
-        self.content.cursor(dimensions, ctx)
     }
 }

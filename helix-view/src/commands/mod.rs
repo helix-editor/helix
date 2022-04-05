@@ -72,11 +72,6 @@ use std::{
 use once_cell::sync::Lazy;
 use serde::de::{self, Deserialize, Deserializer};
 
-use grep_regex::RegexMatcherBuilder;
-use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
-use ignore::{DirEntry, WalkBuilder, WalkState};
-use tokio_stream::wrappers::UnboundedReceiverStream;
-
 pub struct Context<'a> {
     pub register: Option<char>,
     pub count: Option<NonZeroUsize>,
@@ -103,6 +98,7 @@ impl<'a> Context<'a> {
         self.on_next_key_callback = Some(Box::new(on_next_key_callback));
     }
 
+    #[cfg(feature = "lsp")]
     #[inline]
     pub fn callback<T, F>(
         &mut self,
@@ -1767,7 +1763,17 @@ fn search_selection(cx: &mut Context) {
     cx.editor.set_status(msg);
 }
 
+#[cfg(not(feature = "term"))]
 fn global_search(cx: &mut Context) {
+    // TODO
+}
+
+#[cfg(feature = "term")]
+fn global_search(cx: &mut Context) {
+    use grep_regex::RegexMatcherBuilder;
+    use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
+    use ignore::{DirEntry, WalkBuilder, WalkState};
+
     let (all_matches_sx, all_matches_rx) =
         tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
     let config = cx.editor.config();
@@ -1858,6 +1864,8 @@ fn global_search(cx: &mut Context) {
     let current_path = doc_mut!(cx.editor).path().cloned();
 
     let show_picker = async move {
+        use tokio_stream::wrappers::UnboundedReceiverStream;
+
         let all_matches: Vec<(usize, PathBuf)> =
             UnboundedReceiverStream::new(all_matches_rx).collect().await;
         let call: job::Callback =

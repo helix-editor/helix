@@ -80,6 +80,8 @@ use crate::{
     compositor::{self, Component, RenderContext},
     graphics::{Margin, Rect},
 };
+
+#[cfg(feature = "term")]
 use tui::widgets::{Block, Borders, Paragraph, Widget};
 
 #[cfg(feature = "term")]

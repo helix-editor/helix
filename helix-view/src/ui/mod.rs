@@ -1,22 +1,28 @@
+#[cfg(feature = "term")]
 mod completion;
 pub(crate) mod editor;
 mod markdown;
+#[cfg(feature = "term")]
 pub mod menu;
 pub mod overlay;
 mod picker;
 mod popup;
 mod prompt;
 mod spinner;
+#[cfg(feature = "term")]
 mod text;
 
+#[cfg(feature = "term")]
 pub use completion::Completion;
 pub use editor::EditorView;
 pub use markdown::Markdown;
+#[cfg(feature = "term")]
 pub use menu::Menu;
 pub use picker::{FileLocation, FilePicker, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
+#[cfg(feature = "term")]
 pub use text::Text;
 
 use crate::{Document, Editor, View};
