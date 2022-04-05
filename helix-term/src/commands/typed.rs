@@ -1055,6 +1055,16 @@ fn refresh_config(
     Ok(())
 }
 
+fn pipe(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    ensure!(!args.is_empty(), "Shell command required");
+    shell(cx, &args.join(" "), &ShellBehavior::Replace);
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -1474,6 +1484,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Open the helix config.toml file.",
             fun: open_config,
+            completer: None,
+        },
+        TypableCommand {
+            name: "pipe",
+            aliases: &[],
+            doc: "Pipe each selection to the shell command.",
+            fun: pipe,
             completer: None,
         },
     ];
