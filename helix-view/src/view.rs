@@ -66,7 +66,7 @@ impl JumpList {
 
 const GUTTERS: &[(Gutter, usize)] = &[
     (gutter::diagnostics_or_breakpoints, 1),
-    (gutter::line_number, 5),
+    (gutter::line_number, 5), // must be at the end since it's optional
 ];
 
 #[derive(Debug)]
@@ -85,10 +85,11 @@ pub struct View {
     pub last_modified_docs: [Option<DocumentId>; 2],
     /// used to store previous selections of tree-sitter objecs
     pub object_selections: Vec<Selection>,
+    pub omit_line_number_gutter: bool,
 }
 
 impl View {
-    pub fn new(doc: DocumentId) -> Self {
+    pub fn new(doc: DocumentId, omit_line_number_gutter: bool) -> Self {
         Self {
             id: ViewId::default(),
             doc,
@@ -98,11 +99,16 @@ impl View {
             last_accessed_doc: None,
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
+            omit_line_number_gutter,
         }
     }
 
     pub fn gutters(&self) -> &[(Gutter, usize)] {
-        GUTTERS
+        if self.omit_line_number_gutter {
+            &GUTTERS[0..GUTTERS.len() - 1]
+        } else {
+            GUTTERS
+        }
     }
 
     pub fn inner_area(&self) -> Rect {

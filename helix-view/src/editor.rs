@@ -224,6 +224,9 @@ pub enum LineNumber {
     /// If focused and in normal/select mode, show relative line number to the primary cursor.
     /// If unfocused or in insert mode, show absolute line number.
     Relative,
+
+    /// Don't show line number
+    None,
 }
 
 impl std::str::FromStr for LineNumber {
@@ -577,7 +580,9 @@ impl Editor {
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
-                let view = View::new(id);
+                let omit_line_number_gutter =
+                    self.config().line_number == crate::editor::LineNumber::None;
+                let view = View::new(id, omit_line_number_gutter);
                 let view_id = self.tree.split(
                     view,
                     match action {
@@ -699,7 +704,9 @@ impl Editor {
                 .map(|(&doc_id, _)| doc_id)
                 .next()
                 .unwrap_or_else(|| self.new_document(Document::default()));
-            let view = View::new(doc_id);
+            let omit_line_number_gutter =
+                self.config().line_number == crate::editor::LineNumber::None;
+            let view = View::new(doc_id, omit_line_number_gutter);
             let view_id = self.tree.insert(view);
             let doc = self.documents.get_mut(&doc_id).unwrap();
             doc.selections.insert(view_id, Selection::point(0));
