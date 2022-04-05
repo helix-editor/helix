@@ -202,7 +202,8 @@ pub fn move_next_paragraph(
     let last_char =
         prev_grapheme_boundary(slice, slice.line_to_char(line + 1)) == range.cursor(slice);
     let curr_line_empty = rope_is_line_ending(slice.line(line));
-    let next_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
+    let next_line_empty =
+        rope_is_line_ending(slice.line(slice.len_lines().saturating_sub(1).min(line + 1)));
     let curr_empty_to_line = curr_line_empty && !next_line_empty;
 
     // skip character after paragraph boundary
@@ -1363,6 +1364,14 @@ mod test {
             (
                 "here\n\nhave\n#[m|]#ultiple\nparagraph\n\n\n\n\n",
                 "here\n\nhave\n#[multiple\nparagraph\n\n\n\n\n|]#",
+            ),
+            (
+                "#[t|]#ext\n\n\nafter two blank lines\n\nmore text\n",
+                "#[text\n\n\n|]#after two blank lines\n\nmore text\n",
+            ),
+            (
+                "#[text\n\n\n|]#after two blank lines\n\nmore text\n",
+                "text\n\n\n#[after two blank lines\n\n|]#more text\n",
             ),
         ];
 
