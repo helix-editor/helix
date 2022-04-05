@@ -2324,7 +2324,7 @@ async fn make_format_callback(
         let view_id = view!(editor).id;
         if let Some(doc) = editor.document_mut(doc_id) {
             if doc.version() == doc_version {
-                doc.apply(&Transaction::from(format), view_id);
+                doc.apply(&format, view_id);
                 doc.append_changes_to_history(view_id);
                 if let Modified::SetUnmodified = modified {
                     doc.reset_modified();
