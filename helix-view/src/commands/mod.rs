@@ -3573,6 +3573,12 @@ fn remove_primary_selection(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[cfg(not(feature = "lsp"))]
+pub fn completion(cx: &mut Context) {
+    // TODO:
+}
+
+#[cfg(feature = "lsp")]
 pub fn completion(cx: &mut Context) {
     use helix_lsp::{lsp, util::pos_to_lsp_pos};
 
