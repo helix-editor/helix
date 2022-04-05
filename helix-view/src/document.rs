@@ -607,6 +607,17 @@ impl Document {
         self.set_language(language_config, Some(config_loader));
     }
 
+    /// Set the programming language for the file if you know the language but don't have the
+    /// [`syntax::LanguageConfiguration`] for it.
+    pub fn set_language_by_language_id(
+        &mut self,
+        language_id: &str,
+        config_loader: Arc<syntax::Loader>,
+    ) {
+        let language_config = config_loader.language_config_for_language_id(language_id);
+        self.set_language(language_config, Some(config_loader));
+    }
+
     /// Set the LSP.
     pub fn set_language_server(&mut self, language_server: Option<Arc<helix_lsp::Client>>) {
         self.language_server = language_server;

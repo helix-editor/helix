@@ -448,7 +448,6 @@ impl Editor {
     /// Refreshes the language server for a given document
     pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
         let doc = self.documents.get_mut(&doc_id)?;
-        doc.detect_language(self.syn_loader.clone());
         Self::launch_language_server(&mut self.language_servers, doc)
     }
 
