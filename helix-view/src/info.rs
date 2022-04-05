@@ -121,4 +121,7 @@ impl compositor::term::Render for Info {
     }
 }
 
+#[cfg(feature = "ui")]
+impl compositor::ui::Render for Info {}
+
 impl Component for Info {}

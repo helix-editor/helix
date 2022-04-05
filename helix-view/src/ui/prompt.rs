@@ -455,6 +455,9 @@ impl compositor::term::Render for Prompt {
     }
 }
 
+#[cfg(feature = "ui")]
+impl compositor::ui::Render for Prompt {}
+
 impl Component for Prompt {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let event = match event {

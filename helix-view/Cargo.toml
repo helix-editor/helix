@@ -15,6 +15,7 @@ lsp = ["helix-lsp", "tokio-runtime"]
 dap = ["helix-dap", "tokio-stream", "tokio-runtime"]
 tokio-runtime = ["tokio"]
 term = ["crossterm", "tui"]
+ui = []
 
 [dependencies]
 bitflags = "1.3"

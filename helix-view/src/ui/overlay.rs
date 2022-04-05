@@ -55,6 +55,9 @@ impl<T: Component + 'static> compositor::term::Render for Overlay<T> {
     }
 }
 
+#[cfg(feature = "ui")]
+impl<T: Component + 'static> compositor::ui::Render for Overlay<T> {}
+
 impl<T: Component + 'static> Component for Overlay<T> {
     fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
         let area = Rect {

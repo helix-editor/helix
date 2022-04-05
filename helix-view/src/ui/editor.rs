@@ -1397,6 +1397,9 @@ impl compositor::term::Render for EditorView {
     }
 }
 
+#[cfg(feature = "ui")]
+impl compositor::ui::Render for EditorView {}
+
 fn canonicalize_key(key: &mut KeyEvent) {
     if let KeyEvent {
         code: KeyCode::Char(_),

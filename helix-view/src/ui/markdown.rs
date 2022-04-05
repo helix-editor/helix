@@ -282,6 +282,9 @@ impl compositor::term::Render for Markdown {
     }
 }
 
+#[cfg(feature = "ui")]
+impl compositor::ui::Render for Markdown {}
+
 impl Component for Markdown {
     #[cfg(not(feature = "term"))]
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {

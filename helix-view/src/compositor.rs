@@ -46,8 +46,32 @@ pub mod term {
     }
 }
 
+#[cfg(feature = "ui")]
+pub mod ui {
+    use super::*;
+    pub type Surface = ();
+
+    pub struct RenderContext<'a> {
+        pub editor: &'a Editor,
+        // pub surface: &'a mut Surface,
+        pub scroll: Option<usize>,
+    }
+
+    pub trait Render {
+        /// Render the component onto the provided surface.
+        fn render(&mut self, area: Rect, ctx: &mut RenderContext) {
+            // TODO:
+        }
+
+        // TODO: make required_size be layout() instead and part of this trait?
+    }
+}
+
 #[cfg(feature = "term")]
 pub use term::*;
+
+#[cfg(feature = "ui")]
+pub use ui::*;
 
 pub trait Component: Any + AnyComponent + Render {
     /// Process input events, return true if handled.
