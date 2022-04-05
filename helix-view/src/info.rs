@@ -77,12 +77,13 @@ impl Info {
 // term
 
 use crate::{
-    compositor::{Component, RenderContext},
+    compositor::{self, Component, RenderContext},
     graphics::{Margin, Rect},
 };
 use tui::widgets::{Block, Borders, Paragraph, Widget};
 
-impl Component for Info {
+#[cfg(feature = "term")]
+impl compositor::term::Render for Info {
     fn render(&mut self, viewport: Rect, cx: &mut RenderContext<'_>) {
         let text_style = cx.editor.theme.get("ui.text.info");
         let popup_style = cx.editor.theme.get("ui.popup.info");
@@ -117,3 +118,5 @@ impl Component for Info {
             .render(inner, cx.surface);
     }
 }
+
+impl Component for Info {}

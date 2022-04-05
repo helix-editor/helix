@@ -1,9 +1,8 @@
-use crate::compositor::{Component, Compositor, Context, Event, EventResult, RenderContext};
+use crate::compositor::{self, Component, Compositor, Context, Event, EventResult, RenderContext};
 use crate::input::KeyEvent;
 use crate::keyboard::KeyCode;
 use crate::{alt, ctrl, key, shift, ui};
 use std::{borrow::Cow, ops::RangeFrom};
-use tui::widgets::{Block, Borders, Widget};
 
 use crate::{
     graphics::{CursorKind, Margin, Rect},
@@ -324,8 +323,11 @@ impl Prompt {
 
 const BASE_WIDTH: u16 = 30;
 
-impl Prompt {
-    pub fn render_prompt(&self, area: Rect, cx: &mut RenderContext<'_>) {
+#[cfg(feature = "term")]
+impl compositor::term::Render for Prompt {
+    fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
+        use tui::widgets::{Block, Borders, Widget};
+
         let theme = &cx.editor.theme;
         let prompt_color = theme.get("ui.text");
         let completion_color = theme.get("ui.statusline");
@@ -438,6 +440,19 @@ impl Prompt {
             prompt_color,
         );
     }
+
+    fn cursor(&self, area: Rect, _editor: &Editor) -> (Option<Position>, CursorKind) {
+        let line = area.height as usize - 1;
+        (
+            Some(Position::new(
+                area.y as usize + line,
+                area.x as usize
+                    + self.prompt.len()
+                    + UnicodeWidthStr::width(&self.line[..self.cursor]),
+            )),
+            CursorKind::Block,
+        )
+    }
 }
 
 impl Component for Prompt {
@@ -544,22 +559,5 @@ impl Component for Prompt {
         };
 
         EventResult::Consumed(None)
-    }
-
-    fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
-        self.render_prompt(area, cx)
-    }
-
-    fn cursor(&self, area: Rect, _editor: &Editor) -> (Option<Position>, CursorKind) {
-        let line = area.height as usize - 1;
-        (
-            Some(Position::new(
-                area.y as usize + line,
-                area.x as usize
-                    + self.prompt.len()
-                    + UnicodeWidthStr::width(&self.line[..self.cursor]),
-            )),
-            CursorKind::Block,
-        )
     }
 }

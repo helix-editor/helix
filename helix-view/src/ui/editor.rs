@@ -1,11 +1,19 @@
 use crate::{
-    commands, key,
+    commands, compositor, key,
     keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
 
-use crate::compositor::{Component, Context, Event, EventResult, RenderContext};
+use crate::compositor::{Component, Context, Event, EventResult};
 
+use crate::{
+    document::{Mode, SCRATCH_BUFFER_NAME},
+    editor::{CompleteAction, CursorShapeConfig},
+    graphics::{CursorKind, Modifier, Rect, Style},
+    input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
+    keyboard::{KeyCode, KeyModifiers},
+    Document, Editor, Theme, View,
+};
 use helix_core::{
     coords_at_pos, encoding,
     graphemes::{
@@ -17,17 +25,7 @@ use helix_core::{
     unicode::width::UnicodeWidthStr,
     LineEnding, Position, Range, Selection, Transaction,
 };
-use crate::{
-    document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
-    graphics::{CursorKind, Modifier, Rect, Style},
-    input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
-    keyboard::{KeyCode, KeyModifiers},
-    Document, Editor, Theme, View,
-};
 use std::borrow::Cow;
-
-use tui::buffer::Buffer as Surface;
 
 pub struct EditorView {
     pub keymaps: Keymaps,
@@ -64,7 +62,13 @@ impl EditorView {
     pub fn spinners_mut(&mut self) -> &mut ProgressSpinners {
         &mut self.spinners
     }
+}
 
+#[cfg(feature = "term")]
+use tui::buffer::Buffer as Surface;
+
+#[cfg(feature = "term")]
+impl EditorView {
     pub fn render_view(
         &self,
         editor: &Editor,
@@ -777,7 +781,9 @@ impl EditorView {
             true,
         );
     }
+}
 
+impl EditorView {
     /// Handle events by looking them up in `self.keymaps`. Returns None
     /// if event was handled (a command was executed or a subkeymap was
     /// activated). Only KeymapResult::{NotFound, Cancelled} is returned
@@ -948,9 +954,7 @@ impl EditorView {
 
         EventResult::Consumed(None)
     }
-}
 
-impl EditorView {
     fn handle_mouse_event(
         &mut self,
         event: MouseEvent,
@@ -1288,8 +1292,11 @@ impl Component for EditorView {
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
         }
     }
+}
 
-    fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
+#[cfg(feature = "term")]
+impl compositor::term::Render for EditorView {
+    fn render(&mut self, area: Rect, cx: &mut compositor::term::RenderContext<'_>) {
         // clear with background color
         cx.surface
             .set_style(area, cx.editor.theme.get("ui.background"));

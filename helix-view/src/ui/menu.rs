@@ -1,16 +1,15 @@
-use crate::{ctrl, key, shift};
 use crate::compositor::{
-    Callback, Component, Compositor, Context, Event, EventResult, RenderContext,
+    self, Callback, Component, Compositor, Context, Event, EventResult, RenderContext,
 };
-use tui::widgets::Table;
-
-pub use tui::widgets::{Cell, Row};
+use crate::{ctrl, key, shift};
 
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 
 use crate::{graphics::Rect, Editor};
+
 use tui::layout::Constraint;
+pub use tui::widgets::{Cell, Row};
 
 pub trait Item {
     fn label(&self) -> &str;
@@ -263,8 +262,13 @@ impl<T: Item + 'static> Component for Menu<T> {
 
         Some(self.size)
     }
+}
 
+#[cfg(feature = "term")]
+impl<T: Item + 'static> compositor::term::Render for Menu<T> {
     fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
+        use tui::widgets::Table;
+
         let theme = &cx.editor.theme;
         let style = theme
             .try_get("ui.menu")

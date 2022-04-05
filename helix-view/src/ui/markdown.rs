@@ -1,17 +1,17 @@
-use crate::compositor::{Component, RenderContext};
+use crate::compositor::{self, Component, RenderContext};
 use tui::text::{Span, Spans, Text};
 
 use std::sync::Arc;
 
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag};
 
-use helix_core::{
-    syntax::{self, HighlightEvent, Syntax},
-    Rope,
-};
 use crate::{
     graphics::{Margin, Rect, Style},
     Theme,
+};
+use helix_core::{
+    syntax::{self, HighlightEvent, Syntax},
+    Rope,
 };
 
 fn styled_multiline_text<'a>(text: String, style: Style) -> Text<'a> {
@@ -255,7 +255,8 @@ impl Markdown {
     }
 }
 
-impl Component for Markdown {
+#[cfg(feature = "term")]
+impl compositor::term::Render for Markdown {
     fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
         use tui::widgets::{Paragraph, Widget, Wrap};
 
@@ -271,7 +272,9 @@ impl Component for Markdown {
         };
         par.render(area.inner(&margin), cx.surface);
     }
+}
 
+impl Component for Markdown {
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         let padding = 2;
         if padding >= viewport.1 || padding >= viewport.0 {

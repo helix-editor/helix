@@ -1,8 +1,9 @@
-use helix_core::Position;
 use crate::{
+    compositor,
     graphics::{CursorKind, Rect},
     Editor,
 };
+use helix_core::Position;
 
 use crate::compositor::{Component, Context, Event, EventResult, RenderContext};
 
@@ -41,12 +42,15 @@ fn clip_rect_relative(rect: Rect, percent_horizontal: u8, percent_vertical: u8) 
     }
 }
 
-impl<T: Component + 'static> Component for Overlay<T> {
+#[cfg(feature = "term")]
+impl<T: Component + 'static> compositor::term::Render for Overlay<T> {
     fn render(&mut self, area: Rect, ctx: &mut RenderContext<'_>) {
         let dimensions = (self.calc_child_size)(area);
         self.content.render(dimensions, ctx)
     }
+}
 
+impl<T: Component + 'static> Component for Overlay<T> {
     fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
         let area = Rect {
             x: 0,

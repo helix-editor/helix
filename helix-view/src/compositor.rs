@@ -23,7 +23,7 @@ pub struct Context<'a> {
 }
 
 #[cfg(feature = "term")]
-mod term {
+pub mod term {
     use super::*;
     pub use tui::buffer::Buffer as Surface;
 
@@ -32,12 +32,24 @@ mod term {
         pub surface: &'a mut Surface,
         pub scroll: Option<usize>,
     }
+
+    pub trait Render {
+        /// Render the component onto the provided surface.
+        fn render(&mut self, area: Rect, ctx: &mut RenderContext);
+
+        // TODO: make required_size be layout() instead and part of this trait?
+
+        /// Get cursor position and cursor kind.
+        fn cursor(&self, _area: Rect, _ctx: &Editor) -> (Option<Position>, CursorKind) {
+            (None, CursorKind::Hidden)
+        }
+    }
 }
 
 #[cfg(feature = "term")]
 pub use term::*;
 
-pub trait Component: Any + AnyComponent {
+pub trait Component: Any + AnyComponent + Render {
     /// Process input events, return true if handled.
     fn handle_event(&mut self, _event: Event, _ctx: &mut Context) -> EventResult {
         EventResult::Ignored(None)
@@ -46,14 +58,6 @@ pub trait Component: Any + AnyComponent {
     /// Should redraw? Useful for saving redraw cycles if we know component didn't change.
     fn should_update(&self) -> bool {
         true
-    }
-
-    /// Render the component onto the provided surface.
-    fn render(&mut self, area: Rect, ctx: &mut RenderContext);
-
-    /// Get cursor position and cursor kind.
-    fn cursor(&self, _area: Rect, _ctx: &Editor) -> (Option<Position>, CursorKind) {
-        (None, CursorKind::Hidden)
     }
 
     /// May be used by the parent component to compute the child area.

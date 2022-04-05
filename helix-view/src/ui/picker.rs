@@ -1,13 +1,11 @@
+use crate::compositor::{self, Component, Compositor, Context, Event, EventResult, RenderContext};
 use crate::{
     ctrl, key, shift,
     ui::{self, EditorView},
 };
-use crate::compositor::{Component, Compositor, Context, Event, EventResult, RenderContext};
-use tui::widgets::{Block, BorderType, Borders};
 
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
-use tui::widgets::Widget;
 
 use std::time::Instant;
 use std::{
@@ -19,12 +17,12 @@ use std::{
 };
 
 use crate::ui::{Prompt, PromptEvent};
-use helix_core::{movement::Direction, Position};
 use crate::{
     editor::Action,
     graphics::{Color, CursorKind, Margin, Modifier, Rect, Style},
     Document, Editor,
 };
+use helix_core::{movement::Direction, Position};
 
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 /// Biggest file size to preview in bytes
@@ -159,8 +157,11 @@ impl<T> FilePicker<T> {
     }
 }
 
-impl<T: 'static> Component for FilePicker<T> {
+#[cfg(feature = "term")]
+impl<T: 'static> compositor::term::Render for FilePicker<T> {
     fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
+        use tui::widgets::Widget;
+        use tui::widgets::{Block, Borders};
         // +---------+ +---------+
         // |prompt   | |preview  |
         // +---------+ |         |
@@ -260,13 +261,15 @@ impl<T: 'static> Component for FilePicker<T> {
         }
     }
 
+    fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
+        self.picker.cursor(area, ctx)
+    }
+}
+
+impl<T: 'static> Component for FilePicker<T> {
     fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
         // TODO: keybinds for scrolling preview
         self.picker.handle_event(event, ctx)
-    }
-
-    fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
-        self.picker.cursor(area, ctx)
     }
 
     fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
@@ -548,8 +551,13 @@ impl<T: 'static> Component for Picker<T> {
 
         EventResult::Consumed(None)
     }
+}
 
+#[cfg(feature = "term")]
+impl<T: 'static> compositor::term::Render for Picker<T> {
     fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
+        use tui::widgets::Widget;
+        use tui::widgets::{Block, BorderType, Borders};
         let text_style = cx.editor.theme.get("ui.text");
         let selected = cx.editor.theme.get("ui.text.focus");
         let highlighted = cx.editor.theme.get("special").add_modifier(Modifier::BOLD);
@@ -639,6 +647,7 @@ impl<T: 'static> Component for Picker<T> {
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+        use tui::widgets::{Block, Borders};
         let block = Block::default().borders(Borders::ALL);
         // calculate the inner area inside the box
         let inner = block.inner(area);

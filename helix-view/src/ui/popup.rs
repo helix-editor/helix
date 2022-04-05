@@ -1,11 +1,11 @@
+use crate::compositor::{self, Callback, Component, Context, Event, EventResult, RenderContext};
 use crate::{ctrl, key};
-use crate::compositor::{Callback, Component, Context, Event, EventResult, RenderContext};
 
-use helix_core::Position;
 use crate::{
     graphics::{Margin, Rect},
     Editor,
 };
+use helix_core::Position;
 
 // TODO: share logic with Menu, it's essentially Popup(render_fn), but render fn needs to return
 // a width/height hint. maybe Popup(Box<Component>)
@@ -175,6 +175,13 @@ impl<T: Component> Component for Popup<T> {
         Some(self.size)
     }
 
+    fn id(&self) -> Option<&'static str> {
+        Some(self.id)
+    }
+}
+
+#[cfg(feature = "term")]
+impl<T: Component> compositor::term::Render for Popup<T> {
     fn render(&mut self, viewport: Rect, cx: &mut RenderContext<'_>) {
         // trigger required_size so we recalculate if the child changed
         self.required_size((viewport.width, viewport.height));
@@ -192,9 +199,5 @@ impl<T: Component> Component for Popup<T> {
 
         let inner = area.inner(&self.margin);
         self.contents.render(inner, cx);
-    }
-
-    fn id(&self) -> Option<&'static str> {
-        Some(self.id)
     }
 }

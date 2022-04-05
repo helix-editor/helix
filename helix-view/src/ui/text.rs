@@ -1,4 +1,4 @@
-use crate::compositor::{Component, RenderContext};
+use crate::compositor::{self, Component, RenderContext};
 use crate::graphics::Rect;
 
 pub struct Text {
@@ -27,7 +27,8 @@ impl From<tui::text::Text<'static>> for Text {
     }
 }
 
-impl Component for Text {
+#[cfg(feature = "term")]
+impl compositor::term::Render for Text {
     fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
         use tui::widgets::{Paragraph, Widget, Wrap};
 
@@ -36,7 +37,9 @@ impl Component for Text {
 
         par.render(area, cx.surface);
     }
+}
 
+impl Component for Text {
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         if viewport != self.viewport {
             let width = std::cmp::min(self.contents.width() as u16, viewport.0);

@@ -1,14 +1,14 @@
-use crate::compositor::{Component, Context, Event, EventResult, RenderContext};
+use crate::compositor::{self, Component, Context, Event, EventResult};
 use crate::editor::CompleteAction;
 
 use std::borrow::Cow;
 
-use helix_core::{Change, Transaction};
 use crate::{
     graphics::Rect,
     input::{KeyCode, KeyEvent},
     Document, Editor,
 };
+use helix_core::{Change, Transaction};
 
 use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
@@ -302,8 +302,11 @@ impl Component for Completion {
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         self.popup.required_size(viewport)
     }
+}
 
-    fn render(&mut self, area: Rect, cx: &mut RenderContext<'_>) {
+#[cfg(feature = "term")]
+impl compositor::term::Render for Completion {
+    fn render(&mut self, area: Rect, cx: &mut compositor::term::RenderContext<'_>) {
         self.popup.render(area, cx);
 
         // if we have a selection, render a markdown popup on top/below with info
