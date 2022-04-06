@@ -280,7 +280,6 @@ fn set_line_ending(
     args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    use helix_core::line_ending;
     use LineEnding::*;
 
     // If no argument, report current line ending setting.
@@ -329,11 +328,10 @@ fn set_line_ending(
     let transaction = Transaction::change(
         doc.text(),
         doc.text().lines().filter_map(|line| {
-            let current_pos = pos;
             pos += line.len_chars();
-            match line_ending::get_line_ending(&line) {
+            match helix_core::line_ending::get_line_ending(&line) {
                 Some(ending) if ending != line_ending => {
-                    let start = current_pos + line_ending::rope_end_without_line_ending(&line);
+                    let start = pos - ending.len_chars();
                     let end = pos;
                     Some((start, end, Some(line_ending.as_str().into())))
                 }
