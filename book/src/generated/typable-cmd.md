@@ -10,6 +10,7 @@
 | `:buffer-close-all`, `:bca`, `:bcloseall` | Close all buffers, without quiting. |
 | `:buffer-close-all!`, `:bca!`, `:bcloseall!` | Close all buffers forcefully (ignoring unsaved changes), without quiting. |
 | `:write`, `:w` | Write changes to disk. Accepts an optional path (:write some/path.txt) |
+| `:write!`, `:w!` | Write changes to disk forcefully (creating necessary subdirectories). Accepts an optional path (:write some/path.txt) |
 | `:new`, `:n` | Create a new scratch buffer. |
 | `:format`, `:fmt` | Format the file using the LSP formatter. |
 | `:indent-style` | Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.) |
