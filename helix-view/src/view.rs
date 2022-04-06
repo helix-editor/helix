@@ -330,7 +330,8 @@ mod tests {
     use super::*;
     use helix_core::Rope;
     const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
-                           // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
+    const OFFSET_OMIT_LINE_NUMBER_GUTTER: u16 = 2; // 1 diagnostic + 5 linenr + 1 gutter
+                                                   // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
 
     #[test]
     fn test_text_pos_at_screen_coords() {
@@ -376,6 +377,22 @@ mod tests {
         );
 
         assert_eq!(view.text_pos_at_screen_coords(&text, 41, 80, 4), Some(8));
+    }
+
+    #[test]
+    fn test_text_pos_at_screen_coords_with_omit_line_number_gutter() {
+        let mut view = View::new(DocumentId::default(), true);
+        view.area = Rect::new(40, 40, 40, 40);
+        let rope = Rope::from_str("abc\n\tdef");
+        let text = rope.slice(..);
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 41, 40 + OFFSET + 1, 4),
+            Some(7)
+        );
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 41, 40 + OFFSET_OMIT_LINE_NUMBER_GUTTER + 1, 4),
+            Some(4)
+        );
     }
 
     #[test]
