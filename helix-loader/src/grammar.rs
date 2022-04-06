@@ -143,7 +143,8 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<()> {
     } = grammar.source
     {
         let grammar_dir = crate::runtime_dir()
-            .join("grammars/sources")
+            .join("grammars")
+            .join("sources")
             .join(&grammar.grammar_id);
 
         fs::create_dir_all(&grammar_dir).context(format!(
@@ -233,7 +234,8 @@ fn build_grammar(grammar: GrammarConfiguration) -> Result<()> {
         PathBuf::from(&path)
     } else {
         crate::runtime_dir()
-            .join("grammars/sources")
+            .join("grammars")
+            .join("sources")
             .join(&grammar.grammar_id)
     };
 
