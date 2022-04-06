@@ -405,6 +405,7 @@ impl MappableCommand {
         dap_disable_exceptions, "Disable exception breakpoints",
         shell_pipe, "Pipe selections through shell command",
         shell_pipe_to, "Pipe selections into shell command, ignoring command output",
+        shell_pipe_popup, "Pipe selections into shell command and show outputs in a popup",
         shell_insert_output, "Insert output of shell command before each selection",
         shell_append_output, "Append output of shell command after each selection",
         shell_keep_pipe, "Filter selections with shell predicate",
@@ -4137,6 +4138,7 @@ fn surround_delete(cx: &mut Context) {
 enum ShellBehavior {
     Replace,
     Ignore,
+    Popup,
     Insert,
     Append,
 }
@@ -4147,6 +4149,10 @@ fn shell_pipe(cx: &mut Context) {
 
 fn shell_pipe_to(cx: &mut Context) {
     shell(cx, "pipe-to:".into(), ShellBehavior::Ignore);
+}
+
+fn shell_pipe_popup(cx: &mut Context) {
+    shell(cx, "pipe-popup:".into(), ShellBehavior::Popup);
 }
 
 fn shell_insert_output(cx: &mut Context) {
@@ -4250,7 +4256,7 @@ fn shell_impl(
 
 fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
     let pipe = match behavior {
-        ShellBehavior::Replace | ShellBehavior::Ignore => true,
+        ShellBehavior::Replace | ShellBehavior::Ignore | ShellBehavior::Popup => true,
         ShellBehavior::Insert | ShellBehavior::Append => false,
     };
 
@@ -4299,9 +4305,31 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
                 changes.push((from, to, Some(output)));
             }
 
-            if behavior != ShellBehavior::Ignore {
-                let transaction = Transaction::change(doc.text(), changes.into_iter());
-                doc.apply(&transaction, view.id);
+            match behavior {
+                ShellBehavior::Ignore => {}
+                // Display outputs in a popup when requested
+                ShellBehavior::Popup => {
+                    let callback = async move {
+                        let call: job::Callback =
+                            Box::new(move |_, compositor: &mut Compositor| {
+                                let output = changes
+                                    .into_iter()
+                                    .filter_map(|(_, _, output)| output.map(String::from))
+                                    .collect();
+                                let popup = Popup::new("shell-output", ui::Text::new(output))
+                                    .auto_close(true);
+                                compositor.replace_or_push("shell-output", popup);
+                            });
+                        Ok(call)
+                    };
+
+                    cx.jobs.callback(callback);
+                }
+                // Apply changes to document when necessary
+                _ => {
+                    let transaction = Transaction::change(doc.text(), changes.into_iter());
+                    doc.apply(&transaction, view.id);
+                }
             }
 
             // after replace cursor may be out of bounds, do this to
