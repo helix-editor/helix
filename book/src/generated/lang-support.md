@@ -13,6 +13,7 @@
 | elm | ✓ |  |  | `elm-language-server` |
 | erlang | ✓ |  |  | `erlang_ls` |
 | fish | ✓ | ✓ | ✓ |  |
+| gdscript | ✓ |  | ✓ |  |
 | git-commit | ✓ |  |  |  |
 | git-config | ✓ |  |  |  |
 | git-diff | ✓ |  |  |  |

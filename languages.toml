@@ -1038,3 +1038,18 @@ roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
 grammar = "rust"
+
+[[language]]
+name = "gdscript"
+scope = "source.gdscript"
+injection-regex = "gdscript"
+file-types = ["gd"]
+shebangs = []
+roots = ["project.godot"]
+auto-format = true
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "gdscript"
+source = { git = "https://github.com/PrestonKnopp/tree-sitter-gdscript", rev = "2a6abdaa47fcb91397e09a97c7433fd995ea46c6" }
