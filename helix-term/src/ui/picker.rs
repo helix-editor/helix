@@ -364,8 +364,6 @@ impl<T> Picker<T> {
                     .map(|(index, _option)| (index, 0)),
             );
         } else if pattern.starts_with(&self.previous_pattern) {
-            // TODO: remove when retain_mut is in stable rust
-            use retain_mut::RetainMut;
 
             // optimization: if the pattern is a more specific version of the previous one
             // then we can score the filtered set.
