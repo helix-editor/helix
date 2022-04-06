@@ -4025,6 +4025,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         let help_text = [
             ("w", "Word"),
             ("W", "WORD"),
+            ("p", "Paragraph"),
             ("c", "Class (tree-sitter)"),
             ("f", "Function (tree-sitter)"),
             ("a", "Argument/parameter (tree-sitter)"),
