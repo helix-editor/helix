@@ -8,7 +8,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nixCargoIntegration = {
-      url = "github:yusdacra/nix-cargo-integration";
+      url = "github:yusdacra/nix-cargo-integration/feat/ccompiler-override";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rustOverlay.follows = "rust-overlay";
     };
@@ -25,14 +25,8 @@
         package = "helix";
       };
       overrides = {
+        cCompiler = common: if common.pkgs.stdenv.isLinux then common.pkgs.gcc else common.pkgs.clang;
         crateOverrides = common: _: {
-          helix-term-deps = _: {
-            hardeningDisable =
-              let
-                inherit (common.pkgs) lib stdenv;
-              in
-                lib.optionals (stdenv.isAarch64 && stdenv.isDarwin) [ "stackprotector" ];
-          };
           helix-term = prev:
             let
               inherit (common) pkgs;
@@ -64,13 +58,7 @@
           env = prev.env ++ [
             { name = "HELIX_RUNTIME"; eval = "$PWD/runtime"; }
             { name = "RUST_BACKTRACE"; value = "1"; }
-            { name = "RUSTFLAGS"; value = "-C link-arg=-fuse-ld=lld -C target-cpu=native"; }
-            {
-              name = "CFLAGS";
-              value = let inherit (common.pkgs) lib stdenv;
-              in lib.optionalString (stdenv.isAarch64 && stdenv.isDarwin)
-              "-mno-outline-atomics";
-            }
+            { name = "RUSTFLAGS"; value = if common.pkgs.stdenv.isLinux then "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment" else ""; }
           ];
         };
       };

@@ -75,16 +75,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1646710334,
-        "narHash": "sha256-eLBcDgcbOUfeH4k6SEW5a5v0PTp2KNCn+5ZXIoWGYww=",
+        "lastModified": 1649088506,
+        "narHash": "sha256-rIpLWnomSDYlaZfQiXs4Ui3EqmiY6d9qEkIY/vzZg6s=",
         "owner": "nix-community",
         "repo": "dream2nix",
-        "rev": "5dcfbfd3b60ce0208b894c1bdea00e2bdf80ca6a",
+        "rev": "84135ea205bcc04648fcc7776261e1dcb6e78ceb",
         "type": "github"
       },
       "original": {
         "owner": "nix-community",
-        "ref": "main",
         "repo": "dream2nix",
         "type": "github"
       }
@@ -131,15 +130,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1646766572,
-        "narHash": "sha256-DV3+zxvAIKsMHsHedJKYFsracvFyLKpFQqurUBR86oY=",
+        "lastModified": 1649214874,
+        "narHash": "sha256-DZSOKOWUZLt1KbiOFAZxp9L5a6KAheDc8vn9tYcrJrQ=",
         "owner": "yusdacra",
         "repo": "nix-cargo-integration",
-        "rev": "3a3f47f43ba486b7554164a698c8dfc5a38624ce",
+        "rev": "62b1b18b9c8c7724148ea93efdbbf2d9bf44b336",
         "type": "github"
       },
       "original": {
         "owner": "yusdacra",
+        "ref": "feat/ccompiler-override",
         "repo": "nix-cargo-integration",
         "type": "github"
       }
