@@ -1,135 +1,23 @@
+pub mod default;
+pub mod macros;
+
 pub use crate::commands::MappableCommand;
 use crate::config::Config;
-use helix_core::hashmap;
+use arc_swap::{
+    access::{DynAccess, DynGuard},
+    ArcSwap,
+};
 use helix_view::{document::Mode, info::Info, input::KeyEvent};
 use serde::Deserialize;
 use std::{
     borrow::Cow,
     collections::{BTreeSet, HashMap},
     ops::{Deref, DerefMut},
+    sync::Arc,
 };
 
-#[macro_export]
-macro_rules! key {
-    ($key:ident) => {
-        ::helix_view::input::KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::$key,
-            modifiers: ::helix_view::keyboard::KeyModifiers::NONE,
-        }
-    };
-    ($($ch:tt)*) => {
-        ::helix_view::input::KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
-            modifiers: ::helix_view::keyboard::KeyModifiers::NONE,
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! shift {
-    ($key:ident) => {
-        ::helix_view::input::KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::$key,
-            modifiers: ::helix_view::keyboard::KeyModifiers::SHIFT,
-        }
-    };
-    ($($ch:tt)*) => {
-        ::helix_view::input::KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
-            modifiers: ::helix_view::keyboard::KeyModifiers::SHIFT,
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! ctrl {
-    ($key:ident) => {
-        ::helix_view::input::KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::$key,
-            modifiers: ::helix_view::keyboard::KeyModifiers::CONTROL,
-        }
-    };
-    ($($ch:tt)*) => {
-        ::helix_view::input::KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
-            modifiers: ::helix_view::keyboard::KeyModifiers::CONTROL,
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! alt {
-    ($key:ident) => {
-        ::helix_view::input::KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::$key,
-            modifiers: ::helix_view::keyboard::KeyModifiers::ALT,
-        }
-    };
-    ($($ch:tt)*) => {
-        ::helix_view::input::KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
-            modifiers: ::helix_view::keyboard::KeyModifiers::ALT,
-        }
-    };
-}
-
-/// Macro for defining the root of a `Keymap` object. Example:
-///
-/// ```
-/// # use helix_core::hashmap;
-/// # use helix_term::keymap;
-/// # use helix_term::keymap::Keymap;
-/// let normal_mode = keymap!({ "Normal mode"
-///     "i" => insert_mode,
-///     "g" => { "Goto"
-///         "g" => goto_file_start,
-///         "e" => goto_file_end,
-///     },
-///     "j" | "down" => move_line_down,
-/// });
-/// let keymap = Keymap::new(normal_mode);
-/// ```
-#[macro_export]
-macro_rules! keymap {
-    (@trie $cmd:ident) => {
-        $crate::keymap::KeyTrie::Leaf($crate::commands::MappableCommand::$cmd)
-    };
-
-    (@trie
-        { $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }
-    ) => {
-        keymap!({ $label $(sticky=$sticky)? $($($key)|+ => $value,)+ })
-    };
-
-    (@trie [$($cmd:ident),* $(,)?]) => {
-        $crate::keymap::KeyTrie::Sequence(vec![$($crate::commands::Command::$cmd),*])
-    };
-
-    (
-        { $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }
-    ) => {
-        // modified from the hashmap! macro
-        {
-            let _cap = hashmap!(@count $($($key),+),*);
-            let mut _map = ::std::collections::HashMap::with_capacity(_cap);
-            let mut _order = ::std::vec::Vec::with_capacity(_cap);
-            $(
-                $(
-                    let _key = $key.parse::<::helix_view::input::KeyEvent>().unwrap();
-                    let _duplicate = _map.insert(
-                        _key,
-                        keymap!(@trie $value)
-                    );
-                    assert!(_duplicate.is_none(), "Duplicate key found: {:?}", _duplicate.unwrap());
-                    _order.push(_key);
-                )+
-            )*
-            let mut _node = $crate::keymap::KeyTrieNode::new($label, _map, _order);
-            $( _node.is_sticky = $sticky; )?
-            $crate::keymap::KeyTrie::Node(_node)
-        }
-    };
-}
+use default::default;
+use macros::key;
 
 #[derive(Debug, Clone)]
 pub struct KeyTrieNode {
@@ -300,7 +188,7 @@ impl KeyTrie {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum KeymapResultKind {
+pub enum KeymapResult {
     /// Needs more keys to execute a command. Contains valid keys for next keystroke.
     Pending(KeyTrieNode),
     Matched(MappableCommand),
@@ -313,41 +201,16 @@ pub enum KeymapResultKind {
     Cancelled(Vec<KeyEvent>),
 }
 
-/// Returned after looking up a key in [`Keymap`]. The `sticky` field has a
-/// reference to the sticky node if one is currently active.
-#[derive(Debug)]
-pub struct KeymapResult<'a> {
-    pub kind: KeymapResultKind,
-    pub sticky: Option<&'a KeyTrieNode>,
-}
-
-impl<'a> KeymapResult<'a> {
-    pub fn new(kind: KeymapResultKind, sticky: Option<&'a KeyTrieNode>) -> Self {
-        Self { kind, sticky }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(transparent)]
 pub struct Keymap {
     /// Always a Node
-    #[serde(flatten)]
     root: KeyTrie,
-    /// Stores pending keys waiting for the next key. This is relative to a
-    /// sticky node if one is in use.
-    #[serde(skip)]
-    state: Vec<KeyEvent>,
-    /// Stores the sticky node if one is activated.
-    #[serde(skip)]
-    sticky: Option<KeyTrieNode>,
 }
 
 impl Keymap {
     pub fn new(root: KeyTrie) -> Self {
-        Keymap {
-            root,
-            state: Vec::new(),
-            sticky: None,
-        }
+        Keymap { root }
     }
 
     pub fn reverse_map(&self) -> HashMap<String, Vec<Vec<KeyEvent>>> {
@@ -387,77 +250,6 @@ impl Keymap {
         &self.root
     }
 
-    pub fn sticky(&self) -> Option<&KeyTrieNode> {
-        self.sticky.as_ref()
-    }
-
-    /// Returns list of keys waiting to be disambiguated.
-    pub fn pending(&self) -> &[KeyEvent] {
-        &self.state
-    }
-
-    /// Lookup `key` in the keymap to try and find a command to execute. Escape
-    /// key cancels pending keystrokes. If there are no pending keystrokes but a
-    /// sticky node is in use, it will be cleared.
-    pub fn get(&mut self, key: KeyEvent) -> KeymapResult {
-        if key!(Esc) == key {
-            if !self.state.is_empty() {
-                return KeymapResult::new(
-                    // Note that Esc is not included here
-                    KeymapResultKind::Cancelled(self.state.drain(..).collect()),
-                    self.sticky(),
-                );
-            }
-            self.sticky = None;
-        }
-
-        let first = self.state.get(0).unwrap_or(&key);
-        let trie_node = match self.sticky {
-            Some(ref trie) => Cow::Owned(KeyTrie::Node(trie.clone())),
-            None => Cow::Borrowed(&self.root),
-        };
-
-        let trie = match trie_node.search(&[*first]) {
-            Some(KeyTrie::Leaf(ref cmd)) => {
-                return KeymapResult::new(KeymapResultKind::Matched(cmd.clone()), self.sticky())
-            }
-            Some(KeyTrie::Sequence(ref cmds)) => {
-                return KeymapResult::new(
-                    KeymapResultKind::MatchedSequence(cmds.clone()),
-                    self.sticky(),
-                )
-            }
-            None => return KeymapResult::new(KeymapResultKind::NotFound, self.sticky()),
-            Some(t) => t,
-        };
-
-        self.state.push(key);
-        match trie.search(&self.state[1..]) {
-            Some(&KeyTrie::Node(ref map)) => {
-                if map.is_sticky {
-                    self.state.clear();
-                    self.sticky = Some(map.clone());
-                }
-                KeymapResult::new(KeymapResultKind::Pending(map.clone()), self.sticky())
-            }
-            Some(&KeyTrie::Leaf(ref cmd)) => {
-                self.state.clear();
-                return KeymapResult::new(KeymapResultKind::Matched(cmd.clone()), self.sticky());
-            }
-            Some(&KeyTrie::Sequence(ref cmds)) => {
-                self.state.clear();
-                KeymapResult::new(
-                    KeymapResultKind::MatchedSequence(cmds.clone()),
-                    self.sticky(),
-                )
-            }
-            None => KeymapResult::new(
-                KeymapResultKind::Cancelled(self.state.drain(..).collect()),
-                self.sticky(),
-            ),
-        }
-    }
-
     pub fn merge(&mut self, other: Self) {
         self.root.merge_nodes(other.root);
     }
@@ -477,389 +269,102 @@ impl Default for Keymap {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(transparent)]
-pub struct Keymaps(pub HashMap<Mode, Keymap>);
+pub struct Keymaps {
+    pub map: Box<dyn DynAccess<HashMap<Mode, Keymap>>>,
+    /// Stores pending keys waiting for the next key. This is relative to a
+    /// sticky node if one is in use.
+    state: Vec<KeyEvent>,
+    /// Stores the sticky node if one is activated.
+    pub sticky: Option<KeyTrieNode>,
+}
 
 impl Keymaps {
+    pub fn new(map: Box<dyn DynAccess<HashMap<Mode, Keymap>>>) -> Self {
+        Self {
+            map,
+            state: Vec::new(),
+            sticky: None,
+        }
+    }
+
+    pub fn map(&self) -> DynGuard<HashMap<Mode, Keymap>> {
+        self.map.load()
+    }
+
     /// Returns list of keys waiting to be disambiguated in current mode.
     pub fn pending(&self) -> &[KeyEvent] {
-        self.0
-            .values()
-            .find_map(|keymap| match keymap.pending().is_empty() {
-                true => None,
-                false => Some(keymap.pending()),
-            })
-            .unwrap_or_default()
+        &self.state
     }
-}
 
-impl Deref for Keymaps {
-    type Target = HashMap<Mode, Keymap>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    pub fn sticky(&self) -> Option<&KeyTrieNode> {
+        self.sticky.as_ref()
     }
-}
 
-impl DerefMut for Keymaps {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+    /// Lookup `key` in the keymap to try and find a command to execute. Escape
+    /// key cancels pending keystrokes. If there are no pending keystrokes but a
+    /// sticky node is in use, it will be cleared.
+    pub fn get(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
+        // TODO: remove the sticky part and look up manually
+        let keymaps = &*self.map();
+        let keymap = &keymaps[&mode];
+
+        if key!(Esc) == key {
+            if !self.state.is_empty() {
+                // Note that Esc is not included here
+                return KeymapResult::Cancelled(self.state.drain(..).collect());
+            }
+            self.sticky = None;
+        }
+
+        let first = self.state.get(0).unwrap_or(&key);
+        let trie_node = match self.sticky {
+            Some(ref trie) => Cow::Owned(KeyTrie::Node(trie.clone())),
+            None => Cow::Borrowed(&keymap.root),
+        };
+
+        let trie = match trie_node.search(&[*first]) {
+            Some(KeyTrie::Leaf(ref cmd)) => {
+                return KeymapResult::Matched(cmd.clone());
+            }
+            Some(KeyTrie::Sequence(ref cmds)) => {
+                return KeymapResult::MatchedSequence(cmds.clone());
+            }
+            None => return KeymapResult::NotFound,
+            Some(t) => t,
+        };
+
+        self.state.push(key);
+        match trie.search(&self.state[1..]) {
+            Some(&KeyTrie::Node(ref map)) => {
+                if map.is_sticky {
+                    self.state.clear();
+                    self.sticky = Some(map.clone());
+                }
+                KeymapResult::Pending(map.clone())
+            }
+            Some(&KeyTrie::Leaf(ref cmd)) => {
+                self.state.clear();
+                KeymapResult::Matched(cmd.clone())
+            }
+            Some(&KeyTrie::Sequence(ref cmds)) => {
+                self.state.clear();
+                KeymapResult::MatchedSequence(cmds.clone())
+            }
+            None => KeymapResult::Cancelled(self.state.drain(..).collect()),
+        }
     }
 }
 
 impl Default for Keymaps {
     fn default() -> Self {
-        let normal = keymap!({ "Normal mode"
-            "h" | "left" => move_char_left,
-            "j" | "down" => move_line_down,
-            "k" | "up" => move_line_up,
-            "l" | "right" => move_char_right,
-
-            "t" => find_till_char,
-            "f" => find_next_char,
-            "T" => till_prev_char,
-            "F" => find_prev_char,
-            "r" => replace,
-            "R" => replace_with_yanked,
-            "A-." =>  repeat_last_motion,
-
-            "~" => switch_case,
-            "`" => switch_to_lowercase,
-            "A-`" => switch_to_uppercase,
-
-            "home" => goto_line_start,
-            "end" => goto_line_end,
-
-            "w" => move_next_word_start,
-            "b" => move_prev_word_start,
-            "e" => move_next_word_end,
-
-            "W" => move_next_long_word_start,
-            "B" => move_prev_long_word_start,
-            "E" => move_next_long_word_end,
-
-            "v" => select_mode,
-            "G" => goto_line,
-            "g" => { "Goto"
-                "g" => goto_file_start,
-                "e" => goto_last_line,
-                "f" => goto_file,
-                "h" => goto_line_start,
-                "l" => goto_line_end,
-                "s" => goto_first_nonwhitespace,
-                "d" => goto_definition,
-                "y" => goto_type_definition,
-                "r" => goto_reference,
-                "i" => goto_implementation,
-                "t" => goto_window_top,
-                "c" => goto_window_center,
-                "b" => goto_window_bottom,
-                "a" => goto_last_accessed_file,
-                "m" => goto_last_modified_file,
-                "n" => goto_next_buffer,
-                "p" => goto_previous_buffer,
-                "." => goto_last_modification,
-            },
-            ":" => command_mode,
-
-            "i" => insert_mode,
-            "I" => prepend_to_line,
-            "a" => append_mode,
-            "A" => append_to_line,
-            "o" => open_below,
-            "O" => open_above,
-
-            "d" => delete_selection,
-            "A-d" => delete_selection_noyank,
-            "c" => change_selection,
-            "A-c" => change_selection_noyank,
-
-            "C" => copy_selection_on_next_line,
-            "A-C" => copy_selection_on_prev_line,
-
-
-            "s" => select_regex,
-            "A-s" => split_selection_on_newline,
-            "S" => split_selection,
-            ";" => collapse_selection,
-            "A-;" => flip_selections,
-            "A-k" | "A-up" => expand_selection,
-            "A-j" | "A-down" => shrink_selection,
-            "A-h" | "A-left" => select_prev_sibling,
-            "A-l" | "A-right" => select_next_sibling,
-
-            "%" => select_all,
-            "x" => extend_line,
-            "X" => extend_to_line_bounds,
-            // crop_to_whole_line
-
-            "m" => { "Match"
-                "m" => match_brackets,
-                "s" => surround_add,
-                "r" => surround_replace,
-                "d" => surround_delete,
-                "a" => select_textobject_around,
-                "i" => select_textobject_inner,
-            },
-            "[" => { "Left bracket"
-                "d" => goto_prev_diag,
-                "D" => goto_first_diag,
-                "f" => goto_prev_function,
-                "c" => goto_prev_class,
-                "a" => goto_prev_parameter,
-                "o" => goto_prev_comment,
-                "space" => add_newline_above,
-            },
-            "]" => { "Right bracket"
-                "d" => goto_next_diag,
-                "D" => goto_last_diag,
-                "f" => goto_next_function,
-                "c" => goto_next_class,
-                "a" => goto_next_parameter,
-                "o" => goto_next_comment,
-                "space" => add_newline_below,
-            },
-
-            "/" => search,
-            "?" => rsearch,
-            "n" => search_next,
-            "N" => search_prev,
-            "*" => search_selection,
-
-            "u" => undo,
-            "U" => redo,
-            "A-u" => earlier,
-            "A-U" => later,
-
-            "y" => yank,
-            // yank_all
-            "p" => paste_after,
-            // paste_all
-            "P" => paste_before,
-
-            "Q" => record_macro,
-            "q" => replay_macro,
-
-            ">" => indent,
-            "<" => unindent,
-            "=" => format_selections,
-            "J" => join_selections,
-            "K" => keep_selections,
-            "A-K" => remove_selections,
-
-            "," => keep_primary_selection,
-            "A-," => remove_primary_selection,
-
-            // "q" => record_macro,
-            // "Q" => replay_macro,
-
-            "&" => align_selections,
-            "_" => trim_selections,
-
-            "(" => rotate_selections_backward,
-            ")" => rotate_selections_forward,
-            "A-(" => rotate_selection_contents_backward,
-            "A-)" => rotate_selection_contents_forward,
-
-            "A-:" => ensure_selections_forward,
-
-            "esc" => normal_mode,
-            "C-b" | "pageup" => page_up,
-            "C-f" | "pagedown" => page_down,
-            "C-u" => half_page_up,
-            "C-d" => half_page_down,
-
-            "C-w" => { "Window"
-                "C-w" | "w" => rotate_view,
-                "C-s" | "s" => hsplit,
-                "C-v" | "v" => vsplit,
-                "f" => goto_file_hsplit,
-                "F" => goto_file_vsplit,
-                "C-q" | "q" => wclose,
-                "C-o" | "o" => wonly,
-                "C-h" | "h" | "left" => jump_view_left,
-                "C-j" | "j" | "down" => jump_view_down,
-                "C-k" | "k" | "up" => jump_view_up,
-                "C-l" | "l" | "right" => jump_view_right,
-            },
-
-            // move under <space>c
-            "C-c" => toggle_comments,
-
-            // z family for save/restore/combine from/to sels from register
-
-            "tab" => jump_forward, // tab == <C-i>
-            "C-o" => jump_backward,
-            "C-s" => save_selection,
-
-            "space" => { "Space"
-                "f" => file_picker,
-                "b" => buffer_picker,
-                "s" => symbol_picker,
-                "S" => workspace_symbol_picker,
-                "a" => code_action,
-                "'" => last_picker,
-                "d" => { "Debug (experimental)" sticky=true
-                    "l" => dap_launch,
-                    "b" => dap_toggle_breakpoint,
-                    "c" => dap_continue,
-                    "h" => dap_pause,
-                    "i" => dap_step_in,
-                    "o" => dap_step_out,
-                    "n" => dap_next,
-                    "v" => dap_variables,
-                    "t" => dap_terminate,
-                    "C-c" => dap_edit_condition,
-                    "C-l" => dap_edit_log,
-                    "s" => { "Switch"
-                        "t" => dap_switch_thread,
-                        "f" => dap_switch_stack_frame,
-                        // sl, sb
-                    },
-                    "e" => dap_enable_exceptions,
-                    "E" => dap_disable_exceptions,
-                },
-                "w" => { "Window"
-                    "C-w" | "w" => rotate_view,
-                    "C-s" | "s" => hsplit,
-                    "C-v" | "v" => vsplit,
-                    "f" => goto_file_hsplit,
-                    "F" => goto_file_vsplit,
-                    "C-q" | "q" => wclose,
-                    "C-o" | "o" => wonly,
-                    "C-h" | "h" | "left" => jump_view_left,
-                    "C-j" | "j" | "down" => jump_view_down,
-                    "C-k" | "k" | "up" => jump_view_up,
-                    "C-l" | "l" | "right" => jump_view_right,
-                },
-                "y" => yank_joined_to_clipboard,
-                "Y" => yank_main_selection_to_clipboard,
-                "p" => paste_clipboard_after,
-                "P" => paste_clipboard_before,
-                "R" => replace_selections_with_clipboard,
-                "/" => global_search,
-                "k" => hover,
-                "r" => rename_symbol,
-                "?" => command_palette,
-            },
-            "z" => { "View"
-                "z" | "c" => align_view_center,
-                "t" => align_view_top,
-                "b" => align_view_bottom,
-                "m" => align_view_middle,
-                "k" | "up" => scroll_up,
-                "j" | "down" => scroll_down,
-                "C-b" | "pageup" => page_up,
-                "C-f" | "pagedown" => page_down,
-                "C-u" => half_page_up,
-                "C-d" => half_page_down,
-            },
-            "Z" => { "View" sticky=true
-                "z" | "c" => align_view_center,
-                "t" => align_view_top,
-                "b" => align_view_bottom,
-                "m" => align_view_middle,
-                "k" | "up" => scroll_up,
-                "j" | "down" => scroll_down,
-                "C-b" | "pageup" => page_up,
-                "C-f" | "pagedown" => page_down,
-                "C-u" => half_page_up,
-                "C-d" => half_page_down,
-            },
-
-            "\"" => select_register,
-            "|" => shell_pipe,
-            "A-|" => shell_pipe_to,
-            "!" => shell_insert_output,
-            "A-!" => shell_append_output,
-            "$" => shell_keep_pipe,
-            "C-z" => suspend,
-
-            "C-a" => increment,
-            "C-x" => decrement,
-        });
-        let mut select = normal.clone();
-        select.merge_nodes(keymap!({ "Select mode"
-            "h" | "left" => extend_char_left,
-            "j" | "down" => extend_line_down,
-            "k" | "up" => extend_line_up,
-            "l" | "right" => extend_char_right,
-
-            "w" => extend_next_word_start,
-            "b" => extend_prev_word_start,
-            "e" => extend_next_word_end,
-            "W" => extend_next_long_word_start,
-            "B" => extend_prev_long_word_start,
-            "E" => extend_next_long_word_end,
-
-            "n" => extend_search_next,
-            "N" => extend_search_prev,
-
-            "t" => extend_till_char,
-            "f" => extend_next_char,
-            "T" => extend_till_prev_char,
-            "F" => extend_prev_char,
-
-            "home" => extend_to_line_start,
-            "end" => extend_to_line_end,
-            "esc" => exit_select_mode,
-
-            "v" => normal_mode,
-        }));
-        let insert = keymap!({ "Insert mode"
-            "esc" => normal_mode,
-
-            "backspace" => delete_char_backward,
-            "C-h" => delete_char_backward,
-            "del" => delete_char_forward,
-            "C-d" => delete_char_forward,
-            "ret" => insert_newline,
-            "C-j" => insert_newline,
-            "tab" => insert_tab,
-            "C-w" => delete_word_backward,
-            "A-backspace" => delete_word_backward,
-            "A-d" => delete_word_forward,
-
-            "left" => move_char_left,
-            "C-b" => move_char_left,
-            "down" => move_line_down,
-            "C-n" => move_line_down,
-            "up" => move_line_up,
-            "C-p" => move_line_up,
-            "right" => move_char_right,
-            "C-f" => move_char_right,
-            "A-b" => move_prev_word_end,
-            "A-left" => move_prev_word_end,
-            "A-f" => move_next_word_start,
-            "A-right" => move_next_word_start,
-            "A-<" => goto_file_start,
-            "A->" => goto_file_end,
-            "pageup" => page_up,
-            "pagedown" => page_down,
-            "home" => goto_line_start,
-            "C-a" => goto_line_start,
-            "end" => goto_line_end_newline,
-            "C-e" => goto_line_end_newline,
-
-            "C-k" => kill_to_line_end,
-            "C-u" => kill_to_line_start,
-
-            "C-x" => completion,
-            "C-r" => insert_register,
-        });
-        Self(hashmap!(
-            Mode::Normal => Keymap::new(normal),
-            Mode::Select => Keymap::new(select),
-            Mode::Insert => Keymap::new(insert),
-        ))
+        Self::new(Box::new(ArcSwap::new(Arc::new(default()))))
     }
 }
 
 /// Merge default config keys with user overwritten keys for custom user config.
 pub fn merge_keys(mut config: Config) -> Config {
-    let mut delta = std::mem::take(&mut config.keys);
-    for (mode, keys) in &mut *config.keys {
+    let mut delta = std::mem::replace(&mut config.keys, default());
+    for (mode, keys) in &mut config.keys {
         keys.merge(delta.remove(mode).unwrap_or_default())
     }
     config
@@ -867,7 +372,10 @@ pub fn merge_keys(mut config: Config) -> Config {
 
 #[cfg(test)]
 mod tests {
+    use super::macros::keymap;
     use super::*;
+    use arc_swap::access::Constant;
+    use helix_core::hashmap;
 
     #[test]
     #[should_panic]
@@ -887,7 +395,7 @@ mod tests {
     #[test]
     fn merge_partial_keys() {
         let config = Config {
-            keys: Keymaps(hashmap! {
+            keys: hashmap! {
                 Mode::Normal => Keymap::new(
                     keymap!({ "Normal mode"
                         "i" => normal_mode,
@@ -899,29 +407,31 @@ mod tests {
                         },
                     })
                 )
-            }),
+            },
             ..Default::default()
         };
         let mut merged_config = merge_keys(config.clone());
         assert_ne!(config, merged_config);
 
-        let keymap = merged_config.keys.0.get_mut(&Mode::Normal).unwrap();
+        let mut keymap = Keymaps::new(Box::new(Constant(merged_config.keys.clone())));
         assert_eq!(
-            keymap.get(key!('i')).kind,
-            KeymapResultKind::Matched(MappableCommand::normal_mode),
+            keymap.get(Mode::Normal, key!('i')),
+            KeymapResult::Matched(MappableCommand::normal_mode),
             "Leaf should replace leaf"
         );
         assert_eq!(
-            keymap.get(key!('无')).kind,
-            KeymapResultKind::Matched(MappableCommand::insert_mode),
+            keymap.get(Mode::Normal, key!('无')),
+            KeymapResult::Matched(MappableCommand::insert_mode),
             "New leaf should be present in merged keymap"
         );
         // Assumes that z is a node in the default keymap
         assert_eq!(
-            keymap.get(key!('z')).kind,
-            KeymapResultKind::Matched(MappableCommand::jump_backward),
+            keymap.get(Mode::Normal, key!('z')),
+            KeymapResult::Matched(MappableCommand::jump_backward),
             "Leaf should replace node"
         );
+
+        let keymap = merged_config.keys.get_mut(&Mode::Normal).unwrap();
         // Assumes that `g` is a node in default keymap
         assert_eq!(
             keymap.root().search(&[key!('g'), key!('$')]).unwrap(),
@@ -941,14 +451,14 @@ mod tests {
             "Old leaves in subnode should be present in merged node"
         );
 
-        assert!(merged_config.keys.0.get(&Mode::Normal).unwrap().len() > 1);
-        assert!(merged_config.keys.0.get(&Mode::Insert).unwrap().len() > 0);
+        assert!(merged_config.keys.get(&Mode::Normal).unwrap().len() > 1);
+        assert!(merged_config.keys.get(&Mode::Insert).unwrap().len() > 0);
     }
 
     #[test]
     fn order_should_be_set() {
         let config = Config {
-            keys: Keymaps(hashmap! {
+            keys: hashmap! {
                 Mode::Normal => Keymap::new(
                     keymap!({ "Normal mode"
                         "space" => { ""
@@ -959,12 +469,12 @@ mod tests {
                         },
                     })
                 )
-            }),
+            },
             ..Default::default()
         };
         let mut merged_config = merge_keys(config.clone());
         assert_ne!(config, merged_config);
-        let keymap = merged_config.keys.0.get_mut(&Mode::Normal).unwrap();
+        let keymap = merged_config.keys.get_mut(&Mode::Normal).unwrap();
         // Make sure mapping works
         assert_eq!(
             keymap
@@ -981,7 +491,7 @@ mod tests {
 
     #[test]
     fn aliased_modes_are_same_in_default_keymap() {
-        let keymaps = Keymaps::default();
+        let keymaps = Keymaps::default().map();
         let root = keymaps.get(&Mode::Normal).unwrap().root();
         assert_eq!(
             root.search(&[key!(' '), key!('w')]).unwrap(),

@@ -26,17 +26,31 @@ use helix_view::{Document, Editor, View};
 
 use std::path::PathBuf;
 
+pub fn prompt(
+    cx: &mut crate::commands::Context,
+    prompt: std::borrow::Cow<'static, str>,
+    history_register: Option<char>,
+    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
+) {
+    let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
+    // Calculate initial completion
+    prompt.recalculate_completion(cx.editor);
+    cx.push_layer(Box::new(prompt));
+}
+
 pub fn regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     fun: impl Fn(&mut View, &mut Document, Regex, PromptEvent) + 'static,
-) -> Prompt {
+) {
     let (view, doc) = current!(cx.editor);
     let doc_id = view.doc;
     let snapshot = doc.selection(view.id).clone();
     let offset_snapshot = view.offset;
+    let config = cx.editor.config();
 
     let mut prompt = Prompt::new(
         prompt,
@@ -65,7 +79,7 @@ pub fn regex_prompt(
                         return;
                     }
 
-                    let case_insensitive = if cx.editor.config.search.smart_case {
+                    let case_insensitive = if config.search.smart_case {
                         !input.chars().any(char::is_uppercase)
                     } else {
                         false
@@ -73,6 +87,7 @@ pub fn regex_prompt(
 
                     match RegexBuilder::new(input)
                         .case_insensitive(case_insensitive)
+                        .multi_line(true)
                         .build()
                     {
                         Ok(regex) => {
@@ -83,7 +98,7 @@ pub fn regex_prompt(
 
                             fun(view, doc, regex, event);
 
-                            view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
+                            view.ensure_cursor_in_view(doc, config.scrolloff);
                         }
                         Err(_err) => (), // TODO: mark command line as error
                     }
@@ -93,7 +108,8 @@ pub fn regex_prompt(
     );
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
-    prompt
+    // prompt
+    cx.push_layer(Box::new(prompt));
 }
 
 pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
@@ -280,6 +296,27 @@ pub mod completers {
                 FileMatch::Accept
             }
         })
+    }
+
+    pub fn language(editor: &Editor, input: &str) -> Vec<Completion> {
+        let matcher = Matcher::default();
+
+        let mut matches: Vec<_> = editor
+            .syn_loader
+            .language_configs()
+            .filter_map(|config| {
+                matcher
+                    .fuzzy_match(&config.language_id, input)
+                    .map(|score| (&config.language_id, score))
+            })
+            .collect();
+
+        matches.sort_unstable_by_key(|(_language, score)| Reverse(*score));
+
+        matches
+            .into_iter()
+            .map(|(language, _score)| ((0..), language.clone().into()))
+            .collect()
     }
 
     pub fn directory(_editor: &Editor, input: &str) -> Vec<Completion> {

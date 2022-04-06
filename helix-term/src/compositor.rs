@@ -9,14 +9,6 @@ use tui::buffer::Buffer as Surface;
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
 
-// --> EventResult should have a callback that takes a context with methods like .popup(),
-// .prompt() etc. That way we can abstract it from the renderer.
-// Q: How does this interact with popups where we need to be able to specify the rendering of the
-// popup?
-// A: It could just take a textarea.
-//
-// If Compositor was specified in the callback that's then problematic because of
-
 // Cursive-inspired
 pub enum EventResult {
     Ignored(Option<Callback>),

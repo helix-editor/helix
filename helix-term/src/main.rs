@@ -1,8 +1,7 @@
 use anyhow::{Context, Error, Result};
 use helix_term::application::Application;
 use helix_term::args::Args;
-use helix_term::config::Config;
-use helix_term::keymap::merge_keys;
+use helix_term::config::{Config, ConfigLoadError};
 use std::path::PathBuf;
 
 fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
@@ -60,7 +59,6 @@ ARGS:
 
 FLAGS:
     -h, --help                     Prints help information
-    --edit-config                  Opens the helix config file
     --tutor                        Loads the tutorial
     --health [LANG]                Checks for potential errors in editor setup
                                    If given, checks for config errors in language LANG
@@ -90,16 +88,14 @@ FLAGS:
     }
 
     if args.health {
-        if let Some(lang) = args.health_arg {
-            match lang.as_str() {
-                "all" => helix_term::health::languages_all(),
-                _ => helix_term::health::language(lang),
+        if let Err(err) = helix_term::health::print_health(args.health_arg) {
+            // Piping to for example `head -10` requires special handling:
+            // https://stackoverflow.com/a/65760807/7115678
+            if err.kind() != std::io::ErrorKind::BrokenPipe {
+                return Err(err.into());
             }
-        } else {
-            helix_term::health::general();
-            println!();
-            helix_term::health::languages_all();
         }
+
         std::process::exit(0);
     }
 
@@ -118,19 +114,24 @@ FLAGS:
         std::fs::create_dir_all(&conf_dir).ok();
     }
 
-    let config = match std::fs::read_to_string(helix_loader::config_file()) {
-        Ok(config) => toml::from_str(&config)
-            .map(merge_keys)
-            .unwrap_or_else(|err| {
-                eprintln!("Bad config: {}", err);
-                eprintln!("Press <ENTER> to continue with default config");
-                use std::io::Read;
-                // This waits for an enter press.
-                let _ = std::io::stdin().read(&mut []);
-                Config::default()
-            }),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
-        Err(err) => return Err(Error::new(err)),
+    let config = match Config::load_default() {
+        Ok(config) => config,
+        Err(err) => {
+            match err {
+                ConfigLoadError::BadConfig(err) => {
+                    eprintln!("Bad config: {}", err);
+                    eprintln!("Press <ENTER> to continue with default config");
+                    use std::io::Read;
+                    // This waits for an enter press.
+                    let _ = std::io::stdin().read(&mut []);
+                    Config::default()
+                }
+                ConfigLoadError::Error(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                    Config::default()
+                }
+                ConfigLoadError::Error(err) => return Err(Error::new(err)),
+            }
+        }
     };
 
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;

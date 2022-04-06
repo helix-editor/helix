@@ -9,6 +9,8 @@
 | `:buffer-close-others!`, `:bco!`, `:bcloseother!` | Close all buffers but the currently focused one. |
 | `:buffer-close-all`, `:bca`, `:bcloseall` | Close all buffers, without quiting. |
 | `:buffer-close-all!`, `:bca!`, `:bcloseall!` | Close all buffers forcefully (ignoring unsaved changes), without quiting. |
+| `:buffer-next`, `:bn`, `:bnext` | Go to next buffer. |
+| `:buffer-previous`, `:bp`, `:bprev` | Go to previous buffer. |
 | `:write`, `:w` | Write changes to disk. Accepts an optional path (:write some/path.txt) |
 | `:new`, `:n` | Create a new scratch buffer. |
 | `:format`, `:fmt` | Format the file using the LSP formatter. |
@@ -46,10 +48,15 @@
 | `:debug-remote`, `:dbg-tcp` | Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters. |
 | `:debug-eval` | Evaluate expression in current debug context. |
 | `:vsplit`, `:vs` | Open the file in a vertical split. |
+| `:vsplit-new`, `:vnew` | Open a scratch buffer in a vertical split. |
 | `:hsplit`, `:hs`, `:sp` | Open the file in a horizontal split. |
+| `:hsplit-new`, `:hnew` | Open a scratch buffer in a horizontal split. |
 | `:tutor` | Open the tutorial. |
 | `:goto`, `:g` | Go to line number. |
+| `:set-language`, `:lang` | Set the language of current buffer. |
 | `:set-option`, `:set` | Set a config option at runtime |
 | `:sort` | Sort ranges in selection. |
 | `:rsort` | Sort ranges in selection in reverse order. |
 | `:tree-sitter-subtree`, `:ts-subtree` | Display tree sitter subtree under cursor, primarily for debugging queries. |
+| `:config-reload` | Refreshes helix's config. |
+| `:config-open` | Open the helix config.toml file. |
