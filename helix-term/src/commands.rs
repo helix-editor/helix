@@ -4297,7 +4297,7 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
                 }
 
                 let (from, to) = match behavior {
-                    ShellBehavior::Replace => (range.from(), range.to()),
+                    ShellBehavior::Replace | ShellBehavior::Popup => (range.from(), range.to()),
                     ShellBehavior::Insert => (range.from(), range.from()),
                     ShellBehavior::Append => (range.to(), range.to()),
                     _ => (range.from(), range.from()),
@@ -4309,14 +4309,40 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
                 ShellBehavior::Ignore => {}
                 // Display outputs in a popup when requested
                 ShellBehavior::Popup => {
+                    // Clone prompt input to be able to show it
+                    let prompt_input = String::from(input);
+
                     let callback = async move {
                         let call: job::Callback =
-                            Box::new(move |_, compositor: &mut Compositor| {
-                                let output = changes
+                            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                                // Generate text list from command outputs and piped inputs
+                                let show_text: String = changes
                                     .into_iter()
-                                    .filter_map(|(_, _, output)| output.map(String::from))
+                                    .filter_map(|(from, to, output)| {
+                                        output.map(|output| {
+                                            let (_, doc) = current!(editor);
+                                            let slice = doc.text().slice(from..to);
+                                            let piped: String = slice
+                                                .chars()
+                                                // Replace newlines etc with space
+                                                .map(|c| if c.is_ascii_control() { ' ' } else { c })
+                                                // Limit shell command input display text to 20 characters
+                                                .take(20)
+                                                .collect();
+                                            let ellipsis = if piped.len() < slice.len_bytes() {
+                                                "..."
+                                            } else {
+                                                ""
+                                            };
+                                            format!(
+                                                "({}) <<< \"{}{}\":\n\n{}\n",
+                                                prompt_input, piped, ellipsis, output
+                                            )
+                                        })
+                                    })
                                     .collect();
-                                let popup = Popup::new("shell-output", ui::Text::new(output))
+
+                                let popup = Popup::new("shell-output", ui::Text::new(show_text))
                                     .auto_close(true);
                                 compositor.replace_or_push("shell-output", popup);
                             });
