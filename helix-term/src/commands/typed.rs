@@ -339,7 +339,6 @@ fn set_line_ending(
             }
         }),
     );
-
     doc.apply(&transaction, view.id);
 
     Ok(())
@@ -1132,6 +1131,9 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "line-ending",
             aliases: &[],
+            #[cfg(not(feature = "unicode-lines"))]
+            doc: "Set the document's default line ending. Options: crlf, lf.",
+            #[cfg(feature = "unicode-lines")]
             doc: "Set the document's default line ending. Options: crlf, lf, cr, ff, nel.",
             fun: set_line_ending,
             completer: None,
