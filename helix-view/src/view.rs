@@ -330,7 +330,7 @@ mod tests {
     use super::*;
     use helix_core::Rope;
     const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
-    const OFFSET_OMIT_LINE_NUMBER_GUTTER: u16 = 2; // 1 diagnostic + 5 linenr + 1 gutter
+    const OFFSET_OMIT_LINE_NUMBER_GUTTER: u16 = 2; // 1 diagnostic + 1 gutter
                                                    // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
 
     #[test]
