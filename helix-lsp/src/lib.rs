@@ -58,6 +58,38 @@ pub mod util {
     use super::*;
     use helix_core::{Range, Rope, Transaction};
 
+    /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
+    ///
+    /// Panics when [`pos_to_lsp_pos`] would for an invalid range on the diagnostic.
+    pub fn diagnostic_to_lsp_diagnostic(
+        doc: &Rope,
+        diag: &helix_core::diagnostic::Diagnostic,
+        offset_encoding: OffsetEncoding,
+    ) -> lsp::Diagnostic {
+        use helix_core::diagnostic::Severity::*;
+
+        let severity = diag.severity.map(|s| match s {
+            Hint => lsp::DiagnosticSeverity::HINT,
+            Info => lsp::DiagnosticSeverity::INFORMATION,
+            Warning => lsp::DiagnosticSeverity::WARNING,
+            Error => lsp::DiagnosticSeverity::ERROR,
+        });
+
+        // TODO: add support for Diagnostic.data
+        lsp::Diagnostic::new(
+            lsp::Range::new(
+                pos_to_lsp_pos(doc, diag.range.start, offset_encoding),
+                pos_to_lsp_pos(doc, diag.range.end, offset_encoding),
+            ),
+            severity,
+            None,
+            None,
+            diag.message.to_owned(),
+            None,
+            None,
+        )
+    }
+
     /// Converts [`lsp::Position`] to a position in the document.
     ///
     /// Returns `None` if position exceeds document length or an operation overflows.

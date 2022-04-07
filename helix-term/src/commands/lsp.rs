@@ -1,6 +1,6 @@
 use helix_lsp::{
     block_on, lsp,
-    util::{lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
+    util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
 
@@ -192,14 +192,28 @@ pub fn code_action(cx: &mut Context) {
 
     let language_server = language_server!(cx.editor, doc);
 
-    let range = range_to_lsp_range(
-        doc.text(),
-        doc.selection(view.id).primary(),
-        language_server.offset_encoding(),
-    );
-
-    let future = language_server.code_actions(doc.identifier(), range);
+    let selection_range = doc.selection(view.id).primary();
     let offset_encoding = language_server.offset_encoding();
+
+    let range = range_to_lsp_range(doc.text(), selection_range, offset_encoding);
+
+    let future = language_server.code_actions(
+        doc.identifier(),
+        range,
+        // Filter and convert overlapping diagnostics
+        lsp::CodeActionContext {
+            diagnostics: doc
+                .diagnostics()
+                .iter()
+                .filter(|&diag| {
+                    selection_range
+                        .overlaps(&helix_core::Range::new(diag.range.start, diag.range.end))
+                })
+                .map(|diag| diagnostic_to_lsp_diagnostic(doc.text(), diag, offset_encoding))
+                .collect(),
+            only: None,
+        },
+    );
 
     cx.callback(
         future,
