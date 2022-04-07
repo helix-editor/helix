@@ -14,8 +14,6 @@
 
 (comment) @comment
 
-(identifier) @variable
-
 (formal_parameters (identifier) @variable.parameter)
 (formal_parameters (default_parameter (identifier) @variable.parameter))
 
@@ -116,13 +114,15 @@
 (default_argument name: (identifier) @variable.parameter)
 
 
-(namespace_get function: (identifier) @function.method)
-(namespace_get_internal function: (identifier) @function.method)
-
 (namespace_get namespace: (identifier) @namespace
  "::" @operator)
 (namespace_get_internal namespace: (identifier) @namespace
  ":::" @operator)
+
+(namespace_get function: (identifier) @function.method)
+(namespace_get_internal function: (identifier) @function.method)
+
+(identifier) @variable
 
 ; Error
 (ERROR) @error
