@@ -54,7 +54,7 @@
 | racket |  |  |  | `racket` |
 | regex | ✓ |  |  |  |
 | rescript | ✓ | ✓ |  | `rescript-language-server` |
-| rmarkdown | ✓ |  |  | `R` |
+| rmarkdown | ✓ |  | ✓ | `R` |
 | ron | ✓ |  | ✓ |  |
 | ruby | ✓ |  | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
