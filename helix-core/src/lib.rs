@@ -24,6 +24,7 @@ pub mod shellwords;
 mod state;
 pub mod surround;
 pub mod syntax;
+pub mod test;
 pub mod textobject;
 mod transaction;
 

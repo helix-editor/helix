@@ -78,8 +78,8 @@ source = { git = "https://github.com/yusdacra/tree-sitter-protobuf", rev = "19c2
 [[language]]
 name = "elixir"
 scope = "source.elixir"
-injection-regex = "elixir"
-file-types = ["ex", "exs"]
+injection-regex = "(elixir|ex)"
+file-types = ["ex", "exs", "mix.lock"]
 shebangs = ["elixir"]
 roots = []
 comment-token = "#"
@@ -88,7 +88,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "elixir"
-source = { git = "https://github.com/elixir-lang/tree-sitter-elixir", rev = "f5d7bda543da788bd507b05bd722627dde66c9ec"  }
+source = { git = "https://github.com/elixir-lang/tree-sitter-elixir", rev = "60863fc6e27d60cf4b1917499ed2259f92c7800e"  }
 
 [[language]]
 name = "fish"
@@ -266,11 +266,11 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-go", rev = "0fa917a
 name = "javascript"
 scope = "source.js"
 injection-regex = "^(js|javascript)$"
-file-types = ["js", "mjs"]
+file-types = ["js", "jsx", "mjs"]
 shebangs = ["node"]
 roots = []
 comment-token = "//"
-# TODO: highlights-jsx, highlights-params
+# TODO: highlights-params
 language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "javascript" }
 indent = { tab-width = 2, unit = "  " }
 
@@ -291,13 +291,24 @@ name = "javascript"
 source = { git = "https://github.com/tree-sitter/tree-sitter-javascript", rev = "4a95461c4761c624f2263725aca79eeaefd36cad" }
 
 [[language]]
+name = "jsx"
+scope = "source.jsx"
+injection-regex = "jsx"
+file-types = ["jsx"]
+roots = []
+comment-token = "//"
+language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "javascript" }
+indent = { tab-width = 2, unit = "  " }
+grammar = "javascript"
+
+[[language]]
 name = "typescript"
 scope = "source.ts"
 injection-regex = "^(ts|typescript)$"
 file-types = ["ts"]
 shebangs = []
 roots = []
-# TODO: highlights-jsx, highlights-params
+# TODO: highlights-params
 language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "typescript"}
 indent = { tab-width = 2, unit = "  " }
 
@@ -311,7 +322,7 @@ scope = "source.tsx"
 injection-regex = "^(tsx)$" # |typescript
 file-types = ["tsx"]
 roots = []
-# TODO: highlights-jsx, highlights-params
+# TODO: highlights-params
 language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "typescriptreact" }
 indent = { tab-width = 2, unit = "  " }
 
@@ -402,7 +413,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "bash"
-source = { git = "https://github.com/tree-sitter/tree-sitter-bash", rev = "a8eb5cb57c66f74c63ab950de081207cccf52017" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-bash", rev = "275effdfc0edce774acf7d481f9ea195c6c403cd" }
 
 [[language]]
 name = "php"
@@ -436,6 +447,7 @@ injection-regex = "tex"
 file-types = ["tex"]
 roots = []
 comment-token = "%"
+language-server = { command = "texlab" }
 indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
@@ -830,7 +842,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "git-commit"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "066e395e1107df17183cf3ae4230f1a1406cc972" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "7ae23de633de41f8f5b802f6f05b6596df6d00c1" }
 
 [[language]]
 name = "git-diff"
@@ -939,15 +951,16 @@ source = { git = "https://github.com/jaredramirez/tree-sitter-rescript", rev = "
 [[language]]
 name = "erlang"
 scope = "source.erlang"
-injection-regex = "^erl$"
-file-types = ["erl", "hrl", "app", "rebar.config"]
+injection-regex = "erl(ang)?"
+file-types = ["erl", "hrl", "app", "rebar.config", "rebar.lock"]
 roots = ["rebar.config"]
 comment-token = "%%"
 indent = { tab-width = 4, unit = "    " }
+language-server = { command = "erlang_ls" }
 
 [[grammar]]
 name = "erlang"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "86985bde399c5f40b00bc75f7ab70a6c69a5f9c3" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "1e81393b8f0a81b35ff1679a9420fafbd2cf3511" }
 
 [[language]]
 name = "kotlin"
@@ -976,3 +989,52 @@ auto-format = true
 [[grammar]]
 name = "hcl"
 source = { git = "https://github.com/MichaHoffmann/tree-sitter-hcl", rev = "3cb7fc28247efbcb2973b97e71c78838ad98a583" }
+
+[[language]]
+name = "org"
+scope = "source.org"
+injection-regex = "org"
+file-types = ["org"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "org"
+source = { git = "https://github.com/milisims/tree-sitter-org", rev = "1c3eb533a9cf6800067357b59e03ac3f91fc3a54" }
+
+[[language]]
+name = "solidity"
+scope = "source.sol"
+injection-regex = "^(sol|solidity)$"
+file-types = ["sol"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+language-server = { command = "solc", args = ["--lsp"] }
+
+[[grammar]]
+name = "solidity"
+source = { git = "https://github.com/slinlee/tree-sitter-solidity", rev = "f3a002274744e859bf64cf3524985f8c31ea84fd" }
+
+[[language]]
+name = "gleam"
+scope = "source.gleam"
+injection-regex = "gleam"
+file-types = ["gleam"]
+roots = ["gleam.toml"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "gleam"
+source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "7159ce961592192b0e7cdf88782cda0fdf41a4cb" }
+
+[[language]]
+name = "ron"
+scope = "source.ron"
+injection-regex = "ron"
+file-types = ["ron"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+grammar = "rust"

@@ -81,7 +81,7 @@
 "ui.cursor" = {fg = "base02", bg = "cyan"}
 "ui.cursor.insert" = {fg = "base03", bg = "base3"}
 # 当前光标匹配的标点符号
-"ui.cursor.match" = {modifiers = ["reversed"]}
+"ui.cursor.match" = { fg = "base02", bg = "light-gray" }
 
 "warning" =  { fg = "orange", modifiers= ["bold", "underlined"] }
 "error" = { fg = "red", modifiers= ["bold", "underlined"] }

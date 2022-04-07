@@ -1,6 +1,6 @@
 use super::*;
 
-use helix_view::editor::Action;
+use helix_view::editor::{Action, ConfigEvent};
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -172,6 +172,24 @@ fn force_buffer_close_all(
     buffer_close_by_ids_impl(cx.editor, &document_ids, true)
 }
 
+fn buffer_next(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    goto_buffer(cx.editor, Direction::Forward);
+    Ok(())
+}
+
+fn buffer_previous(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    goto_buffer(cx.editor, Direction::Backward);
+    Ok(())
+}
+
 fn write_impl(
     cx: &mut compositor::Context,
     path: Option<&Cow<str>>,
@@ -203,6 +221,7 @@ fn write_impl(
 
     if path.is_some() {
         let id = doc.id();
+        doc.detect_language(cx.editor.syn_loader.clone());
         let _ = cx.editor.refresh_language_server(id);
     }
     Ok(())
@@ -552,7 +571,7 @@ fn theme(
         .theme_loader
         .load(theme)
         .with_context(|| format!("Failed setting theme {}", theme))?;
-    let true_color = cx.editor.config.true_color || crate::true_color();
+    let true_color = cx.editor.config().true_color || crate::true_color();
     if !(true_color || theme.is_16_color()) {
         bail!("Unsupported theme: theme requires true color support");
     }
@@ -903,10 +922,10 @@ fn setting(
     }
     let (key, arg) = (&args[0].to_lowercase(), &args[1]);
 
-    let key_error = || anyhow::anyhow!("Unknown key `{key}`");
-    let field_error = |_| anyhow::anyhow!("Could not parse field `{arg}`");
+    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+    let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
 
-    let mut config = serde_json::to_value(&cx.editor.config).unwrap();
+    let mut config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
     let pointer = format!("/{}", key.replace('.', "/"));
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 
@@ -916,8 +935,30 @@ fn setting(
     } else {
         arg.parse().map_err(field_error)?
     };
-    cx.editor.config = serde_json::from_value(config).map_err(field_error)?;
+    let config = serde_json::from_value(config).map_err(field_error)?;
 
+    cx.editor
+        .config_events
+        .0
+        .send(ConfigEvent::Update(config))?;
+    Ok(())
+}
+
+/// Change the language of the current buffer at runtime.
+fn language(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:set-language language`");
+    }
+
+    let doc = doc_mut!(cx.editor);
+    doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone());
+
+    let id = doc.id();
+    cx.editor.refresh_language_server(id);
     Ok(())
 }
 
@@ -1007,6 +1048,25 @@ fn tree_sitter_subtree(
     Ok(())
 }
 
+fn open_config(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor
+        .open(helix_loader::config_file(), Action::Replace)?;
+    Ok(())
+}
+
+fn refresh_config(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -1069,6 +1129,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["bca!", "bcloseall!"],
             doc: "Close all buffers forcefully (ignoring unsaved changes), without quiting.",
             fun: force_buffer_close_all,
+            completer: None,
+        },
+        TypableCommand {
+            name: "buffer-next",
+            aliases: &["bn", "bnext"],
+            doc: "Go to next buffer.",
+            fun: buffer_next,
+            completer: None,
+        },
+        TypableCommand {
+            name: "buffer-previous",
+            aliases: &["bp", "bprev"],
+            doc: "Go to previous buffer.",
+            fun: buffer_previous,
             completer: None,
         },
         TypableCommand {
@@ -1373,6 +1447,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: None,
         },
         TypableCommand {
+            name: "set-language",
+            aliases: &["lang"],
+            doc: "Set the language of current buffer.",
+            fun: language,
+            completer: Some(completers::language),
+        },
+        TypableCommand {
             name: "set-option",
             aliases: &["set"],
             doc: "Set a config option at runtime",
@@ -1398,6 +1479,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["ts-subtree"],
             doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
             fun: tree_sitter_subtree,
+            completer: None,
+        },
+        TypableCommand {
+            name: "config-reload",
+            aliases: &[],
+            doc: "Refreshes helix's config.",
+            fun: refresh_config,
+            completer: None,
+        },
+        TypableCommand {
+            name: "config-open",
+            aliases: &[],
+            doc: "Open the helix config.toml file.",
+            fun: open_config,
             completer: None,
         },
     ];

@@ -412,7 +412,11 @@ impl Document {
         let offset_encoding = language_server.offset_encoding();
         let request = language_server.text_document_formatting(
             self.identifier(),
-            lsp::FormattingOptions::default(),
+            lsp::FormattingOptions {
+                tab_size: self.tab_width() as u32,
+                insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
+                ..Default::default()
+            },
             None,
         )?;
 
@@ -606,6 +610,17 @@ impl Document {
     pub fn set_language2(&mut self, scope: &str, config_loader: Arc<syntax::Loader>) {
         let language_config = config_loader.language_config_for_scope(scope);
 
+        self.set_language(language_config, Some(config_loader));
+    }
+
+    /// Set the programming language for the file if you know the language but don't have the
+    /// [`syntax::LanguageConfiguration`] for it.
+    pub fn set_language_by_language_id(
+        &mut self,
+        language_id: &str,
+        config_loader: Arc<syntax::Loader>,
+    ) {
+        let language_config = config_loader.language_config_for_language_id(language_id);
         self.set_language(language_config, Some(config_loader));
     }
 

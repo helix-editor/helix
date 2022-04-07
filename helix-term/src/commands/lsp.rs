@@ -11,7 +11,7 @@ use helix_view::editor::Action;
 
 use crate::{
     compositor::{self, Compositor},
-    ui::{self, overlay::overlayed, FileLocation, FilePicker, Popup, Prompt, PromptEvent},
+    ui::{self, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent},
 };
 
 use std::borrow::Cow;
@@ -71,7 +71,7 @@ fn sym_picker(
 ) -> FilePicker<lsp::SymbolInformation> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
     let current_path2 = current_path.clone();
-    let mut picker = FilePicker::new(
+    FilePicker::new(
         symbols,
         move |symbol| {
             if current_path.as_ref() == Some(&symbol.location.uri) {
@@ -104,9 +104,8 @@ fn sym_picker(
             }
         },
         move |_editor, symbol| Some(location_to_file_location(&symbol.location)),
-    );
-    picker.truncate_start = false;
-    picker
+    )
+    .truncate_start(false)
 }
 
 pub fn symbol_picker(cx: &mut Context) {
@@ -138,9 +137,7 @@ pub fn symbol_picker(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |editor: &mut Editor,
-              compositor: &mut Compositor,
-              response: Option<lsp::DocumentSymbolResponse>| {
+        move |editor, compositor, response: Option<lsp::DocumentSymbolResponse>| {
             if let Some(symbols) = response {
                 // lsp has two ways to represent symbols (flat/nested)
                 // convert the nested variant to flat, so that we have a homogeneous list
@@ -172,9 +169,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |_editor: &mut Editor,
-              compositor: &mut Compositor,
-              response: Option<Vec<lsp::SymbolInformation>>| {
+        move |_editor, compositor, response: Option<Vec<lsp::SymbolInformation>>| {
             if let Some(symbols) = response {
                 let picker = sym_picker(symbols, current_url, offset_encoding);
                 compositor.push(Box::new(overlayed(picker)))
@@ -208,9 +203,7 @@ pub fn code_action(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |editor: &mut Editor,
-              compositor: &mut Compositor,
-              response: Option<lsp::CodeActionResponse>| {
+        move |editor, compositor, response: Option<lsp::CodeActionResponse>| {
             let actions = match response {
                 Some(a) => a,
                 None => return,
@@ -613,7 +606,7 @@ pub fn hover(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |editor: &mut Editor, compositor: &mut Compositor, response: Option<lsp::Hover>| {
+        move |editor, compositor, response: Option<lsp::Hover>| {
             if let Some(hover) = response {
                 // hover.contents / .range <- used for visualizing
 
@@ -650,7 +643,8 @@ pub fn hover(cx: &mut Context) {
     );
 }
 pub fn rename_symbol(cx: &mut Context) {
-    let prompt = Prompt::new(
+    ui::prompt(
+        cx,
         "rename-to:".into(),
         None,
         ui::completers::none,
@@ -670,5 +664,4 @@ pub fn rename_symbol(cx: &mut Context) {
             apply_workspace_edit(cx.editor, offset_encoding, &edits);
         },
     );
-    cx.push_layer(Box::new(prompt));
 }

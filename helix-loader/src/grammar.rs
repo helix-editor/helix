@@ -63,12 +63,12 @@ pub fn get_language(name: &str) -> Result<Language> {
     library_path.set_extension(DYLIB_EXTENSION);
 
     let library = unsafe { Library::new(&library_path) }
-        .with_context(|| format!("Error opening dynamic library {library_path:?}"))?;
+        .with_context(|| format!("Error opening dynamic library {:?}", library_path))?;
     let language_fn_name = format!("tree_sitter_{}", name.replace('-', "_"));
     let language = unsafe {
         let language_fn: Symbol<unsafe extern "C" fn() -> Language> = library
             .get(language_fn_name.as_bytes())
-            .with_context(|| format!("Failed to load symbol {language_fn_name}"))?;
+            .with_context(|| format!("Failed to load symbol {}", language_fn_name))?;
         language_fn()
     };
     std::mem::forget(library);
@@ -133,7 +133,7 @@ where
     // TODO: print all failures instead of the first one found.
     rx.iter()
         .find(|result| result.is_err())
-        .map(|err| err.with_context(|| format!("Failed to {action} some grammar(s)")))
+        .map(|err| err.with_context(|| format!("Failed to {} some grammar(s)", action)))
         .unwrap_or(Ok(()))
 }
 
@@ -143,7 +143,8 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<()> {
     } = grammar.source
     {
         let grammar_dir = crate::runtime_dir()
-            .join("grammars/sources")
+            .join("grammars")
+            .join("sources")
             .join(&grammar.grammar_id);
 
         fs::create_dir_all(&grammar_dir).context(format!(
@@ -233,17 +234,22 @@ fn build_grammar(grammar: GrammarConfiguration) -> Result<()> {
         PathBuf::from(&path)
     } else {
         crate::runtime_dir()
-            .join("grammars/sources")
+            .join("grammars")
+            .join("sources")
             .join(&grammar.grammar_id)
     };
 
     let grammar_dir_entries = grammar_dir.read_dir().with_context(|| {
-        format!("Failed to read directory {grammar_dir:?}. Did you use 'hx --grammar fetch'?")
+        format!(
+            "Failed to read directory {:?}. Did you use 'hx --grammar fetch'?",
+            grammar_dir
+        )
     })?;
 
     if grammar_dir_entries.count() == 0 {
         return Err(anyhow!(
-            "Directory {grammar_dir:?} is empty. Did you use 'hx --grammar fetch'?"
+            "Directory {:?} is empty. Did you use 'hx --grammar fetch'?",
+            grammar_dir
         ));
     };
 

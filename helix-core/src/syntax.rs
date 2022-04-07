@@ -92,7 +92,7 @@ pub struct LanguageConfiguration {
     pub indent: Option<IndentationConfiguration>,
 
     #[serde(skip)]
-    pub(crate) indent_query: OnceCell<Option<IndentQuery>>,
+    pub(crate) indent_query: OnceCell<Option<Query>>,
     #[serde(skip)]
     pub(crate) textobject_query: OnceCell<Option<TextObjectQuery>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -218,17 +218,6 @@ impl FromStr for AutoPairConfig {
         let enable: bool = s.parse()?;
         Ok(AutoPairConfig::Enable(enable))
     }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct IndentQuery {
-    #[serde(default)]
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    pub indent: HashSet<String>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    pub outdent: HashSet<String>,
 }
 
 #[derive(Debug)]
@@ -381,7 +370,7 @@ impl LanguageConfiguration {
                 &injections_query,
                 &locals_query,
             )
-            .unwrap_or_else(|query_error| panic!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar build' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, query_error));
+            .unwrap_or_else(|query_error| panic!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar fetch' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, query_error));
 
             config.configure(scopes);
             Some(Arc::new(config))
@@ -404,13 +393,16 @@ impl LanguageConfiguration {
         self.highlight_config.get().is_some()
     }
 
-    pub fn indent_query(&self) -> Option<&IndentQuery> {
+    pub fn indent_query(&self) -> Option<&Query> {
         self.indent_query
             .get_or_init(|| {
-                let language = self.language_id.to_ascii_lowercase();
-
-                let toml = load_runtime_file(&language, "indents.toml").ok()?;
-                toml::from_slice(toml.as_bytes()).ok()
+                let lang_name = self.language_id.to_ascii_lowercase();
+                let query_text = read_query(&lang_name, "indents.scm");
+                if query_text.is_empty() {
+                    return None;
+                }
+                let lang = self.highlight_config.get()?.as_ref()?.language;
+                Query::new(lang, &query_text).ok()
             })
             .as_ref()
     }
@@ -512,6 +504,13 @@ impl Loader {
             .cloned()
     }
 
+    pub fn language_config_for_language_id(&self, id: &str) -> Option<Arc<LanguageConfiguration>> {
+        self.language_configs
+            .iter()
+            .find(|config| config.language_id == id)
+            .cloned()
+    }
+
     pub fn language_configuration_for_injection_string(
         &self,
         string: &str,
@@ -537,6 +536,10 @@ impl Loader {
         None
     }
 
+    pub fn language_configs(&self) -> impl Iterator<Item = &Arc<LanguageConfiguration>> {
+        self.language_configs.iter()
+    }
+
     pub fn set_scopes(&self, scopes: Vec<String>) {
         self.scopes.store(Arc::new(scopes));
 
@@ -557,7 +560,7 @@ impl Loader {
 
 pub struct TsParser {
     parser: tree_sitter::Parser,
-    cursors: Vec<QueryCursor>,
+    pub cursors: Vec<QueryCursor>,
 }
 
 // could also just use a pool, or a single instance?
@@ -1180,7 +1183,7 @@ struct HighlightIter<'a> {
 }
 
 // Adapter to convert rope chunks to bytes
-struct ChunksBytes<'a> {
+pub struct ChunksBytes<'a> {
     chunks: ropey::iter::Chunks<'a>,
 }
 impl<'a> Iterator for ChunksBytes<'a> {
@@ -1190,7 +1193,7 @@ impl<'a> Iterator for ChunksBytes<'a> {
     }
 }
 
-struct RopeProvider<'a>(RopeSlice<'a>);
+pub struct RopeProvider<'a>(pub RopeSlice<'a>);
 impl<'a> TextProvider<'a> for RopeProvider<'a> {
     type I = ChunksBytes<'a>;
 
@@ -2126,7 +2129,7 @@ mod test {
     #[test]
     fn test_load_runtime_file() {
         // Test to make sure we can load some data from the runtime directory.
-        let contents = load_runtime_file("rust", "indents.toml").unwrap();
+        let contents = load_runtime_file("rust", "indents.scm").unwrap();
         assert!(!contents.is_empty());
 
         let results = load_runtime_file("rust", "does-not-exist");

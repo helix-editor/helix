@@ -277,6 +277,8 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `[a`     | Go to previous argument/parameter (**TS**)   | `goto_prev_parameter` |
 | `]o`     | Go to next comment (**TS**)                  | `goto_next_comment`   |
 | `[o`     | Go to previous comment (**TS**)              | `goto_prev_comment`   |
+| `]p`     | Go to next paragraph                         | `goto_next_paragraph` |
+| `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
 | `[space` | Add newline above                            | `add_newline_above`   |
 | `]space` | Add newline below                            | `add_newline_below`   |
 
@@ -304,7 +306,7 @@ undo-able "save point" until you return to normal mode.
 | `Ctrl-k`                  | Delete to end of line       | `kill_to_line_end`      |
 | `Ctrl-j`, `Enter`         | Insert new line             | `insert_newline`        |
 | `Backspace`, `Ctrl-h`     | Delete previous char        | `delete_char_backward`  |
-| `Delete`, `Ctrl-d`        | Delete previous char        | `delete_char_forward`   |
+| `Delete`, `Ctrl-d`        | Delete next char            | `delete_char_forward`   |
 | `Ctrl-p`, `Up`            | Move to previous line       | `move_line_up`          |
 | `Ctrl-n`, `Down`          | Move to next line           | `move_line_down`        |
 | `PageUp`                  | Move one page up            | `page_up`               |
@@ -331,10 +333,10 @@ Keys to use within picker. Remapping currently not supported.
 
 | Key                          | Description       |
 | -----                        | -------------     |
-| `Up`, `Ctrl-k`, `Ctrl-p`     | Previous entry    |
-| `PageUp`, `Ctrl-b`           | Page up           |
-| `Down`, `Ctrl-j`, `Ctrl-n`   | Next entry        |
-| `PageDown`, `Ctrl-f`         | Page down         |
+| `Up`, `Ctrl-p`               | Previous entry    |
+| `PageUp`, `Ctrl-u`           | Page up           |
+| `Down`, `Ctrl-n`             | Next entry        |
+| `PageDown`, `Ctrl-d`         | Page down         |
 | `Home`                       | Go to first entry |
 | `End`                        | Go to last entry  |
 | `Ctrl-space`                 | Filter options    |

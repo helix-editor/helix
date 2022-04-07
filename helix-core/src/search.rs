@@ -1,6 +1,28 @@
 use crate::RopeSlice;
 
-pub fn find_nth_next(text: RopeSlice, ch: char, mut pos: usize, n: usize) -> Option<usize> {
+// TODO: switch to std::str::Pattern when it is stable.
+pub trait CharMatcher {
+    fn char_match(&self, ch: char) -> bool;
+}
+
+impl CharMatcher for char {
+    fn char_match(&self, ch: char) -> bool {
+        *self == ch
+    }
+}
+
+impl<F: Fn(&char) -> bool> CharMatcher for F {
+    fn char_match(&self, ch: char) -> bool {
+        (*self)(&ch)
+    }
+}
+
+pub fn find_nth_next<M: CharMatcher>(
+    text: RopeSlice,
+    char_matcher: M,
+    mut pos: usize,
+    n: usize,
+) -> Option<usize> {
     if pos >= text.len_chars() || n == 0 {
         return None;
     }
@@ -13,7 +35,7 @@ pub fn find_nth_next(text: RopeSlice, ch: char, mut pos: usize, n: usize) -> Opt
 
             pos += 1;
 
-            if c == ch {
+            if char_matcher.char_match(c) {
                 break;
             }
         }

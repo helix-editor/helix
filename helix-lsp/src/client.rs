@@ -31,7 +31,9 @@ pub struct Client {
     pub(crate) capabilities: OnceCell<lsp::ServerCapabilities>,
     offset_encoding: OffsetEncoding,
     config: Option<Value>,
-    root_markers: Vec<String>,
+    root_path: Option<std::path::PathBuf>,
+    root_uri: Option<lsp::Url>,
+    workspace_folders: Vec<lsp::WorkspaceFolder>,
 }
 
 impl Client {
@@ -40,7 +42,7 @@ impl Client {
         cmd: &str,
         args: &[String],
         config: Option<Value>,
-        root_markers: Vec<String>,
+        root_markers: &[String],
         id: usize,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
         // Resolve path to the binary
@@ -65,6 +67,27 @@ impl Client {
         let (server_rx, server_tx, initialize_notify) =
             Transport::start(reader, writer, stderr, id);
 
+        let root_path = find_root(None, root_markers);
+
+        let root_uri = root_path
+            .clone()
+            .and_then(|root| lsp::Url::from_file_path(root).ok());
+
+        // TODO: support multiple workspace folders
+        let workspace_folders = root_uri
+            .clone()
+            .map(|root| {
+                vec![lsp::WorkspaceFolder {
+                    name: root
+                        .path_segments()
+                        .and_then(|segments| segments.last())
+                        .map(|basename| basename.to_string())
+                        .unwrap_or_default(),
+                    uri: root,
+                }]
+            })
+            .unwrap_or_default();
+
         let client = Self {
             id,
             _process: process,
@@ -73,7 +96,10 @@ impl Client {
             capabilities: OnceCell::new(),
             offset_encoding: OffsetEncoding::Utf8,
             config,
-            root_markers,
+
+            root_path,
+            root_uri,
+            workspace_folders,
         };
 
         Ok((client, server_rx, initialize_notify))
@@ -115,6 +141,10 @@ impl Client {
 
     pub fn config(&self) -> Option<&Value> {
         self.config.as_ref()
+    }
+
+    pub fn workspace_folders(&self) -> &[lsp::WorkspaceFolder] {
+        &self.workspace_folders
     }
 
     /// Execute a RPC request on the language server.
@@ -234,10 +264,6 @@ impl Client {
     // -------------------------------------------------------------------------------------------
 
     pub(crate) async fn initialize(&self) -> Result<lsp::InitializeResult> {
-        // TODO: delay any requests that are triggered prior to initialize
-        let root = find_root(None, &self.root_markers)
-            .and_then(|root| lsp::Url::from_file_path(root).ok());
-
         if self.config.is_some() {
             log::info!("Using custom LSP config: {}", self.config.as_ref().unwrap());
         }
@@ -245,9 +271,14 @@ impl Client {
         #[allow(deprecated)]
         let params = lsp::InitializeParams {
             process_id: Some(std::process::id()),
-            // root_path is obsolete, use root_uri
-            root_path: None,
-            root_uri: root,
+            workspace_folders: Some(self.workspace_folders.clone()),
+            // root_path is obsolete, but some clients like pyright still use it so we specify both.
+            // clients will prefer _uri if possible
+            root_path: self
+                .root_path
+                .clone()
+                .and_then(|path| path.to_str().map(|path| path.to_owned())),
+            root_uri: self.root_uri.clone(),
             initialization_options: self.config.clone(),
             capabilities: lsp::ClientCapabilities {
                 workspace: Some(lsp::WorkspaceClientCapabilities {
@@ -255,6 +286,7 @@ impl Client {
                     did_change_configuration: Some(lsp::DynamicRegistrationClientCapabilities {
                         dynamic_registration: Some(false),
                     }),
+                    workspace_folders: Some(true),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
@@ -310,7 +342,6 @@ impl Client {
                 ..Default::default()
             },
             trace: None,
-            workspace_folders: None,
             client_info: None,
             locale: None, // TODO
         };
