@@ -243,10 +243,7 @@ impl<'a> From<Span<'a>> for Spans<'a> {
 
 impl<'a> From<Spans<'a>> for String {
     fn from(line: Spans<'a>) -> String {
-        line.0.iter().fold(String::new(), |mut acc, s| {
-            acc.push_str(s.content.as_ref());
-            acc
-        })
+        line.0.iter().map(|s| &*s.content).collect()
     }
 }
 

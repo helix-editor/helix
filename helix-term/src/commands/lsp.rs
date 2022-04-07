@@ -1,20 +1,25 @@
 use helix_lsp::{
-    block_on, lsp,
+    block_on,
+    lsp::{self, DiagnosticSeverity, Location, NumberOrString},
     util::{lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
+use tui::text::{Span, Spans};
 
 use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::Selection;
-use helix_view::editor::Action;
+use helix_view::{
+    editor::Action,
+    theme::{Modifier, Style},
+};
 
 use crate::{
     compositor::{self, Compositor},
     ui::{self, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent},
 };
 
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::BTreeMap};
 
 #[macro_export]
 macro_rules! language_server {
@@ -108,6 +113,83 @@ fn sym_picker(
     .truncate_start(false)
 }
 
+fn diag_picker(
+    cx: &Context,
+    diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
+    current_path: Option<lsp::Url>,
+    offset_encoding: OffsetEncoding,
+) -> FilePicker<(lsp::Url, lsp::Diagnostic)> {
+    // TODO: drop current_path comparison and instead use workspace: bool flag?
+
+    // flatten the map to a vec of (uri, diag) pairs
+    let mut flat_diag = Vec::new();
+    for (u, diags) in diagnostics {
+        for d in diags {
+            flat_diag.push((u.clone(), d));
+        }
+    }
+
+    let theme = cx.editor.theme.clone();
+
+    FilePicker::new(
+        flat_diag,
+        move |(_url, d)| {
+            let mut style = d.severity.map_or(Style::default(), |s| match s {
+                DiagnosticSeverity::HINT => theme.get("hint"),
+                DiagnosticSeverity::INFORMATION => theme.get("info"),
+                DiagnosticSeverity::WARNING => theme.get("warning"),
+                DiagnosticSeverity::ERROR => theme.get("error"),
+                _ => Style::default(),
+            });
+
+            // remove background as it is distracting in the picker list
+            style.bg = None;
+
+            let code = d
+                .code
+                .as_ref()
+                .map(|c| match c {
+                    NumberOrString::Number(n) => n.to_string(),
+                    NumberOrString::String(s) => s.to_string(),
+                })
+                .unwrap_or_default();
+
+            Spans::from(vec![
+                Span::styled(
+                    d.source.clone().unwrap_or_default(),
+                    style.add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(": "),
+                Span::styled(code, style),
+                Span::raw(" - "),
+                Span::styled(&d.message, style),
+            ])
+        },
+        move |cx, (url, d), action| {
+            if current_path.as_ref() == Some(url) {
+                push_jump(cx.editor);
+            } else {
+                let path = url.to_file_path().unwrap();
+                cx.editor.open(path, action).expect("editor.open failed");
+            }
+
+            let (view, doc) = current!(cx.editor);
+
+            if let Some(range) = lsp_range_to_range(doc.text(), d.range, offset_encoding) {
+                // we flip the range so that the cursor sits on the start of the symbol
+                // (for example start of the function).
+                doc.set_selection(view.id, Selection::single(range.head, range.anchor));
+                align_view(doc, view, Align::Center);
+            }
+        },
+        move |_editor, (url, diag)| {
+            let location = Location::new(url.clone(), diag.range);
+            Some(location_to_file_location(&location))
+        },
+    )
+    .truncate_start(false)
+}
+
 pub fn symbol_picker(cx: &mut Context) {
     fn nested_to_flat(
         list: &mut Vec<lsp::SymbolInformation>,
@@ -176,6 +258,33 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
             }
         },
     )
+}
+
+pub fn diagnostics_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    if let Some(current_url) = doc.url() {
+        let offset_encoding = language_server.offset_encoding();
+        let diagnostics = cx
+            .editor
+            .diagnostics
+            .clone()
+            .into_iter()
+            .filter(|(u, _)| *u == current_url)
+            .collect();
+        let picker = diag_picker(cx, diagnostics, Some(current_url), offset_encoding);
+        cx.push_layer(Box::new(overlayed(picker)));
+    }
+}
+
+pub fn workspace_diagnostics_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    let current_url = doc.url();
+    let offset_encoding = language_server.offset_encoding();
+    let diagnostics = cx.editor.diagnostics.clone();
+    let picker = diag_picker(cx, diagnostics, current_url, offset_encoding);
+    cx.push_layer(Box::new(overlayed(picker)));
 }
 
 impl ui::menu::Item for lsp::CodeActionOrCommand {

@@ -23,6 +23,8 @@ pub use text::Text;
 use helix_core::regex::Regex;
 use helix_core::regex::RegexBuilder;
 use helix_view::{Document, Editor, View};
+use tui;
+use tui::text::Spans;
 
 use std::path::PathBuf;
 
@@ -177,7 +179,12 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         files,
         move |path: &PathBuf| {
             // format_fn
-            path.strip_prefix(&root).unwrap_or(path).to_string_lossy()
+            Spans::from(
+                path.strip_prefix(&root)
+                    .unwrap_or(path)
+                    .to_string_lossy()
+                    .into_owned(),
+            )
         },
         move |cx, path: &PathBuf, action| {
             cx.editor

@@ -199,6 +199,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "b" => buffer_picker,
             "s" => symbol_picker,
             "S" => workspace_symbol_picker,
+            "g" => diagnostics_picker,
+            "G" => workspace_diagnostics_picker,
             "a" => code_action,
             "'" => last_picker,
             "d" => { "Debug (experimental)" sticky=true

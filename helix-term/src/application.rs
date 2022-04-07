@@ -420,6 +420,13 @@ impl Application {
                         }
                     }
                     Notification::PublishDiagnostics(params) => {
+                        // Insert the original lsp::Diagnostics here because we may have no open document
+                        // for diagnosic message and so we can't calculate the exact position.
+                        // When using them later in the diagnostics picker, we calculate them on-demand.
+                        self.editor
+                            .diagnostics
+                            .insert(params.uri.clone(), params.diagnostics.clone());
+
                         let path = params.uri.to_file_path().unwrap();
                         let doc = self.editor.document_by_path_mut(&path);
 
@@ -431,10 +438,7 @@ impl Application {
                                 .diagnostics
                                 .into_iter()
                                 .filter_map(|diagnostic| {
-                                    use helix_core::{
-                                        diagnostic::{Range, Severity::*},
-                                        Diagnostic,
-                                    };
+                                    use helix_core::diagnostic::{Diagnostic, Range, Severity::*};
                                     use lsp::DiagnosticSeverity;
 
                                     let language_server = doc.language_server().unwrap();
