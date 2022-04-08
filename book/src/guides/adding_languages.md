@@ -16,6 +16,7 @@ injection-regex = "^mylang$"
 file-types = ["mylang", "myl"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
+language-server = { command = "mylang-lsp", args = ["--stdio"] }
 ```
 
 These are the available keys and descriptions for the file.
@@ -32,8 +33,13 @@ These are the available keys and descriptions for the file.
 | `diagnostic-severity` | Minimal severity of diagnostic for it to be displayed. (Allowed values: `Error`, `Warning`, `Info`, `Hint`) |
 | `comment-token`       | The token to use as a comment-token                           |
 | `indent`              | The indent to use. Has sub keys `tab-width` and `unit`        |
-| `config`              | Language server configuration                                 |
+| `language-server`     | The Language Server to run. Has sub keys `command` and `args` |
+| `config`              | Language Server configuration                                 |
 | `grammar`             | The tree-sitter grammar to use (defaults to the value of `name`) |
+
+When adding a Language Server configuration, be sure to update the
+[Language Server Wiki](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers)
+with installation notes.
 
 ## Grammar configuration
 
