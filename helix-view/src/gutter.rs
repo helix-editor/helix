@@ -187,7 +187,7 @@ pub fn diagnostics_or_breakpoints<'doc>(
     Box::new(move |line, selected, out| {
         if need_diagnostics && need_breakpoints && breakpoints_before_diagnostics {
             breakpoints(line, selected, out).or_else(|| diagnostics(line, selected, out))
-        } else if need_diagnostics && need_breakpoints && !breakpoints_before_diagnostics {
+        } else if need_diagnostics && need_breakpoints {
             diagnostics(line, selected, out).or_else(|| breakpoints(line, selected, out))
         } else if need_diagnostics {
             diagnostics(line, selected, out)
