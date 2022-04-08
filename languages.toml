@@ -529,6 +529,7 @@ file-types = ["ml"]
 shebangs = []
 roots = []
 comment-token = "(**)"
+language-server = { command = "ocamllsp" }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -542,7 +543,8 @@ file-types = ["mli"]
 shebangs = []
 roots = []
 comment-token = "(**)"
-indent = { tab-width = 2, unit = "  "}
+language-server = { command = "ocamllsp" }
+indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "ocaml-interface"

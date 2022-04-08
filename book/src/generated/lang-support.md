@@ -42,8 +42,8 @@
 | markdown | ✓ |  |  |  |
 | mint |  |  |  | `mint` |
 | nix | ✓ |  | ✓ | `rnix-lsp` |
-| ocaml | ✓ |  | ✓ |  |
-| ocaml-interface | ✓ |  |  |  |
+| ocaml | ✓ |  | ✓ | `ocamllsp` |
+| ocaml-interface | ✓ |  |  | `ocamllsp` |
 | org | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |
 | php | ✓ | ✓ | ✓ | `intelephense` |
