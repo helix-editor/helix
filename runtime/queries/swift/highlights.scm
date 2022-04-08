@@ -85,7 +85,7 @@
 (switch_entry (default_keyword) @keyword)
 "return" @keyword.control.return
 (ternary_expression
-  ["?" ":"] @conditional)
+  ["?" ":"] @keyword.control.conditional)
 
 ["do" (throw_keyword) (catch_keyword)] @keyword
 
