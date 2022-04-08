@@ -6,7 +6,7 @@
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
 | cpp | ✓ | ✓ | ✓ | `clangd` |
-| css | ✓ |  |  |  |
+| css | ✓ |  |  | `vscode-css-language-server` |
 | dart | ✓ |  | ✓ | `dart` |
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | elixir | ✓ |  |  | `elixir-ls` |
