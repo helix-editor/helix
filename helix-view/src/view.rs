@@ -103,7 +103,6 @@ impl View {
         let mut diagnostics_or_breakpoints_inserted = false;
         use crate::editor::GutterType;
         for gutter in &self.gutter_types {
-            // TODO: diagnostics and breakpoints only once
             match gutter {
                 GutterType::Diagnostics | GutterType::Breakpoints => {
                     if !diagnostics_or_breakpoints_inserted {
