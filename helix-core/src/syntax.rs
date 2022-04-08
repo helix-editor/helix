@@ -1996,7 +1996,9 @@ mod test {
             assert_eq!(
                 matches[0].byte_range(),
                 range,
-                "@{capture} expected {range:?}"
+                "@{} expected {:?}",
+                capture,
+                range
             )
         };
 
