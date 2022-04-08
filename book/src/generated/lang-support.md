@@ -50,9 +50,11 @@
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ |  | ✓ |  |
 | python | ✓ | ✓ | ✓ | `pylsp` |
+| r | ✓ |  |  | `R` |
 | racket |  |  |  | `racket` |
 | regex | ✓ |  |  |  |
 | rescript | ✓ | ✓ |  | `rescript-language-server` |
+| rmarkdown | ✓ |  | ✓ | `R` |
 | ron | ✓ |  | ✓ |  |
 | ruby | ✓ |  | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
