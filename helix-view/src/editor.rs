@@ -117,7 +117,7 @@ pub struct Config {
     pub shell: Vec<String>,
     /// Line number mode.
     pub line_number: LineNumber,
-    /// Gutters. Default ["diagnostics", "breakpoints", "line-numbers"]
+    /// Gutters. Default ["breakpoints", "diagnostics", "line-numbers"]
     pub gutters: Vec<GutterType>,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
@@ -243,10 +243,10 @@ impl std::str::FromStr for LineNumber {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum GutterType {
-    /// Show diagnostics
-    Diagnostics,
     /// Show breakpoints
     Breakpoints,
+    /// Show diagnostics
+    Diagnostics,
     /// Show line numbers
     LineNumbers,
 }
