@@ -336,6 +336,7 @@ scope = "source.css"
 injection-regex = "css"
 file-types = ["css", "scss"]
 roots = []
+language-server = { command = "vscode-css-language-server", args = ["--stdio"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
