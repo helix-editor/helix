@@ -39,7 +39,7 @@ pub fn diagnostic<'doc>(
     })
 }
 
-pub fn line_number<'doc>(
+pub fn line_numbers<'doc>(
     editor: &'doc Editor,
     doc: &'doc Document,
     view: &View,
@@ -163,8 +163,17 @@ pub fn diagnostics_or_breakpoints<'doc>(
 ) -> GutterFn<'doc> {
     let diagnostics = diagnostic(editor, doc, view, theme, is_focused, width);
     let breakpoints = breakpoints(editor, doc, view, theme, is_focused, width);
+    let gutters = &editor.config().gutters;
+    let need_diagnostics = gutters.contains(&crate::editor::GutterType::Diagnostics);
+    let need_breakpoints = gutters.contains(&crate::editor::GutterType::Breakpoints);
 
     Box::new(move |line, selected, out| {
-        breakpoints(line, selected, out).or_else(|| diagnostics(line, selected, out))
+        if need_diagnostics && need_breakpoints {
+            breakpoints(line, selected, out).or_else(|| diagnostics(line, selected, out))
+        } else if need_diagnostics {
+            diagnostics(line, selected, out)
+        } else {
+            breakpoints(line, selected, out)
+        }
     })
 }

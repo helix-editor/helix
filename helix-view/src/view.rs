@@ -64,11 +64,6 @@ impl JumpList {
     }
 }
 
-const GUTTERS: &[(Gutter, usize)] = &[
-    (gutter::diagnostics_or_breakpoints, 1),
-    (gutter::line_number, 5), // must be at the end since it's optional
-];
-
 #[derive(Debug)]
 pub struct View {
     pub id: ViewId,
@@ -85,11 +80,11 @@ pub struct View {
     pub last_modified_docs: [Option<DocumentId>; 2],
     /// used to store previous selections of tree-sitter objecs
     pub object_selections: Vec<Selection>,
-    pub omit_line_number_gutter: bool,
+    pub gutter_types: Vec<crate::editor::GutterType>,
 }
 
 impl View {
-    pub fn new(doc: DocumentId, omit_line_number_gutter: bool) -> Self {
+    pub fn new(doc: DocumentId, gutters: Vec<crate::editor::GutterType>) -> Self {
         Self {
             id: ViewId::default(),
             doc,
@@ -99,16 +94,27 @@ impl View {
             last_accessed_doc: None,
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
-            omit_line_number_gutter,
+            gutter_types: gutters,
         }
     }
 
-    pub fn gutters(&self) -> &[(Gutter, usize)] {
-        if self.omit_line_number_gutter {
-            &GUTTERS[0..GUTTERS.len() - 1]
-        } else {
-            GUTTERS
+    pub fn gutters(&self) -> Vec<(Gutter, usize)> {
+        let mut gutters: Vec<(Gutter, usize)> = vec![];
+        let mut diagnostics_or_breakpoints_inserted = false;
+        use crate::editor::GutterType;
+        for gutter in &self.gutter_types {
+            // TODO: diagnostics and breakpoints only once
+            match gutter {
+                GutterType::Diagnostics | GutterType::Breakpoints => {
+                    if !diagnostics_or_breakpoints_inserted {
+                        gutters.push((gutter::diagnostics_or_breakpoints, 1));
+                        diagnostics_or_breakpoints_inserted = true;
+                    }
+                }
+                GutterType::LineNumbers => gutters.push((gutter::line_numbers, 5)),
+            }
         }
+        gutters
     }
 
     pub fn inner_area(&self) -> Rect {
@@ -332,10 +338,14 @@ mod tests {
     const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
     const OFFSET_OMIT_LINE_NUMBER_GUTTER: u16 = 2; // 1 diagnostic + 1 gutter
                                                    // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
+    use crate::editor::GutterType;
 
     #[test]
     fn test_text_pos_at_screen_coords() {
-        let mut view = View::new(DocumentId::default(), false);
+        let mut view = View::new(
+            DocumentId::default(),
+            vec![GutterType::LineNumbers, GutterType::Breakpoints],
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let text = rope.slice(..);
@@ -381,7 +391,7 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_with_omit_line_number_gutter() {
-        let mut view = View::new(DocumentId::default(), true);
+        let mut view = View::new(DocumentId::default(), vec![GutterType::Breakpoints]);
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let text = rope.slice(..);
@@ -397,7 +407,10 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_cjk() {
-        let mut view = View::new(DocumentId::default(), false);
+        let mut view = View::new(
+            DocumentId::default(),
+            vec![GutterType::LineNumbers, GutterType::Breakpoints],
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
         let text = rope.slice(..);
@@ -434,7 +447,10 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_graphemes() {
-        let mut view = View::new(DocumentId::default(), false);
+        let mut view = View::new(
+            DocumentId::default(),
+            vec![GutterType::LineNumbers, GutterType::Breakpoints],
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");
         let text = rope.slice(..);
