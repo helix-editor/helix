@@ -1293,7 +1293,7 @@ mod test {
             let selection =
                 selection.transform(|r| move_prev_paragraph(text.slice(..), r, 1, Movement::Move));
             let actual = crate::test::plain(&s, selection);
-            assert_eq!(actual, expected, "\nbefore: `{before:?}`");
+            assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
 
@@ -1316,7 +1316,7 @@ mod test {
             let selection =
                 selection.transform(|r| move_prev_paragraph(text.slice(..), r, 2, Movement::Move));
             let actual = crate::test::plain(&s, selection);
-            assert_eq!(actual, expected, "\nbefore: `{before:?}`");
+            assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
 
@@ -1339,7 +1339,7 @@ mod test {
             let selection = selection
                 .transform(|r| move_prev_paragraph(text.slice(..), r, 1, Movement::Extend));
             let actual = crate::test::plain(&s, selection);
-            assert_eq!(actual, expected, "\nbefore: `{before:?}`");
+            assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
 
@@ -1381,7 +1381,7 @@ mod test {
             let selection =
                 selection.transform(|r| move_next_paragraph(text.slice(..), r, 1, Movement::Move));
             let actual = crate::test::plain(&s, selection);
-            assert_eq!(actual, expected, "\nbefore: `{before:?}`");
+            assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
 
@@ -1404,7 +1404,7 @@ mod test {
             let selection =
                 selection.transform(|r| move_next_paragraph(text.slice(..), r, 2, Movement::Move));
             let actual = crate::test::plain(&s, selection);
-            assert_eq!(actual, expected, "\nbefore: `{before:?}`");
+            assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
 
@@ -1427,7 +1427,7 @@ mod test {
             let selection = selection
                 .transform(|r| move_next_paragraph(text.slice(..), r, 1, Movement::Extend));
             let actual = crate::test::plain(&s, selection);
-            assert_eq!(actual, expected, "\nbefore: `{before:?}`");
+            assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
 }
