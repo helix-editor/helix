@@ -171,13 +171,13 @@ pub fn diagnostics_or_breakpoints<'doc>(
 
     for gutter in gutters.iter() {
         match gutter {
-            &crate::editor::GutterType::Breakpoints => {
+            crate::editor::GutterType::Breakpoints => {
                 if need_diagnostics {
                     breakpoints_before_diagnostics = false;
                 }
                 need_breakpoints = true;
             }
-            &crate::editor::GutterType::Diagnostics => {
+            crate::editor::GutterType::Diagnostics => {
                 need_diagnostics = true;
             }
             _ => {}
