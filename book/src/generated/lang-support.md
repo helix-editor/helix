@@ -27,7 +27,7 @@
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  |  |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
-| json | ✓ |  | ✓ |  |
+| json | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsx | ✓ |  | ✓ | `typescript-language-server` |
 | julia | ✓ |  |  | `julia` |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
