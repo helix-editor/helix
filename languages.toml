@@ -1071,3 +1071,17 @@ roots = []
 indent = { tab-width = 2, unit = "  " }
 grammar = "markdown"
 language-server = { command = "R", args = ["--slave", "-e", "languageserver::run()"] }
+
+[[language]]
+name = "swift"
+scope = "source.swift"
+injection-regex = "swift"
+file-types = ["swift"]
+roots = [ "Package.swift" ]
+comment-token = "//"
+auto-format = true
+language-server = { command = "sourcekit-lsp" }
+
+[[grammar]]
+name = "swift"
+source = { git = "https://github.com/Dispersia/tree-sitter-swift", rev = "e75240f89bb3bfd3396155859ae364e5c58d7377" }
