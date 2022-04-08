@@ -117,7 +117,7 @@ pub struct Config {
     pub shell: Vec<String>,
     /// Line number mode.
     pub line_number: LineNumber,
-    /// Gutters. Default ["breakpoints", "diagnostics", "line-numbers"]
+    /// Gutters. Default ["diagnostics", "breakpoints", "line-numbers"]
     pub gutters: Vec<GutterType>,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
