@@ -348,6 +348,9 @@ scope = "text.html.basic"
 injection-regex = "html"
 file-types = ["html"]
 roots = []
+language-server = { command = "vscode-html-language-server", args = ["--stdio"] }
+auto-format = true
+config = { "provideFormatter" = true }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]

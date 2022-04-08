@@ -23,7 +23,7 @@
 | graphql | ✓ |  |  |  |
 | haskell | ✓ |  |  | `haskell-language-server-wrapper` |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
-| html | ✓ |  |  |  |
+| html | ✓ |  |  | `vscode-html-language-server` |
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  |  |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
