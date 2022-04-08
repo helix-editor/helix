@@ -243,10 +243,10 @@ impl std::str::FromStr for LineNumber {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum GutterType {
-    /// Show breakpoints
-    Breakpoints,
     /// Show diagnostics
     Diagnostics,
+    /// Show breakpoints
+    Breakpoints,
     /// Show line numbers
     LineNumbers,
 }
