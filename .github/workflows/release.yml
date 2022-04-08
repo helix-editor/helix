@@ -206,6 +206,8 @@ jobs:
               pkgname=helix-$TAG-$platform
               mkdir $pkgname
               cp $source/LICENSE $source/README.md $pkgname
+              mkdir $pkgname/contrib
+              cp -r $source/contrib/completion $pkgname/contrib
               mv bins-$platform/runtime $pkgname/
               mv bins-$platform/hx$exe $pkgname
               chmod +x $pkgname/hx$exe
