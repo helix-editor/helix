@@ -36,7 +36,7 @@ hidden = false
 | `middle-click-paste` | Middle click paste support. | `true` |
 | `scroll-lines` | Number of lines to scroll per scroll wheel step. | `3` |
 | `shell` | Shell to use when running external commands. | Unix: `["sh", "-c"]`<br/>Windows: `["cmd", "/C"]` |
-| `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers. `none` doesn't show line numbers. | `absolute` |
+| `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers. | `absolute` |
 | `gutters` | Gutters to display: Available are `diagnostics` and `breakpoints` (which are combined) as well as `line-numbers` | `['diagnostics', 'breakpoints', 'line-numbers']` |
 | `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
