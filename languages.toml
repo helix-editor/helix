@@ -1078,7 +1078,6 @@ injection-regex = "swift"
 file-types = ["swift"]
 roots = [ "Package.swift" ]
 comment-token = "//"
-indent = { tab-width = 2, unit = "  " }
 auto-format = true
 language-server = { command = "sourcekit-lsp" }
 
