@@ -46,10 +46,10 @@
   (modify_specifier)
 ] @keyword
 
-(class_body (property_declaration (value_binding_pattern (non_binding_pattern (simple_identifier) @property))))
-(protocol_property_declaration (value_binding_pattern (non_binding_pattern (simple_identifier) @property)))
+(class_body (property_declaration (value_binding_pattern (non_binding_pattern (simple_identifier) @variable.other.member))))
+(protocol_property_declaration (value_binding_pattern (non_binding_pattern (simple_identifier) @variable.other.member)))
 
-(import_declaration ["import" @include])
+(import_declaration ["import" @keyword.control.import])
 
 (enum_entry ["case" @keyword])
 
@@ -108,12 +108,12 @@
 (lambda_literal ["in" @keyword.operator])
 
 ; Basic literals
+(integer_literal) @constant.numeric.integer
 [
- (integer_literal)
  (hex_literal)
  (oct_literal)
  (bin_literal)
-] @number
+] @constant.numeric
 (real_literal) @constant.numeric.float
 (boolean_literal) @constant.builtin.boolean
 "nil" @variable.builtin

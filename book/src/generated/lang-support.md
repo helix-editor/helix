@@ -61,6 +61,7 @@
 | scala | ✓ |  | ✓ | `metals` |
 | solidity | ✓ |  |  | `solc` |
 | svelte | ✓ |  | ✓ | `svelteserver` |
+| swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
 | toml | ✓ |  |  |  |
 | tsq | ✓ |  |  |  |
