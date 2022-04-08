@@ -46,7 +46,7 @@
 | ocaml-interface | ✓ |  |  |  |
 | org | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |
-| php | ✓ | ✓ | ✓ |  |
+| php | ✓ | ✓ | ✓ | `intelephense` |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ |  | ✓ |  |
 | python | ✓ | ✓ | ✓ | `pylsp` |
