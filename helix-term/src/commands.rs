@@ -259,6 +259,7 @@ impl MappableCommand {
         append_mode, "Insert after selection (append)",
         command_mode, "Enter command mode",
         file_picker, "Open file picker",
+        file_picker_in_current_directory, "Open file picker at current working directory",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         symbol_picker, "Open symbol picker",
@@ -2045,6 +2046,12 @@ fn file_picker(cx: &mut Context) {
     let root = find_root(None, &[]).unwrap_or_else(|| PathBuf::from("./"));
     let picker = ui::file_picker(root, &cx.editor.config());
     cx.push_layer(Box::new(overlayed(picker)));
+}
+
+fn file_picker_in_current_directory(cx: &mut Context) {
+    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
+    let picker = ui::file_picker(cwd, &cx.editor.config());
+    cx.push_layer(Box::new(picker));
 }
 
 fn buffer_picker(cx: &mut Context) {
