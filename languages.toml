@@ -348,6 +348,9 @@ scope = "text.html.basic"
 injection-regex = "html"
 file-types = ["html"]
 roots = []
+language-server = { command = "vscode-html-language-server", args = ["--stdio"] }
+auto-format = true
+config = { "provideFormatter" = true }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -1038,3 +1041,28 @@ roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
 grammar = "rust"
+
+[[language]]
+name = "r"
+scope = "source.r"
+injection-regex = "(r|R)"
+file-types = ["r", "R"]
+shebangs = ["r", "R"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "R", args = ["--slave", "-e", "languageserver::run()"] }
+
+[[grammar]]
+name = "r"
+source = { git = "https://github.com/r-lib/tree-sitter-r", rev = "cc04302e1bff76fa02e129f332f44636813b0c3c" }
+
+[[language]]
+name = "rmarkdown"
+scope = "source.rmd"
+injection-regex = "(r|R)md"
+file-types = ["rmd", "Rmd"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+grammar = "markdown"
+language-server = { command = "R", args = ["--slave", "-e", "languageserver::run()"] }
