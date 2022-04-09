@@ -151,6 +151,7 @@ injection-regex = &quot;^mylang$&quot;
 file-types = [&quot;mylang&quot;, &quot;myl&quot;]
 comment-token = &quot;#&quot;
 indent = { tab-width = 2, unit = &quot;  &quot; }
+language-server = { command = &quot;mylang-lsp&quot;, args = [&quot;--stdio&quot;] }
 </code></pre>
 <p>These are the available keys and descriptions for the file.</p>
 <table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
@@ -164,9 +165,13 @@ indent = { tab-width = 2, unit = &quot;  &quot; }
 <tr><td><code>diagnostic-severity</code></td><td>Minimal severity of diagnostic for it to be displayed. (Allowed values: <code>Error</code>, <code>Warning</code>, <code>Info</code>, <code>Hint</code>)</td></tr>
 <tr><td><code>comment-token</code></td><td>The token to use as a comment-token</td></tr>
 <tr><td><code>indent</code></td><td>The indent to use. Has sub keys <code>tab-width</code> and <code>unit</code></td></tr>
-<tr><td><code>config</code></td><td>Language server configuration</td></tr>
+<tr><td><code>language-server</code></td><td>The Language Server to run. Has sub keys <code>command</code> and <code>args</code></td></tr>
+<tr><td><code>config</code></td><td>Language Server configuration</td></tr>
 <tr><td><code>grammar</code></td><td>The tree-sitter grammar to use (defaults to the value of <code>name</code>)</td></tr>
 </tbody></table>
+<p>When adding a Language Server configuration, be sure to update the
+<a href="https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers">Language Server Wiki</a>
+with installation notes.</p>
 <h2 id="grammar-configuration"><a class="header" href="#grammar-configuration">Grammar configuration</a></h2>
 <p>If a tree-sitter grammar is available for the language, add a new <code>grammar</code>
 entry to <code>languages.toml</code>.</p>
