@@ -9,8 +9,10 @@
 | css | ✓ |  |  | `vscode-css-language-server` |
 | dart | ✓ |  | ✓ | `dart` |
 | dockerfile | ✓ |  |  | `docker-langserver` |
+| ejs | ✓ |  |  |  |
 | elixir | ✓ |  |  | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
+| erb | ✓ |  |  |  |
 | erlang | ✓ |  |  | `erlang_ls` |
 | fish | ✓ | ✓ | ✓ |  |
 | git-commit | ✓ |  |  |  |
