@@ -581,8 +581,9 @@ name = "vue"
 scope = "source.vue"
 injection-regex = "vue"
 file-types = ["vue"]
-roots = []
+roots = ["package.json", "vue.config.js"]
 indent = { tab-width = 2, unit = "  " }
+language-server = { command = "vls" }
 
 [[grammar]]
 name = "vue"
