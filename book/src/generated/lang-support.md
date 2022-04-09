@@ -68,7 +68,7 @@
 | tsx | ✓ |  |  | `typescript-language-server` |
 | twig | ✓ |  |  |  |
 | typescript | ✓ |  | ✓ | `typescript-language-server` |
-| vue | ✓ |  |  |  |
+| vue | ✓ |  |  | `vls` |
 | wgsl | ✓ |  |  |  |
 | yaml | ✓ |  | ✓ |  |
 | zig | ✓ |  | ✓ | `zls` |
