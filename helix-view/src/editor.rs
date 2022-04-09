@@ -146,6 +146,8 @@ pub struct Config {
     #[serde(default)]
     pub search: SearchConfig,
     pub lsp: LspConfig,
+    /// Column numbers at which to draw the color columns. Default to `[]`, meaning no color column.
+    pub color_column: Vec<u16>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -285,6 +287,7 @@ impl Default for Config {
             true_color: false,
             search: SearchConfig::default(),
             lsp: LspConfig::default(),
+            color_column: Vec::new(),
         }
     }
 }

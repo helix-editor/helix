@@ -127,6 +127,24 @@ impl EditorView {
         Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights);
         Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
 
+        // Render color columns
+        editor
+            .config()
+            .color_column
+            .iter()
+            .filter_map(|column| {
+                column
+                    .checked_sub(1 + view.offset.col as u16)
+                    .map(|x| {
+                        inner
+                            .with_height((view.last_line(doc) - view.offset.row + 1) as u16)
+                            .clip_left(x)
+                            .with_width(1)
+                    })
+                    .filter(|area| area.left() < inner.right())
+            })
+            .for_each(|area| surface.set_style(area, theme.get("ui.colorcolumn")));
+
         if is_focused {
             Self::render_focused_view_elements(view, doc, inner, theme, surface);
         }
