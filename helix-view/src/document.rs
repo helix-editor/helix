@@ -3,6 +3,7 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::Range;
+use log::debug;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::borrow::Cow;
@@ -13,6 +14,8 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::sync::Mutex;
 
 use helix_core::{
     encoding,
@@ -83,6 +86,16 @@ impl Serialize for Mode {
     }
 }
 
+/// A snapshot of the text of a document that we want to write out to disk
+#[derive(Debug, Clone)]
+pub struct DocumentSaveEvent {
+    pub revision: usize,
+    pub doc_id: DocumentId,
+}
+
+pub type DocumentSaveEventResult = Result<DocumentSaveEvent, anyhow::Error>;
+pub type DocumentSaveEventFuture = BoxFuture<'static, DocumentSaveEventResult>;
+
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
@@ -118,6 +131,9 @@ pub struct Document {
     last_saved_revision: usize,
     version: i32, // should be usize?
     pub(crate) modified_since_accessed: bool,
+    save_sender: Option<UnboundedSender<DocumentSaveEventFuture>>,
+    save_receiver: Option<UnboundedReceiver<DocumentSaveEventFuture>>,
+    current_save: Arc<Mutex<Option<DocumentSaveEventFuture>>>,
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
@@ -338,6 +354,7 @@ impl Document {
         let encoding = encoding.unwrap_or(encoding::UTF_8);
         let changes = ChangeSet::new(&text);
         let old_state = None;
+        let (save_sender, save_receiver) = tokio::sync::mpsc::unbounded_channel();
 
         Self {
             id: DocumentId::default(),
@@ -358,6 +375,9 @@ impl Document {
             savepoint: None,
             last_saved_revision: 0,
             modified_since_accessed: false,
+            save_sender: Some(save_sender),
+            save_receiver: Some(save_receiver),
+            current_save: Arc::new(Mutex::new(None)),
             language_server: None,
         }
     }
@@ -492,29 +512,34 @@ impl Document {
         Some(fut.boxed())
     }
 
-    pub fn save(&mut self, force: bool) -> impl Future<Output = Result<(), anyhow::Error>> {
+    pub fn save(&mut self, force: bool) -> Result<(), anyhow::Error> {
         self.save_impl::<futures_util::future::Ready<_>>(None, force)
     }
 
     pub fn format_and_save(
         &mut self,
-        formatting: Option<impl Future<Output = Result<Transaction, FormatterError>>>,
+        formatting: Option<
+            impl Future<Output = Result<Transaction, FormatterError>> + 'static + Send,
+        >,
         force: bool,
-    ) -> impl Future<Output = anyhow::Result<()>> {
+    ) -> anyhow::Result<()> {
         self.save_impl(formatting, force)
     }
 
-    // TODO: do we need some way of ensuring two save operations on the same doc can't run at once?
-    // or is that handled by the OS/async layer
+    // TODO: impl Drop to handle ensuring writes when closed
     /// The `Document`'s text is encoded according to its encoding and written to the file located
     /// at its `path()`.
     ///
     /// If `formatting` is present, it supplies some changes that we apply to the text before saving.
-    fn save_impl<F: Future<Output = Result<Transaction, FormatterError>>>(
+    fn save_impl<F: Future<Output = Result<Transaction, FormatterError>> + 'static + Send>(
         &mut self,
         formatting: Option<F>,
         force: bool,
-    ) -> impl Future<Output = Result<(), anyhow::Error>> {
+    ) -> Result<(), anyhow::Error> {
+        if self.save_sender.is_none() {
+            bail!("saves are closed for this document!");
+        }
+
         // we clone and move text + path into the future so that we asynchronously save the current
         // state without blocking any further edits.
 
@@ -525,12 +550,13 @@ impl Document {
         let language_server = self.language_server.clone();
 
         // mark changes up to now as saved
-        self.reset_modified();
+        let current_rev = self.get_current_revision();
+        let doc_id = self.id();
 
         let encoding = self.encoding;
 
         // We encode the file according to the `Document`'s encoding.
-        async move {
+        let save_event = async move {
             use tokio::fs::File;
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
@@ -563,9 +589,14 @@ impl Document {
             let mut file = File::create(path).await?;
             to_writer(&mut file, encoding, &text).await?;
 
+            let event = DocumentSaveEvent {
+                revision: current_rev,
+                doc_id,
+            };
+
             if let Some(language_server) = language_server {
                 if !language_server.is_initialized() {
-                    return Ok(());
+                    return Ok(event);
                 }
                 if let Some(notification) =
                     language_server.text_document_did_save(identifier, &text)
@@ -574,8 +605,70 @@ impl Document {
                 }
             }
 
-            Ok(())
+            Ok(event)
+        };
+
+        self.save_sender
+            .as_mut()
+            .unwrap()
+            .send(Box::pin(save_event))
+            .map_err(|err| anyhow!("failed to send save event: {}", err))
+    }
+
+    pub async fn await_save(&mut self) -> Option<DocumentSaveEventResult> {
+        let mut current_save = self.current_save.lock().await;
+        if let Some(ref mut save) = *current_save {
+            let result = save.await;
+            *current_save = None;
+            debug!("save of '{:?}' result: {:?}", self.path(), result);
+            return Some(result);
         }
+
+        // return early if the receiver is closed
+        self.save_receiver.as_ref()?;
+
+        let save = match self.save_receiver.as_mut().unwrap().recv().await {
+            Some(save) => save,
+            None => {
+                self.save_receiver = None;
+                return None;
+            }
+        };
+
+        // save a handle to the future so that when a poll on this
+        // function gets cancelled, we don't lose it
+        *current_save = Some(save);
+        debug!("awaiting save of '{:?}'", self.path());
+
+        let result = (*current_save).as_mut().unwrap().await;
+        *current_save = None;
+
+        debug!("save of '{:?}' result: {:?}", self.path(), result);
+
+        Some(result)
+    }
+
+    /// Prepares the Document for being closed by stopping any new writes
+    /// and flushing through the queue of pending writes. If any fail,
+    /// it stops early before emptying the rest of the queue. Callers
+    /// should keep calling until it returns None.
+    pub async fn close(&mut self) -> Option<DocumentSaveEventResult> {
+        if self.save_sender.is_some() {
+            self.save_sender = None;
+        }
+
+        let mut final_result = None;
+
+        while let Some(save_event) = self.await_save().await {
+            let is_err = save_event.is_err();
+            final_result = Some(save_event);
+
+            if is_err {
+                break;
+            }
+        }
+
+        final_result
     }
 
     /// Detect the programming language based on the file type.
@@ -939,6 +1032,19 @@ impl Document {
         let current_revision = history.current_revision();
         self.history.set(history);
         self.last_saved_revision = current_revision;
+    }
+
+    /// Set the document's latest saved revision to the given one.
+    pub fn set_last_saved_revision(&mut self, rev: usize) {
+        self.last_saved_revision = rev;
+    }
+
+    /// Get the current revision number
+    pub fn get_current_revision(&mut self) -> usize {
+        let history = self.history.take();
+        let current_revision = history.current_revision();
+        self.history.set(history);
+        current_revision
     }
 
     /// Corresponding language scope name. Usually `source.<lang>`.

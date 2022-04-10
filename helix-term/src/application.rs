@@ -6,7 +6,14 @@ use helix_core::{
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{align_view, editor::ConfigEvent, theme, tree::Layout, Align, Editor};
+use helix_view::{
+    align_view,
+    document::DocumentSaveEventResult,
+    editor::{ConfigEvent, EditorEvent},
+    theme,
+    tree::Layout,
+    Align, Editor,
+};
 use serde_json::json;
 
 use crate::{
@@ -19,7 +26,7 @@ use crate::{
     ui::{self, overlay::overlayed},
 };
 
-use log::{error, warn};
+use log::{debug, error, warn};
 use std::{
     io::{stdin, stdout, Write},
     sync::Arc,
@@ -294,26 +301,6 @@ impl Application {
                 Some(signal) = self.signals.next() => {
                     self.handle_signals(signal).await;
                 }
-                Some((id, call)) = self.editor.language_servers.incoming.next() => {
-                    self.handle_language_server_message(call, id).await;
-                    // limit render calls for fast language server messages
-                    let last = self.editor.language_servers.incoming.is_empty();
-
-                    if last || self.last_render.elapsed() > LSP_DEADLINE {
-                        self.render();
-                        self.last_render = Instant::now();
-                    }
-                }
-                Some(payload) = self.editor.debugger_events.next() => {
-                    let needs_render = self.editor.handle_debugger_message(payload).await;
-                    if needs_render {
-                        self.render();
-                    }
-                }
-                Some(config_event) = self.editor.config_events.1.recv() => {
-                    self.handle_config_events(config_event);
-                    self.render();
-                }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
@@ -322,20 +309,47 @@ impl Application {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
                 }
-                _ = &mut self.editor.idle_timer => {
-                    // idle timeout
-                    self.editor.clear_idle_timer();
-                    self.handle_idle_timeout();
+                event = self.editor.wait_event() => {
+                    match event {
+                        EditorEvent::DocumentSave(event) => {
+                            self.handle_document_write(event);
+                            self.render();
+                        }
+                        EditorEvent::ConfigEvent(event) => {
+                            self.handle_config_events(event);
+                            self.render();
+                        }
+                        EditorEvent::LanguageServerMessage((id, call)) => {
+                            self.handle_language_server_message(call, id).await;
+                            // limit render calls for fast language server messages
+                            let last = self.editor.language_servers.incoming.is_empty();
 
-                    #[cfg(feature = "integration")]
-                    {
-                        idle_handled = true;
+                            if last || self.last_render.elapsed() > LSP_DEADLINE {
+                                self.render();
+                                self.last_render = Instant::now();
+                            }
+                        }
+                        EditorEvent::DebuggerEvent(payload) => {
+                            let needs_render = self.editor.handle_debugger_message(payload).await;
+                            if needs_render {
+                                self.render();
+                            }
+                        }
+                        EditorEvent::IdleTimer => {
+                            self.editor.clear_idle_timer();
+                            self.handle_idle_timeout();
+
+                            #[cfg(feature = "integration")]
+                            {
+                                idle_handled = true;
+                            }
+                        }
                     }
                 }
             }
 
             // for integration tests only, reset the idle timer after every
-            // event to make a signal when test events are done processing
+            // event to signal when test events are done processing
             #[cfg(feature = "integration")]
             {
                 if idle_handled {
@@ -444,6 +458,46 @@ impl Application {
         if should_render {
             self.render();
         }
+    }
+
+    pub fn handle_document_write(&mut self, doc_save_event: DocumentSaveEventResult) {
+        if let Err(err) = doc_save_event {
+            self.editor.set_error(err.to_string());
+            return;
+        }
+
+        let doc_save_event = doc_save_event.unwrap();
+        let doc = self.editor.document_mut(doc_save_event.doc_id);
+
+        if doc.is_none() {
+            warn!(
+                "received document saved event for non-existent doc id: {}",
+                doc_save_event.doc_id
+            );
+
+            return;
+        }
+
+        let doc = doc.unwrap();
+
+        debug!(
+            "document {:?} saved with revision {}",
+            doc.path(),
+            doc_save_event.revision
+        );
+
+        doc.set_last_saved_revision(doc_save_event.revision);
+        let lines = doc.text().len_lines();
+        let bytes = doc.text().len_bytes();
+
+        let path_str = doc
+            .path()
+            .expect("document written without path")
+            .to_string_lossy()
+            .into_owned();
+
+        self.editor
+            .set_status(format!("'{}' written, {}L {}B", path_str, lines, bytes));
     }
 
     pub fn handle_terminal_events(&mut self, event: Result<CrosstermEvent, crossterm::ErrorKind>) {
@@ -866,11 +920,28 @@ impl Application {
 
         self.event_loop(input_stream).await;
 
-        let err = self.close().await.err();
+        let mut save_errs = Vec::new();
 
+        for doc in self.editor.documents_mut() {
+            if let Some(Err(err)) = doc.close().await {
+                save_errs.push((
+                    doc.path()
+                        .map(|path| path.to_string_lossy().into_owned())
+                        .unwrap_or_else(|| "".into()),
+                    err,
+                ));
+            }
+        }
+
+        let close_err = self.close().await.err();
         restore_term()?;
 
-        if let Some(err) = err {
+        for (path, err) in save_errs {
+            self.editor.exit_code = 1;
+            eprintln!("Error closing '{}': {}", path, err);
+        }
+
+        if let Some(err) = close_err {
             self.editor.exit_code = 1;
             eprintln!("Error: {}", err);
         }

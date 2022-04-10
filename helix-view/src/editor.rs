@@ -1,6 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::Mode,
+    document::{DocumentSaveEventResult, Mode},
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
@@ -9,8 +9,9 @@ use crate::{
     Document, DocumentId, View, ViewId,
 };
 
-use futures_util::future;
-use futures_util::stream::select_all::SelectAll;
+use futures_util::stream::{select_all::SelectAll, FuturesUnordered};
+use futures_util::{future, StreamExt};
+use helix_lsp::Call;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -65,7 +66,7 @@ where
     )
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
     /// IgnoreOptions
@@ -172,7 +173,7 @@ pub struct Config {
     pub color_modes: bool,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct TerminalConfig {
     pub command: String,
@@ -225,7 +226,7 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
     None
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
     /// Display LSP progress messages below statusline
@@ -246,7 +247,7 @@ impl Default for LspConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct SearchConfig {
     /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
@@ -255,7 +256,7 @@ pub struct SearchConfig {
     pub wrap_around: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct StatusLineConfig {
     pub left: Vec<StatusLineElement>,
@@ -279,7 +280,7 @@ impl Default for StatusLineConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct ModeConfig {
     pub normal: String,
@@ -458,7 +459,7 @@ impl std::str::FromStr for GutterType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WhitespaceConfig {
     pub render: WhitespaceRender,
@@ -688,6 +689,15 @@ pub struct Editor {
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
 }
 
+#[derive(Debug)]
+pub enum EditorEvent {
+    DocumentSave(DocumentSaveEventResult),
+    ConfigEvent(ConfigEvent),
+    LanguageServerMessage((usize, Call)),
+    DebuggerEvent(dap::Payload),
+    IdleTimer,
+}
+
 #[derive(Debug, Clone)]
 pub enum ConfigEvent {
     Refresh,
@@ -719,6 +729,8 @@ pub enum CloseError {
     DoesNotExist,
     /// Buffer is modified
     BufferModified(String),
+    /// Document failed to save
+    SaveError(anyhow::Error),
 }
 
 impl Editor {
@@ -1079,8 +1091,12 @@ impl Editor {
         self._refresh();
     }
 
-    pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> Result<(), CloseError> {
-        let doc = match self.documents.get(&doc_id) {
+    pub async fn close_document(
+        &mut self,
+        doc_id: DocumentId,
+        force: bool,
+    ) -> Result<(), CloseError> {
+        let doc = match self.documents.get_mut(&doc_id) {
             Some(doc) => doc,
             None => return Err(CloseError::DoesNotExist),
         };
@@ -1089,8 +1105,19 @@ impl Editor {
             return Err(CloseError::BufferModified(doc.display_name().into_owned()));
         }
 
+        if let Some(Err(err)) = doc.close().await {
+            return Err(CloseError::SaveError(err));
+        }
+
+        // Don't fail the whole write because the language server could not
+        // acknowledge the close
         if let Some(language_server) = doc.language_server() {
-            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+            if let Err(err) = language_server
+                .text_document_did_close(doc.identifier())
+                .await
+            {
+                log::error!("Error closing doc in language server: {}", err);
+            }
         }
 
         enum Action {
@@ -1268,5 +1295,33 @@ impl Editor {
         )
         .await
         .map(|_| ())
+    }
+
+    pub async fn wait_event(&mut self) -> EditorEvent {
+        let mut saves: FuturesUnordered<_> = self
+            .documents
+            .values_mut()
+            .map(Document::await_save)
+            .collect();
+
+        tokio::select! {
+            biased;
+
+            Some(Some(event)) = saves.next() => {
+                EditorEvent::DocumentSave(event)
+            }
+            Some(config_event) = self.config_events.1.recv() => {
+                EditorEvent::ConfigEvent(config_event)
+            }
+            Some(message) = self.language_servers.incoming.next() => {
+                EditorEvent::LanguageServerMessage(message)
+            }
+            Some(event) = self.debugger_events.next() => {
+                EditorEvent::DebuggerEvent(event)
+            }
+            _ = &mut self.idle_timer => {
+                EditorEvent::IdleTimer
+            }
+        }
     }
 }

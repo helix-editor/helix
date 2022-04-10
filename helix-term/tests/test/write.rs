@@ -62,7 +62,6 @@ async fn test_write_quit() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-#[ignore]
 async fn test_write_concurrent() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let mut command = String::new();
@@ -92,7 +91,6 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-#[ignore]
 async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
 

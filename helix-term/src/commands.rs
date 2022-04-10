@@ -51,7 +51,7 @@ use crate::{
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 
-use crate::job::{self, Job, Jobs};
+use crate::job::{self, Jobs};
 use futures_util::{FutureExt, StreamExt};
 use std::{collections::HashMap, fmt, future::Future};
 use std::{collections::HashSet, num::NonZeroUsize};

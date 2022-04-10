@@ -77,7 +77,9 @@ fn buffer_close_by_ids_impl(
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
         .iter()
         .filter_map(|&doc_id| {
-            if let Err(CloseError::BufferModified(name)) = editor.close_document(doc_id, force) {
+            if let Err(CloseError::BufferModified(name)) =
+                helix_lsp::block_on(editor.close_document(doc_id, force))
+            {
                 Some((doc_id, name))
             } else {
                 None
@@ -269,6 +271,7 @@ fn write_impl(
         doc.set_path(Some(path.as_ref().as_ref()))
             .context("invalid filepath")?;
     }
+
     if doc.path().is_none() {
         bail!("cannot write a buffer without a filename");
     }
@@ -287,8 +290,8 @@ fn write_impl(
     } else {
         None
     };
-    let future = doc.format_and_save(fmt, force);
-    cx.jobs.add(Job::new(future).wait_before_exiting());
+
+    doc.format_and_save(fmt, force)?;
 
     if path.is_some() {
         let id = doc.id();
@@ -602,8 +605,8 @@ fn write_all_impl(
         } else {
             None
         };
-        let future = doc.format_and_save(fmt, force);
-        jobs.add(Job::new(future).wait_before_exiting());
+
+        doc.format_and_save(fmt, force)?;
     }
 
     if quit {
