@@ -256,9 +256,7 @@ impl std::str::FromStr for GutterType {
         match s.to_lowercase().as_str() {
             "diagnostics" | "diag" => Ok(Self::Diagnostics),
             "line-numbers" | "ln" => Ok(Self::LineNumbers),
-            _ => anyhow::bail!(
-                "Gutter type can only be `diagnostics` or `line-numbers`."
-            ),
+            _ => anyhow::bail!("Gutter type can only be `diagnostics` or `line-numbers`."),
         }
     }
 }
@@ -275,10 +273,7 @@ impl Default for Config {
                 vec!["sh".to_owned(), "-c".to_owned()]
             },
             line_number: LineNumber::Absolute,
-            gutters: vec![
-                GutterType::Diagnostics,
-                GutterType::LineNumbers,
-            ],
+            gutters: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
