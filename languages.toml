@@ -1,3 +1,6 @@
+# Language support configuration.
+# See the languages documentation: https://docs.helix-editor.com/master/languages.html
+
 [[language]]
 name = "rust"
 scope = "source.rust"

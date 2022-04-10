@@ -37,9 +37,11 @@ These are the available keys and descriptions for the file.
 | `config`              | Language Server configuration                                 |
 | `grammar`             | The tree-sitter grammar to use (defaults to the value of `name`) |
 
+When adding a new language or Language Server configuration for an existing
+language, run `cargo xtask docgen` to add the new configuration to the
+[Language Support][lang-support] docs before creating a pull request.
 When adding a Language Server configuration, be sure to update the
-[Language Server Wiki](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers)
-with installation notes.
+[Language Server Wiki][install-lsp-wiki] with installation notes.
 
 ## Grammar configuration
 
@@ -94,3 +96,5 @@ the last matching query supersedes the ones before it. See
 [treesitter-language-injection]: https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection
 [languages.toml]: https://github.com/helix-editor/helix/blob/master/languages.toml
 [neovim-query-precedence]: https://github.com/helix-editor/helix/pull/1170#issuecomment-997294090
+[install-lsp-wiki]: https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers
+[lang-support]: ../lang-support.md
