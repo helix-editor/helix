@@ -196,6 +196,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "space" => { "Space"
             "f" => file_picker,
+            "F" => file_picker_in_current_directory,
             "b" => buffer_picker,
             "s" => symbol_picker,
             "S" => workspace_symbol_picker,
