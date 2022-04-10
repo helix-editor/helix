@@ -169,9 +169,11 @@ language-server = { command = &quot;mylang-lsp&quot;, args = [&quot;--stdio&quot
 <tr><td><code>config</code></td><td>Language Server configuration</td></tr>
 <tr><td><code>grammar</code></td><td>The tree-sitter grammar to use (defaults to the value of <code>name</code>)</td></tr>
 </tbody></table>
-<p>When adding a Language Server configuration, be sure to update the
-<a href="https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers">Language Server Wiki</a>
-with installation notes.</p>
+<p>When adding a new language or Language Server configuration for an existing
+language, run <code>cargo xtask docgen</code> to add the new configuration to the
+<a href="../lang-support.html">Language Support</a> docs before creating a pull request.
+When adding a Language Server configuration, be sure to update the
+<a href="https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers">Language Server Wiki</a> with installation notes.</p>
 <h2 id="grammar-configuration"><a class="header" href="#grammar-configuration">Grammar configuration</a></h2>
 <p>If a tree-sitter grammar is available for the language, add a new <code>grammar</code>
 entry to <code>languages.toml</code>.</p>
