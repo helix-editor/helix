@@ -163,36 +163,8 @@ pub fn diagnostics_or_breakpoints<'doc>(
 ) -> GutterFn<'doc> {
     let diagnostics = diagnostic(editor, doc, view, theme, is_focused, width);
     let breakpoints = breakpoints(editor, doc, view, theme, is_focused, width);
-    let gutters = &editor.config().gutters;
-
-    let mut need_diagnostics = false;
-    let mut need_breakpoints = false;
-    let mut breakpoints_before_diagnostics = true;
-
-    for gutter in gutters.iter() {
-        match gutter {
-            crate::editor::GutterType::Breakpoints => {
-                if need_diagnostics {
-                    breakpoints_before_diagnostics = false;
-                }
-                need_breakpoints = true;
-            }
-            crate::editor::GutterType::Diagnostics => {
-                need_diagnostics = true;
-            }
-            _ => {}
-        }
-    }
 
     Box::new(move |line, selected, out| {
-        if need_diagnostics && need_breakpoints && breakpoints_before_diagnostics {
-            breakpoints(line, selected, out).or_else(|| diagnostics(line, selected, out))
-        } else if need_diagnostics && need_breakpoints {
-            diagnostics(line, selected, out).or_else(|| breakpoints(line, selected, out))
-        } else if need_diagnostics {
-            diagnostics(line, selected, out)
-        } else {
-            breakpoints(line, selected, out)
-        }
+        breakpoints(line, selected, out).or_else(|| diagnostics(line, selected, out))
     })
 }

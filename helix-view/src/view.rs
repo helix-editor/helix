@@ -100,16 +100,10 @@ impl View {
 
     pub fn gutters(&self) -> Vec<(Gutter, usize)> {
         let mut gutters: Vec<(Gutter, usize)> = vec![];
-        let mut diagnostics_or_breakpoints_inserted = false;
         use crate::editor::GutterType;
         for gutter in &self.gutter_types {
             match gutter {
-                GutterType::Diagnostics | GutterType::Breakpoints => {
-                    if !diagnostics_or_breakpoints_inserted {
-                        gutters.push((gutter::diagnostics_or_breakpoints, 1));
-                        diagnostics_or_breakpoints_inserted = true;
-                    }
-                }
+                GutterType::Diagnostics => gutters.push((gutter::diagnostics_or_breakpoints, 1)),
                 GutterType::LineNumbers => gutters.push((gutter::line_numbers, 5)),
             }
         }
@@ -343,7 +337,7 @@ mod tests {
     fn test_text_pos_at_screen_coords() {
         let mut view = View::new(
             DocumentId::default(),
-            vec![GutterType::Breakpoints, GutterType::LineNumbers],
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
@@ -390,7 +384,7 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_with_omit_line_number_gutter() {
-        let mut view = View::new(DocumentId::default(), vec![GutterType::Breakpoints]);
+        let mut view = View::new(DocumentId::default(), vec![GutterType::Diagnostics]);
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let text = rope.slice(..);
@@ -408,7 +402,7 @@ mod tests {
     fn test_text_pos_at_screen_coords_cjk() {
         let mut view = View::new(
             DocumentId::default(),
-            vec![GutterType::Breakpoints, GutterType::LineNumbers],
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
@@ -448,7 +442,7 @@ mod tests {
     fn test_text_pos_at_screen_coords_graphemes() {
         let mut view = View::new(
             DocumentId::default(),
-            vec![GutterType::Breakpoints, GutterType::LineNumbers],
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");

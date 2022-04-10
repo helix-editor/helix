@@ -581,7 +581,7 @@ mod test {
         });
         let mut view = View::new(
             DocumentId::default(),
-            vec![GutterType::Breakpoints, GutterType::LineNumbers],
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
         );
         view.area = Rect::new(0, 0, 180, 80);
         tree.insert(view);
@@ -589,7 +589,7 @@ mod test {
         let l0 = tree.focus;
         let view = View::new(
             DocumentId::default(),
-            vec![GutterType::Breakpoints, GutterType::LineNumbers],
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
         );
         tree.split(view, Layout::Vertical);
         let r0 = tree.focus;
@@ -597,7 +597,7 @@ mod test {
         tree.focus = l0;
         let view = View::new(
             DocumentId::default(),
-            vec![GutterType::Breakpoints, GutterType::LineNumbers],
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
         );
         tree.split(view, Layout::Horizontal);
         let l1 = tree.focus;
@@ -605,7 +605,7 @@ mod test {
         tree.focus = l0;
         let view = View::new(
             DocumentId::default(),
-            vec![GutterType::Breakpoints, GutterType::LineNumbers],
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
         );
         tree.split(view, Layout::Vertical);
         let l2 = tree.focus;
