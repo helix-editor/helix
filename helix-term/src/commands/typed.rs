@@ -1077,6 +1077,16 @@ fn pipe(
     Ok(())
 }
 
+fn lsp_restart(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    let current_document = doc!(cx.editor).id();
+    cx.editor.restart_language_server(current_document);
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -1510,6 +1520,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Pipe each selection to the shell command.",
             fun: pipe,
+            completer: None,
+        },
+        TypableCommand {
+            name: "lsp-restart",
+            aliases: &[],
+            doc: "Restarts the LSP server of the current buffer",
+            fun: lsp_restart,
             completer: None,
         },
     ];

@@ -475,6 +475,23 @@ impl Editor {
         Self::launch_language_server(&mut self.language_servers, doc)
     }
 
+    /// Restarts a language server for a given document
+    pub fn restart_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
+        let doc = self.documents.get_mut(&doc_id)?;
+        if let Some(language) = doc.language.as_ref() {
+            if let Ok(client) = self.language_servers.restart(&*language).map_err(|e| {
+                log::error!(
+                    "Failed to restart the LSP for `{}` {{ {} }}",
+                    language.scope(),
+                    e
+                )
+            }) {
+                doc.set_language_server(Some(client));
+            }
+        };
+        Some(())
+    }
+
     /// Launch a language server for a given document
     fn launch_language_server(ls: &mut helix_lsp::Registry, doc: &mut Document) -> Option<()> {
         // if doc doesn't have a URL it's a scratch buffer, ignore it

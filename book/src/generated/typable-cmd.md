@@ -62,3 +62,4 @@
 | `:config-reload` | Refreshes helix's config. |
 | `:config-open` | Open the helix config.toml file. |
 | `:pipe` | Pipe each selection to the shell command. |
+| `:lsp-restart` | Restarts the LSP server of the current buffer |

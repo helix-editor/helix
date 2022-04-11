@@ -12,7 +12,7 @@ use futures_util::stream::select_all::SelectAll;
 use helix_core::syntax::LanguageConfiguration;
 
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::HashMap,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -343,52 +343,81 @@ impl Registry {
             None => return Err(Error::LspNotDefined),
         };
 
-        match self.inner.entry(language_config.scope.clone()) {
-            Entry::Occupied(entry) => Ok(entry.get().1.clone()),
-            Entry::Vacant(entry) => {
-                // initialize a new client
-                let id = self.counter.fetch_add(1, Ordering::Relaxed);
-                let (client, incoming, initialize_notify) = Client::start(
-                    &config.command,
-                    &config.args,
-                    language_config.config.clone(),
-                    &language_config.roots,
-                    id,
-                )?;
-                self.incoming.push(UnboundedReceiverStream::new(incoming));
-                let client = Arc::new(client);
-
-                // Initialize the client asynchronously
-                let _client = client.clone();
-                tokio::spawn(async move {
-                    use futures_util::TryFutureExt;
-                    let value = _client
-                        .capabilities
-                        .get_or_try_init(|| {
-                            _client
-                                .initialize()
-                                .map_ok(|response| response.capabilities)
-                        })
-                        .await;
-
-                    if let Err(e) = value {
-                        log::error!("failed to initialize language server: {}", e);
-                        return;
-                    }
-
-                    // next up, notify<initialized>
-                    _client
-                        .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-                        .await
-                        .unwrap();
-
-                    initialize_notify.notify_one();
-                });
-
-                entry.insert((id, client.clone()));
-                Ok(client)
-            }
+        if let Some((_, client)) = self.inner.get(&language_config.scope) {
+            Ok(client.clone())
+        } else {
+            let id = self.counter.fetch_add(1, Ordering::Relaxed);
+            let client = self.initialize_client(language_config, config, id)?; // initialize a new client
+            self.inner
+                .insert(language_config.scope.clone(), (id, client.clone()));
+            Ok(client)
         }
+    }
+
+    pub fn restart(&mut self, language_config: &LanguageConfiguration) -> Result<Arc<Client>> {
+        let config = language_config
+            .language_server
+            .as_ref()
+            .ok_or(Error::LspNotDefined)?;
+        let id = self
+            .inner
+            .get(&language_config.scope)
+            .ok_or(Error::LspNotDefined)?
+            .0;
+        let new_client = self.initialize_client(language_config, config, id)?;
+        let (_, client) = self
+            .inner
+            .get_mut(&language_config.scope)
+            .ok_or(Error::LspNotDefined)?;
+        *client = new_client;
+
+        Ok(client.clone())
+    }
+
+    fn initialize_client(
+        &mut self,
+        language_config: &LanguageConfiguration,
+        config: &helix_core::syntax::LanguageServerConfiguration,
+        id: usize,
+    ) -> Result<Arc<Client>> {
+        let (client, incoming, initialize_notify) = Client::start(
+            &config.command,
+            &config.args,
+            language_config.config.clone(),
+            &language_config.roots,
+            id,
+        )?;
+        self.incoming.push(UnboundedReceiverStream::new(incoming));
+        let client = Arc::new(client);
+
+        // Initialize the client asynchronously
+        let _client = client.clone();
+        tokio::spawn(async move {
+            use futures_util::TryFutureExt;
+            let value = _client
+                .capabilities
+                .get_or_try_init(|| {
+                    _client
+                        .initialize()
+                        .map_ok(|response| response.capabilities)
+                })
+                .await;
+
+            if let Err(e) = value {
+                log::error!("failed to initialize language server: {}", e);
+                return;
+            }
+
+            // next up, notify<initialized>
+            _client
+                .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
+                .await
+                .unwrap();
+
+            initialize_notify.notify_one();
+        });
+
+        Ok(client)
     }
 
     pub fn iter_clients(&self) -> impl Iterator<Item = &Arc<Client>> {
