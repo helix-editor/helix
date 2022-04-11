@@ -230,6 +230,7 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
     for ts_feat in TsFeature::all() {
         probe_treesitter_feature(&lang_str, *ts_feat)?
     }
+        println!("wiki link : https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers#{}",lang_str);
 
     Ok(())
 }
