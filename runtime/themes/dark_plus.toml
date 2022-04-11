@@ -13,6 +13,7 @@
 "keyword.directive" = { fg = "blue2" }
 "keyword.control" = { fg = "special" }
 "label" = { fg = "blue2" }
+"tag" = "blue2"
 
 "special" = { fg = "text" }
 "operator" = { fg = "text" }
@@ -57,7 +58,8 @@
 "ui.window" = { bg = "widget" }
 "ui.popup" = { bg = "widget" }
 "ui.help" = { bg = "widget" }
-"ui.menu.selected" = { bg = "widget" }
+"ui.menu" = { bg = "widget" }
+"ui.menu.selected" = { bg = "dark_blue2" }
 
 # TODO: Alternate bg colour for `ui.cursor.match` and `ui.selection`.
 "ui.cursor" = { fg = "cursor", modifiers = ["reversed"] }
@@ -100,6 +102,7 @@ blue2 = "#569CD6"
 blue3 = "#6796E6"
 light_blue = "#75beff"
 dark_blue = "#264f78"
+dark_blue2 = "#094771"
 red = "#ff1212"
 
 type = "#4EC9B0"
