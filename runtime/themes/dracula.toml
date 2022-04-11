@@ -29,8 +29,8 @@
 "ui.menu" = { fg = "foreground", bg = "background_dark" }
 "ui.menu.selected" = { fg = "cyan", bg = "background_dark" }
 "ui.popup" = { fg = "foreground", bg = "background_dark" }
-"ui.selection" = { fg = "background", bg = "purple", modifiers = ["dim"] }
-"ui.selection.primary" = { fg = "background", bg = "pink" }
+"ui.selection" = { bg = "secondary_highlight" }
+"ui.selection.primary" = { bg = "primary_highlight" }
 "ui.statusline" = { fg = "foreground", bg = "background_dark" }
 "ui.statusline.inactive" = { fg = "comment", bg = "background_dark" }
 "ui.text" = { fg = "foreground" }
@@ -52,6 +52,8 @@
 [palette]
 background = "#282a36"
 background_dark = "#21222c"
+primary_highlight = "#800049"
+secondary_highlight = "#4d4f66"
 foreground = "#f8f8f2"
 comment = "#6272a4"
 red = "#ff5555"
