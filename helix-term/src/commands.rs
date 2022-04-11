@@ -289,7 +289,7 @@ impl MappableCommand {
         goto_last_accessed_file, "Goto last accessed file",
         goto_last_modified_file, "Goto last modified file",
         goto_last_modification, "Goto last modification",
-        goto_line, "Goto line",
+        goto_line, "Goto line <n> (must enter <n> first)",
         goto_last_line, "Goto last line",
         goto_first_diag, "Goto first diagnostic",
         goto_last_diag, "Goto last diagnostic",

@@ -38,6 +38,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "G" => goto_line,
         "g" => { "Goto"
             "g" => goto_file_start,
+            "G" => goto_line,
             "e" => goto_last_line,
             "f" => goto_file,
             "h" => goto_line_start,
