@@ -682,14 +682,18 @@ fn kill_to_line_start(cx: &mut Context) {
         let first_char = text.line_to_char(line);
         let anchor = range.cursor(text);
         let head = if anchor == first_char && line != 0 {
+            // select until previous line
             line_end_char_index(&text, line - 1)
         } else if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
             if first_char + pos < anchor {
+                // select until first non-blank in line if cursor is after it
                 first_char + pos
             } else {
+                // select until start of line
                 first_char
             }
         } else {
+            // select until start of line
             first_char
         };
         Range::new(head, anchor)
