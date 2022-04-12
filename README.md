@@ -32,10 +32,10 @@ Note: Only certain languages have indentation definitions at the moment. Check
 
 # Installation
 
-We provide packaging for various distributions (see [Installation docs](https://docs.helix-editor.com/install.html)), but here's a quick method to
-build from source.
+Packages are available for various distributions (see [Installation docs](https://docs.helix-editor.com/install.html)).
 
-```
+If you wold like to build from source.:
+```shell
 git clone https://github.com/helix-editor/helix
 cd helix
 cargo install --path helix-term
