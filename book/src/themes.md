@@ -223,7 +223,7 @@ These scopes are used for theming the editor interface.
 | `ui.help`                | Description box for commands                   |
 | `ui.text`                | command prompts, popup text, etc.              |
 | `ui.text.focus`          |                                                |
-| `ui.text.info`           | the key: command text in ui.popup.info boxes   |
+| `ui.text.info`           | the key: command text in `ui.popup.info` boxes |
 | `ui.menu`                | code and command completion menus              |
 | `ui.menu.selected`       | selected autocomplete item                     |
 | `ui.selection`           | For selections in the editing area             |
