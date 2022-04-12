@@ -457,7 +457,7 @@ impl Editor {
         let language_server = doc.language.as_ref().and_then(|language| {
             ls.get(language)
                 .map_err(|e| {
-                    log::error!(
+                    log::warn!(
                         "Failed to initialize the LSP for `{}` {{ {} }}",
                         language.scope(),
                         e
