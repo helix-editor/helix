@@ -289,6 +289,28 @@ impl Range {
         }
     }
 
+    /// Compute a possibly new range from this range,
+    /// ensuring that the range is within the bounds of the slice.
+    ///
+    /// If the anchor or head extend past the bounds of the slice,
+    /// they are set to the length of the slice.
+    #[must_use]
+    #[inline]
+    pub fn clamp_range(&self, slice: RopeSlice) -> Self {
+        let new_anchor = self.anchor.min(slice.len_chars());
+        let new_head = self.head.min(slice.len_chars());
+
+        Range {
+            anchor: new_anchor,
+            head: new_head,
+            horiz: if new_anchor == self.anchor {
+                self.horiz
+            } else {
+                None
+            },
+        }
+    }
+
     //--------------------------------
     // Block-cursor methods.
 
@@ -526,7 +548,7 @@ impl Selection {
     // 3. Ranges are non-overlapping.
     // 4. Ranges are sorted by their position in the text.
     pub fn ensure_invariants(self, text: RopeSlice) -> Self {
-        self.transform(|r| r.min_width_1(text).grapheme_aligned(text))
+        self.transform(|r| r.clamp_range(text).min_width_1(text).grapheme_aligned(text))
             .normalize()
     }
 
@@ -901,6 +923,46 @@ mod test {
         assert_eq!(Range::new(4, 3).min_width_1(s), Range::new(4, 3));
         assert_eq!(Range::new(5, 4).min_width_1(s), Range::new(5, 4));
         assert_eq!(Range::new(6, 5).min_width_1(s), Range::new(6, 5));
+    }
+
+    #[test]
+    fn test_clamp_range() {
+        let r = Rope::from_str("\r\nHi\r\n");
+        let s = r.slice(..);
+
+        // Zero-width.
+        assert_eq!(Range::new(0, 0).clamp_range(s), Range::new(0, 0));
+        assert_eq!(Range::new(1, 1).clamp_range(s), Range::new(1, 1));
+        assert_eq!(Range::new(2, 2).clamp_range(s), Range::new(2, 2));
+        assert_eq!(Range::new(3, 3).clamp_range(s), Range::new(3, 3));
+        assert_eq!(Range::new(4, 4).clamp_range(s), Range::new(4, 4));
+        assert_eq!(Range::new(5, 5).clamp_range(s), Range::new(5, 5));
+        assert_eq!(Range::new(6, 6).clamp_range(s), Range::new(6, 6));
+
+        // Forward.
+        assert_eq!(Range::new(0, 1).clamp_range(s), Range::new(0, 1));
+        assert_eq!(Range::new(1, 2).clamp_range(s), Range::new(1, 2));
+        assert_eq!(Range::new(2, 3).clamp_range(s), Range::new(2, 3));
+        assert_eq!(Range::new(3, 4).clamp_range(s), Range::new(3, 4));
+        assert_eq!(Range::new(4, 5).clamp_range(s), Range::new(4, 5));
+        assert_eq!(Range::new(5, 6).clamp_range(s), Range::new(5, 6));
+
+        // Reverse.
+        assert_eq!(Range::new(1, 0).clamp_range(s), Range::new(1, 0));
+        assert_eq!(Range::new(2, 1).clamp_range(s), Range::new(2, 1));
+        assert_eq!(Range::new(3, 2).clamp_range(s), Range::new(3, 2));
+        assert_eq!(Range::new(4, 3).clamp_range(s), Range::new(4, 3));
+        assert_eq!(Range::new(5, 4).clamp_range(s), Range::new(5, 4));
+        assert_eq!(Range::new(6, 5).clamp_range(s), Range::new(6, 5));
+
+        // Out-of-bounds Handling
+        assert_eq!(Range::new(0, 7).clamp_range(s), Range::new(0, 6));
+        assert_eq!(Range::new(7, 0).clamp_range(s), Range::new(6, 0));
+        assert_eq!(Range::new(6, 7).clamp_range(s), Range::new(6, 6));
+        assert_eq!(Range::new(7, 6).clamp_range(s), Range::new(6, 6));
+        assert_eq!(Range::new(3, 7).clamp_range(s), Range::new(3, 6));
+        assert_eq!(Range::new(7, 3).clamp_range(s), Range::new(6, 3));
+        assert_eq!(Range::new(7, 7).clamp_range(s), Range::new(6, 6));
     }
 
     #[test]
