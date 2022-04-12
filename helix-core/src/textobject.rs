@@ -163,7 +163,7 @@ pub fn textobject_paragraph(
         count_done += done as usize;
     }
 
-    // search one paragraph backwards backwards for last paragraph
+    // search one paragraph backwards for last paragraph
     // makes `map` at the end of the paragraph with trailing newlines useful
     let last_paragraph = count_done != count && lines.peek().is_none();
     if last_paragraph {
