@@ -293,6 +293,13 @@ impl Client {
                     completion: Some(lsp::CompletionClientCapabilities {
                         completion_item: Some(lsp::CompletionItemCapability {
                             snippet_support: Some(false),
+                            resolve_support: Some(lsp::CompletionItemCapabilityResolveSupport {
+                                properties: vec![
+                                    String::from("documentation"),
+                                    String::from("detail"),
+                                    String::from("additionalTextEdits"),
+                                ],
+                            }),
                             ..Default::default()
                         }),
                         completion_item_kind: Some(lsp::CompletionItemKindCapability {
