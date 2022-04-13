@@ -1125,3 +1125,15 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "eex"
 source = { git = "https://github.com/connorlay/tree-sitter-eex", rev = "f742f2fe327463335e8671a87c0b9b396905d1d1" }
+
+[[language]]
+name = "heex"
+scope = "source.heex"
+injection-regex = "heex"
+file-types = ["heex"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "heex"
+source = { git = "https://github.com/connorlay/tree-sitter-heex", rev = "592e22292a367312c35e13de7fdb888f029981d6" }
