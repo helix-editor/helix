@@ -21,9 +21,18 @@ use femtovg::{
     Solidity,
 };
 
-// mezzopiano
-//  —
-// 03/13/2022
+// new femto-like framework:
+// wgpu renderer
+// kurbo, (alternative is euclid + lyon)
+// vector math: glam? and drop euclid (glam is faster https://docs.rs/glam/latest/glam/)
+// swash + parley for text
+
+// imgref, bitflags
+// fnv, rgb
+
+// resource, image
+// usvg for svg
+
 // I'm also assuming that there's some logic bugs in the demo application, which wasn't built with this in mind; I have a much simpler application that I'm happy to show if that would be helpful (would need to extract an example). As a rough solution, I apply the following transformation on Winit's WindowEvent::ScaleFactorChanged:
 
 //     /* ... in an application struct/impl ... */
@@ -48,8 +57,6 @@ use femtovg::{
 //         )
 //     }
 
-// With this, the canvas position and scale is preserved while the window is moved across screens, but as I'd like to apply further translations and keeping track of everything is getting very hard 😅 . I'm wondering if I'm making a mistake somewhere, or if there might be some way to do this in femto.
-
 pub fn quantize(a: f32, d: f32) -> f32 {
     (a / d + 0.5).trunc() * d
 }
@@ -57,6 +64,7 @@ pub fn quantize(a: f32, d: f32) -> f32 {
 struct Fonts {
     regular: FontId,
     bold: FontId,
+    code: FontId,
     icons: FontId,
 }
 
@@ -120,10 +128,13 @@ fn main() {
     // TODO: better femtovg support for variable fonts
     let fonts = Fonts {
         regular: canvas
-            .add_font_mem(&resource!("assets/fonts/Inter\ Variable/Inter.ttf"))
+            .add_font_mem(&resource!("assets/fonts/Inter Variable/Inter.ttf"))
             .expect("Cannot add font"),
         bold: canvas
             .add_font_mem(&resource!("assets/fonts/Inter Variable/Inter.ttf"))
+            .expect("Cannot add font"),
+        code: canvas
+            .add_font_mem(&resource!("assets/fonts/Fira Code/FiraCode-VF.ttf"))
             .expect("Cannot add font"),
         icons: canvas
             .add_font_mem(&resource!("assets/entypo.ttf"))
@@ -148,6 +159,10 @@ fn main() {
 
     let mut screenshot_image_id = None;
 
+    //
+
+    //
+
     let start = Instant::now();
     let mut prevt = start;
 
@@ -156,6 +171,14 @@ fn main() {
     let mut dragging = false;
 
     let mut perf = PerfGraph::new();
+
+    {
+        #[cfg(not(target_arch = "wasm32"))]
+        let window = windowed_context.window();
+        let dpi_factor = window.scale_factor();
+        canvas.set_size(0, 0, dpi_factor as f32);
+        canvas.reset();
+    }
 
     el.run(move |event, _, control_flow| {
         #[cfg(not(target_arch = "wasm32"))]
@@ -168,9 +191,11 @@ fn main() {
             Event::WindowEvent { ref event, .. } => match event {
                 #[cfg(not(target_arch = "wasm32"))]
                 WindowEvent::Resized(physical_size) => {
-                    println!("resized!");
-                    // TODO: use DPI here?
                     windowed_context.resize(*physical_size);
+
+                    let dpi_factor = window.scale_factor();
+                    canvas.set_size(0, 0, dpi_factor as f32);
+                    canvas.reset();
                 }
                 WindowEvent::CursorMoved {
                     device_id: _,
@@ -178,48 +203,48 @@ fn main() {
                     ..
                 } => {
                     if dragging {
-                        let p0 = canvas
-                            .transform()
-                            .inversed()
-                            .transform_point(mousex, mousey);
-                        let p1 = canvas
-                            .transform()
-                            .inversed()
-                            .transform_point(position.x as f32, position.y as f32);
+                        // let p0 = canvas
+                        //     .transform()
+                        //     .inversed()
+                        //     .transform_point(mousex, mousey);
+                        // let p1 = canvas
+                        //     .transform()
+                        //     .inversed()
+                        //     .transform_point(position.x as f32, position.y as f32);
 
-                        canvas.translate(p1.0 - p0.0, p1.1 - p0.1);
+                        // canvas.translate(p1.0 - p0.0, p1.1 - p0.1);
                     }
 
                     mousex = position.x as f32;
                     mousey = position.y as f32;
                 }
-                WindowEvent::MouseWheel {
-                    device_id: _,
-                    delta,
-                    ..
-                } => match delta {
-                    winit::event::MouseScrollDelta::LineDelta(_, y) => {
-                        let pt = canvas
-                            .transform()
-                            .inversed()
-                            .transform_point(mousex, mousey);
-                        canvas.translate(pt.0, pt.1);
-                        canvas.scale(1.0 + (y / 10.0), 1.0 + (y / 10.0));
-                        canvas.translate(-pt.0, -pt.1);
-                    }
+                // WindowEvent::MouseWheel {
+                //     device_id: _,
+                //     delta,
+                //     ..
+                // } => match delta {
+                //     winit::event::MouseScrollDelta::LineDelta(_, y) => {
+                //         let pt = canvas
+                //             .transform()
+                //             .inversed()
+                //             .transform_point(mousex, mousey);
+                //         canvas.translate(pt.0, pt.1);
+                //         canvas.scale(1.0 + (y / 10.0), 1.0 + (y / 10.0));
+                //         canvas.translate(-pt.0, -pt.1);
+                //     }
 
-                    winit::event::MouseScrollDelta::PixelDelta(pos) => {
-                        let y = pos.y as f32;
-                        let pt = canvas
-                            .transform()
-                            .inversed()
-                            .transform_point(mousex, mousey);
-                        let rate = 2000.0;
-                        canvas.translate(pt.0, pt.1);
-                        canvas.scale(1.0 + (y / rate), 1.0 + (y / rate));
-                        canvas.translate(-pt.0, -pt.1);
-                    }
-                },
+                //     winit::event::MouseScrollDelta::PixelDelta(pos) => {
+                //         let y = pos.y as f32;
+                //         let pt = canvas
+                //             .transform()
+                //             .inversed()
+                //             .transform_point(mousex, mousey);
+                //         let rate = 2000.0;
+                //         canvas.translate(pt.0, pt.1);
+                //         canvas.scale(1.0 + (y / rate), 1.0 + (y / rate));
+                //         canvas.translate(-pt.0, -pt.1);
+                //     }
+                // },
                 WindowEvent::MouseInput {
                     button: MouseButton::Left,
                     state,
@@ -290,6 +315,8 @@ fn main() {
                     .transform_point(mousex, mousey);
                 let rel_mousex = pt.0;
                 let rel_mousey = pt.1;
+
+                draw_code(&mut canvas, fonts.code, 25.0, 500.0);
 
                 draw_paragraph(
                     &mut canvas,
@@ -419,6 +446,22 @@ fn main() {
             _ => (),
         }
     });
+}
+
+fn draw_code<T: Renderer>(canvas: &mut Canvas<T>, font: FontId, x: f32, y: f32) {
+    let text = "canvas.fill_text(x, y, &text[line_range], paint)";
+
+    canvas.save();
+
+    let mut paint = Paint::color(Color::rgba(255, 255, 255, 255));
+    paint.set_font_size(14.0);
+    paint.set_font(&[font]);
+    paint.set_text_align(Align::Left);
+    paint.set_text_baseline(Baseline::Top);
+
+    canvas.fill_text(x, y, text, paint).unwrap();
+
+    canvas.restore();
 }
 
 fn draw_paragraph<T: Renderer>(

@@ -512,8 +512,6 @@ dependencies = [
 [[package]]
 name = "femtovg"
 version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f95b1b0a3a4dc9bb7f866b2d6efc9c5c5f5bccefc21e40be75dfc2c12cb6ef8"
 dependencies = [
  "bitflags",
  "fnv",
@@ -920,6 +918,7 @@ dependencies = [
  "console_error_panic_hook",
  "femtovg",
  "glutin",
+ "helix-view",
  "image",
  "instant",
  "resource",
@@ -1406,9 +1405,9 @@ dependencies = [
 
 [[package]]
 name = "ouroboros"
-version = "0.14.2"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71643f290d126e18ac2598876d01e1d57aed164afc78fdb6e2a0c6589a1f6662"
+checksum = "9f31a3b678685b150cba82b702dcdc5e155893f63610cf388d30cd988d4ca2bf"
 dependencies = [
  "aliasable",
  "ouroboros_macro",
@@ -1417,9 +1416,9 @@ dependencies = [
 
 [[package]]
 name = "ouroboros_macro"
-version = "0.14.2"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed9a247206016d424fe8497bc611e510887af5c261fbbf977877c4bb55ca4d82"
+checksum = "084fd65d5dd8b3772edccb5ffd1e4b7eba43897ecd0f9401e330e8c542959408"
 dependencies = [
  "Inflector",
  "proc-macro-error",

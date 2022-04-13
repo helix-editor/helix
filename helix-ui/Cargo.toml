@@ -6,7 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-femtovg = "0.3.3"
+helix-view = { version = "0.6", path = "../helix-view", features = ["ui"] }
+femtovg = { path = "../../femtovg" }
 winit = { version = "0.26.1", default-features = false, features = ["wayland"] } # TODO: figure out wayland-dlopen
 resource = "0.5.0"
 image = { version = "0.24.0", default-features = false, features = ["jpeg", "png"] }
