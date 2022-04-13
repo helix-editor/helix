@@ -40,6 +40,9 @@ fn cache_dir() -> std::path::PathBuf {
 }
 
 pub fn config_file() -> std::path::PathBuf {
+    if let Ok(dir) = std::env::var("HELIX_CONFIG") {
+        return std::path::PathBuf::from(dir);
+    }
     config_dir().join("config.toml")
 }
 
