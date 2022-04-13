@@ -218,14 +218,14 @@ These scopes are used for theming the editor interface.
 | `ui.statusline`          | Statusline                                     |
 | `ui.statusline.inactive` | Statusline (unfocused document)                |
 | `ui.popup`               | Documentation popups (e.g space-k)             |
-| `ui.popup.info`          | prompt for multiple key options                |
+| `ui.popup.info`          | Prompt for multiple key options                |
 | `ui.window`              | Border lines separating splits                 |
 | `ui.help`                | Description box for commands                   |
-| `ui.text`                | command prompts, popup text, etc.              |
+| `ui.text`                | Command prompts, popup text, etc.              |
 | `ui.text.focus`          |                                                |
-| `ui.text.info`           | the key: command text in `ui.popup.info` boxes |
-| `ui.menu`                | code and command completion menus              |
-| `ui.menu.selected`       | selected autocomplete item                     |
+| `ui.text.info`           | The key: command text in `ui.popup.info` boxes |
+| `ui.menu`                | Code and command completion menus              |
+| `ui.menu.selected`       | Selected autocomplete item                     |
 | `ui.selection`           | For selections in the editing area             |
 | `ui.selection.primary`   |                                                |
 | `warning`                | Diagnostics warning (gutter)                   |
