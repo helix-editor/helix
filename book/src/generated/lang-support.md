@@ -9,6 +9,7 @@
 | css | ✓ |  |  | `vscode-css-language-server` |
 | dart | ✓ |  | ✓ | `dart` |
 | dockerfile | ✓ |  |  | `docker-langserver` |
+| eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |
 | elixir | ✓ |  |  | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
@@ -25,6 +26,7 @@
 | graphql | ✓ |  |  |  |
 | haskell | ✓ |  |  | `haskell-language-server-wrapper` |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
+| heex | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  |  |

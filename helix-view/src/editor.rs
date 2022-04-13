@@ -453,6 +453,9 @@ impl Editor {
 
     /// Launch a language server for a given document
     fn launch_language_server(ls: &mut helix_lsp::Registry, doc: &mut Document) -> Option<()> {
+        // if doc doesn't have a URL it's a scratch buffer, ignore it
+        let doc_url = doc.url()?;
+
         // try to find a language server based on the language name
         let language_server = doc.language.as_ref().and_then(|language| {
             ls.get(language)
@@ -476,7 +479,7 @@ impl Editor {
 
                 // TODO: this now races with on_init code if the init happens too quickly
                 tokio::spawn(language_server.text_document_did_open(
-                    doc.url().unwrap(),
+                    doc_url,
                     doc.version(),
                     doc.text(),
                     language_id,

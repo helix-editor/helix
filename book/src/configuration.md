@@ -55,6 +55,7 @@ hidden = false
 
 Defines the shape of cursor in each mode. Note that due to limitations
 of the terminal environment, only the primary cursor can change shape.
+Valid values for these options are `block`, `bar`, `underline`, or `none`.
 
 | Key      | Description                                | Default |
 | ---      | -----------                                | ------- |
