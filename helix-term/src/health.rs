@@ -230,6 +230,7 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
     for ts_feat in TsFeature::all() {
         probe_treesitter_feature(&lang_str, *ts_feat)?
     }
+
     Ok(())
 }
 
