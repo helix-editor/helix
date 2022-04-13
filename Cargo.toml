@@ -16,6 +16,8 @@ default-members = [
   "helix-term"
 ]
 
+resolver = "2"
+
 [profile.dev]
 split-debuginfo = "unpacked"
 

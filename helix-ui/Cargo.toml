@@ -7,10 +7,22 @@ edition = "2021"
 
 [dependencies]
 helix-view = { version = "0.6", path = "../helix-view", features = ["ui"] }
-femtovg = { path = "../../femtovg" }
+# femtovg = { path = "../../femtovg" }
+# femtovg = "0.3.3"
 winit = { version = "0.26.1", default-features = false, features = ["wayland"] } # TODO: figure out wayland-dlopen
 resource = "0.5.0"
 image = { version = "0.24.0", default-features = false, features = ["jpeg", "png"] }
 console_error_panic_hook = "0.1.7"
 glutin = "0.28.0"
 instant = "0.1.12"
+
+# swash = "0.1.4"
+swash = { git = "https://github.com/dfrg/swash" }
+# parley = { git = "https://github.com/dfrg/parley" }
+
+# lyon = "0.17.10"
+
+wgpu = "0.12"
+pollster = "0.2"
+glam = "0.20"
+env_logger = "0.6"
