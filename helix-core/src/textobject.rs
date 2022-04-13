@@ -132,9 +132,9 @@ pub fn textobject_paragraph(
     if prev_empty_to_line || curr_empty_to_line {
         line_back += 1;
     }
-    let mut lines = slice.lines_at(line_back);
     // do not include current paragraph on paragraph end (include next)
     if !(curr_empty_to_line && last_char) {
+        let mut lines = slice.lines_at(line_back);
         lines.reverse();
         let mut lines = lines.map(rope_is_line_ending).peekable();
         while lines.next_if(|&e| e).is_some() {
@@ -150,25 +150,46 @@ pub fn textobject_paragraph(
         line += 1;
     }
     let mut lines = slice.lines_at(line).map(rope_is_line_ending).peekable();
-    for _ in 0..count - 1 {
+    let mut count_done = 0; // count how many non-whitespace paragraphs done
+    for _ in 0..count {
+        let mut done = false;
         while lines.next_if(|&e| !e).is_some() {
             line += 1;
+            done = true;
         }
         while lines.next_if(|&e| e).is_some() {
             line += 1;
         }
+        count_done += done as usize;
     }
-    while lines.next_if(|&e| !e).is_some() {
-        line += 1;
+
+    // search one paragraph backwards for last paragraph
+    // makes `map` at the end of the paragraph with trailing newlines useful
+    let last_paragraph = count_done != count && lines.peek().is_none();
+    if last_paragraph {
+        let mut lines = slice.lines_at(line_back);
+        lines.reverse();
+        let mut lines = lines.map(rope_is_line_ending).peekable();
+        while lines.next_if(|&e| e).is_some() {
+            line_back -= 1;
+        }
+        while lines.next_if(|&e| !e).is_some() {
+            line_back -= 1;
+        }
     }
+
     // handle last whitespaces part separately depending on textobject
     match textobject {
-        TextObject::Around => {
+        TextObject::Around => {}
+        TextObject::Inside => {
+            // remove last whitespace paragraph
+            let mut lines = slice.lines_at(line);
+            lines.reverse();
+            let mut lines = lines.map(rope_is_line_ending).peekable();
             while lines.next_if(|&e| e).is_some() {
-                line += 1;
+                line -= 1;
             }
         }
-        TextObject::Inside => {}
         TextObject::Movement => unreachable!(),
     }
 
@@ -364,7 +385,7 @@ mod test {
                 "second\n\n#[paragraph\n|]#\n",
             ),
             ("#[f|]#irst char\n\n", "#[first char\n|]#\n"),
-            ("last char\n#[\n|]#", "last char\n\n#[|]#"),
+            ("last char\n#[\n|]#", "#[last char\n|]#\n"),
             (
                 "empty to line\n#[\n|]#paragraph boundary\n\n",
                 "empty to line\n\n#[paragraph boundary\n|]#\n",
@@ -418,7 +439,7 @@ mod test {
                 "second\n\n#[paragraph\n\n|]#",
             ),
             ("#[f|]#irst char\n\n", "#[first char\n\n|]#"),
-            ("last char\n#[\n|]#", "last char\n\n#[|]#"),
+            ("last char\n#[\n|]#", "#[last char\n\n|]#"),
             (
                 "empty to line\n#[\n|]#paragraph boundary\n\n",
                 "empty to line\n\n#[paragraph boundary\n\n|]#",
