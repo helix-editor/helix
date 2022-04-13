@@ -1,9 +1,12 @@
 pub mod grammar;
 
-use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
-
 pub static RUNTIME_DIR: once_cell::sync::Lazy<std::path::PathBuf> =
     once_cell::sync::Lazy::new(runtime_dir);
+
+fn project_dirs() -> directories::ProjectDirs {
+    directories::ProjectDirs::from("com", "helix-editor", "helix")
+        .expect("Unable to continue. User has no home")
+}
 
 pub fn runtime_dir() -> std::path::PathBuf {
     if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
@@ -29,19 +32,11 @@ pub fn runtime_dir() -> std::path::PathBuf {
 }
 
 fn config_dir() -> std::path::PathBuf {
-    // TODO: allow env var override
-    let strategy = choose_base_strategy().expect("Unable to find the config directory!");
-    let mut path = strategy.config_dir();
-    path.push("helix");
-    path
+    project_dirs().config_dir().to_path_buf()
 }
 
 fn cache_dir() -> std::path::PathBuf {
-    // TODO: allow env var override
-    let strategy = choose_base_strategy().expect("Unable to find the config directory!");
-    let mut path = strategy.cache_dir();
-    path.push("helix");
-    path
+    project_dirs().cache_dir().to_path_buf()
 }
 
 pub fn config_file() -> std::path::PathBuf {
