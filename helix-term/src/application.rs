@@ -63,7 +63,8 @@ impl Application {
 
         let theme_loader = std::sync::Arc::new(theme::Loader::new(
             helix_loader::theme_dir(),
-            &helix_loader::runtime_dir(),
+            // temporarily identical, until system dirs are supported
+            helix_loader::theme_dir(),
         ));
 
         let true_color = config.editor.true_color || crate::true_color();

@@ -56,11 +56,11 @@ pub struct Paths(HashMap<Path, PathBuf>);
 
 impl Default for Paths {
     fn default() -> Self {
-        let grammars = runtime_dir().join("grammars");
-        let log = cache_dir().join("helix.log");
+        let grammars = project_dirs().data_dir().join("grammars");
+        let log = state_dir().join("helix.log");
         let languages = project_dirs().config_dir().join("languages.toml");
-        let themes = runtime_dir().join("themes");
-        let queries = runtime_dir().join("queries");
+        let themes = project_dirs().data_dir().join("themes");
+        let queries = project_dirs().data_dir().join("queries");
 
         Self(HashMap::from([
             (Path::GrammarDir, grammars),
@@ -126,42 +126,11 @@ fn project_dirs() -> directories::ProjectDirs {
         .expect("Unable to continue. User has no home.")
 }
 
-pub fn runtime_dir() -> PathBuf {
-    if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
-        return dir.into();
-    }
-
-    const RT_DIR: &str = "runtime";
-    let conf_dir = config_dir().join(RT_DIR);
-    if conf_dir.exists() {
-        return conf_dir;
-    }
-
-    if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        // this is the directory of the crate being run by cargo, we need the workspace path so we take the parent
-        return PathBuf::from(dir).parent().unwrap().join(RT_DIR);
-    }
-
-    // fallback to location of the executable being run
-    std::env::current_exe()
-        .ok()
-        .and_then(|path| path.parent().map(|path| path.to_path_buf().join(RT_DIR)))
-        .unwrap()
-}
-
-fn config_dir() -> PathBuf {
-    project_dirs().config_dir().to_path_buf()
-}
-
-fn cache_dir() -> PathBuf {
-    project_dirs().cache_dir().to_path_buf()
-}
-
 pub fn config_file() -> PathBuf {
     if let Ok(dir) = std::env::var("HELIX_CONFIG") {
         return PathBuf::from(dir);
     }
-    config_dir().join("config.toml")
+    project_dirs().config_dir().join("config.toml")
 }
 
 pub fn grammar_dir() -> &'static std::path::Path {
@@ -181,11 +150,19 @@ pub fn theme_dir() -> &'static std::path::Path {
 }
 
 pub fn tutor_file() -> PathBuf {
-    config_dir().join("tutor.txt")
+    project_dirs().config_dir().join("tutor.txt")
 }
 
 pub fn query_dir() -> &'static std::path::Path {
     get_path(&Path::QueryDir)
+}
+
+fn state_dir() -> PathBuf {
+    match project_dirs().state_dir() {
+        Some(dir) => dir.to_path_buf(),
+        // state_dir is Linux-specific, fallback to data_local
+        None => project_dirs().data_local_dir().to_path_buf(),
+    }
 }
 
 /// Default bultin-in languages.toml.
