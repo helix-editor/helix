@@ -28,7 +28,7 @@ pub fn runtime_dir() -> std::path::PathBuf {
         .unwrap()
 }
 
-pub fn config_dir() -> std::path::PathBuf {
+fn config_dir() -> std::path::PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
     let mut path = strategy.config_dir();
@@ -36,7 +36,7 @@ pub fn config_dir() -> std::path::PathBuf {
     path
 }
 
-pub fn cache_dir() -> std::path::PathBuf {
+fn cache_dir() -> std::path::PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
     let mut path = strategy.cache_dir();
@@ -48,12 +48,28 @@ pub fn config_file() -> std::path::PathBuf {
     config_dir().join("config.toml")
 }
 
+pub fn grammar_dir() -> std::path::PathBuf {
+    config_dir().join("grammars")
+}
+
 pub fn lang_config_file() -> std::path::PathBuf {
     config_dir().join("languages.toml")
 }
 
 pub fn log_file() -> std::path::PathBuf {
     cache_dir().join("helix.log")
+}
+
+pub fn theme_dir() -> std::path::PathBuf {
+    config_dir().join("themes")
+}
+
+pub fn tutor_file() -> std::path::PathBuf {
+    config_dir().join("tutor.txt")
+}
+
+pub fn query_dir() -> std::path::PathBuf {
+    config_dir().join("queries")
 }
 
 /// Default bultin-in languages.toml.
@@ -65,7 +81,7 @@ pub fn default_lang_config() -> toml::Value {
 /// User configured languages.toml file, merged with the default config.
 pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
     let def_lang_conf = default_lang_config();
-    let data = std::fs::read(crate::config_dir().join("languages.toml"));
+    let data = std::fs::read(lang_config_file());
     let user_lang_conf = match data {
         Ok(raw) => {
             let value = toml::from_slice(&raw)?;

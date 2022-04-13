@@ -109,9 +109,10 @@ FLAGS:
         return Ok(0);
     }
 
-    let conf_dir = helix_loader::config_dir();
-    if !conf_dir.exists() {
-        std::fs::create_dir_all(&conf_dir).ok();
+    if let Some(conf_dir) = helix_loader::config_file().parent() {
+        if !conf_dir.exists() {
+            std::fs::create_dir_all(&conf_dir).ok();
+        }
     }
 
     let config = match Config::load_default() {

@@ -29,8 +29,8 @@ impl Loader {
     /// Creates a new loader that can load themes from two directories.
     pub fn new<P: AsRef<Path>>(user_dir: P, default_dir: P) -> Self {
         Self {
-            user_dir: user_dir.as_ref().join("themes"),
-            default_dir: default_dir.as_ref().join("themes"),
+            user_dir: PathBuf::from(user_dir.as_ref()),
+            default_dir: PathBuf::from(default_dir.as_ref()),
         }
     }
 

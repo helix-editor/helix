@@ -59,7 +59,7 @@ const REMOTE_NAME: &str = "origin";
 
 pub fn get_language(name: &str) -> Result<Language> {
     let name = name.to_ascii_lowercase();
-    let mut library_path = crate::runtime_dir().join("grammars").join(&name);
+    let mut library_path = crate::grammar_dir().join(&name);
     library_path.set_extension(DYLIB_EXTENSION);
 
     let library = unsafe { Library::new(&library_path) }
@@ -142,8 +142,7 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<()> {
         remote, revision, ..
     } = grammar.source
     {
-        let grammar_dir = crate::runtime_dir()
-            .join("grammars")
+        let grammar_dir = crate::grammar_dir()
             .join("sources")
             .join(&grammar.grammar_id);
 
@@ -233,8 +232,7 @@ fn build_grammar(grammar: GrammarConfiguration) -> Result<()> {
     let grammar_dir = if let GrammarSource::Local { path } = &grammar.source {
         PathBuf::from(&path)
     } else {
-        crate::runtime_dir()
-            .join("grammars")
+        crate::grammar_dir()
             .join("sources")
             .join(&grammar.grammar_id)
     };
@@ -280,7 +278,7 @@ fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> 
             None
         }
     };
-    let parser_lib_path = crate::runtime_dir().join("grammars");
+    let parser_lib_path = crate::grammar_dir();
     let mut library_path = parser_lib_path.join(&grammar.grammar_id);
     library_path.set_extension(DYLIB_EXTENSION);
 
@@ -385,9 +383,6 @@ fn mtime(path: &Path) -> Result<SystemTime> {
 /// Gives the contents of a file from a language's `runtime/queries/<lang>`
 /// directory
 pub fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
-    let path = crate::RUNTIME_DIR
-        .join("queries")
-        .join(language)
-        .join(filename);
+    let path = crate::query_dir().join(language).join(filename);
     std::fs::read_to_string(&path)
 }
