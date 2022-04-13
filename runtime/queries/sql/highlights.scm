@@ -27,6 +27,14 @@
   (keyword_false)
 ] @constant.builtin
 
+(literal) @string
+
+(set_schema schema: (identifier) @namespace)
+(table_reference schema: (identifier) @namespace)
+(table_expression schema: (identifier) @namespace)
+(all_fields schema: (identifier) @namespace)
+(field schema: (identifier) @namespace)
+
 [
   (keyword_select)
   (keyword_delete)
@@ -45,7 +53,7 @@
   (keyword_join)
   (keyword_lateral)
   (keyword_on)
-  (keyword_where)
+  (keyword_not)
   (keyword_order_by)
   (keyword_group_by)
   (keyword_having)
@@ -70,16 +78,7 @@
   (keyword_max)
   (keyword_min)
   (keyword_avg)
-  (keyword_case)
-  (keyword_when)
-  (keyword_then)
-  (keyword_else)
   (keyword_end)
-  (keyword_in)
-  (keyword_and)
-  (keyword_or)
-  (keyword_is)
-  (keyword_not)
   (keyword_force)
   (keyword_using)
   (keyword_use)
@@ -110,6 +109,21 @@
   (keyword_rollback)
   (keyword_transaction)
 ] @keyword
+
+[
+  (keyword_case)
+  (keyword_when)
+  (keyword_then)
+  (keyword_else)
+  (keyword_where)
+] @keyword.control.conditional
+
+[
+  (keyword_in)
+  (keyword_and)
+  (keyword_or)
+  (keyword_is)
+] @keyword.operator
 
 [
   (keyword_boolean)
@@ -148,10 +162,4 @@
   (keyword_geography)
   (keyword_box2d)
   (keyword_box3d)
-
-  (bigint)
-  (char)
-  (varchar)
-  (decimal)
-  (numeric)  
 ] @type.builtin
