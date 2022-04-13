@@ -1113,3 +1113,15 @@ grammar = "embedded-template"
 [[grammar]]
 name = "embedded-template"
 source = { git = "https://github.com/tree-sitter/tree-sitter-embedded-template", rev = "d21df11b0ecc6fd211dbe11278e92ef67bd17e97" }
+
+[[language]]
+name = "eex"
+scope = "source.eex"
+injection-regex = "eex"
+file-types = ["eex"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "eex"
+source = { git = "https://github.com/connorlay/tree-sitter-eex", rev = "f742f2fe327463335e8671a87c0b9b396905d1d1" }
