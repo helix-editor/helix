@@ -1962,8 +1962,34 @@ mod test {
     use super::*;
     use crate::{Rope, Transaction};
 
+    fn setup() {
+        use std::sync::Once;
+        // mirror struct for helix_term's Config
+        // original can't be used because it's not built yet
+        #[derive(Deserialize)]
+        struct BuildConfig {
+            paths: helix_loader::Paths,
+        }
+
+        static SETUP: Once = Once::new();
+        SETUP.call_once(|| {
+            // config.toml is written relative to workspace root, cd there
+            assert!(std::env::set_current_dir("..").is_ok());
+
+            let config = std::env::var("HELIX_CONFIG").unwrap();
+            let config = std::fs::read_to_string(config).unwrap();
+            let paths = toml::from_str::<BuildConfig>(&config).unwrap().paths;
+            helix_loader::init_paths(paths).unwrap();
+
+            // cd back, don't interfere with other tests
+            assert!(std::env::set_current_dir("./helix-core").is_ok());
+        });
+    }
+
     #[test]
     fn test_textobject_queries() {
+        setup();
+
         let query_str = r#"
         (line_comment)+ @quantified_nodes
         ((line_comment)+) @quantified_nodes_grouped
@@ -2010,6 +2036,8 @@ mod test {
 
     #[test]
     fn test_parser() {
+        setup();
+
         let highlight_names: Vec<String> = [
             "attribute",
             "constant",
@@ -2130,6 +2158,8 @@ mod test {
 
     #[test]
     fn test_load_runtime_file() {
+        setup();
+
         // Test to make sure we can load some data from the runtime directory.
         let contents = load_runtime_file("rust", "indents.scm").unwrap();
         assert!(!contents.is_empty());

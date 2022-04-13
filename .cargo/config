@@ -1,2 +1,5 @@
 [alias]
 xtask = "run --package xtask --"
+
+[env]
+HELIX_CONFIG = { value = "./runtime/config.toml", force = true, relative = true }

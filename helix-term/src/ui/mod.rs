@@ -234,8 +234,7 @@ pub mod completers {
     }
 
     pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
-        let mut names = theme::Loader::read_names(&helix_loader::theme_dir());
-        names.extend(theme::Loader::read_names(&helix_loader::theme_dir()));
+        let mut names = theme::Loader::read_names(helix_loader::theme_dir());
         names.push("default".into());
         names.push("base16_default".into());
 

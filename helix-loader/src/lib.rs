@@ -1,14 +1,132 @@
 pub mod grammar;
 
-pub static RUNTIME_DIR: once_cell::sync::Lazy<std::path::PathBuf> =
-    once_cell::sync::Lazy::new(runtime_dir);
+use anyhow::{bail, Result};
+use serde::Deserialize;
+use std::collections::HashMap;
+use std::path::PathBuf;
+
+static PATHS: once_cell::sync::OnceCell<Paths> = once_cell::sync::OnceCell::new();
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Hash)]
+#[serde(try_from = "String")]
+pub enum Path {
+    LanguageFile,
+    LogFile,
+    GrammarDir,
+    ThemeDir,
+    #[serde(skip)] // no point in tutor file being configurable
+    TutorFile,
+    QueryDir,
+}
+
+impl TryFrom<String> for Path {
+    type Error = anyhow::Error;
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        match s.as_str() {
+            "language-file" => Ok(Path::LanguageFile),
+            "log-file" => Ok(Path::LogFile),
+            "grammar-dir" => Ok(Path::GrammarDir),
+            "theme-dir" => Ok(Path::ThemeDir),
+            "query-dir" => Ok(Path::QueryDir),
+            _ => bail!("Invalid path key '{}'", s),
+        }
+    }
+}
+
+/// Ensure that Paths always contain all required paths
+/// by setting whatever isn't specified in config to default values
+impl<'de> Deserialize<'de> for Paths {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let mut loaded = HashMap::<Path, PathBuf>::deserialize(deserializer)?;
+        let mut defaults = Self::default();
+        for (k, v) in defaults.0.drain() {
+            if loaded.get(&k).is_none() {
+                loaded.insert(k, v);
+            }
+        }
+        Ok(Self(loaded))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Paths(HashMap<Path, PathBuf>);
+
+impl Default for Paths {
+    fn default() -> Self {
+        let grammars = runtime_dir().join("grammars");
+        let log = cache_dir().join("helix.log");
+        let languages = project_dirs().config_dir().join("languages.toml");
+        let themes = runtime_dir().join("themes");
+        let queries = runtime_dir().join("queries");
+
+        Self(HashMap::from([
+            (Path::GrammarDir, grammars),
+            (Path::LanguageFile, languages),
+            (Path::LogFile, log),
+            (Path::ThemeDir, themes),
+            (Path::QueryDir, queries),
+        ]))
+    }
+}
+
+impl Paths {
+    pub fn get(&self, path_type: &Path) -> &std::path::Path {
+        // unwrap: all types always present, either from config or default()
+        self.0.get(path_type).unwrap()
+    }
+}
+
+/// Get paths loaded from config, complemented by defaults
+fn get_path(path_type: &Path) -> &std::path::Path {
+    PATHS
+        .get()
+        .expect("must init paths from config first")
+        .get(path_type)
+}
+
+/// Set static PATHS to valid values
+/// Should be called before getting any path except config_dir
+pub fn init_paths(mut paths: Paths) -> Result<()> {
+    for (k, v) in &mut paths.0 {
+        let dir = match k {
+            Path::LanguageFile | Path::LogFile | Path::TutorFile => v.parent().unwrap(),
+            Path::GrammarDir | Path::ThemeDir | Path::QueryDir => v,
+        };
+        create_dir(dir)?;
+        // grammar building can't handle relative paths
+        // todo: replace canonicalize with std::path::absolute
+        // then simply call `*v = std::path::absolute(k)`;
+        // tracking issue: https://github.com/rust-lang/rust/issues/92750
+        if k == &Path::LanguageFile || k == &Path::LogFile || k == &Path::TutorFile {
+            *v = std::fs::canonicalize(dir)?.join(v.file_name().unwrap());
+        } else {
+            *v = std::fs::canonicalize(dir)?;
+        }
+    }
+    PATHS
+        .set(paths)
+        .expect("trying to set paths multiple times");
+    Ok(())
+}
+
+fn create_dir(dir: &std::path::Path) -> Result<()> {
+    if dir.exists() && !dir.is_dir() {
+        bail!("{} exists but is not a directory!", dir.display())
+    } else if !dir.exists() {
+        std::fs::create_dir_all(&dir)?;
+    }
+    Ok(())
+}
 
 fn project_dirs() -> directories::ProjectDirs {
     directories::ProjectDirs::from("com", "helix-editor", "helix")
-        .expect("Unable to continue. User has no home")
+        .expect("Unable to continue. User has no home.")
 }
 
-pub fn runtime_dir() -> std::path::PathBuf {
+pub fn runtime_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
         return dir.into();
     }
@@ -21,7 +139,7 @@ pub fn runtime_dir() -> std::path::PathBuf {
 
     if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
         // this is the directory of the crate being run by cargo, we need the workspace path so we take the parent
-        return std::path::PathBuf::from(dir).parent().unwrap().join(RT_DIR);
+        return PathBuf::from(dir).parent().unwrap().join(RT_DIR);
     }
 
     // fallback to location of the executable being run
@@ -31,43 +149,43 @@ pub fn runtime_dir() -> std::path::PathBuf {
         .unwrap()
 }
 
-fn config_dir() -> std::path::PathBuf {
+fn config_dir() -> PathBuf {
     project_dirs().config_dir().to_path_buf()
 }
 
-fn cache_dir() -> std::path::PathBuf {
+fn cache_dir() -> PathBuf {
     project_dirs().cache_dir().to_path_buf()
 }
 
-pub fn config_file() -> std::path::PathBuf {
+pub fn config_file() -> PathBuf {
     if let Ok(dir) = std::env::var("HELIX_CONFIG") {
-        return std::path::PathBuf::from(dir);
+        return PathBuf::from(dir);
     }
     config_dir().join("config.toml")
 }
 
-pub fn grammar_dir() -> std::path::PathBuf {
-    config_dir().join("grammars")
+pub fn grammar_dir() -> &'static std::path::Path {
+    get_path(&Path::GrammarDir)
 }
 
-pub fn lang_config_file() -> std::path::PathBuf {
-    config_dir().join("languages.toml")
+pub fn lang_config_file() -> &'static std::path::Path {
+    get_path(&Path::LanguageFile)
 }
 
-pub fn log_file() -> std::path::PathBuf {
-    cache_dir().join("helix.log")
+pub fn log_file() -> &'static std::path::Path {
+    get_path(&Path::LogFile)
 }
 
-pub fn theme_dir() -> std::path::PathBuf {
-    config_dir().join("themes")
+pub fn theme_dir() -> &'static std::path::Path {
+    get_path(&Path::ThemeDir)
 }
 
-pub fn tutor_file() -> std::path::PathBuf {
+pub fn tutor_file() -> PathBuf {
     config_dir().join("tutor.txt")
 }
 
-pub fn query_dir() -> std::path::PathBuf {
-    config_dir().join("queries")
+pub fn query_dir() -> &'static std::path::Path {
+    get_path(&Path::QueryDir)
 }
 
 /// Default bultin-in languages.toml.
@@ -171,5 +289,24 @@ mod merge_toml_tests {
         assert_eq!(nix_indent.get("test").unwrap().as_str().unwrap(), "aaa");
         // We didn't change comment-token so it should be same
         assert_eq!(nix.get("comment-token").unwrap().as_str().unwrap(), "#");
+    }
+}
+
+
+// multiple test mods due to work around shared static
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    #[should_panic(expected = "trying to set paths multiple times")]
+    fn calling_init_paths_repeatedly_errors() {
+        assert!(init_paths(Paths::default()).is_ok());
+        let _ = init_paths(Paths::default());
+    }
+
+    #[test]
+    fn config_is_always_available() {
+        config_file();
     }
 }

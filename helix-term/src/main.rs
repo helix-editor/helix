@@ -39,12 +39,6 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let logpath = helix_loader::log_file();
-    let parent = logpath.parent().unwrap();
-    if !parent.exists() {
-        std::fs::create_dir_all(parent).ok();
-    }
-
     let help = format!(
         "\
 {} {}
@@ -71,7 +65,9 @@ FLAGS:
         env!("VERSION_AND_GIT_HASH"),
         env!("CARGO_PKG_AUTHORS"),
         env!("CARGO_PKG_DESCRIPTION"),
-        logpath.display(),
+        helix_loader::Paths::default()
+            .get(&helix_loader::Path::LogFile)
+            .display(),
     );
 
     let args = Args::parse_args().context("could not parse arguments")?;
@@ -85,6 +81,34 @@ FLAGS:
     if args.display_version {
         println!("helix {}", env!("VERSION_AND_GIT_HASH"));
         std::process::exit(0);
+    }
+
+    let config = match Config::load_default() {
+        Ok(config) => config,
+        Err(err) => {
+            match err {
+                ConfigLoadError::BadConfig(err) => {
+                    eprintln!("Bad config: {}", err);
+                    eprintln!("Press <ENTER> to continue with default config");
+                    use std::io::Read;
+                    // This waits for an enter press.
+                    let _ = std::io::stdin().read(&mut []);
+                    Config::default()
+                }
+                ConfigLoadError::Error(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                    Config::default()
+                }
+                ConfigLoadError::Error(err) => return Err(Error::new(err)),
+            }
+        }
+    };
+
+    if let Err(err) = helix_loader::init_paths(config.paths.clone()) {
+        eprintln!("Error in [paths] config section: {}", err);
+        eprintln!("Some features like highlighting or logging may not be available.");
+        eprintln!("Press <ENTER> to continue anyway");
+        use std::io::Read;
+        let _ = std::io::stdin().read(&mut []);
     }
 
     if args.health {
@@ -109,33 +133,8 @@ FLAGS:
         return Ok(0);
     }
 
-    if let Some(conf_dir) = helix_loader::config_file().parent() {
-        if !conf_dir.exists() {
-            std::fs::create_dir_all(&conf_dir).ok();
-        }
-    }
-
-    let config = match Config::load_default() {
-        Ok(config) => config,
-        Err(err) => {
-            match err {
-                ConfigLoadError::BadConfig(err) => {
-                    eprintln!("Bad config: {}", err);
-                    eprintln!("Press <ENTER> to continue with default config");
-                    use std::io::Read;
-                    // This waits for an enter press.
-                    let _ = std::io::stdin().read(&mut []);
-                    Config::default()
-                }
-                ConfigLoadError::Error(err) if err.kind() == std::io::ErrorKind::NotFound => {
-                    Config::default()
-                }
-                ConfigLoadError::Error(err) => return Err(Error::new(err)),
-            }
-        }
-    };
-
-    setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
+    setup_logging(helix_loader::log_file().to_path_buf(), args.verbosity)
+        .context("failed to initialize logging")?;
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config).context("unable to create new application")?;

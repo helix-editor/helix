@@ -62,7 +62,7 @@ impl Application {
         let size = compositor.size();
 
         let theme_loader = std::sync::Arc::new(theme::Loader::new(
-            &helix_loader::theme_dir(),
+            helix_loader::theme_dir(),
             &helix_loader::runtime_dir(),
         ));
 
