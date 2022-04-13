@@ -749,7 +749,12 @@ impl EditorView {
     fn command_mode(&mut self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
         match event {
             // count handling
-            key!(i @ '0'..='9') => {
+            key!(i @ '0') if cxt.editor.count.is_some() => {
+                let i = i.to_digit(10).unwrap() as usize;
+                cxt.editor.count =
+                    std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
+            }
+            key!(i @ '1'..='9') => {
                 let i = i.to_digit(10).unwrap() as usize;
                 cxt.editor.count =
                     std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
