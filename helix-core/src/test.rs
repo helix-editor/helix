@@ -53,7 +53,7 @@ pub fn print(s: &str) -> (String, Selection) {
         };
 
         if is_primary && primary_idx.is_some() {
-            panic!("primary `#[` already appeared {left:?} {s:?}");
+            panic!("primary `#[` already appeared {:?} {:?}", left, s);
         }
 
         let head_at_beg = iter.next_if_eq(&'|').is_some();
@@ -85,15 +85,15 @@ pub fn print(s: &str) -> (String, Selection) {
         }
 
         if head_at_beg {
-            panic!("missing end `{close_pair}#` {left:?} {s:?}");
+            panic!("missing end `{}#` {:?} {:?}", close_pair, left, s);
         } else {
-            panic!("missing end `|{close_pair}#` {left:?} {s:?}");
+            panic!("missing end `|{}#` {:?} {:?}", close_pair, left, s);
         }
     }
 
     let primary = match primary_idx {
         Some(i) => i,
-        None => panic!("missing primary `#[|]#` {s:?}"),
+        None => panic!("missing primary `#[|]#` {:?}", s),
     };
     let selection = Selection::new(ranges, primary);
     (left, selection)

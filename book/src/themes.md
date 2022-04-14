@@ -37,8 +37,8 @@ configuration values in your theme. To do this, add a table called
 `palette` to your theme file:
 
 ```toml
-ui.background = "white"
-ui.text = "black"
+"ui.background" = "white"
+"ui.text" = "black"
 
 [palette]
 white = "#ffffff"

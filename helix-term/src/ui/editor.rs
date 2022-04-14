@@ -471,14 +471,20 @@ impl EditorView {
             text.reserve(*width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
                 let selected = cursors.contains(&line);
+                let x = viewport.x + offset;
+                let y = viewport.y + i as u16;
 
                 if let Some(style) = gutter(line, selected, &mut text) {
-                    surface.set_stringn(
-                        viewport.x + offset,
-                        viewport.y + i as u16,
-                        &text,
-                        *width,
-                        gutter_style.patch(style),
+                    surface.set_stringn(x, y, &text, *width, gutter_style.patch(style));
+                } else {
+                    surface.set_style(
+                        Rect {
+                            x,
+                            y,
+                            width: *width as u16,
+                            height: 1,
+                        },
+                        gutter_style,
                     );
                 }
                 text.clear();

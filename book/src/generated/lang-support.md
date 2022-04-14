@@ -6,11 +6,14 @@
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
 | cpp | ✓ | ✓ | ✓ | `clangd` |
-| css | ✓ |  |  |  |
+| css | ✓ |  |  | `vscode-css-language-server` |
 | dart | ✓ |  | ✓ | `dart` |
 | dockerfile | ✓ |  |  | `docker-langserver` |
+| eex | ✓ |  |  |  |
+| ejs | ✓ |  |  |  |
 | elixir | ✓ |  |  | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
+| erb | ✓ |  |  |  |
 | erlang | ✓ |  |  | `erlang_ls` |
 | fish | ✓ | ✓ | ✓ |  |
 | git-commit | ✓ |  |  |  |
@@ -23,11 +26,12 @@
 | graphql | ✓ |  |  |  |
 | haskell | ✓ |  |  | `haskell-language-server-wrapper` |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
+| heex | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  |  |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
-| json | ✓ |  | ✓ |  |
+| json | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsx | ✓ |  | ✓ | `typescript-language-server` |
 | julia | ✓ |  |  | `julia` |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
@@ -42,11 +46,11 @@
 | markdown | ✓ |  |  |  |
 | mint |  |  |  | `mint` |
 | nix | ✓ |  | ✓ | `rnix-lsp` |
-| ocaml | ✓ |  | ✓ |  |
-| ocaml-interface | ✓ |  |  |  |
+| ocaml | ✓ |  | ✓ | `ocamllsp` |
+| ocaml-interface | ✓ |  |  | `ocamllsp` |
 | org | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |
-| php | ✓ | ✓ | ✓ |  |
+| php | ✓ | ✓ | ✓ | `intelephense` |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ |  | ✓ |  |
 | python | ✓ | ✓ | ✓ | `pylsp` |
@@ -61,13 +65,14 @@
 | scala | ✓ |  | ✓ | `metals` |
 | solidity | ✓ |  |  | `solc` |
 | svelte | ✓ |  | ✓ | `svelteserver` |
+| swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
 | toml | ✓ |  |  |  |
 | tsq | ✓ |  |  |  |
 | tsx | ✓ |  |  | `typescript-language-server` |
 | twig | ✓ |  |  |  |
 | typescript | ✓ |  | ✓ | `typescript-language-server` |
-| vue | ✓ |  |  |  |
+| vue | ✓ |  |  | `vls` |
 | wgsl | ✓ |  |  |  |
 | yaml | ✓ |  | ✓ |  |
 | zig | ✓ |  | ✓ | `zls` |

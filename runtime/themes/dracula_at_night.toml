@@ -1,4 +1,5 @@
-# Author : Sebastian Zivota <loewenheim@mailbox.org>
+# Author : Sam Sartor <me@samsartor.com>
+# A port of https://github.com/bceskavich/dracula-at-night
 "comment" = { fg = "comment" }
 "constant" = { fg = "purple" }
 "constant.character.escape" = { fg = "pink" }
@@ -29,8 +30,8 @@
 "ui.menu" = { fg = "foreground", bg = "background_dark" }
 "ui.menu.selected" = { fg = "cyan", bg = "background_dark" }
 "ui.popup" = { fg = "foreground", bg = "background_dark" }
-"ui.selection" = { bg = "secondary_highlight" }
-"ui.selection.primary" = { bg = "primary_highlight" }
+"ui.selection" = { fg = "background", bg = "purple", modifiers = ["dim"] }
+"ui.selection.primary" = { fg = "background", bg = "pink" }
 "ui.statusline" = { fg = "foreground", bg = "background_dark" }
 "ui.statusline.inactive" = { fg = "comment", bg = "background_dark" }
 "ui.text" = { fg = "foreground" }
@@ -50,10 +51,8 @@
 "markup.raw" = { fg = "foreground" }
 
 [palette]
-background = "#282a36"
+background = "#0e1419"
 background_dark = "#21222c"
-primary_highlight = "#800049"
-secondary_highlight = "#4d4f66"
 foreground = "#f8f8f2"
 comment = "#6272a4"
 red = "#ff5555"

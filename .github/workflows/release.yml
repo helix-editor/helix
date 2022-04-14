@@ -104,7 +104,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Download grammars
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
 
       - name: Move grammars under runtime
         if: "!startsWith(matrix.os, 'windows')"
@@ -172,7 +172,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
 
       - name: Calculate tag name
         run: |
@@ -206,6 +206,8 @@ jobs:
               pkgname=helix-$TAG-$platform
               mkdir $pkgname
               cp $source/LICENSE $source/README.md $pkgname
+              mkdir $pkgname/contrib
+              cp -r $source/contrib/completion $pkgname/contrib
               mv bins-$platform/runtime $pkgname/
               mv bins-$platform/hx$exe $pkgname
               chmod +x $pkgname/hx$exe

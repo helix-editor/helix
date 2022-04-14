@@ -2,7 +2,7 @@ use crate::compositor::{Component, Compositor, Context, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
 use crossterm::event::Event;
 use helix_view::input::KeyEvent;
-use helix_view::keyboard::{KeyCode, KeyModifiers};
+use helix_view::keyboard::KeyCode;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
 use tui::widgets::{Block, Borders, Widget};
@@ -529,11 +529,11 @@ impl Component for Prompt {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
             ctrl!('q') => self.exit_selection(),
-            // any char event that's not combined with control or mapped to any other combo
+            // any char event that's not mapped to any other combo
             KeyEvent {
                 code: KeyCode::Char(c),
-                modifiers,
-            } if !modifiers.contains(KeyModifiers::CONTROL) => {
+                modifiers: _,
+            } => {
                 self.insert_char(c, cx);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
