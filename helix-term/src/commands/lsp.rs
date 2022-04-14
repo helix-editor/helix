@@ -124,23 +124,30 @@ fn diag_picker(
     // flatten the map to a vec of (uri, diag) pairs
     let mut flat_diag = Vec::new();
     for (u, diags) in diagnostics {
+        flat_diag.reserve(diags.len());
         for d in diags {
             flat_diag.push((u.clone(), d));
         }
     }
 
-    let theme = cx.editor.theme.clone();
+    let hint = cx.editor.theme.get("hint");
+    let info = cx.editor.theme.get("info");
+    let warning = cx.editor.theme.get("warning");
+    let error = cx.editor.theme.get("error");
 
     FilePicker::new(
         flat_diag,
         move |(_url, d)| {
-            let mut style = d.severity.map_or(Style::default(), |s| match s {
-                DiagnosticSeverity::HINT => theme.get("hint"),
-                DiagnosticSeverity::INFORMATION => theme.get("info"),
-                DiagnosticSeverity::WARNING => theme.get("warning"),
-                DiagnosticSeverity::ERROR => theme.get("error"),
-                _ => Style::default(),
-            });
+            let mut style = d
+                .severity
+                .map(|s| match s {
+                    DiagnosticSeverity::HINT => hint,
+                    DiagnosticSeverity::INFORMATION => info,
+                    DiagnosticSeverity::WARNING => warning,
+                    DiagnosticSeverity::ERROR => error,
+                    _ => Style::default(),
+                })
+                .unwrap_or_default();
 
             // remove background as it is distracting in the picker list
             style.bg = None;
@@ -268,11 +275,15 @@ pub fn diagnostics_picker(cx: &mut Context) {
         let diagnostics = cx
             .editor
             .diagnostics
-            .clone()
-            .into_iter()
-            .filter(|(u, _)| *u == current_url)
-            .collect();
-        let picker = diag_picker(cx, diagnostics, Some(current_url), offset_encoding);
+            .get(&current_url)
+            .cloned()
+            .unwrap_or_default();
+        let picker = diag_picker(
+            cx,
+            [(current_url.clone(), diagnostics)].into(),
+            Some(current_url),
+            offset_encoding,
+        );
         cx.push_layer(Box::new(overlayed(picker)));
     }
 }

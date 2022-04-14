@@ -2159,10 +2159,9 @@ pub fn command_palette(cx: &mut Context) {
             let picker = Picker::new(
                 commands,
                 move |command| match command {
-                    MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String)
-                    {
+                    MappableCommand::Typable { doc, name, .. } => match keymap.get(name) {
                         Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
-                        None => doc.clone().into(),
+                        None => doc.as_str().into(),
                     },
                     MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
                         Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
