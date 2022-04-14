@@ -243,7 +243,7 @@ impl std::str::FromStr for LineNumber {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum GutterType {
-    /// Show diagnostics
+    /// Show diagnostics and other features like breakpoints
     Diagnostics,
     /// Show line numbers
     LineNumbers,
@@ -254,8 +254,8 @@ impl std::str::FromStr for GutterType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "diagnostics" | "diag" => Ok(Self::Diagnostics),
-            "line-numbers" | "ln" => Ok(Self::LineNumbers),
+            "diagnostics" => Ok(Self::Diagnostics),
+            "line-numbers" => Ok(Self::LineNumbers),
             _ => anyhow::bail!("Gutter type can only be `diagnostics` or `line-numbers`."),
         }
     }
