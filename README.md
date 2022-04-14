@@ -34,7 +34,8 @@ Note: Only certain languages have indentation definitions at the moment. Check
 
 Packages are available for various distributions (see [Installation docs](https://docs.helix-editor.com/install.html)).
 
-If you wold like to build from source.:
+If you would like to build from source:
+
 ```shell
 git clone https://github.com/helix-editor/helix
 cd helix
