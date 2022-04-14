@@ -224,7 +224,34 @@ fn append_outline<T: lyon::path::builder::PathBuilder>(
     }
 }
 
+fn create_multisampled_framebuffer(
+    device: &wgpu::Device,
+    config: &wgpu::SurfaceConfiguration,
+    sample_count: u32,
+) -> wgpu::TextureView {
+    let multisampled_texture_extent = wgpu::Extent3d {
+        width: config.width,
+        height: config.height,
+        depth_or_array_layers: 1,
+    };
+    let multisampled_frame_descriptor = &wgpu::TextureDescriptor {
+        size: multisampled_texture_extent,
+        mip_level_count: 1,
+        sample_count,
+        dimension: wgpu::TextureDimension::D2,
+        format: config.format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        label: None,
+    };
+
+    device
+        .create_texture(multisampled_frame_descriptor)
+        .create_view(&wgpu::TextureViewDescriptor::default())
+}
+
 async fn run(event_loop: EventLoop<()>, window: Window) {
+    let sample_count = 4;
+
     let size = window.inner_size();
     let instance = wgpu::Instance::new(wgpu::Backends::all());
     let surface = unsafe { instance.create_surface(&window) };
@@ -277,6 +304,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     //
 
+    // TODO: use size fetched before
     let data = View { size: [0.0, 0.0] };
 
     let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -338,7 +366,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         }),
         primitive: wgpu::PrimitiveState::default(),
         depth_stencil: None,
-        multisample: wgpu::MultisampleState::default(),
+        multisample: wgpu::MultisampleState {
+            count: sample_count,
+            ..Default::default()
+        },
         multiview: None,
     });
 
@@ -349,6 +380,9 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         height: size.height,
         present_mode: wgpu::PresentMode::Mailbox,
     };
+
+    let mut multisampled_framebuffer =
+        create_multisampled_framebuffer(&device, &config, sample_count);
 
     surface.configure(&device, &config);
 
@@ -369,6 +403,10 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 // Reconfigure the surface with the new size
                 config.width = size.width;
                 config.height = size.height;
+
+                multisampled_framebuffer =
+                    create_multisampled_framebuffer(&device, &config, sample_count);
+
                 surface.configure(&device, &config);
                 // On macos the window needs to be redrawn manually after resizing
                 window.request_redraw();
@@ -400,8 +438,8 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: None,
                         color_attachments: &[wgpu::RenderPassColorAttachment {
-                            view: &view,
-                            resolve_target: None,
+                            view: &multisampled_framebuffer,
+                            resolve_target: Some(&view),
                             ops: wgpu::Operations {
                                 load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                                 store: true,
