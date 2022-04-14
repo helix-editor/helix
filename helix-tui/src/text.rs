@@ -247,6 +247,12 @@ impl<'a> From<Spans<'a>> for String {
     }
 }
 
+impl<'a> From<&Spans<'a>> for String {
+    fn from(line: &Spans<'a>) -> String {
+        line.0.iter().map(|s| &*s.content).collect()
+    }
+}
+
 /// A string split over multiple lines where each line is composed of several clusters, each with
 /// their own style.
 ///

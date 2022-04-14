@@ -614,7 +614,7 @@ impl<T: 'static> Component for Picker<T> {
             let spans = (self.format_fn)(option);
             let (_score, highlights) = self
                 .matcher
-                .fuzzy_indices(&String::from(spans.clone()), self.prompt.line())
+                .fuzzy_indices(&String::from(&spans), self.prompt.line())
                 .unwrap_or_default();
 
             spans.0.into_iter().fold(inner, |pos, span| {
