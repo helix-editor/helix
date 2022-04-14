@@ -137,8 +137,8 @@ fn diag_picker(
 
     FilePicker::new(
         flat_diag,
-        move |(_url, d)| {
-            let mut style = d
+        move |(_, diag)| {
+            let mut style = diag
                 .severity
                 .map(|s| match s {
                     DiagnosticSeverity::HINT => hint,
@@ -152,7 +152,7 @@ fn diag_picker(
             // remove background as it is distracting in the picker list
             style.bg = None;
 
-            let code = d
+            let code = diag
                 .code
                 .as_ref()
                 .map(|c| match c {
@@ -163,16 +163,16 @@ fn diag_picker(
 
             Spans::from(vec![
                 Span::styled(
-                    d.source.clone().unwrap_or_default(),
+                    diag.source.clone().unwrap_or_default(),
                     style.add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(": "),
                 Span::styled(code, style),
                 Span::raw(" - "),
-                Span::styled(&d.message, style),
+                Span::styled(&diag.message, style),
             ])
         },
-        move |cx, (url, d), action| {
+        move |cx, (url, diag), action| {
             if current_path.as_ref() == Some(url) {
                 push_jump(cx.editor);
             } else {
@@ -182,7 +182,7 @@ fn diag_picker(
 
             let (view, doc) = current!(cx.editor);
 
-            if let Some(range) = lsp_range_to_range(doc.text(), d.range, offset_encoding) {
+            if let Some(range) = lsp_range_to_range(doc.text(), diag.range, offset_encoding) {
                 // we flip the range so that the cursor sits on the start of the symbol
                 // (for example start of the function).
                 doc.set_selection(view.id, Selection::single(range.head, range.anchor));
