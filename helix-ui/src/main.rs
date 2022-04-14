@@ -5,6 +5,8 @@ use winit::{
     window::Window,
 };
 
+use wgpu::util::DeviceExt;
+
 // new femto-like framework:
 // wgpu renderer
 // kurbo, (alternative is euclid + lyon)
@@ -24,6 +26,28 @@ use swash::{
     zeno::{Vector, Verb},
     Attributes, CacheKey, Charmap, FontRef,
 };
+
+use lyon::{
+    math::{point, Transform},
+    path::{builder::*, Path},
+    tessellation::{BuffersBuilder, FillOptions, FillTessellator, FillVertex, VertexBuffers},
+};
+
+use bytemuck::{Pod, Zeroable};
+
+// Vertex for lines drawn by lyon
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
+struct Vertex {
+    position: [f32; 2],
+    // color: [f32; 4],    // Use this when I want more colors
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
+struct View {
+    size: [f32; 2],
+}
 
 pub struct Font {
     // Full content of the font file
@@ -71,7 +95,8 @@ impl Font {
         }
     }
 }
-fn font() {
+
+fn font() -> VertexBuffers<Vertex, u16> {
     let font = Font::from_file("assets/fonts/Inter Variable/Inter.ttf", 0).unwrap();
     let font = font.as_ref();
 
@@ -114,6 +139,8 @@ fn font() {
         // c.glyphs
     });
 
+    // -- Scaling
+
     let mut context = ScaleContext::new();
     let mut scaler = context
         .builder(font)
@@ -124,33 +151,79 @@ fn font() {
     let glyph_id = font.charmap().map('Q');
     let outline = scaler.scale_outline(glyph_id).unwrap();
 
-    append_outline((), outline.verbs(), outline.points());
+    // -- Tesselation
 
-    // -- Scaling
+    // let mut encoder = Path::builder().transformed(Transform::new(
+    //     0.01, 0., //
+    //     0., 0.01, //
+    //     0., 0.,
+    // ));
+
+    let mut encoder = Path::builder();
+
+    append_outline(&mut encoder, outline.verbs(), outline.points());
+
+    let path = encoder.build();
+
+    let mut geometry: VertexBuffers<Vertex, u16> = VertexBuffers::new();
+
+    let mut tessellator = FillTessellator::new();
+    {
+        // Compute the tessellation.
+        tessellator
+            .tessellate_path(
+                &path,
+                &FillOptions::default(),
+                &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| Vertex {
+                    position: vertex.position().to_array(),
+                }),
+            )
+            .unwrap();
+    }
+
+    println!("{:?}", geometry);
+    geometry
 }
 
-fn append_outline(_encoder: (), verbs: &[Verb], points: &[Vector]) {
+fn append_outline<T: lyon::path::builder::PathBuilder>(
+    encoder: &mut T,
+    verbs: &[Verb],
+    points: &[Vector],
+) {
+    let mut i = 0;
     for verb in verbs {
-        println!("{:?}", verb);
         match verb {
             Verb::MoveTo => {
-                //
+                let p = points[i];
+                // TODO: can MoveTo appear halfway through?
+                encoder.begin(point(p.x, p.y));
+                i += 1;
             }
             Verb::LineTo => {
-                //
+                let p = points[i];
+                encoder.line_to(point(p.x, p.y));
+                i += 1;
             }
             Verb::QuadTo => {
-                //
+                let p1 = points[i];
+                let p2 = points[i + 1];
+                encoder.quadratic_bezier_to(point(p1.x, p1.y), point(p2.x, p2.y));
+                i += 2;
             }
             Verb::CurveTo => {
-                //
+                let p1 = points[i];
+                let p2 = points[i + 1];
+                let p3 = points[i + 2];
+                encoder.cubic_bezier_to(point(p1.x, p1.y), point(p2.x, p2.y), point(p3.x, p3.y));
+                i += 3;
             }
             Verb::Close => {
-                //
+                encoder.close();
             }
         }
     }
 }
+
 async fn run(event_loop: EventLoop<()>, window: Window) {
     let size = window.inner_size();
     let instance = wgpu::Instance::new(wgpu::Backends::all());
@@ -186,10 +259,62 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("shader.wgsl"))),
     });
 
+    // ---
+
+    let geometry = font();
+
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Vertex Buffer"),
+        contents: bytemuck::cast_slice(&geometry.vertices),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+
+    let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Index Buffer"),
+        contents: bytemuck::cast_slice(&geometry.indices),
+        usage: wgpu::BufferUsages::INDEX,
+    });
+
+    //
+
+    let data = View { size: [0.0, 0.0] };
+
+    let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Uniform Buffer"),
+        contents: bytemuck::cast_slice(&[data]),
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+    });
+
+    let uniform_bind_group_layout =
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("uniform_bind_group_layout"),
+        });
+
+    let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        layout: &uniform_bind_group_layout,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: uniform_buffer.as_entire_binding(),
+        }],
+        label: Some("uniform_bind_group"),
+    });
+
+    //
+
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: None,
-        bind_group_layouts: &[],
-        push_constant_ranges: &[],
+        bind_group_layouts: &[&uniform_bind_group_layout], // &texture_bind_group_layout
+        push_constant_ranges: &[], // TODO: could use push constants for uniforms but that's not available on web
     });
 
     let swapchain_format = surface.get_preferred_format(&adapter).unwrap();
@@ -200,7 +325,11 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         vertex: wgpu::VertexState {
             module: &shader,
             entry_point: "vs_main",
-            buffers: &[],
+            buffers: &[wgpu::VertexBufferLayout {
+                array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &wgpu::vertex_attr_array![0 => Float32x2],
+            }],
         },
         fragment: Some(wgpu::FragmentState {
             module: &shader,
@@ -223,7 +352,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
     surface.configure(&device, &config);
 
-    font();
+    //
 
     event_loop.run(move |event, _, control_flow| {
         // Have the closure take ownership of the resources.
@@ -253,6 +382,20 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                     .create_view(&wgpu::TextureViewDescriptor::default());
                 let mut encoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+                // TODO: need to use queue.write_buffer or staging_belt to write to it
+
+                // Pass the current window size in
+                let dpi_factor = window.scale_factor();
+                let size = window.inner_size();
+                let winit::dpi::LogicalSize { width, height } = size.to_logical::<f32>(dpi_factor);
+
+                let data = View {
+                    size: [width, height],
+                };
+
+                queue.write_buffer(&uniform_buffer, 0, bytemuck::cast_slice(&[data]));
+
                 {
                     let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: None,
@@ -260,14 +403,20 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                             view: &view,
                             resolve_target: None,
                             ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
+                                load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                                 store: true,
                             },
                         }],
                         depth_stencil_attachment: None,
                     });
+
+                    // rpass.set_viewport();
+
                     rpass.set_pipeline(&render_pipeline);
-                    rpass.draw(0..3, 0..1);
+                    rpass.set_bind_group(0, &uniform_bind_group, &[]);
+                    rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+                    rpass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                    rpass.draw_indexed(0..(geometry.indices.len() as u32), 0, 0..1);
                 }
 
                 queue.submit(Some(encoder.finish()));

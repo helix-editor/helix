@@ -20,9 +20,10 @@ instant = "0.1.12"
 swash = { git = "https://github.com/dfrg/swash" }
 # parley = { git = "https://github.com/dfrg/parley" }
 
-# lyon = "0.17.10"
+lyon = "0.17.10"
 
 wgpu = "0.12"
 pollster = "0.2"
 glam = "0.20"
 env_logger = "0.6"
+bytemuck = { version = "1.9.1", features = ["derive"] }

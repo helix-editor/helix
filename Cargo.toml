@@ -13,7 +13,8 @@ members = [
 ]
 
 default-members = [
-  "helix-term"
+  "helix-term",
+  "helix-ui"
 ]
 
 resolver = "2"
