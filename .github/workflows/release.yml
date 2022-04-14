@@ -147,10 +147,51 @@ jobs:
             aarch64-linux-gnu-strip \
             /target/${{ matrix.target }}/release/hx
 
+      - name: Build AppImage
+        shell: bash
+        if: matrix.build == 'x86_64-linux'
+        run: |
+          mkdir dist
+
+          name=dev
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            name=${GITHUB_REF:10}
+          fi
+
+          export VERSION="$name"
+          export ARCH=x86_64
+          export APP=helix
+          export OUTPUT="helix-$VERSION-$ARCH.AppImage"
+          export UPDATE_INFORMATION="gh-releases-zsync|$GITHUB_REPOSITORY_OWNER|helix|latest|$APP-*-$ARCH.AppImage.zsync"
+
+          mkdir -p "$APP.AppDir"/usr/{bin,lib/helix}
+
+          cp "target/${{ matrix.target }}/release/hx" "$APP.AppDir/usr/bin/hx"
+          cp -r runtime "$APP.AppDir/usr/lib/helix/runtime"
+
+          cat << 'EOF' > "$APP.AppDir/AppRun"
+          #!/bin/sh
+
+          APPDIR="$(dirname "$(readlink -f "${0}")")"
+          HELIX_RUNTIME="$APPDIR/usr/lib/helix/runtime" exec "$APPDIR/usr/bin/hx" "$@"
+          EOF
+          chmod 755 "$APP.AppDir/AppRun"
+
+          curl -Lo linuxdeploy-x86_64.AppImage \
+              https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
+
+          ./linuxdeploy-x86_64.AppImage \
+              --appdir "$APP.AppDir" -d contrib/Helix.desktop \
+              -i contrib/helix.png --output appimage
+
+          mv "$APP-$VERSION-$ARCH.AppImage" \
+              "$APP-$VERSION-$ARCH.AppImage.zsync" dist
+
       - name: Build archive
         shell: bash
         run: |
-          mkdir dist
+          mkdir -p dist
           if [ "${{ matrix.os }}" = "windows-2019" ]; then
             cp "target/${{ matrix.target }}/release/hx.exe" "dist/"
           else
@@ -211,6 +252,10 @@ jobs:
               mv bins-$platform/runtime $pkgname/
               mv bins-$platform/hx$exe $pkgname
               chmod +x $pkgname/hx$exe
+
+              if [[ "$platform" = "x86_64-linux" ]]; then
+                  mv bins-$platform/helix-*.AppImage* dist/
+              fi
 
               if [ "$exe" = "" ]; then
                   tar cJf dist/$pkgname.tar.xz $pkgname
