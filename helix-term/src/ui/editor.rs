@@ -126,24 +126,7 @@ impl EditorView {
 
         Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights);
         Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
-
-        // Render color columns
-        editor
-            .config()
-            .color_column
-            .iter()
-            .filter_map(|column| {
-                column
-                    .checked_sub(1 + view.offset.col as u16)
-                    .map(|x| {
-                        inner
-                            .with_height((view.last_line(doc) - view.offset.row + 1) as u16)
-                            .clip_left(x)
-                            .with_width(1)
-                    })
-                    .filter(|area| area.left() < inner.right())
-            })
-            .for_each(|area| surface.set_style(area, theme.get("ui.colorcolumn")));
+        Self::render_rulers(editor, doc, view, inner, surface, theme);
 
         if is_focused {
             Self::render_focused_view_elements(view, doc, inner, theme, surface);
@@ -168,6 +151,32 @@ impl EditorView {
             .clip_top(view.area.height.saturating_sub(1))
             .clip_bottom(1); // -1 from bottom to remove commandline
         self.render_statusline(doc, view, statusline_area, surface, theme, is_focused);
+    }
+
+    pub fn render_rulers(
+        editor: &Editor,
+        doc: &Document,
+        view: &View,
+        viewport: Rect,
+        surface: &mut Surface,
+        theme: &Theme,
+    ) {
+        let editor_rulers = &editor.config().rulers;
+        let ruler_theme = theme.get("ui.virtual.ruler");
+
+        let rulers = doc
+            .language_config()
+            .and_then(|config| config.rulers.as_ref())
+            .unwrap_or(editor_rulers);
+
+        rulers
+            .iter()
+            // View might be horizontally scrolled, convert from absolute distance
+            // from the 1st column to relative distance from left of viewport
+            .filter_map(|ruler| ruler.checked_sub(1 + view.offset.col as u16))
+            .filter(|ruler| ruler < &viewport.width)
+            .map(|ruler| viewport.clip_left(ruler).with_width(1))
+            .for_each(|area| surface.set_style(area, ruler_theme))
     }
 
     /// Get syntax highlights for a document in a view represented by the first line
