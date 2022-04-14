@@ -167,6 +167,7 @@ jobs:
           mkdir -p "$APP.AppDir"/usr/{bin,lib/helix}
 
           cp "target/${{ matrix.target }}/release/hx" "$APP.AppDir/usr/bin/hx"
+          rm -rf runtime/grammars/sources
           cp -r runtime "$APP.AppDir/usr/lib/helix/runtime"
 
           cat << 'EOF' > "$APP.AppDir/AppRun"
@@ -197,7 +198,9 @@ jobs:
           else
             cp "target/${{ matrix.target }}/release/hx" "dist/"
           fi
-          rm -rf runtime/grammars/sources
+          if [ -d runtime/grammars/sources ]; then
+            rm -rf runtime/grammars/sources
+          fi
           cp -r runtime dist
 
       - uses: actions/upload-artifact@v3
