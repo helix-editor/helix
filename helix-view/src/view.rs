@@ -95,10 +95,10 @@ impl fmt::Debug for View {
 }
 
 impl View {
-    pub fn new(doc: DocumentId, gutters_types: Vec<crate::editor::GutterType>) -> Self {
+    pub fn new(doc: DocumentId, gutter_types: Vec<crate::editor::GutterType>) -> Self {
         let mut gutters: Vec<(Gutter, usize)> = vec![];
         use crate::editor::GutterType;
-        for gutter in &gutters_types {
+        for gutter in &gutter_types {
             match gutter {
                 GutterType::Diagnostics => gutters.push((gutter::diagnostics_or_breakpoints, 1)),
                 GutterType::LineNumbers => gutters.push((gutter::line_numbers, 5)),
