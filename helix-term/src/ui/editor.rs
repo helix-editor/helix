@@ -343,6 +343,9 @@ impl EditorView {
                     // the rope, to allow cursor highlighting at the end
                     // of the rope.
                     let text = text.get_slice(start..end).unwrap_or_else(|| " ".into());
+                    let style = spans
+                        .iter()
+                        .fold(text_style, |acc, span| acc.patch(theme.highlight(span.0)));
 
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
@@ -352,10 +355,6 @@ impl EditorView {
 
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
                             if !out_of_bounds {
-                                let style = spans.iter().fold(text_style, |acc, span| {
-                                    acc.patch(theme.highlight(span.0))
-                                });
-
                                 // we still want to render an empty cell with the style
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
@@ -387,10 +386,6 @@ impl EditorView {
                             };
 
                             if !out_of_bounds {
-                                let style = spans.iter().fold(text_style, |acc, span| {
-                                    acc.patch(theme.highlight(span.0))
-                                });
-
                                 // if we're offscreen just keep going until we hit a new line
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
@@ -476,14 +471,20 @@ impl EditorView {
             text.reserve(*width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
                 let selected = cursors.contains(&line);
+                let x = viewport.x + offset;
+                let y = viewport.y + i as u16;
 
                 if let Some(style) = gutter(line, selected, &mut text) {
-                    surface.set_stringn(
-                        viewport.x + offset,
-                        viewport.y + i as u16,
-                        &text,
-                        *width,
-                        gutter_style.patch(style),
+                    surface.set_stringn(x, y, &text, *width, gutter_style.patch(style));
+                } else {
+                    surface.set_style(
+                        Rect {
+                            x,
+                            y,
+                            width: *width as u16,
+                            height: 1,
+                        },
+                        gutter_style,
                     );
                 }
                 text.clear();

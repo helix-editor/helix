@@ -18,7 +18,8 @@ use helix_core::{
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
-    search, selection, shellwords, surround, textobject,
+    search::{self, CharMatcher},
+    selection, shellwords, surround, textobject,
     tree_sitter::Node,
     unicode::width::UnicodeWidthChar,
     LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril,
@@ -208,6 +209,8 @@ impl MappableCommand {
         move_next_long_word_start, "Move to beginning of next long word",
         move_prev_long_word_start, "Move to beginning of previous long word",
         move_next_long_word_end, "Move to end of next long word",
+        move_prev_paragraph, "Move to previous paragraph",
+        move_next_paragraph, "Move to next paragraph",
         extend_next_word_start, "Extend to beginning of next word",
         extend_prev_word_start, "Extend to beginning of previous word",
         extend_next_long_word_start, "Extend to beginning of next long word",
@@ -256,6 +259,7 @@ impl MappableCommand {
         append_mode, "Insert after selection (append)",
         command_mode, "Enter command mode",
         file_picker, "Open file picker",
+        file_picker_in_current_directory, "Open file picker at current working directory",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         symbol_picker, "Open symbol picker",
@@ -411,7 +415,7 @@ impl MappableCommand {
         decrement, "Decrement",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
-        command_palette, "Open command pallete",
+        command_palette, "Open command palette",
     );
 }
 
@@ -634,36 +638,35 @@ fn goto_line_start(cx: &mut Context) {
 }
 
 fn goto_next_buffer(cx: &mut Context) {
-    goto_buffer(cx, Direction::Forward);
+    goto_buffer(cx.editor, Direction::Forward);
 }
 
 fn goto_previous_buffer(cx: &mut Context) {
-    goto_buffer(cx, Direction::Backward);
+    goto_buffer(cx.editor, Direction::Backward);
 }
 
-fn goto_buffer(cx: &mut Context, direction: Direction) {
-    let current = view!(cx.editor).doc;
+fn goto_buffer(editor: &mut Editor, direction: Direction) {
+    let current = view!(editor).doc;
 
     let id = match direction {
         Direction::Forward => {
-            let iter = cx.editor.documents.keys();
+            let iter = editor.documents.keys();
             let mut iter = iter.skip_while(|id| *id != &current);
             iter.next(); // skip current item
-            iter.next().or_else(|| cx.editor.documents.keys().next())
+            iter.next().or_else(|| editor.documents.keys().next())
         }
         Direction::Backward => {
-            let iter = cx.editor.documents.keys();
+            let iter = editor.documents.keys();
             let mut iter = iter.rev().skip_while(|id| *id != &current);
             iter.next(); // skip current item
-            iter.next()
-                .or_else(|| cx.editor.documents.keys().rev().next())
+            iter.next().or_else(|| editor.documents.keys().rev().next())
         }
     }
     .unwrap();
 
     let id = *id;
 
-    cx.editor.switch(id, Action::Replace);
+    editor.switch(id, Action::Replace);
 }
 
 fn extend_to_line_start(cx: &mut Context) {
@@ -901,6 +904,38 @@ fn move_next_long_word_end(cx: &mut Context) {
     move_word_impl(cx, movement::move_next_long_word_end)
 }
 
+fn move_para_impl<F>(cx: &mut Context, move_fn: F)
+where
+    F: Fn(RopeSlice, Range, usize, Movement) -> Range + 'static,
+{
+    let count = cx.count();
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+        let text = doc.text().slice(..);
+        let behavior = if doc.mode == Mode::Select {
+            Movement::Extend
+        } else {
+            Movement::Move
+        };
+
+        let selection = doc
+            .selection(view.id)
+            .clone()
+            .transform(|range| move_fn(text, range, count, behavior));
+        doc.set_selection(view.id, selection);
+    };
+    motion(cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+fn move_prev_paragraph(cx: &mut Context) {
+    move_para_impl(cx, movement::move_prev_paragraph)
+}
+
+fn move_next_paragraph(cx: &mut Context) {
+    move_para_impl(cx, movement::move_next_paragraph)
+}
+
 fn goto_file_start(cx: &mut Context) {
     if cx.count.is_some() {
         goto_line(cx);
@@ -1053,15 +1088,15 @@ where
 //
 
 #[inline]
-fn find_char_impl<F>(
+fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
     editor: &mut Editor,
     search_fn: &F,
     inclusive: bool,
     extend: bool,
-    ch: char,
+    char_matcher: M,
     count: usize,
 ) where
-    F: Fn(RopeSlice, char, usize, usize, bool) -> Option<usize> + 'static,
+    F: Fn(RopeSlice, M, usize, usize, bool) -> Option<usize> + 'static,
 {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
@@ -1076,7 +1111,7 @@ fn find_char_impl<F>(
             range.head
         };
 
-        search_fn(text, ch, search_start_pos, count, inclusive).map_or(range, |pos| {
+        search_fn(text, char_matcher, search_start_pos, count, inclusive).map_or(range, |pos| {
             if extend {
                 range.put_cursor(text, pos, true)
             } else {
@@ -1342,8 +1377,18 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
     let mut primary_index = 0;
     for range in selection.iter() {
         let is_primary = *range == selection.primary();
-        let head_pos = coords_at_pos(text, range.head);
+
+        // The range is always head exclusive
+        let head = if range.anchor < range.head {
+            range.head - 1
+        } else {
+            range.head
+        };
+
+        // TODO: this should use visual offsets / pos_at_screen_coords
+        let head_pos = coords_at_pos(text, head);
         let anchor_pos = coords_at_pos(text, range.anchor);
+
         let height = std::cmp::max(head_pos.row, anchor_pos.row)
             - std::cmp::min(head_pos.row, anchor_pos.row)
             + 1;
@@ -1382,7 +1427,8 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
                 if is_primary {
                     primary_index = ranges.len();
                 }
-                ranges.push(Range::new(anchor, head));
+                // This is Range::new(anchor, head), but it will place the cursor on the correct column
+                ranges.push(Range::point(anchor).put_cursor(text, head, true));
                 sels += 1;
             }
 
@@ -1476,11 +1522,11 @@ fn search_impl(
     // Get the right side of the primary block cursor for forward search, or the
     // grapheme before the start of the selection for reverse search.
     let start = match direction {
-        Direction::Forward => text.char_to_byte(graphemes::next_grapheme_boundary(
+        Direction::Forward => text.char_to_byte(graphemes::ensure_grapheme_boundary_next(
             text,
             selection.primary().to(),
         )),
-        Direction::Backward => text.char_to_byte(graphemes::prev_grapheme_boundary(
+        Direction::Backward => text.char_to_byte(graphemes::ensure_grapheme_boundary_prev(
             text,
             selection.primary().from(),
         )),
@@ -1634,11 +1680,8 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
                 wrap_around,
             );
         } else {
-            // get around warning `mutable_borrow_reservation_conflict`
-            // which will be a hard error in the future
-            // see: https://github.com/rust-lang/rust/issues/59159
-            let query = query.clone();
-            cx.editor.set_error(format!("Invalid regex: {}", query));
+            let error = format!("Invalid regex: {}", query);
+            cx.editor.set_error(error);
         }
     }
 }
@@ -2003,6 +2046,12 @@ fn file_picker(cx: &mut Context) {
     let root = find_root(None, &[]).unwrap_or_else(|| PathBuf::from("./"));
     let picker = ui::file_picker(root, &cx.editor.config());
     cx.push_layer(Box::new(overlayed(picker)));
+}
+
+fn file_picker_in_current_directory(cx: &mut Context) {
+    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
+    let picker = ui::file_picker(cwd, &cx.editor.config());
+    cx.push_layer(Box::new(picker));
 }
 
 fn buffer_picker(cx: &mut Context) {
@@ -3952,6 +4001,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'f' => textobject_treesitter("function", range),
                         'a' => textobject_treesitter("parameter", range),
                         'o' => textobject_treesitter("comment", range),
+                        'p' => textobject::textobject_paragraph(text, range, objtype, count),
                         'm' => {
                             let ch = text.char(range.cursor(text));
                             if !ch.is_ascii_alphanumeric() {
@@ -3982,6 +4032,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         let help_text = [
             ("w", "Word"),
             ("W", "WORD"),
+            ("p", "Paragraph"),
             ("c", "Class (tree-sitter)"),
             ("f", "Function (tree-sitter)"),
             ("a", "Argument/parameter (tree-sitter)"),
@@ -4316,8 +4367,39 @@ fn decrement(cx: &mut Context) {
     increment_impl(cx, -(cx.count() as i64));
 }
 
+/// This function differs from find_next_char_impl in that it stops searching at the newline, but also
+/// starts searching at the current character, instead of the next.
+/// It does not want to start at the next character because this function is used for incrementing
+/// number and we don't want to move forward if we're already on a digit.
+fn find_next_char_until_newline<M: CharMatcher>(
+    text: RopeSlice,
+    char_matcher: M,
+    pos: usize,
+    _count: usize,
+    _inclusive: bool,
+) -> Option<usize> {
+    // Since we send the current line to find_nth_next instead of the whole text, we need to adjust
+    // the position we send to this function so that it's relative to that line and its returned
+    // position since it's expected this function returns a global position.
+    let line_index = text.char_to_line(pos);
+    let pos_delta = text.line_to_char(line_index);
+    let pos = pos - pos_delta;
+    search::find_nth_next(text.line(line_index), char_matcher, pos, 1).map(|pos| pos + pos_delta)
+}
+
 /// Decrement object under cursor by `amount`.
 fn increment_impl(cx: &mut Context, amount: i64) {
+    // TODO: when incrementing or decrementing a number that gets a new digit or lose one, the
+    // selection is updated improperly.
+    find_char_impl(
+        cx.editor,
+        &find_next_char_until_newline,
+        true,
+        true,
+        char::is_ascii_digit,
+        1,
+    );
+
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
     let text = doc.text().slice(..);

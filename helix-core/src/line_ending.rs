@@ -119,6 +119,11 @@ pub fn str_is_line_ending(s: &str) -> bool {
     LineEnding::from_str(s).is_some()
 }
 
+#[inline]
+pub fn rope_is_line_ending(r: RopeSlice) -> bool {
+    r.chunks().all(str_is_line_ending)
+}
+
 /// Attempts to detect what line ending the passed document uses.
 pub fn auto_detect_line_ending(doc: &Rope) -> Option<LineEnding> {
     // Return first matched line ending. Not all possible line endings

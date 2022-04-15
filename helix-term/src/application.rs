@@ -620,7 +620,7 @@ impl Application {
                     }
                 };
 
-                match call {
+                let reply = match call {
                     MethodCall::WorkDoneProgressCreate(params) => {
                         self.lsp_progress.create(server_id, params.token);
 
@@ -632,16 +632,8 @@ impl Application {
                         if spinner.is_stopped() {
                             spinner.start();
                         }
-                        let language_server =
-                            match self.editor.language_servers.get_by_id(server_id) {
-                                Some(language_server) => language_server,
-                                None => {
-                                    warn!("can't find language server with id `{}`", server_id);
-                                    return;
-                                }
-                            };
 
-                        tokio::spawn(language_server.reply(id, Ok(serde_json::Value::Null)));
+                        Ok(serde_json::Value::Null)
                     }
                     MethodCall::ApplyWorkspaceEdit(params) => {
                         apply_workspace_edit(
@@ -650,33 +642,19 @@ impl Application {
                             &params.edit,
                         );
 
+                        Ok(json!(lsp::ApplyWorkspaceEditResponse {
+                            applied: true,
+                            failure_reason: None,
+                            failed_change: None,
+                        }))
+                    }
+                    MethodCall::WorkspaceFolders => {
                         let language_server =
-                            match self.editor.language_servers.get_by_id(server_id) {
-                                Some(language_server) => language_server,
-                                None => {
-                                    warn!("can't find language server with id `{}`", server_id);
-                                    return;
-                                }
-                            };
+                            self.editor.language_servers.get_by_id(server_id).unwrap();
 
-                        tokio::spawn(language_server.reply(
-                            id,
-                            Ok(json!(lsp::ApplyWorkspaceEditResponse {
-                                applied: true,
-                                failure_reason: None,
-                                failed_change: None,
-                            })),
-                        ));
+                        Ok(json!(language_server.workspace_folders()))
                     }
                     MethodCall::WorkspaceConfiguration(params) => {
-                        let language_server =
-                            match self.editor.language_servers.get_by_id(server_id) {
-                                Some(language_server) => language_server,
-                                None => {
-                                    warn!("can't find language server with id `{}`", server_id);
-                                    return;
-                                }
-                            };
                         let result: Vec<_> = params
                             .items
                             .iter()
@@ -687,7 +665,12 @@ impl Application {
                                         let doc = self.editor.document_by_path(path)?;
                                         doc.language_config()?.config.as_ref()?
                                     }
-                                    None => language_server.config()?,
+                                    None => self
+                                        .editor
+                                        .language_servers
+                                        .get_by_id(server_id)
+                                        .unwrap()
+                                        .config()?,
                                 };
                                 if let Some(section) = item.section.as_ref() {
                                     for part in section.split('.') {
@@ -697,9 +680,19 @@ impl Application {
                                 Some(config)
                             })
                             .collect();
-                        tokio::spawn(language_server.reply(id, Ok(json!(result))));
+                        Ok(json!(result))
                     }
-                }
+                };
+
+                let language_server = match self.editor.language_servers.get_by_id(server_id) {
+                    Some(language_server) => language_server,
+                    None => {
+                        warn!("can't find language server with id `{}`", server_id);
+                        return;
+                    }
+                };
+
+                tokio::spawn(language_server.reply(id, reply));
             }
             Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
         }
@@ -709,6 +702,7 @@ impl Application {
         terminal::enable_raw_mode()?;
         let mut stdout = stdout();
         execute!(stdout, terminal::EnterAlternateScreen)?;
+        execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
         if self.config.load().editor.mouse {
             execute!(stdout, EnableMouseCapture)?;
         }

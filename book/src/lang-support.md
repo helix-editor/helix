@@ -1,14 +1,16 @@
 # Language Support
 
-For more information like arguments passed to default LSP server,
-extensions assosciated with a filetype, custom LSP settings, filetype
-specific indent settings, etc see the default
-[`languages.toml`][languages.toml] file.
+The following languages and Language Servers are supported. In order to use
+Language Server features, you must first [install][lsp-install-wiki] the
+appropriate Language Server.
+
+Check the language support in your installed helix version with `hx --health`.
+
+Also see the [Language Configuration][lang-config] docs and the [Adding
+Languages][adding-languages] guide for more language configuration information.
 
 {{#include ./generated/lang-support.md}}
 
-[languages.toml]: https://github.com/helix-editor/helix/blob/master/languages.toml
-
-# Local Configuration
-
-A local `languages.toml` can be created within a `.helix` directory. Its settings will be merged with both the global and default configs.
+[lsp-install-wiki]: https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers
+[lang-config]: ./languages.md
+[adding-languages]: ./guides/adding_languages.md

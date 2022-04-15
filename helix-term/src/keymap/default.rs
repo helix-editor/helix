@@ -104,6 +104,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "c" => goto_prev_class,
             "a" => goto_prev_parameter,
             "o" => goto_prev_comment,
+            "p" => move_prev_paragraph,
             "space" => add_newline_above,
         },
         "]" => { "Right bracket"
@@ -113,6 +114,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "c" => goto_next_class,
             "a" => goto_next_parameter,
             "o" => goto_next_comment,
+            "p" => move_next_paragraph,
             "space" => add_newline_below,
         },
 
@@ -194,6 +196,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "space" => { "Space"
             "f" => file_picker,
+            "F" => file_picker_in_current_directory,
             "b" => buffer_picker,
             "s" => symbol_picker,
             "S" => workspace_symbol_picker,

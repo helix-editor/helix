@@ -398,6 +398,9 @@ impl LanguageConfiguration {
             .get_or_init(|| {
                 let lang_name = self.language_id.to_ascii_lowercase();
                 let query_text = read_query(&lang_name, "indents.scm");
+                if query_text.is_empty() {
+                    return None;
+                }
                 let lang = self.highlight_config.get()?.as_ref()?.language;
                 Query::new(lang, &query_text).ok()
             })
@@ -501,6 +504,13 @@ impl Loader {
             .cloned()
     }
 
+    pub fn language_config_for_language_id(&self, id: &str) -> Option<Arc<LanguageConfiguration>> {
+        self.language_configs
+            .iter()
+            .find(|config| config.language_id == id)
+            .cloned()
+    }
+
     pub fn language_configuration_for_injection_string(
         &self,
         string: &str,
@@ -524,6 +534,10 @@ impl Loader {
             return Some(configuration.clone());
         }
         None
+    }
+
+    pub fn language_configs(&self) -> impl Iterator<Item = &Arc<LanguageConfiguration>> {
+        self.language_configs.iter()
     }
 
     pub fn set_scopes(&self, scopes: Vec<String>) {
@@ -1982,7 +1996,9 @@ mod test {
             assert_eq!(
                 matches[0].byte_range(),
                 range,
-                "@{capture} expected {range:?}"
+                "@{} expected {:?}",
+                capture,
+                range
             )
         };
 

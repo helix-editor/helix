@@ -191,6 +191,7 @@ pub mod util {
 pub enum MethodCall {
     WorkDoneProgressCreate(lsp::WorkDoneProgressCreateParams),
     ApplyWorkspaceEdit(lsp::ApplyWorkspaceEditParams),
+    WorkspaceFolders,
     WorkspaceConfiguration(lsp::ConfigurationParams),
 }
 
@@ -210,6 +211,7 @@ impl MethodCall {
                     .expect("Failed to parse ApplyWorkspaceEdit params");
                 Self::ApplyWorkspaceEdit(params)
             }
+            lsp::request::WorkspaceFoldersRequest::METHOD => Self::WorkspaceFolders,
             lsp::request::WorkspaceConfiguration::METHOD => {
                 let params: lsp::ConfigurationParams = params
                     .parse()
@@ -320,7 +322,7 @@ impl Registry {
                     &config.command,
                     &config.args,
                     language_config.config.clone(),
-                    language_config.roots.clone(),
+                    &language_config.roots,
                     id,
                 )?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));

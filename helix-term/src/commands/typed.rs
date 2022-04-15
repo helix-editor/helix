@@ -172,7 +172,29 @@ fn force_buffer_close_all(
     buffer_close_by_ids_impl(cx.editor, &document_ids, true)
 }
 
-fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::Result<()> {
+fn buffer_next(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    goto_buffer(cx.editor, Direction::Forward);
+    Ok(())
+}
+
+fn buffer_previous(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    goto_buffer(cx.editor, Direction::Backward);
+    Ok(())
+}
+
+fn write_impl(
+    cx: &mut compositor::Context,
+    path: Option<&Cow<str>>,
+    force: bool,
+) -> anyhow::Result<()> {
     let jobs = &mut cx.jobs;
     let doc = doc_mut!(cx.editor);
 
@@ -194,11 +216,12 @@ fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::
         jobs.callback(callback);
         shared
     });
-    let future = doc.format_and_save(fmt);
+    let future = doc.format_and_save(fmt, force);
     cx.jobs.add(Job::new(future).wait_before_exiting());
 
     if path.is_some() {
         let id = doc.id();
+        doc.detect_language(cx.editor.syn_loader.clone());
         let _ = cx.editor.refresh_language_server(id);
     }
     Ok(())
@@ -209,7 +232,15 @@ fn write(
     args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    write_impl(cx, args.first())
+    write_impl(cx, args.first(), false)
+}
+
+fn force_write(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    write_impl(cx, args.first(), true)
 }
 
 fn new_file(
@@ -362,7 +393,7 @@ fn write_quit(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    write_impl(cx, args.first())?;
+    write_impl(cx, args.first(), false)?;
     quit(cx, &[], event)
 }
 
@@ -371,7 +402,7 @@ fn force_write_quit(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    write_impl(cx, args.first())?;
+    write_impl(cx, args.first(), true)?;
     force_quit(cx, &[], event)
 }
 
@@ -428,7 +459,7 @@ fn write_all_impl(
             jobs.callback(callback);
             shared
         });
-        let future = doc.format_and_save(fmt);
+        let future = doc.format_and_save(fmt, force);
         jobs.add(Job::new(future).wait_before_exiting());
     }
 
@@ -913,6 +944,24 @@ fn setting(
     Ok(())
 }
 
+/// Change the language of the current buffer at runtime.
+fn language(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:set-language language`");
+    }
+
+    let doc = doc_mut!(cx.editor);
+    doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone());
+
+    let id = doc.id();
+    cx.editor.refresh_language_server(id);
+    Ok(())
+}
+
 fn sort(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1083,10 +1132,31 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: None,
         },
         TypableCommand {
+            name: "buffer-next",
+            aliases: &["bn", "bnext"],
+            doc: "Go to next buffer.",
+            fun: buffer_next,
+            completer: None,
+        },
+        TypableCommand {
+            name: "buffer-previous",
+            aliases: &["bp", "bprev"],
+            doc: "Go to previous buffer.",
+            fun: buffer_previous,
+            completer: None,
+        },
+        TypableCommand {
             name: "write",
             aliases: &["w"],
             doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
             fun: write,
+            completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "write!",
+            aliases: &["w!"],
+            doc: "Write changes to disk forcefully (creating necessary subdirectories). Accepts an optional path (:write some/path.txt)",
+            fun: force_write,
             completer: Some(completers::filename),
         },
         TypableCommand {
@@ -1375,6 +1445,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Go to line number.",
             fun: goto_line_number,
             completer: None,
+        },
+        TypableCommand {
+            name: "set-language",
+            aliases: &["lang"],
+            doc: "Set the language of current buffer.",
+            fun: language,
+            completer: Some(completers::language),
         },
         TypableCommand {
             name: "set-option",

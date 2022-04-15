@@ -9,10 +9,11 @@
 "constructor" = { fg = "constant" }
 "variable.other.member" = { fg = "variable" }
 
-"keyword" = { fg = "keyword" }
-"keyword.directive" = { fg = "keyword" }
+"keyword" = { fg = "blue2" }
+"keyword.directive" = { fg = "blue2" }
 "keyword.control" = { fg = "special" }
-"label" = { fg = "keyword" }
+"label" = { fg = "blue2" }
+"tag" = "blue2"
 
 "special" = { fg = "text" }
 "operator" = { fg = "text" }
@@ -22,13 +23,13 @@
 
 "variable" = { fg = "variable" }
 "variable.parameter" = { fg = "variable" }
-"variable.builtin" = { fg = "keyword" }
+"variable.builtin" = { fg = "blue2" }
 "constant" = { fg = "constant" }
-"constant.builtin" = { fg = "keyword" }
+"constant.builtin" = { fg = "blue2" }
 
 "function" = { fg = "fn_declaration" }
 "function.builtin" = { fg = "fn_declaration" }
-"function.macro" = { fg = "keyword" }
+"function.macro" = { fg = "blue2" }
 "attribute" = { fg = "fn_declaration" }
 
 "comment" = { fg = "dark_green" }
@@ -39,15 +40,14 @@
 "constant.numeric" = { fg = "pale_green" }
 "constant.character.escape" = { fg = "gold" }
 
-# TODO
-"markup.heading" = "blue"
-"markup.list" = "red"
-"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
-"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
-"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
-"markup.link.text" = "red"
-"markup.quote" = "cyan"
-"markup.raw" = "green"
+"markup.heading" = { fg = "blue2", modifiers = ["bold"] }
+"markup.list" = "blue3"
+"markup.bold" = { fg = "blue2", modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.link.url" = { modifiers = ["underlined"] }
+"markup.link.text" = "orange"
+"markup.quote" = "dark_green"
+"markup.raw" = "orange"
 
 "diff.plus" = { fg = "pale_green" }
 "diff.delta" = { fg = "gold" }
@@ -58,7 +58,8 @@
 "ui.window" = { bg = "widget" }
 "ui.popup" = { bg = "widget" }
 "ui.help" = { bg = "widget" }
-"ui.menu.selected" = { bg = "widget" }
+"ui.menu" = { bg = "widget" }
+"ui.menu.selected" = { bg = "dark_blue2" }
 
 # TODO: Alternate bg colour for `ui.cursor.match` and `ui.selection`.
 "ui.cursor" = { fg = "cursor", modifiers = ["reversed"] }
@@ -74,7 +75,7 @@
 "ui.statusline" = { fg = "white", bg = "blue" }
 "ui.statusline.inactive" = { fg = "white", bg = "blue" }
 
-"ui.text" = { fg = "text", bg = "background" }
+"ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "white" }
 
 "warning" = { fg = "gold2" }
@@ -97,12 +98,14 @@ light_gray3 = "#eeeeee"
 dark_gray = "#858585"
 dark_gray2 = "#1e1e1e"
 blue = "#007acc"
+blue2 = "#569CD6"
+blue3 = "#6796E6"
 light_blue = "#75beff"
 dark_blue = "#264f78"
+dark_blue2 = "#094771"
 red = "#ff1212"
 
 type = "#4EC9B0"
-keyword = "#569CD6"
 special = "#C586C0"
 variable = "#9CDCFE"
 fn_declaration = "#DCDCAA"
