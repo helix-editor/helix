@@ -1,3 +1,8 @@
+use parley::{
+    layout::Alignment,
+    style::{FontFamily, FontStack, StyleProperty},
+    FontContext, LayoutContext,
+};
 use std::borrow::Cow;
 use winit::{
     event::{Event, WindowEvent},
@@ -97,7 +102,8 @@ impl Font {
 }
 
 fn font() -> VertexBuffers<Vertex, u16> {
-    let font = Font::from_file("assets/fonts/Inter Variable/Inter.ttf", 0).unwrap();
+    // let font = Font::from_file("assets/fonts/Inter Variable/Inter.ttf", 0).unwrap();
+    let font = Font::from_file("assets/fonts/ttf/FiraCode-Regular.ttf", 0).unwrap();
     let font = font.as_ref();
 
     // -- Shaping
@@ -106,8 +112,8 @@ fn font() -> VertexBuffers<Vertex, u16> {
     let mut shaper = context
         .builder(font)
         .script(Script::Latin)
-        .size(14.)
-        .variations(&[("wght", 520.5)])
+        .size(12.)
+        .variations(&[("wght", 400.0)])
         .build();
 
     shaper.add_str("a quick brown fox?");
@@ -146,23 +152,74 @@ fn font() -> VertexBuffers<Vertex, u16> {
         .builder(font)
         .hint(true)
         .size(12.)
-        .variations(&[("wght", 520.5)])
+        .variations(&[("wght", 400.0)])
         .build();
-    let glyph_id = font.charmap().map('Q');
+    let glyph_id = font.charmap().map('H');
     let outline = scaler.scale_outline(glyph_id).unwrap();
 
-    // -- Tesselation
+    // -- Layout
 
-    // let mut encoder = Path::builder().transformed(Transform::new(
-    //     0.01, 0., //
-    //     0., 0.01, //
-    //     0., 0.,
-    // ));
+    let mut font_ctx = FontContext::new();
+    let font_family = font_ctx.register_fonts(font.data.to_vec()).unwrap();
+    let mut layout_ctx: LayoutContext<[u8; 4]> = LayoutContext::new();
 
+    // Encode glyphs into lyon paths
     let mut encoder = Path::builder();
+    let mut encoder = encoder.transformed(Transform::default());
 
-    append_outline(&mut encoder, outline.verbs(), outline.points());
+    let mut builder = layout_ctx.ranged_builder(&mut font_ctx, "fn draw_edit_box_base<T: Renderer>(canvas: &mut Canvas<T>, x: f32, y: f32, w: f32, h: f32) { ", 1.);
+    builder.push_default(&StyleProperty::FontStack(FontStack::Single(
+        FontFamily::Named(&font_family),
+    )));
+    builder.push_default(&StyleProperty::FontSize(12.));
+    builder.push_default(&StyleProperty::Brush([255, 255, 255, 255]));
+    // builder.push() with range to set styling
+    let mut layout = builder.build();
+    let max_width = None;
+    layout.break_all_lines(max_width, Alignment::Start);
 
+    for line in layout.lines() {
+        let mut last_x = 0.0;
+        let mut last_y = 0.0;
+
+        for glyph_run in line.glyph_runs() {
+            let run = glyph_run.run();
+            // let color = &glyph_run.style().brush.0;
+            let font = run.font();
+            let font = font.as_ref();
+
+            let mut first = true;
+
+            // TODO: move let scaler here
+            for glyph in glyph_run.positioned_glyphs() {
+                let delta_x = glyph.x - last_x;
+                let delta_y = glyph.y - last_y;
+
+                last_x = glyph.x;
+                last_y = glyph.y;
+
+                if first {
+                    // TODO:
+                }
+                first = false;
+
+                // TODO: each glyph will need a translate+scale along with the glyph
+                // or we could run the pipeline per letter?
+
+                encoder.set_transform(Transform::new(
+                    1.0, 0.0, //
+                    0.0, -1.0, // invert y axis
+                    glyph.x, glyph.y,
+                ));
+
+                if let Some(outline) = scaler.scale_outline(glyph.id) {
+                    append_outline(&mut encoder, outline.verbs(), outline.points());
+                };
+            }
+        }
+    }
+
+    // -- Tesselation
     let path = encoder.build();
 
     let mut geometry: VertexBuffers<Vertex, u16> = VertexBuffers::new();
@@ -173,7 +230,7 @@ fn font() -> VertexBuffers<Vertex, u16> {
         tessellator
             .tessellate_path(
                 &path,
-                &FillOptions::default(),
+                &FillOptions::non_zero().with_tolerance(0.01), // defaults to 0.1, compare further
                 &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| Vertex {
                     position: vertex.position().to_array(),
                 }),
@@ -181,7 +238,6 @@ fn font() -> VertexBuffers<Vertex, u16> {
             .unwrap();
     }
 
-    println!("{:?}", geometry);
     geometry
 }
 

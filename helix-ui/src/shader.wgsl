@@ -14,7 +14,10 @@ var<uniform> view: View;
 fn vs_main([[location(0)]] input: vec2<f32>) -> [[builtin(position)]] vec4<f32> {
     // TODO: scale by hidpi factor?
     return vec4<f32>(
-        input.xy / view.size.xy * 2.0 * 1.5,
+
+                    2.0 * input.x / view.size.x - 1.0,
+                    1.0 - 2.0 * input.y / view.size.y,
+        // input.xy / view.size.xy * 2.0,
         0.0, 1.0
     );
 }

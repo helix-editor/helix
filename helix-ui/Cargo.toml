@@ -19,6 +19,7 @@ instant = "0.1.12"
 # swash = "0.1.4"
 swash = { git = "https://github.com/dfrg/swash" }
 # parley = { git = "https://github.com/dfrg/parley" }
+parley = { path = "../../parley" }
 
 lyon = "0.17.10"
 

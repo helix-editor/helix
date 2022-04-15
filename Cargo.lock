@@ -674,6 +674,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "fount"
+version = "0.1.0"
+source = "git+https://github.com/dfrg/fount#8f9259ef6b634c434f3dd9472f5200565e5dcd81"
+dependencies = [
+ "swash",
+]
+
+[[package]]
 name = "futures-core"
 version = "0.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1080,6 +1088,7 @@ dependencies = [
  "image",
  "instant",
  "lyon",
+ "parley",
  "pollster",
  "resource",
  "swash",
@@ -1732,6 +1741,14 @@ dependencies = [
  "redox_syscall",
  "smallvec",
  "windows-sys",
+]
+
+[[package]]
+name = "parley"
+version = "0.1.0"
+dependencies = [
+ "fount",
+ "swash",
 ]
 
 [[package]]
