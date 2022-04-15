@@ -68,6 +68,7 @@ pub mod util {
     ) -> lsp::Diagnostic {
         use helix_core::diagnostic::Severity::*;
 
+        let range = Range::new(diag.range.start, diag.range.end);
         let severity = diag.severity.map(|s| match s {
             Hint => lsp::DiagnosticSeverity::HINT,
             Info => lsp::DiagnosticSeverity::INFORMATION,
@@ -77,10 +78,7 @@ pub mod util {
 
         // TODO: add support for Diagnostic.data
         lsp::Diagnostic::new(
-            lsp::Range::new(
-                pos_to_lsp_pos(doc, diag.range.start, offset_encoding),
-                pos_to_lsp_pos(doc, diag.range.end, offset_encoding),
-            ),
+            range_to_lsp_range(doc, range, offset_encoding),
             severity,
             None,
             None,
