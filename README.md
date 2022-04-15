@@ -55,6 +55,10 @@ that sets the variable to the install dir.
 > NOTE: running via cargo also doesn't require setting explicit `HELIX_RUNTIME` path, it will automatically
 > detect the `runtime` directory in the project root.
 
+In order to use LSP features like auto-complete, you will need to
+[install the appropriate Language Server](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers)
+for a language.
+
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
 ## MacOS

@@ -190,7 +190,11 @@ fn buffer_previous(
     Ok(())
 }
 
-fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::Result<()> {
+fn write_impl(
+    cx: &mut compositor::Context,
+    path: Option<&Cow<str>>,
+    force: bool,
+) -> anyhow::Result<()> {
     let jobs = &mut cx.jobs;
     let doc = doc_mut!(cx.editor);
 
@@ -212,7 +216,7 @@ fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::
         jobs.callback(callback);
         shared
     });
-    let future = doc.format_and_save(fmt);
+    let future = doc.format_and_save(fmt, force);
     cx.jobs.add(Job::new(future).wait_before_exiting());
 
     if path.is_some() {
@@ -228,7 +232,15 @@ fn write(
     args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    write_impl(cx, args.first())
+    write_impl(cx, args.first(), false)
+}
+
+fn force_write(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    write_impl(cx, args.first(), true)
 }
 
 fn new_file(
@@ -381,7 +393,7 @@ fn write_quit(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    write_impl(cx, args.first())?;
+    write_impl(cx, args.first(), false)?;
     quit(cx, &[], event)
 }
 
@@ -390,7 +402,7 @@ fn force_write_quit(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    write_impl(cx, args.first())?;
+    write_impl(cx, args.first(), true)?;
     force_quit(cx, &[], event)
 }
 
@@ -447,7 +459,7 @@ fn write_all_impl(
             jobs.callback(callback);
             shared
         });
-        let future = doc.format_and_save(fmt);
+        let future = doc.format_and_save(fmt, force);
         jobs.add(Job::new(future).wait_before_exiting());
     }
 
@@ -1138,6 +1150,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["w"],
             doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
             fun: write,
+            completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "write!",
+            aliases: &["w!"],
+            doc: "Write changes to disk forcefully (creating necessary subdirectories). Accepts an optional path (:write some/path.txt)",
+            fun: force_write,
             completer: Some(completers::filename),
         },
         TypableCommand {

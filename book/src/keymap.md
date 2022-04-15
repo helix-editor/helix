@@ -306,7 +306,7 @@ undo-able "save point" until you return to normal mode.
 | `Ctrl-k`                  | Delete to end of line       | `kill_to_line_end`      |
 | `Ctrl-j`, `Enter`         | Insert new line             | `insert_newline`        |
 | `Backspace`, `Ctrl-h`     | Delete previous char        | `delete_char_backward`  |
-| `Delete`, `Ctrl-d`        | Delete previous char        | `delete_char_forward`   |
+| `Delete`, `Ctrl-d`        | Delete next char            | `delete_char_forward`   |
 | `Ctrl-p`, `Up`            | Move to previous line       | `move_line_up`          |
 | `Ctrl-n`, `Down`          | Move to next line           | `move_line_down`        |
 | `PageUp`                  | Move one page up            | `page_up`               |
