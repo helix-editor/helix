@@ -98,8 +98,8 @@ impl View {
     pub fn new(doc: DocumentId, gutter_types: Vec<crate::editor::GutterType>) -> Self {
         let mut gutters: Vec<(Gutter, usize)> = vec![];
         use crate::editor::GutterType;
-        for gutter in &gutter_types {
-            match gutter {
+        for gutter_type in &gutter_types {
+            match gutter_type {
                 GutterType::Diagnostics => gutters.push((gutter::diagnostics_or_breakpoints, 1)),
                 GutterType::LineNumbers => gutters.push((gutter::line_numbers, 5)),
             }
