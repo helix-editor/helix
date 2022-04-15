@@ -82,10 +82,6 @@ _________________________________________________________________
 
 
 
-
-
-
-
 =================================================================
 =                          INSERT MODE                          =
 =================================================================
@@ -218,6 +214,8 @@ _________________________________________________________________
 
 
 
+
+
 =================================================================
 =                      THE CHANGE COMMAND                       =
 =================================================================
@@ -310,22 +308,25 @@ _________________________________________________________________
 =                             RECAP                             =
 =================================================================
 
- * Type w to select forward until the next word.
-   * Type e to select to the end of the current word.
-   * Type b to select backward to the start of the current word.
+ * Press w to select forward until the next word.
+   * Press e to select to the end of the current word.
+   * Press b to select backward to the start of the current word.
    * Use uppercase counterparts, W,E,B, to traverse WORDS.
 
  * Typing d deletes the entire selection, so you can delete a
    word forward by typing wd.
 
- * Type c to delete the selection and enter Insert mode.
+ * Press c to delete the selection and enter Insert mode.
 
- * Type a number before a motion to repeat it that many times.
+ * Press a number before a motion to repeat it that many times.
 
- * Type x to select the entire current line. Type x again to
+ * Press x to select the entire current line. Press x again to
    select the next line.
 
- * Type u to undo. Type U to redo.
+ * Press u to undo. Press U to redo.
+
+
+
 
 
 =================================================================
@@ -345,6 +346,8 @@ _________________________________________________________________
  --> Fix th two nes at same ime.
 
      Fix these two lines at the same time.
+ 
+ Note: You can use alt-C to do the same above the cursor.
 
 
 
@@ -404,7 +407,6 @@ _________________________________________________________________
  cursor(s). This can be done using the ; key.
 
  1. Move the cursor to the line below marked -->.
-
  2. Use the motions you have learned to move around the line,
     and try using ; to deselect the text after it is selected
     by the motions.
@@ -415,6 +417,158 @@ _________________________________________________________________
 
 
 
+=================================================================
+=                   Selecting to a character                    =
+=================================================================
+
+ Select up to, and including a character with f, followed by that
+ character. Select backwards to a character with F (uppercase).
+ The f stands for 'find'.
+
+ 1. Move the cursor to the line below marked -->. Make sure your
+    cursor is put just after the arrow.
+ 2. press f, followed by the character you want to select
+    to, in this case a square bracket: [.
+ 3. press d to delete your selection, breaking the sentence free
+    of the square brackets
+ 4. go to the very end of the line and repeat again with uppercase
+    F. Remember this time you're selecting to a closing ].
+
+ --> -----[This sentence is surrounded in square brackets, free me!]-----
+
+ Note: Unlike vim, helix doesn't limit this command to just one
+       line. It'll just search for that character in the file.
+
+
+
+
+
+=================================================================
+=                  Selecting til' a character                   =
+=================================================================
+
+ Select up to, but NOT including ('til) a character with t. Select backwards
+ until a character with uppercase T
+
+ 1. Move the cursor to the line below marked -->.
+ 2. press t and then A to select until A.
+ 3. press d to delete the dashes.
+ 4. Go to the line end, and repeat with T. Only
+    this time you're searching for an 's'
+
+ --> -----A sentence surrounded in dashes-----
+
+ Note: Unlike vim, helix doesn't limit this command to just one
+       line. It'll just search for that character in the file.
+
+
+
+
+
+=================================================================
+=                             RECAP                             =
+=================================================================
+
+ * Press C to copy the selection on the line below and Alt-C for
+   above.
+
+ * Press s to select all instances of a regex pattern inside
+   the current selection.
+
+ * Press semicolon ( ; ) to collapse 
+ 
+ * Press f / F to extend selection up to & including a character.
+ 
+ * press t / T to extend selection until a character.
+
+
+
+
+
+=================================================================
+=                        Switching case                         =
+=================================================================
+
+ Press ~ to switch the case (capitalised-ness) of all selected
+ letters - or just the one under the cursor.
+
+ 1. Move the cursor to the line below marked -->.
+ 2. Select each wrongly capitalised or un-capitalised letter
+    and press ~ over them
+ (remember, the first letter *should* be capitalised)
+
+ --> thIs sENtencE hAs MIS-cApitalIsed leTTerS.
+
+
+
+
+
+=================================================================
+=                         Setting case                          =
+=================================================================
+
+ Press ` (above tab key on most keyboards) to set all selected
+ letters to lowercase.
+ 
+ 1. Move the cursor to the line below marked -->.
+ 2. press x to select the line.
+ 3. press ` to change it to all lowercase
+
+--> this SENTENCE SHOULD all be in LOWERCASE!
+
+ Note: Conversely, alt-` changes all selected letter to uppercase.
+
+
+
+
+
+=================================================================
+=                   Copying and pasting text                    =
+=================================================================
+
+ Press y to yank (copy) the selection to the clipboard.
+ Press p to paste the yanked selection after the cursor.
+ Press uppercase P to paste the yanked selection *before*
+ the cursor.
+
+ 1. Move the cursor to the line below marked -->.
+ 2. press w to select "banana" and y to yank it.
+ 3. move between "2" and "3" and press p to paste.
+ 4. Repeat between "3" and "4"
+
+
+ --> 1 banana 2 3 4
+
+ Note: Whenever you delete (d) or change (c) text, helix will
+       copy the deleted/changed text to the clipboard, you can
+       avoid this with alt-d and alt-c respectively.
+ Note: Helix doesn't share the system clipboard by default.
+       Press space-Y and space-P to yank/paste to/from 
+       your computers main clipboard
+
+
+
+
+
+=================================================================
+=                            Macros                             =
+=================================================================
+
+ Macros are just a way to record a set of actions that you want
+ to repeat.
+
+ Press Q to start recording a macro, you should see a poup at
+ the bottom of your screen. Press Q again to stop recording.
+ Press q to repeat your recorded macro.
+
+ 1. Move the cursor to the first line below marked -->.
+ 2. Press Q to start recording.
+ 3. Enter insert mode and type some text.
+ 4. Exit insert and press Q again to stop recording
+ 5. Move to the line below and press q to repeat the macro.
+
+ --> 
+ --> 
 
 =================================================================
  This tutorial is still a work-in-progress.
