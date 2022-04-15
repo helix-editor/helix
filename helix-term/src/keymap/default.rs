@@ -326,6 +326,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "C-w" => delete_word_backward,
         "A-backspace" => delete_word_backward,
         "A-d" => delete_word_forward,
+        "A-u" => commit_undo_checkpoint,
 
         "left" => move_char_left,
         "C-b" => move_char_left,
