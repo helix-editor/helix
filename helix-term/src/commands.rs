@@ -319,7 +319,7 @@ impl MappableCommand {
         redo, "Redo change",
         earlier, "Move backward in history",
         later, "Move forward in history",
-        add_undo_checkpoint, "Add undo checkpoint",
+        commit_undo_checkpoint, "Commit changes to a new checkpoint",
         yank, "Yank selection",
         yank_joined_to_clipboard, "Join and yank selections to clipboard",
         yank_main_selection_to_clipboard, "Yank main selection to clipboard",
@@ -2960,7 +2960,7 @@ fn later(cx: &mut Context) {
     }
 }
 
-fn add_undo_checkpoint(cx: &mut Context) {
+fn commit_undo_checkpoint(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     doc.append_changes_to_history(view.id);
 }
