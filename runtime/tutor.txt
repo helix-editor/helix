@@ -594,8 +594,25 @@ _________________________________________________________________
 
 
 =================================================================
-=Using the Jumplist=
+=                      USING THE JUMPLIST                       =
 =================================================================
+
+ Helix can keep track of "jumps" which are big movements, like
+ jumping to the definition of a function in code. It stores
+ these in what's called the jumplist.
+ 
+ Press C-s (ctrl-s) to manually save your current position to
+ the jumplist.
+
+ Press C-i and C-o to move forward and backwards in the jumplist
+ respectively.
+
+ 1. Press C-s somewhere.
+ 2. Move far away in the file.
+ 3. Press C-o (just once!) to come back to where you saved.
+
+
+
 
 
 =================================================================
