@@ -309,6 +309,7 @@ impl MappableCommand {
         signature_help, "Show signature help",
         insert_tab, "Insert tab char",
         insert_newline, "Insert newline char",
+        insert_space, "Insert space char",
         delete_char_backward, "Delete previous char",
         delete_char_forward, "Delete next char",
         delete_word_backward, "Delete previous word",
@@ -2800,6 +2801,10 @@ pub mod insert {
 
         let (view, doc) = current!(cx.editor);
         doc.apply(&transaction, view.id);
+    }
+
+    pub fn insert_space(cx: &mut Context) {
+        insert_char(cx, ' ');
     }
 
     pub fn delete_char_backward(cx: &mut Context) {
