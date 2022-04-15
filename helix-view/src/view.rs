@@ -11,6 +11,8 @@ use helix_core::{
     visual_coords_at_pos, Position, RopeSlice, Selection,
 };
 
+use std::fmt;
+
 type Jump = (DocumentId, Selection);
 
 #[derive(Debug, Clone)]
@@ -64,12 +66,11 @@ impl JumpList {
     }
 }
 
-#[derive(Debug)]
 pub struct View {
     pub id: ViewId,
-    pub doc: DocumentId,
     pub offset: Position,
     pub area: Rect,
+    pub doc: DocumentId,
     pub jumps: JumpList,
     /// the last accessed file before the current one
     pub last_accessed_doc: Option<DocumentId>,
@@ -80,11 +81,29 @@ pub struct View {
     pub last_modified_docs: [Option<DocumentId>; 2],
     /// used to store previous selections of tree-sitter objecs
     pub object_selections: Vec<Selection>,
-    pub gutter_types: Vec<crate::editor::GutterType>,
+    pub gutters: Vec<(Gutter, usize)>,
+}
+
+impl fmt::Debug for View {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("View")
+            .field("id", &self.id)
+            .field("area", &self.area)
+            .field("doc", &self.doc)
+            .finish()
+    }
 }
 
 impl View {
-    pub fn new(doc: DocumentId, gutters: Vec<crate::editor::GutterType>) -> Self {
+    pub fn new(doc: DocumentId, gutters_types: Vec<crate::editor::GutterType>) -> Self {
+        let mut gutters: Vec<(Gutter, usize)> = vec![];
+        use crate::editor::GutterType;
+        for gutter in &gutters_types {
+            match gutter {
+                GutterType::Diagnostics => gutters.push((gutter::diagnostics_or_breakpoints, 1)),
+                GutterType::LineNumbers => gutters.push((gutter::line_numbers, 5)),
+            }
+        }
         Self {
             id: ViewId::default(),
             doc,
@@ -94,26 +113,14 @@ impl View {
             last_accessed_doc: None,
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
-            gutter_types: gutters,
+            gutters,
         }
-    }
-
-    pub fn gutters(&self) -> Vec<(Gutter, usize)> {
-        let mut gutters: Vec<(Gutter, usize)> = vec![];
-        use crate::editor::GutterType;
-        for gutter in &self.gutter_types {
-            match gutter {
-                GutterType::Diagnostics => gutters.push((gutter::diagnostics_or_breakpoints, 1)),
-                GutterType::LineNumbers => gutters.push((gutter::line_numbers, 5)),
-            }
-        }
-        gutters
     }
 
     pub fn inner_area(&self) -> Rect {
         // TODO: cache this
         let offset = self
-            .gutters()
+            .gutters
             .iter()
             .map(|(_, width)| *width as u16)
             .sum::<u16>()
