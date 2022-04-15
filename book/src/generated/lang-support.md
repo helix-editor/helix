@@ -45,6 +45,7 @@
 | make | ✓ |  |  |  |
 | markdown | ✓ |  |  |  |
 | mint |  |  |  | `mint` |
+| nickel | ✓ |  | ✓ | `nls` |
 | nix | ✓ |  | ✓ | `rnix-lsp` |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |
