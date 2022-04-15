@@ -247,6 +247,7 @@ impl MappableCommand {
         search_selection, "Use current selection as search pattern",
         global_search, "Global Search in workspace folder",
         extend_line, "Select current line, if already selected, extend to next line",
+        extend_line_above, "Select current line, if already selected, extend to previous line",
         extend_to_line_bounds, "Extend selection to line bounds (line-wise selection)",
         delete_selection, "Delete selection",
         delete_selection_noyank, "Delete selection, without yanking",
@@ -1868,6 +1869,27 @@ fn extend_line(cx: &mut Context) {
         // go to next line if current line is selected
         if range.from() == start && range.to() == end {
             end = text.line_to_char((end_line + count + 1).min(text.len_lines()));
+        }
+        Range::new(start, end)
+    });
+
+    doc.set_selection(view.id, selection);
+}
+
+fn extend_line_above(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+
+    let text = doc.text();
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let (start_line, end_line) = range.line_range(text.slice(..));
+
+        let mut start = text.line_to_char(start_line);
+        let end = text.line_to_char((end_line + count).min(text.len_lines()));
+
+        // go to previous line if current line is selected
+        if range.from() == start && range.to() == end {
+            start = text.line_to_char(start_line.saturating_sub(1));
         }
         Range::new(start, end)
     });
