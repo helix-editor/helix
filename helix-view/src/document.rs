@@ -434,15 +434,16 @@ impl Document {
         Some(fut)
     }
 
-    pub fn save(&mut self) -> impl Future<Output = Result<(), anyhow::Error>> {
-        self.save_impl::<futures_util::future::Ready<_>>(None)
+    pub fn save(&mut self, force: bool) -> impl Future<Output = Result<(), anyhow::Error>> {
+        self.save_impl::<futures_util::future::Ready<_>>(None, force)
     }
 
     pub fn format_and_save(
         &mut self,
         formatting: Option<impl Future<Output = LspFormatting>>,
+        force: bool,
     ) -> impl Future<Output = anyhow::Result<()>> {
-        self.save_impl(formatting)
+        self.save_impl(formatting, force)
     }
 
     // TODO: do we need some way of ensuring two save operations on the same doc can't run at once?
@@ -454,6 +455,7 @@ impl Document {
     fn save_impl<F: Future<Output = LspFormatting>>(
         &mut self,
         formatting: Option<F>,
+        force: bool,
     ) -> impl Future<Output = Result<(), anyhow::Error>> {
         // we clone and move text + path into the future so that we asynchronously save the current
         // state without blocking any further edits.
@@ -475,7 +477,11 @@ impl Document {
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
-                    bail!("can't save file, parent directory does not exist");
+                    if force {
+                        std::fs::DirBuilder::new().recursive(true).create(parent)?;
+                    } else {
+                        bail!("can't save file, parent directory does not exist");
+                    }
                 }
             }
 

@@ -1,3 +1,6 @@
+# Language support configuration.
+# See the languages documentation: https://docs.helix-editor.com/master/languages.html
+
 [[language]]
 name = "rust"
 scope = "source.rust"
@@ -88,7 +91,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "elixir"
-source = { git = "https://github.com/elixir-lang/tree-sitter-elixir", rev = "60863fc6e27d60cf4b1917499ed2259f92c7800e"  }
+source = { git = "https://github.com/elixir-lang/tree-sitter-elixir", rev = "1dabc1c790e07115175057863808085ea60dd08a"  }
 
 [[language]]
 name = "fish"
@@ -121,6 +124,9 @@ scope = "source.json"
 injection-regex = "json"
 file-types = ["json"]
 roots = []
+language-server = { command = "vscode-json-language-server", args = ["--stdio"] }
+auto-format = true
+config = { "provideFormatter" = true }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -336,6 +342,7 @@ scope = "source.css"
 injection-regex = "css"
 file-types = ["css", "scss"]
 roots = []
+language-server = { command = "vscode-css-language-server", args = ["--stdio"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -348,6 +355,9 @@ scope = "text.html.basic"
 injection-regex = "html"
 file-types = ["html"]
 roots = []
+language-server = { command = "vscode-html-language-server", args = ["--stdio"] }
+auto-format = true
+config = { "provideFormatter" = true }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -421,7 +431,8 @@ scope = "source.php"
 injection-regex = "php"
 file-types = ["php"]
 shebangs = ["php"]
-roots = []
+roots = ["composer.json", "index.php"]
+language-server = { command = "intelephense", args = ["--stdio"] }
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
@@ -521,6 +532,7 @@ file-types = ["ml"]
 shebangs = []
 roots = []
 comment-token = "(**)"
+language-server = { command = "ocamllsp" }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -534,7 +546,8 @@ file-types = ["mli"]
 shebangs = []
 roots = []
 comment-token = "(**)"
-indent = { tab-width = 2, unit = "  "}
+language-server = { command = "ocamllsp" }
+indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "ocaml-interface"
@@ -571,8 +584,9 @@ name = "vue"
 scope = "source.vue"
 injection-regex = "vue"
 file-types = ["vue"]
-roots = []
+roots = ["package.json", "vue.config.js"]
 indent = { tab-width = 2, unit = "  " }
+language-server = { command = "vls" }
 
 [[grammar]]
 name = "vue"
@@ -1038,3 +1052,101 @@ roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
 grammar = "rust"
+
+[[language]]
+name = "r"
+scope = "source.r"
+injection-regex = "(r|R)"
+file-types = ["r", "R"]
+shebangs = ["r", "R"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "R", args = ["--slave", "-e", "languageserver::run()"] }
+
+[[grammar]]
+name = "r"
+source = { git = "https://github.com/r-lib/tree-sitter-r", rev = "cc04302e1bff76fa02e129f332f44636813b0c3c" }
+
+[[language]]
+name = "rmarkdown"
+scope = "source.rmd"
+injection-regex = "(r|R)md"
+file-types = ["rmd", "Rmd"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+grammar = "markdown"
+language-server = { command = "R", args = ["--slave", "-e", "languageserver::run()"] }
+
+[[language]]
+name = "swift"
+scope = "source.swift"
+injection-regex = "swift"
+file-types = ["swift"]
+roots = [ "Package.swift" ]
+comment-token = "//"
+auto-format = true
+language-server = { command = "sourcekit-lsp" }
+
+[[grammar]]
+name = "swift"
+source = { git = "https://github.com/Dispersia/tree-sitter-swift", rev = "e75240f89bb3bfd3396155859ae364e5c58d7377" }
+
+[[language]]
+name = "erb"
+scope = "text.html.erb"
+injection-regex = "erb"
+file-types = ["erb"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+grammar = "embedded-template"
+
+[[language]]
+name = "ejs"
+scope = "text.html.ejs"
+injection-regex = "ejs"
+file-types = ["ejs"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+grammar = "embedded-template"
+
+[[grammar]]
+name = "embedded-template"
+source = { git = "https://github.com/tree-sitter/tree-sitter-embedded-template", rev = "d21df11b0ecc6fd211dbe11278e92ef67bd17e97" }
+
+[[language]]
+name = "eex"
+scope = "source.eex"
+injection-regex = "eex"
+file-types = ["eex"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "eex"
+source = { git = "https://github.com/connorlay/tree-sitter-eex", rev = "f742f2fe327463335e8671a87c0b9b396905d1d1" }
+
+[[language]]
+name = "heex"
+scope = "source.heex"
+injection-regex = "heex"
+file-types = ["heex"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "heex"
+source = { git = "https://github.com/connorlay/tree-sitter-heex", rev = "592e22292a367312c35e13de7fdb888f029981d6" }
+
+[[language]]
+name = "sql"
+scope = "source.sql"
+file-types = ["sql"]
+roots = []
+comment-token = "--"
+indent = { tab-width = 4, unit = "    " }
+injection-regex = "sql"
+
+[[grammar]]
+name = "sql"
+source = { git = "https://github.com/DerekStride/tree-sitter-sql", rev = "0caa7fa2ee00e0b770493a79d4efacc1fc376cc5" }
