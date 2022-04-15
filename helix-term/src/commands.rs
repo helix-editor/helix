@@ -1891,7 +1891,7 @@ fn extend_line_above(cx: &mut Context) {
         if range.from() == start && range.to() == end {
             start = text.line_to_char(start_line.saturating_sub(1));
         }
-        Range::new(start, end)
+        Range::new(end, start)
     });
 
     doc.set_selection(view.id, selection);
