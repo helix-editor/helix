@@ -418,7 +418,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                   Selecting to a character                    =
+=                   SELECTING TO A CHARACTER                    =
 =================================================================
 
  Select up to, and including a character with f, followed by that
@@ -444,7 +444,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                  Selecting til' a character                   =
+=                  SELECTING TIL' A CHARACTER                   =
 =================================================================
 
  Select up to, but NOT including ('til) a character with t. Select backwards
@@ -486,44 +486,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                        Switching case                         =
-=================================================================
-
- Press ~ to switch the case (capitalised-ness) of all selected
- letters - or just the one under the cursor.
-
- 1. Move the cursor to the line below marked -->.
- 2. Select each wrongly capitalised or un-capitalised letter
-    and press ~ over them
- (remember, the first letter *should* be capitalised)
-
- --> thIs sENtencE hAs MIS-cApitalIsed leTTerS.
-
-
-
-
-
-=================================================================
-=                         Setting case                          =
-=================================================================
-
- Press ` (above tab key on most keyboards) to set all selected
- letters to lowercase.
- 
- 1. Move the cursor to the line below marked -->.
- 2. press x to select the line.
- 3. press ` to change it to all lowercase
-
---> this SENTENCE SHOULD all be in LOWERCASE!
-
- Note: Conversely, alt-` changes all selected letter to uppercase.
-
-
-
-
-
-=================================================================
-=                   Copying and pasting text                    =
+=                   COPYING AND PASTING TEXT                    =
 =================================================================
 
  Press y to yank (copy) the selection to the clipboard.
@@ -551,7 +514,44 @@ _________________________________________________________________
 
 
 =================================================================
-=                            Macros                             =
+=                        SWITCHING CASE                         =
+=================================================================
+
+ Press ~ to switch the case (capitalised-ness) of all selected
+ letters - or just the one under the cursor.
+
+ 1. Move the cursor to the line below marked -->.
+ 2. Select each wrongly capitalised or un-capitalised letter
+    and press ~ over them
+ (remember, the first letter *should* be capitalised)
+
+ --> thIs sENtencE hAs MIS-cApitalIsed leTTerS.
+
+
+
+
+
+=================================================================
+=                         SETTING CASE                          =
+=================================================================
+
+ Press ` (above tab key on most keyboards) to set all selected
+ letters to lowercase.
+ 
+ 1. Move the cursor to the line below marked -->.
+ 2. press x to select the line.
+ 3. press ` to change it to all lowercase
+
+--> this SENTENCE SHOULD all be in LOWERCASE!
+
+ Note: Conversely, alt-` changes all selected letter to uppercase.
+
+
+
+
+
+=================================================================
+=                            MACROS                             =
 =================================================================
 
  Macros are just a way to record a set of actions that you want
@@ -569,6 +569,34 @@ _________________________________________________________________
 
  --> 
  --> 
+
+
+
+
+
+=================================================================
+=                             RECAP                             =
+=================================================================
+
+ * Press y to yank (copy) text and p to paste
+ * Press space-Y and space-P to yank/paste on the system
+   clipboard
+
+ * Press ~ to alternate case of selected letters
+ * press ` and alt-` to set the case of selected layers to
+   upper and lower respectively
+ 
+ * Press Q to record and stop recording a macro
+ * Press q to repeat the recorded macro
+
+
+
+
+
+=================================================================
+=Using the Jumplist=
+=================================================================
+
 
 =================================================================
  This tutorial is still a work-in-progress.
