@@ -65,7 +65,22 @@ pub fn default_lang_config() -> toml::Value {
 /// User configured languages.toml file, merged with the default config.
 pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
     let def_lang_conf = default_lang_config();
-    let data = std::fs::read(crate::config_dir().join("languages.toml"));
+
+    // Checking if there is a language file where the executable is been run
+    // This allows to have language definitions in each project
+    let data = std::env::current_dir()
+        .ok()
+        .map(|path| path.join("languages.toml"))
+        .and_then(|path| {
+            if path.exists() {
+                let data = std::fs::read(path);
+                Some(data)
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| std::fs::read(crate::config_dir().join("languages.toml")));
+
     let user_lang_conf = match data {
         Ok(raw) => {
             let value = toml::from_slice(&raw)?;
