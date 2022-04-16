@@ -1020,10 +1020,8 @@ fn reflow(
     // TODO: Can we instead take an Option<Cow<str>>, and then if the user
     // doesn't pass in a selection, default to 79 characters per line?
 
-    let max_line_len: usize = args
-        .get(0)
-        .context("expected argument: max_line_len (integer)")?
-        .parse()?;
+    const DEFAULT_MAX_LEN: Cow<'static, str> = Cow::Borrowed("79");
+    let max_line_len: usize = args.get(0).unwrap_or(&DEFAULT_MAX_LEN).parse()?;
 
     let (view, doc) = current!(cx.editor);
     let rope = doc.text();
@@ -1033,11 +1031,10 @@ fn reflow(
     // that single selection is part of.
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(rope, selection, |range| {
-        let beg = std::cmp::min(range.anchor, range.head);
-        let end = std::cmp::max(range.anchor, range.head);
-        let reflowed_text = helix_core::wrap::reflow_hard_wrap(rope.slice(beg..end), max_line_len);
+        let fragment = range.fragment(rope.slice(..));
+        let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, max_line_len);
 
-        (beg, end, Some(reflowed_text.into()))
+        (range.from(), range.to(), Some(reflowed_text))
     });
 
     doc.apply(&transaction, view.id);
