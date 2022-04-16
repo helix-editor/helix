@@ -691,6 +691,35 @@ onto other lines.
      much better.
 
 
+
+
+
+=================================================================
+=                         OPENING LINES                         =
+=================================================================
+
+ Press o to add a newline and insert below the cursor.
+ Press O to add a newline and insert above the cursor.
+
+ 1. Move the cursor to the line below marked -->.
+ 2. Press o to open a line below and type your answer.
+
+ --> What is the best editor?
+
+
+
+
+
+=================================================================
+=                             RECAP                             =
+=================================================================
+
+ *  Press J to join lines within selection.
+
+ * Press > and < to indent and unindent selected lines.
+
+ * Press o and O to open lines
+
 =================================================================
  This tutorial is still a work-in-progress.
  More sections are planned.
