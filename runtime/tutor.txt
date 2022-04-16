@@ -541,7 +541,7 @@ _________________________________________________________________
 
 --> this SENTENCE SHOULD all be in LOWERCASE!
 
- Note: Conversely, alt-` changes all selected letter to uppercase.
+ Note: Conversely, alt-` changes all selected letters to uppercase.
 
 
 
