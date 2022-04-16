@@ -514,7 +514,7 @@ _________________________________________________________________
  letters - or just the one under the cursor.
 
  1. Move the cursor to the line below marked -->.
- 2. Select each wrongly capitalised or un-capitalised letter
+ 2. Select each wrongly capitalised or lowercased letter
     and press ~ over them
  (remember, the first letter *should* be capitalised)
 
