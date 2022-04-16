@@ -1855,7 +1855,6 @@ fn global_search(cx: &mut Context) {
 }
 
 fn extend_line(cx: &mut Context) {
-    let count = cx.count();
     let (view, doc) = current!(cx.editor);
 
     let text = doc.text();
@@ -1863,11 +1862,16 @@ fn extend_line(cx: &mut Context) {
         let (start_line, end_line) = range.line_range(text.slice(..));
 
         let start = text.line_to_char(start_line);
-        let mut end = text.line_to_char((end_line + count).min(text.len_lines()));
+        let mut end;
 
-        // go to next line if current line is selected
-        if range.from() == start && range.to() == end {
-            end = text.line_to_char((end_line + count + 1).min(text.len_lines()));
+        if let Some(count) = cx.count {
+            end = text.line_to_char((end_line + count.get() + 1).min(text.len_lines()));
+        } else {
+            end = text.line_to_char((end_line + 1).min(text.len_lines()));
+            // go to next line if current lines are selected
+            if range.from() == start && range.to() == end {
+                end = text.line_to_char((end_line + 2).min(text.len_lines()));
+            }
         }
         Range::new(start, end)
     });
