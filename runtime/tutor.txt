@@ -554,7 +554,7 @@ _________________________________________________________________
 =                            MACROS                             =
 =================================================================
 
- Macros are just a way to record a set of actions that you want
+ Macros are a way to record a set of actions that you want
  to repeat.
 
  Press Q to start recording a macro, you should see a poup at
