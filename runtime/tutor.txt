@@ -346,7 +346,7 @@ _________________________________________________________________
  --> Fix th two nes at same ime.
 
      Fix these two lines at the same time.
- 
+
  Note: You can use alt-C to do the same above the cursor.
 
 
@@ -475,10 +475,10 @@ _________________________________________________________________
  * Press s to select all instances of a regex pattern inside
    the current selection.
 
- * Press semicolon ( ; ) to collapse 
- 
+ * Press semicolon ( ; ) to collapse
+
  * Press f / F to extend selection up to & including a character.
- 
+
  * press t / T to extend selection until a character.
 
 
@@ -506,7 +506,7 @@ _________________________________________________________________
        copy the deleted/changed text to the clipboard, you can
        avoid this with alt-d and alt-c respectively.
  Note: Helix doesn't share the system clipboard by default.
-       Press space-Y and space-P to yank/paste to/from 
+       Press space-Y and space-P to yank/paste to/from
        your computers main clipboard
 
 
@@ -537,7 +537,7 @@ _________________________________________________________________
 
  Press ` (above tab key on most keyboards) to set all selected
  letters to lowercase.
- 
+
  1. Move the cursor to the line below marked -->.
  2. press x to select the line.
  3. press ` to change it to all lowercase
@@ -585,7 +585,7 @@ _________________________________________________________________
  * Press ~ to alternate case of selected letters
    * press ` and alt-` to set the case of selected layers to
      upper and lower respectively
- 
+
  * Press Q to record and stop recording a macro
    * Press q to repeat the recorded macro
 
@@ -600,7 +600,7 @@ _________________________________________________________________
  Helix can keep track of "jumps" which are big movements, like
  jumping to the definition of a function in code. It stores
  these in what's called the jumplist.
- 
+
  Press C-s (ctrl-s) to manually save your current position to
  the jumplist.
 
@@ -626,7 +626,7 @@ _________________________________________________________________
  1. Press / and type in a common word, like 'banana'
  2. Press enter to confirm the search.
  3. press n and N to cycle through the matches
- 
+
  Like select mode, searching also supports regex!
 
  Note: To search backwards, press ? (shift-/).
