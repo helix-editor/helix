@@ -22,6 +22,12 @@ pub fn reflow_hard_wrap(text: RopeSlice, max_line_len: usize) -> String {
     for piece in flow_pieces {
         match piece {
             Piece::NoReflow(piece) => {
+                // Get rid of spaces at the ends of lines.
+                match new_flow.pop() {
+                    Some(c) if c == ' ' => (),
+                    Some(c) => new_flow.push(c),
+                    None => unreachable!(),
+                }
                 new_flow.push('\n');
                 new_flow.push_str(piece);
                 current_line_len = 0;
@@ -31,8 +37,19 @@ pub fn reflow_hard_wrap(text: RopeSlice, max_line_len: usize) -> String {
                 use unicode_segmentation::UnicodeSegmentation;
                 let piece_len = UnicodeSegmentation::graphemes(piece, true).count();
 
+                if piece.is_empty() {
+                    continue;
+                }
+
                 let piece_will_fit = current_line_len + piece_len <= max_line_len;
                 if !piece_will_fit && !new_flow.is_empty() {
+                    // Get rid of spaces at the ends of lines.
+                    match new_flow.pop() {
+                        Some(c) if c == ' ' => (),
+                        Some(c) => new_flow.push(c),
+                        None => unreachable!(),
+                    }
+
                     new_flow.push('\n');
                     current_line_len = 0;
                 }
@@ -43,9 +60,20 @@ pub fn reflow_hard_wrap(text: RopeSlice, max_line_len: usize) -> String {
 
                 new_flow.push_str(piece);
 
+                if !piece.chars().rev().next().unwrap().is_whitespace() {
+                    new_flow.push(' ');
+                }
+
                 current_line_len += piece_len;
             }
         }
+    }
+
+    // Get rid of the space at the very end.
+    match new_flow.pop() {
+        Some(c) if c == ' ' => (),
+        Some(c) => new_flow.push(c),
+        None => (),
     }
 
     if ends_with_newline {
@@ -184,6 +212,14 @@ mod tests {
 
     #[test]
     fn reflow_basic_to_one_line() {
+        let text = "hello my name\nis helix";
+        let text = Rope::from(text);
+        let reflow = reflow_hard_wrap(text.slice(..), 100);
+        assert_eq!(reflow, "hello my name is helix");
+    }
+
+    #[test]
+    fn reflow_basic_to_one_line_with_trailing_space() {
         let text = "hello my name \nis helix";
         let text = Rope::from(text);
         let reflow = reflow_hard_wrap(text.slice(..), 100);
@@ -195,7 +231,7 @@ mod tests {
         let text = "hello my name is helix";
         let text = Rope::from(text);
         let reflow = reflow_hard_wrap(text.slice(..), 10);
-        assert_eq!(reflow, "hello my \nname is \nhelix");
+        assert_eq!(reflow, "hello my\nname is\nhelix");
     }
 
     #[test]
@@ -203,7 +239,7 @@ mod tests {
         let text = "hello\n\nmy name is helix";
         let text = Rope::from(text);
         let reflow = reflow_hard_wrap(text.slice(..), 10);
-        assert_eq!(reflow, "hello\n\nmy name \nis helix");
+        assert_eq!(reflow, "hello\n\nmy name\nis helix");
     }
 
     #[test]
@@ -211,7 +247,7 @@ mod tests {
         let text = "hello\n  \nmy name is helix";
         let text = Rope::from(text);
         let reflow = reflow_hard_wrap(text.slice(..), 10);
-        assert_eq!(reflow, "hello\n  \nmy name \nis helix");
+        assert_eq!(reflow, "hello\n  \nmy name\nis helix");
     }
 
     #[test]
@@ -219,7 +255,7 @@ mod tests {
         let text = "hello my name is helix\n";
         let text = Rope::from(text);
         let reflow = reflow_hard_wrap(text.slice(..), 10);
-        assert_eq!(reflow, "hello my \nname is \nhelix\n");
+        assert_eq!(reflow, "hello my\nname is\nhelix\n");
     }
 
     #[test]
@@ -227,7 +263,7 @@ mod tests {
         let text = "  hello\n\nmy name is helix";
         let text = Rope::from(text);
         let reflow = reflow_hard_wrap(text.slice(..), 10);
-        assert_eq!(reflow, "  hello\n\nmy name \nis helix");
+        assert_eq!(reflow, "  hello\n\nmy name\nis helix");
     }
 
     #[test]
@@ -259,13 +295,13 @@ mod tests {
         let text = "hello my name is helix";
         let text = Rope::from(text);
         let reflow = reflow_hard_wrap(text.slice(..), 0);
-        assert_eq!(reflow, "hello \nmy \nname \nis \nhelix");
+        assert_eq!(reflow, "hello\nmy\nname\nis\nhelix");
     }
 
     #[test]
     fn reflow_comment_after_blank_line() {
         let text = Rope::from("// Text indented. \n\n// Still indented.");
-        let expected_reflow = "// Text indented. \n\n// Still indented.";
+        let expected_reflow = "// Text indented.\n\n// Still indented.";
         let text = Rope::from(text);
         let reflow = reflow_hard_wrap(text.slice(..), 80);
         assert_eq!(reflow, expected_reflow);
