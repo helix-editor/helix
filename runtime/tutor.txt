@@ -567,8 +567,8 @@ _________________________________________________________________
  4. Exit insert and press Q again to stop recording
  5. Move to the line below and press q to repeat the macro.
 
- --> 
- --> 
+ -->
+ -->
 
 
 
@@ -579,15 +579,15 @@ _________________________________________________________________
 =================================================================
 
  * Press y to yank (copy) text and p to paste
- * Press space-Y and space-P to yank/paste on the system
-   clipboard
+   * Press space-Y and space-P to yank/paste on the system
+     clipboard
 
  * Press ~ to alternate case of selected letters
- * press ` and alt-` to set the case of selected layers to
-   upper and lower respectively
+   * press ` and alt-` to set the case of selected layers to
+     upper and lower respectively
  
  * Press Q to record and stop recording a macro
- * Press q to repeat the recorded macro
+   * Press q to repeat the recorded macro
 
 
 
@@ -613,6 +613,73 @@ _________________________________________________________________
 
 
 
+
+
+=================================================================
+=                      SEARCHING IN FILE                        =
+=================================================================
+
+ Press / to search forward in file, enter to confirm search.
+ Press n to go to the next search match.
+ Press N to go to the previous search match.
+
+ 1. Press / and type in a common word, like 'banana'
+ 2. Press enter to confirm the search.
+ 3. press n and N to cycle through the matches
+ 
+ Like select mode, searching also supports regex!
+
+ Note: To search backwards, press ? (shift-/).
+
+
+
+
+
+=================================================================
+=                             RECAP                             =
+=================================================================
+
+ * Press C-s to save position to the jumplist
+   * Press C-i and C-o to go forward and backward in the jumplist
+
+ * Press / to search forward in file, and ? to search backwards.
+   * Press n and N to cycle through search matches.
+
+
+
+
+
+=================================================================
+=                         JOINING LINES                         =
+=================================================================
+
+ Press J to join lines in selection.
+ This is a lesser used command, but is sometimes quite handy!
+
+ 1. Move the cursor to the line below marked -->.
+ 2. press x three times to select the other lines
+ 3. press J to join the lines together
+
+--> This line sentence
+is spilling over
+onto other lines.
+
+
+
+
+
+=================================================================
+=                        INDENTING LINES                        =
+=================================================================
+
+ Press > to indent a line and < to unindent it
+
+ 1. Move the cursor to the line below marked -->.
+ 2. indent/unindent the lines with < and >, until they are uniform.
+
+ --> These lines
+   are indented
+       very poorly.
 
 
 =================================================================
