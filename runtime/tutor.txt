@@ -628,7 +628,7 @@ _________________________________________________________________
  2. Press enter to confirm the search.
  3. press n and N to cycle through the matches.
 
- Like select mode, searching also supports regex!
+ Like the select command, searching also uses regex.
 
  Note: To search backwards, press ? (shift-/).
 
