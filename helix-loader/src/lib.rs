@@ -71,14 +71,7 @@ pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
     let data = std::env::current_dir()
         .ok()
         .map(|path| path.join("languages.toml"))
-        .and_then(|path| {
-            if path.exists() {
-                let data = std::fs::read(path);
-                Some(data)
-            } else {
-                None
-            }
-        })
+        .and_then(|path| path.exists().then(|| std::fs::read(path)))
         .unwrap_or_else(|| std::fs::read(crate::config_dir().join("languages.toml")));
 
     let user_lang_conf = match data {
