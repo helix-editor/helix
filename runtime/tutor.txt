@@ -439,7 +439,7 @@ _________________________________________________________________
        line. It'll just search for that character in the file.
 
 =================================================================
-=                  SELECTING TIL' A CHARACTER                   =
+=                  SELECTING 'TIL A CHARACTER                   =
 =================================================================
 
  Select up to, but NOT including ('til) a character with t. Select backwards
