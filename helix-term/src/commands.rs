@@ -1855,7 +1855,20 @@ fn global_search(cx: &mut Context) {
     cx.jobs.callback(show_picker);
 }
 
+enum Extend {
+    Above,
+    Below,
+}
+
 fn extend_line(cx: &mut Context) {
+    extend_line_impl(cx, Extend::Below);
+}
+
+fn extend_line_above(cx: &mut Context) {
+    extend_line_impl(cx, Extend::Above);
+}
+
+fn extend_line_impl(cx: &mut Context, extend: Extend) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
 
@@ -1864,34 +1877,22 @@ fn extend_line(cx: &mut Context) {
         let (start_line, end_line) = range.line_range(text.slice(..));
 
         let start = text.line_to_char(start_line);
-        let mut end = text.line_to_char((end_line + count).min(text.len_lines()));
-
-        // go to next line if current line is selected
-        if range.from() == start && range.to() == end {
-            end = text.line_to_char((end_line + count + 1).min(text.len_lines()));
-        }
-        Range::new(start, end)
-    });
-
-    doc.set_selection(view.id, selection);
-}
-
-fn extend_line_above(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-
-    let text = doc.text();
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let (start_line, end_line) = range.line_range(text.slice(..));
-
-        let mut start = text.line_to_char(start_line);
         let end = text.line_to_char((end_line + count).min(text.len_lines()));
 
-        // go to previous line if current line is selected
-        if range.from() == start && range.to() == end {
-            start = text.line_to_char(start_line.saturating_sub(1));
-        }
-        Range::new(end, start)
+        // extend to previous/next line if current line is selected
+        let (anchor, head) = if range.from() == start && range.to() == end {
+            match extend {
+                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(1))),
+                Extend::Below => (
+                    start,
+                    text.line_to_char((end_line + count + 1).min(text.len_lines())),
+                ),
+            }
+        } else {
+            (start, end)
+        };
+
+        Range::new(anchor, head)
     });
 
     doc.set_selection(view.id, selection);
