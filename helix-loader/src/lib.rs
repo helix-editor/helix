@@ -66,7 +66,7 @@ pub fn default_lang_config() -> toml::Value {
 pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
     let def_lang_conf = default_lang_config();
 
-    // Checking if there is a language file where the executable is been run
+    // Checking if there is a language file where the executable is being run
     // This allows to have language definitions in each project
     let data = std::env::current_dir()
         .ok()
