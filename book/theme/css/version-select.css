@@ -1,0 +1,26 @@
+form#version-select {
+  float: right;
+  margin: 0.25rem 0;
+}
+
+form#version-select select {
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  border: 0;
+  box-sizing: content-box;
+  background-color: transparent;
+  color: var(--sidebar-fg);
+  padding: 1rem 1.5rem;
+  font-size: 0.875em;
+}
+
+/* downwards arrow on left-hand-side of select */
+form#version-select::before {
+  position: relative;
+  left: 1.75rem;
+  content: "\25BC";
+  font-size: 8px;
+  color: var(--sidebar-fg);
+}

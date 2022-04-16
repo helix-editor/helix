@@ -105,6 +105,12 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
+                <form id="version-select" autocomplete="off">
+                    <select>
+                        <option value="https://docs.helix-editor.com">22.03</option>
+                        <option value="https://docs.helix-editor.com/master" selected>master</option>
+                    </select>
+                </form>
                 {{#toc}}{{/toc}}
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>

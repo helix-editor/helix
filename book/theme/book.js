@@ -1,5 +1,17 @@
 "use strict";
 
+// Navigate to the selected version documentation when the version-select
+// form changes
+(function versionSelect() {
+    document.getElementById("version-select")
+        .addEventListener("change", event => {
+            var target = event.target.value;
+            var oldPath = window.location.pathname.split("/").pop() + window.location.hash;
+            var nextLocation = "".concat(target, "/").concat(oldPath);
+            window.location.href = nextLocation;
+        });
+})();
+
 // Fix back button cache problem
 window.onunload = function () { };
 
