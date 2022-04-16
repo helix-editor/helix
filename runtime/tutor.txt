@@ -433,7 +433,7 @@ _________________________________________________________________
  4. go to the very end of the line and repeat again with uppercase
     F. Remember this time you're selecting to a closing ].
 
- --> -----[This sentence is surrounded in square brackets, free me!]-----
+ --> -----[This sentence is surrounded in square brackets; free me!]-----
 
  Note: Unlike vim, helix doesn't limit this command to just one
        line. It'll just search for that character in the file.
