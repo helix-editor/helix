@@ -1,6 +1,6 @@
 ; Class
 (class (constant) (superclass)? 
- (_) @class.inside) @class.around
+  (_) @class.inside) @class.around
 
 ; Functions
 (method) @function.around
@@ -21,7 +21,7 @@
   (_)+ @function.inside)
       
 (method (identifier) !parameters
- (_)+  @function.inside)
+  (_)+  @function.inside)
 
 ; Parameters      
 (method_parameters
