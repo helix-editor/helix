@@ -426,35 +426,36 @@ _________________________________________________________________
 
  1. Move the cursor to the line below marked -->. Make sure your
     cursor is put just after the arrow.
- 2. press f, followed by the character you want to select
+ 2. Press f, followed by the character you want to select
     to, in this case a square bracket: [.
  3. press d to delete your selection, breaking the sentence free
-    of the square brackets
- 4. go to the very end of the line and repeat again with uppercase
-    F. Remember this time you're selecting to a closing ].
+    Of the square brackets.
+ 4. Go to the very end of the line and repeat again with
+    uppercase F. Remember this time you're selecting to a
+    closing ].
 
- --> -----[This sentence is surrounded in square brackets; free me!]-----
+ --> -----[Free this sentence of it's brackets!]-----
 
- Note: Unlike vim, helix doesn't limit this command to just one
-       line. It'll just search for that character in the file.
+ Note: Unlike Vim, Helix doesn't limit this command to just one
+       line. It'll just search for the character in the file.
 
 =================================================================
-=                  SELECTING 'TIL A CHARACTER                   =
+=                  SELECTING TIL' A CHARACTER                   =
 =================================================================
 
- Select up to, but NOT including ('til) a character with t. Select backwards
- until a character with uppercase T
+ Select up to, but NOT including ('til) a character with t.
+ Select backwards until a character with uppercase T.
 
  1. Move the cursor to the line below marked -->.
- 2. press t and then A to select until A.
- 3. press d to delete the dashes.
+ 2. Press t and then A to select until A.
+ 3. Press d to delete the dashes.
  4. Go to the line end, and repeat with T. Only
-    this time you're searching for an 's'
+    this time you're searching for an 's'.
 
  --> -----A sentence surrounded in dashes-----
 
- Note: Unlike vim, helix doesn't limit this command to just one
-       line. It'll just search for that character in the file.
+ Note: Unlike Vim, Helix doesn't limit this command to just one
+       line. It'll just search for the character in the file.
 
 
 
@@ -470,11 +471,11 @@ _________________________________________________________________
  * Press s to select all instances of a regex pattern inside
    the current selection.
 
- * Press semicolon ( ; ) to collapse
+ * Press semicolon ( ; ) to collapse selection.
 
  * Press f / F to extend selection up to & including a character.
 
- * press t / T to extend selection until a character.
+ * Press t / T to extend selection until a character.
 
 
 
@@ -486,39 +487,39 @@ _________________________________________________________________
 =                   COPYING AND PASTING TEXT                    =
 =================================================================
 
- Press y to yank (copy) the selection to the clipboard.
+ Press y to yank (copy) the selection.
  Press p to paste the yanked selection after the cursor.
  Press uppercase P to paste the yanked selection *before*
  the cursor.
 
  1. Move the cursor to the line below marked -->.
- 2. press w to select "banana" and y to yank it.
- 3. move between "2" and "3" and press p to paste.
- 4. Repeat between "3" and "4"
+ 2. Press w to select "banana" and y to yank it.
+ 3. Move between "2" and "3" and press p to paste.
+ 4. Repeat between "3" and "4".
 
 
  --> 1 banana 2 3 4
 
- Note: Whenever you delete (d) or change (c) text, helix will
-       copy the deleted/changed text to the clipboard, you can
+ Note: Whenever you delete (d) or change (c) text, Helix will
+       copy the deleted/changed text to the clipboard. You can
        avoid this with alt-d and alt-c respectively.
  Note: Helix doesn't share the system clipboard by default.
        Press space-Y and space-P to yank/paste to/from
-       your computers main clipboard
+       your computers main clipboard.
 
 =================================================================
 =                        SWITCHING CASE                         =
 =================================================================
 
- Press ~ to switch the case (capitalised-ness) of all selected
- letters - or just the one under the cursor.
+ Press ~ to switch the case of all selected letters.
 
  1. Move the cursor to the line below marked -->.
- 2. Select each wrongly capitalised or lowercased letter
-    and press ~ over them
+ 2. Select each wrongly capitalised or un-capitalised letter
+    and press ~ over them.
  (remember, the first letter *should* be capitalised)
 
  --> thIs sENtencE hAs MIS-cApitalIsed leTTerS.
+
 
 
 
@@ -536,12 +537,12 @@ _________________________________________________________________
  letters to lowercase.
 
  1. Move the cursor to the line below marked -->.
- 2. press x to select the line.
- 3. press ` to change it to all lowercase
+ 2. Press x to select the line.
+ 3. Press ` to change it to all lowercase.
 
 --> this SENTENCE SHOULD all be in LOWERCASE!
 
- Note: Conversely, alt-` changes all selected letters to uppercase.
+ Note: Conversely, alt-` changes all selected letter to uppercase.
 
 
 
@@ -554,17 +555,17 @@ _________________________________________________________________
 =                            MACROS                             =
 =================================================================
 
- Macros are a way to record a set of actions that you want
+ Macros are just a way to record a set of actions that you want
  to repeat.
 
- Press Q to start recording a macro, you should see a poup at
+ Press Q to start recording a macro, you should see a popup at
  the bottom of your screen. Press Q again to stop recording.
  Press q to repeat your recorded macro.
 
  1. Move the cursor to the first line below marked -->.
  2. Press Q to start recording.
  3. Enter insert mode and type some text.
- 4. Exit insert and press Q again to stop recording
+ 4. Exit insert and press Q again to stop recording.
  5. Move to the line below and press q to repeat the macro.
 
  -->
@@ -576,16 +577,16 @@ _________________________________________________________________
 =                             RECAP                             =
 =================================================================
 
- * Press y to yank (copy) text and p to paste
+ * Press y to yank (copy) text and p to paste.
    * Press space-Y and space-P to yank/paste on the system
-     clipboard
+     clipboard.
 
- * Press ~ to alternate case of selected letters
-   * press ` and alt-` to set the case of selected layers to
-     upper and lower respectively
+ * Press ~ to alternate case of selected letters.
+   * Press ` and alt-` to set the case of selected layers to
+     upper and lower respectively.
 
- * Press Q to record and stop recording a macro
-   * Press q to repeat the recorded macro
+ * Press Q to record and stop recording a macro.
+   * Press q to repeat the recorded macro.
 
 
 
@@ -628,7 +629,7 @@ _________________________________________________________________
  2. Press enter to confirm the search.
  3. press n and N to cycle through the matches.
 
- Like the select command, searching also uses regex.
+ Like select mode, searching also supports regex!
 
  Note: To search backwards, press ? (shift-/).
 
@@ -668,8 +669,8 @@ _________________________________________________________________
  This is a lesser used command, but is sometimes quite handy!
 
  1. Move the cursor to the line below marked -->.
- 2. press x three times to select the other lines.
- 3. press J to join the lines together.
+ 2. Press x three times to select the other lines.
+ 3. Press J to join the lines together.
 
  --> This line sentence
 is spilling over
@@ -686,10 +687,10 @@ onto other lines.
 =                        INDENTING LINES                        =
 =================================================================
 
- Press > to indent a line and < to unindent it
+ Press > to indent a line and < to unindent it.
 
  1. Move the cursor to the line below marked -->.
- 2. indent/unindent the lines with < and >, until they are uniform.
+ 2. Indent/unindent the lines with < and >, until they are uniform.
 
  --> These lines
     are indented
@@ -734,7 +735,7 @@ onto other lines.
 
  * Press > and < to indent and unindent selected lines.
 
- * Press o and O to open lines
+ * Press o and O to open lines.
 
 =================================================================
  This tutorial is still a work-in-progress.
