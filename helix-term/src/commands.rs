@@ -4150,19 +4150,19 @@ enum ShellBehavior {
 }
 
 fn shell_pipe(cx: &mut Context) {
-    shell(cx, "pipe:".into(), ShellBehavior::Replace);
+    shell_prompt(cx, "pipe:".into(), ShellBehavior::Replace);
 }
 
 fn shell_pipe_to(cx: &mut Context) {
-    shell(cx, "pipe-to:".into(), ShellBehavior::Ignore);
+    shell_prompt(cx, "pipe-to:".into(), ShellBehavior::Ignore);
 }
 
 fn shell_insert_output(cx: &mut Context) {
-    shell(cx, "insert-output:".into(), ShellBehavior::Insert);
+    shell_prompt(cx, "insert-output:".into(), ShellBehavior::Insert);
 }
 
 fn shell_append_output(cx: &mut Context) {
-    shell(cx, "append-output:".into(), ShellBehavior::Append);
+    shell_prompt(cx, "append-output:".into(), ShellBehavior::Append);
 }
 
 fn shell_keep_pipe(cx: &mut Context) {
@@ -4256,65 +4256,69 @@ fn shell_impl(
     Ok((tendril, output.status.success()))
 }
 
-fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
+fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let pipe = match behavior {
         ShellBehavior::Replace | ShellBehavior::Ignore => true,
         ShellBehavior::Insert | ShellBehavior::Append => false,
     };
 
+    let config = cx.editor.config();
+    let shell = &config.shell;
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id);
+
+    let mut changes = Vec::with_capacity(selection.len());
+    let text = doc.text().slice(..);
+
+    for range in selection.ranges() {
+        let fragment = range.fragment(text);
+        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment.as_bytes())) {
+            Ok(result) => result,
+            Err(err) => {
+                cx.editor.set_error(err.to_string());
+                return;
+            }
+        };
+
+        if !success {
+            cx.editor.set_error("Command failed");
+            return;
+        }
+
+        let (from, to) = match behavior {
+            ShellBehavior::Replace => (range.from(), range.to()),
+            ShellBehavior::Insert => (range.from(), range.from()),
+            ShellBehavior::Append => (range.to(), range.to()),
+            _ => (range.from(), range.from()),
+        };
+        changes.push((from, to, Some(output)));
+    }
+
+    if behavior != &ShellBehavior::Ignore {
+        let transaction = Transaction::change(doc.text(), changes.into_iter());
+        doc.apply(&transaction, view.id);
+    }
+
+    // after replace cursor may be out of bounds, do this to
+    // make sure cursor is in view and update scroll as well
+    view.ensure_cursor_in_view(doc, config.scrolloff);
+}
+
+fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
     ui::prompt(
         cx,
         prompt,
         Some('|'),
         ui::completers::none,
         move |cx, input: &str, event: PromptEvent| {
-            let config = cx.editor.config();
-            let shell = &config.shell;
             if event != PromptEvent::Validate {
                 return;
             }
             if input.is_empty() {
                 return;
             }
-            let (view, doc) = current!(cx.editor);
-            let selection = doc.selection(view.id);
 
-            let mut changes = Vec::with_capacity(selection.len());
-            let text = doc.text().slice(..);
-
-            for range in selection.ranges() {
-                let fragment = range.fragment(text);
-                let (output, success) =
-                    match shell_impl(shell, input, pipe.then(|| fragment.as_bytes())) {
-                        Ok(result) => result,
-                        Err(err) => {
-                            cx.editor.set_error(err.to_string());
-                            return;
-                        }
-                    };
-
-                if !success {
-                    cx.editor.set_error("Command failed");
-                    return;
-                }
-
-                let (from, to) = match behavior {
-                    ShellBehavior::Replace => (range.from(), range.to()),
-                    ShellBehavior::Insert => (range.from(), range.from()),
-                    ShellBehavior::Append => (range.to(), range.to()),
-                    _ => (range.from(), range.from()),
-                };
-                changes.push((from, to, Some(output)));
-            }
-
-            if behavior != ShellBehavior::Ignore {
-                let transaction = Transaction::change(doc.text(), changes.into_iter());
-                doc.apply(&transaction, view.id);
-            }
-
-            // after replace cursor may be out of bounds, do this to
-            // make sure cursor is in view and update scroll as well
-            view.ensure_cursor_in_view(doc, config.scrolloff);
+            shell(cx, input, &behavior);
         },
     );
 }
