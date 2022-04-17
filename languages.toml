@@ -974,7 +974,7 @@ language-server = { command = "erlang_ls" }
 
 [[grammar]]
 name = "erlang"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "1e81393b8f0a81b35ff1679a9420fafbd2cf3511" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "3f611cfdc790214c3f9f9cf1658b3ae8039c54b8" }
 
 [[language]]
 name = "kotlin"
