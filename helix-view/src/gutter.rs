@@ -76,7 +76,7 @@ pub fn line_numbers<'doc>(
                 && current_line != line;
 
             let display_num = if relative {
-                abs_diff(current_line, line)
+                current_line.abs_diff(line)
             } else {
                 line + 1
             };
@@ -89,15 +89,6 @@ pub fn line_numbers<'doc>(
             Some(style)
         }
     })
-}
-
-#[inline(always)]
-const fn abs_diff(a: usize, b: usize) -> usize {
-    if a > b {
-        a - b
-    } else {
-        b - a
-    }
 }
 
 pub fn breakpoints<'doc>(
