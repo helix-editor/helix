@@ -11,8 +11,6 @@
   "--%>"
   "-->"
   "/>"
-  "{"
-  "}"
   ; These could be `@keyword`s but the closing `>` wouldn't be highlighted
   ; as `@keyword`
   "<:"
@@ -21,6 +19,8 @@
 
 ; Non-comment or tag delimiters
 [
+  "{"
+  "}"
   "<%"
   "<%="
   "<%%="
