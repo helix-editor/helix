@@ -494,14 +494,13 @@ _________________________________________________________________
  1. Move the cursor to the line below marked -->.
     Make sure your cursor is on the "b" of banana.
  2. Press w to select "banana" and y to yank it.
- 3. Move between "2" and "3" and press p to paste.
+ 3. Move to the space between "2" and "3" and press p to paste.
  4. Repeat between "3" and "4".
-
 
  --> 1 banana 2 3 4
 
  Note: Whenever you delete (d) or change (c) text, Helix will
-       copy the deleted/changed text to the clipboard. You can
+       copy the deleted/changed text. You can
        avoid this with alt-d and alt-c respectively.
  Note: Helix doesn't share the system clipboard by default.
        Press space-Y and space-P to yank/paste to/from
@@ -567,15 +566,12 @@ _________________________________________________________________
  2. Press Q to start recording.
  3. Edit the line to look like the bottom one.
  4. Exit insert and press Q again to stop recording.
- 5. Move to the line below and put your cursor on the >
-    again.
+ 5. Move to the line below and put your cursor on the > again.
  6. Press q to repeat the macro.
 
  --> ... sentence doesn't have it's first and last ... .
  --> ... sentence doesn't have it's first and last ... .
-
  --> This sentence doesn't have it's first and last word.
-
 =================================================================
 =                             RECAP                             =
 =================================================================
@@ -685,6 +681,7 @@ onto other lines.
 
 
 
+
 =================================================================
 =                        INDENTING LINES                        =
 =================================================================
@@ -738,6 +735,18 @@ onto other lines.
  * Press > and < to indent and unindent selected lines.
 
  * Press o and O to open lines.
+
+
+
+
+
+
+
+
+
+
+
+
 
 =================================================================
  This tutorial is still a work-in-progress.
