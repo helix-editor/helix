@@ -399,7 +399,7 @@ source = { git = "https://github.com/cstrahan/tree-sitter-nix", rev = "50f38ceab
 name = "ruby"
 scope = "source.ruby"
 injection-regex = "ruby"
-file-types = ["rb"]
+file-types = ["rb", "rake", "rakefile", "irb", "gemfile", "gemspec"]
 shebangs = ["ruby"]
 roots = []
 comment-token = "#"
