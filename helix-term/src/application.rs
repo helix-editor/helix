@@ -68,7 +68,7 @@ fn setup_integration_logging() {
                 message
             ))
         })
-        .level(log::LevelFilter::Debug)
+        .level(log::LevelFilter::Info)
         .chain(std::io::stdout())
         .apply();
 }
