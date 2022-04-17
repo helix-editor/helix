@@ -563,15 +563,18 @@ _________________________________________________________________
  Press q to repeat your recorded macro.
 
  1. Move the cursor to the first line below marked -->.
+    Ensure your cursor is on the > of the arrow.
  2. Press Q to start recording.
- 3. Enter insert mode and type some text.
+ 3. Edit the line to look like the bottom one.
  4. Exit insert and press Q again to stop recording.
- 5. Move to the line below and press q to repeat the macro.
+ 5. Move to the line below and put your cursor on the >
+    again.
+ 6. Press q to repeat the macro.
 
- -->
- -->
+ --> ... sentence doesn't have it's first and last ... .
+ --> ... sentence doesn't have it's first and last ... .
 
-
+ --> This sentence doesn't have it's first and last word.
 
 =================================================================
 =                             RECAP                             =
