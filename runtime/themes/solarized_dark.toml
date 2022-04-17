@@ -60,9 +60,9 @@
 "ui.help" = { modifiers = ["reversed"] }
 
 # 快捷键窗口 
-"ui.info" = { bg = "base1" }
+"ui.popup.info" = { bg = "base1" }
 # 快捷键字体
-"ui.info.text" = {fg = "base02", modifiers = ["bold"]}
+"ui.text.info" = {fg = "base02", modifiers = ["bold"]}
 
 # 普通ui的字体样式
 "ui.text" = { fg = "base1" }
@@ -81,7 +81,7 @@
 "ui.cursor" = {fg = "base02", bg = "cyan"}
 "ui.cursor.insert" = {fg = "base03", bg = "base3"}
 # 当前光标匹配的标点符号
-"ui.cursor.match" = {modifiers = ["reversed"]}
+"ui.cursor.match" = { fg = "base03", bg = "base00" }
 
 "warning" =  { fg = "orange", modifiers= ["bold", "underlined"] }
 "error" = { fg = "red", modifiers= ["bold", "underlined"] }

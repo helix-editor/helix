@@ -11,6 +11,8 @@ use helix_core::{
     visual_coords_at_pos, Position, RopeSlice, Selection,
 };
 
+use std::fmt;
+
 type Jump = (DocumentId, Selection);
 
 #[derive(Debug, Clone)]
@@ -64,17 +66,11 @@ impl JumpList {
     }
 }
 
-const GUTTERS: &[(Gutter, usize)] = &[
-    (gutter::diagnostics_or_breakpoints, 1),
-    (gutter::line_number, 5),
-];
-
-#[derive(Debug)]
 pub struct View {
     pub id: ViewId,
-    pub doc: DocumentId,
     pub offset: Position,
     pub area: Rect,
+    pub doc: DocumentId,
     pub jumps: JumpList,
     /// the last accessed file before the current one
     pub last_accessed_doc: Option<DocumentId>,
@@ -85,10 +81,29 @@ pub struct View {
     pub last_modified_docs: [Option<DocumentId>; 2],
     /// used to store previous selections of tree-sitter objecs
     pub object_selections: Vec<Selection>,
+    pub gutters: Vec<(Gutter, usize)>,
+}
+
+impl fmt::Debug for View {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("View")
+            .field("id", &self.id)
+            .field("area", &self.area)
+            .field("doc", &self.doc)
+            .finish()
+    }
 }
 
 impl View {
-    pub fn new(doc: DocumentId) -> Self {
+    pub fn new(doc: DocumentId, gutter_types: Vec<crate::editor::GutterType>) -> Self {
+        let mut gutters: Vec<(Gutter, usize)> = vec![];
+        use crate::editor::GutterType;
+        for gutter_type in &gutter_types {
+            match gutter_type {
+                GutterType::Diagnostics => gutters.push((gutter::diagnostics_or_breakpoints, 1)),
+                GutterType::LineNumbers => gutters.push((gutter::line_numbers, 5)),
+            }
+        }
         Self {
             id: ViewId::default(),
             doc,
@@ -98,17 +113,14 @@ impl View {
             last_accessed_doc: None,
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
+            gutters,
         }
-    }
-
-    pub fn gutters(&self) -> &[(Gutter, usize)] {
-        GUTTERS
     }
 
     pub fn inner_area(&self) -> Rect {
         // TODO: cache this
         let offset = self
-            .gutters()
+            .gutters
             .iter()
             .map(|(_, width)| *width as u16)
             .sum::<u16>()
@@ -204,19 +216,9 @@ impl View {
             return None;
         }
 
-        let line_start = text.line_to_char(line);
-        let line_slice = text.slice(line_start..pos);
-        let mut col = 0;
         let tab_width = doc.tab_width();
-
-        for grapheme in RopeGraphemes::new(line_slice) {
-            if grapheme == "\t" {
-                col += tab_width;
-            } else {
-                let grapheme = Cow::from(grapheme);
-                col += grapheme_width(&grapheme);
-            }
-        }
+        // TODO: visual_coords_at_pos also does char_to_line which we ignore, can we reuse the call?
+        let Position { col, .. } = visual_coords_at_pos(text, pos, tab_width);
 
         // It is possible for underflow to occur if the buffer length is larger than the terminal width.
         let row = line.saturating_sub(self.offset.row);
@@ -253,18 +255,29 @@ impl View {
         let current_line = text.line(line_number);
 
         let target = (column - inner.x) as usize + self.offset.col;
-        let mut selected = 0;
+        let mut col = 0;
 
+        // TODO: extract this part as pos_at_visual_coords
         for grapheme in RopeGraphemes::new(current_line) {
-            if selected >= target {
+            if col >= target {
                 break;
             }
-            if grapheme == "\t" {
-                selected += tab_width;
+
+            let width = if grapheme == "\t" {
+                tab_width - (col % tab_width)
             } else {
-                let width = grapheme_width(&Cow::from(grapheme));
-                selected += width;
+                let grapheme = Cow::from(grapheme);
+                grapheme_width(&grapheme)
+            };
+
+            // If pos is in the middle of a wider grapheme (tab for example)
+            // return the starting offset.
+            if col + width > target {
+                break;
             }
+
+            col += width;
+            // TODO: use byte pos that converts back to char pos?
             pos += grapheme.chars().count();
         }
 
@@ -323,11 +336,16 @@ mod tests {
     use super::*;
     use helix_core::Rope;
     const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
-                           // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
+    const OFFSET_WITHOUT_LINE_NUMBERS: u16 = 2; // 1 diagnostic + 1 gutter
+                                                // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
+    use crate::editor::GutterType;
 
     #[test]
     fn test_text_pos_at_screen_coords() {
-        let mut view = View::new(DocumentId::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let text = rope.slice(..);
@@ -355,7 +373,7 @@ mod tests {
 
         assert_eq!(
             view.text_pos_at_screen_coords(&text, 41, 40 + OFFSET + 1, 4),
-            Some(5)
+            Some(4)
         );
 
         assert_eq!(
@@ -372,8 +390,35 @@ mod tests {
     }
 
     #[test]
+    fn test_text_pos_at_screen_coords_without_line_numbers_gutter() {
+        let mut view = View::new(DocumentId::default(), vec![GutterType::Diagnostics]);
+        view.area = Rect::new(40, 40, 40, 40);
+        let rope = Rope::from_str("abc\n\tdef");
+        let text = rope.slice(..);
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 41, 40 + OFFSET_WITHOUT_LINE_NUMBERS + 1, 4),
+            Some(4)
+        );
+    }
+
+    #[test]
+    fn test_text_pos_at_screen_coords_without_any_gutters() {
+        let mut view = View::new(DocumentId::default(), vec![]);
+        view.area = Rect::new(40, 40, 40, 40);
+        let rope = Rope::from_str("abc\n\tdef");
+        let text = rope.slice(..);
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 41, 40 + 1, 4),
+            Some(4)
+        );
+    }
+
+    #[test]
     fn test_text_pos_at_screen_coords_cjk() {
-        let mut view = View::new(DocumentId::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
         let text = rope.slice(..);
@@ -384,8 +429,12 @@ mod tests {
         );
 
         assert_eq!(
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 4, 4),
+            Some(4)
+        );
+        assert_eq!(
             view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 5, 4),
-            Some(5)
+            Some(4)
         );
 
         assert_eq!(
@@ -395,7 +444,7 @@ mod tests {
 
         assert_eq!(
             view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 7, 4),
-            Some(6)
+            Some(5)
         );
 
         assert_eq!(
@@ -406,7 +455,10 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_graphemes() {
-        let mut view = View::new(DocumentId::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");
         let text = rope.slice(..);

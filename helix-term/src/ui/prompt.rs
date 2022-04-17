@@ -2,9 +2,10 @@ use crate::compositor::{Component, Compositor, Context, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
 use crossterm::event::Event;
 use helix_view::input::KeyEvent;
-use helix_view::keyboard::{KeyCode, KeyModifiers};
+use helix_view::keyboard::KeyCode;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
+use tui::widgets::{Block, Borders, Widget};
 
 use helix_core::{
     unicode::segmentation::GraphemeCursor, unicode::width::UnicodeWidthStr, Position,
@@ -18,7 +19,7 @@ pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
 
 pub struct Prompt {
     prompt: Cow<'static, str>,
-    pub line: String,
+    line: String,
     cursor: usize,
     completion: Vec<Completion>,
     selection: Option<usize>,
@@ -26,7 +27,7 @@ pub struct Prompt {
     history_pos: Option<usize>,
     completion_fn: Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
-    pub doc_fn: Box<dyn Fn(&str) -> Option<&'static str>>,
+    pub doc_fn: Box<dyn Fn(&str) -> Option<Cow<str>>>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -74,6 +75,10 @@ impl Prompt {
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
         }
+    }
+
+    pub fn line(&self) -> &String {
+        &self.line
     }
 
     pub fn recalculate_completion(&mut self, editor: &Editor) {
@@ -389,25 +394,35 @@ impl Prompt {
         if let Some(doc) = (self.doc_fn)(&self.line) {
             let mut text = ui::Text::new(doc.to_string());
 
+            let max_width = BASE_WIDTH * 3;
+            let padding = 1;
+
             let viewport = area;
+
+            let (_width, height) = ui::text::required_size(&text.contents, max_width);
+
             let area = viewport.intersection(Rect::new(
                 completion_area.x,
-                completion_area.y.saturating_sub(3),
-                BASE_WIDTH * 3,
-                3,
+                completion_area.y.saturating_sub(height + padding * 2),
+                max_width,
+                height + padding * 2,
             ));
 
             let background = theme.get("ui.help");
             surface.clear_with(area, background);
 
-            text.render(
-                area.inner(&Margin {
-                    vertical: 1,
-                    horizontal: 1,
-                }),
-                surface,
-                cx,
-            );
+            let block = Block::default()
+                // .title(self.title.as_str())
+                .borders(Borders::ALL)
+                .border_style(background);
+
+            let inner = block.inner(area).inner(&Margin {
+                vertical: 0,
+                horizontal: 1,
+            });
+
+            block.render(area, surface);
+            text.render(inner, surface, cx);
         }
 
         let line = area.height - 1;
@@ -427,7 +442,7 @@ impl Component for Prompt {
         let event = match event {
             Event::Key(event) => event,
             Event::Resize(..) => return EventResult::Consumed(None),
-            _ => return EventResult::Ignored,
+            _ => return EventResult::Ignored(None),
         };
 
         let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
@@ -514,11 +529,11 @@ impl Component for Prompt {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
             ctrl!('q') => self.exit_selection(),
-            // any char event that's not combined with control or mapped to any other combo
+            // any char event that's not mapped to any other combo
             KeyEvent {
                 code: KeyCode::Char(c),
-                modifiers,
-            } if !modifiers.contains(KeyModifiers::CONTROL) => {
+                modifiers: _,
+            } => {
                 self.insert_char(c, cx);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }

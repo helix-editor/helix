@@ -4,15 +4,15 @@ members = [
   "helix-view",
   "helix-term",
   "helix-tui",
-  "helix-syntax",
   "helix-lsp",
   "helix-dap",
+  "helix-loader",
   "xtask",
 ]
 
-# Build helix-syntax in release mode to make the code path faster in development.
-# [profile.dev.package."helix-syntax"]
-# opt-level = 3
+default-members = [
+  "helix-term"
+]
 
 [profile.dev]
 split-debuginfo = "unpacked"
@@ -20,3 +20,10 @@ split-debuginfo = "unpacked"
 [profile.release]
 lto = "thin"
 # debug = true
+
+[profile.opt]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+# strip = "debuginfo" # TODO: or strip = true
+opt-level = 3

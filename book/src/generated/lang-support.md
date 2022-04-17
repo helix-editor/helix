@@ -2,32 +2,41 @@
 | --- | --- | --- | --- | --- |
 | bash | ✓ |  |  | `bash-language-server` |
 | c | ✓ | ✓ | ✓ | `clangd` |
-| c-sharp | ✓ |  |  |  |
+| c-sharp | ✓ |  |  | `OmniSharp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
 | cpp | ✓ | ✓ | ✓ | `clangd` |
-| css | ✓ |  |  |  |
+| css | ✓ |  |  | `vscode-css-language-server` |
 | dart | ✓ |  | ✓ | `dart` |
 | dockerfile | ✓ |  |  | `docker-langserver` |
+| eex | ✓ |  |  |  |
+| ejs | ✓ |  |  |  |
 | elixir | ✓ |  |  | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
-| erlang | ✓ |  |  |  |
+| erb | ✓ |  |  |  |
+| erlang | ✓ |  |  | `erlang_ls` |
 | fish | ✓ | ✓ | ✓ |  |
+| gdscript | ✓ |  | ✓ |  |
 | git-commit | ✓ |  |  |  |
 | git-config | ✓ |  |  |  |
 | git-diff | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |
+| gleam | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | graphql | ✓ |  |  |  |
 | haskell | ✓ |  |  | `haskell-language-server-wrapper` |
-| html | ✓ |  |  |  |
+| hcl | ✓ |  | ✓ | `terraform-ls` |
+| heex | ✓ |  |  |  |
+| html | ✓ |  |  | `vscode-html-language-server` |
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  |  |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
-| json | ✓ |  | ✓ |  |
+| json | ✓ |  | ✓ | `vscode-json-language-server` |
+| jsx | ✓ |  | ✓ | `typescript-language-server` |
 | julia | ✓ |  |  | `julia` |
-| latex | ✓ |  |  |  |
+| kotlin | ✓ |  |  | `kotlin-language-server` |
+| latex | ✓ |  |  | `texlab` |
 | lean | ✓ |  |  | `lean` |
 | ledger | ✓ |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |
@@ -38,27 +47,34 @@
 | markdown | ✓ |  |  |  |
 | mint |  |  |  | `mint` |
 | nix | ✓ |  | ✓ | `rnix-lsp` |
-| ocaml | ✓ |  | ✓ |  |
-| ocaml-interface | ✓ |  |  |  |
+| ocaml | ✓ |  | ✓ | `ocamllsp` |
+| ocaml-interface | ✓ |  |  | `ocamllsp` |
+| org | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |
-| php | ✓ | ✓ | ✓ |  |
+| php | ✓ | ✓ | ✓ | `intelephense` |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ |  | ✓ |  |
 | python | ✓ | ✓ | ✓ | `pylsp` |
+| r | ✓ |  |  | `R` |
 | racket |  |  |  | `racket` |
 | regex | ✓ |  |  |  |
 | rescript | ✓ | ✓ |  | `rescript-language-server` |
+| rmarkdown | ✓ |  | ✓ | `R` |
+| ron | ✓ |  | ✓ |  |
 | ruby | ✓ |  | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | scala | ✓ |  | ✓ | `metals` |
+| solidity | ✓ |  |  | `solc` |
+| sql | ✓ |  |  |  |
 | svelte | ✓ |  | ✓ | `svelteserver` |
+| swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
 | toml | ✓ |  |  |  |
 | tsq | ✓ |  |  |  |
 | tsx | ✓ |  |  | `typescript-language-server` |
 | twig | ✓ |  |  |  |
 | typescript | ✓ |  | ✓ | `typescript-language-server` |
-| vue | ✓ |  |  |  |
+| vue | ✓ |  |  | `vls` |
 | wgsl | ✓ |  |  |  |
 | yaml | ✓ |  | ✓ |  |
 | zig | ✓ |  | ✓ | `zls` |

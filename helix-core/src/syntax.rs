@@ -1,12 +1,11 @@
 use crate::{
+    auto_pairs::AutoPairs,
     chars::char_is_line_ending,
     diagnostic::Severity,
     regex::Regex,
     transaction::{ChangeSet, Operation},
     Rope, RopeSlice, Tendril,
 };
-
-pub use helix_syntax::get_language;
 
 use arc_swap::{ArcSwap, Guard};
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
@@ -17,11 +16,14 @@ use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt,
     path::Path,
+    str::FromStr,
     sync::Arc,
 };
 
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
+
+use helix_loader::grammar::{get_language, load_runtime_file};
 
 fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
 where
@@ -41,8 +43,14 @@ where
         .transpose()
 }
 
+pub fn deserialize_auto_pairs<'de, D>(deserializer: D) -> Result<Option<AutoPairs>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(Option::<AutoPairConfig>::deserialize(deserializer)?.and_then(AutoPairConfig::into))
+}
+
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
 }
@@ -68,7 +76,7 @@ pub struct LanguageConfiguration {
     #[serde(default)]
     pub diagnostic_severity: Severity,
 
-    pub tree_sitter_library: Option<String>, // tree-sitter library name, defaults to language_id
+    pub grammar: Option<String>, // tree-sitter grammar name, defaults to language_id
 
     // content_regex
     #[serde(default, skip_serializing, deserialize_with = "deserialize_regex")]
@@ -84,11 +92,18 @@ pub struct LanguageConfiguration {
     pub indent: Option<IndentationConfiguration>,
 
     #[serde(skip)]
-    pub(crate) indent_query: OnceCell<Option<IndentQuery>>,
+    pub(crate) indent_query: OnceCell<Option<Query>>,
     #[serde(skip)]
     pub(crate) textobject_query: OnceCell<Option<TextObjectQuery>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub debugger: Option<DebugAdapterConfig>,
+
+    /// Automatic insertion of pairs to parentheses, brackets,
+    /// etc. Defaults to true. Optionally, this can be a list of 2-tuples
+    /// to specify a list of characters to pair. This overrides the
+    /// global setting.
+    #[serde(default, skip_serializing, deserialize_with = "deserialize_auto_pairs")]
+    pub auto_pairs: Option<AutoPairs>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -162,15 +177,47 @@ pub struct IndentationConfiguration {
     pub unit: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct IndentQuery {
-    #[serde(default)]
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    pub indent: HashSet<String>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    pub outdent: HashSet<String>,
+/// Configuration for auto pairs
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields, untagged)]
+pub enum AutoPairConfig {
+    /// Enables or disables auto pairing. False means disabled. True means to use the default pairs.
+    Enable(bool),
+
+    /// The mappings of pairs.
+    Pairs(HashMap<char, char>),
+}
+
+impl Default for AutoPairConfig {
+    fn default() -> Self {
+        AutoPairConfig::Enable(true)
+    }
+}
+
+impl From<&AutoPairConfig> for Option<AutoPairs> {
+    fn from(auto_pair_config: &AutoPairConfig) -> Self {
+        match auto_pair_config {
+            AutoPairConfig::Enable(false) => None,
+            AutoPairConfig::Enable(true) => Some(AutoPairs::default()),
+            AutoPairConfig::Pairs(pairs) => Some(AutoPairs::new(pairs.iter())),
+        }
+    }
+}
+
+impl From<AutoPairConfig> for Option<AutoPairs> {
+    fn from(auto_pairs_config: AutoPairConfig) -> Self {
+        (&auto_pairs_config).into()
+    }
+}
+
+impl FromStr for AutoPairConfig {
+    type Err = std::str::ParseBoolError;
+
+    // only do bool parsing for runtime setting
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let enable: bool = s.parse()?;
+        Ok(AutoPairConfig::Enable(enable))
+    }
 }
 
 #[derive(Debug)]
@@ -178,16 +225,56 @@ pub struct TextObjectQuery {
     pub query: Query,
 }
 
+pub enum CapturedNode<'a> {
+    Single(Node<'a>),
+    /// Guarenteed to be not empty
+    Grouped(Vec<Node<'a>>),
+}
+
+impl<'a> CapturedNode<'a> {
+    pub fn start_byte(&self) -> usize {
+        match self {
+            Self::Single(n) => n.start_byte(),
+            Self::Grouped(ns) => ns[0].start_byte(),
+        }
+    }
+
+    pub fn end_byte(&self) -> usize {
+        match self {
+            Self::Single(n) => n.end_byte(),
+            Self::Grouped(ns) => ns.last().unwrap().end_byte(),
+        }
+    }
+
+    pub fn byte_range(&self) -> std::ops::Range<usize> {
+        self.start_byte()..self.end_byte()
+    }
+}
+
 impl TextObjectQuery {
     /// Run the query on the given node and return sub nodes which match given
     /// capture ("function.inside", "class.around", etc).
+    ///
+    /// Captures may contain multiple nodes by using quantifiers (+, *, etc),
+    /// and support for this is partial and could use improvement.
+    ///
+    /// ```query
+    /// ;; supported:
+    /// (comment)+ @capture
+    ///
+    /// ;; unsupported:
+    /// (
+    ///   (comment)+
+    ///   (function)
+    /// ) @capture
+    /// ```
     pub fn capture_nodes<'a>(
         &'a self,
         capture_name: &str,
         node: Node<'a>,
         slice: RopeSlice<'a>,
         cursor: &'a mut QueryCursor,
-    ) -> Option<impl Iterator<Item = Node<'a>>> {
+    ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
         self.capture_nodes_any(&[capture_name], node, slice, cursor)
     }
 
@@ -199,26 +286,34 @@ impl TextObjectQuery {
         node: Node<'a>,
         slice: RopeSlice<'a>,
         cursor: &'a mut QueryCursor,
-    ) -> Option<impl Iterator<Item = Node<'a>>> {
+    ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
         let capture_idx = capture_names
             .iter()
             .find_map(|cap| self.query.capture_index_for_name(cap))?;
-        let captures = cursor.captures(&self.query, node, RopeProvider(slice));
+        let captures = cursor.matches(&self.query, node, RopeProvider(slice));
 
-        captures
-            .filter_map(move |(mat, idx)| {
-                (mat.captures[idx].index == capture_idx).then(|| mat.captures[idx].node)
-            })
-            .into()
+        let nodes = captures.flat_map(move |mat| {
+            let captures = mat.captures.iter().filter(move |c| c.index == capture_idx);
+            let nodes = captures.map(|c| c.node);
+            let pattern_idx = mat.pattern_index;
+            let quantifier = self.query.capture_quantifiers(pattern_idx)[capture_idx as usize];
+
+            let iter: Box<dyn Iterator<Item = CapturedNode>> = match quantifier {
+                CaptureQuantifier::OneOrMore | CaptureQuantifier::ZeroOrMore => {
+                    let nodes: Vec<Node> = nodes.collect();
+                    if nodes.is_empty() {
+                        Box::new(std::iter::empty())
+                    } else {
+                        Box::new(std::iter::once(CapturedNode::Grouped(nodes)))
+                    }
+                }
+                _ => Box::new(nodes.map(CapturedNode::Single)),
+            };
+
+            iter
+        });
+        Some(nodes)
     }
-}
-
-fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
-    let path = crate::RUNTIME_DIR
-        .join("queries")
-        .join(language)
-        .join(filename);
-    std::fs::read_to_string(&path)
 }
 
 fn read_query(language: &str, filename: &str) -> String {
@@ -266,21 +361,16 @@ impl LanguageConfiguration {
         if highlights_query.is_empty() {
             None
         } else {
-            let language = get_language(
-                &crate::RUNTIME_DIR,
-                self.tree_sitter_library
-                    .as_deref()
-                    .unwrap_or(&self.language_id),
-            )
-            .map_err(|e| log::info!("{}", e))
-            .ok()?;
+            let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
+                .map_err(|e| log::info!("{}", e))
+                .ok()?;
             let config = HighlightConfiguration::new(
                 language,
                 &highlights_query,
                 &injections_query,
                 &locals_query,
             )
-            .unwrap(); // TODO: avoid panic
+            .unwrap_or_else(|query_error| panic!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar fetch' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, query_error));
 
             config.configure(scopes);
             Some(Arc::new(config))
@@ -303,13 +393,16 @@ impl LanguageConfiguration {
         self.highlight_config.get().is_some()
     }
 
-    pub fn indent_query(&self) -> Option<&IndentQuery> {
+    pub fn indent_query(&self) -> Option<&Query> {
         self.indent_query
             .get_or_init(|| {
-                let language = self.language_id.to_ascii_lowercase();
-
-                let toml = load_runtime_file(&language, "indents.toml").ok()?;
-                toml::from_slice(toml.as_bytes()).ok()
+                let lang_name = self.language_id.to_ascii_lowercase();
+                let query_text = read_query(&lang_name, "indents.scm");
+                if query_text.is_empty() {
+                    return None;
+                }
+                let lang = self.highlight_config.get()?.as_ref()?.language;
+                Query::new(lang, &query_text).ok()
             })
             .as_ref()
     }
@@ -411,6 +504,13 @@ impl Loader {
             .cloned()
     }
 
+    pub fn language_config_for_language_id(&self, id: &str) -> Option<Arc<LanguageConfiguration>> {
+        self.language_configs
+            .iter()
+            .find(|config| config.language_id == id)
+            .cloned()
+    }
+
     pub fn language_configuration_for_injection_string(
         &self,
         string: &str,
@@ -436,6 +536,10 @@ impl Loader {
         None
     }
 
+    pub fn language_configs(&self) -> impl Iterator<Item = &Arc<LanguageConfiguration>> {
+        self.language_configs.iter()
+    }
+
     pub fn set_scopes(&self, scopes: Vec<String>) {
         self.scopes.store(Arc::new(scopes));
 
@@ -456,7 +560,7 @@ impl Loader {
 
 pub struct TsParser {
     parser: tree_sitter::Parser,
-    cursors: Vec<QueryCursor>,
+    pub cursors: Vec<QueryCursor>,
 }
 
 // could also just use a pool, or a single instance?
@@ -475,9 +579,7 @@ pub struct Syntax {
 }
 
 fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<str> {
-    let start_char = source.byte_to_char(range.start);
-    let end_char = source.byte_to_char(range.end);
-    Cow::from(source.slice(start_char..end_char))
+    Cow::from(source.byte_slice(range))
 }
 
 impl Syntax {
@@ -1009,8 +1111,8 @@ pub(crate) fn generate_edits(
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{iter, mem, ops, str, usize};
 use tree_sitter::{
-    Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError,
-    QueryMatch, Range, TextProvider, Tree,
+    CaptureQuantifier, Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor,
+    QueryError, QueryMatch, Range, TextProvider, Tree,
 };
 
 const CANCELLATION_CHECK_INTERVAL: usize = 100;
@@ -1081,7 +1183,7 @@ struct HighlightIter<'a> {
 }
 
 // Adapter to convert rope chunks to bytes
-struct ChunksBytes<'a> {
+pub struct ChunksBytes<'a> {
     chunks: ropey::iter::Chunks<'a>,
 }
 impl<'a> Iterator for ChunksBytes<'a> {
@@ -1091,14 +1193,12 @@ impl<'a> Iterator for ChunksBytes<'a> {
     }
 }
 
-struct RopeProvider<'a>(RopeSlice<'a>);
+pub struct RopeProvider<'a>(pub RopeSlice<'a>);
 impl<'a> TextProvider<'a> for RopeProvider<'a> {
     type I = ChunksBytes<'a>;
 
     fn text(&mut self, node: Node) -> Self::I {
-        let start_char = self.0.byte_to_char(node.start_byte());
-        let end_char = self.0.byte_to_char(node.end_byte());
-        let fragment = self.0.slice(start_char..end_char);
+        let fragment = self.0.byte_slice(node.start_byte()..node.end_byte());
         ChunksBytes {
             chunks: fragment.chunks(),
         }
@@ -1863,6 +1963,52 @@ mod test {
     use crate::{Rope, Transaction};
 
     #[test]
+    fn test_textobject_queries() {
+        let query_str = r#"
+        (line_comment)+ @quantified_nodes
+        ((line_comment)+) @quantified_nodes_grouped
+        ((line_comment) (line_comment)) @multiple_nodes_grouped
+        "#;
+        let source = Rope::from_str(
+            r#"
+/// a comment on
+/// mutiple lines
+        "#,
+        );
+
+        let loader = Loader::new(Configuration { language: vec![] });
+        let language = get_language("Rust").unwrap();
+
+        let query = Query::new(language, query_str).unwrap();
+        let textobject = TextObjectQuery { query };
+        let mut cursor = QueryCursor::new();
+
+        let config = HighlightConfiguration::new(language, "", "", "").unwrap();
+        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader));
+
+        let root = syntax.tree().root_node();
+        let mut test = |capture, range| {
+            let matches: Vec<_> = textobject
+                .capture_nodes(capture, root, source.slice(..), &mut cursor)
+                .unwrap()
+                .collect();
+
+            assert_eq!(
+                matches[0].byte_range(),
+                range,
+                "@{} expected {:?}",
+                capture,
+                range
+            )
+        };
+
+        test("quantified_nodes", 1..35);
+        // NOTE: Enable after implementing proper node group capturing
+        // test("quantified_nodes_grouped", 1..35);
+        // test("multiple_nodes_grouped", 1..35);
+    }
+
+    #[test]
     fn test_parser() {
         let highlight_names: Vec<String> = [
             "attribute",
@@ -1891,17 +2037,13 @@ mod test {
 
         let loader = Loader::new(Configuration { language: vec![] });
 
-        let language = get_language(&crate::RUNTIME_DIR, "Rust").unwrap();
+        let language = get_language("Rust").unwrap();
         let config = HighlightConfiguration::new(
             language,
-            &std::fs::read_to_string(
-                "../helix-syntax/languages/tree-sitter-rust/queries/highlights.scm",
-            )
-            .unwrap(),
-            &std::fs::read_to_string(
-                "../helix-syntax/languages/tree-sitter-rust/queries/injections.scm",
-            )
-            .unwrap(),
+            &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/highlights.scm")
+                .unwrap(),
+            &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/injections.scm")
+                .unwrap(),
             "", // locals.scm
         )
         .unwrap();
@@ -1989,7 +2131,7 @@ mod test {
     #[test]
     fn test_load_runtime_file() {
         // Test to make sure we can load some data from the runtime directory.
-        let contents = load_runtime_file("rust", "indents.toml").unwrap();
+        let contents = load_runtime_file("rust", "indents.scm").unwrap();
         assert!(!contents.is_empty());
 
         let results = load_runtime_file("rust", "does-not-exist");

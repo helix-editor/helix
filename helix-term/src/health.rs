@@ -1,0 +1,285 @@
+use crossterm::style::{Color, Print, Stylize};
+use helix_core::config::{default_syntax_loader, user_syntax_loader};
+use helix_loader::grammar::load_runtime_file;
+use std::io::Write;
+
+#[derive(Copy, Clone)]
+pub enum TsFeature {
+    Highlight,
+    TextObject,
+    AutoIndent,
+}
+
+impl TsFeature {
+    pub fn all() -> &'static [Self] {
+        &[Self::Highlight, Self::TextObject, Self::AutoIndent]
+    }
+
+    pub fn runtime_filename(&self) -> &'static str {
+        match *self {
+            Self::Highlight => "highlights.scm",
+            Self::TextObject => "textobjects.scm",
+            Self::AutoIndent => "indents.scm",
+        }
+    }
+
+    pub fn long_title(&self) -> &'static str {
+        match *self {
+            Self::Highlight => "Syntax Highlighting",
+            Self::TextObject => "Treesitter Textobjects",
+            Self::AutoIndent => "Auto Indent",
+        }
+    }
+
+    pub fn short_title(&self) -> &'static str {
+        match *self {
+            Self::Highlight => "Highlight",
+            Self::TextObject => "Textobject",
+            Self::AutoIndent => "Indent",
+        }
+    }
+}
+
+/// Display general diagnostics.
+pub fn general() -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+
+    let config_file = helix_loader::config_file();
+    let lang_file = helix_loader::lang_config_file();
+    let log_file = helix_loader::log_file();
+    let rt_dir = helix_loader::runtime_dir();
+
+    if config_file.exists() {
+        writeln!(stdout, "Config file: {}", config_file.display())?;
+    } else {
+        writeln!(stdout, "Config file: default")?;
+    }
+    if lang_file.exists() {
+        writeln!(stdout, "Language file: {}", lang_file.display())?;
+    } else {
+        writeln!(stdout, "Language file: default")?;
+    }
+    writeln!(stdout, "Log file: {}", log_file.display())?;
+    writeln!(stdout, "Runtime directory: {}", rt_dir.display())?;
+
+    if let Ok(path) = std::fs::read_link(&rt_dir) {
+        let msg = format!("Runtime directory is symlinked to {}", path.display());
+        writeln!(stdout, "{}", msg.yellow())?;
+    }
+    if !rt_dir.exists() {
+        writeln!(stdout, "{}", "Runtime directory does not exist.".red())?;
+    }
+    if rt_dir.read_dir().ok().map(|it| it.count()) == Some(0) {
+        writeln!(stdout, "{}", "Runtime directory is empty.".red())?;
+    }
+
+    Ok(())
+}
+
+pub fn languages_all() -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+
+    let mut syn_loader_conf = match user_syntax_loader() {
+        Ok(conf) => conf,
+        Err(err) => {
+            let stderr = std::io::stderr();
+            let mut stderr = stderr.lock();
+
+            writeln!(
+                stderr,
+                "{}: {}",
+                "Error parsing user language config".red(),
+                err
+            )?;
+            writeln!(stderr, "{}", "Using default language config".yellow())?;
+            default_syntax_loader()
+        }
+    };
+
+    let mut headings = vec!["Language", "LSP", "DAP"];
+
+    for feat in TsFeature::all() {
+        headings.push(feat.short_title())
+    }
+
+    let terminal_cols = crossterm::terminal::size().map(|(c, _)| c).unwrap_or(80);
+    let column_width = terminal_cols as usize / headings.len();
+
+    let column = |item: &str, color: Color| {
+        let data = format!(
+            "{:width$}",
+            item.get(..column_width - 2)
+                .map(|s| format!("{}…", s))
+                .unwrap_or_else(|| item.to_string()),
+            width = column_width,
+        )
+        .stylize()
+        .with(color);
+
+        // We can't directly use println!() because of
+        // https://github.com/crossterm-rs/crossterm/issues/589
+        let _ = crossterm::execute!(std::io::stdout(), Print(data));
+    };
+
+    for heading in headings {
+        column(heading, Color::White);
+    }
+    writeln!(stdout)?;
+
+    syn_loader_conf
+        .language
+        .sort_unstable_by_key(|l| l.language_id.clone());
+
+    let check_binary = |cmd: Option<String>| match cmd {
+        Some(cmd) => match which::which(&cmd) {
+            Ok(_) => column(&format!("✔ {}", cmd), Color::Green),
+            Err(_) => column(&format!("✘ {}", cmd), Color::Red),
+        },
+        None => column("None", Color::Yellow),
+    };
+
+    for lang in &syn_loader_conf.language {
+        column(&lang.language_id, Color::Reset);
+
+        let lsp = lang
+            .language_server
+            .as_ref()
+            .map(|lsp| lsp.command.to_string());
+        check_binary(lsp);
+
+        let dap = lang.debugger.as_ref().map(|dap| dap.command.to_string());
+        check_binary(dap);
+
+        for ts_feat in TsFeature::all() {
+            match load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok() {
+                true => column("✔", Color::Green),
+                false => column("✘", Color::Red),
+            }
+        }
+
+        writeln!(stdout)?;
+    }
+
+    Ok(())
+}
+
+/// Display diagnostics pertaining to a particular language (LSP,
+/// highlight queries, etc).
+pub fn language(lang_str: String) -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+
+    let syn_loader_conf = match user_syntax_loader() {
+        Ok(conf) => conf,
+        Err(err) => {
+            let stderr = std::io::stderr();
+            let mut stderr = stderr.lock();
+
+            writeln!(
+                stderr,
+                "{}: {}",
+                "Error parsing user language config".red(),
+                err
+            )?;
+            writeln!(stderr, "{}", "Using default language config".yellow())?;
+            default_syntax_loader()
+        }
+    };
+
+    let lang = match syn_loader_conf
+        .language
+        .iter()
+        .find(|l| l.language_id == lang_str)
+    {
+        Some(l) => l,
+        None => {
+            let msg = format!("Language '{}' not found", lang_str);
+            writeln!(stdout, "{}", msg.red())?;
+            let suggestions: Vec<&str> = syn_loader_conf
+                .language
+                .iter()
+                .filter(|l| l.language_id.starts_with(lang_str.chars().next().unwrap()))
+                .map(|l| l.language_id.as_str())
+                .collect();
+            if !suggestions.is_empty() {
+                let suggestions = suggestions.join(", ");
+                writeln!(
+                    stdout,
+                    "Did you mean one of these: {} ?",
+                    suggestions.yellow()
+                )?;
+            }
+            return Ok(());
+        }
+    };
+
+    probe_protocol(
+        "language server",
+        lang.language_server
+            .as_ref()
+            .map(|lsp| lsp.command.to_string()),
+    )?;
+
+    probe_protocol(
+        "debug adapter",
+        lang.debugger.as_ref().map(|dap| dap.command.to_string()),
+    )?;
+
+    for ts_feat in TsFeature::all() {
+        probe_treesitter_feature(&lang_str, *ts_feat)?
+    }
+
+    Ok(())
+}
+
+/// Display diagnostics about LSP and DAP.
+fn probe_protocol(protocol_name: &str, server_cmd: Option<String>) -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+
+    let cmd_name = match server_cmd {
+        Some(ref cmd) => cmd.as_str().green(),
+        None => "None".yellow(),
+    };
+    writeln!(stdout, "Configured {}: {}", protocol_name, cmd_name)?;
+
+    if let Some(cmd) = server_cmd {
+        let path = match which::which(&cmd) {
+            Ok(path) => path.display().to_string().green(),
+            Err(_) => "Not found in $PATH".to_string().red(),
+        };
+        writeln!(stdout, "Binary for {}: {}", protocol_name, path)?;
+    }
+
+    Ok(())
+}
+
+/// Display diagnostics about a feature that requires tree-sitter
+/// query files (highlights, textobjects, etc).
+fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+
+    let found = match load_runtime_file(lang, feature.runtime_filename()).is_ok() {
+        true => "✔".green(),
+        false => "✘".red(),
+    };
+    writeln!(stdout, "{} queries: {}", feature.short_title(), found)?;
+
+    Ok(())
+}
+
+pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
+    match health_arg.as_deref() {
+        Some("all") => languages_all()?,
+        Some(lang) => language(lang.to_string())?,
+        None => {
+            general()?;
+            writeln!(std::io::stdout().lock())?;
+            languages_all()?;
+        }
+    }
+    Ok(())
+}

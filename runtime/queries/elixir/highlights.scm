@@ -82,11 +82,11 @@
 (integer) @constant.numeric.integer
 (float) @constant.numeric.float
 
-(alias) @type
+(alias) @namespace
 
 (call
   target: (dot
-    left: (atom) @type))
+    left: (atom) @namespace))
 
 (char) @constant.character
 
@@ -217,5 +217,3 @@
   "<<"
   ">>"
 ] @punctuation.bracket
-
-(ERROR) @warning

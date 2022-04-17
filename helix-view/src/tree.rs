@@ -45,8 +45,6 @@ impl Node {
     }
 }
 
-// TODO: screen coord to container + container coordinate helpers
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Layout {
     Horizontal,
@@ -515,27 +513,6 @@ impl Tree {
         // For now that's okay though, since it's unlikely you'll be able to open a large enough
         // number of splits to notice.
 
-        // current = focus
-        // let found = loop do {
-        //   node = focus.parent;
-        //   let found = node.next_sibling_of(current)
-        //   if some {
-        //       break found;
-        //   }
-        //   // else
-        //   if node == root {
-        //       return first child of root;
-        //   };
-        //   current = parent;
-        //  }
-        // }
-        //
-        // use found next sibling
-        // loop do {
-        //   if found = view -> focus = found, return
-        //   if found = container -> found = first child
-        // }
-
         let mut views = self
             .traverse()
             .skip_while(|&(id, _view)| id != self.focus)
@@ -591,6 +568,7 @@ impl<'a> Iterator for Traverse<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::editor::GutterType;
     use crate::DocumentId;
 
     #[test]
@@ -601,22 +579,34 @@ mod test {
             width: 180,
             height: 80,
         });
-        let mut view = View::new(DocumentId::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
         view.area = Rect::new(0, 0, 180, 80);
         tree.insert(view);
 
         let l0 = tree.focus;
-        let view = View::new(DocumentId::default());
+        let view = View::new(
+            DocumentId::default(),
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
         tree.split(view, Layout::Vertical);
         let r0 = tree.focus;
 
         tree.focus = l0;
-        let view = View::new(DocumentId::default());
+        let view = View::new(
+            DocumentId::default(),
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
         tree.split(view, Layout::Horizontal);
         let l1 = tree.focus;
 
         tree.focus = l0;
-        let view = View::new(DocumentId::default());
+        let view = View::new(
+            DocumentId::default(),
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
         tree.split(view, Layout::Vertical);
         let l2 = tree.focus;
 

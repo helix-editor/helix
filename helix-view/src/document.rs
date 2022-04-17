@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Context, Error};
+use helix_core::auto_pairs::AutoPairs;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::cell::Cell;
@@ -20,7 +21,7 @@ use helix_core::{
 };
 use helix_lsp::util::LspFormatting;
 
-use crate::{DocumentId, ViewId};
+use crate::{DocumentId, Editor, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -98,7 +99,7 @@ pub struct Document {
     pub line_ending: LineEnding,
 
     syntax: Option<Syntax>,
-    // /// Corresponding language scope name. Usually `source.<lang>`.
+    /// Corresponding language scope name. Usually `source.<lang>`.
     pub(crate) language: Option<Arc<LanguageConfiguration>>,
 
     /// Pending changes since last history commit.
@@ -411,7 +412,11 @@ impl Document {
         let offset_encoding = language_server.offset_encoding();
         let request = language_server.text_document_formatting(
             self.identifier(),
-            lsp::FormattingOptions::default(),
+            lsp::FormattingOptions {
+                tab_size: self.tab_width() as u32,
+                insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
+                ..Default::default()
+            },
             None,
         )?;
 
@@ -429,15 +434,16 @@ impl Document {
         Some(fut)
     }
 
-    pub fn save(&mut self) -> impl Future<Output = Result<(), anyhow::Error>> {
-        self.save_impl::<futures_util::future::Ready<_>>(None)
+    pub fn save(&mut self, force: bool) -> impl Future<Output = Result<(), anyhow::Error>> {
+        self.save_impl::<futures_util::future::Ready<_>>(None, force)
     }
 
     pub fn format_and_save(
         &mut self,
         formatting: Option<impl Future<Output = LspFormatting>>,
+        force: bool,
     ) -> impl Future<Output = anyhow::Result<()>> {
-        self.save_impl(formatting)
+        self.save_impl(formatting, force)
     }
 
     // TODO: do we need some way of ensuring two save operations on the same doc can't run at once?
@@ -449,6 +455,7 @@ impl Document {
     fn save_impl<F: Future<Output = LspFormatting>>(
         &mut self,
         formatting: Option<F>,
+        force: bool,
     ) -> impl Future<Output = Result<(), anyhow::Error>> {
         // we clone and move text + path into the future so that we asynchronously save the current
         // state without blocking any further edits.
@@ -470,7 +477,11 @@ impl Document {
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
-                    bail!("can't save file, parent directory does not exist");
+                    if force {
+                        std::fs::DirBuilder::new().recursive(true).create(parent)?;
+                    } else {
+                        bail!("can't save file, parent directory does not exist");
+                    }
                 }
             }
 
@@ -599,6 +610,17 @@ impl Document {
     pub fn set_language2(&mut self, scope: &str, config_loader: Arc<syntax::Loader>) {
         let language_config = config_loader.language_config_for_scope(scope);
 
+        self.set_language(language_config, Some(config_loader));
+    }
+
+    /// Set the programming language for the file if you know the language but don't have the
+    /// [`syntax::LanguageConfiguration`] for it.
+    pub fn set_language_by_language_id(
+        &mut self,
+        language_id: &str,
+        config_loader: Arc<syntax::Loader>,
+    ) {
+        let language_config = config_loader.language_config_for_language_id(language_id);
         self.set_language(language_config, Some(config_loader));
     }
 
@@ -945,6 +967,28 @@ impl Document {
         self.diagnostics = diagnostics;
         self.diagnostics
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
+    }
+
+    /// Get the document's auto pairs. If the document has a recognized
+    /// language config with auto pairs configured, returns that;
+    /// otherwise, falls back to the global auto pairs config. If the global
+    /// config is false, then ignore language settings.
+    pub fn auto_pairs<'a>(&'a self, editor: &'a Editor) -> Option<&'a AutoPairs> {
+        let global_config = (editor.auto_pairs).as_ref();
+
+        // NOTE: If the user specifies the global auto pairs config as false, then
+        //       we want to disable it globally regardless of language settings
+        #[allow(clippy::question_mark)]
+        {
+            if global_config.is_none() {
+                return None;
+            }
+        }
+
+        match &self.language {
+            Some(lang) => lang.as_ref().auto_pairs.as_ref().or(global_config),
+            None => global_config,
+        }
     }
 }
 

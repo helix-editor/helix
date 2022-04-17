@@ -5,6 +5,8 @@ To override global configuration parameters, create a `config.toml` file located
 * Linux and Mac: `~/.config/helix/config.toml`
 * Windows: `%AppData%\helix\config.toml`
 
+> Hint: You can easily open the config file by typing `:config-open` within Helix normal mode.
+
 Example config:
 
 ```toml
@@ -35,18 +37,26 @@ hidden = false
 | `scroll-lines` | Number of lines to scroll per scroll wheel step. | `3` |
 | `shell` | Shell to use when running external commands. | Unix: `["sh", "-c"]`<br/>Windows: `["cmd", "/C"]` |
 | `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers. | `absolute` |
-| `smart-case` | Enable smart case regex searching (case insensitive unless pattern contains upper case characters) | `true` |
-| `auto-pairs` | Enable automatic insertion of pairs to parenthese, brackets, etc. | `true` |
+| `gutters` | Gutters to display: Available are `diagnostics` and `line-numbers`, note that `diagnostics` also includes other features like breakpoints | `["diagnostics", "line-numbers"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
 | `auto-info` | Whether to display infoboxes | `true` |
 | `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. | `false` |
 
+### `[editor.lsp]` Section
+
+| Key                | Description                                 | Default |
+| ---                | -----------                                 | ------- |
+| `display-messages` | Display LSP progress messages below statusline[^1] | `false` |
+
+[^1]: A progress spinner is always shown in the statusline beside the file path.
+
 ### `[editor.cursor-shape]` Section
 
 Defines the shape of cursor in each mode. Note that due to limitations
 of the terminal environment, only the primary cursor can change shape.
+Valid values for these options are `block`, `bar`, `underline`, or `none`.
 
 | Key      | Description                                | Default |
 | ---      | -----------                                | ------- |
@@ -76,10 +86,53 @@ available, which is not defined by default.
 |`git-exclude` | Enables reading `.git/info/exclude` files. | true
 |`max-depth` | Set with an integer value for maximum depth to recurse. | Defaults to `None`.
 
-## LSP
+### `[editor.auto-pairs]` Section
 
-To display all language server messages in the status line add the following to your `config.toml`:
+Enable automatic insertion of pairs to parentheses, brackets, etc. Can be
+a simple boolean value, or a specific mapping of pairs of single characters.
+
+| Key | Description |
+| --- | ----------- |
+| `false` | Completely disable auto pairing, regardless of language-specific settings
+| `true` | Use the default pairs: <code>(){}[]''""``</code>
+| Mapping of pairs | e.g. `{ "(" =  ")", "{" = "}", ... }`
+
+Example
+
 ```toml
-[lsp]
-display-messages = true
+[editor.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+'<' = '>'
 ```
+
+Additionally, this setting can be used in a language config. Unless
+the editor setting is `false`, this will override the editor config in
+documents with this language.
+
+Example `languages.toml` that adds <> and removes ''
+
+```toml
+[[language]]
+name = "rust"
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+'<' = '>'
+```
+
+### `[editor.search]` Section
+
+Search specific options.
+
+| Key | Description | Default |
+|--|--|---------|
+| `smart-case` | Enable smart case regex searching (case insensitive unless pattern contains upper case characters) | `true` |
+| `wrap-around`| Whether the search should wrap after depleting the matches | `true` |

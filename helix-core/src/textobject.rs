@@ -4,7 +4,8 @@ use ropey::RopeSlice;
 use tree_sitter::{Node, QueryCursor};
 
 use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
-use crate::graphemes::next_grapheme_boundary;
+use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
+use crate::line_ending::rope_is_line_ending;
 use crate::movement::Direction;
 use crate::surround;
 use crate::syntax::LanguageConfiguration;
@@ -109,6 +110,92 @@ pub fn textobject_word(
         }
         TextObject::Movement => unreachable!(),
     }
+}
+
+pub fn textobject_paragraph(
+    slice: RopeSlice,
+    range: Range,
+    textobject: TextObject,
+    count: usize,
+) -> Range {
+    let mut line = range.cursor_line(slice);
+    let prev_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
+    let curr_line_empty = rope_is_line_ending(slice.line(line));
+    let next_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
+    let last_char =
+        prev_grapheme_boundary(slice, slice.line_to_char(line + 1)) == range.cursor(slice);
+    let prev_empty_to_line = prev_line_empty && !curr_line_empty;
+    let curr_empty_to_line = curr_line_empty && !next_line_empty;
+
+    // skip character before paragraph boundary
+    let mut line_back = line; // line but backwards
+    if prev_empty_to_line || curr_empty_to_line {
+        line_back += 1;
+    }
+    // do not include current paragraph on paragraph end (include next)
+    if !(curr_empty_to_line && last_char) {
+        let mut lines = slice.lines_at(line_back);
+        lines.reverse();
+        let mut lines = lines.map(rope_is_line_ending).peekable();
+        while lines.next_if(|&e| e).is_some() {
+            line_back -= 1;
+        }
+        while lines.next_if(|&e| !e).is_some() {
+            line_back -= 1;
+        }
+    }
+
+    // skip character after paragraph boundary
+    if curr_empty_to_line && last_char {
+        line += 1;
+    }
+    let mut lines = slice.lines_at(line).map(rope_is_line_ending).peekable();
+    let mut count_done = 0; // count how many non-whitespace paragraphs done
+    for _ in 0..count {
+        let mut done = false;
+        while lines.next_if(|&e| !e).is_some() {
+            line += 1;
+            done = true;
+        }
+        while lines.next_if(|&e| e).is_some() {
+            line += 1;
+        }
+        count_done += done as usize;
+    }
+
+    // search one paragraph backwards for last paragraph
+    // makes `map` at the end of the paragraph with trailing newlines useful
+    let last_paragraph = count_done != count && lines.peek().is_none();
+    if last_paragraph {
+        let mut lines = slice.lines_at(line_back);
+        lines.reverse();
+        let mut lines = lines.map(rope_is_line_ending).peekable();
+        while lines.next_if(|&e| e).is_some() {
+            line_back -= 1;
+        }
+        while lines.next_if(|&e| !e).is_some() {
+            line_back -= 1;
+        }
+    }
+
+    // handle last whitespaces part separately depending on textobject
+    match textobject {
+        TextObject::Around => {}
+        TextObject::Inside => {
+            // remove last whitespace paragraph
+            let mut lines = slice.lines_at(line);
+            lines.reverse();
+            let mut lines = lines.map(rope_is_line_ending).peekable();
+            while lines.next_if(|&e| e).is_some() {
+                line -= 1;
+            }
+        }
+        TextObject::Movement => unreachable!(),
+    }
+
+    let anchor = slice.line_to_char(line_back);
+    let head = slice.line_to_char(line);
+    Range::new(anchor, head)
 }
 
 pub fn textobject_surround(
@@ -285,6 +372,91 @@ mod test {
                     case
                 );
             }
+        }
+    }
+
+    #[test]
+    fn test_textobject_paragraph_inside_single() {
+        let tests = [
+            ("#[|]#", "#[|]#"),
+            ("firs#[t|]#\n\nparagraph\n\n", "#[first\n|]#\nparagraph\n\n"),
+            (
+                "second\n\npa#[r|]#agraph\n\n",
+                "second\n\n#[paragraph\n|]#\n",
+            ),
+            ("#[f|]#irst char\n\n", "#[first char\n|]#\n"),
+            ("last char\n#[\n|]#", "#[last char\n|]#\n"),
+            (
+                "empty to line\n#[\n|]#paragraph boundary\n\n",
+                "empty to line\n\n#[paragraph boundary\n|]#\n",
+            ),
+            (
+                "line to empty\n\n#[p|]#aragraph boundary\n\n",
+                "line to empty\n\n#[paragraph boundary\n|]#\n",
+            ),
+        ];
+
+        for (before, expected) in tests {
+            let (s, selection) = crate::test::print(before);
+            let text = Rope::from(s.as_str());
+            let selection = selection
+                .transform(|r| textobject_paragraph(text.slice(..), r, TextObject::Inside, 1));
+            let actual = crate::test::plain(&s, selection);
+            assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
+        }
+    }
+
+    #[test]
+    fn test_textobject_paragraph_inside_double() {
+        let tests = [
+            (
+                "last two\n\n#[p|]#aragraph\n\nwithout whitespaces\n\n",
+                "last two\n\n#[paragraph\n\nwithout whitespaces\n|]#\n",
+            ),
+            (
+                "last two\n#[\n|]#paragraph\n\nwithout whitespaces\n\n",
+                "last two\n\n#[paragraph\n\nwithout whitespaces\n|]#\n",
+            ),
+        ];
+
+        for (before, expected) in tests {
+            let (s, selection) = crate::test::print(before);
+            let text = Rope::from(s.as_str());
+            let selection = selection
+                .transform(|r| textobject_paragraph(text.slice(..), r, TextObject::Inside, 2));
+            let actual = crate::test::plain(&s, selection);
+            assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
+        }
+    }
+
+    #[test]
+    fn test_textobject_paragraph_around_single() {
+        let tests = [
+            ("#[|]#", "#[|]#"),
+            ("firs#[t|]#\n\nparagraph\n\n", "#[first\n\n|]#paragraph\n\n"),
+            (
+                "second\n\npa#[r|]#agraph\n\n",
+                "second\n\n#[paragraph\n\n|]#",
+            ),
+            ("#[f|]#irst char\n\n", "#[first char\n\n|]#"),
+            ("last char\n#[\n|]#", "#[last char\n\n|]#"),
+            (
+                "empty to line\n#[\n|]#paragraph boundary\n\n",
+                "empty to line\n\n#[paragraph boundary\n\n|]#",
+            ),
+            (
+                "line to empty\n\n#[p|]#aragraph boundary\n\n",
+                "line to empty\n\n#[paragraph boundary\n\n|]#",
+            ),
+        ];
+
+        for (before, expected) in tests {
+            let (s, selection) = crate::test::print(before);
+            let text = Rope::from(s.as_str());
+            let selection = selection
+                .transform(|r| textobject_paragraph(text.slice(..), r, TextObject::Around, 1));
+            let actual = crate::test::plain(&s, selection);
+            assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
 

@@ -1,10 +1,11 @@
 use crate::compositor::{Component, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent};
+use helix_view::editor::CompleteAction;
 use tui::buffer::Buffer as Surface;
 
 use std::borrow::Cow;
 
-use helix_core::Transaction;
+use helix_core::{Change, Transaction};
 use helix_view::{graphics::Rect, Document, Editor};
 
 use crate::commands;
@@ -92,13 +93,14 @@ impl Completion {
                 start_offset: usize,
                 trigger_offset: usize,
             ) -> Transaction {
-                if let Some(edit) = &item.text_edit {
+                let transaction = if let Some(edit) = &item.text_edit {
                     let edit = match edit {
                         lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
                         lsp::CompletionTextEdit::InsertAndReplace(item) => {
                             unimplemented!("completion: insert_and_replace {:?}", item)
                         }
                     };
+
                     util::generate_transaction_from_edits(
                         doc.text(),
                         vec![edit],
@@ -114,7 +116,16 @@ impl Completion {
                         doc.text(),
                         vec![(trigger_offset, trigger_offset, Some(text.into()))].into_iter(),
                     )
-                }
+                };
+
+                transaction
+            }
+
+            fn completion_changes(transaction: &Transaction, trigger_offset: usize) -> Vec<Change> {
+                transaction
+                    .changes_iter()
+                    .filter(|(start, end, _)| (*start..=*end).contains(&trigger_offset))
+                    .collect()
             }
 
             let (view, doc) = current!(editor);
@@ -123,7 +134,9 @@ impl Completion {
             doc.restore(view.id);
 
             match event {
-                PromptEvent::Abort => {}
+                PromptEvent::Abort => {
+                    editor.last_completion = None;
+                }
                 PromptEvent::Update => {
                     // always present here
                     let item = item.unwrap();
@@ -138,8 +151,12 @@ impl Completion {
 
                     // initialize a savepoint
                     doc.savepoint();
-
                     doc.apply(&transaction, view.id);
+
+                    editor.last_completion = Some(CompleteAction {
+                        trigger_offset,
+                        changes: completion_changes(&transaction, trigger_offset),
+                    });
                 }
                 PromptEvent::Validate => {
                     // always present here
@@ -152,20 +169,30 @@ impl Completion {
                         start_offset,
                         trigger_offset,
                     );
+
                     doc.apply(&transaction, view.id);
 
+                    editor.last_completion = Some(CompleteAction {
+                        trigger_offset,
+                        changes: completion_changes(&transaction, trigger_offset),
+                    });
+
                     // apply additional edits, mostly used to auto import unqualified types
-                    let resolved_additional_text_edits = if item.additional_text_edits.is_some() {
+                    let resolved_item = if item
+                        .additional_text_edits
+                        .as_ref()
+                        .map(|edits| !edits.is_empty())
+                        .unwrap_or(false)
+                    {
                         None
                     } else {
                         Self::resolve_completion_item(doc, item.clone())
-                            .and_then(|item| item.additional_text_edits)
                     };
 
-                    if let Some(additional_edits) = item
-                        .additional_text_edits
+                    if let Some(additional_edits) = resolved_item
                         .as_ref()
-                        .or_else(|| resolved_additional_text_edits.as_ref())
+                        .and_then(|item| item.additional_text_edits.as_ref())
+                        .or(item.additional_text_edits.as_ref())
                     {
                         if !additional_edits.is_empty() {
                             let transaction = util::generate_transaction_from_edits(
@@ -257,18 +284,6 @@ impl Completion {
     }
 }
 
-// need to:
-// - trigger on the right trigger char
-//   - detect previous open instance and recycle
-// - update after input, but AFTER the document has changed
-// - if no more matches, need to auto close
-//
-// missing bits:
-// - a more robust hook system: emit to a channel, process in main loop
-// - a way to find specific layers in compositor
-// - components register for hooks, then unregister when terminated
-// ... since completion is a special case, maybe just build it into doc/render?
-
 impl Component for Completion {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         // let the Editor handle Esc instead
@@ -276,7 +291,7 @@ impl Component for Completion {
             code: KeyCode::Esc, ..
         }) = event
         {
-            return EventResult::Ignored;
+            return EventResult::Ignored(None);
         }
         self.popup.handle_event(event, cx)
     }
@@ -305,8 +320,6 @@ impl Component for Completion {
             let coords = helix_core::visual_coords_at_pos(text, cursor_pos, doc.tab_width());
             let cursor_pos = (coords.row - view.offset.row) as u16;
 
-            let markdown_ui =
-                |content, syn_loader| Markdown::new(content, syn_loader).style_group("completion");
             let mut markdown_doc = match &option.documentation {
                 Some(lsp::Documentation::String(contents))
                 | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
@@ -314,7 +327,7 @@ impl Component for Completion {
                     value: contents,
                 })) => {
                     // TODO: convert to wrapped text
-                    markdown_ui(
+                    Markdown::new(
                         format!(
                             "```{}\n{}\n```\n{}",
                             language,
@@ -329,7 +342,7 @@ impl Component for Completion {
                     value: contents,
                 })) => {
                     // TODO: set language based on doc scope
-                    markdown_ui(
+                    Markdown::new(
                         format!(
                             "```{}\n{}\n```\n{}",
                             language,
@@ -343,7 +356,7 @@ impl Component for Completion {
                     // TODO: copied from above
 
                     // TODO: set language based on doc scope
-                    markdown_ui(
+                    Markdown::new(
                         format!(
                             "```{}\n{}\n```",
                             language,
