@@ -413,7 +413,9 @@ impl LanguageConfiguration {
                 let lang_name = self.language_id.to_ascii_lowercase();
                 let query_text = read_query(&lang_name, "textobjects.scm");
                 let lang = self.highlight_config.get()?.as_ref()?.language;
-                let query = Query::new(lang, &query_text).ok()?;
+                let query = Query::new(lang, &query_text)
+                    .map_err(|e| log::error!("Failed to parse textobjects.scm queries: {}", e))
+                    .ok()?;
                 Some(TextObjectQuery { query })
             })
             .as_ref()
