@@ -342,61 +342,70 @@ impl EditorView {
                     // `unwrap_or_else` part is for off-the-end indices of
                     // the rope, to allow cursor highlighting at the end
                     // of the rope.
-                    let text = text.get_slice(start..end).unwrap_or_else(|| " ".into());
+                    let mut text = text.get_slice(start..end).unwrap_or_else(|| " ".into());
                     let style = spans
                         .iter()
                         .fold(text_style, |acc, span| acc.patch(theme.highlight(span.0)));
 
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
-                    for grapheme in RopeGraphemes::new(text) {
-                        let out_of_bounds = visual_x < offset.col as u16
-                            || visual_x >= viewport.width + offset.col as u16;
+                    'inner: loop {
+                        for grapheme in RopeGraphemes::new(text) {
+                            let out_of_bounds = visual_x < offset.col as u16;
+                            let skip = visual_x >= viewport.width + offset.col as u16;
 
-                        if LineEnding::from_rope_slice(&grapheme).is_some() {
-                            if !out_of_bounds {
-                                // we still want to render an empty cell with the style
-                                surface.set_string(
-                                    viewport.x + visual_x - offset.col as u16,
-                                    viewport.y + line,
-                                    " ",
-                                    style,
-                                );
-                            }
+                            if skip {
+                                visual_x = 0;
+                                line += 1;
+                                text = text.slice(text.line_to_char(1)..);
+                                continue 'inner;
+                            } else if LineEnding::from_rope_slice(&grapheme).is_some() {
+                                if !out_of_bounds {
+                                    // we still want to render an empty cell with the style
+                                    surface.set_string(
+                                        viewport.x + visual_x - offset.col as u16,
+                                        viewport.y + line,
+                                        " ",
+                                        style,
+                                    );
+                                }
 
-                            visual_x = 0;
-                            line += 1;
+                                visual_x = 0;
+                                line += 1;
 
-                            // TODO: with proper iter this shouldn't be necessary
-                            if line >= viewport.height {
-                                break 'outer;
-                            }
-                        } else {
-                            let grapheme = Cow::from(grapheme);
-
-                            let (grapheme, width) = if grapheme == "\t" {
-                                // make sure we display tab as appropriate amount of spaces
-                                let visual_tab_width = tab_width - (visual_x as usize % tab_width);
-                                (&tab[..visual_tab_width], visual_tab_width)
+                                // TODO: with proper iter this shouldn't be necessary
+                                if line >= viewport.height {
+                                    break 'outer;
+                                }
                             } else {
-                                // Cow will prevent allocations if span contained in a single slice
-                                // which should really be the majority case
-                                let width = grapheme_width(&grapheme);
-                                (grapheme.as_ref(), width)
-                            };
+                                let grapheme = Cow::from(grapheme);
 
-                            if !out_of_bounds {
-                                // if we're offscreen just keep going until we hit a new line
-                                surface.set_string(
-                                    viewport.x + visual_x - offset.col as u16,
-                                    viewport.y + line,
-                                    grapheme,
-                                    style,
-                                );
+                                let (grapheme, width) = if grapheme == "\t" {
+                                    // make sure we display tab as appropriate amount of spaces
+                                    let visual_tab_width =
+                                        tab_width - (visual_x as usize % tab_width);
+                                    (&tab[..visual_tab_width], visual_tab_width)
+                                } else {
+                                    // Cow will prevent allocations if span contained in a single slice
+                                    // which should really be the majority case
+                                    let width = grapheme_width(&grapheme);
+                                    (grapheme.as_ref(), width)
+                                };
+
+                                if !out_of_bounds {
+                                    // if we're offscreen just keep going until we hit a new line
+                                    surface.set_string(
+                                        viewport.x + visual_x - offset.col as u16,
+                                        viewport.y + line,
+                                        grapheme,
+                                        style,
+                                    );
+                                }
+
+                                visual_x = visual_x.saturating_add(width as u16);
                             }
-
-                            visual_x = visual_x.saturating_add(width as u16);
                         }
+                        break 'inner;
                     }
                 }
             }
