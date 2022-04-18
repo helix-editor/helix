@@ -310,22 +310,22 @@ _________________________________________________________________
 =                        CHAPTER 2 RECAP                        =
 =================================================================
 
- * Press w to select forward until the next word.
-   * Press e to select to the end of the current word.
-   * Press b to select backward to the start of the current word.
+ * Type w to select forward until the next word.
+   * Type e to select to the end of the current word.
+   * Type b to select backward to the start of the current word.
    * Use uppercase counterparts, W,E,B, to traverse WORDS.
 
  * Typing d deletes the entire selection, so you can delete a
    word forward by typing wd.
 
- * Press c to delete the selection and enter Insert mode.
+ * Type c to delete the selection and enter Insert mode.
 
- * Press a number before a motion to repeat it that many times.
+ * Type a number before a motion to repeat it that many times.
 
- * Press x to select the entire current line. Press x again to
+ * Type x to select the entire current line. Type x again to
    select the next line.
 
- * Press u to undo. Press U to redo.
+ * Type u to undo. Type U to redo.
 
 
 =================================================================
