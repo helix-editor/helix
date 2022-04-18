@@ -427,7 +427,7 @@ _________________________________________________________________
  1. Move the cursor to the line below marked -->. Place the
     cursor on the first dash.
  2. Press f[ to select to the square bracket.
- 3. press d to delete your selection.
+ 3. Press d to delete your selection.
  4. Go to the end of the line and repeat with F].
  5. Move to the second line marked -->, just after the arrow.
  6. Use t and T to delete the dashes around the sentence.
@@ -508,8 +508,7 @@ _________________________________________________________________
 =                          4.2 MACROS                           =
 =================================================================
 
- Macros are a way to record a set of actions that you want
- to repeat.
+ Macros are a way to record a set of actions you want to repeat.
 
  Press Q to start recording a macro, you should see a popup at
  the bottom of your screen. Press Q again to stop recording.
@@ -526,6 +525,7 @@ _________________________________________________________________
  --> ... sentence doesn't have it's first and last ... .
  --> ... sentence doesn't have it's first and last ... .
      This sentence doesn't have it's first and last word.
+
 =================================================================
 =                        CHAPTER 4 RECAP                        =
 =================================================================
