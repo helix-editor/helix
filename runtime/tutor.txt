@@ -487,14 +487,14 @@ _________________________________________________________________
 =================================================================
 
  Press ~ to switch the case of all selected letters.
- Press ` to set all selected letters to lowercase
+ Press ` to set all selected letters to lowercase.
  Press Alt-` to set all selected letters to uppercase.
 
  1. Move the cursor to the first line below marked -->.
  2. Select each wrongly capitalised or lowercase letter
     and press ~ over them.
  3. Move to the second line marked -->.
- 4. Press x to select the line
+ 4. Press x to select the line.
  5. Press ` to change the line to lowercase.
  6. Move to the third line marked -->.
  7. Press x to select the line.
