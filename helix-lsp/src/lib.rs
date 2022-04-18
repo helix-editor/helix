@@ -276,7 +276,13 @@ impl Notification {
             lsp::notification::PublishDiagnostics::METHOD => {
                 let params: lsp::PublishDiagnosticsParams = params
                     .parse()
-                    .expect("Failed to parse PublishDiagnostics params");
+                    .map_err(|err| {
+                        log::error!(
+                            "received malformed PublishDiagnostic from Language Server: {}",
+                            err
+                        )
+                    })
+                    .ok()?;
 
                 // TODO: need to loop over diagnostics and distinguish them by URI
                 Self::PublishDiagnostics(params)
