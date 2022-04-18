@@ -55,7 +55,7 @@ diagnostic = { modifiers = ["underlined"] }
 "ui.selection" = { bg = "light-gray" }
 "ui.selection.primary" = { bg = "gray" }
 
-"ui.linenr" = { fg = "linenr", modifiers = ["dim"] }
+"ui.linenr" = { fg = "linenr" }
 "ui.linenr.selected" = { fg = "white" }
 
 "ui.statusline" = { fg = "white", bg = "light-black" }
