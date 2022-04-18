@@ -438,30 +438,6 @@ _________________________________________________________________
 
  Note: Unlike Vim, Helix doesn't limit these commands to just one
        line. It'll just search for the character in the file.
-
-
-=================================================================
-=                  SELECTING 'TIL A CHARACTER                   =
-=================================================================
-
- Select up to, but NOT including ('til) a character with t.
- Select backwards until a character with uppercase T.
-
- 1. Move the cursor to the line below marked -->.
- 2. Press t and then A to select until A.
- 3. Press d to delete the dashes.
- 4. Go to the line end, and repeat with T. Only
-    this time you're searching for an 's'.
-
- --> -----A sentence surrounded in dashes-----
-
- Note: Unlike Vim, Helix doesn't limit this command to just one
-       line. It'll just search for the character in the file.
-
-
-
-
-
 =================================================================
 =                             RECAP                             =
 =================================================================
