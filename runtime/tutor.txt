@@ -420,24 +420,24 @@ _________________________________________________________________
 =                 3.5 SELECTING TO A CHARACTER                  =
 =================================================================
 
- Press f<char> to select up to and including a character.
- Press t<char> to select up to, but not including a character.
- Press upper case F/T to do the same backwards.
+ Press f<ch> to select up to and including (find) a character.
+ Press t<ch> to do the same, but not including ('til) a character.
+ Press uppercase F/T to do the same backwards.
 
- 1. Move the cursor to the line below marked -->. Make sure your
-    cursor is put just after the arrow.
- 2. Press f, followed by the character you want to select
-    to, in this case a square bracket: [.
+ 1. Move the cursor to the line below marked -->. Place the
+    cursor on the first dash.
+ 2. Press f[ to select to the square bracket.
  3. press d to delete your selection.
  4. Go to the end of the line and repeat with F].
  5. Move to the second line marked -->, just after the arrow.
- 6. Use t and T to delete the dashes around the sentence
+ 6. Use t and T to delete the dashes around the sentence.
 
  --> -----[Free this sentence of it's brackets!]-----
  --> ------Free this sentence of it's dashes!------
 
- Note: Unlike Vim, Helix doesn't limit these commands to just one
-       line. It'll just search for the character in the file.
+ Note: Unlike Vim, Helix doesn't limit these commands to the 
+       current line. It searches for the character in the file.
+
 =================================================================
 =                        CHAPTER 3 RECAP                        =
 =================================================================
@@ -466,8 +466,7 @@ _________________________________________________________________
 
  Press y to yank (copy) the selection.
  Press p to paste the yanked selection after the cursor.
- Press uppercase P to paste the yanked selection *before*
- the cursor.
+ Press P to paste the yanked text before the cursor.
 
  1. Move the cursor to the line below marked -->.
     Make sure your cursor is on the "b" of banana.
@@ -482,6 +481,7 @@ _________________________________________________________________
        altered text. Use alt-d/c instead to avoid this.
  Note: Helix doesn't share the system clipboard by default. Press
        space-y/p to yank/paste on your computers main clipboard.
+
 =================================================================
 =                     4.2 CHANGING CASE                         =
 =================================================================
