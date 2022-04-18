@@ -101,7 +101,7 @@
             ]
 )
 
-; non-bultin command names
+; non-builtin command names
 (command name: (word) @function)
 
 ; derived from builtin -n (fish 3.2.2)
