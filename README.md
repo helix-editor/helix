@@ -46,14 +46,13 @@ hx --grammar build
 This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars.
 
 Helix also needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
-config directory (for example `~/.config/helix/runtime` on Linux/macOS, or `%AppData%/helix/runtime` on Windows).
-This location can be overridden via the `HELIX_RUNTIME` environment variable.
+data directory (default `$XDG_DATA_HOME/helix` on Linux/macOS, or `%AppData%/helix/` on Windows).
+This location can be overridden via appropriate entries in helix config file.
 
 Packages already solve this for you by wrapping the `hx` binary with a wrapper
 that sets the variable to the install dir.
 
-> NOTE: running via cargo also doesn't require setting explicit `HELIX_RUNTIME` path, it will automatically
-> detect the `runtime` directory in the project root.
+> NOTE: running via cargo also doesn't require setting explicit `HELIX_CONFIG` path, it is set for you automatically by cargo.
 
 In order to use LSP features like auto-complete, you will need to
 [install the appropriate Language Server](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers)
@@ -69,7 +68,7 @@ Helix can be installed on MacOS through homebrew via:
 brew tap helix-editor/helix
 brew install helix
 ```
- 
+
 # Contributing
 
 Contributing guidelines can be found [here](./docs/CONTRIBUTING.md).

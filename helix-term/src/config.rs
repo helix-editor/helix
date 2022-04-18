@@ -15,6 +15,8 @@ pub struct Config {
     pub keys: HashMap<Mode, Keymap>,
     #[serde(default)]
     pub editor: helix_view::editor::Config,
+    #[serde(default)]
+    pub paths: helix_loader::Paths,
 }
 
 impl Default for Config {
@@ -23,6 +25,7 @@ impl Default for Config {
             theme: None,
             keys: default(),
             editor: helix_view::editor::Config::default(),
+            paths: helix_loader::Paths::default(),
         }
     }
 }
@@ -103,5 +106,58 @@ mod tests {
         // From the Default trait
         let default_keys = Config::default().keys;
         assert_eq!(default_keys, default());
+    }
+
+    #[test]
+    fn directories_resolve_to_correct_defaults() {
+        // From serde default
+        let paths = toml::from_str::<Config>("").unwrap().paths;
+        assert_eq!(paths, helix_loader::Paths::default());
+
+        // From the Default trait
+        let paths = Config::default().paths;
+        assert_eq!(paths, helix_loader::Paths::default());
+    }
+
+    #[test]
+    fn partialy_specified_directories_resolve_correctly() {
+        use helix_loader::Path;
+        use std::path::PathBuf;
+
+        const CONFIG: &str = r#"
+            [paths]
+            log-file = "../rel/path/log.file"
+            grammar-dir = "/somewhere/else"
+        "#;
+        let defaults = helix_loader::Paths::default();
+        let paths = toml::from_str::<Config>(CONFIG).unwrap().paths;
+
+        assert_eq!(
+            paths.get(&Path::LogFile),
+            PathBuf::from("../rel/path/log.file")
+        );
+        assert_eq!(
+            paths.get(&Path::GrammarDir),
+            PathBuf::from("/somewhere/else")
+        );
+
+        assert_eq!(
+            paths.get(&Path::LanguageFile),
+            defaults.get(&Path::LanguageFile)
+        );
+        assert_eq!(paths.get(&Path::ThemeDir), defaults.get(&Path::ThemeDir));
+        assert_eq!(paths.get(&Path::QueryDir), defaults.get(&Path::QueryDir));
+    }
+
+    #[test]
+    fn invalid_path_key_specified() {
+        const CONFIG: &str = r#"
+            [paths]
+            log-dir = "../rel/path/log.file"
+            grammar-file = "/somewhere/else"
+        "#;
+        let paths = toml::from_str::<Config>(CONFIG);
+
+        assert!(paths.is_err())
     }
 }

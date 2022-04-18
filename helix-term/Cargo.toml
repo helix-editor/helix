@@ -74,3 +74,5 @@ signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
 
 [build-dependencies]
 helix-loader = { version = "0.6", path = "../helix-loader" }
+serde = { version = "1", default-features = false, features = ["derive"] }
+toml = "0.5"

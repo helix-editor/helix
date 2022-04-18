@@ -1,0 +1,6 @@
+[paths]
+grammar-dir = "./runtime/grammars"
+log-file = "./runtime/helix.log"
+language-file = "./languages.toml"
+query-dir = "./runtime/queries"
+theme-dir = "./runtime/themes"

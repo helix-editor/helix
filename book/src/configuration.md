@@ -2,7 +2,7 @@
 
 To override global configuration parameters, create a `config.toml` file located in your config directory:
 
-* Linux and Mac: `~/.config/helix/config.toml`
+* Linux and Mac: `$XDG_CONFIG_HOME/helix/config.toml`
 * Windows: `%AppData%\helix\config.toml`
 
 > Hint: You can easily open the config file by typing `:config-open` within Helix normal mode.
@@ -23,6 +23,9 @@ select = "underline"
 
 [editor.file-picker]
 hidden = false
+
+[paths]
+log-file = "/home/user/logs/helix.log"
 ```
 
 ## Editor
@@ -136,3 +139,28 @@ Search specific options.
 |--|--|---------|
 | `smart-case` | Enable smart case regex searching (case insensitive unless pattern contains upper case characters) | `true` |
 | `wrap-around`| Whether the search should wrap after depleting the matches | `true` |
+
+### `[paths]` Section
+
+Make Helix use specific files and directories. Generally there's no need
+to add/edit this section since Helix will use sensible defaults for given system.
+
+#### Linux
+
+| Key | Description | Default |
+|--|--|---------|
+| `grammar-dir`	  | Grammars location | `$XDG_DATA_HOME/helix/grammars` |
+| `language-file` | [language.toml](./languages.md) location | `$XDG_CONFIG_HOME/helix/languages.toml` |
+| `log-file`	  | Log file location | `$XDG_STATE_HOME/helix/helix.log` |
+| `query-dir` 	  | Queries location | `$XDG_DATA_HOME/helix/queries` |
+| `theme-dir` 	  | Themes location | `$XDG_CONFIG_HOME/helix/themes` |
+
+#### Windows
+
+| Key | Description | Default |
+|--|--|---------|
+| `grammar-dir`	  | Grammars location | `%AppData%/helix/grammars` |
+| `language-file` | [language.toml](./languages.md) location | `%AppData%/helix/languages.toml` |
+| `log-file`	  | Log file location | `%LocalAppData%/helix/helix.log` |
+| `query-dir` 	  | Queries location | `%AppData%/helix/queries` |
+| `theme-dir` 	  | Themes location | `%AppData%/helix/themes` |

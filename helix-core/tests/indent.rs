@@ -5,12 +5,39 @@ use helix_core::{
 };
 use std::path::PathBuf;
 
+fn setup() {
+    use std::sync::Once;
+
+    // mirror struct for helix_term's Config
+    // original can't be used because it's not built yet
+    #[derive(serde::Deserialize)]
+    struct BuildConfig {
+        paths: helix_loader::Paths,
+    }
+    static SETUP: Once = Once::new();
+
+    SETUP.call_once(|| {
+        // config.toml is written relative to workspace root, cd there
+        std::env::set_current_dir("..").unwrap();
+
+        let config = std::env::var("HELIX_CONFIG").unwrap();
+        let config = std::fs::read_to_string(config).unwrap();
+        let paths = toml::from_str::<BuildConfig>(&config).unwrap().paths;
+        helix_loader::init_paths(paths).unwrap();
+
+        // cd back, don't interfere with other tests
+        std::env::set_current_dir("./helix-core").unwrap();
+    });
+}
+
 #[test]
 fn test_treesitter_indent_rust() {
+    setup();
     test_treesitter_indent("rust.rs", "source.rust");
 }
 #[test]
 fn test_treesitter_indent_rust_2() {
+    setup();
     test_treesitter_indent("indent.rs", "source.rust");
     // TODO Use commands.rs as indentation test.
     // Currently this fails because we can't align the parameters of a closure yet
