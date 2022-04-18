@@ -420,24 +420,26 @@ _________________________________________________________________
 =                   SELECTING TO A CHARACTER                    =
 =================================================================
 
- Select up to, and including a character with f, followed by that
- character. Select backwards to a character with F (uppercase).
- The f stands for 'find'.
+ Press f<char> to select up to and including a character.
+ Press t<char> to select up to, but not including a character.
+ Press upper case F/T to do the same backwards.
 
  1. Move the cursor to the line below marked -->. Make sure your
     cursor is put just after the arrow.
  2. Press f, followed by the character you want to select
     to, in this case a square bracket: [.
- 3. press d to delete your selection, breaking the sentence free
-    Of the square brackets.
- 4. Go to the very end of the line and repeat again with
-    uppercase F. Remember this time you're selecting to a
-    closing ].
+ 3. press d to delete your selection.
+ 4. Go to the end of the line and repeat with F].
+ 5. Move to the second line marked -->, just after the arrow.
+ 6. Use t and T to delete the dashes around the sentence
 
  --> -----[Free this sentence of it's brackets!]-----
+ --> ------Free this sentence of it's dashes!------
 
- Note: Unlike Vim, Helix doesn't limit this command to just one
+ Note: Unlike Vim, Helix doesn't limit these commands to just one
        line. It'll just search for the character in the file.
+
+
 =================================================================
 =                  SELECTING 'TIL A CHARACTER                   =
 =================================================================
