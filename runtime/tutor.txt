@@ -476,6 +476,7 @@ _________________________________________________________________
  4. Repeat between "3" and "4".
 
  --> 1 banana 2 3 4
+     1 banana 2 banana 3 banana 4
 
  Whenever you delete (d) or change (c) text, Helix will copy the
  altered text. You can avoid this with alt-d/c respectively.
@@ -525,7 +526,7 @@ _________________________________________________________________
 
  --> ... sentence doesn't have it's first and last ... .
  --> ... sentence doesn't have it's first and last ... .
- --> This sentence doesn't have it's first and last word.
+     This sentence doesn't have it's first and last word.
 =================================================================
 =                        CHAPTER 4 RECAP                        =
 =================================================================
@@ -649,7 +650,7 @@ onto other lines.
     are indented
         very poorly.
 
- --> These lines
+     These lines
      are indented
      much better.
 
