@@ -484,48 +484,26 @@ _________________________________________________________________
  clipboard.
 
 =================================================================
-=                        SWITCHING CASE                         =
+=                        CHANGING CASE                          =
 =================================================================
 
  Press ~ to switch the case of all selected letters.
+ Press ` to set all selected letters to lowercase
+ Press Alt-` to set all selected letters to uppercase.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the first line below marked -->.
  2. Select each wrongly capitalised or lowercase letter
     and press ~ over them.
- (remember, the first letter *should* be capitalised)
+ 3. Move to the second line marked -->.
+ 4. Press x to select the line
+ 5. Press ` to change the line to lowercase.
+ 6. Move to the third line marked -->.
+ 7. Press x to select the line.
+ 8. Press Alt-` to change the line to uppercase.
 
  --> thIs sENtencE hAs MIS-cApitalIsed leTTerS.
-
-
-
-
-
-
-
-
-
-
-=================================================================
-=                         SETTING CASE                          =
-=================================================================
-
- Press ` (above tab key on most keyboards) to set all selected
- letters to lowercase.
-
- 1. Move the cursor to the line below marked -->.
- 2. Press x to select the line.
- 3. Press ` to change it to all lowercase.
-
---> this SENTENCE SHOULD all be in LOWERCASE!
-
- Note: Conversely, alt-` changes all selected letters to uppercase.
-
-
-
-
-
-
-
+ --> this SENTENCE SHOULD all be in LOWERCASE.
+ --> THIS sentence should ALL BE IN uppercase!
 
 =================================================================
 =                            MACROS                             =
