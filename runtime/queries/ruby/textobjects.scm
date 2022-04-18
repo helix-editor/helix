@@ -1,6 +1,11 @@
 ; Class
-(class (constant) (superclass)? 
-  (_) @class.inside) @class.around
+(class) @class.around
+
+(class [(constant) (scope_resolution)] !superclass
+  (_)+ @class.inside) 
+
+(class [(constant) (scope_resolution)] (superclass)
+  (_)+ @class.inside) 
 
 ; Functions
 (method) @function.around
