@@ -1508,7 +1508,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "reflow",
             aliases: &[],
-            doc: "Hard wrap the current selection of lines to a configured width.",
+            doc: "Hard-wrap the current selection of lines to a given width.",
             fun: reflow,
             completer: None,
         },
