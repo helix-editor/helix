@@ -343,7 +343,7 @@ mod test {
 
         // cursor on s[o]me, c[h]ars, newl[i]ne
         assert_eq!(
-            get_surround_pos(slice, &selection, '(', 1)
+            get_surround_pos(slice, &selection, Some('('), 1)
                 .unwrap()
                 .as_slice(),
             &[0, 5, 7, 13, 15, 23]
@@ -359,7 +359,7 @@ mod test {
             Selection::new(SmallVec::from_slice(&[Range::point(2), Range::point(9)]), 0);
         // cursor on s[o]me, c[h]ars
         assert_eq!(
-            get_surround_pos(slice, &selection, '(', 1),
+            get_surround_pos(slice, &selection, Some('('), 1),
             Err(Error::PairNotFound) // different surround chars
         );
 
@@ -369,7 +369,7 @@ mod test {
         );
         // cursor on [x]x, newli[n]e
         assert_eq!(
-            get_surround_pos(slice, &selection, '(', 1),
+            get_surround_pos(slice, &selection, Some('('), 1),
             Err(Error::PairNotFound) // overlapping surround chars
         );
 
@@ -377,7 +377,7 @@ mod test {
             Selection::new(SmallVec::from_slice(&[Range::point(2), Range::point(3)]), 0);
         // cursor on s[o][m]e
         assert_eq!(
-            get_surround_pos(slice, &selection, '[', 1),
+            get_surround_pos(slice, &selection, Some('['), 1),
             Err(Error::CursorOverlap)
         );
     }
