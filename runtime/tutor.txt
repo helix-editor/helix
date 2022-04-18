@@ -478,11 +478,10 @@ _________________________________________________________________
  --> 1 banana 2 3 4
      1 banana 2 banana 3 banana 4
 
- Whenever you delete (d) or change (c) text, Helix will copy the
- altered text. You can avoid this with alt-d/c respectively.
- Also, Helix doesn't share the system clipboard by default. Press
- space-y and space-p to yank/paste to/from your computers main
- clipboard.
+ Note: Whenever you delete or change text, Helix will copy the
+       altered text. Use alt-d/c instead to avoid this.
+ Note: Helix doesn't share the system clipboard by default. Press
+       space-y/p to yank/paste on your computers main clipboard.
 =================================================================
 =                     4.2 CHANGING CASE                         =
 =================================================================
