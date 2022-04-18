@@ -1,7 +1,7 @@
-/// Default bultin-in languages.toml.
+/// Default built-in languages.toml.
 pub fn default_lang_config() -> toml::Value {
     toml::from_slice(include_bytes!("../../languages.toml"))
-        .expect("Could not parse bultin-in languages.toml to valid toml")
+        .expect("Could not parse built-in languages.toml to valid toml")
 }
 
 /// User configured languages.toml file, merged with the default config.
