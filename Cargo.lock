@@ -404,6 +404,7 @@ dependencies = [
  "cc",
  "etcetera",
  "libloading",
+ "log",
  "once_cell",
  "serde",
  "threadpool",
