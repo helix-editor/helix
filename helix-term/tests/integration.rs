@@ -25,4 +25,5 @@ mod integration {
     mod auto_indent;
     mod auto_pairs;
     mod movement;
+    mod write;
 }

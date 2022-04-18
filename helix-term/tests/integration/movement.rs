@@ -1,3 +1,5 @@
+use helix_term::application::Application;
+
 use super::*;
 
 #[tokio::test]
@@ -91,6 +93,34 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
             },
         ),
     )?;
+
+    Ok(())
+}
+
+/// Ensure the very initial cursor in an opened file is the width of
+/// the first grapheme
+#[tokio::test]
+async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
+    let test = |content: &str, expected_sel: Selection| {
+        let file = helpers::temp_file_with_contents(content);
+
+        let mut app = Application::new(
+            Args {
+                files: vec![(file.path().to_path_buf(), Position::default())],
+                ..Default::default()
+            },
+            Config::default(),
+        )
+        .unwrap();
+
+        let (view, doc) = helix_view::current!(app.editor);
+        let sel = doc.selection(view.id).clone();
+        assert_eq!(expected_sel, sel);
+    };
+
+    test("foo", Selection::single(0, 1));
+    test("👨‍👩‍👧‍👦 foo", Selection::single(0, 7));
+    test("", Selection::single(0, 0));
 
     Ok(())
 }

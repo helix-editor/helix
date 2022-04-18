@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use crossterm::event::{Event, KeyEvent};
 use helix_core::{test, Selection, Transaction};
 use helix_term::{application::Application, args::Args, config::Config};
@@ -84,4 +86,15 @@ pub fn test_key_sequence_text_result<T: Into<TestCase>>(
     })?;
 
     Ok(())
+}
+
+pub fn temp_file_with_contents<S: AsRef<str>>(content: S) -> tempfile::NamedTempFile {
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+    temp_file
+        .as_file_mut()
+        .write_all(content.as_ref().as_bytes())
+        .unwrap();
+    temp_file.flush().unwrap();
+    temp_file.as_file_mut().sync_all().unwrap();
+    temp_file
 }
