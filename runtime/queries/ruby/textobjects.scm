@@ -7,6 +7,10 @@
 (class [(constant) (scope_resolution)] (superclass)
   (_)+ @class.inside) 
 
+(singleton_class
+  value: (_)
+  (_)+ @class.inside) @class.around
+
 ; Functions
 (method) @function.around
 
