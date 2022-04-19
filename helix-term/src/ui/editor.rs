@@ -113,6 +113,10 @@ impl EditorView {
             }
         }
 
+        if editor.config().cursorline {
+            Self::highlight_cursorline(doc, view, surface, theme);
+        }
+
         let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
         let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
@@ -649,6 +653,43 @@ impl EditorView {
             Rect::new(viewport.right() - width, viewport.y + 1, width, height),
             surface,
         );
+    }
+
+    /// Apply the highlighting on the lines where a cursor is active
+    pub fn highlight_cursorline(doc: &Document, view: &View, surface: &mut Surface, theme: &Theme) {
+        let text = doc.text().slice(..);
+        let last_line = view.last_line(doc);
+
+        let primary_line = doc.selection(view.id).primary().cursor_line(text);
+
+        // The secondary_lines do contain the primary_line, it doesn't matter
+        // as the else-if clause in the loop later won't test for the
+        // secondary_lines if primary_line == line.
+        // It's used inside a loop so the collect isn't needless:
+        // https://github.com/rust-lang/rust-clippy/issues/6164
+        #[allow(clippy::needless_collect)]
+        let secondary_lines: Vec<_> = doc
+            .selection(view.id)
+            .iter()
+            .map(|range| range.cursor_line(text))
+            .collect();
+
+        let primary_style = theme.get("ui.cursorline.primary");
+        let secondary_style = theme.get("ui.cursorline.secondary");
+
+        for line in view.offset.row..(last_line + 1) {
+            let area = Rect::new(
+                view.area.x,
+                view.area.y + (line - view.offset.row) as u16,
+                view.area.width,
+                1,
+            );
+            if primary_line == line {
+                surface.set_style(area, primary_style);
+            } else if secondary_lines.contains(&line) {
+                surface.set_style(area, secondary_style);
+            }
+        }
     }
 
     pub fn render_statusline(
