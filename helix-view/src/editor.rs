@@ -117,6 +117,8 @@ pub struct Config {
     pub shell: Vec<String>,
     /// Line number mode.
     pub line_number: LineNumber,
+    /// Gutters. Default ["diagnostics", "line-numbers"]
+    pub gutters: Vec<GutterType>,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
     /// Automatic insertion of pairs to parentheses, brackets,
@@ -238,6 +240,27 @@ impl std::str::FromStr for LineNumber {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum GutterType {
+    /// Show diagnostics and other features like breakpoints
+    Diagnostics,
+    /// Show line numbers
+    LineNumbers,
+}
+
+impl std::str::FromStr for GutterType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "diagnostics" => Ok(Self::Diagnostics),
+            "line-numbers" => Ok(Self::LineNumbers),
+            _ => anyhow::bail!("Gutter type can only be `diagnostics` or `line-numbers`."),
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -250,6 +273,7 @@ impl Default for Config {
                 vec!["sh".to_owned(), "-c".to_owned()]
             },
             line_number: LineNumber::Absolute,
+            gutters: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
@@ -579,7 +603,7 @@ impl Editor {
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
-                let view = View::new(id);
+                let view = View::new(id, self.config().gutters.clone());
                 let view_id = self.tree.split(
                     view,
                     match action {
@@ -701,7 +725,7 @@ impl Editor {
                 .map(|(&doc_id, _)| doc_id)
                 .next()
                 .unwrap_or_else(|| self.new_document(Document::default()));
-            let view = View::new(doc_id);
+            let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
             let doc = self.documents.get_mut(&doc_id).unwrap();
             doc.selections.insert(view_id, Selection::point(0));

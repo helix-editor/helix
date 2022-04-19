@@ -39,7 +39,7 @@ pub fn diagnostic<'doc>(
     })
 }
 
-pub fn line_number<'doc>(
+pub fn line_numbers<'doc>(
     editor: &'doc Editor,
     doc: &'doc Document,
     view: &View,

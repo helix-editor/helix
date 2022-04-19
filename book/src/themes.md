@@ -205,32 +205,32 @@ These scopes are used for theming the editor interface.
       - `hover` - for hover popup ui
 
 
-| Key                      | Notes                               |
-| ---                      | ---                                 |
-| `ui.background`          |                                     |
-| `ui.cursor`              |                                     |
-| `ui.cursor.insert`       |                                     |
-| `ui.cursor.select`       |                                     |
-| `ui.cursor.match`        | Matching bracket etc.               |
-| `ui.cursor.primary`      | Cursor with primary selection       |
-| `ui.linenr`              |                                     |
-| `ui.linenr.selected`     |                                     |
-| `ui.statusline`          | Statusline                          |
-| `ui.statusline.inactive` | Statusline (unfocused document)     |
-| `ui.popup`               |                                     |
-| `ui.popup.info`          |                                     |
-| `ui.window`              |                                     |
-| `ui.help`                |                                     |
-| `ui.text`                |                                     |
-| `ui.text.focus`          |                                     |
-| `ui.text.info`           |                                     |
-| `ui.menu`                |                                     |
-| `ui.menu.selected`       |                                     |
-| `ui.selection`           | For selections in the editing area  |
-| `ui.selection.primary`   |                                     |
-| `warning`                | Diagnostics warning (gutter)        |
-| `error`                  | Diagnostics error (gutter)          |
-| `info`                   | Diagnostics info (gutter)           |
-| `hint`                   | Diagnostics hint (gutter)           |
-| `diagnostic`             | For text in editing area            |
+| Key                      | Notes                                          |
+| ---                      | ---                                            |
+| `ui.background`          |                                                |
+| `ui.cursor`              |                                                |
+| `ui.cursor.insert`       |                                                |
+| `ui.cursor.select`       |                                                |
+| `ui.cursor.match`        | Matching bracket etc.                          |
+| `ui.cursor.primary`      | Cursor with primary selection                  |
+| `ui.linenr`              | Line numbers                                   |
+| `ui.linenr.selected`     | Line number for the line the cursor is on      |
+| `ui.statusline`          | Statusline                                     |
+| `ui.statusline.inactive` | Statusline (unfocused document)                |
+| `ui.popup`               | Documentation popups (e.g space-k)             |
+| `ui.popup.info`          | Prompt for multiple key options                |
+| `ui.window`              | Border lines separating splits                 |
+| `ui.help`                | Description box for commands                   |
+| `ui.text`                | Command prompts, popup text, etc.              |
+| `ui.text.focus`          |                                                |
+| `ui.text.info`           | The key: command text in `ui.popup.info` boxes |
+| `ui.menu`                | Code and command completion menus              |
+| `ui.menu.selected`       | Selected autocomplete item                     |
+| `ui.selection`           | For selections in the editing area             |
+| `ui.selection.primary`   |                                                |
+| `warning`                | Diagnostics warning (gutter)                   |
+| `error`                  | Diagnostics error (gutter)                     |
+| `info`                   | Diagnostics info (gutter)                      |
+| `hint`                   | Diagnostics hint (gutter)                      |
+| `diagnostic`             | For text in editing area                       |
 

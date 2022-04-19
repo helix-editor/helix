@@ -466,7 +466,7 @@ impl EditorView {
         // avoid lots of small allocations by reusing a text buffer for each line
         let mut text = String::with_capacity(8);
 
-        for (constructor, width) in view.gutters() {
+        for (constructor, width) in &view.gutters {
             let gutter = constructor(editor, doc, view, theme, is_focused, *width);
             text.reserve(*width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {

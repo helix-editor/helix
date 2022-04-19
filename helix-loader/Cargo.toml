@@ -18,6 +18,8 @@ tree-sitter = "0.20"
 libloading = "0.7"
 once_cell = "1.9"
 
+log = "0.4"
+
 # cloning/compiling tree-sitter grammars
 cc = { version = "1" }
 threadpool = { version = "1.0" }

@@ -568,6 +568,7 @@ impl<'a> Iterator for Traverse<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::editor::GutterType;
     use crate::DocumentId;
 
     #[test]
@@ -578,22 +579,34 @@ mod test {
             width: 180,
             height: 80,
         });
-        let mut view = View::new(DocumentId::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
         view.area = Rect::new(0, 0, 180, 80);
         tree.insert(view);
 
         let l0 = tree.focus;
-        let view = View::new(DocumentId::default());
+        let view = View::new(
+            DocumentId::default(),
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
         tree.split(view, Layout::Vertical);
         let r0 = tree.focus;
 
         tree.focus = l0;
-        let view = View::new(DocumentId::default());
+        let view = View::new(
+            DocumentId::default(),
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
         tree.split(view, Layout::Horizontal);
         let l1 = tree.focus;
 
         tree.focus = l0;
-        let view = View::new(DocumentId::default());
+        let view = View::new(
+            DocumentId::default(),
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
         tree.split(view, Layout::Vertical);
         let l2 = tree.focus;
 

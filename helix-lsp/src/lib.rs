@@ -58,6 +58,36 @@ pub mod util {
     use super::*;
     use helix_core::{Range, Rope, Transaction};
 
+    /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
+    ///
+    /// Panics when [`pos_to_lsp_pos`] would for an invalid range on the diagnostic.
+    pub fn diagnostic_to_lsp_diagnostic(
+        doc: &Rope,
+        diag: &helix_core::diagnostic::Diagnostic,
+        offset_encoding: OffsetEncoding,
+    ) -> lsp::Diagnostic {
+        use helix_core::diagnostic::Severity::*;
+
+        let range = Range::new(diag.range.start, diag.range.end);
+        let severity = diag.severity.map(|s| match s {
+            Hint => lsp::DiagnosticSeverity::HINT,
+            Info => lsp::DiagnosticSeverity::INFORMATION,
+            Warning => lsp::DiagnosticSeverity::WARNING,
+            Error => lsp::DiagnosticSeverity::ERROR,
+        });
+
+        // TODO: add support for Diagnostic.data
+        lsp::Diagnostic::new(
+            range_to_lsp_range(doc, range, offset_encoding),
+            severity,
+            None,
+            None,
+            diag.message.to_owned(),
+            None,
+            None,
+        )
+    }
+
     /// Converts [`lsp::Position`] to a position in the document.
     ///
     /// Returns `None` if position exceeds document length or an operation overflows.
@@ -246,7 +276,13 @@ impl Notification {
             lsp::notification::PublishDiagnostics::METHOD => {
                 let params: lsp::PublishDiagnosticsParams = params
                     .parse()
-                    .expect("Failed to parse PublishDiagnostics params");
+                    .map_err(|err| {
+                        log::error!(
+                            "received malformed PublishDiagnostic from Language Server: {}",
+                            err
+                        )
+                    })
+                    .ok()?;
 
                 // TODO: need to loop over diagnostics and distinguish them by URI
                 Self::PublishDiagnostics(params)

@@ -1,7 +1,6 @@
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Result};
 use helix_term::application::Application;
 use helix_term::args::Args;
-use helix_term::config::{Config, ConfigLoadError};
 use std::path::PathBuf;
 
 fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
@@ -109,35 +108,10 @@ FLAGS:
         return Ok(0);
     }
 
-    let conf_dir = helix_loader::config_dir();
-    if !conf_dir.exists() {
-        std::fs::create_dir_all(&conf_dir).ok();
-    }
-
-    let config = match Config::load_default() {
-        Ok(config) => config,
-        Err(err) => {
-            match err {
-                ConfigLoadError::BadConfig(err) => {
-                    eprintln!("Bad config: {}", err);
-                    eprintln!("Press <ENTER> to continue with default config");
-                    use std::io::Read;
-                    // This waits for an enter press.
-                    let _ = std::io::stdin().read(&mut []);
-                    Config::default()
-                }
-                ConfigLoadError::Error(err) if err.kind() == std::io::ErrorKind::NotFound => {
-                    Config::default()
-                }
-                ConfigLoadError::Error(err) => return Err(Error::new(err)),
-            }
-        }
-    };
-
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app = Application::new(args, config).context("unable to create new application")?;
+    let mut app = Application::new(args).context("unable to create new application")?;
 
     let exit_code = app.run().await?;
 

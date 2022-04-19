@@ -16,6 +16,7 @@
 | erb | ✓ |  |  |  |
 | erlang | ✓ |  |  | `erlang_ls` |
 | fish | ✓ | ✓ | ✓ |  |
+| gdscript | ✓ |  | ✓ |  |
 | git-commit | ✓ |  |  |  |
 | git-config | ✓ |  |  |  |
 | git-diff | ✓ |  |  |  |
@@ -60,10 +61,11 @@
 | rescript | ✓ | ✓ |  | `rescript-language-server` |
 | rmarkdown | ✓ |  | ✓ | `R` |
 | ron | ✓ |  | ✓ |  |
-| ruby | ✓ |  | ✓ | `solargraph` |
+| ruby | ✓ | ✓ | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | scala | ✓ |  | ✓ | `metals` |
 | solidity | ✓ |  |  | `solc` |
+| sql | ✓ |  |  |  |
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
