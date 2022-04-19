@@ -1,4 +1,5 @@
 use arc_swap::{access::Map, ArcSwap};
+use futures_util::Stream;
 use helix_core::{
     config::{default_syntax_loader, user_syntax_loader},
     pos_at_coords, syntax, Selection,
@@ -27,7 +28,7 @@ use std::{
 use anyhow::Error;
 
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream},
+    event::{DisableMouseCapture, EnableMouseCapture, Event},
     execute, terminal,
     tty::IsTty,
 };
@@ -68,7 +69,7 @@ fn setup_integration_logging() {
                 message
             ))
         })
-        .level(log::LevelFilter::Info)
+        .level(log::LevelFilter::Debug)
         .chain(std::io::stdout())
         .apply();
 }
@@ -225,8 +226,10 @@ impl Application {
         }
     }
 
-    pub async fn event_loop(&mut self) {
-        let mut reader = EventStream::new();
+    pub async fn event_loop<S>(&mut self, input_stream: &mut S)
+    where
+        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
+    {
         let mut last_render = Instant::now();
         let deadline = Duration::from_secs(1) / 60;
 
@@ -242,7 +245,7 @@ impl Application {
             tokio::select! {
                 biased;
 
-                Some(event) = reader.next() => {
+                Some(event) = input_stream.next() => {
                     self.handle_terminal_events(event)
                 }
                 Some(signal) = self.signals.next() => {
@@ -749,7 +752,10 @@ impl Application {
         Ok(())
     }
 
-    pub async fn run(&mut self) -> Result<i32, Error> {
+    pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
+    where
+        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
+    {
         self.claim_term().await?;
 
         // Exit the alternate screen and disable raw mode before panicking
@@ -764,16 +770,20 @@ impl Application {
             hook(info);
         }));
 
-        self.event_loop().await;
+        self.event_loop(input_stream).await;
+        self.close().await?;
+        self.restore_term()?;
 
+        Ok(self.editor.exit_code)
+    }
+
+    pub async fn close(&mut self) -> anyhow::Result<()> {
         self.jobs.finish().await;
 
         if self.editor.close_language_servers(None).await.is_err() {
             log::error!("Timed out waiting for language servers to shutdown");
         };
 
-        self.restore_term()?;
-
-        Ok(self.editor.exit_code)
+        Ok(())
     }
 }

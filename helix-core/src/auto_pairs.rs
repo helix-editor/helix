@@ -4,7 +4,6 @@
 use crate::{graphemes, movement::Direction, Range, Rope, Selection, Tendril, Transaction};
 use std::collections::HashMap;
 
-use log::debug;
 use smallvec::SmallVec;
 
 // Heavily based on https://github.com/codemirror/closebrackets/
@@ -123,7 +122,7 @@ impl Default for AutoPairs {
 
 #[must_use]
 pub fn hook(doc: &Rope, selection: &Selection, ch: char, pairs: &AutoPairs) -> Option<Transaction> {
-    debug!("autopairs hook selection: {:#?}", selection);
+    log::trace!("autopairs hook selection: {:#?}", selection);
 
     if let Some(pair) = pairs.get(ch) {
         if pair.same() {
@@ -225,9 +224,11 @@ fn get_next_range(
         // other end of the grapheme to get to where the new characters
         // are inserted, then move the head to where it should be
         let prev_bound = graphemes::prev_grapheme_boundary(doc_slice, start_range.head);
-        debug!(
+        log::trace!(
             "prev_bound: {}, offset: {}, len_inserted: {}",
-            prev_bound, offset, len_inserted
+            prev_bound,
+            offset,
+            len_inserted
         );
         prev_bound + offset + len_inserted
     };
@@ -302,7 +303,7 @@ fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     });
 
     let t = transaction.with_selection(Selection::new(end_ranges, selection.primary_index()));
-    debug!("auto pair transaction: {:#?}", t);
+    log::debug!("auto pair transaction: {:#?}", t);
     t
 }
 
@@ -334,7 +335,7 @@ fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     });
 
     let t = transaction.with_selection(Selection::new(end_ranges, selection.primary_index()));
-    debug!("auto pair transaction: {:#?}", t);
+    log::debug!("auto pair transaction: {:#?}", t);
     t
 }
 
@@ -374,7 +375,7 @@ fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     });
 
     let t = transaction.with_selection(Selection::new(end_ranges, selection.primary_index()));
-    debug!("auto pair transaction: {:#?}", t);
+    log::debug!("auto pair transaction: {:#?}", t);
     t
 }
 

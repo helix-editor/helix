@@ -1,9 +1,12 @@
-use std::io::Write;
+use std::{io::Write, time::Duration};
 
+use anyhow::bail;
 use crossterm::event::{Event, KeyEvent};
 use helix_core::{test, Selection, Transaction};
 use helix_term::{application::Application, args::Args, config::Config};
 use helix_view::{doc, input::parse_macro};
+use tokio::time::timeout;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[derive(Clone, Debug)]
 pub struct TestCase {
@@ -29,10 +32,44 @@ impl<S: Into<String>> From<(S, S, S)> for TestCase {
     }
 }
 
-pub fn test_key_sequence<T: Into<TestCase>>(
+pub async fn test_key_sequence(
+    app: &mut Application,
+    in_keys: &str,
+    test_fn: Option<&dyn Fn(&Application)>,
+) -> anyhow::Result<()> {
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+
+    for key_event in parse_macro(&in_keys)?.into_iter() {
+        tx.send(Ok(Event::Key(KeyEvent::from(key_event))))?;
+    }
+
+    let mut rx_stream = UnboundedReceiverStream::new(rx);
+    let event_loop = app.event_loop(&mut rx_stream);
+    let result = timeout(Duration::from_millis(500), event_loop).await;
+
+    if result.is_ok() {
+        bail!("application exited before test function could run");
+    }
+
+    if let Some(test) = test_fn {
+        test(app);
+    };
+
+    for key_event in parse_macro("<esc>:q!<ret>")?.into_iter() {
+        tx.send(Ok(Event::Key(KeyEvent::from(key_event))))?;
+    }
+
+    let event_loop = app.event_loop(&mut rx_stream);
+    timeout(Duration::from_millis(5000), event_loop).await?;
+    app.close().await?;
+
+    Ok(())
+}
+
+pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     app: Option<Application>,
     test_case: T,
-    test_fn: &dyn Fn(&mut Application),
+    test_fn: &dyn Fn(&Application),
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
     let mut app =
@@ -50,23 +87,13 @@ pub fn test_key_sequence<T: Into<TestCase>>(
         view.id,
     );
 
-    let input_keys = parse_macro(&test_case.in_keys)?
-        .into_iter()
-        .map(|key_event| Event::Key(KeyEvent::from(key_event)));
-
-    for key in input_keys {
-        app.handle_terminal_events(Ok(key));
-    }
-
-    test_fn(&mut app);
-
-    Ok(())
+    test_key_sequence(&mut app, &test_case.in_keys, Some(test_fn)).await
 }
 
 /// Use this for very simple test cases where there is one input
 /// document, selection, and sequence of key presses, and you just
 /// want to verify the resulting document and selection.
-pub fn test_key_sequence_text_result<T: Into<TestCase>>(
+pub async fn test_key_sequence_text_result<T: Into<TestCase>>(
     args: Args,
     config: Config,
     test_case: T,
@@ -74,7 +101,7 @@ pub fn test_key_sequence_text_result<T: Into<TestCase>>(
     let test_case = test_case.into();
     let app = Application::new(args, config).unwrap();
 
-    test_key_sequence(Some(app), test_case.clone(), &|app| {
+    test_key_sequence_with_input_text(Some(app), test_case.clone(), &|app| {
         let doc = doc!(app.editor);
         assert_eq!(&test_case.out_text, doc.text());
 
@@ -83,9 +110,8 @@ pub fn test_key_sequence_text_result<T: Into<TestCase>>(
 
         let sel = selections.pop().unwrap();
         assert_eq!(test_case.out_selection, sel);
-    })?;
-
-    Ok(())
+    })
+    .await
 }
 
 pub fn temp_file_with_contents<S: AsRef<str>>(content: S) -> tempfile::NamedTempFile {

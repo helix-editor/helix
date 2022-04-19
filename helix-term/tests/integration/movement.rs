@@ -14,25 +14,29 @@ async fn insert_mode_cursor_position() -> anyhow::Result<()> {
             out_text: String::new(),
             out_selection: Selection::single(0, 0),
         },
-    )?;
+    )
+    .await?;
 
     test_key_sequence_text_result(
         Args::default(),
         Config::default(),
         ("#[\n|]#", "i", "#[|\n]#"),
-    )?;
+    )
+    .await?;
 
     test_key_sequence_text_result(
         Args::default(),
         Config::default(),
         ("#[\n|]#", "i<esc>", "#[|\n]#"),
-    )?;
+    )
+    .await?;
 
     test_key_sequence_text_result(
         Args::default(),
         Config::default(),
         ("#[\n|]#", "i<esc>i", "#[|\n]#"),
-    )?;
+    )
+    .await?;
 
     Ok(())
 }
@@ -44,7 +48,8 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
         Args::default(),
         Config::default(),
         ("#[f|]#oo\n", "vll<A-;><esc>", "#[|foo]#\n"),
-    )?;
+    )
+    .await?;
 
     test_key_sequence_text_result(
         Args::default(),
@@ -60,7 +65,8 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
                 #(|bar)#"
             },
         ),
-    )?;
+    )
+    .await?;
 
     test_key_sequence_text_result(
         Args::default(),
@@ -76,7 +82,8 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
                 #(ba|)#r"
             },
         ),
-    )?;
+    )
+    .await?;
 
     test_key_sequence_text_result(
         Args::default(),
@@ -92,7 +99,8 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
                 #(b|)#ar"
             },
         ),
-    )?;
+    )
+    .await?;
 
     Ok(())
 }

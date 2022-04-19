@@ -6,7 +6,8 @@ async fn auto_pairs_basic() -> anyhow::Result<()> {
         Args::default(),
         Config::default(),
         ("#[\n|]#", "i(<esc>", "(#[|)]#\n"),
-    )?;
+    )
+    .await?;
 
     test_key_sequence_text_result(
         Args::default(),
@@ -18,7 +19,8 @@ async fn auto_pairs_basic() -> anyhow::Result<()> {
             ..Default::default()
         },
         ("#[\n|]#", "i(<esc>", "(#[|\n]#"),
-    )?;
+    )
+    .await?;
 
     Ok(())
 }
