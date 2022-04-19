@@ -53,12 +53,16 @@
             };
         };
         shell = common: prev: {
-          packages = prev.packages ++ (with common.pkgs; [ lld_13 lldb cargo-tarpaulin cargo-flamegraph ]);
+          packages = prev.packages ++ (with common.pkgs; [ lld_13 lldb cargo-tarpaulin cargo-flamegraph vulkan-tools ]);
           env = prev.env ++ [
             { name = "HELIX_RUNTIME"; eval = "$PWD/runtime"; }
             { name = "RUST_BACKTRACE"; value = "1"; }
             # { name = "RUSTFLAGS"; value = "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment"; }
-            { name = "LD_LIBRARY_PATH"; value = nixpkgs.lib.makeLibraryPath (with common.pkgs; [ wayland libxkbcommon libGL xorg.libxcb ]); }
+            { name = "LD_LIBRARY_PATH"; value = nixpkgs.lib.makeLibraryPath (with common.pkgs; [
+              wayland libxkbcommon xorg.libxcb
+              vulkan-loader # vulkan
+              # libGL # GLES instead of vulkan
+            ]); }
           ];
         };
       };
