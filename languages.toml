@@ -799,6 +799,7 @@ scope = "source.md"
 injection-regex = "md|markdown"
 file-types = ["md"]
 roots = []
+language-server = { command = "remark-language-server", args = ["--stdio"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
