@@ -135,6 +135,7 @@ impl Completion {
 
             match event {
                 PromptEvent::Abort => {
+                    doc.restore(view.id);
                     editor.last_completion = None;
                 }
                 PromptEvent::Update => {

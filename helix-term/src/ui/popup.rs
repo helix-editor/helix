@@ -124,7 +124,10 @@ impl<T: Component> Component for Popup<T> {
 
         match key.into() {
             // esc or ctrl-c aborts the completion and closes the menu
-            key!(Esc) | ctrl!('c') => EventResult::Consumed(Some(close_fn)),
+            key!(Esc) | ctrl!('c') => {
+                let _ = self.contents.handle_event(event, cx);
+                EventResult::Consumed(Some(close_fn))
+            }
             ctrl!('d') => {
                 self.scroll(self.size.1 as usize / 2, true);
                 EventResult::Consumed(None)
