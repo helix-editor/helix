@@ -54,69 +54,19 @@ struct View {
     size: [f32; 2],
 }
 
-pub struct Font {
-    // Full content of the font file
-    data: Vec<u8>,
-    // Offset to the table directory
-    offset: u32,
-    // Cache key
-    key: CacheKey,
-}
-
-impl Font {
-    pub fn from_file(path: &str, index: usize) -> Option<Self> {
-        // Read the full font file
-        let data = std::fs::read(path).ok()?;
-        // Create a temporary font reference for the first font in the file.
-        // This will do some basic validation, compute the necessary offset
-        // and generate a fresh cache key for us.
-        let font = FontRef::from_index(&data, index)?;
-        let (offset, key) = (font.offset, font.key);
-        // Return our struct with the original file data and copies of the
-        // offset and key from the font reference
-        Some(Self { data, offset, key })
-    }
-
-    // As a convenience, you may want to forward some methods.
-    pub fn attributes(&self) -> Attributes {
-        self.as_ref().attributes()
-    }
-
-    pub fn charmap(&self) -> Charmap {
-        self.as_ref().charmap()
-    }
-
-    // Create the transient font reference for accessing this crate's
-    // functionality.
-    pub fn as_ref(&self) -> FontRef {
-        // Note that you'll want to initialize the struct directly here as
-        // using any of the FontRef constructors will generate a new key which,
-        // while completely safe, will nullify the performance optimizations of
-        // the caching mechanisms used in this crate.
-        FontRef {
-            data: &self.data,
-            offset: self.offset,
-            key: self.key,
-        }
-    }
-}
-
 fn font() -> VertexBuffers<Vertex, u16> {
-    // let font = Font::from_file("assets/fonts/Inter Variable/Inter.ttf", 0).unwrap();
-    let font = Font::from_file("assets/fonts/ttf/FiraCode-Regular.ttf", 0).unwrap();
-    let font = font.as_ref();
+    let data = std::fs::read("assets/fonts/ttf/FiraCode-Regular.ttf").unwrap();
 
     // -- Shaping
+    // let mut context = ShapeContext::new();
+    // let mut shaper = context
+    //     .builder(font)
+    //     .script(Script::Latin)
+    //     .size(12.)
+    //     .variations(&[("wght", 400.0)])
+    //     .build();
 
-    let mut context = ShapeContext::new();
-    let mut shaper = context
-        .builder(font)
-        .script(Script::Latin)
-        .size(12.)
-        .variations(&[("wght", 400.0)])
-        .build();
-
-    shaper.add_str("a quick brown fox?");
+    // shaper.add_str("a quick brown fox?");
 
     // add_str with boundary analysis
     // use swash::text::{analyze, Script};
@@ -139,28 +89,26 @@ fn font() -> VertexBuffers<Vertex, u16> {
     //         }),
     // );
 
-    shaper.shape_with(|c| {
-        // use the glyph cluster
-
-        // c.glyphs
-    });
+    // shaper.shape_with(|c| {
+    //     // use the glyph cluster
+    //     // c.glyphs
+    // });
 
     // -- Scaling
 
-    let mut context = ScaleContext::new();
-    let mut scaler = context
-        .builder(font)
-        .hint(true)
-        .size(12.)
-        .variations(&[("wght", 400.0)])
-        .build();
-    let glyph_id = font.charmap().map('H');
-    let outline = scaler.scale_outline(glyph_id).unwrap();
+    // let mut scaler = scale_ctx
+    //     .builder(font)
+    //     .hint(true)
+    //     .size(12.)
+    //     .variations(&[("wght", 400.0)])
+    //     .build();
+    // let glyph_id = font.charmap().map('H');
+    // let outline = scaler.scale_outline(glyph_id).unwrap();
 
     // -- Layout
 
     let mut font_ctx = FontContext::new();
-    let font_family = font_ctx.register_fonts(font.data.to_vec()).unwrap();
+    let font_family = font_ctx.register_fonts(data).unwrap();
     let mut layout_ctx: LayoutContext<[u8; 4]> = LayoutContext::new();
 
     // Encode glyphs into lyon paths
@@ -178,19 +126,23 @@ fn font() -> VertexBuffers<Vertex, u16> {
     let max_width = None;
     layout.break_all_lines(max_width, Alignment::Start);
 
+    let mut scale_ctx = ScaleContext::new();
+
     for line in layout.lines() {
         let mut last_x = 0.0;
         let mut last_y = 0.0;
 
         for glyph_run in line.glyph_runs() {
             let run = glyph_run.run();
-            // let color = &glyph_run.style().brush.0;
+            let color = &glyph_run.style().brush;
             let font = run.font();
             let font = font.as_ref();
 
             let mut first = true;
 
-            // TODO: move let scaler here
+            // TODO: handle .variations(&[("wght", 400.0)])
+            let mut scaler = scale_ctx.builder(font).size(run.font_size()).build();
+
             for glyph in glyph_run.positioned_glyphs() {
                 let delta_x = glyph.x - last_x;
                 let delta_y = glyph.y - last_y;
@@ -199,12 +151,10 @@ fn font() -> VertexBuffers<Vertex, u16> {
                 last_y = glyph.y;
 
                 if first {
-                    // TODO:
+                    // TODO: handle underline
+                    // TODO: handle strikethrough
                 }
                 first = false;
-
-                // TODO: each glyph will need a translate+scale along with the glyph
-                // or we could run the pipeline per letter?
 
                 encoder.set_transform(Transform::new(
                     1.0, 0.0, //
