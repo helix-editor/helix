@@ -44,7 +44,7 @@
 | llvm-mir-yaml | ✓ |  | ✓ |  |
 | lua | ✓ |  | ✓ |  |
 | make | ✓ |  |  |  |
-| markdown | ✓ |  |  |  |
+| markdown | ✓ |  |  | `remark-language-server` |
 | mint |  |  |  | `mint` |
 | nix | ✓ |  | ✓ | `rnix-lsp` |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
