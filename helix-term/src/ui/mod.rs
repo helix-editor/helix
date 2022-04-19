@@ -179,12 +179,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         files,
         move |path: &PathBuf| {
             // format_fn
-            Spans::from(
-                path.strip_prefix(&root)
-                    .unwrap_or(path)
-                    .to_string_lossy()
-                    .into_owned(),
-            )
+            Spans::from(path.strip_prefix(&root).unwrap_or(path).to_string_lossy())
         },
         move |cx, path: &PathBuf, action| {
             cx.editor

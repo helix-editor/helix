@@ -194,6 +194,12 @@ impl<'a> From<&'a str> for Span<'a> {
     }
 }
 
+impl<'a> From<Cow<'a, str>> for Span<'a> {
+    fn from(s: Cow<'a, str>) -> Span<'a> {
+        Span::raw(s)
+    }
+}
+
 /// A string composed of clusters of graphemes, each with their own style.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Spans<'a>(pub Vec<Span<'a>>);
@@ -226,6 +232,12 @@ impl<'a> From<String> for Spans<'a> {
 impl<'a> From<&'a str> for Spans<'a> {
     fn from(s: &'a str) -> Spans<'a> {
         Spans(vec![Span::from(s)])
+    }
+}
+
+impl<'a> From<Cow<'a, str>> for Spans<'a> {
+    fn from(s: Cow<'a, str>) -> Spans<'a> {
+        Spans(vec![Span::raw(s)])
     }
 }
 
