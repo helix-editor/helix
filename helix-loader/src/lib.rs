@@ -1,3 +1,4 @@
+pub mod config;
 pub mod grammar;
 
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
@@ -36,6 +37,15 @@ pub fn config_dir() -> std::path::PathBuf {
     path
 }
 
+pub fn local_config_dirs() -> Vec<std::path::PathBuf> {
+    let directories = find_root_impl(None, &[".helix".to_string()])
+        .into_iter()
+        .map(|path| path.join(".helix"))
+        .collect();
+    log::debug!("Located configuration folders: {:?}", directories);
+    directories
+}
+
 pub fn cache_dir() -> std::path::PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
@@ -56,25 +66,36 @@ pub fn log_file() -> std::path::PathBuf {
     cache_dir().join("helix.log")
 }
 
-/// Default bultin-in languages.toml.
-pub fn default_lang_config() -> toml::Value {
-    toml::from_slice(include_bytes!("../../languages.toml"))
-        .expect("Could not parse bultin-in languages.toml to valid toml")
-}
+pub fn find_root_impl(root: Option<&str>, root_markers: &[String]) -> Vec<std::path::PathBuf> {
+    let current_dir = std::env::current_dir().expect("unable to determine current directory");
+    let mut directories = Vec::new();
 
-/// User configured languages.toml file, merged with the default config.
-pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
-    let def_lang_conf = default_lang_config();
-    let data = std::fs::read(crate::config_dir().join("languages.toml"));
-    let user_lang_conf = match data {
-        Ok(raw) => {
-            let value = toml::from_slice(&raw)?;
-            merge_toml_values(def_lang_conf, value)
+    let root = match root {
+        Some(root) => {
+            let root = std::path::Path::new(root);
+            if root.is_absolute() {
+                root.to_path_buf()
+            } else {
+                current_dir.join(root)
+            }
         }
-        Err(_) => def_lang_conf,
+        None => current_dir,
     };
 
-    Ok(user_lang_conf)
+    for ancestor in root.ancestors() {
+        // don't go higher than repo
+        if ancestor.join(".git").is_dir() {
+            // Use workspace if detected from marker
+            directories.push(ancestor.to_path_buf());
+            break;
+        } else if root_markers
+            .iter()
+            .any(|marker| ancestor.join(marker).exists())
+        {
+            directories.push(ancestor.to_path_buf());
+        }
+    }
+    directories
 }
 
 // right overrides left

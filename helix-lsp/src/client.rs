@@ -293,6 +293,13 @@ impl Client {
                     completion: Some(lsp::CompletionClientCapabilities {
                         completion_item: Some(lsp::CompletionItemCapability {
                             snippet_support: Some(false),
+                            resolve_support: Some(lsp::CompletionItemCapabilityResolveSupport {
+                                properties: vec![
+                                    String::from("documentation"),
+                                    String::from("detail"),
+                                    String::from("additionalTextEdits"),
+                                ],
+                            }),
                             ..Default::default()
                         }),
                         completion_item_kind: Some(lsp::CompletionItemKindCapability {
@@ -835,11 +842,12 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         range: lsp::Range,
+        context: lsp::CodeActionContext,
     ) -> impl Future<Output = Result<Value>> {
         let params = lsp::CodeActionParams {
             text_document,
             range,
-            context: lsp::CodeActionContext::default(),
+            context,
             work_done_progress_params: lsp::WorkDoneProgressParams::default(),
             partial_result_params: lsp::PartialResultParams::default(),
         };
