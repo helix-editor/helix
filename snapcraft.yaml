@@ -1,0 +1,28 @@
+name: helix
+version: git
+summary: A post-modern modal text editor.
+description: |
+  A kakoune / neovim inspired editor, written in Rust.
+
+base: core18
+grade: devel
+confinement: classic
+
+parts:
+  helix:
+    source: "./"
+    source-type: local
+    plugin: rust
+    rust-channel: stable
+  runtime:
+    source: "./"
+    source-type: local
+    plugin: dump
+    stage:
+      - "runtime"
+
+apps:
+  helix:
+    command: hx
+    environment:
+      HELIX_RUNTIME: "$SNAP/runtime"
