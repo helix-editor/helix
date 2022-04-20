@@ -5,7 +5,7 @@
 
 "type" = { fg = "type" }
 "type.builtin" = { fg = "type" }
-"type.enum.variant" = { fg = "constant" } 
+"type.enum.variant" = { fg = "constant" }
 "constructor" = { fg = "constant" }
 "variable.other.member" = { fg = "variable" }
 
@@ -79,6 +79,7 @@
 "ui.text.focus" = { fg = "white" }
 
 "ui.virtual" = { fg = "dark_green" }
+"ui.virtual.ruler" = { bg = "borders" }
 
 "warning" = { fg = "gold2" }
 "error" = { fg = "red" }
@@ -117,3 +118,4 @@ background = "#1e1e1e"
 text = "#d4d4d4"
 cursor = "#a6a6a6"
 widget = "#252526"
+borders = "#323232"
