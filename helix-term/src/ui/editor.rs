@@ -436,51 +436,45 @@ impl EditorView {
 
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
-                    for grapheme in RopeGraphemes::new(text) {
+                    let mut iter = RopeGraphemes::new(text);
+                    let mut next_grapheme = iter.next();
+                    while let Some(grapheme) = next_grapheme {
+                        let grapheme = Cow::from(grapheme);
+                        let (grapheme, width) = if grapheme == "\t" {
+                            // make sure we display tab as appropriate amount of spaces
+                            let visual_tab_width = tab_width - (visual_x as usize % tab_width);
+                            (&tab[..visual_tab_width], visual_tab_width)
+                        } else {
+                            // Cow will prevent allocations if span contained in a single slice
+                            // which should really be the majority case
+                            let width = grapheme_width(&grapheme);
+                            (grapheme.as_ref(), width)
+                        };
+
+                        visual_x = visual_x.saturating_add(width as u16);
+
                         let out_of_bounds = visual_x < offset.col as u16;
-                        let skip = visual_x >= viewport.width as u16;
+                        let skip = visual_x >= viewport.width + offset.col as u16;
 
                         if skip {
                             visual_x = 0;
                             line += 1;
-                            surface.set_string(
-                                viewport.x + visual_x - offset.col as u16,
-                                viewport.y + line,
-                                " ",
-                                style,
-                            );
-                        } else if LineEnding::from_rope_slice(&grapheme).is_some() {
-                            if !out_of_bounds {
-                                surface.set_string(
-                                    viewport.x + visual_x - offset.col as u16,
-                                    viewport.y + line,
-                                    " ",
-                                    style,
-                                );
-                            }
-
-                            visual_x = 0;
-                            line += 1;
-
-                            // TODO: with proper iter this shouldn't be necessary
-                            if line >= viewport.height {
-                                break 'outer;
-                            }
                         } else {
-                            let grapheme = Cow::from(grapheme);
+                            next_grapheme = iter.next();
 
-                            let (grapheme, width) = if grapheme == "\t" {
-                                // make sure we display tab as appropriate amount of spaces
-                                let visual_tab_width = tab_width - (visual_x as usize % tab_width);
-                                (&tab[..visual_tab_width], visual_tab_width)
-                            } else {
-                                // Cow will prevent allocations if span contained in a single slice
-                                // which should really be the majority case
-                                let width = grapheme_width(&grapheme);
-                                (grapheme.as_ref(), width)
-                            };
-
-                            if !out_of_bounds {
+                            if LineEnding::from_str(&grapheme).is_some() {
+                                if !out_of_bounds {
+                                    // we still want to render an empty cell with the style
+                                    surface.set_string(
+                                        viewport.x + visual_x - offset.col as u16,
+                                        viewport.y + line,
+                                        " ",
+                                        style,
+                                    );
+                                }
+                                visual_x = 0;
+                                line += 1;
+                            } else if !out_of_bounds {
                                 // if we're offscreen just keep going until we hit a new line
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
@@ -489,10 +483,7 @@ impl EditorView {
                                     style,
                                 );
                             }
-
-                            visual_x = visual_x.saturating_add(width as u16);
                         }
-                    }
 
                     for grapheme in RopeGraphemes::new(text) {
                         let out_of_bounds = visual_x < offset.col as u16
