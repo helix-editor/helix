@@ -174,6 +174,10 @@ cargo install --path helix-term
 <p>Helix also needs it's runtime files so make sure to copy/symlink the <code>runtime/</code> directory into the
 config directory (for example <code>~/.config/helix/runtime</code> on Linux/macOS). This location can be overriden
 via the <code>HELIX_RUNTIME</code> environment variable.</p>
+<table><thead><tr><th>OS</th><th>command</th></tr></thead><tbody>
+<tr><td>windows</td><td><code>xcopy runtime %AppData%/helix/runtime</code></td></tr>
+<tr><td>linux/macos</td><td><code>ln -s $PWD/runtime ~/.config/helix/runtime</code></td></tr>
+</tbody></table>
 <h2 id="building-tree-sitter-grammars"><a class="header" href="#building-tree-sitter-grammars">Building tree-sitter grammars</a></h2>
 <p>Tree-sitter grammars must be fetched and compiled if not pre-packaged.
 Fetch grammars with <code>hx --grammar fetch</code> (requires <code>git</code>) and compile them
