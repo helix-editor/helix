@@ -450,14 +450,14 @@ impl EditorView {
                             let width = grapheme_width(&grapheme);
                             (grapheme.as_ref(), width)
                         };
-
+                        let old_visual_x = visual_x;
                         visual_x = visual_x.saturating_add(width as u16);
-
-                        let out_of_bounds = visual_x < offset.col as u16;
+                        
+                        let out_of_bounds = old_visual_x < offset.col as u16;
                         let skip = visual_x >= viewport.width + offset.col as u16;
 
                         if skip {
-                            visual_x = 0;
+                            visual_x = offset.col as u16;
                             line += 1;
                         } else {
                             next_grapheme = iter.next();
@@ -466,7 +466,7 @@ impl EditorView {
                                 if !out_of_bounds {
                                     // we still want to render an empty cell with the style
                                     surface.set_string(
-                                        viewport.x + visual_x - offset.col as u16,
+                                        viewport.x + old_visual_x - offset.col as u16,
                                         viewport.y + line,
                                         " ",
                                         style,
@@ -477,7 +477,7 @@ impl EditorView {
                             } else if !out_of_bounds {
                                 // if we're offscreen just keep going until we hit a new line
                                 surface.set_string(
-                                    viewport.x + visual_x - offset.col as u16,
+                                    viewport.x + old_visual_x - offset.col as u16,
                                     viewport.y + line,
                                     grapheme,
                                     style,
@@ -485,69 +485,71 @@ impl EditorView {
                             }
                         }
 
-                    for grapheme in RopeGraphemes::new(text) {
-                        let out_of_bounds = visual_x < offset.col as u16
-                            || visual_x >= viewport.width + offset.col as u16;
+                        for grapheme in RopeGraphemes::new(text) {
+                            let out_of_bounds = visual_x < offset.col as u16
+                                || visual_x >= viewport.width + offset.col as u16;
 
-                        if LineEnding::from_rope_slice(&grapheme).is_some() {
-                            if !out_of_bounds {
-                                // we still want to render an empty cell with the style
-                                surface.set_string(
-                                    viewport.x + visual_x - offset.col as u16,
-                                    viewport.y + line,
-                                    &newline,
-                                    style.patch(whitespace_style),
-                                );
-                            }
+                            if LineEnding::from_rope_slice(&grapheme).is_some() {
+                                if !out_of_bounds {
+                                    // we still want to render an empty cell with the style
+                                    surface.set_string(
+                                        viewport.x + visual_x - offset.col as u16,
+                                        viewport.y + line,
+                                        &newline,
+                                        style.patch(whitespace_style),
+                                    );
+                                }
 
-                            visual_x = 0;
-                            line += 1;
+                                visual_x = 0;
+                                line += 1;
 
-                            // TODO: with proper iter this shouldn't be necessary
-                            if line >= viewport.height {
-                                break 'outer;
-                            }
-                        } else {
-                            let grapheme = Cow::from(grapheme);
-                            let is_whitespace;
-
-                            let (grapheme, width) = if grapheme == "\t" {
-                                is_whitespace = true;
-                                // make sure we display tab as appropriate amount of spaces
-                                let visual_tab_width = tab_width - (visual_x as usize % tab_width);
-                                let grapheme_tab_width =
-                                    ropey::str_utils::char_to_byte_idx(&tab, visual_tab_width);
-
-                                (&tab[..grapheme_tab_width], visual_tab_width)
-                            } else if grapheme == " " {
-                                is_whitespace = true;
-                                (space, 1)
-                            } else if grapheme == "\u{00A0}" {
-                                is_whitespace = true;
-                                (nbsp, 1)
+                                // TODO: with proper iter this shouldn't be necessary
+                                if line >= viewport.height {
+                                    break 'outer;
+                                }
                             } else {
-                                is_whitespace = false;
-                                // Cow will prevent allocations if span contained in a single slice
-                                // which should really be the majority case
-                                let width = grapheme_width(&grapheme);
-                                (grapheme.as_ref(), width)
-                            };
+                                let grapheme = Cow::from(grapheme);
+                                let is_whitespace;
 
-                            if !out_of_bounds {
-                                // if we're offscreen just keep going until we hit a new line
-                                surface.set_string(
-                                    viewport.x + visual_x - offset.col as u16,
-                                    viewport.y + line,
-                                    grapheme,
-                                    if is_whitespace {
-                                        style.patch(whitespace_style)
-                                    } else {
-                                        style
-                                    },
-                                );
+                                let (grapheme, width) = if grapheme == "\t" {
+                                    is_whitespace = true;
+                                    // make sure we display tab as appropriate amount of spaces
+                                    let visual_tab_width =
+                                        tab_width - (visual_x as usize % tab_width);
+                                    let grapheme_tab_width =
+                                        ropey::str_utils::char_to_byte_idx(&tab, visual_tab_width);
+
+                                    (&tab[..grapheme_tab_width], visual_tab_width)
+                                } else if grapheme == " " {
+                                    is_whitespace = true;
+                                    (space, 1)
+                                } else if grapheme == "\u{00A0}" {
+                                    is_whitespace = true;
+                                    (nbsp, 1)
+                                } else {
+                                    is_whitespace = false;
+                                    // Cow will prevent allocations if span contained in a single slice
+                                    // which should really be the majority case
+                                    let width = grapheme_width(&grapheme);
+                                    (grapheme.as_ref(), width)
+                                };
+
+                                if !out_of_bounds {
+                                    // if we're offscreen just keep going until we hit a new line
+                                    surface.set_string(
+                                        viewport.x + visual_x - offset.col as u16,
+                                        viewport.y + line,
+                                        grapheme,
+                                        if is_whitespace {
+                                            style.patch(whitespace_style)
+                                        } else {
+                                            style
+                                        },
+                                    );
+                                }
+
+                                visual_x = visual_x.saturating_add(width as u16);
                             }
-
-                            visual_x = visual_x.saturating_add(width as u16);
                         }
                     }
                 }
