@@ -429,7 +429,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-ruby", rev = "dfff6
 name = "bash"
 scope = "source.bash"
 injection-regex = "bash"
-file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc"]
+file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild"]
 shebangs = ["sh", "bash", "dash"]
 roots = []
 comment-token = "#"
@@ -1007,8 +1007,8 @@ source = { git = "https://github.com/fwcd/tree-sitter-kotlin", rev = "a4f71eb9b8
 [[language]]
 name = "hcl"
 scope = "source.hcl"
-injection-regex = "(hcl|tf)"
-file-types = ["hcl", "tf", "tfvars"]
+injection-regex = "(hcl|tf|nomad)"
+file-types = ["hcl", "tf", "tfvars", "nomad"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
