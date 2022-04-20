@@ -774,15 +774,15 @@ impl EditorView {
     }
 
     fn command_mode(&mut self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
-        match event {
+        match (event, cxt.editor.count) {
             // count handling
-            key!(i @ '0'..='9') => {
+            (key!(i @ '0'), Some(_)) | (key!(i @ '1'..='9'), _) => {
                 let i = i.to_digit(10).unwrap() as usize;
                 cxt.editor.count =
                     std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
             }
             // special handling for repeat operator
-            key!('.') if self.keymaps.pending().is_empty() => {
+            (key!('.'), _) if self.keymaps.pending().is_empty() => {
                 // first execute whatever put us into insert mode
                 self.last_insert.0.execute(cxt);
                 // then replay the inputs
