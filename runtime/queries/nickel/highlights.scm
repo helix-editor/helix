@@ -33,6 +33,7 @@
     (pattern
       id: (ident) @variable.parameter
     )+
+  "=>" @operator
 )
 (record_field) @variable.other.member
 
