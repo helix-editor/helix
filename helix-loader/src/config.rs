@@ -19,7 +19,7 @@ pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
         .into_iter()
         .chain([default_lang_config()].into_iter())
         .fold(toml::Value::Table(toml::value::Table::default()), |a, b| {
-            crate::merge_toml_values(b, a)
+            crate::merge_toml_values(b, a, false)
         });
 
     Ok(config)
