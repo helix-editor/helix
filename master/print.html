@@ -866,6 +866,26 @@ name = &quot;rust&quot;
 <tr><td><code>smart-case</code></td><td>Enable smart case regex searching (case insensitive unless pattern contains upper case characters)</td><td><code>true</code></td></tr>
 <tr><td><code>wrap-around</code></td><td>Whether the search should wrap after depleting the matches</td><td><code>true</code></td></tr>
 </tbody></table>
+<h3 id="editorwhitespace-section"><a class="header" href="#editorwhitespace-section"><code>[editor.whitespace]</code> Section</a></h3>
+<p>Options for rendering whitespace with visible characters. Use <code>:set whitespace.render all</code> to temporarily enable visible whitespace.</p>
+<table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>render</code></td><td>Whether to render whitespace. May either be <code>&quot;all&quot;</code> or <code>&quot;none&quot;</code>, or a table with sub-keys <code>space</code>, <code>tab</code>, and <code>newline</code>.</td><td><code>&quot;none&quot;</code></td></tr>
+<tr><td><code>characters</code></td><td>Literal characters to use when rendering whitespace. Sub-keys may be any of <code>tab</code>, <code>space</code> or <code>newline</code></td><td>See example below</td></tr>
+</tbody></table>
+<p>Example</p>
+<pre><code class="language-toml">[editor.whitespace]
+render = &quot;all&quot;
+# or control each character
+[editor.whitespace.render]
+space = &quot;all&quot;
+tab = &quot;all&quot;
+newline = &quot;none&quot;
+
+[editor.whitespace.characters]
+space = &quot;·&quot;
+tab = &quot;→&quot;
+newline = &quot;⏎&quot;
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="themes"><a class="header" href="#themes">Themes</a></h1>
 <p>To use a theme add <code>theme = &quot;&lt;name&gt;&quot;</code> to your <a href="./configuration.html"><code>config.toml</code></a> at the very top of the file before the first section or select it during runtime using <code>:theme &lt;name&gt;</code>.</p>
 <h2 id="creating-a-theme"><a class="header" href="#creating-a-theme">Creating a theme</a></h2>
@@ -1145,6 +1165,7 @@ over it and is merged into the default palette.</p>
 <tr><td><code>ui.text</code></td><td>Command prompts, popup text, etc.</td></tr>
 <tr><td><code>ui.text.focus</code></td><td></td></tr>
 <tr><td><code>ui.text.info</code></td><td>The key: command text in <code>ui.popup.info</code> boxes</td></tr>
+<tr><td><code>ui.virtual.whitespace</code></td><td>Visible white-space characters</td></tr>
 <tr><td><code>ui.menu</code></td><td>Code and command completion menus</td></tr>
 <tr><td><code>ui.menu.selected</code></td><td>Selected autocomplete item</td></tr>
 <tr><td><code>ui.selection</code></td><td>For selections in the editing area</td></tr>
