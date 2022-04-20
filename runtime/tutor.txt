@@ -46,12 +46,12 @@ _________________________________________________________________
 =                      1.2 EXITING HELIX                        =
 =================================================================
 
- 1. Press the : key to enter command mode. Your cursor will
+ 1. Type : to enter command mode. Your cursor will
     move to the bottom of the screen.
  2. Type q or quit and press <ENTER> to exit Helix.
 
  Note: The quit command will fail if there are unsaved changes.
-       To force quit and DISCARD these changes, use q! or quit!.
+       To force quit and DISCARD these changes, type q! or quit!.
        You will learn how to save files later.
 
  To exit command mode without entering a command, press <ESC>.
@@ -123,7 +123,7 @@ _________________________________________________________________
    A - Insert at the end of the line.
 
  1. Move to anywhere in the line below marked -->.
- 2. Press A (<SHIFT> + a), your cursor will move to the end of
+ 2. Type A (<SHIFT> + a), your cursor will move to the end of
     the line and you will be able to type.
  3. Type the text necessary to match the line below.
 
@@ -134,16 +134,16 @@ _________________________________________________________________
 =                      1.6 SAVING A FILE                        =
 =================================================================
 
- Use :w/:write to save a file.
+ Type :w/:write to save a file.
 
  1. Exit Helix using :q! as explained before, or open a new
     terminal.
  2. Open a file in Helix by running: hx FILENAME
  3. Make some edits to the file.
- 4. Press the : key to enter command mode.
+ 4. Type : to enter command mode.
  5. Type w or write, and press <ENTER> to save the file.
 
- You can also use wq or write-quit to save and exit.
+ You can also type wq or write-quit to save and exit.
 
  Note: You can optionally enter a filepath after the w/write
        command in order to save to that path.
@@ -158,7 +158,7 @@ _________________________________________________________________
 
  * Use the h,j,k,l keys to move the cursor.
 
- * Press : to enter command mode.
+ * Type : to enter command mode.
    * The q/quit and q!/quit! commands will exit Helix. The
      former fails when there are unsaved changes. The latter
      discards them.
@@ -288,7 +288,7 @@ _________________________________________________________________
 =                         2.6 UNDOING                           =
 =================================================================
 
- Type u to undo. Type U to redo.
+ Press u to undo. Type U to redo.
 
  1. Move the cursor to the line below marked -->.
  2. Move to the first error, and press d to delete it.
@@ -310,22 +310,22 @@ _________________________________________________________________
 =                        CHAPTER 2 RECAP                        =
 =================================================================
 
- * Type w to select forward until the next word.
-   * Type e to select to the end of the current word.
-   * Type b to select backward to the start of the current word.
+ * Press w to select forward until the next word.
+   * Press e to select to the end of the current word.
+   * Press b to select backward to the start of the current word.
    * Use uppercase counterparts, W,E,B, to traverse WORDS.
 
- * Typing d deletes the entire selection, so you can delete a
+ * Pressing d deletes the entire selection, so you can delete a
    word forward by typing wd.
 
- * Type c to delete the selection and enter Insert mode.
+ * Press c to delete the selection and enter Insert mode.
 
- * Type a number before a motion to repeat it that many times.
+ * Press a number before a motion to repeat it that many times.
 
- * Type x to select the entire current line. Type x again to
+ * Press x to select the entire current line. Type x again to
    select the next line.
 
- * Type u to undo. Type U to redo.
+ * Press u to undo. Type U to redo.
 
 
 =================================================================
@@ -339,14 +339,14 @@ _________________________________________________________________
     press will now affect both cursors.
  3. Use Insert mode to correct the lines. The two cursors will
     fix both lines simultaneously.
- 4. Type , to remove the second cursor.
+ 4. Press , to remove the second cursor.
 
  --> Fix th two nes at same ime.
  --> Fix th two nes at same ime.
 
      Fix these two lines at the same time.
 
- Note: You can use alt-C to do the same above the cursor.
+ Note: Type alt-C to do the same above the cursor.
 
 
 
@@ -354,7 +354,7 @@ _________________________________________________________________
 =                    3.2 THE SELECT COMMAND                     =
 =================================================================
 
- Type s to select matches in the selection.
+ Press s to select matches in the selection.
 
  1. Move the cursor to the line below marked -->.
  2. Press x to select the line.
@@ -363,7 +363,7 @@ _________________________________________________________________
     'apples' in the line will be selected.
  5. You can now press c and change 'apples' to something else,
     like 'oranges'.
- 6. Type , to remove the second cursor.
+ 6. Press , to remove the second cursor.
 
  --> I like to eat apples since my favorite fruit is apples.
 
@@ -398,7 +398,7 @@ _________________________________________________________________
 =                   3.4 COLLAPSING SELECTIONS                   =
 =================================================================
 
- Type ; to collapse selections to single cursors.
+ Press ; to collapse selections to single cursors.
 
  Sometimes, you want to deselect without having to move the
  cursor(s). This can be done using the ; key.
@@ -420,13 +420,13 @@ _________________________________________________________________
 =                 3.5 SELECTING TO A CHARACTER                  =
 =================================================================
 
- Press f<ch> to select up to and including (find) a character.
- Press t<ch> to do the same, but not including ('til) a character.
- Press uppercase F/T to do the same backwards.
+ Type f<ch> to select up to and including (find) a character.
+ Type t<ch> to do the same, but not including ('til) a character.
+ Type uppercase F/T to do the same backwards.
 
  1. Move the cursor to the line below marked -->. Place the
     cursor on the first dash.
- 2. Press f[ to select to the square bracket.
+ 2. Type f[ to select to the square bracket.
  3. Press d to delete your selection.
  4. Go to the end of the line and repeat with F].
  5. Move to the second line marked -->, just after the arrow.
@@ -442,7 +442,7 @@ _________________________________________________________________
 =                        CHAPTER 3 RECAP                        =
 =================================================================
 
- * Press C to copy the selection on the line below and Alt-C for
+ * Type C to copy the selection on the line below and Alt-C for
    above.
 
  * Press s to select all instances of a regex pattern inside
@@ -450,9 +450,9 @@ _________________________________________________________________
 
  * Press semicolon ( ; ) to collapse selection.
 
- * Press f / F to extend selection up to & including a character.
+ * Type f / F to extend selection up to & including a character.
 
- * Press t / T to extend selection until a character.
+ * Type t / T to extend selection until a character.
 
 
 
@@ -466,7 +466,7 @@ _________________________________________________________________
 
  Press y to yank (copy) the selection.
  Press p to paste the yanked selection after the cursor.
- Press P to paste the yanked text before the cursor.
+ Type P to paste the yanked text before the cursor.
 
  1. Move the cursor to the line below marked -->.
     Make sure your cursor is on the "b" of banana.
@@ -479,26 +479,26 @@ _________________________________________________________________
 
  Note: Whenever you delete or change text, Helix will copy the
        altered text. Use alt-d/c instead to avoid this.
- Note: Helix doesn't share the system clipboard by default. Press
+ Note: Helix doesn't share the system clipboard by default. Type
        space-y/p to yank/paste on your computer's main clipboard.
 
 =================================================================
 =                     4.2 CHANGING CASE                         =
 =================================================================
 
- Press ~ to switch the case of all selected letters.
+ Type ~ to switch the case of all selected letters.
  Press ` to set all selected letters to lowercase.
- Press Alt-` to set all selected letters to uppercase.
+ Type Alt-` to set all selected letters to uppercase.
 
  1. Move the cursor to the first line below marked -->.
  2. Select each wrongly capitalised or lowercase letter
-    and press ~ over them.
+    and Type ~ over them.
  3. Move to the second line marked -->.
  4. Press x to select the line.
  5. Press ` to change the line to lowercase.
  6. Move to the third line marked -->.
  7. Press x to select the line.
- 8. Press Alt-` to change the line to uppercase.
+ 8. Type Alt-` to change the line to uppercase.
 
  --> thIs sENtencE hAs MIS-cApitalIsed leTTerS.
  --> this SENTENCE SHOULD all be in LOWERCASE.
@@ -510,15 +510,15 @@ _________________________________________________________________
 
  Macros are a way to record a set of actions you want to repeat.
 
- Press Q to start recording a macro, you should see a popup at
- the bottom of your screen. Press Q again to stop recording.
+ Type Q to start recording a macro, you should see a popup at
+ the bottom of your screen. Type Q again to stop recording.
  Press q to repeat your recorded macro.
 
  1. Move the cursor to the first line below marked -->.
     Ensure your cursor is on the > of the arrow.
- 2. Press Q to start recording.
+ 2. Type Q to start recording.
  3. Edit the line to look like the bottom one.
- 4. Exit insert and press Q again to stop recording.
+ 4. Exit insert and Type Q again to stop recording.
  5. Move to the line below and put your cursor on the > again.
  6. Press q to repeat the macro.
 
@@ -531,14 +531,14 @@ _________________________________________________________________
 =================================================================
 
  * Press y to yank (copy) text and p to paste.
-   * Press space-Y and space-P to yank/paste on the system
+   * Type space-Y and space-P to yank/paste on the system
      clipboard.
 
- * Press ~ to alternate case of selected letters.
-   * Press ` and alt-` to set the case of selected layers to
+ * Type ~ to alternate case of selected letters.
+   * Use ` and alt-` to set the case of selected layers to
      upper and lower respectively.
 
- * Press Q to record and stop recording a macro.
+ * Type Q to record and stop recording a macro.
    * Press q to repeat the recorded macro.
 
 
@@ -556,15 +556,15 @@ _________________________________________________________________
  jumping to the definition of a function in code. It stores
  these in what's called the jumplist.
 
- Press C-s (ctrl-s) to manually save your current position to
+ Type C-s (ctrl-s) to manually save your current position to
  the jumplist.
 
- Press C-i and C-o to move forward and backwards in the jumplist
+ Type C-i and C-o to move forward and backwards in the jumplist
  respectively.
 
- 1. Press C-s somewhere.
+ 1. Type C-s somewhere.
  2. Move far away in the file.
- 3. Press C-o (just once!) to come back to where you saved.
+ 3. Type C-o (just once!) to come back to where you saved.
 
 
 
@@ -576,15 +576,15 @@ _________________________________________________________________
 
  Press / to search forward in file, enter to confirm search.
  Press n to go to the next search match.
- Press N to go to the previous search match.
+ Type N to go to the previous search match.
 
  1. Press / and type in a common word, like 'banana'.
  2. Press enter to confirm the search.
- 3. press n and N to cycle through the matches.
+ 3. Use n and N to cycle through the matches.
 
  Like the select command, searching also uses regex.
 
- Note: To search backwards, press ? (shift-/).
+ Note: To search backwards, type ? (shift-/).
 
  Note: Unlike Vim, N doesn't change the search direction.
        N always goes backwards and n always goes forwards.
@@ -596,11 +596,11 @@ _________________________________________________________________
 =                        CHAPTER 5 RECAP                        =
 =================================================================
 
- * Press C-s to save position to the jumplist.
-   * Press C-i and C-o to go forward and backward in the jumplist.
+ * Type C-s to save position to the jumplist.
+   * Type C-i and C-o to go forward and backward in the jumplist.
 
  * Press / to search forward in file, and ? to search backwards.
-   * Press n and N to cycle through search matches.
+   * Use n and N to cycle through search matches.
 
 
 
@@ -618,11 +618,11 @@ _________________________________________________________________
 =                       6.1 JOINING LINES                       =
 =================================================================
 
- Press J to join together lines in selection.
+ Type J to join together lines in selection.
 
  1. Move the cursor to the line below marked -->.
  2. Press x three times to select the other lines.
- 3. Press J to join the lines together.
+ 3. Type J to join the lines together.
 
  --> This line sentence
 is spilling over
@@ -640,7 +640,7 @@ onto other lines.
 =                      6.2 INDENTING LINES                      =
 =================================================================
 
- Press > to indent a line and < to unindent it.
+ Type > to indent a line and < to unindent it.
 
  1. Move the cursor to the line below marked -->.
  2. Indent/unindent the lines with < and >, until they are uniform.
@@ -663,7 +663,7 @@ onto other lines.
 =================================================================
 
  Press o to add a newline and insert below the cursor.
- Press O to add a newline and insert above the cursor.
+ Type O to add a newline and insert above the cursor.
 
  1. Move the cursor to the line below marked -->.
  2. Press o to open a line below and type your answer.
@@ -684,11 +684,11 @@ onto other lines.
 =                        CHAPTER 6 RECAP                        =
 =================================================================
 
- * Press J to join lines within selection.
+ * Type J to join lines within selection.
 
- * Press > and < to indent and unindent selected lines.
+ * Type > and < to indent and unindent selected lines.
 
- * Press o and O to open lines.
+ * Use o and O to open lines.
 
 
 
