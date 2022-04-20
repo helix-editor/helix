@@ -381,6 +381,21 @@ name = "python"
 source = { git = "https://github.com/tree-sitter/tree-sitter-python", rev = "d6210ceab11e8d812d4ab59c07c81458ec6e5184" }
 
 [[language]]
+name = "nickel"
+scope = "source.nickel"
+injection-regex = "nickel"
+file-types = ["ncl"]
+shebangs = []
+roots = []
+comment-token = "#"
+language-server = { command = "nls" }
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "nickel"
+source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "85348774ccf7624fac72703b2264d18b6f572be6" }
+
+[[language]]
 name = "nix"
 scope = "source.nix"
 injection-regex = "nix"
