@@ -457,6 +457,7 @@ dependencies = [
  "once_cell",
  "pulldown-cmark",
  "retain_mut",
+ "ropey",
  "serde",
  "serde_json",
  "signal-hook",

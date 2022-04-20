@@ -53,6 +53,7 @@ label = "honey"
 
 "ui.text" = { fg = "lavender" }
 "ui.text.focus" = { fg = "white" }
+"ui.virtual" = { fg = "comet" }
 
 "ui.selection" = { bg = "#540099" }
 "ui.selection.primary" = { bg = "#540099" }

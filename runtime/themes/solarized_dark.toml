@@ -39,6 +39,8 @@
 # 背景
 "ui.background" = { bg = "base03" }
 
+"ui.virtual" = { fg = "base01" }
+
 # 行号栏
 "ui.linenr" = { fg = "base0", bg = "base02" }
 # 当前行号栏

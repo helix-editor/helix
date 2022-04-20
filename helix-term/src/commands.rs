@@ -2294,8 +2294,10 @@ fn open(cx: &mut Context, open: Open) {
     let mut offs = 0;
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
-        let cursor_line = range.cursor_line(text);
-
+        let cursor_line = text.char_to_line(match open {
+            Open::Below => graphemes::prev_grapheme_boundary(text, range.to()),
+            Open::Above => range.from(),
+        });
         let new_line = match open {
             // adjust position to the end of the line (next line - 1)
             Open::Below => cursor_line + 1,

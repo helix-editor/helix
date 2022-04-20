@@ -5,6 +5,7 @@
 "ui.linenr.selected" = { bg = "base3" }
 "ui.text.focus" = { fg = "yellow", modifiers= ["bold"] }
 "ui.menu.selected" = { fg = "base2", bg = "yellow" }
+"ui.virtual" = "base5"
 
 "info" = "base8"
 "hint" = "base8"
