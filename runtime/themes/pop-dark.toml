@@ -1,5 +1,5 @@
 # Pop Dark theme for the Helix Editor
-# Author: workingj <workingj@pm.me>
+# Author: workingj<workingj@pm.me>
 # Repo: https://github.com/workingJ/helix-pop-theme
 # Version: 1.0
 # This theme is based on Nathaniel Webb's VSCodePopTheme <https://github.com/ArtisanByteCrafter/VSCodePopTheme>
@@ -38,11 +38,12 @@ diagnostic = { fg = 'greyT', bg = 'redD' }
 'ui.popup.info' = { bg = 'brownH', fg = 'greyT' }
 tag = { fg = 'blueH' }
 label = { fg = 'greenS' }
-# module = { bg = '#FF0000' } # ?
+module = { bg = 'orangeL' }
 special = { fg = 'orangeW' }
 operator = { fg = 'orangeY' }
-# property = { bg = '#FF0000' } # ?
+property = { bg = 'blueH' }
 attribute = { fg = 'orangeL' }
+attributes = { fg = 'orangeL' }
 namespace = { fg = 'orangeL' }
 'type' = { fg = 'redH' }
 'type.builtin' = { fg = 'orangeL' }
@@ -55,14 +56,14 @@ namespace = { fg = 'orangeL' }
 'constant.character.escape' = { fg = 'blueL' }
 'constant.numeric' = { fg = 'redH' }
 'constant.number' = { bg = 'blueH' }
-'constant.number.integer' = { fg = 'orangeS' } # ?
-'constant.number.float' = { fg = 'orangeS' } # ?
+'constant.number.integer' = { fg = 'orangeS' }
+'constant.number.float' = { fg = 'orangeS' }
 'string' = { fg = 'greenN' }
 'string.regexp' = { fg = 'blueL' }
-'string.special' = { fg = 'orangeW' } # ?
-'string.special.path' = { fg = 'orangeW' } # ?
-'string.special.url' = { fg = 'orangeW' } # ?
-'string.special.symbol' = { fg = 'orangeW' } # ?
+'string.special' = { fg = 'orangeW' }
+'string.special.path' = { fg = 'orangeW' }
+'string.special.url' = { fg = 'orangeW' }
+'string.special.symbol' = { fg = 'orangeW' }
 'comment' = { fg = 'greyC', modifiers = ['italic'] }
 'comment.line' = { fg = 'greyC', modifiers = ['italic'] }
 'comment.block' = { fg = 'greyC', modifiers = ['italic'] }
@@ -71,7 +72,7 @@ namespace = { fg = 'orangeL' }
 'variable.builtin' = { fg = 'blueL' }
 'variable.parameter' = { fg = 'white' }
 'variable.other.member' = { fg = 'orangeH' }
-# 'variable.function' = { fg = '#FF0000', bg = '#0000FF' } # ?
+'variable.function' = { fg = 'blueL' }
 'punctuation' = { fg = 'blueL' }
 'punctuation.delimeter' = { fg = 'blueH' }
 'punctuation.bracket' = { fg = 'orangeN' }
@@ -154,3 +155,4 @@ brownH = '#56524E'
 brownN = '#3F3B39'
 brownR = '#35312f'
 brownD = '#2B2928'
+
