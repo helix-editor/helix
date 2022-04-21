@@ -640,10 +640,10 @@ onto other lines.
 =                      6.2 INDENTING LINES                      =
 =================================================================
 
- Press > to indent a line and < to unindent it.
+ Press > to indent a line and < to outindent it.
 
  1. Move the cursor to the line below marked -->.
- 2. Indent/unindent the lines with < and >, until they are uniform.
+ 2. Indent/outdent the lines with < and >, until they are uniform.
 
  --> These lines
     are indented
@@ -686,7 +686,7 @@ onto other lines.
 
  * Type J to join lines within selection.
 
- * Type > and < to indent and unindent selected lines.
+ * Type > and < to indent and outdent selected lines.
 
  * Use o and O to open lines.
 
