@@ -740,13 +740,35 @@ impl EditorView {
         //-------------------------------
         // Middle / File path / Title
         //-------------------------------
+        let lang = doc.language_id().unwrap_or_default();
+        let dft_lsp_name = &"".to_owned();
+        let lsp_name = if doc.language_server().is_some() {
+            let cmd = if let Some(c) = doc.language_config() {
+                match &c.language_server {
+                    None => dft_lsp_name,
+                    Some(config) => &config.command,
+                }
+            } else {
+                dft_lsp_name
+            };
+            cmd
+        } else {
+            dft_lsp_name
+        };
         let title = {
             let rel_path = doc.relative_path();
             let path = rel_path
                 .as_ref()
                 .map(|p| p.to_string_lossy())
                 .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-            format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" })
+            format!(
+                "{}{} ft:{} {} lsp: {}",
+                path,
+                if doc.is_modified() { "[+]" } else { "" },
+                lang,
+                theme.get_ft_icon(&doc.extension()),
+                lsp_name
+            )
         };
 
         surface.set_string_truncated(

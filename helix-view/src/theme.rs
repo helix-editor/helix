@@ -20,6 +20,21 @@ pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
         .expect("Failed to parse base 16 default theme")
 });
 
+pub static DEFAULT_FT_ICON: Lazy<String> = Lazy::new(|| "".to_owned());
+
+// #[derive(Clone, Debug)]
+// pub struct FiletypeIcon {
+//     // HashMap<String, Style>
+//     icon: String,
+// }
+
+// HashMap<String, FiletypeIcon>
+
+pub static DEFAULT_FT_ICONS: Lazy<HashMap<String, String>> = Lazy::new(|| {
+    toml::from_slice(include_bytes!("../../ft_icons.toml"))
+        .expect("Failed to parse default file type icons")
+});
+
 #[derive(Clone, Debug)]
 pub struct Loader {
     user_dir: PathBuf,
@@ -95,6 +110,7 @@ pub struct Theme {
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
     scopes: Vec<String>,
     highlights: Vec<Style>,
+    icons: HashMap<String, String>,
 }
 
 impl<'de> Deserialize<'de> for Theme {
@@ -135,10 +151,13 @@ impl<'de> Deserialize<'de> for Theme {
             }
         }
 
+        let icons = DEFAULT_FT_ICONS.clone();
+
         Ok(Self {
             scopes,
             styles,
             highlights,
+            icons,
         })
     }
 }
@@ -176,6 +195,10 @@ impl Theme {
                 .into_iter()
                 .all(|color| !matches!(color, Some(Color::Rgb(..))))
         })
+    }
+
+    pub fn get_ft_icon(&self, ft: &str) -> &str {
+        self.icons.get(ft).unwrap_or_else(|| &DEFAULT_FT_ICON)
     }
 }
 

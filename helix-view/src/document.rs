@@ -123,6 +123,7 @@ pub struct Document {
 }
 
 use std::{fmt, mem};
+
 impl fmt::Debug for Document {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Document")
@@ -929,6 +930,15 @@ impl Document {
         self.path
             .as_deref()
             .map(helix_core::path::get_relative_path)
+    }
+
+    pub fn extension(&self) -> String {
+        let dft = &PathBuf::default();
+        let path = self.path.as_ref().unwrap_or(dft).as_path();
+        match path.extension() {
+            None => "".into(),
+            Some(ext) => ext.to_string_lossy().to_string(),
+        }
     }
 
     // transact(Fn) ?
