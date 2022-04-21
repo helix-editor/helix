@@ -124,10 +124,6 @@ impl View {
         self.docs_access_history.push(id);
     }
 
-    pub fn gutters(&self) -> &[(Gutter, usize)] {
-        GUTTERS
-    }
-
     pub fn inner_area(&self) -> Rect {
         // TODO: cache this
         let offset = self

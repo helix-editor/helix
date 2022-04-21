@@ -794,6 +794,9 @@ impl Editor {
             .tree
             .views_mut()
             .filter_map(|(view, _focus)| {
+                // remove the document from jump list of all views
+                view.jumps.remove(&doc_id);
+
                 if view.doc == doc_id {
                     // something was previously open in the view, switch to previous doc
                     if let Some(prev_doc) = view.docs_access_history.pop() {
@@ -815,9 +818,6 @@ impl Editor {
                 }
                 Action::ReplaceDoc(view_id, doc_id) => {
                     self.replace_document_in_view(view_id, doc_id);
-
-                    let view = self.tree.get_mut(view_id);
-                    view.jumps.remove(&doc_id);
                 }
             }
         }
