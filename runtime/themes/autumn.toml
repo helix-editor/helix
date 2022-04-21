@@ -1,0 +1,80 @@
+# The structure based on `base16_default_dark` by Ray Gervais.
+# Most of the colors are based on Autumn:
+# Autumn is a color scheme inspired by the colors you can find in the
+# autumn. Originally it was written as a color scheme for the Komodo IDE
+# but was ported to Vim by Kenneth Love and Chris Jones.  Later Yorick
+# Peterse improved their work.
+# <https://github.com/YorickPeterse/Autumn.vimhttps://github.com/YorickPeterse/Autumn.vim>
+# Jens Getreu finally ported and optimised the color theme to the Helix editor.
+# Author : Jens Getreu <getreu at web.de>
+
+"ui.background" = { bg = "my_gray1" }
+"ui.menu" = { fg = "my_white", bg = "my_gray2" }
+"ui.menu.selected" = { fg = "my_gray2", bg = "my_gray5" }
+"ui.linenr" = { fg = "my_gray4", bg = "my_gray2" }
+"ui.popup" = { bg = "my_gray2" }
+"ui.window" = { bg = "my_gray2" }
+"ui.linenr.selected" = { fg = "my_gray5", bg = "my_gray2", modifiers = ["bold"] }
+"ui.selection" = { bg = "my_gray3" }
+"comment" = { fg = "my_gray4", modifiers = ["italic"] }
+"ui.statusline" = { fg = "my_gray5", bg = "my_gray2" }
+"ui.help" = { fg = "my_gray5", bg = "my_gray2" }
+"ui.cursor" = { fg = "my_gray5", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "my_white", modifiers = ["reversed"] }
+"ui.text" = "my_white"
+"operator" = "my_white"
+"ui.text.focus" = "my_white"
+"variable" = "my_white3"
+"constant.numeric" = "my_turquoise"
+"constant" = "my_white3"
+"attributes" = "my_turquoise"
+"type" = { fg = "my_white3", modifiers = ["italic"] }
+"ui.cursor.match" = { fg = "my_white3", modifiers = ["underlined"] }
+"string"  = "my_green"
+"variable.other.member" = "my_brown"
+"constant.character.escape" = "my_turquoise"
+"function" = "my_yellow"
+"constructor" = "my_yellow"
+"special" = "my_yellow"
+"keyword" = "my_red"
+"label" = "my_red"
+"namespace" = "my_white3"
+"ui.help" = { fg = "my_gray6", bg = "my_gray2" }
+
+"markup.heading" = "my_yellow"
+"markup.list" = "my_white2"
+"markup.bold" = { fg = "my_white3", modifiers = ["bold"] }
+"markup.italic" = { fg = "my_white3", modifiers = ["italic"] }
+"markup.link.url" = { fg = "my_green", modifiers = ["underlined"] }
+"markup.link.text" = "my_white2"
+"markup.quote" = "my_brown"
+"markup.raw" = "my_green"
+
+"diff.plus" = "my_green"
+"diff.delta" = "my_white"
+"diff.minus" = "my_red"
+
+"diagnostic" = { modifiers = ["underlined"] }
+"ui.gutter" = { bg = "my_gray2" }
+"info" = "my_yellow"
+"hint" = "my_gray4"
+"debug" = "my_gray4"
+"warning" = "my_yellow"
+"error" = "my_red"
+
+[palette]
+my_gray1     = "#292929" # Default Background
+my_gray2     = "#3a3a3a" # Lighter Background (Used for status bars, line number and folding marks)
+my_gray3     = "#525252" # Selection Background
+my_gray4     = "#7c7c7c" # Comments, Invisibles, Line Highlighting
+my_gray5     = "#aaaaaa" # Dark Foreground (Used for status bars)
+my_white     = "#F3F2CC" # Default Foreground, Caret, Delimiters, Operators
+my_gray6     = "#e8e8e8" # Light Foreground (Not often used)
+my_gray7     = "#f8f8f8" # Light Background (Not often used)
+my_white2    = "#F3F2CC" # Variables, XML Tags, Markup Link Text, Markup Lists, Diff Deleted
+my_turquoise = "#86c1b9" # Support, Regular Expressions, Escape Characters, Markup Quotes
+my_white3    = "#F3F2CC" # Classes, Markup Bold, Search Text Background
+my_green     = "#8daf67" # Strings, Inherited Class, Markup Code, Diff Inserted
+my_brown     = "#cfba8b" # Member variables
+my_yellow    = "#FAD566" # Functions, Methods, Attribute IDs, Headings
+my_red       = "#F05E48" # Keywords, Storage, Selector, Markup Italic, Diff Changed
