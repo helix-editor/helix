@@ -119,11 +119,16 @@ impl EditorView {
         }
 
         let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
-        let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
+        let highlights = syntax::merge(
+            highlights,
+            Self::doc_diagnostics_highlights(doc, theme),
+            None,
+        );
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
                 Self::doc_selection_highlights(doc, view, theme, &editor.config().cursor_shape),
+                Some((HighlightEvent::SelectionStart, HighlightEvent::SelectionEnd)),
             ))
         } else {
             Box::new(highlights)
@@ -395,18 +400,33 @@ impl EditorView {
         let mut visual_x = 0u16;
         let mut line = 0u16;
         let tab_width = doc.tab_width();
-        let tab = if whitespace.render.tab() == WhitespaceRenderValue::All {
-            (1..tab_width).fold(whitespace.characters.tab.to_string(), |s, _| s + " ")
-        } else {
-            " ".repeat(tab_width)
-        };
-        let space = whitespace.characters.space.to_string();
-        let nbsp = whitespace.characters.nbsp.to_string();
-        let newline = if whitespace.render.newline() == WhitespaceRenderValue::All {
-            whitespace.characters.newline.to_string()
-        } else {
-            " ".to_string()
-        };
+        let tab_hidden = " ".repeat(tab_width);
+        let tab_visible =
+            (1..tab_width).fold(whitespace.characters.tab.to_string(), |s, _| s + " ");
+        let space_visible = whitespace.characters.space.to_string();
+        let nbsp_visible = whitespace.characters.nbsp.to_string();
+        let newline_visible = whitespace.characters.newline.to_string();
+        fn render_whitespace<'a>(
+            hidden: &'a str,
+            visible: &'a str,
+            pref: WhitespaceRenderValue,
+        ) -> Box<dyn Fn(bool) -> &'a str + 'a> {
+            Box::new(move |selected| match pref {
+                WhitespaceRenderValue::None => hidden,
+                WhitespaceRenderValue::All => visible,
+                WhitespaceRenderValue::Selection => {
+                    if selected {
+                        visible
+                    } else {
+                        hidden
+                    }
+                }
+            })
+        }
+        let tab = render_whitespace(&tab_hidden, &tab_visible, whitespace.render.tab());
+        let space = render_whitespace(" ", &space_visible, whitespace.render.space());
+        let nbsp = render_whitespace(" ", &nbsp_visible, whitespace.render.nbsp());
+        let newline = render_whitespace(" ", &newline_visible, whitespace.render.newline());
         let indent_guide_char = config.indent_guides.character.to_string();
 
         let text_style = theme.get("ui.text");
@@ -441,6 +461,8 @@ impl EditorView {
             }
         };
 
+        let mut selected = false;
+
         'outer: for event in highlights {
             match event {
                 HighlightEvent::HighlightStart(span) => {
@@ -448,6 +470,12 @@ impl EditorView {
                 }
                 HighlightEvent::HighlightEnd => {
                     spans.pop();
+                }
+                HighlightEvent::SelectionStart => {
+                    selected = true;
+                }
+                HighlightEvent::SelectionEnd => {
+                    selected = false;
                 }
                 HighlightEvent::Source { start, end } => {
                     let is_trailing_cursor = text.len_chars() < end;
@@ -460,18 +488,18 @@ impl EditorView {
                         .iter()
                         .fold(text_style, |acc, span| acc.patch(theme.highlight(span.0)));
 
-                    let space = if whitespace.render.space() == WhitespaceRenderValue::All
+                    let space = if whitespace.render.space() != WhitespaceRenderValue::None
                         && !is_trailing_cursor
                     {
-                        &space
+                        space(selected)
                     } else {
                         " "
                     };
 
-                    let nbsp = if whitespace.render.nbsp() == WhitespaceRenderValue::All
+                    let nbsp = if whitespace.render.nbsp() != WhitespaceRenderValue::None
                         && text.len_chars() < end
                     {
-                        &nbsp
+                        nbsp(selected)
                     } else {
                         " "
                     };
@@ -488,7 +516,7 @@ impl EditorView {
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
                                     viewport.y + line,
-                                    &newline,
+                                    newline(selected),
                                     style.patch(whitespace_style),
                                 );
                             }
@@ -511,8 +539,9 @@ impl EditorView {
                                 is_whitespace = true;
                                 // make sure we display tab as appropriate amount of spaces
                                 let visual_tab_width = tab_width - (visual_x as usize % tab_width);
+                                let tab = tab(selected);
                                 let grapheme_tab_width =
-                                    helix_core::str_utils::char_to_byte_idx(&tab, visual_tab_width);
+                                    helix_core::str_utils::char_to_byte_idx(tab, visual_tab_width);
 
                                 (&tab[..grapheme_tab_width], visual_tab_width)
                             } else if grapheme == " " {
