@@ -46,7 +46,7 @@ _________________________________________________________________
 =                      1.2 EXITING HELIX                        =
 =================================================================
 
- 1. Type : to enter command mode. Your cursor will
+ 1. Press : to enter command mode. Your cursor will
     move to the bottom of the screen.
  2. Type q or quit and press <ENTER> to exit Helix.
 
@@ -140,7 +140,7 @@ _________________________________________________________________
     terminal.
  2. Open a file in Helix by running: hx FILENAME
  3. Make some edits to the file.
- 4. Type : to enter command mode.
+ 4. Press : to enter command mode.
  5. Type w or write, and press <ENTER> to save the file.
 
  You can also type wq or write-quit to save and exit.
@@ -158,7 +158,7 @@ _________________________________________________________________
 
  * Use the h,j,k,l keys to move the cursor.
 
- * Type : to enter command mode.
+ * Press : to enter command mode.
    * The q/quit and q!/quit! commands will exit Helix. The
      former fails when there are unsaved changes. The latter
      discards them.
@@ -388,7 +388,7 @@ _________________________________________________________________
 
  Note: If you want to perform find-and-replace, the select
        command is the way to do it. Select the text you want
-       to replace in — type % to select the whole file — and
+       to replace in — press % to select the whole file — and
        then perform the steps explained above.
 
 
@@ -486,13 +486,13 @@ _________________________________________________________________
 =                     4.2 CHANGING CASE                         =
 =================================================================
 
- Type ~ to switch the case of all selected letters.
+ Press ~ to switch the case of all selected letters.
  Press ` to set all selected letters to lowercase.
  Type Alt-` to set all selected letters to uppercase.
 
  1. Move the cursor to the first line below marked -->.
  2. Select each wrongly capitalised or lowercase letter
-    and Type ~ over them.
+    and press ~ over them.
  3. Move to the second line marked -->.
  4. Press x to select the line.
  5. Press ` to change the line to lowercase.
@@ -534,7 +534,7 @@ _________________________________________________________________
    * Type space-Y and space-P to yank/paste on the system
      clipboard.
 
- * Type ~ to alternate case of selected letters.
+ * Press ~ to alternate case of selected letters.
    * Use ` and alt-` to set the case of selected layers to
      upper and lower respectively.
 
@@ -584,7 +584,7 @@ _________________________________________________________________
 
  Like the select command, searching also uses regex.
 
- Note: To search backwards, type ? (shift-/).
+ Note: To search backwards, press ? (shift-/).
 
  Note: Unlike Vim, N doesn't change the search direction.
        N always goes backwards and n always goes forwards.
@@ -640,7 +640,7 @@ onto other lines.
 =                      6.2 INDENTING LINES                      =
 =================================================================
 
- Type > to indent a line and < to unindent it.
+ Press > to indent a line and < to unindent it.
 
  1. Move the cursor to the line below marked -->.
  2. Indent/unindent the lines with < and >, until they are uniform.
