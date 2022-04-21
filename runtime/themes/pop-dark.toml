@@ -1,9 +1,8 @@
 # Pop Dark theme for the Helix Editor
-# Author: workingj<workingj@pm.me>
+# Author: workingj <workingj@pm.me>
 # Repo: https://github.com/workingJ/helix-pop-theme
-# License: MIT License
 # Version: 1.0
-# This theme is based on Nathaniel Webb's VSCodePopTheme<https://github.com/ArtisanByteCrafter/VSCodePopTheme>
+# This theme is based on Nathaniel Webb's VSCodePopTheme <https://github.com/ArtisanByteCrafter/VSCodePopTheme>
 
 info = { fg = 'yellowH', bg = 'brownD' }
 hint = { fg = 'brownD', bg = 'yellowH', modifiers = ['bold'] }
@@ -17,7 +16,7 @@ diagnostic = { fg = 'greyT', bg = 'redD' }
 'ui.text.focus' = { fg = 'orangeN' }
 'ui.text.info' = { fg = 'orangeH', bg = 'brownH' }
 'ui.cursor' = { fg = 'greyD', bg = 'orangeY' }
-'ui.cursor.insert' = { fg = 'black', bg = 'orangeN' }
+'ui.cursor.insert' = { fg = 'orangeN', bg = 'orangeN' }
 'ui.cursor.select' = { fg = 'black', bg = 'orangeN' }
 'ui.cursor.match' = { fg = 'black', bg = 'blueD' }
 'ui.cursor.primary' = { fg = 'black', bg = 'orangeN' }
@@ -29,6 +28,10 @@ diagnostic = { fg = 'greyT', bg = 'redD' }
 'ui.statusline.inactive' = { bg = 'brownN' }
 'ui.help' = { bg = 'brownD' }
 'ui.highlight' = { bg = 'brownH' }
+'ui.virtual' = { fg = 'brownV' }
+'ui.virtual.ruler' = { bg = 'brownR' }
+'ui.virtual.whitespace' = { fg = 'brownV' }
+'ui.virtual.indent-guide' = { fg = 'brownR' }
 'ui.menu' = { bg = 'brownD' }
 'ui.menu.selected' = { fg = 'orangeH', bg = 'brownH' }
 'ui.popup' = { bg = 'brownD' }
@@ -40,7 +43,6 @@ special = { fg = 'orangeW' }
 operator = { fg = 'orangeY' }
 # property = { bg = '#FF0000' } # ?
 attribute = { fg = 'orangeL' }
-attributes = { fg = 'orangeL' }
 namespace = { fg = 'orangeL' }
 'type' = { fg = 'redH' }
 'type.builtin' = { fg = 'orangeL' }
@@ -147,6 +149,8 @@ blueH = '#8DEEF9'
 blueL = '#6dd2fa'
 blueN = '#39B7C7'
 blueD = '#4AAAD6'
+brownV = '#67634F'
 brownH = '#56524E'
 brownN = '#3F3B39'
+brownR = '#35312f'
 brownD = '#2B2928'
