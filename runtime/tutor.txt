@@ -421,7 +421,7 @@ _________________________________________________________________
 =================================================================
 
  Type f<ch> to select up to and including (find) a character.
- Type t<ch> to do the same, but not including ('til) a character.
+ Type t<ch> to do the same, but not including (till) a character.
  Type uppercase F/T to do the same backwards.
 
  1. Move the cursor to the line below marked -->. Place the
