@@ -133,9 +133,10 @@ jobs:
         run: |
           mkdir dist
 
-          name=dev
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             name=${GITHUB_REF:10}
+          else
+            name="$(date --iso-8601)"-nightly
           fi
 
           export VERSION="$name"
