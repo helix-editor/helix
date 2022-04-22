@@ -432,8 +432,8 @@ _________________________________________________________________
  5. Move to the second line marked -->, just after the arrow.
  6. Use t and T to delete the dashes around the sentence.
 
- --> -----[Free this sentence of it's brackets!]-----
- --> ------Free this sentence of it's dashes!------
+ --> -----[Free this sentence of its brackets!]-----
+ --> ------Free this sentence of its dashes!------
 
  Note: Unlike Vim, Helix doesn't limit these commands to the 
        current line. It searches for the character in the file.
@@ -640,7 +640,7 @@ onto other lines.
 =                      6.2 INDENTING LINES                      =
 =================================================================
 
- Press > to indent a line and < to outindent it.
+ Press > to indent a line and < to outdent it.
 
  1. Move the cursor to the line below marked -->.
  2. Indent/outdent the lines with < and >, until they are uniform.
