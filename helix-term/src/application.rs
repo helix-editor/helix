@@ -283,7 +283,7 @@ impl Application {
             // the Application can apply it.
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
-                app_config.editor = editor_config;
+                app_config.editor = *editor_config;
                 self.config.store(Arc::new(app_config));
             }
         }

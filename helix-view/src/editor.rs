@@ -147,6 +147,10 @@ pub struct Config {
     #[serde(default)]
     pub search: SearchConfig,
     pub lsp: LspConfig,
+    /// Column numbers at which to draw the rulers. Default to `[]`, meaning no rulers.
+    pub rulers: Vec<u16>,
+    #[serde(default)]
+    pub whitespace: WhitespaceConfig,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -262,6 +266,88 @@ impl std::str::FromStr for GutterType {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct WhitespaceConfig {
+    pub render: WhitespaceRender,
+    pub characters: WhitespaceCharacters,
+}
+
+impl Default for WhitespaceConfig {
+    fn default() -> Self {
+        Self {
+            render: WhitespaceRender::Basic(WhitespaceRenderValue::None),
+            characters: WhitespaceCharacters::default(),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged, rename_all = "kebab-case")]
+pub enum WhitespaceRender {
+    Basic(WhitespaceRenderValue),
+    Specific {
+        default: Option<WhitespaceRenderValue>,
+        space: Option<WhitespaceRenderValue>,
+        tab: Option<WhitespaceRenderValue>,
+        newline: Option<WhitespaceRenderValue>,
+    },
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum WhitespaceRenderValue {
+    None,
+    // TODO
+    // Selection,
+    All,
+}
+
+impl WhitespaceRender {
+    pub fn space(&self) -> WhitespaceRenderValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific { default, space, .. } => {
+                space.or(default).unwrap_or(WhitespaceRenderValue::None)
+            }
+        }
+    }
+    pub fn tab(&self) -> WhitespaceRenderValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific { default, tab, .. } => {
+                tab.or(default).unwrap_or(WhitespaceRenderValue::None)
+            }
+        }
+    }
+    pub fn newline(&self) -> WhitespaceRenderValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific {
+                default, newline, ..
+            } => newline.or(default).unwrap_or(WhitespaceRenderValue::None),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct WhitespaceCharacters {
+    pub space: char,
+    pub tab: char,
+    pub newline: char,
+}
+
+impl Default for WhitespaceCharacters {
+    fn default() -> Self {
+        Self {
+            space: '·',    // U+00B7
+            tab: '→',     // U+2192
+            newline: '⏎', // U+23CE
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -286,6 +372,8 @@ impl Default for Config {
             true_color: false,
             search: SearchConfig::default(),
             lsp: LspConfig::default(),
+            rulers: Vec::new(),
+            whitespace: WhitespaceConfig::default(),
         }
     }
 }
@@ -365,7 +453,7 @@ pub struct Editor {
 #[derive(Debug, Clone)]
 pub enum ConfigEvent {
     Refresh,
-    Update(Config),
+    Update(Box<Config>),
 }
 
 #[derive(Debug, Clone)]

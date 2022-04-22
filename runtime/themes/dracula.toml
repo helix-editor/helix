@@ -36,6 +36,7 @@
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { fg = "cyan" }
 "ui.window" = { fg = "foreground" }
+"ui.virtual" = { fg = "comment" }
 
 "error" = { fg = "red" }
 "warning" = { fg = "cyan" }

@@ -32,10 +32,11 @@ Note: Only certain languages have indentation definitions at the moment. Check
 
 # Installation
 
-We provide packaging for various distributions, but here's a quick method to
-build from source.
+Packages are available for various distributions (see [Installation docs](https://docs.helix-editor.com/install.html)).
 
-```
+If you would like to build from source:
+
+```shell
 git clone https://github.com/helix-editor/helix
 cd helix
 cargo install --path helix-term
@@ -47,6 +48,12 @@ This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter gr
 
 Helix also needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
 config directory (for example `~/.config/helix/runtime` on Linux/macOS, or `%AppData%/helix/runtime` on Windows).
+
+| OS        | command   |
+|-----------|-----------|
+|windows    |`xcopy runtime %AppData%/helix/runtime`|
+|linux/macos|`ln -s $PWD/runtime ~/.config/helix/runtime`
+
 This location can be overridden via the `HELIX_RUNTIME` environment variable.
 
 Packages already solve this for you by wrapping the `hx` binary with a wrapper

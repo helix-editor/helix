@@ -124,8 +124,17 @@ impl EditorView {
             Box::new(highlights)
         };
 
-        Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights);
+        Self::render_text_highlights(
+            doc,
+            view.offset,
+            inner,
+            surface,
+            theme,
+            highlights,
+            &editor.config().whitespace,
+        );
         Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
+        Self::render_rulers(editor, doc, view, inner, surface, theme);
 
         if is_focused {
             Self::render_focused_view_elements(view, doc, inner, theme, surface);
@@ -150,6 +159,32 @@ impl EditorView {
             .clip_top(view.area.height.saturating_sub(1))
             .clip_bottom(1); // -1 from bottom to remove commandline
         self.render_statusline(doc, view, statusline_area, surface, theme, is_focused);
+    }
+
+    pub fn render_rulers(
+        editor: &Editor,
+        doc: &Document,
+        view: &View,
+        viewport: Rect,
+        surface: &mut Surface,
+        theme: &Theme,
+    ) {
+        let editor_rulers = &editor.config().rulers;
+        let ruler_theme = theme.get("ui.virtual.ruler");
+
+        let rulers = doc
+            .language_config()
+            .and_then(|config| config.rulers.as_ref())
+            .unwrap_or(editor_rulers);
+
+        rulers
+            .iter()
+            // View might be horizontally scrolled, convert from absolute distance
+            // from the 1st column to relative distance from left of viewport
+            .filter_map(|ruler| ruler.checked_sub(1 + view.offset.col as u16))
+            .filter(|ruler| ruler < &viewport.width)
+            .map(|ruler| viewport.clip_left(ruler).with_width(1))
+            .for_each(|area| surface.set_style(area, ruler_theme))
     }
 
     /// Get syntax highlights for a document in a view represented by the first line
@@ -317,7 +352,10 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         highlights: H,
+        whitespace: &helix_view::editor::WhitespaceConfig,
     ) {
+        use helix_view::editor::WhitespaceRenderValue;
+
         // It's slightly more efficient to produce a full RopeSlice from the Rope, then slice that a bunch
         // of times than it is to always call Rope::slice/get_slice (it will internally always hit RSEnum::Light).
         let text = doc.text().slice(..);
@@ -326,9 +364,20 @@ impl EditorView {
         let mut visual_x = 0u16;
         let mut line = 0u16;
         let tab_width = doc.tab_width();
-        let tab = " ".repeat(tab_width);
+        let tab = if whitespace.render.tab() == WhitespaceRenderValue::All {
+            (1..tab_width).fold(whitespace.characters.tab.to_string(), |s, _| s + " ")
+        } else {
+            " ".repeat(tab_width)
+        };
+        let space = whitespace.characters.space.to_string();
+        let newline = if whitespace.render.newline() == WhitespaceRenderValue::All {
+            whitespace.characters.newline.to_string()
+        } else {
+            " ".to_string()
+        };
 
         let text_style = theme.get("ui.text");
+        let whitespace_style = theme.get("ui.virtual.whitespace");
 
         'outer: for event in highlights {
             match event {
@@ -347,6 +396,14 @@ impl EditorView {
                         .iter()
                         .fold(text_style, |acc, span| acc.patch(theme.highlight(span.0)));
 
+                    let space = if whitespace.render.space() == WhitespaceRenderValue::All
+                        && text.len_chars() < end
+                    {
+                        &space
+                    } else {
+                        " "
+                    };
+
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
                     for grapheme in RopeGraphemes::new(text) {
@@ -359,8 +416,8 @@ impl EditorView {
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
                                     viewport.y + line,
-                                    " ",
-                                    style,
+                                    &newline,
+                                    style.patch(whitespace_style),
                                 );
                             }
 
@@ -373,12 +430,21 @@ impl EditorView {
                             }
                         } else {
                             let grapheme = Cow::from(grapheme);
+                            let is_whitespace;
 
                             let (grapheme, width) = if grapheme == "\t" {
+                                is_whitespace = true;
                                 // make sure we display tab as appropriate amount of spaces
                                 let visual_tab_width = tab_width - (visual_x as usize % tab_width);
-                                (&tab[..visual_tab_width], visual_tab_width)
+                                let grapheme_tab_width =
+                                    ropey::str_utils::char_to_byte_idx(&tab, visual_tab_width);
+
+                                (&tab[..grapheme_tab_width], visual_tab_width)
+                            } else if grapheme == " " {
+                                is_whitespace = true;
+                                (space, 1)
                             } else {
+                                is_whitespace = false;
                                 // Cow will prevent allocations if span contained in a single slice
                                 // which should really be the majority case
                                 let width = grapheme_width(&grapheme);
@@ -391,7 +457,11 @@ impl EditorView {
                                     viewport.x + visual_x - offset.col as u16,
                                     viewport.y + line,
                                     grapheme,
-                                    style,
+                                    if is_whitespace {
+                                        style.patch(whitespace_style)
+                                    } else {
+                                        style
+                                    },
                                 );
                             }
 
@@ -747,15 +817,15 @@ impl EditorView {
     }
 
     fn command_mode(&mut self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
-        match event {
+        match (event, cxt.editor.count) {
             // count handling
-            key!(i @ '0'..='9') => {
+            (key!(i @ '0'), Some(_)) | (key!(i @ '1'..='9'), _) => {
                 let i = i.to_digit(10).unwrap() as usize;
                 cxt.editor.count =
                     std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
             }
             // special handling for repeat operator
-            key!('.') if self.keymaps.pending().is_empty() => {
+            (key!('.'), _) if self.keymaps.pending().is_empty() => {
                 // first execute whatever put us into insert mode
                 self.last_insert.0.execute(cxt);
                 // then replay the inputs

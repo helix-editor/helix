@@ -61,6 +61,11 @@ Helix also needs it's runtime files so make sure to copy/symlink the `runtime/` 
 config directory (for example `~/.config/helix/runtime` on Linux/macOS). This location can be overriden
 via the `HELIX_RUNTIME` environment variable.
 
+| OS        | command   |
+|-----------|-----------|
+|windows    |`xcopy runtime %AppData%/helix/runtime`|
+|linux/macos|`ln -s $PWD/runtime ~/.config/helix/runtime`
+
 ## Building tree-sitter grammars
 
 Tree-sitter grammars must be fetched and compiled if not pre-packaged.

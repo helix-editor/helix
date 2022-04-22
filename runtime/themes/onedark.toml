@@ -47,6 +47,7 @@ diagnostic = { modifiers = ["underlined"] }
 "error" = { fg = "red", modifiers = ["bold"] }
 
 "ui.background" = { bg = "black" }
+"ui.virtual" = { fg = "light-gray" }
 
 "ui.cursor" = { fg = "white", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }

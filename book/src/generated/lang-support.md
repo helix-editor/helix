@@ -24,6 +24,8 @@
 | gleam | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
+| gomod | ✓ |  |  | `gopls` |
+| gowork | ✓ |  |  | `gopls` |
 | graphql | ✓ |  |  |  |
 | haskell | ✓ |  |  | `haskell-language-server-wrapper` |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
@@ -46,6 +48,7 @@
 | make | ✓ |  |  |  |
 | markdown | ✓ |  |  |  |
 | mint |  |  |  | `mint` |
+| nickel | ✓ |  | ✓ | `nls` |
 | nix | ✓ |  | ✓ | `rnix-lsp` |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |

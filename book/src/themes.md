@@ -224,6 +224,8 @@ These scopes are used for theming the editor interface.
 | `ui.text`                | Command prompts, popup text, etc.              |
 | `ui.text.focus`          |                                                |
 | `ui.text.info`           | The key: command text in `ui.popup.info` boxes |
+| `ui.virtual.ruler`       | Ruler columns (see the [`editor.rulers` config][rulers-config])|
+| `ui.virtual.whitespace`  | Visible white-space characters                 |
 | `ui.menu`                | Code and command completion menus              |
 | `ui.menu.selected`       | Selected autocomplete item                     |
 | `ui.selection`           | For selections in the editing area             |
@@ -234,3 +236,4 @@ These scopes are used for theming the editor interface.
 | `hint`                   | Diagnostics hint (gutter)                      |
 | `diagnostic`             | For text in editing area                       |
 
+[rulers-config]: ./configuration.md#editor-section
