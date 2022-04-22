@@ -17,7 +17,7 @@
     (flag (flag_shorthand_name))
     (record_entry entry_name: (identifier))
     (block_args block_param: (identifier))
-] @property
+] @variable.other.member
 ; (parameter (identifier) @variable.parameter) ; -- alternative highlighting group?
 
 (cmd_invocation) @embedded
