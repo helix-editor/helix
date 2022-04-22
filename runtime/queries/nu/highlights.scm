@@ -3,9 +3,9 @@
 (value_path) @variable
 (comment) @comment
 
-(number_literal) @number
-(range from: (number_literal) @number)
-(range to: (number_literal) @number)
+(number_literal) @constant.numeric
+(range from: (number_literal) @constant.numeric)
+(range to: (number_literal) @constant.numeric)
 
 (command cmd_name: (identifier) @function)
 (function_definition func_name: (identifier) @function)
