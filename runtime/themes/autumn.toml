@@ -1,14 +1,13 @@
-# The structure based on `base16_default_dark` by Ray Gervais.
-# Most of the colors are based on Autumn:
-# Autumn is a color scheme inspired by the colors you can find in the
-# autumn. Originally it was written as a color scheme for the Komodo IDE
-# but was ported to Vim by Kenneth Love and Chris Jones.  Later Yorick
-# Peterse improved their work.
-# <https://github.com/YorickPeterse/Autumn.vimhttps://github.com/YorickPeterse/Autumn.vim>
-# Jens Getreu finally ported and optimised the color theme to the Helix editor.
-# Author : Jens Getreu <getreu at web.de>
+# The structure is based on `base16_default_dark` by Ray Gervais.  Most of
+# the colors come the so called Autumn theme, a color scheme inspired by
+# the colors you can find in autumn. Originally it was designed as a
+# color scheme for the Komodo IDE and then ported to Vim by Kenneth Love
+# and Chris Jones. Later, Yorick Peterse improved their work. See:
+# <https://github.com/YorickPeterse/Autumn.vim>
+# Jens Getreu finally ported and optimised the color theme for the Helix editor.
+# Author: Jens Getreu <getreu at web.de>
 
-"ui.background" = { bg = "my_gray1" }
+"ui.background" = { bg = "my_gray0" }
 "ui.menu" = { fg = "my_white", bg = "my_gray2" }
 "ui.menu.selected" = { fg = "my_gray2", bg = "my_gray5" }
 "ui.linenr" = { fg = "my_gray4", bg = "my_gray2" }
@@ -40,6 +39,8 @@
 "label" = "my_red"
 "namespace" = "my_white3"
 "ui.help" = { fg = "my_gray6", bg = "my_gray2" }
+"ui.virtual.whitespace" = { fg = "my_gray5" }
+"ui.virtual.ruler" = { bg = "my_gray1" }
 
 "markup.heading" = "my_yellow"
 "markup.list" = "my_white2"
@@ -63,7 +64,8 @@
 "error" = "my_red"
 
 [palette]
-my_gray1     = "#292929" # Default Background
+my_gray0     = "#292929" # Default Background
+my_gray1     = "#2e2e2e" # Ruler
 my_gray2     = "#3a3a3a" # Lighter Background (Used for status bars, line number and folding marks)
 my_gray3     = "#525252" # Selection Background
 my_gray4     = "#7c7c7c" # Comments, Invisibles, Line Highlighting
