@@ -52,4 +52,4 @@
 ["."
  "," 
  ";" 
-] @delimiter
+] @punctuation.delimiter
