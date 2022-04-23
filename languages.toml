@@ -1039,16 +1039,27 @@ source = { git = "https://github.com/fwcd/tree-sitter-kotlin", rev = "a4f71eb9b8
 name = "hcl"
 scope = "source.hcl"
 injection-regex = "(hcl|tf|nomad)"
-file-types = ["hcl", "tf", "tfvars", "nomad"]
+file-types = ["hcl", "tf", "nomad"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-language-server = { command = "terraform-ls", args = ["serve"] }
+language-server = { command = "terraform-ls", args = ["serve"], language-id = "terraform" }
 auto-format = true
 
 [[grammar]]
 name = "hcl"
 source = { git = "https://github.com/MichaHoffmann/tree-sitter-hcl", rev = "3cb7fc28247efbcb2973b97e71c78838ad98a583" }
+
+[[language]]
+name = "tfvars"
+scope = "source.tfvars"
+file-types = ["tfvars"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "terraform-ls", args = ["serve"], language-id = "terraform-vars" }
+auto-format = true
+grammar = "hcl"
 
 [[language]]
 name = "org"

@@ -73,6 +73,7 @@
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
+| tfvars |  |  |  | `terraform-ls` |
 | toml | ✓ |  |  |  |
 | tsq | ✓ |  |  |  |
 | tsx | ✓ |  |  | `typescript-language-server` |
