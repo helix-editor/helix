@@ -46,12 +46,12 @@
  (base_access)
  (value_access)
 ] @variable.builtin
-(boolean) @boolean
-(character) @character
-(integer) @number
+(boolean) @constant.builtin.boolean
+(character) @constant.character
+(integer) @constant.numeric.integer
 (null) @constant.builtin
 (real) @constant.numeric.float
-(regex) @constant
+(regex) @string.regexp
 (string) @string
 [
  (escape_sequence)
