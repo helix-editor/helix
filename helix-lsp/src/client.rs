@@ -341,6 +341,9 @@ impl Client {
                         }),
                         ..Default::default()
                     }),
+                    publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 }),
                 window: Some(lsp::WindowClientCapabilities {
