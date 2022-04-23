@@ -80,5 +80,5 @@
 | typescript | ✓ |  | ✓ | `typescript-language-server` |
 | vue | ✓ |  |  | `vls` |
 | wgsl | ✓ |  |  |  |
-| yaml | ✓ |  | ✓ |  |
+| yaml | ✓ |  | ✓ | `yaml-language-server` |
 | zig | ✓ |  | ✓ | `zls` |

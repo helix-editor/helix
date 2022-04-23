@@ -644,6 +644,7 @@ file-types = ["yml", "yaml"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
+language-server = { command = "yaml-language-server", args = ["--stdio"] }
 injection-regex = "yml|yaml"
 
 [[grammar]]
