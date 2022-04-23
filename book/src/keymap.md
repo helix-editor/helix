@@ -277,8 +277,8 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `[a`     | Go to previous argument/parameter (**TS**)   | `goto_prev_parameter` |
 | `]o`     | Go to next comment (**TS**)                  | `goto_next_comment`   |
 | `[o`     | Go to previous comment (**TS**)              | `goto_prev_comment`   |
-| `]p`     | Go to next paragraph                         | `move_next_paragraph` |
-| `[p`     | Go to previous paragraph                     | `move_prev_paragraph` |
+| `]p`     | Go to next paragraph                         | `goto_next_paragraph` |
+| `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
 | `[space` | Add newline above                            | `add_newline_above`   |
 | `]space` | Add newline below                            | `add_newline_below`   |
 
