@@ -17,13 +17,6 @@ pub struct Info {
 
 impl Info {
     pub fn new(title: &str, body: Vec<(String, String)>) -> Self {
-        let item_width = body.iter().map(|(item, _)| item.width()).max().unwrap();
-        let mut text = String::new();
-
-        for (item, desc) in &body {
-            let _ = writeln!(text, "{:width$}  {}", item, desc, width = item_width);
-        }
-
         if body.is_empty() {
             return Self {
                 title: title.to_string(),
@@ -31,6 +24,13 @@ impl Info {
                 width: title.len() as u16,
                 text: "".to_string(),
             };
+        }
+
+        let item_width = body.iter().map(|(item, _)| item.width()).max().unwrap();
+        let mut text = String::new();
+
+        for (item, desc) in &body {
+            let _ = writeln!(text, "{:width$}  {}", item, desc, width = item_width);
         }
 
         Self {
