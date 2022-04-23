@@ -923,9 +923,9 @@ fn get_option(
     let key = &args[0].to_lowercase();
     let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
 
-    let mut config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
+    let config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
     let pointer = format!("/{}", key.replace('.', "/"));
-    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+    let value = config.pointer(&pointer).ok_or_else(key_error)?;
 
     cx.editor.set_status(value.to_string());
     Ok(())
