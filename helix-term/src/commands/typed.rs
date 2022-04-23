@@ -352,8 +352,26 @@ fn set_line_ending(
         arg if arg.starts_with("nel") => Nel,
         _ => bail!("invalid line ending"),
     };
+    let (view, doc) = current!(cx.editor);
+    doc.line_ending = line_ending;
 
-    doc_mut!(cx.editor).line_ending = line_ending;
+    let mut pos = 0;
+    let transaction = Transaction::change(
+        doc.text(),
+        doc.text().lines().filter_map(|line| {
+            pos += line.len_chars();
+            match helix_core::line_ending::get_line_ending(&line) {
+                Some(ending) if ending != line_ending => {
+                    let start = pos - ending.len_chars();
+                    let end = pos;
+                    Some((start, end, Some(line_ending.as_str().into())))
+                }
+                _ => None,
+            }
+        }),
+    );
+    doc.apply(&transaction, view.id);
+
     Ok(())
 }
 
@@ -1193,6 +1211,9 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "line-ending",
             aliases: &[],
+            #[cfg(not(feature = "unicode-lines"))]
+            doc: "Set the document's default line ending. Options: crlf, lf.",
+            #[cfg(feature = "unicode-lines")]
             doc: "Set the document's default line ending. Options: crlf, lf, cr, ff, nel.",
             fun: set_line_ending,
             completer: None,
