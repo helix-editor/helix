@@ -1241,7 +1241,7 @@ name = "vala"
 scope = "source.vala"
 injection-regex = "vala"
 file-types = ["vala", "vapi"]
-roots = ["meson.build"]
+roots = []
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "vala-language-server" }
