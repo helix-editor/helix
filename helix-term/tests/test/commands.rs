@@ -26,7 +26,6 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-#[ignore]
 async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     test_key_sequences(
         &mut Application::new(Args::default(), Config::default())?,

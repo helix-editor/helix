@@ -151,6 +151,7 @@ fn buffer_close(
     }
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    log::debug!("closing buffers: {:?}", document_ids);
     buffer_close_by_ids_impl(cx.editor, &document_ids, false)
 }
 

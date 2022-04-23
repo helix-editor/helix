@@ -310,6 +310,8 @@ impl Application {
                     self.render();
                 }
                 event = self.editor.wait_event() => {
+                    log::debug!("received editor event: {:?}", event);
+
                     match event {
                         EditorEvent::DocumentSave(event) => {
                             self.handle_document_write(event);

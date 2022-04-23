@@ -616,6 +616,10 @@ impl Document {
     }
 
     pub async fn await_save(&mut self) -> Option<DocumentSaveEventResult> {
+        self.await_save_impl(true).await
+    }
+
+    async fn await_save_impl(&mut self, block: bool) -> Option<DocumentSaveEventResult> {
         let mut current_save = self.current_save.lock().await;
         if let Some(ref mut save) = *current_save {
             let result = save.await;
@@ -627,7 +631,15 @@ impl Document {
         // return early if the receiver is closed
         self.save_receiver.as_ref()?;
 
-        let save = match self.save_receiver.as_mut().unwrap().recv().await {
+        let rx = self.save_receiver.as_mut().unwrap();
+
+        let save_req = if block {
+            rx.recv().await
+        } else {
+            rx.try_recv().ok()
+        };
+
+        let save = match save_req {
             Some(save) => save,
             None => {
                 self.save_receiver = None;
@@ -648,19 +660,24 @@ impl Document {
         Some(result)
     }
 
-    /// Prepares the Document for being closed by stopping any new writes
-    /// and flushing through the queue of pending writes. If any fail,
-    /// it stops early before emptying the rest of the queue. Callers
-    /// should keep calling until it returns None.
-    pub async fn close(&mut self) -> Option<DocumentSaveEventResult> {
-        if self.save_sender.is_some() {
-            self.save_sender = None;
-        }
+    /// Flushes the queue of pending writes. If any fail,
+    /// it stops early before emptying the rest of the queue.
+    pub async fn try_flush_saves(&mut self) -> Option<DocumentSaveEventResult> {
+        self.flush_saves_impl(false).await
+    }
 
+    async fn flush_saves_impl(&mut self, block: bool) -> Option<DocumentSaveEventResult> {
         let mut final_result = None;
 
-        while let Some(save_event) = self.await_save().await {
-            let is_err = save_event.is_err();
+        while let Some(save_event) = self.await_save_impl(block).await {
+            let is_err = match &save_event {
+                Ok(event) => {
+                    self.set_last_saved_revision(event.revision);
+                    false
+                }
+                Err(_) => true,
+            };
+
             final_result = Some(save_event);
 
             if is_err {
@@ -669,6 +686,17 @@ impl Document {
         }
 
         final_result
+    }
+
+    /// Prepares the Document for being closed by stopping any new writes
+    /// and flushing through the queue of pending writes. If any fail,
+    /// it stops early before emptying the rest of the queue.
+    pub async fn close(&mut self) -> Option<DocumentSaveEventResult> {
+        if self.save_sender.is_some() {
+            self.save_sender = None;
+        }
+
+        self.flush_saves_impl(true).await
     }
 
     /// Detect the programming language based on the file type.
@@ -1023,6 +1051,11 @@ impl Document {
         let history = self.history.take();
         let current_revision = history.current_revision();
         self.history.set(history);
+        log::debug!(
+            "modified - last saved: {}, current: {}",
+            self.last_saved_revision,
+            current_revision
+        );
         current_revision != self.last_saved_revision || !self.changes.is_empty()
     }
 
@@ -1036,7 +1069,18 @@ impl Document {
 
     /// Set the document's latest saved revision to the given one.
     pub fn set_last_saved_revision(&mut self, rev: usize) {
+        log::debug!(
+            "doc {} revision updated {} -> {}",
+            self.id,
+            self.last_saved_revision,
+            rev
+        );
         self.last_saved_revision = rev;
+    }
+
+    /// Get the document's latest saved revision.
+    pub fn get_last_saved_revision(&mut self) -> usize {
+        self.last_saved_revision
     }
 
     /// Get the current revision number

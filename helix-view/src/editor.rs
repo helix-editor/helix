@@ -1101,6 +1101,11 @@ impl Editor {
             None => return Err(CloseError::DoesNotExist),
         };
 
+        // flush out any pending writes first to clear the modified status
+        if let Some(save_result) = doc.try_flush_saves().await {
+            save_result?;
+        }
+
         if !force && doc.is_modified() {
             return Err(CloseError::BufferModified(doc.display_name().into_owned()));
         }
