@@ -1240,8 +1240,8 @@ source = { git = "https://github.com/LhKipp/tree-sitter-nu", rev = "db4e990b7882
 name = "vala"
 scope = "source.vala"
 injection-regex = "vala"
-file-types = ["vala", "vapi", "genie"]
-roots = [".git", "meson.build"]
+file-types = ["vala", "vapi"]
+roots = ["meson.build"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "vala-language-server" }
