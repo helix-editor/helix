@@ -38,6 +38,8 @@
 "ui.statusline.inactive" = { fg = "foreground_gutter", bg = "background_menu" }
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { fg = "cyan" }
+"ui.virtual.ruler" = { fg = "foreground_gutter" }
+"ui.virtual.whitespace" = { fg = "foreground_gutter" }
 "ui.window" = { fg = "black" }
 
 "error" = { fg = "red" }
@@ -75,7 +77,7 @@ comment = "#565f89"
 black = "#414868"
 foreground = "#a9b1d6"
 foreground_highlight = "#c0caf5"
-foreground_gutter = "#3b4261"
+foreground_gutter = "#363b54"
 background = "#1a1b26"
 background_highlight = "#282b3c"
 background_menu = "#16161e"
