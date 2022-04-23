@@ -3,6 +3,7 @@ use crate::{
     Call, Error, OffsetEncoding, Result,
 };
 
+use anyhow::anyhow;
 use helix_core::{find_root, ChangeSet, Rope};
 use jsonrpc_core as jsonrpc;
 use lsp_types as lsp;
@@ -861,6 +862,19 @@ impl Client {
         position: lsp::Position,
         new_name: String,
     ) -> anyhow::Result<lsp::WorkspaceEdit> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        // check if we're able to rename
+        match capabilities.rename_provider {
+            Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_)) => (),
+            // None | Some(false)
+            _ => {
+                let err = "The server does not support rename";
+                log::warn!("rename_symbol failed: {}", err);
+                return Err(anyhow!(err));
+            }
+        };
+
         let params = lsp::RenameParams {
             text_document_position: lsp::TextDocumentPositionParams {
                 text_document,
