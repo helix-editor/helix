@@ -24,7 +24,7 @@
 (unqualified_type (symbol . (identifier) @type))
 (unqualified_type (symbol (symbol) @include (identifier) @type))
 
-(attribute) @attribute
+(attribute) @variable.other.member
 (method_declaration (symbol (symbol) @type (identifier) @function))
 (method_declaration (symbol (identifier) @function))
 (local_function_declaration (identifier) @function)
@@ -37,10 +37,10 @@
 (errorcode (identifier) @constant)
 (constant_declaration (identifier) @constant)
 (method_call_expression (member_access_expression (identifier) @function))
-(lambda_expression (identifier) @parameter)
-(parameter (identifier) @parameter)
-(property_declaration (symbol (identifier) @property))
-(field_declaration (identifier) @field)
+(lambda_expression (identifier) @variable.parameter)
+(parameter (identifier) @variable.parameter)
+(property_declaration (symbol (identifier) @variable.other.member))
+(field_declaration (identifier) @variable.other.member)
 [
  (this_access)
  (base_access)
@@ -50,7 +50,7 @@
 (character) @character
 (integer) @number
 (null) @constant.builtin
-(real) @float
+(real) @constant.numeric.float
 (regex) @constant
 (string) @string
 [
@@ -144,7 +144,7 @@
   "for"
   "foreach"
   "while"
-] @repeat
+] @keyword.control.repeat
 
 [
   "catch"
@@ -152,12 +152,12 @@
   "throw"
   "throws"
   "try"
-] @exception
+] @keyword.control.exception
 
 [
   "return"
   "yield"
-] @keyword.return
+] @keyword.control.return
 
 [
  "="
