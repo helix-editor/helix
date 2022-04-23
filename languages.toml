@@ -1058,10 +1058,7 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "terraform-ls", args = ["serve"], language-id = "terraform-vars" }
 auto-format = true
-
-[[grammar]]
-name = "tfvars"
-source = { git = "https://github.com/MichaHoffmann/tree-sitter-hcl", rev = "3cb7fc28247efbcb2973b97e71c78838ad98a583" }
+grammar = "hcl"
 
 [[language]]
 name = "org"
