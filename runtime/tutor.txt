@@ -12,7 +12,7 @@ _________________________________________________________________
  you might be used to in that it is modal, meaning that it has
  different modes for editing text. The primary modes you will
  use are Normal mode and Insert mode. While in Normal mode, the
- keys you press won't actually type text. Instead, they will
+ keys you type won't actually type text. Instead, they will
  perform various actions with the text. This allows for more
  efficient editing. This tutor will teach you how you can make
  use of Helix's modal editing features. To begin, ensure your
@@ -46,15 +46,15 @@ _________________________________________________________________
 =                      1.2 EXITING HELIX                        =
 =================================================================
 
- 1. Press : to enter command mode. Your cursor will
+ 1. Type : to enter command mode. Your cursor will
     move to the bottom of the screen.
- 2. Type q or quit and press <ENTER> to exit Helix.
+ 2. Type q or quit and type <ENTER> to exit Helix.
 
  Note: The quit command will fail if there are unsaved changes.
        To force quit and DISCARD these changes, type q! or quit!.
        You will learn how to save files later.
 
- To exit command mode without entering a command, press <ESC>.
+ To exit command mode without entering a command, type <ESC>.
 
  Now, move on to the next lesson.
 
@@ -68,10 +68,10 @@ _________________________________________________________________
 =                         1.3 DELETION                          =
 =================================================================
 
- Press the d key to delete the character under the cursor.
+ Type the d key to delete the character under the cursor.
 
  1. Move the cursor to the line below marked -->.
- 2. Move the cursor to each extra character, and press d to
+ 2. Move the cursor to each extra character, and type d to
     delete it.
 
  --> Thhiss senttencee haass exxtra charracterss.
@@ -90,13 +90,13 @@ _________________________________________________________________
 =                       1.4 INSERT MODE                         =
 =================================================================
 
- Press the i key to enter Insert mode.
+ Type the i key to enter Insert mode.
 
  1. Move the cursor to the line below marked -->.
- 2. Move to a place in the line which is missing text and press
-    i to enter Insert mode. Keys you press will now type text.
+ 2. Move to a place in the line which is missing text and type
+    i to enter Insert mode. Keys you type will now type text.
  3. Enter the missing text.
- 4. Press <ESC> to exit Insert mode and return to Normal mode.
+ 4. type <ESC> to exit Insert mode and return to Normal mode.
  5. Repeat until the line matches the line below it.
 
  --> Th stce misg so.
@@ -106,13 +106,13 @@ _________________________________________________________________
        you may use the arrow keys instead of exiting and
        reentering Insert mode.
  Note: The status bar will display your current mode.
-       Notice that when you press i, 'NOR' changes to 'INS'.
+       Notice that when you type i, 'NOR' changes to 'INS'.
 
 =================================================================
 =                   1.5 MORE ON INSERT MODE                     =
 =================================================================
 
- As you saw, you can press i to enter Insert mode at the current
+ As you saw, you can type i to enter Insert mode at the current
  position of the cursor. There are a few other ways you can
  enter Insert mode at different locations.
 
@@ -140,8 +140,8 @@ _________________________________________________________________
     terminal.
  2. Open a file in Helix by running: hx FILENAME
  3. Make some edits to the file.
- 4. Press : to enter command mode.
- 5. Type w or write, and press <ENTER> to save the file.
+ 4. Type : to enter command mode.
+ 5. Type w or write, and type <ENTER> to save the file.
 
  You can also type wq or write-quit to save and exit.
 
@@ -158,16 +158,16 @@ _________________________________________________________________
 
  * Use the h,j,k,l keys to move the cursor.
 
- * Press : to enter command mode.
+ * Type : to enter command mode.
    * The q/quit and q!/quit! commands will exit Helix. The
      former fails when there are unsaved changes. The latter
      discards them.
    * The w/write command will save the file.
    * The wq/write-quit command will do both.
 
- * Press d to delete the character at the cursor.
+ * Type d to delete the character at the cursor.
 
- * Press i to enter Insert mode and type text. Press <ESC> to
+ * Type i to enter Insert mode and type text. Type <ESC> to
    return to Normal mode.
 
 
@@ -178,7 +178,7 @@ _________________________________________________________________
 =                  2.1 MOTIONS AND SELECTIONS                   =
 =================================================================
 
- Press w to select forward until the next word.
+ Type w to select forward until the next word.
 
  The d key doesn't actually delete the character at the cursor,
  it deletes all selected text. Your cursor is like a
@@ -186,8 +186,8 @@ _________________________________________________________________
 
  1. Move the cursor to the line below marked -->.
  2. Move to the beginning of a word that needs to be deleted.
- 3. Press w to select until the beginning of the next word.
- 4. Press d to delete the selection.
+ 3. Type w to select until the beginning of the next word.
+ 4. Type d to delete the selection.
  5. Repeat for all extra words in the line.
 
  --> This sentence pencil has vacuum extra words in the it.
@@ -200,7 +200,7 @@ _________________________________________________________________
 =                     2.2 MORE ON MOTIONS                       =
 =================================================================
 
- As you saw, pressing w moves the cursor forward until the start
+ As you saw, typing w moves the cursor forward until the start
  of the next word, selecting the text traversed. This is useful
  for moving around text and for selecting text to operate on.
 
@@ -222,15 +222,15 @@ _________________________________________________________________
 =                    2.3 THE CHANGE COMMAND                     =
 =================================================================
 
- Press c to change the current selection.
+ Type c to change the current selection.
 
  The change command deletes the current selection and enters
  Insert mode, so it is a very common shorthand for di.
 
  1. Move the cursor to the line below marked -->.
- 2. Move to the start of an incorrect word and press w to
+ 2. Move to the start of an incorrect word and type w to
     select it.
- 3. Press c to delete the word and enter Insert mode.
+ 3. Type c to delete the word and enter Insert mode.
  4. Type the correct word.
  5. Repeat until the line matches the line below it.
 
@@ -266,12 +266,12 @@ _________________________________________________________________
 =                     2.5 SELECTING LINES                       =
 =================================================================
 
- Press x to select a whole line. Press again to select the next.
+ Type x to select a whole line. Type x again to select the next.
 
  1. Move the cursor to the second line below marked -->.
- 2. Press x to select the line, and d to delete it.
+ 2. Type x to select the line, and d to delete it.
  3. Move to the fourth line.
- 4. Press x twice or type 2x to select 2 lines, and d to delete.
+ 4. Type x twice or type 2x to select 2 lines, and d to delete.
 
  --> 1) Roses are red,
  --> 2) Mud is fun,
@@ -288,10 +288,10 @@ _________________________________________________________________
 =                         2.6 UNDOING                           =
 =================================================================
 
- Press u to undo. Type U to redo.
+ Type u to undo. Type U to redo.
 
  1. Move the cursor to the line below marked -->.
- 2. Move to the first error, and press d to delete it.
+ 2. Move to the first error, and type d to delete it.
  3. Type u to undo your deletion.
  4. Fix all the errors on the line.
  5. Type u several times to undo your fixes.
@@ -310,22 +310,22 @@ _________________________________________________________________
 =                        CHAPTER 2 RECAP                        =
 =================================================================
 
- * Press w to select forward until the next word.
-   * Press e to select to the end of the current word.
-   * Press b to select backward to the start of the current word.
+ * Type w to select forward until the next word.
+   * Type e to select to the end of the current word.
+   * Type b to select backward to the start of the current word.
    * Use uppercase counterparts, W,E,B, to traverse WORDS.
 
- * Pressing d deletes the entire selection, so you can delete a
+ * Typing d deletes the entire selection, so you can delete a
    word forward by typing wd.
 
- * Press c to delete the selection and enter Insert mode.
+ * Type c to delete the selection and enter Insert mode.
 
- * Press a number before a motion to repeat it that many times.
+ * Type a number before a motion to repeat it that many times.
 
- * Press x to select the entire current line. Type x again to
+ * Type x to select the entire current line. Type x again to
    select the next line.
 
- * Press u to undo. Type U to redo.
+ * Type u to undo. Type U to redo.
 
 
 =================================================================
@@ -336,10 +336,10 @@ _________________________________________________________________
 
  1. Move the cursor to the first line below marked -->.
  2. Type C to duplicate the cursor to the next line. Keys you
-    press will now affect both cursors.
+    type will now affect both cursors.
  3. Use Insert mode to correct the lines. The two cursors will
     fix both lines simultaneously.
- 4. Press , to remove the second cursor.
+ 4. Type , to remove the second cursor.
 
  --> Fix th two nes at same ime.
  --> Fix th two nes at same ime.
@@ -354,16 +354,16 @@ _________________________________________________________________
 =                    3.2 THE SELECT COMMAND                     =
 =================================================================
 
- Press s to select matches in the selection.
+ Type s to select matches in the selection.
 
  1. Move the cursor to the line below marked -->.
- 2. Press x to select the line.
- 3. Press s. A prompt will appear.
- 4. Type 'apples' and press <ENTER>. Both occurrences of
+ 2. Type x to select the line.
+ 3. Type s. A prompt will appear.
+ 4. Type 'apples' and type <ENTER>. Both occurrences of
     'apples' in the line will be selected.
- 5. You can now press c and change 'apples' to something else,
+ 5. You can now type c and change 'apples' to something else,
     like 'oranges'.
- 6. Press , to remove the second cursor.
+ 6. Type , to remove the second cursor.
 
  --> I like to eat apples since my favorite fruit is apples.
 
@@ -380,15 +380,15 @@ _________________________________________________________________
  matches, allowing you to target more complex patterns.
 
  1. Move the cursor to the line below marked -->.
- 2. Select the line with x and then press s.
+ 2. Select the line with x and then type s.
  3. Enter '  +' to select any amount of consecutive spaces >1.
- 4. Press c and change the matches to single spaces.
+ 4. Type c and change the matches to single spaces.
 
  --> This  sentence has   some      extra spaces.
 
  Note: If you want to perform find-and-replace, the select
        command is the way to do it. Select the text you want
-       to replace in — press % to select the whole file — and
+       to replace in — type % to select the whole file — and
        then perform the steps explained above.
 
 
@@ -398,7 +398,7 @@ _________________________________________________________________
 =                   3.4 COLLAPSING SELECTIONS                   =
 =================================================================
 
- Press ; to collapse selections to single cursors.
+ Type ; to collapse selections to single cursors.
 
  Sometimes, you want to deselect without having to move the
  cursor(s). This can be done using the ; key.
@@ -427,7 +427,7 @@ _________________________________________________________________
  1. Move the cursor to the line below marked -->. Place the
     cursor on the first dash.
  2. Type f[ to select to the square bracket.
- 3. Press d to delete your selection.
+ 3. Type d to delete your selection.
  4. Go to the end of the line and repeat with F].
  5. Move to the second line marked -->, just after the arrow.
  6. Use t and T to delete the dashes around the sentence.
@@ -445,10 +445,10 @@ _________________________________________________________________
  * Type C to copy the selection on the line below and Alt-C for
    above.
 
- * Press s to select all instances of a regex pattern inside
+ * Type s to select all instances of a regex pattern inside
    the current selection.
 
- * Press semicolon ( ; ) to collapse selection.
+ * Type semicolon ( ; ) to collapse selection.
 
  * Type f / F to extend selection up to & including a character.
 
@@ -464,14 +464,14 @@ _________________________________________________________________
 =                 4.1 COPYING AND PASTING TEXT                  =
 =================================================================
 
- Press y to yank (copy) the selection.
- Press p to paste the yanked selection after the cursor.
+ Type y to yank (copy) the selection.
+ Type p to paste the yanked selection after the cursor.
  Type P to paste the yanked text before the cursor.
 
  1. Move the cursor to the line below marked -->.
     Make sure your cursor is on the "b" of banana.
- 2. Press w to select "banana" and y to yank it.
- 3. Move to the space between "2" and "3" and press p to paste.
+ 2. Type w to select "banana" and y to yank it.
+ 3. Move to the space between "2" and "3" and type p to paste.
  4. Repeat between "3" and "4".
 
  --> 1 banana 2 3 4
@@ -486,18 +486,18 @@ _________________________________________________________________
 =                     4.2 CHANGING CASE                         =
 =================================================================
 
- Press ~ to switch the case of all selected letters.
- Press ` to set all selected letters to lowercase.
+ Type ~ to switch the case of all selected letters.
+ Type ` to set all selected letters to lowercase.
  Type Alt-` to set all selected letters to uppercase.
 
  1. Move the cursor to the first line below marked -->.
  2. Select each wrongly capitalised or lowercase letter
-    and press ~ over them.
+    and type ~ over them.
  3. Move to the second line marked -->.
- 4. Press x to select the line.
- 5. Press ` to change the line to lowercase.
+ 4. Type x to select the line.
+ 5. Type ` to change the line to lowercase.
  6. Move to the third line marked -->.
- 7. Press x to select the line.
+ 7. Type x to select the line.
  8. Type Alt-` to change the line to uppercase.
 
  --> thIs sENtencE hAs MIS-cApitalIsed leTTerS.
@@ -512,7 +512,7 @@ _________________________________________________________________
 
  Type Q to start recording a macro, you should see a popup at
  the bottom of your screen. Type Q again to stop recording.
- Press q to repeat your recorded macro.
+ Type q to repeat your recorded macro.
 
  1. Move the cursor to the first line below marked -->.
     Ensure your cursor is on the > of the arrow.
@@ -520,7 +520,7 @@ _________________________________________________________________
  3. Edit the line to look like the bottom one.
  4. Exit insert and Type Q again to stop recording.
  5. Move to the line below and put your cursor on the > again.
- 6. Press q to repeat the macro.
+ 6. Type q to repeat the macro.
 
  --> ... sentence doesn't have it's first and last ... .
  --> ... sentence doesn't have it's first and last ... .
@@ -530,16 +530,16 @@ _________________________________________________________________
 =                        CHAPTER 4 RECAP                        =
 =================================================================
 
- * Press y to yank (copy) text and p to paste.
+ * Type y to yank (copy) text and p to paste.
    * Type space-Y and space-P to yank/paste on the system
      clipboard.
 
- * Press ~ to alternate case of selected letters.
+ * Type ~ to alternate case of selected letters.
    * Use ` and alt-` to set the case of selected layers to
      upper and lower respectively.
 
  * Type Q to record and stop recording a macro.
-   * Press q to repeat the recorded macro.
+   * Type q to repeat the recorded macro.
 
 
 
@@ -574,17 +574,17 @@ _________________________________________________________________
 =                     5.2 SEARCHING IN FILE                     =
 =================================================================
 
- Press / to search forward in file, enter to confirm search.
- Press n to go to the next search match.
+ Type / to search forward in file, enter to confirm search.
+ Type n to go to the next search match.
  Type N to go to the previous search match.
 
- 1. Press / and type in a common word, like 'banana'.
- 2. Press enter to confirm the search.
+ 1. Type / and type in a common word, like 'banana'.
+ 2. Type enter to confirm the search.
  3. Use n and N to cycle through the matches.
 
  Like the select command, searching also uses regex.
 
- Note: To search backwards, press ? (shift-/).
+ Note: To search backwards, type ? (shift-/).
 
  Note: Unlike Vim, N doesn't change the search direction.
        N always goes backwards and n always goes forwards.
@@ -599,7 +599,7 @@ _________________________________________________________________
  * Type C-s to save position to the jumplist.
    * Type C-i and C-o to go forward and backward in the jumplist.
 
- * Press / to search forward in file, and ? to search backwards.
+ * Type / to search forward in file, and ? to search backwards.
    * Use n and N to cycle through search matches.
 
 
@@ -621,7 +621,7 @@ _________________________________________________________________
  Type J to join together lines in selection.
 
  1. Move the cursor to the line below marked -->.
- 2. Press x three times to select the other lines.
+ 2. Type x three times to select the other lines.
  3. Type J to join the lines together.
 
  --> This line sentence
@@ -640,7 +640,7 @@ onto other lines.
 =                      6.2 INDENTING LINES                      =
 =================================================================
 
- Press > to indent a line and < to outdent it.
+ Type > to indent a line and < to outdent it.
 
  1. Move the cursor to the line below marked -->.
  2. Indent/outdent the lines with < and >, until they are uniform.
@@ -662,11 +662,11 @@ onto other lines.
 =                      6.3 OPENING LINES                        =
 =================================================================
 
- Press o to add a newline and insert below the cursor.
+ Type o to add a newline and insert below the cursor.
  Type O to add a newline and insert above the cursor.
 
  1. Move the cursor to the line below marked -->.
- 2. Press o to open a line below and type your answer.
+ 2. Type o to open a line below and type your answer.
 
  --> What is the best editor?
 
