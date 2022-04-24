@@ -56,7 +56,7 @@ fn open(
     Ok(())
 }
 
-fn buffer_close_by_ids_impl(
+pub(super) fn buffer_close_by_ids_impl(
     editor: &mut Editor,
     doc_ids: &[DocumentId],
     force: bool,
@@ -68,7 +68,7 @@ fn buffer_close_by_ids_impl(
     Ok(())
 }
 
-fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -> Vec<DocumentId> {
+pub(super) fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -> Vec<DocumentId> {
     // No arguments implies current document
     if args.is_empty() {
         let doc_id = view!(editor).doc;
@@ -105,7 +105,7 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -> Vec<Docum
     document_ids
 }
 
-fn buffer_close(
+pub(super) fn buffer_close(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     _event: PromptEvent,

@@ -3,6 +3,7 @@ pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
+use log::warn;
 pub use lsp::*;
 pub use typed::*;
 
@@ -43,7 +44,7 @@ use movement::Movement;
 
 use crate::{
     args,
-    compositor::{self, Component, Compositor},
+    compositor::{self, Component, Compositor, Context as CompositorContext},
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 
@@ -365,6 +366,7 @@ impl MappableCommand {
         vsplit, "Vertical right split",
         vsplit_new, "Vertical right split scratch buffer",
         wclose, "Close window",
+        buffer_close, "Close current buffer",
         wonly, "Current window only",
         select_register, "Select register",
         insert_register, "Insert register",
@@ -3875,6 +3877,13 @@ fn wclose(cx: &mut Context) {
     let view_id = view!(cx.editor).id;
     // close current split
     cx.editor.close(view_id);
+}
+
+fn buffer_close(cx: &mut Context) {
+    let document_ids = typed::buffer_gather_paths_impl(cx.editor, &[]);
+    if let Err(err) = buffer_close_by_ids_impl(cx.editor, &document_ids, false) {
+        warn!("could not close buffer: {}", err);
+    }
 }
 
 fn wonly(cx: &mut Context) {
