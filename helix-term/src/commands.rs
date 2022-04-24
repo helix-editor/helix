@@ -3,7 +3,6 @@ pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
-use log::warn;
 pub use lsp::*;
 pub use typed::*;
 
@@ -44,7 +43,7 @@ use movement::Movement;
 
 use crate::{
     args,
-    compositor::{self, Component, Compositor, Context as CompositorContext},
+    compositor::{self, Component, Compositor},
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 

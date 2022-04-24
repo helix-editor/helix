@@ -105,7 +105,7 @@ pub(super) fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -
     document_ids
 }
 
-pub(super) fn buffer_close(
+fn buffer_close(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     _event: PromptEvent,
