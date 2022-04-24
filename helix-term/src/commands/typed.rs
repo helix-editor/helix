@@ -268,11 +268,6 @@ fn write_impl(
     let jobs = &mut cx.jobs;
     let doc = doc_mut!(cx.editor);
 
-    if let Some(ref path) = path {
-        doc.set_path(Some(path.as_ref().as_ref()))
-            .context("invalid filepath")?;
-    }
-
     if doc.path().is_none() {
         bail!("cannot write a buffer without a filename");
     }
@@ -292,7 +287,7 @@ fn write_impl(
         None
     };
 
-    doc.format_and_save(fmt, force)?;
+    doc.format_and_save(fmt, path.map(AsRef::as_ref), force)?;
 
     if path.is_some() {
         let id = doc.id();
@@ -607,7 +602,7 @@ fn write_all_impl(
             None
         };
 
-        doc.format_and_save(fmt, force)?;
+        doc.format_and_save::<_, PathBuf>(fmt, None, force)?;
     }
 
     if quit {

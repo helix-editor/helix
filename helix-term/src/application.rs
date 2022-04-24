@@ -3,6 +3,7 @@ use futures_util::Stream;
 use helix_core::{
     config::{default_syntax_loader, user_syntax_loader},
     diagnostic::{DiagnosticTag, NumberOrString},
+    path::get_relative_path,
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
@@ -489,17 +490,26 @@ impl Application {
         );
 
         doc.set_last_saved_revision(doc_save_event.revision);
+
         let lines = doc.text().len_lines();
         let bytes = doc.text().len_bytes();
 
-        let path_str = doc
-            .path()
-            .expect("document written without path")
-            .to_string_lossy()
-            .into_owned();
-
-        self.editor
-            .set_status(format!("'{}' written, {}L {}B", path_str, lines, bytes));
+        if let Err(err) = doc.set_path(Some(&doc_save_event.path)) {
+            log::error!(
+                "error setting path for doc '{:?}': {}",
+                doc.path(),
+                err.to_string(),
+            );
+            self.editor.set_error(err.to_string());
+        } else {
+            // TODO: fix being overwritten by lsp
+            self.editor.set_status(format!(
+                "'{}' written, {}L {}B",
+                get_relative_path(&doc_save_event.path).to_string_lossy(),
+                lines,
+                bytes
+            ));
+        }
     }
 
     pub fn handle_terminal_events(&mut self, event: Result<CrosstermEvent, crossterm::ErrorKind>) {

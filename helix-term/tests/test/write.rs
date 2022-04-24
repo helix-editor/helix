@@ -35,7 +35,7 @@ async fn test_write() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_quit() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 
@@ -129,7 +129,64 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-#[ignore]
+async fn test_write_new_path() -> anyhow::Result<()> {
+    let mut file1 = tempfile::NamedTempFile::new().unwrap();
+    let mut file2 = tempfile::NamedTempFile::new().unwrap();
+
+    test_key_sequences(
+        &mut Application::new(
+            Args {
+                files: vec![(file1.path().to_path_buf(), Position::default())],
+                ..Default::default()
+            },
+            Config::default(),
+        )?,
+        vec![
+            (
+                Some("ii can eat glass, it will not hurt me<ret><esc>:w<ret>"),
+                Some(&|app| {
+                    let doc = doc!(app.editor);
+                    assert!(!app.editor.is_err());
+                    assert_eq!(file1.path(), doc.path().unwrap());
+                }),
+            ),
+            (
+                Some(&format!(":w {}<ret>", file2.path().to_string_lossy())),
+                Some(&|app| {
+                    let doc = doc!(app.editor);
+                    assert!(!app.editor.is_err());
+                    assert_eq!(file2.path(), doc.path().unwrap());
+                    assert!(app.editor.document_by_path(file1.path()).is_none());
+                }),
+            ),
+        ],
+        false,
+    )
+    .await?;
+
+    file1.as_file_mut().flush()?;
+    file1.as_file_mut().sync_all()?;
+    file2.as_file_mut().flush()?;
+    file2.as_file_mut().sync_all()?;
+
+    let mut file1_content = String::new();
+    file1.as_file_mut().read_to_string(&mut file1_content)?;
+    assert_eq!(
+        helpers::platform_line("i can eat glass, it will not hurt me\n"),
+        file1_content
+    );
+
+    let mut file2_content = String::new();
+    file2.as_file_mut().read_to_string(&mut file2_content)?;
+    assert_eq!(
+        helpers::platform_line("i can eat glass, it will not hurt me\n"),
+        file2_content
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_write_fail_new_path() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
 

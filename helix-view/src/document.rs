@@ -91,6 +91,7 @@ impl Serialize for Mode {
 pub struct DocumentSaveEvent {
     pub revision: usize,
     pub doc_id: DocumentId,
+    pub path: PathBuf,
 }
 
 pub type DocumentSaveEventResult = Result<DocumentSaveEvent, anyhow::Error>;
@@ -512,41 +513,61 @@ impl Document {
         Some(fut.boxed())
     }
 
-    pub fn save(&mut self, force: bool) -> Result<(), anyhow::Error> {
-        self.save_impl::<futures_util::future::Ready<_>>(None, force)
-    }
-
-    pub fn format_and_save(
+    pub fn save<P: Into<PathBuf>>(
         &mut self,
-        formatting: Option<
-            impl Future<Output = Result<Transaction, FormatterError>> + 'static + Send,
-        >,
+        path: Option<P>,
         force: bool,
-    ) -> anyhow::Result<()> {
-        self.save_impl(formatting, force)
+    ) -> Result<(), anyhow::Error> {
+        self.save_impl::<futures_util::future::Ready<_>, _>(None, path, force)
     }
 
-    // TODO: impl Drop to handle ensuring writes when closed
+    pub fn format_and_save<F, P>(
+        &mut self,
+        formatting: Option<F>,
+        path: Option<P>,
+        force: bool,
+    ) -> anyhow::Result<()>
+    where
+        F: Future<Output = Result<Transaction, FormatterError>> + 'static + Send,
+        P: Into<PathBuf>,
+    {
+        self.save_impl(formatting, path, force)
+    }
+
     /// The `Document`'s text is encoded according to its encoding and written to the file located
     /// at its `path()`.
     ///
     /// If `formatting` is present, it supplies some changes that we apply to the text before saving.
-    fn save_impl<F: Future<Output = Result<Transaction, FormatterError>> + 'static + Send>(
+    fn save_impl<F, P>(
         &mut self,
         formatting: Option<F>,
+        path: Option<P>,
         force: bool,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<(), anyhow::Error>
+    where
+        F: Future<Output = Result<Transaction, FormatterError>> + 'static + Send,
+        P: Into<PathBuf>,
+    {
         if self.save_sender.is_none() {
             bail!("saves are closed for this document!");
         }
 
         // we clone and move text + path into the future so that we asynchronously save the current
         // state without blocking any further edits.
-
         let mut text = self.text().clone();
-        let path = self.path.clone().expect("Can't save with no path set!");
-        let identifier = self.identifier();
 
+        let path = match path {
+            Some(path) => helix_core::path::get_canonicalized_path(&path.into())?,
+            None => {
+                if self.path.is_none() {
+                    bail!("Can't save with no path set!");
+                }
+
+                self.path.as_ref().unwrap().clone()
+            }
+        };
+
+        let identifier = self.identifier();
         let language_server = self.language_server.clone();
 
         // mark changes up to now as saved
@@ -586,12 +607,13 @@ impl Document {
                 }
             }
 
-            let mut file = File::create(path).await?;
+            let mut file = File::create(&path).await?;
             to_writer(&mut file, encoding, &text).await?;
 
             let event = DocumentSaveEvent {
                 revision: current_rev,
                 doc_id,
+                path,
             };
 
             if let Some(language_server) = language_server {
