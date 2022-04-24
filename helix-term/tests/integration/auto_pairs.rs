@@ -6,7 +6,6 @@ async fn auto_pairs_basic() -> anyhow::Result<()> {
         Args::default(),
         Config::default(),
         ("#[\n|]#", "i(<esc>", "(#[|)]#\n"),
-        None,
     )
     .await?;
 
@@ -20,7 +19,6 @@ async fn auto_pairs_basic() -> anyhow::Result<()> {
             ..Default::default()
         },
         ("#[\n|]#", "i(<esc>", "(#[|\n]#"),
-        None,
     )
     .await?;
 

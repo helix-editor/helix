@@ -36,17 +36,15 @@ pub async fn test_key_sequence(
     app: &mut Application,
     in_keys: Option<&str>,
     test_fn: Option<&dyn Fn(&Application)>,
-    timeout: Option<Duration>,
 ) -> anyhow::Result<()> {
-    test_key_sequences(app, vec![(in_keys, test_fn)], timeout).await
+    test_key_sequences(app, vec![(in_keys, test_fn)]).await
 }
 
 pub async fn test_key_sequences(
     app: &mut Application,
     inputs: Vec<(Option<&str>, Option<&dyn Fn(&Application)>)>,
-    timeout: Option<Duration>,
 ) -> anyhow::Result<()> {
-    let timeout = timeout.unwrap_or(Duration::from_millis(500));
+    const TIMEOUT: Duration = Duration::from_millis(500);
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     let mut rx_stream = UnboundedReceiverStream::new(rx);
 
@@ -57,10 +55,7 @@ pub async fn test_key_sequences(
             }
         }
 
-        let event_loop = app.event_loop(&mut rx_stream);
-        let result = tokio::time::timeout(timeout, event_loop).await;
-
-        if result.is_ok() {
+        if !app.event_loop_until_idle(&mut rx_stream).await {
             bail!("application exited before test function could run");
         }
 
@@ -74,7 +69,7 @@ pub async fn test_key_sequences(
     }
 
     let event_loop = app.event_loop(&mut rx_stream);
-    tokio::time::timeout(timeout, event_loop).await?;
+    tokio::time::timeout(TIMEOUT, event_loop).await?;
     app.close().await?;
 
     Ok(())
@@ -84,7 +79,6 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     app: Option<Application>,
     test_case: T,
     test_fn: &dyn Fn(&Application),
-    timeout: Option<Duration>,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
     let mut app =
@@ -102,7 +96,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
         view.id,
     );
 
-    test_key_sequence(&mut app, Some(&test_case.in_keys), Some(test_fn), timeout).await
+    test_key_sequence(&mut app, Some(&test_case.in_keys), Some(test_fn)).await
 }
 
 /// Use this for very simple test cases where there is one input
@@ -112,26 +106,20 @@ pub async fn test_key_sequence_text_result<T: Into<TestCase>>(
     args: Args,
     config: Config,
     test_case: T,
-    timeout: Option<Duration>,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
     let app = Application::new(args, config).unwrap();
 
-    test_key_sequence_with_input_text(
-        Some(app),
-        test_case.clone(),
-        &|app| {
-            let doc = doc!(app.editor);
-            assert_eq!(&test_case.out_text, doc.text());
+    test_key_sequence_with_input_text(Some(app), test_case.clone(), &|app| {
+        let doc = doc!(app.editor);
+        assert_eq!(&test_case.out_text, doc.text());
 
-            let mut selections: Vec<_> = doc.selections().values().cloned().collect();
-            assert_eq!(1, selections.len());
+        let mut selections: Vec<_> = doc.selections().values().cloned().collect();
+        assert_eq!(1, selections.len());
 
-            let sel = selections.pop().unwrap();
-            assert_eq!(test_case.out_selection, sel);
-        },
-        timeout,
-    )
+        let sel = selections.pop().unwrap();
+        assert_eq!(test_case.out_selection, sel);
+    })
     .await
 }
 

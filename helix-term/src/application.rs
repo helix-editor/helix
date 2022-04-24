@@ -40,6 +40,8 @@ use {
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
+const LSP_DEADLINE: Duration = Duration::from_millis(16);
+
 pub struct Application {
     compositor: Compositor,
     pub editor: Editor,
@@ -54,6 +56,7 @@ pub struct Application {
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
+    last_render: Instant,
 }
 
 #[cfg(feature = "integration")]
@@ -203,6 +206,7 @@ impl Application {
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
+            last_render: Instant::now(),
         };
 
         Ok(app)
@@ -230,14 +234,25 @@ impl Application {
     where
         S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
     {
-        let mut last_render = Instant::now();
-        let deadline = Duration::from_secs(1) / 60;
-
         self.render();
+        self.last_render = Instant::now();
 
         loop {
             if self.editor.should_close() {
                 break;
+            }
+
+            self.event_loop_until_idle(input_stream).await;
+        }
+    }
+
+    pub async fn event_loop_until_idle<S>(&mut self, input_stream: &mut S) -> bool
+    where
+        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
+    {
+        loop {
+            if self.editor.should_close() {
+                return false;
             }
 
             use futures_util::StreamExt;
@@ -246,42 +261,52 @@ impl Application {
                 biased;
 
                 Some(event) = input_stream.next() => {
-                    self.handle_terminal_events(event)
+                    self.handle_terminal_events(event);
+                    self.editor.reset_idle_timer();
                 }
                 Some(signal) = self.signals.next() => {
                     self.handle_signals(signal).await;
+                    self.editor.reset_idle_timer();
                 }
                 Some((id, call)) = self.editor.language_servers.incoming.next() => {
                     self.handle_language_server_message(call, id).await;
                     // limit render calls for fast language server messages
                     let last = self.editor.language_servers.incoming.is_empty();
-                    if last || last_render.elapsed() > deadline {
+
+                    if last || self.last_render.elapsed() > LSP_DEADLINE {
                         self.render();
-                        last_render = Instant::now();
+                        self.last_render = Instant::now();
                     }
+
+                    self.editor.reset_idle_timer();
                 }
                 Some(payload) = self.editor.debugger_events.next() => {
                     let needs_render = self.editor.handle_debugger_message(payload).await;
                     if needs_render {
                         self.render();
                     }
+                    self.editor.reset_idle_timer();
                 }
                 Some(config_event) = self.editor.config_events.1.recv() => {
                     self.handle_config_events(config_event);
                     self.render();
+                    self.editor.reset_idle_timer();
                 }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
+                    self.editor.reset_idle_timer();
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
+                    self.editor.reset_idle_timer();
                 }
                 _ = &mut self.editor.idle_timer => {
                     // idle timeout
                     self.editor.clear_idle_timer();
                     self.handle_idle_timeout();
+                    return true;
                 }
             }
         }

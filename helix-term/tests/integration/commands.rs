@@ -1,7 +1,6 @@
 use std::{
     io::{Read, Write},
     ops::RangeInclusive,
-    time::Duration,
 };
 
 use helix_core::diagnostic::Severity;
@@ -23,7 +22,6 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
         Some(&|app| {
             assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
         }),
-        None,
     )
     .await?;
 
@@ -57,7 +55,6 @@ async fn test_buffer_close() -> anyhow::Result<()> {
                 }),
             ),
         ],
-        None,
     )
     .await?;
 
@@ -88,7 +85,6 @@ async fn test_buffer_close() -> anyhow::Result<()> {
             let doc = app.editor.document_by_path(file.path());
             assert!(doc.is_none(), "found doc: {:?}", doc);
         }),
-        Some(Duration::from_millis(5000)),
     )
     .await?;
 

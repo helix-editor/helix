@@ -17,7 +17,6 @@ mod integration {
             Args::default(),
             Config::default(),
             ("#[\n|]#", "ihello world<esc>", "hello world#[|\n]#"),
-            None,
         )
         .await?;
 

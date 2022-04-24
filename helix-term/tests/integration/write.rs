@@ -1,7 +1,6 @@
 use std::{
     io::{Read, Write},
     ops::RangeInclusive,
-    time::Duration,
 };
 
 use helix_core::diagnostic::Severity;
@@ -24,7 +23,6 @@ async fn test_write() -> anyhow::Result<()> {
         )?,
         Some("ii can eat glass, it will not hurt me<ret><esc>:w<ret>"),
         None,
-        Some(Duration::from_millis(1000)),
     )
     .await?;
 
@@ -59,7 +57,6 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
         )?,
         Some(&command),
         None,
-        Some(Duration::from_millis(10000)),
     )
     .await?;
 
@@ -108,7 +105,6 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
                 }),
             ),
         ],
-        None,
     )
     .await?;
 
@@ -138,7 +134,6 @@ async fn test_write_fail_new_path() -> anyhow::Result<()> {
                 }),
             ),
         ],
-        Some(Duration::from_millis(1000)),
     )
     .await?;
 

@@ -14,7 +14,6 @@ async fn insert_mode_cursor_position() -> anyhow::Result<()> {
             out_text: String::new(),
             out_selection: Selection::single(0, 0),
         },
-        None,
     )
     .await?;
 
@@ -22,7 +21,6 @@ async fn insert_mode_cursor_position() -> anyhow::Result<()> {
         Args::default(),
         Config::default(),
         ("#[\n|]#", "i", "#[|\n]#"),
-        None,
     )
     .await?;
 
@@ -30,7 +28,6 @@ async fn insert_mode_cursor_position() -> anyhow::Result<()> {
         Args::default(),
         Config::default(),
         ("#[\n|]#", "i<esc>", "#[|\n]#"),
-        None,
     )
     .await?;
 
@@ -38,7 +35,6 @@ async fn insert_mode_cursor_position() -> anyhow::Result<()> {
         Args::default(),
         Config::default(),
         ("#[\n|]#", "i<esc>i", "#[|\n]#"),
-        None,
     )
     .await?;
 
@@ -52,7 +48,6 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
         Args::default(),
         Config::default(),
         ("#[f|]#oo\n", "vll<A-;><esc>", "#[|foo]#\n"),
-        None,
     )
     .await?;
 
@@ -70,7 +65,6 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
                 #(|bar)#"
             },
         ),
-        None,
     )
     .await?;
 
@@ -88,7 +82,6 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
                 #(ba|)#r"
             },
         ),
-        None,
     )
     .await?;
 
@@ -106,7 +99,6 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
                 #(b|)#ar"
             },
         ),
-        None,
     )
     .await?;
 
