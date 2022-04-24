@@ -7,22 +7,22 @@
 )
 
 (
-  (member_access_expression (member_access_expression) @include (identifier) @constant)
+  (member_access_expression (member_access_expression) @namespace (identifier) @constant)
   (#match? @constant "^[A-Z][A-Z_0-9]*$")
 )
 
 (comment) @comment
 
-(type (symbol (_)? @include (identifier) @type))
+(type (symbol (_)? @namespace (identifier) @type))
 
 ; highlight creation methods in object creation expressions
 (
-  (object_creation_expression (type (symbol (symbol (symbol)? @include (identifier) @type) (identifier) @constructor)))
+  (object_creation_expression (type (symbol (symbol (symbol)? @namespace (identifier) @type) (identifier) @constructor)))
   (#match? @constructor "^[a-z][a-z_0-9]*$")
 )
 
 (unqualified_type (symbol . (identifier) @type))
-(unqualified_type (symbol (symbol) @include (identifier) @type))
+(unqualified_type (symbol (symbol) @namespace (identifier) @type))
 
 (attribute) @variable.other.member
 (method_declaration (symbol (symbol) @type (identifier) @function))
@@ -129,9 +129,9 @@
   "typeof"
 ] @keyword.operator
 
-"using" @include
+"using" @namespace
 
-(symbol "global::" @include)
+(symbol "global::" @namespace)
 
 (array_creation_expression "new" @keyword.operator)
 (object_creation_expression "new" @keyword.operator)
