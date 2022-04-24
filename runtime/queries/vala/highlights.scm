@@ -29,7 +29,7 @@
 (method_declaration (symbol (identifier) @function))
 (local_function_declaration (identifier) @function)
 (destructor_declaration (identifier) @function)
-(creation_method_declaration (symbol (symbol) @type (identifier) @constructor))
+(creation_method_declaration (symbol (symbol (identifier) @type) (identifier) @constructor))
 (creation_method_declaration (symbol (identifier) @constructor))
 (enum_declaration (symbol) @type)
 (enum_value (identifier) @constant)
@@ -40,7 +40,8 @@
 (lambda_expression (identifier) @variable.parameter)
 (parameter (identifier) @variable.parameter)
 (property_declaration (symbol (identifier) @variable.other.member))
-(field_declaration (identifier) @variable.other.member)
+(field_declaration (identifier) @variable)
+(identifier) @variable
 [
  (this_access)
  (base_access)
