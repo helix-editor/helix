@@ -76,6 +76,10 @@ Helix can be installed on MacOS through homebrew via:
 brew tap helix-editor/helix
 brew install helix
 ```
+
+# Truecolor
+
+Avoid terminals without [Truecolor](https://github.com/termstandard/colors#not-supporting-truecolor) support. The default theme requires Truecolor. You may also select a theme that is prefixed with `base_16_` to avoid the need for Truecolor support.
  
 # Contributing
 
