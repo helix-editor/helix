@@ -621,14 +621,15 @@ _________________________________________________________________
  Type J to join together lines in selection.
 
  1. Move the cursor to the line below marked -->.
- 2. Type x three times to select the other lines.
- 3. Type J to join the lines together.
+ 2. Type J thrice or 3J to join the sentence to one line.
 
  --> This line sentence
 is spilling over
-onto other lines.
+onto other
+lines.
 
-
+ Note: J works on all lines in selection, so typing xxx or 3x to
+       select the lines and then a single J will work the same.
 
 
 
@@ -643,11 +644,12 @@ onto other lines.
  Type > to indent a line and < to outdent it.
 
  1. Move the cursor to the line below marked -->.
- 2. Indent/outdent the lines with < and >, until they are uniform.
+ 2. Move down to the second line and type > to indent it.
+ 3. Move to the third line and type < to unindent it.
 
  --> These lines
     are indented
-        very poorly.
+         very poorly.
 
      These lines
      are indented
