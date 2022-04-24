@@ -79,6 +79,7 @@
 | tsx | ✓ |  |  | `typescript-language-server` |
 | twig | ✓ |  |  |  |
 | typescript | ✓ |  | ✓ | `typescript-language-server` |
+| vala | ✓ |  |  | `vala-language-server` |
 | vue | ✓ |  |  | `vls` |
 | wgsl | ✓ |  |  |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |

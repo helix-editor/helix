@@ -1235,3 +1235,17 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "nu"
 source = { git = "https://github.com/LhKipp/tree-sitter-nu", rev = "db4e990b78824c8abef3618e0f93b7fe1e8f4c0d" }
+
+[[language]]
+name = "vala"
+scope = "source.vala"
+injection-regex = "vala"
+file-types = ["vala", "vapi"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "vala-language-server" }
+
+[[grammar]]
+name = "vala"
+source = { git = "https://github.com/vala-lang/tree-sitter-vala", rev = "c9eea93ba2ec4ec1485392db11945819779745b3" }
