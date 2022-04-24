@@ -79,7 +79,7 @@ brew install helix
 
 # Truecolor
 
-Avoid terminals without [Truecolor](https://github.com/termstandard/colors#not-supporting-truecolor) support. The default theme requires Truecolor. You may also select a theme that is prefixed with `base_16_` to avoid the need for Truecolor support.
+The default theme requires a terminal with [Truecolor](https://github.com/termstandard/colors#not-supporting-truecolor) support. Alternatively, you can select a theme prefixed with `base_16_` to avoid this requirement.
  
 # Contributing
 
