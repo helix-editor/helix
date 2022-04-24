@@ -928,9 +928,30 @@ pub(super) fn goto_line_number(
     Ok(())
 }
 
+// Fetch the current value of a config option and output as status.
+fn get_option(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:get key`");
+    }
+
+    let key = &args[0].to_lowercase();
+    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+
+    let config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
+    let pointer = format!("/{}", key.replace('.', "/"));
+    let value = config.pointer(&pointer).ok_or_else(key_error)?;
+
+    cx.editor.set_status(value.to_string());
+    Ok(())
+}
+
 /// Change config at runtime. Access nested values by dot syntax, for
 /// example to disable smart case search, use `:set search.smart-case false`.
-fn setting(
+fn set_option(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     _event: PromptEvent,
@@ -1487,8 +1508,15 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "set-option",
             aliases: &["set"],
-            doc: "Set a config option at runtime",
-            fun: setting,
+            doc: "Set a config option at runtime.",
+            fun: set_option,
+            completer: Some(completers::setting),
+        },
+        TypableCommand {
+            name: "get-option",
+            aliases: &["get"],
+            doc: "Get the current value of a config option.",
+            fun: get_option,
             completer: Some(completers::setting),
         },
         TypableCommand {

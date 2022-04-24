@@ -55,7 +55,8 @@
 | `:tutor` | Open the tutorial. |
 | `:goto`, `:g` | Go to line number. |
 | `:set-language`, `:lang` | Set the language of current buffer. |
-| `:set-option`, `:set` | Set a config option at runtime |
+| `:set-option`, `:set` | Set a config option at runtime. |
+| `:get-option`, `:get` | Get the current value of a config option. |
 | `:sort` | Sort ranges in selection. |
 | `:rsort` | Sort ranges in selection in reverse order. |
 | `:tree-sitter-subtree`, `:ts-subtree` | Display tree sitter subtree under cursor, primarily for debugging queries. |
