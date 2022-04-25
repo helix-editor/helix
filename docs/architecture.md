@@ -42,7 +42,7 @@ applying the transaction.
 > interface used to generate text edits.
 
 `Syntax` is the interface used to interact with tree-sitter ASTs for syntax
-highling and other features.
+highlighting and other features.
 
 ## View
 
