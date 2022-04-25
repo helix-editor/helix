@@ -32,9 +32,9 @@
 "string"  = "my_green"
 "variable.other.member" = "my_brown"
 "constant.character.escape" = "my_turquoise"
-"function" = "my_yellow"
-"constructor" = "my_yellow"
-"special" = "my_yellow"
+"function" = "my_yellow1"
+"constructor" = "my_yellow1"
+"special" = "my_yellow1"
 "keyword" = "my_red"
 "label" = "my_red"
 "namespace" = "my_white3"
@@ -42,11 +42,11 @@
 "ui.virtual.whitespace" = { fg = "my_gray5" }
 "ui.virtual.ruler" = { bg = "my_gray1" }
 
-"markup.heading" = "my_yellow"
+"markup.heading" = "my_yellow1"
 "markup.list" = "my_white2"
-"markup.bold" = { fg = "my_white3", modifiers = ["bold"] }
-"markup.italic" = { fg = "my_white3", modifiers = ["italic"] }
-"markup.link.url" = { fg = "my_green", modifiers = ["underlined"] }
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = {  modifiers = ["italic"] }
+"markup.link.url" = "my_turquoise2"
 "markup.link.text" = "my_white2"
 "markup.quote" = "my_brown"
 "markup.raw" = "my_green"
@@ -57,26 +57,28 @@
 
 "diagnostic" = { modifiers = ["underlined"] }
 "ui.gutter" = { bg = "my_gray2" }
-"info" = "my_yellow"
-"hint" = "my_gray4"
-"debug" = "my_gray4"
-"warning" = "my_yellow"
+"hint" = "my_gray5"
+"debug" = "my_yellow2"
+"info" = "my_yellow2"
+"warning" = "my_yellow2"
 "error" = "my_red"
 
 [palette]
-my_gray0     = "#292929" # Default Background
-my_gray1     = "#2e2e2e" # Ruler
-my_gray2     = "#3a3a3a" # Lighter Background (Used for status bars, line number and folding marks)
-my_gray3     = "#525252" # Selection Background
-my_gray4     = "#7c7c7c" # Comments, Invisibles, Line Highlighting
-my_gray5     = "#aaaaaa" # Dark Foreground (Used for status bars)
-my_white     = "#F3F2CC" # Default Foreground, Caret, Delimiters, Operators
-my_gray6     = "#e8e8e8" # Light Foreground (Not often used)
-my_gray7     = "#f8f8f8" # Light Background (Not often used)
-my_white2    = "#F3F2CC" # Variables, XML Tags, Markup Link Text, Markup Lists, Diff Deleted
-my_turquoise = "#86c1b9" # Support, Regular Expressions, Escape Characters, Markup Quotes
-my_white3    = "#F3F2CC" # Classes, Markup Bold, Search Text Background
-my_green     = "#8daf67" # Strings, Inherited Class, Markup Code, Diff Inserted
-my_brown     = "#cfba8b" # Member variables
-my_yellow    = "#FAD566" # Functions, Methods, Attribute IDs, Headings
-my_red       = "#F05E48" # Keywords, Storage, Selector, Markup Italic, Diff Changed
+my_gray0      = "#292929" # Default Background
+my_gray1      = "#2e2e2e" # Ruler
+my_gray2      = "#3a3a3a" # Lighter Background (Used for status bars, line number and folding marks)
+my_gray3      = "#525252" # Selection Background
+my_gray4      = "#7c7c7c" # Comments, Invisibles, Line Highlighting
+my_gray5      = "#aaaaaa" # Dark Foreground (Used for status bars)
+my_gray6      = "#e8e8e8" # Light Foreground (Not often used)
+my_gray7      = "#f8f8f8" # Light Background (Not often used)
+my_white      = "#F3F2CC" # Default Foreground, Caret, Delimiters, Operators
+my_white2     = "#F3F2CC" # Variables, XML Tags, Markup Link Text, Markup Lists, Diff Deleted
+my_white3     = "#F3F2CC" # Classes, Markup Bold, Search Text Background
+my_turquoise  = "#86c1b9" # Support, Regular Expressions, Escape Characters
+my_turquoise2 = "#72a59e" # URL
+my_green      = "#99be70" # Strings, Inherited Class, Markup Code, Diff Inserted
+my_brown      = "#cfba8b" # Member variables, Quotes
+my_yellow1    = "#FAD566" # Functions, Methods, Attribute IDs, Headings
+my_yellow2    = "#ffff9f" # Debug, Info
+my_red        = "#F05E48" # Keywords, Storage, Selector, Diff Changed
