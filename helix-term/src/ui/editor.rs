@@ -19,7 +19,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{CompleteAction, CursorShapeConfig, StatusLineRenderValue},
     graphics::{CursorKind, Modifier, Rect, Style},
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
@@ -158,7 +158,10 @@ impl EditorView {
             .area
             .clip_top(view.area.height.saturating_sub(1))
             .clip_bottom(1); // -1 from bottom to remove commandline
-        self.render_statusline(doc, view, statusline_area, surface, theme, is_focused);
+
+        if editor.config().status_line.render == StatusLineRenderValue::Always {
+            self.render_statusline(doc, view, statusline_area, surface, theme, is_focused);
+        }
     }
 
     pub fn render_rulers(
@@ -1298,6 +1301,14 @@ impl Component for EditorView {
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
             self.render_view(cx.editor, doc, view, area, surface, is_focused);
+        }
+
+        if config.status_line.render == StatusLineRenderValue::Single {
+            let view = cx.editor.tree.get(cx.editor.tree.focus);
+            let doc = cx.editor.document(view.doc).unwrap();
+            let theme = &cx.editor.theme;
+            let statusline_area = area.clip_top(area.height.saturating_sub(1)).clip_bottom(1);
+            self.render_statusline(doc, view, statusline_area, surface, theme, true);
         }
 
         if config.auto_info {
