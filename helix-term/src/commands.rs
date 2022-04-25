@@ -210,8 +210,6 @@ impl MappableCommand {
         move_next_long_word_start, "Move to beginning of next long word",
         move_prev_long_word_start, "Move to beginning of previous long word",
         move_next_long_word_end, "Move to end of next long word",
-        move_prev_paragraph, "Move to previous paragraph",
-        move_next_paragraph, "Move to next paragraph",
         extend_next_word_start, "Extend to beginning of next word",
         extend_prev_word_start, "Extend to beginning of previous word",
         extend_next_long_word_start, "Extend to beginning of next long word",
@@ -393,6 +391,8 @@ impl MappableCommand {
         goto_prev_parameter, "Goto previous parameter",
         goto_next_comment, "Goto next comment",
         goto_prev_comment, "Goto previous comment",
+        goto_next_paragraph, "Goto next paragraph",
+        goto_prev_paragraph, "Goto previous paragraph",
         dap_launch, "Launch debug target",
         dap_toggle_breakpoint, "Toggle breakpoint",
         dap_continue, "Continue program execution",
@@ -684,7 +684,24 @@ fn kill_to_line_start(cx: &mut Context) {
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let line = range.cursor_line(text);
-        range.put_cursor(text, text.line_to_char(line), true)
+        let first_char = text.line_to_char(line);
+        let anchor = range.cursor(text);
+        let head = if anchor == first_char && line != 0 {
+            // select until previous line
+            line_end_char_index(&text, line - 1)
+        } else if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
+            if first_char + pos < anchor {
+                // select until first non-blank in line if cursor is after it
+                first_char + pos
+            } else {
+                // select until start of line
+                first_char
+            }
+        } else {
+            // select until start of line
+            first_char
+        };
+        Range::new(head, anchor)
     });
     delete_selection_insert_mode(doc, view, &selection);
 }
@@ -908,7 +925,7 @@ fn move_next_long_word_end(cx: &mut Context) {
     move_word_impl(cx, movement::move_next_long_word_end)
 }
 
-fn move_para_impl<F>(cx: &mut Context, move_fn: F)
+fn goto_para_impl<F>(cx: &mut Context, move_fn: F)
 where
     F: Fn(RopeSlice, Range, usize, Movement) -> Range + 'static,
 {
@@ -932,12 +949,12 @@ where
     cx.editor.last_motion = Some(Motion(Box::new(motion)));
 }
 
-fn move_prev_paragraph(cx: &mut Context) {
-    move_para_impl(cx, movement::move_prev_paragraph)
+fn goto_prev_paragraph(cx: &mut Context) {
+    goto_para_impl(cx, movement::move_prev_paragraph)
 }
 
-fn move_next_paragraph(cx: &mut Context) {
-    move_para_impl(cx, movement::move_next_paragraph)
+fn goto_next_paragraph(cx: &mut Context) {
+    goto_para_impl(cx, movement::move_next_paragraph)
 }
 
 fn goto_file_start(cx: &mut Context) {

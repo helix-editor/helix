@@ -644,6 +644,7 @@ file-types = ["yml", "yaml"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
+language-server = { command = "yaml-language-server", args = ["--stdio"] }
 injection-regex = "yml|yaml"
 
 [[grammar]]
@@ -1038,16 +1039,27 @@ source = { git = "https://github.com/fwcd/tree-sitter-kotlin", rev = "a4f71eb9b8
 name = "hcl"
 scope = "source.hcl"
 injection-regex = "(hcl|tf|nomad)"
-file-types = ["hcl", "tf", "tfvars", "nomad"]
+file-types = ["hcl", "tf", "nomad"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-language-server = { command = "terraform-ls", args = ["serve"] }
+language-server = { command = "terraform-ls", args = ["serve"], language-id = "terraform" }
 auto-format = true
 
 [[grammar]]
 name = "hcl"
 source = { git = "https://github.com/MichaHoffmann/tree-sitter-hcl", rev = "3cb7fc28247efbcb2973b97e71c78838ad98a583" }
+
+[[language]]
+name = "tfvars"
+scope = "source.tfvars"
+file-types = ["tfvars"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "terraform-ls", args = ["serve"], language-id = "terraform-vars" }
+auto-format = true
+grammar = "hcl"
 
 [[language]]
 name = "org"
@@ -1210,3 +1222,30 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "gdscript"
 source = { git = "https://github.com/PrestonKnopp/tree-sitter-gdscript", rev = "2a6abdaa47fcb91397e09a97c7433fd995ea46c6" }
+
+[[language]]
+name = "nu"
+scope = "source.nu"
+injection-regex = "nu"
+file-types = ["nu"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "nu"
+source = { git = "https://github.com/LhKipp/tree-sitter-nu", rev = "db4e990b78824c8abef3618e0f93b7fe1e8f4c0d" }
+
+[[language]]
+name = "vala"
+scope = "source.vala"
+injection-regex = "vala"
+file-types = ["vala", "vapi"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "vala-language-server" }
+
+[[grammar]]
+name = "vala"
+source = { git = "https://github.com/vala-lang/tree-sitter-vala", rev = "c9eea93ba2ec4ec1485392db11945819779745b3" }

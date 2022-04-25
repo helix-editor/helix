@@ -794,8 +794,10 @@ pub fn rename_symbol(cx: &mut Context) {
             let pos = doc.position(view.id, offset_encoding);
 
             let task = language_server.rename_symbol(doc.identifier(), pos, input.to_string());
-            let edits = block_on(task).unwrap_or_default();
-            apply_workspace_edit(cx.editor, offset_encoding, &edits);
+            match block_on(task) {
+                Ok(edits) => apply_workspace_edit(cx.editor, offset_encoding, &edits),
+                Err(err) => cx.editor.set_error(err.to_string()),
+            }
         },
     );
 }

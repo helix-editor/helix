@@ -16,7 +16,7 @@
 | `:new`, `:n` | Create a new scratch buffer. |
 | `:format`, `:fmt` | Format the file using the LSP formatter. |
 | `:indent-style` | Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.) |
-| `:line-ending` | Set the document's default line ending. Options: crlf, lf, cr, ff, nel. |
+| `:line-ending` | Set the document's default line ending. Options: crlf, lf. |
 | `:earlier`, `:ear` | Jump back to an earlier point in edit history. Accepts a number of steps or a time span. |
 | `:later`, `:lat` | Jump to a later point in edit history. Accepts a number of steps or a time span. |
 | `:write-quit`, `:wq`, `:x` | Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt) |
@@ -55,7 +55,8 @@
 | `:tutor` | Open the tutorial. |
 | `:goto`, `:g` | Go to line number. |
 | `:set-language`, `:lang` | Set the language of current buffer. |
-| `:set-option`, `:set` | Set a config option at runtime |
+| `:set-option`, `:set` | Set a config option at runtime. |
+| `:get-option`, `:get` | Get the current value of a config option. |
 | `:sort` | Sort ranges in selection. |
 | `:rsort` | Sort ranges in selection in reverse order. |
 | `:tree-sitter-subtree`, `:ts-subtree` | Display tree sitter subtree under cursor, primarily for debugging queries. |
