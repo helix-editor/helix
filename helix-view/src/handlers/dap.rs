@@ -285,10 +285,8 @@ impl Editor {
                     let arguments: dap::requests::RunInTerminalArguments =
                         serde_json::from_value(request.arguments.unwrap_or_default()).unwrap();
                     // TODO: no unwrap
-                    let process;
-                    if cfg!(windows) {
-                        // run windows terminal if it exists on the system
-                        process = std::process::Command::new("wt")
+                    let process = if cfg!(windows) {
+                        std::process::Command::new("wt")
                             .arg("new-tab")
                             .arg("--title")
                             .arg("DEBUG")
@@ -297,7 +295,6 @@ impl Editor {
                             .arg(arguments.args.join(" "))
                             .spawn()
                             .unwrap_or_else(|error| match error.kind() {
-                                // in case wt does not exist, run with conhost (default in windows)
                                 ErrorKind::NotFound => std::process::Command::new("conhost")
                                     .arg("cmd")
                                     .arg("/C")
@@ -305,14 +302,14 @@ impl Editor {
                                     .spawn()
                                     .unwrap(),
                                 e => panic!("Error to start debug console: {}", e),
-                            });
+                            })
                     } else {
-                        process = std::process::Command::new("tmux")
+                        std::process::Command::new("tmux")
                             .arg("split-window")
                             .arg(arguments.args.join(" "))
                             .spawn()
-                            .unwrap();
-                    }
+                            .unwrap()
+                    };
 
                     let _ = debugger
                         .reply(
