@@ -47,6 +47,7 @@ pub(crate) mod keys {
     pub(crate) const MINUS: &str = "minus";
     pub(crate) const SEMICOLON: &str = "semicolon";
     pub(crate) const PERCENT: &str = "percent";
+    pub(crate) const HASH: &str = "hash";
 }
 
 impl fmt::Display for KeyEvent {
@@ -92,6 +93,7 @@ impl fmt::Display for KeyEvent {
             KeyCode::Char('-') => f.write_str(keys::MINUS)?,
             KeyCode::Char(';') => f.write_str(keys::SEMICOLON)?,
             KeyCode::Char('%') => f.write_str(keys::PERCENT)?,
+            KeyCode::Char('#') => f.write_str(keys::HASH)?,
             KeyCode::F(i) => f.write_fmt(format_args!("F{}", i))?,
             KeyCode::Char(c) => f.write_fmt(format_args!("{}", c))?,
         };
@@ -125,6 +127,7 @@ impl UnicodeWidthStr for KeyEvent {
             KeyCode::Char('-') => keys::MINUS.len(),
             KeyCode::Char(';') => keys::SEMICOLON.len(),
             KeyCode::Char('%') => keys::PERCENT.len(),
+            KeyCode::Char('#') => keys::HASH.len(),
             KeyCode::F(1..=9) => 2,
             KeyCode::F(_) => 3,
             KeyCode::Char(c) => c.width().unwrap_or(0),
@@ -174,6 +177,7 @@ impl std::str::FromStr for KeyEvent {
             keys::MINUS => KeyCode::Char('-'),
             keys::SEMICOLON => KeyCode::Char(';'),
             keys::PERCENT => KeyCode::Char('%'),
+            keys::HASH => KeyCode::Char('#'),
             single if single.chars().count() == 1 => KeyCode::Char(single.chars().next().unwrap()),
             function if function.len() > 1 && function.starts_with('F') => {
                 let function: String = function.chars().skip(1).collect();

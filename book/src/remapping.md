@@ -39,6 +39,7 @@ Control, Shift and Alt modifiers are encoded respectively with the prefixes
 | \-           | `"minus"`      |
 | ;            | `"semicolon"`  |
 | %            | `"percent"`    |
+| #            | `"hash"`       |
 | Left         | `"left"`       |
 | Right        | `"right"`      |
 | Up           | `"up"`         |
