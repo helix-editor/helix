@@ -648,7 +648,7 @@ fn paste_clipboard_before(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Clipboard, 1)
+    paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Clipboard, 1)
 }
 
 fn paste_primary_clipboard_after(
@@ -664,7 +664,7 @@ fn paste_primary_clipboard_before(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Selection, 1)
+    paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Selection, 1)
 }
 
 fn replace_selections_with_clipboard_impl(
