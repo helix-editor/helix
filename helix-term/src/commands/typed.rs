@@ -1017,18 +1017,26 @@ fn reflow(
     args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    // TODO: Can we instead take an Option<Cow<str>>, and then if the user
-    // doesn't pass in a selection, default to 79 characters per line?
-
-    const DEFAULT_MAX_LEN: Cow<'static, str> = Cow::Borrowed("79");
-    let max_line_len: usize = args.get(0).unwrap_or(&DEFAULT_MAX_LEN).parse()?;
-
     let (view, doc) = current!(cx.editor);
+
+    const DEFAULT_MAX_LEN: usize = 79;
+
+    // Find the max line length by checking the following sources in order:
+    //   - The passed argument in `args`
+    //   - The configured max_line_len for this language in languages.toml
+    //   - The const default we set above
+    let max_line_len: usize = args
+        .get(0)
+        .map(|num| num.parse::<usize>())
+        .transpose()?
+        .or_else(|| {
+            doc.language_config()
+                .and_then(|config| config.max_line_length)
+        })
+        .unwrap_or(DEFAULT_MAX_LEN);
+
     let rope = doc.text();
 
-    // TODO: If only a single character is selected, we should expand the
-    // selection to whatever "object" (can we use treesitter for this? text query?)
-    // that single selection is part of.
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(rope, selection, |range| {
         let fragment = range.fragment(rope.slice(..));
