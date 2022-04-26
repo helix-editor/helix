@@ -11,7 +11,7 @@ use super::*;
 
 #[tokio::test]
 async fn test_write() -> anyhow::Result<()> {
-    let mut file = tempfile::NamedTempFile::new().unwrap();
+    let mut file = tempfile::NamedTempFile::new()?;
 
     test_key_sequence(
         &mut Application::new(
@@ -38,7 +38,7 @@ async fn test_write() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_write_concurrent() -> anyhow::Result<()> {
-    let mut file = tempfile::NamedTempFile::new().unwrap();
+    let mut file = tempfile::NamedTempFile::new()?;
     let mut command = String::new();
     const RANGE: RangeInclusive<i32> = 1..=5000;
 
@@ -112,7 +112,6 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-#[ignore]
 async fn test_write_fail_new_path() -> anyhow::Result<()> {
     test_key_sequences(
         &mut Application::new(Args::default(), Config::default())?,

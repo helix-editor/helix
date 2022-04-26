@@ -59,7 +59,7 @@ async fn test_buffer_close() -> anyhow::Result<()> {
     .await?;
 
     // verify if writes are queued up, it finishes them before closing the buffer
-    let mut file = tempfile::NamedTempFile::new().unwrap();
+    let mut file = tempfile::NamedTempFile::new()?;
     let mut command = String::new();
     const RANGE: RangeInclusive<i32> = 1..=10;
 

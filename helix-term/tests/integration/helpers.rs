@@ -81,8 +81,10 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     test_fn: &dyn Fn(&Application),
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
-    let mut app =
-        app.unwrap_or_else(|| Application::new(Args::default(), Config::default()).unwrap());
+    let mut app = match app {
+        Some(app) => app,
+        None => Application::new(Args::default(), Config::default())?,
+    };
 
     let (view, doc) = helix_view::current!(app.editor);
     let sel = doc.selection(view.id).clone();
@@ -108,7 +110,7 @@ pub async fn test_key_sequence_text_result<T: Into<TestCase>>(
     test_case: T,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
-    let app = Application::new(args, config).unwrap();
+    let app = Application::new(args, config)?;
 
     test_key_sequence_with_input_text(Some(app), test_case.clone(), &|app| {
         let doc = doc!(app.editor);
@@ -123,13 +125,16 @@ pub async fn test_key_sequence_text_result<T: Into<TestCase>>(
     .await
 }
 
-pub fn temp_file_with_contents<S: AsRef<str>>(content: S) -> tempfile::NamedTempFile {
-    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+pub fn temp_file_with_contents<S: AsRef<str>>(
+    content: S,
+) -> anyhow::Result<tempfile::NamedTempFile> {
+    let mut temp_file = tempfile::NamedTempFile::new()?;
+
     temp_file
         .as_file_mut()
-        .write_all(content.as_ref().as_bytes())
-        .unwrap();
-    temp_file.flush().unwrap();
-    temp_file.as_file_mut().sync_all().unwrap();
-    temp_file
+        .write_all(content.as_ref().as_bytes())?;
+
+    temp_file.flush()?;
+    temp_file.as_file_mut().sync_all()?;
+    Ok(temp_file)
 }
