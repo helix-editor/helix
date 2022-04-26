@@ -27,7 +27,7 @@
 | gomod | ✓ |  |  | `gopls` |
 | gowork | ✓ |  |  | `gopls` |
 | graphql | ✓ |  |  |  |
-| hare | ✓ |  |  |  |
+| hare | ✓ |  | ✓ |  |
 | haskell | ✓ |  |  | `haskell-language-server-wrapper` |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ |  |  |  |
