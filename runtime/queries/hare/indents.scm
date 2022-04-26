@@ -3,13 +3,19 @@
  (expression_list)
 ] @indent
 
-
 [
-  "{"
+  "case"
   "}"
-] @branch
+  "]"
+  ")"
+] @outdent
 
-[
-  (comment)
-] @ignore
+; [
+;   "{"
+;   "}"
+; ] @branch
+
+; [
+;   (comment)
+; ] @ignore
 

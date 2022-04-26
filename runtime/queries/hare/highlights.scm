@@ -111,6 +111,11 @@
 ] @operator
 
 [
+  "("
+  ")"
+  "["
+  "]"
+  ")"
   "{"
   "}"
 ] @punctuation.bracket
@@ -145,7 +150,7 @@
 (parameter (name) @variable.parameter)
 
 (field_access_expression
-  selector: (name) @field)
+  selector: (name) @variable.other.member)
 (decl_attr) @special
 (fndec_attrs) @special
 
