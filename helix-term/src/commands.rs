@@ -1024,7 +1024,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     for sel in paths {
         let p = sel.trim();
         if !p.is_empty() {
-            if let Err(e) = cx.editor.open(PathBuf::from(p), action) {
+            if let Err(e) = cx.editor.open(&PathBuf::from(p), action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
             }
         }
@@ -1849,7 +1849,7 @@ fn global_search(cx: &mut Context) {
                         }
                     },
                     move |cx, (line_num, path), action| {
-                        match cx.editor.open(path.into(), action) {
+                        match cx.editor.open(path, action) {
                             Ok(_) => {}
                             Err(e) => {
                                 cx.editor.set_error(format!(

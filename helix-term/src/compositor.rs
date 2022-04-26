@@ -63,7 +63,7 @@ pub trait Component: Any + AnyComponent {
     }
 }
 
-use anyhow::Error;
+use anyhow::Context as AnyhowContext;
 use std::io::stdout;
 use tui::backend::{Backend, CrosstermBackend};
 type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
@@ -76,9 +76,9 @@ pub struct Compositor {
 }
 
 impl Compositor {
-    pub fn new() -> Result<Self, Error> {
+    pub fn new() -> anyhow::Result<Self> {
         let backend = CrosstermBackend::new(stdout());
-        let terminal = Terminal::new(backend)?;
+        let terminal = Terminal::new(backend).context("build terminal")?;
         Ok(Self {
             layers: Vec::new(),
             terminal,

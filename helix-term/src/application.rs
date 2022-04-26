@@ -25,7 +25,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anyhow::Error;
+use anyhow::{Context, Error};
 
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, Event},
@@ -122,7 +122,7 @@ impl Application {
         });
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
-        let mut compositor = Compositor::new()?;
+        let mut compositor = Compositor::new().context("build compositor")?;
         let config = Arc::new(ArcSwap::from_pointee(config));
         let mut editor = Editor::new(
             compositor.size(),
@@ -141,26 +141,28 @@ impl Application {
 
         if args.load_tutor {
             let path = helix_loader::runtime_dir().join("tutor.txt");
-            editor.open(path, Action::VerticalSplit)?;
+            editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
         } else if !args.files.is_empty() {
             let first = &args.files[0].0; // we know it's not empty
             if first.is_dir() {
-                std::env::set_current_dir(&first)?;
+                std::env::set_current_dir(&first).context("set current dir")?;
                 editor.new_file(Action::VerticalSplit);
                 let picker = ui::file_picker(".".into(), &config.load().editor);
                 compositor.push(Box::new(overlayed(picker)));
             } else {
                 let nr_of_files = args.files.len();
-                editor.open(first.to_path_buf(), Action::VerticalSplit)?;
+                editor.open(first, Action::VerticalSplit)?;
                 for (file, pos) in args.files {
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
                             "expected a path to file, found a directory. (to open a directory pass it as first argument)"
                         ));
                     } else {
-                        let doc_id = editor.open(file, Action::Load)?;
+                        let doc_id = editor
+                            .open(&file, Action::Load)
+                            .context(format!("open '{}'", file.to_string_lossy()))?;
                         // with Action::Load all documents have the same view
                         let view_id = editor.tree.focus;
                         let doc = editor.document_mut(doc_id).unwrap();
@@ -192,7 +194,8 @@ impl Application {
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
         #[cfg(not(windows))]
-        let signals = Signals::new(&[signal::SIGTSTP, signal::SIGCONT])?;
+        let signals =
+            Signals::new(&[signal::SIGTSTP, signal::SIGCONT]).context("build signal handler")?;
 
         let app = Self {
             compositor,
