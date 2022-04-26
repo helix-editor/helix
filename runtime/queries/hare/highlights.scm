@@ -1,105 +1,140 @@
-"abort" @keyword
-"alloc" @keyword
-"append" @keyword
-"as" @keyword
-"assert" @keyword
-"bool" @keyword
-"break" @keyword
-"char" @keyword
-"const" @keyword
-"continue" @keyword
-"def" @keyword
-"defer" @keyword
-"delete" @keyword
-"else" @keyword
-"enum" @keyword
-"export" @keyword
-"f32" @type
-"f64" @type
-"false" @constant
-"fn" @keyword
-"for" @keyword
-"free" @keyword
-"i16" @type
-"i32" @type
-"i64" @type
-"i8" @type
-"if" @keyword
-"int" @type
-"is" @keyword
-"len" @keyword
-"let" @keyword
-"match" @keyword
-"null" @constant
-"nullable" @keyword
-"offset" @keyword
-"return" @keyword
-"rune" @type
-"size" @keyword
-"static" @keyword
-"str" @type
-"struct" @keyword
-"switch" @keyword
-"true" @keyword
-"type" @keyword
-"u16" @type
-"u32" @type
-"u64" @type
-"u8" @type
-"uint" @type
-"uintptr" @type
-"union" @keyword
-"use" @keyword
-"void" @type
+[
+  "f32"
+  "f64"
+  "i16"
+  "i32"
+  "i64"
+  "i8"
+  "int"
+  "rune"
+  "str"
+  "u16"
+  "u32"
+  "u64"
+  "u8"
+  "uint"
+  "uintptr"
+  "void"
+] @type
+
+
+[
+  "else"
+  "if"
+  "match"
+  "switch"
+] @keyword.control.conditional
+
+[
+  "export"
+  "use"
+] @keyword.control.import
+
+[
+  "continue"
+  "for"
+  "break"
+] @keyword.control.repeat
+
+"return" @keyword.control.return
+
+[
+  "abort"
+  "assert"
+] @keyword.control.exception
+
+[
+  "def"
+  "fn"
+] @keyword.function
+
+[
+  "alloc"
+  "append"
+  "as"
+  "bool"
+  "char"
+  "const"
+  "defer"
+  "delete"
+  "enum"
+  "free"
+  "is"
+  "len"
+  "let"
+  "match"
+  "nullable"
+  "offset"
+  "size"
+  "static"
+  "struct"
+  "type"
+  "union"
+] @keyword
+
+[
+  "."  
+  "!"  
+  "~"  
+  "?"  
+  "*"  
+  "/"
+  "%"  
+  "+"  
+  "-" 
+  "<<" 
+  ">>"
+  "::" 
+  "<"  
+  "<=" 
+  ">"  
+  ">="
+  "==" 
+  "!=" 
+  "&"  
+  "|"  
+  "^"  
+  "&&" 
+  "||"
+  "="     
+  "+="    
+  "-="   
+  "*="   
+  "/="   
+  "%="    
+  "&="    
+  "|="   
+  "<<="   
+  ">>=" 
+  "^="
+  "=>"
+] @operator
+
+[
+  "{"
+  "}"
+] @punctuation.bracket
+
+[
+  ":"
+  ";"
+] @punctuation.delimiter
+
 "..." @special 
-
-"." @operator  
-"!" @operator  
-"~" @operator  
-"?" @operator  
-"*" @operator  
-"/" @operator
-"%" @operator  
-"+" @operator  
-"-" @operator 
-"<<" @operator 
-">>" @operator
-"::" @operator 
-"<" @operator  
-"<=" @operator 
-">" @operator  
-">=" @operator
-"==" @operator 
-"!=" @operator 
-"&" @operator  
-"|" @operator  
-"^" @operator  
-"&&" @operator 
-"||" @operator
-"=" @operator     
-"+=" @operator    
-"-=" @operator   
-"*=" @operator   
-"/=" @operator   
-"%=" @operator    
-"&=" @operator    
-"|=" @operator   
-"<<=" @operator   
-">>=" @operator 
-"^=" @operator
-
-":" @delimiter
-";" @delimiter
-"{" @delimiter
-"}" @delimiter
 
 (comment) @comment
 
+[
+  "false"
+  "null"
+  "true"
+] @constant.builtin
+
 (string_constant) @string
-(escape_sequence) @type
+(escape_sequence) @constant.character.escape
 (rune_constant) @string
-(integer_constant) @number 
-(floating_constant) @number
+(integer_constant) @constant.numeric.integer 
+(floating_constant) @constant.numeric.float
 
 (call_expression
   (postfix_expression) @function)
