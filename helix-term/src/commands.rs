@@ -3715,7 +3715,7 @@ fn shrink_selection(cx: &mut Context) {
                 doc.set_selection(view.id, prev_selection);
                 return;
             } else {
-                // clear existing selection as they can't be shrinked to anyway
+                // clear existing selection as they can't be shrunk to anyway
                 view.object_selections.clear();
             }
         }

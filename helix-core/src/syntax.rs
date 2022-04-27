@@ -229,7 +229,7 @@ pub struct TextObjectQuery {
 
 pub enum CapturedNode<'a> {
     Single(Node<'a>),
-    /// Guarenteed to be not empty
+    /// Guaranteed to be not empty
     Grouped(Vec<Node<'a>>),
 }
 
@@ -1141,7 +1141,7 @@ pub enum HighlightEvent {
     HighlightEnd,
 }
 
-/// Contains the data neeeded to higlight code written in a particular language.
+/// Contains the data needed to highlight code written in a particular language.
 ///
 /// This struct is immutable and can be shared between threads.
 #[derive(Debug)]
@@ -1976,7 +1976,7 @@ mod test {
         let source = Rope::from_str(
             r#"
 /// a comment on
-/// mutiple lines
+/// multiple lines
         "#,
         );
 
@@ -2006,10 +2006,10 @@ mod test {
             )
         };
 
-        test("quantified_nodes", 1..35);
+        test("quantified_nodes", 1..36);
         // NOTE: Enable after implementing proper node group capturing
-        // test("quantified_nodes_grouped", 1..35);
-        // test("multiple_nodes_grouped", 1..35);
+        // test("quantified_nodes_grouped", 1..36);
+        // test("multiple_nodes_grouped", 1..36);
     }
 
     #[test]

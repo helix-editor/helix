@@ -1169,14 +1169,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "buffer-close-all",
             aliases: &["bca", "bcloseall"],
-            doc: "Close all buffers, without quiting.",
+            doc: "Close all buffers, without quitting.",
             fun: buffer_close_all,
             completer: None,
         },
         TypableCommand {
             name: "buffer-close-all!",
             aliases: &["bca!", "bcloseall!"],
-            doc: "Close all buffers forcefully (ignoring unsaved changes), without quiting.",
+            doc: "Close all buffers forcefully (ignoring unsaved changes), without quitting.",
             fun: force_buffer_close_all,
             completer: None,
         },

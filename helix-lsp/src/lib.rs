@@ -428,7 +428,7 @@ impl LspProgressMap {
         Self::default()
     }
 
-    /// Returns a map of all tokens coresponding to the lanaguage server with `id`.
+    /// Returns a map of all tokens corresponding to the language server with `id`.
     pub fn progress_map(&self, id: usize) -> Option<&HashMap<lsp::ProgressToken, ProgressStatus>> {
         self.0.get(&id)
     }
@@ -466,7 +466,7 @@ impl LspProgressMap {
         self.0.get_mut(&id).and_then(|vals| vals.remove(token))
     }
 
-    /// Updates the progess of `token` for server with `id` to `status`, returns the value replaced or `None`.
+    /// Updates the progress of `token` for server with `id` to `status`, returns the value replaced or `None`.
     pub fn update(
         &mut self,
         id: usize,
