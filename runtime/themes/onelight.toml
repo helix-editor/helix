@@ -82,8 +82,9 @@
 "ui.selection.primary" = { bg = "light-white", modifiers = ["dim"] }
 
 "ui.virtual" = { fg = "light-white"}
-# "ui.virtual.ruler" = {}
-# "ui.virtual.whitespace" = {}
+"ui.virtual.ruler" = { bg = "light-white" }
+"ui.virtual.whitespace" = {fg = "light-white" }
+
 
 "ui.linenr" = { fg = "linenr" }
 "ui.linenr.selected" = { fg = "black", modifiers = ["reversed"] }
