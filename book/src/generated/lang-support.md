@@ -75,7 +75,7 @@
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
 | tfvars |  |  |  | `terraform-ls` |
-| toml | ✓ |  |  |  |
+| toml | ✓ |  |  | `taplo` |
 | tsq | ✓ |  |  |  |
 | tsx | ✓ |  |  | `typescript-language-server` |
 | twig | ✓ |  |  |  |
