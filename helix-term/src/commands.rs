@@ -2100,10 +2100,10 @@ fn insert_mode(cx: &mut Context) {
         doc.text().to_string()
     );
 
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let new_range = Range::new(range.to(), range.from());
-        new_range
-    });
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .transform(|range| Range::new(range.to(), range.from()));
 
     doc.set_selection(view.id, selection);
 }

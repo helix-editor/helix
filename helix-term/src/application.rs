@@ -216,21 +216,15 @@ impl Application {
     }
 
     fn render(&mut self) {
-        #[cfg(feature = "integration")]
-        return;
+        let compositor = &mut self.compositor;
 
-        #[allow(unreachable_code)]
-        {
-            let compositor = &mut self.compositor;
+        let mut cx = crate::compositor::Context {
+            editor: &mut self.editor,
+            jobs: &mut self.jobs,
+            scroll: None,
+        };
 
-            let mut cx = crate::compositor::Context {
-                editor: &mut self.editor,
-                jobs: &mut self.jobs,
-                scroll: None,
-            };
-
-            compositor.render(&mut cx);
-        }
+        compositor.render(&mut cx);
     }
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
