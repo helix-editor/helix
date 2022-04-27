@@ -59,6 +59,7 @@ injection-regex = "toml"
 file-types = ["toml"]
 roots = []
 comment-token = "#"
+language-server = { command = "taplo", args = ["lsp", "stdio"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
