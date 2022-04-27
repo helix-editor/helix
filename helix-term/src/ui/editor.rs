@@ -154,13 +154,24 @@ impl EditorView {
 
         self.render_diagnostics(doc, view, inner, surface, theme);
 
-        let statusline_area = view
-            .area
-            .clip_top(view.area.height.saturating_sub(1))
-            .clip_bottom(1); // -1 from bottom to remove commandline
-
         if editor.config().status_line.render == StatusLineRenderValue::Always {
+            let statusline_area = view
+                .area
+                .clip_top(view.area.height.saturating_sub(1))
+                .clip_bottom(1); // -1 from bottom to remove commandline
             self.render_statusline(doc, view, statusline_area, surface, theme, is_focused);
+        } else {
+            let area = view
+                .area
+                .clip_top(view.area.height.saturating_sub(1))
+                .clip_bottom(1); // -1 from bottom to remove commandline
+            let y = area.bottom();
+            let border_style = theme.get("ui.window");
+            for x in area.left()..area.right() {
+                surface[(x, y)]
+                    .set_symbol(tui::symbols::line::HORIZONTAL)
+                    .set_style(border_style);
+            }
         }
     }
 
@@ -1307,7 +1318,10 @@ impl Component for EditorView {
             let view = cx.editor.tree.get(cx.editor.tree.focus);
             let doc = cx.editor.document(view.doc).unwrap();
             let theme = &cx.editor.theme;
-            let statusline_area = area.clip_top(area.height.saturating_sub(1)).clip_bottom(1);
+            let statusline_area = area.clip_top(area.height.saturating_sub(2));
+            // all views have border at the bottom, the most-bottom one is not needed
+            // so override the bottom border anddraw the statusline over it
+            surface.clear_with(statusline_area, cx.editor.theme.get("ui.background"));
             self.render_statusline(doc, view, statusline_area, surface, theme, true);
         }
 
