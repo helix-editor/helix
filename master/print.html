@@ -180,7 +180,7 @@ cargo install --path helix-term
 </code></pre>
 <p>This will install the <code>hx</code> binary to <code>$HOME/.cargo/bin</code>.</p>
 <p>Helix also needs it's runtime files so make sure to copy/symlink the <code>runtime/</code> directory into the
-config directory (for example <code>~/.config/helix/runtime</code> on Linux/macOS). This location can be overriden
+config directory (for example <code>~/.config/helix/runtime</code> on Linux/macOS). This location can be overridden
 via the <code>HELIX_RUNTIME</code> environment variable.</p>
 <table><thead><tr><th>OS</th><th>command</th></tr></thead><tbody>
 <tr><td>windows</td><td><code>xcopy runtime %AppData%/helix/runtime</code></td></tr>
@@ -439,7 +439,7 @@ over text and not actively editing it).</p>
 <tr><td><code>.</code></td><td>Go to last modification in current file</td><td><code>goto_last_modification</code></td></tr>
 </tbody></table>
 <h4 id="match-mode"><a class="header" href="#match-mode">Match mode</a></h4>
-<p>Enter this mode using <code>m</code> from normal mode. See the relavant section
+<p>Enter this mode using <code>m</code> from normal mode. See the relevant section
 in <a href="./usage.html">Usage</a> for an explanation about <a href="./usage.html#surround">surround</a>
 and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
@@ -602,8 +602,8 @@ you to selectively add search terms to your selections.</p>
 <tr><td><code>:buffer-close!</code>, <code>:bc!</code>, <code>:bclose!</code></td><td>Close the current buffer forcefully (ignoring unsaved changes).</td></tr>
 <tr><td><code>:buffer-close-others</code>, <code>:bco</code>, <code>:bcloseother</code></td><td>Close all buffers but the currently focused one.</td></tr>
 <tr><td><code>:buffer-close-others!</code>, <code>:bco!</code>, <code>:bcloseother!</code></td><td>Close all buffers but the currently focused one.</td></tr>
-<tr><td><code>:buffer-close-all</code>, <code>:bca</code>, <code>:bcloseall</code></td><td>Close all buffers, without quiting.</td></tr>
-<tr><td><code>:buffer-close-all!</code>, <code>:bca!</code>, <code>:bcloseall!</code></td><td>Close all buffers forcefully (ignoring unsaved changes), without quiting.</td></tr>
+<tr><td><code>:buffer-close-all</code>, <code>:bca</code>, <code>:bcloseall</code></td><td>Close all buffers, without quitting.</td></tr>
+<tr><td><code>:buffer-close-all!</code>, <code>:bca!</code>, <code>:bcloseall!</code></td><td>Close all buffers forcefully (ignoring unsaved changes), without quitting.</td></tr>
 <tr><td><code>:buffer-next</code>, <code>:bn</code>, <code>:bnext</code></td><td>Go to next buffer.</td></tr>
 <tr><td><code>:buffer-previous</code>, <code>:bp</code>, <code>:bprev</code></td><td>Go to previous buffer.</td></tr>
 <tr><td><code>:write</code>, <code>:w</code></td><td>Write changes to disk. Accepts an optional path (:write some/path.txt)</td></tr>
@@ -803,7 +803,7 @@ hidden = false
 <tr><td><code>completion-trigger-len</code></td><td>The min-length of word under cursor to trigger autocompletion</td><td><code>2</code></td></tr>
 <tr><td><code>auto-info</code></td><td>Whether to display infoboxes</td><td><code>true</code></td></tr>
 <tr><td><code>true-color</code></td><td>Set to <code>true</code> to override automatic detection of terminal truecolor support in the event of a false negative.</td><td><code>false</code></td></tr>
-<tr><td><code>rulers</code></td><td>List of column positions at which to display the rulers. Can be overidden by language specific <code>rulers</code> in <code>languages.toml</code> file.</td><td><code>[]</code></td></tr>
+<tr><td><code>rulers</code></td><td>List of column positions at which to display the rulers. Can be overridden by language specific <code>rulers</code> in <code>languages.toml</code> file.</td><td><code>[]</code></td></tr>
 </tbody></table>
 <h3 id="editorlsp-section"><a class="header" href="#editorlsp-section"><code>[editor.lsp]</code> Section</a></h3>
 <table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
@@ -1070,7 +1070,7 @@ over it and is merged into the default palette.</p>
 <li><code>builtin</code></li>
 <li><code>method</code></li>
 <li><code>macro</code></li>
-<li><code>special</code> (preprocesor in C)</li>
+<li><code>special</code> (preprocessor in C)</li>
 </ul>
 </li>
 <li>
@@ -1272,7 +1272,7 @@ use-grammars = { except = [ &quot;yaml&quot;, &quot;json&quot; ] }
 <p>When omitted, all grammars are fetched and built.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="guides"><a class="header" href="#guides">Guides</a></h1>
 <p>This section contains guides for adding new language server configurations,
-tree-sitter grammers, textobject queries, etc.</p>
+tree-sitter grammars, textobject queries, etc.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="adding-languages"><a class="header" href="#adding-languages">Adding languages</a></h1>
 <h2 id="language-configuration"><a class="header" href="#language-configuration">Language configuration</a></h2>
 <p>To add a new language, you need to add a <code>language</code> entry to the
@@ -1427,7 +1427,7 @@ changed by using a <code>#set!</code> declaration anywhere in the pattern:</p>
 <ul>
 <li>
 <p><code>@indent</code> (default scope <code>tail</code>):
-Increase the indent level by 1. Multiple occurences in the same line
+Increase the indent level by 1. Multiple occurrences in the same line
 don't stack. If there is at least one <code>@indent</code> and one <code>@outdent</code>
 capture on the same line, the indent level isn't changed at all.</p>
 </li>
