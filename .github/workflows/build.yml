@@ -38,6 +38,9 @@ jobs:
   test:
     name: Test Suite
     runs-on: ${{ matrix.os }}
+    env:
+      RUST_BACKTRACE: 1
+      HELIX_LOG_LEVEL: info
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3

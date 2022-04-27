@@ -61,6 +61,10 @@ pub struct Application {
 
 #[cfg(feature = "integration")]
 fn setup_integration_logging() {
+    let level = std::env::var("HELIX_LOG_LEVEL")
+        .map(|lvl| lvl.parse().unwrap())
+        .unwrap_or(log::LevelFilter::Info);
+
     // Separate file config so we can include year, month and day in file logs
     let _ = fern::Dispatch::new()
         .format(|out, message, record| {
@@ -72,7 +76,7 @@ fn setup_integration_logging() {
                 message
             ))
         })
-        .level(log::LevelFilter::Debug)
+        .level(level)
         .chain(std::io::stdout())
         .apply();
 }
