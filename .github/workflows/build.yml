@@ -53,9 +53,6 @@ jobs:
 
       - uses: Swatinem/rust-cache@v1
 
-      - name: Copy minimal languages config
-        run: cp .github/workflows/languages.toml ./languages.toml
-
       - name: Cache test tree-sitter grammar
         uses: actions/cache@v3
         with:
