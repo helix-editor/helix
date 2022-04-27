@@ -1239,7 +1239,7 @@ impl Component for EditorView {
                 view.ensure_cursor_in_view(doc, config.scrolloff);
 
                 // Store a history state if not in insert mode. This also takes care of
-                // commiting changes when leaving insert mode.
+                // committing changes when leaving insert mode.
                 if doc.mode() != Mode::Insert {
                     doc.append_changes_to_history(view.id);
                 }

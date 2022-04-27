@@ -79,7 +79,7 @@ pub struct View {
     // uses two docs because we want to be able to swap between the
     // two last modified docs which we need to manually keep track of
     pub last_modified_docs: [Option<DocumentId>; 2],
-    /// used to store previous selections of tree-sitter objecs
+    /// used to store previous selections of tree-sitter objects
     pub object_selections: Vec<Selection>,
     pub gutters: Vec<(Gutter, usize)>,
 }

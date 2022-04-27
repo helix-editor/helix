@@ -128,7 +128,7 @@ pub struct LineTruncator<'a, 'b> {
     symbols: &'b mut dyn Iterator<Item = StyledGrapheme<'a>>,
     max_line_width: u16,
     current_line: Vec<StyledGrapheme<'a>>,
-    /// Record the offet to skip render
+    /// Record the offset to skip render
     horizontal_offset: u16,
 }
 
@@ -439,7 +439,7 @@ mod test {
         assert_eq!(line_truncator, vec!["                    "]);
     }
 
-    /// Tests an input starting with a letter, folowed by spaces - some of the behaviour is
+    /// Tests an input starting with a letter, followed by spaces - some of the behaviour is
     /// incidental.
     #[test]
     fn line_composer_char_plus_lots_of_spaces() {
