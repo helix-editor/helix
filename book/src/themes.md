@@ -158,7 +158,7 @@ We use a similar set of scopes as
   - `builtin`
   - `method`
   - `macro`
-  - `special` (preprocesor in C)
+  - `special` (preprocessor in C)
 
 - `tag` - Tags (e.g. `<body>` in HTML)
 

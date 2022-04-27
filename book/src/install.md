@@ -58,7 +58,7 @@ cargo install --path helix-term
 This will install the `hx` binary to `$HOME/.cargo/bin`.
 
 Helix also needs it's runtime files so make sure to copy/symlink the `runtime/` directory into the
-config directory (for example `~/.config/helix/runtime` on Linux/macOS). This location can be overriden
+config directory (for example `~/.config/helix/runtime` on Linux/macOS). This location can be overridden
 via the `HELIX_RUNTIME` environment variable.
 
 | OS        | command   |

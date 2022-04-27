@@ -7,8 +7,8 @@
 | `:buffer-close!`, `:bc!`, `:bclose!` | Close the current buffer forcefully (ignoring unsaved changes). |
 | `:buffer-close-others`, `:bco`, `:bcloseother` | Close all buffers but the currently focused one. |
 | `:buffer-close-others!`, `:bco!`, `:bcloseother!` | Close all buffers but the currently focused one. |
-| `:buffer-close-all`, `:bca`, `:bcloseall` | Close all buffers, without quiting. |
-| `:buffer-close-all!`, `:bca!`, `:bcloseall!` | Close all buffers forcefully (ignoring unsaved changes), without quiting. |
+| `:buffer-close-all`, `:bca`, `:bcloseall` | Close all buffers, without quitting. |
+| `:buffer-close-all!`, `:bca!`, `:bcloseall!` | Close all buffers forcefully (ignoring unsaved changes), without quitting. |
 | `:buffer-next`, `:bn`, `:bnext` | Go to next buffer. |
 | `:buffer-previous`, `:bp`, `:bprev` | Go to previous buffer. |
 | `:write`, `:w` | Write changes to disk. Accepts an optional path (:write some/path.txt) |
