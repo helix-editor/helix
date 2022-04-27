@@ -180,7 +180,7 @@ impl Application {
                 let (view, doc) = current!(editor);
                 align_view(doc, view, Align::Center);
             }
-        } else if stdin().is_tty() {
+        } else if stdin().is_tty() || cfg!(feature = "integration") {
             editor.new_file(Action::VerticalSplit);
         } else if cfg!(target_os = "macos") {
             // On Linux and Windows, we allow the output of a command to be piped into the new buffer.
