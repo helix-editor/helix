@@ -2489,8 +2489,8 @@ fn goto_last_line(cx: &mut Context) {
 }
 
 fn goto_last_accessed_file(cx: &mut Context) {
-    let alternate_file = view!(cx.editor).last_accessed_doc;
-    if let Some(alt) = alternate_file {
+    let view = view_mut!(cx.editor);
+    if let Some(alt) = view.docs_access_history.pop() {
         cx.editor.switch(alt, Action::Replace);
     } else {
         cx.editor.set_error("no last accessed buffer")
@@ -3796,10 +3796,6 @@ fn jump_backward(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
-        // manually set the alternate_file as we cannot use the Editor::switch function here.
-        if view.doc != *id {
-            view.last_accessed_doc = Some(view.doc)
-        }
         view.doc = *id;
         let selection = selection.clone();
         let (view, doc) = current!(cx.editor); // refetch doc
