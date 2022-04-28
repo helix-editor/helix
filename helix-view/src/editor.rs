@@ -667,7 +667,7 @@ impl Editor {
                     view.jumps.push(jump);
                     // Set last accessed doc if it is a different document
                     if doc.id != id {
-                        view.last_accessed_doc = Some(view.doc);
+                        view.add_to_history(view.doc);
                         // Set last modified doc if modified and last modified doc is different
                         if std::mem::take(&mut doc.modified_since_accessed)
                             && view.last_modified_docs[0] != Some(view.doc)
@@ -785,20 +785,41 @@ impl Editor {
             tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
 
-        let views_to_close = self
+        enum Action {
+            Close(ViewId),
+            ReplaceDoc(ViewId, DocumentId),
+        }
+
+        let actions: Vec<Action> = self
             .tree
-            .views()
+            .views_mut()
             .filter_map(|(view, _focus)| {
+                // remove the document from jump list of all views
+                view.jumps.remove(&doc_id);
+
                 if view.doc == doc_id {
-                    Some(view.id)
+                    // something was previously open in the view, switch to previous doc
+                    if let Some(prev_doc) = view.docs_access_history.pop() {
+                        Some(Action::ReplaceDoc(view.id, prev_doc))
+                    } else {
+                        // only the document that is being closed was in the view, close it
+                        Some(Action::Close(view.id))
+                    }
                 } else {
                     None
                 }
             })
-            .collect::<Vec<_>>();
+            .collect();
 
-        for view_id in views_to_close {
-            self.close(view_id);
+        for action in actions {
+            match action {
+                Action::Close(view_id) => {
+                    self.close(view_id);
+                }
+                Action::ReplaceDoc(view_id, doc_id) => {
+                    self.replace_document_in_view(view_id, doc_id);
+                }
+            }
         }
 
         self.documents.remove(&doc_id);

@@ -72,14 +72,14 @@ pub struct View {
     pub area: Rect,
     pub doc: DocumentId,
     pub jumps: JumpList,
-    /// the last accessed file before the current one
-    pub last_accessed_doc: Option<DocumentId>,
+    // documents accessed from this view from the oldest one to last viewed one
+    pub docs_access_history: Vec<DocumentId>,
     /// the last modified files before the current one
     /// ordered from most frequent to least frequent
     // uses two docs because we want to be able to swap between the
     // two last modified docs which we need to manually keep track of
     pub last_modified_docs: [Option<DocumentId>; 2],
-    /// used to store previous selections of tree-sitter objecs
+    /// used to store previous selections of tree-sitter objects
     pub object_selections: Vec<Selection>,
     pub gutters: Vec<(Gutter, usize)>,
 }
@@ -110,11 +110,18 @@ impl View {
             offset: Position::new(0, 0),
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
-            last_accessed_doc: None,
+            docs_access_history: Vec::new(),
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
             gutters,
         }
+    }
+
+    pub fn add_to_history(&mut self, id: DocumentId) {
+        if let Some(pos) = self.docs_access_history.iter().position(|&doc| doc == id) {
+            self.docs_access_history.remove(pos);
+        }
+        self.docs_access_history.push(id);
     }
 
     pub fn inner_area(&self) -> Rect {

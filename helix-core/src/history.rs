@@ -22,10 +22,10 @@ use std::time::{Duration, Instant};
 ///
 /// The current revision is the one currently displayed in the buffer.
 ///
-/// Commiting a new revision to the history will update the last child of the
+/// Committing a new revision to the history will update the last child of the
 /// current revision, and push a new revision to the end of the vector.
 ///
-/// Revisions are commited with a timestamp. :earlier and :later can be used
+/// Revisions are committed with a timestamp. :earlier and :later can be used
 /// to jump to the closest revision to a moment in time relative to the timestamp
 /// of the current revision plus (:later) or minus (:earlier) the duration
 /// given to the command. If a single integer is given, the editor will instead
@@ -33,7 +33,7 @@ use std::time::{Duration, Instant};
 ///
 /// Limitations:
 ///  * Changes in selections currently don't commit history changes. The selection
-///    will only be updated to the state after a commited buffer change.
+///    will only be updated to the state after a committed buffer change.
 ///  * The vector of history revisions is currently unbounded. This might
 ///    cause the memory consumption to grow significantly large during long
 ///    editing sessions.
@@ -288,7 +288,7 @@ pub enum UndoKind {
     TimePeriod(std::time::Duration),
 }
 
-/// A subset of sytemd.time time span syntax units.
+/// A subset of systemd.time time span syntax units.
 const TIME_UNITS: &[(&[&str], &str, u64)] = &[
     (&["seconds", "second", "sec", "s"], "seconds", 1),
     (&["minutes", "minute", "min", "m"], "minutes", 60),

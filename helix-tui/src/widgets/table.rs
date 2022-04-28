@@ -68,7 +68,7 @@ where
 /// Row::new(vec!["Cell1", "Cell2", "Cell3"]);
 /// ```
 ///
-/// But if you need a bit more control over individual cells, you can explicity create [`Cell`]s:
+/// But if you need a bit more control over individual cells, you can explicitly create [`Cell`]s:
 /// ```rust
 /// # use helix_tui::widgets::{Row, Cell};
 /// # use helix_view::graphics::{Style, Color};
@@ -109,7 +109,7 @@ impl<'a> Row<'a> {
         self
     }
 
-    /// Set the [`Style`] of the entire row. This [`Style`] can be overriden by the [`Style`] of a
+    /// Set the [`Style`] of the entire row. This [`Style`] can be overridden by the [`Style`] of a
     /// any individual [`Cell`] or event by their [`Text`] content.
     pub fn style(mut self, style: Style) -> Self {
         self.style = style;
