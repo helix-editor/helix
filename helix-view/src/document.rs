@@ -648,7 +648,7 @@ impl Document {
                     .clone()
                     // Map through changes
                     .map(transaction.changes())
-                    // Ensure all selections accross all views still adhere to invariants.
+                    // Ensure all selections across all views still adhere to invariants.
                     .ensure_invariants(self.text.slice(..));
             }
 
@@ -752,7 +752,7 @@ impl Document {
         self.undo_redo_impl(view_id, true)
     }
 
-    /// Redo the last modification to the [`Document`]. Returns whether the redo was sucessful.
+    /// Redo the last modification to the [`Document`]. Returns whether the redo was successful.
     pub fn redo(&mut self, view_id: ViewId) -> bool {
         self.undo_redo_impl(view_id, false)
     }

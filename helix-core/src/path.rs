@@ -14,7 +14,7 @@ pub fn fold_home_dir(path: &Path) -> PathBuf {
     path.to_path_buf()
 }
 
-/// Expands tilde `~` into users home directory if avilable, otherwise returns the path
+/// Expands tilde `~` into users home directory if available, otherwise returns the path
 /// unchanged. The tilde will only be expanded when present as the first component of the path
 /// and only slash follows it.
 pub fn expand_tilde(path: &Path) -> PathBuf {

@@ -24,7 +24,10 @@
 | gleam | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
+| gomod | ✓ |  |  | `gopls` |
+| gowork | ✓ |  |  | `gopls` |
 | graphql | ✓ |  |  |  |
+| hare | ✓ |  | ✓ |  |
 | haskell | ✓ |  |  | `haskell-language-server-wrapper` |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ |  |  |  |
@@ -46,7 +49,9 @@
 | make | ✓ |  |  |  |
 | markdown | ✓ |  |  |  |
 | mint |  |  |  | `mint` |
+| nickel | ✓ |  | ✓ | `nls` |
 | nix | ✓ |  | ✓ | `rnix-lsp` |
+| nu | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |
 | org | ✓ |  |  |  |
@@ -69,12 +74,14 @@
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
-| toml | ✓ |  |  |  |
+| tfvars |  |  |  | `terraform-ls` |
+| toml | ✓ |  |  | `taplo` |
 | tsq | ✓ |  |  |  |
 | tsx | ✓ |  |  | `typescript-language-server` |
 | twig | ✓ |  |  |  |
 | typescript | ✓ |  | ✓ | `typescript-language-server` |
+| vala | ✓ |  |  | `vala-language-server` |
 | vue | ✓ |  |  | `vls` |
 | wgsl | ✓ |  |  |  |
-| yaml | ✓ |  | ✓ |  |
+| yaml | ✓ |  | ✓ | `yaml-language-server` |
 | zig | ✓ |  | ✓ | `zls` |

@@ -352,8 +352,26 @@ fn set_line_ending(
         arg if arg.starts_with("nel") => Nel,
         _ => bail!("invalid line ending"),
     };
+    let (view, doc) = current!(cx.editor);
+    doc.line_ending = line_ending;
 
-    doc_mut!(cx.editor).line_ending = line_ending;
+    let mut pos = 0;
+    let transaction = Transaction::change(
+        doc.text(),
+        doc.text().lines().filter_map(|line| {
+            pos += line.len_chars();
+            match helix_core::line_ending::get_line_ending(&line) {
+                Some(ending) if ending != line_ending => {
+                    let start = pos - ending.len_chars();
+                    let end = pos;
+                    Some((start, end, Some(line_ending.as_str().into())))
+                }
+                _ => None,
+            }
+        }),
+    );
+    doc.apply(&transaction, view.id);
+
     Ok(())
 }
 
@@ -630,7 +648,7 @@ fn paste_clipboard_before(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Clipboard, 1)
+    paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Clipboard, 1)
 }
 
 fn paste_primary_clipboard_after(
@@ -646,7 +664,7 @@ fn paste_primary_clipboard_before(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Selection, 1)
+    paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Selection, 1)
 }
 
 fn replace_selections_with_clipboard_impl(
@@ -910,9 +928,30 @@ pub(super) fn goto_line_number(
     Ok(())
 }
 
+// Fetch the current value of a config option and output as status.
+fn get_option(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:get key`");
+    }
+
+    let key = &args[0].to_lowercase();
+    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+
+    let config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
+    let pointer = format!("/{}", key.replace('.', "/"));
+    let value = config.pointer(&pointer).ok_or_else(key_error)?;
+
+    cx.editor.set_status(value.to_string());
+    Ok(())
+}
+
 /// Change config at runtime. Access nested values by dot syntax, for
 /// example to disable smart case search, use `:set search.smart-case false`.
-fn setting(
+fn set_option(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     _event: PromptEvent,
@@ -1130,14 +1169,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "buffer-close-all",
             aliases: &["bca", "bcloseall"],
-            doc: "Close all buffers, without quiting.",
+            doc: "Close all buffers, without quitting.",
             fun: buffer_close_all,
             completer: None,
         },
         TypableCommand {
             name: "buffer-close-all!",
             aliases: &["bca!", "bcloseall!"],
-            doc: "Close all buffers forcefully (ignoring unsaved changes), without quiting.",
+            doc: "Close all buffers forcefully (ignoring unsaved changes), without quitting.",
             fun: force_buffer_close_all,
             completer: None,
         },
@@ -1193,6 +1232,9 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "line-ending",
             aliases: &[],
+            #[cfg(not(feature = "unicode-lines"))]
+            doc: "Set the document's default line ending. Options: crlf, lf.",
+            #[cfg(feature = "unicode-lines")]
             doc: "Set the document's default line ending. Options: crlf, lf, cr, ff, nel.",
             fun: set_line_ending,
             completer: None,
@@ -1466,8 +1508,15 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "set-option",
             aliases: &["set"],
-            doc: "Set a config option at runtime",
-            fun: setting,
+            doc: "Set a config option at runtime.",
+            fun: set_option,
+            completer: Some(completers::setting),
+        },
+        TypableCommand {
+            name: "get-option",
+            aliases: &["get"],
+            doc: "Get the current value of a config option.",
+            fun: get_option,
             completer: Some(completers::setting),
         },
         TypableCommand {

@@ -158,7 +158,7 @@ We use a similar set of scopes as
   - `builtin`
   - `method`
   - `macro`
-  - `special` (preprocesor in C)
+  - `special` (preprocessor in C)
 
 - `tag` - Tags (e.g. `<body>` in HTML)
 
@@ -224,6 +224,7 @@ These scopes are used for theming the editor interface.
 | `ui.text`                | Command prompts, popup text, etc.              |
 | `ui.text.focus`          |                                                |
 | `ui.text.info`           | The key: command text in `ui.popup.info` boxes |
+| `ui.virtual.ruler`       | Ruler columns (see the [`editor.rulers` config][rulers-config])|
 | `ui.virtual.whitespace`  | Visible white-space characters                 |
 | `ui.menu`                | Code and command completion menus              |
 | `ui.menu.selected`       | Selected autocomplete item                     |
@@ -234,3 +235,5 @@ These scopes are used for theming the editor interface.
 | `info`                   | Diagnostics info (gutter)                      |
 | `hint`                   | Diagnostics hint (gutter)                      |
 | `diagnostic`             | For text in editing area                       |
+
+[rulers-config]: ./configuration.md#editor-section

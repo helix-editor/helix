@@ -445,7 +445,7 @@ Fixes:
 - A bunch of bugs regarding `o`/`O` behavior ([#281](https://github.com/helix-editor/helix/pull/281))
 - `~` expansion now works in file completion ([#284](https://github.com/helix-editor/helix/pull/284))
 - Several UI related overflow crashes ([#318](https://github.com/helix-editor/helix/pull/318))
-- Fix a test failure occuring only on `test --release` ([`4f108ab1`](https://github.com/helix-editor/helix/commit/4f108ab1b2197809506bd7305ad903a3525eabfa))
+- Fix a test failure occurring only on `test --release` ([`4f108ab1`](https://github.com/helix-editor/helix/commit/4f108ab1b2197809506bd7305ad903a3525eabfa))
 - Prompts now support unicode input ([#295](https://github.com/helix-editor/helix/pull/295))
 - Completion documentation no longer overlaps the popup ([#322](https://github.com/helix-editor/helix/pull/322))
 - Fix a crash when trying to select `^` ([`9c534614`](https://github.com/helix-editor/helix/commit/9c53461429a3e72e3b1fb87d7ca490e168d7dee2))
