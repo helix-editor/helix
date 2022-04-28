@@ -53,6 +53,7 @@
 | lua | ✓ |  | ✓ |  |
 | make | ✓ |  |  |  |
 | markdown | ✓ |  |  |  |
+| meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
 | nickel | ✓ |  | ✓ | `nls` |
 | nix | ✓ |  | ✓ | `rnix-lsp` |

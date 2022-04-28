@@ -1342,3 +1342,16 @@ indent = { tab-width = 4, unit = "  " }
 [[grammar]]
 name = "odin"
 source = { git = "https://github.com/MineBill/tree-sitter-odin", rev = "da885f4a387f169b9b69fe0968259ee257a8f69a" }
+
+[[language]]
+name = "meson"
+scope = "source.meson"
+injection-regex = "meson"
+file-types = ["meson.build"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "meson"
+source = { git = "https://github.com/bearcove/tree-sitter-meson", rev = "feea83be9225842490066522ced2d13eb9cce0bd" }
