@@ -59,6 +59,7 @@ injection-regex = "toml"
 file-types = ["toml"]
 roots = []
 comment-token = "#"
+language-server = { command = "taplo", args = ["lsp", "stdio"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -1249,3 +1250,16 @@ language-server = { command = "vala-language-server" }
 [[grammar]]
 name = "vala"
 source = { git = "https://github.com/vala-lang/tree-sitter-vala", rev = "c9eea93ba2ec4ec1485392db11945819779745b3" }
+
+[[language]]
+name = "hare"
+scope = "source.hare"
+injection-regex = "hare"
+file-types = ["ha"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "\t" }
+
+[[grammar]]
+name = "hare"
+source = { git = "https://git.sr.ht/~ecmma/tree-sitter-hare", rev = "bc26a6a949f2e0d98b7bfc437d459b250900a165" }

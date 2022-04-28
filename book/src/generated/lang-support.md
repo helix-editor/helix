@@ -27,6 +27,7 @@
 | gomod | ✓ |  |  | `gopls` |
 | gowork | ✓ |  |  | `gopls` |
 | graphql | ✓ |  |  |  |
+| hare | ✓ |  | ✓ |  |
 | haskell | ✓ |  |  | `haskell-language-server-wrapper` |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ |  |  |  |
@@ -74,7 +75,7 @@
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
 | tfvars |  |  |  | `terraform-ls` |
-| toml | ✓ |  |  |  |
+| toml | ✓ |  |  | `taplo` |
 | tsq | ✓ |  |  |  |
 | tsx | ✓ |  |  | `typescript-language-server` |
 | twig | ✓ |  |  |  |
