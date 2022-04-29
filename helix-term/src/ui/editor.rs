@@ -370,6 +370,7 @@ impl EditorView {
             " ".repeat(tab_width)
         };
         let space = whitespace.characters.space.to_string();
+        let nbsp = whitespace.characters.nbsp.to_string();
         let newline = if whitespace.render.newline() == WhitespaceRenderValue::All {
             whitespace.characters.newline.to_string()
         } else {
@@ -400,6 +401,14 @@ impl EditorView {
                         && text.len_chars() < end
                     {
                         &space
+                    } else {
+                        " "
+                    };
+
+                    let nbsp = if whitespace.render.nbsp() == WhitespaceRenderValue::All
+                        && text.len_chars() < end
+                    {
+                        &nbsp
                     } else {
                         " "
                     };
@@ -443,6 +452,9 @@ impl EditorView {
                             } else if grapheme == " " {
                                 is_whitespace = true;
                                 (space, 1)
+                            } else if grapheme == "\u{00A0}" {
+                                is_whitespace = true;
+                                (nbsp, 1)
                             } else {
                                 is_whitespace = false;
                                 // Cow will prevent allocations if span contained in a single slice
