@@ -31,7 +31,10 @@ async fn test_write() -> anyhow::Result<()> {
 
     let mut file_content = String::new();
     file.as_file_mut().read_to_string(&mut file_content)?;
-    assert_eq!("i can eat glass, it will not hurt me\n", file_content);
+    assert_eq!(
+        helpers::platform_line("i can eat glass, it will not hurt me"),
+        file_content
+    );
 
     Ok(())
 }

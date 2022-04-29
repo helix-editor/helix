@@ -138,3 +138,20 @@ pub fn temp_file_with_contents<S: AsRef<str>>(
     temp_file.as_file_mut().sync_all()?;
     Ok(temp_file)
 }
+
+/// Replaces all LF chars with the system's appropriate line feed
+/// character, and if one doesn't exist already, appends the system's
+/// appropriate line ending to the end of a string.
+pub fn platform_line(input: &str) -> String {
+    let line_end = helix_core::DEFAULT_LINE_ENDING.as_str();
+
+    // we can assume that the source files in this code base will always
+    // be LF, so indoc strings will always insert LF
+    let mut output = input.replace("\n", line_end);
+
+    if !output.ends_with(line_end) {
+        output.push_str(line_end);
+    }
+
+    output
+}
