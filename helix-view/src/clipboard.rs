@@ -14,6 +14,7 @@ pub trait ClipboardProvider: std::fmt::Debug {
     fn set_contents(&mut self, contents: String, clipboard_type: ClipboardType) -> Result<()>;
 }
 
+#[cfg(not(windows))]
 macro_rules! command_provider {
     (paste => $get_prg:literal $( , $get_arg:literal )* ; copy => $set_prg:literal $( , $set_arg:literal )* ; ) => {{
         Box::new(provider::command::Provider {
@@ -205,14 +206,17 @@ mod provider {
         use super::*;
         use anyhow::{bail, Context as _, Result};
 
+        #[cfg(not(windows))]
         pub fn exists(executable_name: &str) -> bool {
             which::which(executable_name).is_ok()
         }
 
+        #[cfg(not(any(windows, target_os = "macos")))]
         pub fn env_var_is_set(env_var_name: &str) -> bool {
             std::env::var_os(env_var_name).is_some()
         }
 
+        #[cfg(not(any(windows, target_os = "macos")))]
         pub fn is_exit_success(program: &str, args: &[&str]) -> bool {
             std::process::Command::new(program)
                 .args(args)
