@@ -8,6 +8,7 @@
 | cpp | ✓ | ✓ | ✓ | `clangd` |
 | css | ✓ |  |  | `vscode-css-language-server` |
 | dart | ✓ |  | ✓ | `dart` |
+| devicetree | ✓ |  | ✓ |  |
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |
