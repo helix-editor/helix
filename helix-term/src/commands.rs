@@ -2091,7 +2091,7 @@ fn file_picker(cx: &mut Context) {
 fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
     let picker = ui::file_picker(cwd, &cx.editor.config());
-    cx.push_layer(Box::new(picker));
+    cx.push_layer(Box::new(overlayed(picker)));
 }
 
 fn buffer_picker(cx: &mut Context) {
@@ -4040,14 +4040,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'a' => textobject_treesitter("parameter", range),
                         'o' => textobject_treesitter("comment", range),
                         'p' => textobject::textobject_paragraph(text, range, objtype, count),
-                        'm' => {
-                            let ch = text.char(range.cursor(text));
-                            if !ch.is_ascii_alphanumeric() {
-                                textobject::textobject_surround(text, range, objtype, ch, count)
-                            } else {
-                                range
-                            }
-                        }
+                        'm' => textobject::textobject_surround_closest(text, range, objtype, count),
                         // TODO: cancel new ranges if inconsistent surround matches across lines
                         ch if !ch.is_ascii_alphanumeric() => {
                             textobject::textobject_surround(text, range, objtype, ch, count)
@@ -4118,15 +4111,16 @@ fn surround_add(cx: &mut Context) {
 fn surround_replace(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
-        let from = match event.char() {
-            Some(from) => from,
+        let surround_ch = match event.char() {
+            Some('m') => None, // m selects the closest surround pair
+            Some(ch) => Some(ch),
             None => return,
         };
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
 
-        let change_pos = match surround::get_surround_pos(text, selection, from, count) {
+        let change_pos = match surround::get_surround_pos(text, selection, surround_ch, count) {
             Ok(c) => c,
             Err(err) => {
                 cx.editor.set_error(err.to_string());
@@ -4157,15 +4151,16 @@ fn surround_replace(cx: &mut Context) {
 fn surround_delete(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
-        let ch = match event.char() {
-            Some(ch) => ch,
+        let surround_ch = match event.char() {
+            Some('m') => None, // m selects the closest surround pair
+            Some(ch) => Some(ch),
             None => return,
         };
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
 
-        let change_pos = match surround::get_surround_pos(text, selection, ch, count) {
+        let change_pos = match surround::get_surround_pos(text, selection, surround_ch, count) {
             Ok(c) => c,
             Err(err) => {
                 cx.editor.set_error(err.to_string());

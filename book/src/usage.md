@@ -66,6 +66,7 @@ Currently supported: `word`, `surround`, `function`, `class`, `parameter`.
 | `w`                    | Word                     |
 | `W`                    | WORD                     |
 | `(`, `[`, `'`, etc     | Specified surround pairs |
+| `m`                    | Closest surround pair    |
 | `f`                    | Function                 |
 | `c`                    | Class                    |
 | `a`                    | Argument/parameter       |

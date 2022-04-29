@@ -111,10 +111,10 @@
 | `K`                   | Keep selections matching the regex                                | `keep_selections`                    |
 | `Alt-K`               | Remove selections matching the regex                              | `remove_selections`                  |
 | `Ctrl-c`              | Comment/uncomment the selections                                  | `toggle_comments`                    |
-| `Alt-k`, `Alt-up`     | Expand selection to parent syntax node (**TS**)                   | `expand_selection`                   |
-| `Alt-j`, `Alt-down`   | Shrink syntax tree object selection (**TS**)                      | `shrink_selection`                   |
-| `Alt-h`, `Alt-left`   | Select previous sibling node in syntax tree (**TS**)              | `select_prev_sibling`                |
-| `Alt-l`, `Alt-right`  | Select next sibling node in syntax tree (**TS**)                  | `select_next_sibling`                |
+| `Alt-o`, `Alt-up`     | Expand selection to parent syntax node (**TS**)                   | `expand_selection`                   |
+| `Alt-i`, `Alt-down`   | Shrink syntax tree object selection (**TS**)                      | `shrink_selection`                   |
+| `Alt-p`, `Alt-left`   | Select previous sibling node in syntax tree (**TS**)              | `select_prev_sibling`                |
+| `Alt-n`, `Alt-right`  | Select next sibling node in syntax tree (**TS**)                  | `select_next_sibling`                |
 
 ### Search
 
@@ -296,9 +296,9 @@ undo-able "save point" until you return to normal mode.
 | `Ctrl-r`                  | Insert a register content   | `insert_register`       |
 | `Ctrl-w`, `Alt-Backspace` | Delete previous word        | `delete_word_backward`  |
 | `Alt-d`                   | Delete next word            | `delete_word_forward`   |
-| `Alt-b`, `Alt-Left`       | Backward a word             | `move_prev_word_end`    |
+| `Alt-b`, `Ctrl-Left`      | Backward a word             | `move_prev_word_end`    |
 | `Ctrl-b`, `Left`          | Backward a char             | `move_char_left`        |
-| `Alt-f`, `Alt-Right`      | Forward a word              | `move_next_word_start`  |
+| `Alt-f`, `Ctrl-Right`     | Forward a word              | `move_next_word_start`  |
 | `Ctrl-f`, `Right`         | Forward a char              | `move_char_right`       |
 | `Ctrl-e`, `End`           | Move to line end            | `goto_line_end_newline` |
 | `Ctrl-a`, `Home`          | Move to line start          | `goto_line_start`       |
