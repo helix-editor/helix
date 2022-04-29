@@ -91,8 +91,6 @@ the last matching query supersedes the ones before it. See
 
 - If a parser is segfaulting or you want to remove the parser, make sure to remove the compiled parser in `runtime/grammar/<name>.so`
 
-- The indents query is `indents.toml`, *not* `indents.scm`. See [this](https://github.com/helix-editor/helix/issues/114) issue for more information.
-
 [treesitter-language-injection]: https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection
 [languages.toml]: https://github.com/helix-editor/helix/blob/master/languages.toml
 [neovim-query-precedence]: https://github.com/helix-editor/helix/pull/1170#issuecomment-997294090
