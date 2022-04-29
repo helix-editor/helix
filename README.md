@@ -28,7 +28,7 @@ It's a terminal-based editor first, but I'd like to explore a custom renderer
 (similar to emacs) in wgpu or skulpin.
 
 Note: Only certain languages have indentation definitions at the moment. Check
-`runtime/queries/<lang>/` for `indents.toml`.
+`runtime/queries/<lang>/` for `indents.scm`.
 
 # Installation
 
