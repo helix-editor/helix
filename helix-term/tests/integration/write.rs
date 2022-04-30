@@ -75,10 +75,12 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
+    let file = helpers::new_readonly_tempfile()?;
+
     test_key_sequences(
         &mut Application::new(
             Args {
-                files: vec![(PathBuf::from("/foo"), Position::default())],
+                files: vec![(file.path().to_path_buf(), Position::default())],
                 ..Default::default()
             },
             Config::default(),
@@ -116,6 +118,8 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_write_fail_new_path() -> anyhow::Result<()> {
+    let file = helpers::new_readonly_tempfile()?;
+
     test_key_sequences(
         &mut Application::new(Args::default(), Config::default())?,
         vec![
@@ -123,15 +127,21 @@ async fn test_write_fail_new_path() -> anyhow::Result<()> {
                 None,
                 Some(&|app| {
                     let doc = doc!(app.editor);
-                    assert_eq!(None, app.editor.get_status());
+                    assert_ne!(
+                        Some(&Severity::Error),
+                        app.editor.get_status().map(|status| status.1)
+                    );
                     assert_eq!(None, doc.path());
                 }),
             ),
             (
-                Some(":w /foo<ret>"),
+                Some(&format!(":w {}<ret>", file.path().to_string_lossy())),
                 Some(&|app| {
                     let doc = doc!(app.editor);
-                    assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
+                    assert_eq!(
+                        Some(&Severity::Error),
+                        app.editor.get_status().map(|status| status.1)
+                    );
                     assert_eq!(None, doc.path());
                 }),
             ),

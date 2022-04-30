@@ -5,6 +5,7 @@ use crossterm::event::{Event, KeyEvent};
 use helix_core::{test, Selection, Transaction};
 use helix_term::{application::Application, args::Args, config::Config};
 use helix_view::{doc, input::parse_macro};
+use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[derive(Clone, Debug)]
@@ -154,4 +155,15 @@ pub fn platform_line(input: &str) -> String {
     }
 
     output
+}
+
+/// Creates a new temporary file that is set to read only. Useful for
+/// testing write failures.
+pub fn new_readonly_tempfile() -> anyhow::Result<NamedTempFile> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let metadata = file.as_file().metadata()?;
+    let mut perms = metadata.permissions();
+    perms.set_readonly(true);
+    file.as_file_mut().set_permissions(perms)?;
+    Ok(file)
 }

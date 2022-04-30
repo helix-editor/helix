@@ -10,10 +10,12 @@ use super::*;
 
 #[tokio::test]
 async fn test_write_quit_fail() -> anyhow::Result<()> {
+    let file = helpers::new_readonly_tempfile()?;
+
     test_key_sequence(
         &mut Application::new(
             Args {
-                files: vec![(PathBuf::from("/foo"), Position::default())],
+                files: vec![(file.path().to_path_buf(), Position::default())],
                 ..Default::default()
             },
             Config::default(),
