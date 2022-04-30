@@ -388,6 +388,8 @@ impl EditorView {
                     spans.pop();
                 }
                 HighlightEvent::Source { start, end } => {
+                    let is_trailing_cursor = text.len_chars() < end;
+
                     // `unwrap_or_else` part is for off-the-end indices of
                     // the rope, to allow cursor highlighting at the end
                     // of the rope.
@@ -397,7 +399,7 @@ impl EditorView {
                         .fold(text_style, |acc, span| acc.patch(theme.highlight(span.0)));
 
                     let space = if whitespace.render.space() == WhitespaceRenderValue::All
-                        && text.len_chars() < end
+                        && !is_trailing_cursor
                     {
                         &space
                     } else {
