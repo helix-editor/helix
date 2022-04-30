@@ -56,6 +56,10 @@ pub enum Movement {
     None,
 }
 
+fn is_word_sep(c: char) -> bool {
+    c == std::path::MAIN_SEPARATOR || c.is_whitespace()
+}
+
 impl Prompt {
     pub fn new(
         prompt: Cow<'static, str>,
@@ -118,7 +122,7 @@ impl Prompt {
 
                     let mut found = None;
                     for prev in (0..char_position - 1).rev() {
-                        if char_indices[prev].1.is_whitespace() {
+                        if is_word_sep(char_indices[prev].1) {
                             found = Some(prev + 1);
                             break;
                         }
@@ -141,14 +145,14 @@ impl Prompt {
                 for _ in 0..rep {
                     // Skip any non-whitespace characters
                     while char_position < char_indices.len()
-                        && !char_indices[char_position].1.is_whitespace()
+                        && !is_word_sep(char_indices[char_position].1)
                     {
                         char_position += 1;
                     }
 
                     // Skip any whitespace characters
                     while char_position < char_indices.len()
-                        && char_indices[char_position].1.is_whitespace()
+                        && is_word_sep(char_indices[char_position].1)
                     {
                         char_position += 1;
                     }
