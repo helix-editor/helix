@@ -288,6 +288,7 @@ pub enum WhitespaceRender {
     Specific {
         default: Option<WhitespaceRenderValue>,
         space: Option<WhitespaceRenderValue>,
+        nbsp: Option<WhitespaceRenderValue>,
         tab: Option<WhitespaceRenderValue>,
         newline: Option<WhitespaceRenderValue>,
     },
@@ -308,6 +309,14 @@ impl WhitespaceRender {
             Self::Basic(val) => val,
             Self::Specific { default, space, .. } => {
                 space.or(default).unwrap_or(WhitespaceRenderValue::None)
+            }
+        }
+    }
+    pub fn nbsp(&self) -> WhitespaceRenderValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific { default, nbsp, .. } => {
+                nbsp.or(default).unwrap_or(WhitespaceRenderValue::None)
             }
         }
     }
@@ -333,6 +342,7 @@ impl WhitespaceRender {
 #[serde(default)]
 pub struct WhitespaceCharacters {
     pub space: char,
+    pub nbsp: char,
     pub tab: char,
     pub newline: char,
 }
@@ -341,6 +351,7 @@ impl Default for WhitespaceCharacters {
     fn default() -> Self {
         Self {
             space: '·',    // U+00B7
+            nbsp: '⍽',    // U+237D
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
         }
