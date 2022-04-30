@@ -1,5 +1,5 @@
 #[cfg(feature = "integration")]
-mod integration {
+mod test {
     mod helpers;
 
     use std::path::PathBuf;
