@@ -17,6 +17,7 @@ mod integration {
             Args::default(),
             Config::default(),
             ("#[\n|]#", "ihello world<esc>", "hello world#[|\n]#"),
+            None,
         )
         .await?;
 
@@ -25,6 +26,7 @@ mod integration {
 
     mod auto_indent;
     mod auto_pairs;
+    mod commands;
     mod movement;
     mod write;
 }

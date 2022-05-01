@@ -18,6 +18,7 @@ async fn auto_indent_c() -> anyhow::Result<()> {
                 }
             "},
         ),
+        None,
     )
     .await?;
 

@@ -571,6 +571,11 @@ impl Editor {
         self.status_msg = Some((error.into(), Severity::Error));
     }
 
+    #[inline]
+    pub fn get_status(&self) -> Option<(&Cow<'static, str>, &Severity)> {
+        self.status_msg.as_ref().map(|(status, sev)| (status, sev))
+    }
+
     pub fn set_theme(&mut self, theme: Theme) {
         // `ui.selection` is the only scope required to be able to render a theme.
         if theme.find_scope_index("ui.selection").is_none() {

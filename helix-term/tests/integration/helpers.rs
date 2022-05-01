@@ -5,7 +5,6 @@ use crossterm::event::{Event, KeyEvent};
 use helix_core::{test, Selection, Transaction};
 use helix_term::{application::Application, args::Args, config::Config};
 use helix_view::{doc, input::parse_macro};
-use tokio::time::timeout;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[derive(Clone, Debug)]
@@ -32,35 +31,48 @@ impl<S: Into<String>> From<(S, S, S)> for TestCase {
     }
 }
 
+#[inline]
 pub async fn test_key_sequence(
     app: &mut Application,
     in_keys: &str,
     test_fn: Option<&dyn Fn(&Application)>,
+    timeout: Option<Duration>,
 ) -> anyhow::Result<()> {
+    test_key_sequences(app, vec![(in_keys, test_fn)], timeout).await
+}
+
+pub async fn test_key_sequences(
+    app: &mut Application,
+    inputs: Vec<(&str, Option<&dyn Fn(&Application)>)>,
+    timeout: Option<Duration>,
+) -> anyhow::Result<()> {
+    let timeout = timeout.unwrap_or(Duration::from_millis(500));
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-
-    for key_event in parse_macro(&in_keys)?.into_iter() {
-        tx.send(Ok(Event::Key(KeyEvent::from(key_event))))?;
-    }
-
     let mut rx_stream = UnboundedReceiverStream::new(rx);
-    let event_loop = app.event_loop(&mut rx_stream);
-    let result = timeout(Duration::from_millis(500), event_loop).await;
 
-    if result.is_ok() {
-        bail!("application exited before test function could run");
+    for (in_keys, test_fn) in inputs {
+        for key_event in parse_macro(&in_keys)?.into_iter() {
+            tx.send(Ok(Event::Key(KeyEvent::from(key_event))))?;
+        }
+
+        let event_loop = app.event_loop(&mut rx_stream);
+        let result = tokio::time::timeout(timeout, event_loop).await;
+
+        if result.is_ok() {
+            bail!("application exited before test function could run");
+        }
+
+        if let Some(test) = test_fn {
+            test(app);
+        };
     }
-
-    if let Some(test) = test_fn {
-        test(app);
-    };
 
     for key_event in parse_macro("<esc>:q!<ret>")?.into_iter() {
         tx.send(Ok(Event::Key(KeyEvent::from(key_event))))?;
     }
 
     let event_loop = app.event_loop(&mut rx_stream);
-    timeout(Duration::from_millis(5000), event_loop).await?;
+    tokio::time::timeout(timeout, event_loop).await?;
     app.close().await?;
 
     Ok(())
@@ -70,6 +82,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     app: Option<Application>,
     test_case: T,
     test_fn: &dyn Fn(&Application),
+    timeout: Option<Duration>,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
     let mut app =
@@ -87,7 +100,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
         view.id,
     );
 
-    test_key_sequence(&mut app, &test_case.in_keys, Some(test_fn)).await
+    test_key_sequence(&mut app, &test_case.in_keys, Some(test_fn), timeout).await
 }
 
 /// Use this for very simple test cases where there is one input
@@ -97,20 +110,26 @@ pub async fn test_key_sequence_text_result<T: Into<TestCase>>(
     args: Args,
     config: Config,
     test_case: T,
+    timeout: Option<Duration>,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
     let app = Application::new(args, config).unwrap();
 
-    test_key_sequence_with_input_text(Some(app), test_case.clone(), &|app| {
-        let doc = doc!(app.editor);
-        assert_eq!(&test_case.out_text, doc.text());
+    test_key_sequence_with_input_text(
+        Some(app),
+        test_case.clone(),
+        &|app| {
+            let doc = doc!(app.editor);
+            assert_eq!(&test_case.out_text, doc.text());
 
-        let mut selections: Vec<_> = doc.selections().values().cloned().collect();
-        assert_eq!(1, selections.len());
+            let mut selections: Vec<_> = doc.selections().values().cloned().collect();
+            assert_eq!(1, selections.len());
 
-        let sel = selections.pop().unwrap();
-        assert_eq!(test_case.out_selection, sel);
-    })
+            let sel = selections.pop().unwrap();
+            assert_eq!(test_case.out_selection, sel);
+        },
+        timeout,
+    )
     .await
 }
 
