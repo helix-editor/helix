@@ -9,6 +9,7 @@ use helix_term::application::Application;
 use super::*;
 
 #[tokio::test]
+#[ignore]
 async fn test_write_quit_fail() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
 
@@ -31,7 +32,8 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_buffer_close() -> anyhow::Result<()> {
+#[ignore]
+async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     test_key_sequences(
         &mut Application::new(Args::default(), Config::default())?,
         vec![
@@ -63,7 +65,7 @@ async fn test_buffer_close() -> anyhow::Result<()> {
     // verify if writes are queued up, it finishes them before closing the buffer
     let mut file = tempfile::NamedTempFile::new()?;
     let mut command = String::new();
-    const RANGE: RangeInclusive<i32> = 1..=10;
+    const RANGE: RangeInclusive<i32> = 1..=1000;
 
     for i in RANGE {
         let cmd = format!("%c{}<esc>:w<ret>", i);
