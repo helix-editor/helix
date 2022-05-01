@@ -80,7 +80,7 @@ impl Application {
 
         let config = match std::fs::read_to_string(config_dir.join("config.toml")) {
             Ok(config) => toml::from_str(&config)
-                .map(crate::keymap::merge_keys)
+                .map(crate::config::merge_keys)
                 .unwrap_or_else(|err| {
                     eprintln!("Bad config: {}", err);
                     eprintln!("Press <ENTER> to continue with default config");

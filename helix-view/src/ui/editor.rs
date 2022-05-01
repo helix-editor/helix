@@ -359,9 +359,9 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         highlights: H,
-        whitespace: &helix_view::editor::WhitespaceConfig,
+        whitespace: &crate::editor::WhitespaceConfig,
     ) {
-        use helix_view::editor::WhitespaceRenderValue;
+        use crate::editor::WhitespaceRenderValue;
 
         // It's slightly more efficient to produce a full RopeSlice from the Rope, then slice that a bunch
         // of times than it is to always call Rope::slice/get_slice (it will internally always hit RSEnum::Light).
@@ -455,7 +455,7 @@ impl EditorView {
                                 // make sure we display tab as appropriate amount of spaces
                                 let visual_tab_width = tab_width - (visual_x as usize % tab_width);
                                 let grapheme_tab_width =
-                                    ropey::str_utils::char_to_byte_idx(&tab, visual_tab_width);
+                                    helix_core::str_utils::char_to_byte_idx(&tab, visual_tab_width);
 
                                 (&tab[..grapheme_tab_width], visual_tab_width)
                             } else if grapheme == " " {
