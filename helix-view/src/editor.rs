@@ -576,6 +576,15 @@ impl Editor {
         self.status_msg.as_ref().map(|(status, sev)| (status, sev))
     }
 
+    /// Returns true if the current status is an error
+    #[inline]
+    pub fn is_err(&self) -> bool {
+        self.status_msg
+            .as_ref()
+            .map(|(_, sev)| *sev == Severity::Error)
+            .unwrap_or(false)
+    }
+
     pub fn set_theme(&mut self, theme: Theme) {
         // `ui.selection` is the only scope required to be able to render a theme.
         if theme.find_scope_index("ui.selection").is_none() {

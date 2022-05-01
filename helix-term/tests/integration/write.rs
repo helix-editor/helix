@@ -1,5 +1,6 @@
 use std::{
     io::{Read, Write},
+    ops::RangeInclusive,
     time::Duration,
 };
 
@@ -21,7 +22,7 @@ async fn test_write() -> anyhow::Result<()> {
             },
             Config::default(),
         )?,
-        "ii can eat glass, it will not hurt me<ret><esc>:w<ret>",
+        Some("ii can eat glass, it will not hurt me<ret><esc>:w<ret>"),
         None,
         Some(Duration::from_millis(1000)),
     )
@@ -38,6 +39,41 @@ async fn test_write() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+async fn test_write_concurrent() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    let mut command = String::new();
+    const RANGE: RangeInclusive<i32> = 1..=5000;
+
+    for i in RANGE {
+        let cmd = format!("%c{}<esc>:w<ret>", i);
+        command.push_str(&cmd);
+    }
+
+    test_key_sequence(
+        &mut Application::new(
+            Args {
+                files: vec![(file.path().to_path_buf(), Position::default())],
+                ..Default::default()
+            },
+            Config::default(),
+        )?,
+        Some(&command),
+        None,
+        Some(Duration::from_millis(10000)),
+    )
+    .await?;
+
+    file.as_file_mut().flush()?;
+    file.as_file_mut().sync_all()?;
+
+    let mut file_content = String::new();
+    file.as_file_mut().read_to_string(&mut file_content)?;
+    assert_eq!(RANGE.end().to_string(), file_content);
+
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
     test_key_sequences(
         &mut Application::new(
@@ -49,21 +85,21 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
         )?,
         vec![
             (
-                "",
+                None,
                 Some(&|app| {
                     let doc = doc!(app.editor);
                     assert!(!doc.is_modified());
                 }),
             ),
             (
-                "ihello<esc>",
+                Some("ihello<esc>"),
                 Some(&|app| {
                     let doc = doc!(app.editor);
                     assert!(doc.is_modified());
                 }),
             ),
             (
-                ":w<ret>",
+                Some(":w<ret>"),
                 Some(&|app| {
                     assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
 
@@ -86,7 +122,7 @@ async fn test_write_fail_new_path() -> anyhow::Result<()> {
         &mut Application::new(Args::default(), Config::default())?,
         vec![
             (
-                "",
+                None,
                 Some(&|app| {
                     let doc = doc!(app.editor);
                     assert_eq!(None, app.editor.get_status());
@@ -94,7 +130,7 @@ async fn test_write_fail_new_path() -> anyhow::Result<()> {
                 }),
             ),
             (
-                ":w /foo<ret>",
+                Some(":w /foo<ret>"),
                 Some(&|app| {
                     let doc = doc!(app.editor);
                     assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);

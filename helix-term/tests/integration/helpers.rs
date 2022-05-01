@@ -34,7 +34,7 @@ impl<S: Into<String>> From<(S, S, S)> for TestCase {
 #[inline]
 pub async fn test_key_sequence(
     app: &mut Application,
-    in_keys: &str,
+    in_keys: Option<&str>,
     test_fn: Option<&dyn Fn(&Application)>,
     timeout: Option<Duration>,
 ) -> anyhow::Result<()> {
@@ -43,7 +43,7 @@ pub async fn test_key_sequence(
 
 pub async fn test_key_sequences(
     app: &mut Application,
-    inputs: Vec<(&str, Option<&dyn Fn(&Application)>)>,
+    inputs: Vec<(Option<&str>, Option<&dyn Fn(&Application)>)>,
     timeout: Option<Duration>,
 ) -> anyhow::Result<()> {
     let timeout = timeout.unwrap_or(Duration::from_millis(500));
@@ -51,8 +51,10 @@ pub async fn test_key_sequences(
     let mut rx_stream = UnboundedReceiverStream::new(rx);
 
     for (in_keys, test_fn) in inputs {
-        for key_event in parse_macro(&in_keys)?.into_iter() {
-            tx.send(Ok(Event::Key(KeyEvent::from(key_event))))?;
+        if let Some(in_keys) = in_keys {
+            for key_event in parse_macro(&in_keys)?.into_iter() {
+                tx.send(Ok(Event::Key(KeyEvent::from(key_event))))?;
+            }
         }
 
         let event_loop = app.event_loop(&mut rx_stream);
@@ -100,7 +102,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
         view.id,
     );
 
-    test_key_sequence(&mut app, &test_case.in_keys, Some(test_fn), timeout).await
+    test_key_sequence(&mut app, Some(&test_case.in_keys), Some(test_fn), timeout).await
 }
 
 /// Use this for very simple test cases where there is one input
