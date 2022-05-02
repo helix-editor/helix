@@ -1051,6 +1051,45 @@ fn sort_impl(
     Ok(())
 }
 
+fn reflow(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    let (view, doc) = current!(cx.editor);
+
+    const DEFAULT_MAX_LEN: usize = 79;
+
+    // Find the max line length by checking the following sources in order:
+    //   - The passed argument in `args`
+    //   - The configured max_line_len for this language in languages.toml
+    //   - The const default we set above
+    let max_line_len: usize = args
+        .get(0)
+        .map(|num| num.parse::<usize>())
+        .transpose()?
+        .or_else(|| {
+            doc.language_config()
+                .and_then(|config| config.max_line_length)
+        })
+        .unwrap_or(DEFAULT_MAX_LEN);
+
+    let rope = doc.text();
+
+    let selection = doc.selection(view.id);
+    let transaction = Transaction::change_by_selection(rope, selection, |range| {
+        let fragment = range.fragment(rope.slice(..));
+        let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, max_line_len);
+
+        (range.from(), range.to(), Some(reflowed_text))
+    });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+
+    Ok(())
+}
+
 fn tree_sitter_subtree(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1568,6 +1607,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Sort ranges in selection in reverse order.",
             fun: sort_reverse,
+            completer: None,
+        },
+        TypableCommand {
+            name: "reflow",
+            aliases: &[],
+            doc: "Hard-wrap the current selection of lines to a given width.",
+            fun: reflow,
             completer: None,
         },
         TypableCommand {
