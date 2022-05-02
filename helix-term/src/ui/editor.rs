@@ -288,16 +288,25 @@ impl EditorView {
             .find_scope_index("ui.cursor")
             .unwrap_or(selection_scope);
 
-        let cursor_scope = match mode {
+        let mode_cursor_scope = match mode {
             Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
             Mode::Select => theme.find_scope_index("ui.cursor.select"),
-            Mode::Normal => Some(base_cursor_scope),
-        }
-        .unwrap_or(base_cursor_scope);
+            Mode::Normal => None,
+        };
 
-        let primary_cursor_scope = theme
-            .find_scope_index("ui.cursor.primary")
-            .unwrap_or(cursor_scope);
+        let cursor_scope = if theme.find_scope_index("ui.cursor.primary").is_some() {
+            base_cursor_scope
+        } else {
+            mode_cursor_scope.unwrap_or(base_cursor_scope)
+        };
+
+        let primary_cursor_scope =
+            if let Some(base_primary_cursor_scope) = theme.find_scope_index("ui.cursor.primary") {
+                mode_cursor_scope.unwrap_or(base_primary_cursor_scope)
+            } else {
+                cursor_scope
+            };
+
         let primary_selection_scope = theme
             .find_scope_index("ui.selection.primary")
             .unwrap_or(selection_scope);
