@@ -55,6 +55,13 @@ pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BlockCommentTokens {
+    pub start: String,
+    pub middle: String,
+    pub end: String,
+}
+
 // largely based on tree-sitter/cli/src/loader.rs
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
@@ -69,6 +76,7 @@ pub struct LanguageConfiguration {
     pub comment_token: Option<String>, // TODO: remove.
     #[serde(default)]
     pub comment_tokens: Vec<String>,
+    pub block_comment_tokens: Option<BlockCommentTokens>,
 
     #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
     pub config: Option<serde_json::Value>,

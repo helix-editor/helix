@@ -3,8 +3,10 @@
 //! * toggle comments on lines over the selection.
 //! * continue comment when opening a new line.
 
+use tree_sitter::QueryCursor;
+
 use crate::{
-    find_first_non_whitespace_char, Change, Rope, RopeSlice, Selection, Tendril, Transaction,
+    find_first_non_whitespace_char, Change, Rope, RopeSlice, Selection, Tendril, Transaction, Syntax, syntax::LanguageConfiguration, Range,
 };
 use std::borrow::Cow;
 
@@ -119,6 +121,36 @@ pub fn continue_comment<'a>(doc: &Rope, line: usize, tokens: &'a [String]) -> Op
     }
 
     result
+}
+
+pub fn continue_block_comment<'a>(doc: &Rope, syntax: Option<&Syntax>, lang_config: &'a LanguageConfiguration, range: &Range, open_below: bool) -> Option<&'a str> {
+    if let Some((doc_syntax, block_comment_tokens)) = syntax.zip(lang_config.block_comment_tokens.as_ref()) {
+        let slice_tree = doc_syntax.tree().root_node();
+        let slice = doc.slice(..);
+        let line_pos = slice.char_to_line(range.cursor(slice));
+        let mut cursor = QueryCursor::new();
+        let nodes = lang_config.textobject_query()
+            .and_then(|query| query.capture_nodes_any(
+                    &["comment.block.around"],
+                    slice_tree,
+                    slice,
+                    &mut cursor,
+            ));
+        if let Some(nodes) = nodes {
+            for node in nodes {
+                let node_start = doc.byte_to_line(node.start_byte());
+                let node_end = doc.byte_to_line(node.end_byte());
+                // NOTE: we use line comparison to allow opening a comment on the newline after the
+                // end of the block comment.
+                // We also do not want to continue the comment if opening below when the cursor is
+                // on the last line of the block comment.
+                if line_pos >= node_start && (line_pos < node_end || (line_pos == node_end && !open_below)) {
+                    return Some(&block_comment_tokens.middle);
+                }
+            }
+        }
+    }
+    None
 }
 
 #[cfg(test)]
