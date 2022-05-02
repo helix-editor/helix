@@ -72,7 +72,8 @@ To make sure everything is set up as expected you should finally run the helix h
 ```
 hx --health
 ```
-For more information on the information displayed in the healthcheck results refer to [Troubleshooting](./troubleshooting.md#Healthcheck).
+For more information on the information displayed in the healthcheck results refer to [Healthcheck](https://github.com/helix-editor/helix/wiki/Healthcheck).
+
 
 ## Building tree-sitter grammars
 
