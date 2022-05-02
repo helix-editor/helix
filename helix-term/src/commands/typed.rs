@@ -1508,7 +1508,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "set-option",
             aliases: &["set"],
-            doc: "Set a config option at runtime. For example to disable smart case search, use `:set search.smart-case false`.",
+            doc: "Set a config option at runtime.<br>For example to disable smart case search, use `:set search.smart-case false`.",
             fun: set_option,
             completer: Some(completers::setting),
         },
