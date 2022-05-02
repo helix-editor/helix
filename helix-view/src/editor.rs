@@ -127,6 +127,8 @@ pub struct Config {
     pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
+    /// Automatic formatting on save. Defaults to true.
+    pub auto_format: bool,
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(
@@ -374,6 +376,7 @@ impl Default for Config {
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
+            auto_format: true,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,

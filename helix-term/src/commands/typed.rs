@@ -195,6 +195,7 @@ fn write_impl(
     path: Option<&Cow<str>>,
     force: bool,
 ) -> anyhow::Result<()> {
+    let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
     let doc = doc_mut!(cx.editor);
 
@@ -205,17 +206,21 @@ fn write_impl(
     if doc.path().is_none() {
         bail!("cannot write a buffer without a filename");
     }
-    let fmt = doc.auto_format().map(|fmt| {
-        let shared = fmt.shared();
-        let callback = make_format_callback(
-            doc.id(),
-            doc.version(),
-            Modified::SetUnmodified,
-            shared.clone(),
-        );
-        jobs.callback(callback);
-        shared
-    });
+    let fmt = if auto_format {
+        doc.auto_format().map(|fmt| {
+            let shared = fmt.shared();
+            let callback = make_format_callback(
+                doc.id(),
+                doc.version(),
+                Modified::SetUnmodified,
+                shared.clone(),
+            );
+            jobs.callback(callback);
+            shared
+        })
+    } else {
+        None
+    };
     let future = doc.format_and_save(fmt, force);
     cx.jobs.add(Job::new(future).wait_before_exiting());
 
@@ -454,6 +459,7 @@ fn write_all_impl(
     force: bool,
 ) -> anyhow::Result<()> {
     let mut errors = String::new();
+    let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
     // save all documents
     for doc in &mut cx.editor.documents.values_mut() {
@@ -466,17 +472,21 @@ fn write_all_impl(
             continue;
         }
 
-        let fmt = doc.auto_format().map(|fmt| {
-            let shared = fmt.shared();
-            let callback = make_format_callback(
-                doc.id(),
-                doc.version(),
-                Modified::SetUnmodified,
-                shared.clone(),
-            );
-            jobs.callback(callback);
-            shared
-        });
+        let fmt = if auto_format {
+            doc.auto_format().map(|fmt| {
+                let shared = fmt.shared();
+                let callback = make_format_callback(
+                    doc.id(),
+                    doc.version(),
+                    Modified::SetUnmodified,
+                    shared.clone(),
+                );
+                jobs.callback(callback);
+                shared
+            })
+        } else {
+            None
+        };
         let future = doc.format_and_save(fmt, force);
         jobs.add(Job::new(future).wait_before_exiting());
     }
