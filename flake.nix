@@ -25,6 +25,7 @@
         package = "helix";
       };
       overrides = {
+        cCompiler = common: if common.pkgs.stdenv.isLinux then common.pkgs.gcc else common.pkgs.clang;
         crateOverrides = common: _: {
           helix-term = prev:
             let
@@ -57,7 +58,7 @@
           env = prev.env ++ [
             { name = "HELIX_RUNTIME"; eval = "$PWD/runtime"; }
             { name = "RUST_BACKTRACE"; value = "1"; }
-            { name = "RUSTFLAGS"; value = "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment"; }
+            { name = "RUSTFLAGS"; value = if common.pkgs.stdenv.isLinux then "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment" else ""; }
           ];
         };
       };
