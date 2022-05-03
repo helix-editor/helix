@@ -8,7 +8,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nixCargoIntegration = {
-      url = "github:yusdacra/nix-cargo-integration/feat/ccompiler-override";
+      url = "github:yusdacra/nix-cargo-integration";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rustOverlay.follows = "rust-overlay";
     };
