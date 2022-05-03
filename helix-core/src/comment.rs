@@ -101,6 +101,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
 /// Return token if the current line is commented.
 /// Otherwise, return None.
 pub fn continue_comment<'a>(doc: &Rope, line: usize, tokens: &'a [String]) -> Option<&'a str> {
+    // TODO: don't continue shebangs.
     if tokens.is_empty() {
         return None;
     }
