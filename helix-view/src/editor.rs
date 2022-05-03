@@ -128,6 +128,8 @@ pub struct Config {
     pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
+    /// Automatic formatting on save. Defaults to true.
+    pub auto_format: bool,
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(
@@ -289,6 +291,7 @@ pub enum WhitespaceRender {
     Specific {
         default: Option<WhitespaceRenderValue>,
         space: Option<WhitespaceRenderValue>,
+        nbsp: Option<WhitespaceRenderValue>,
         tab: Option<WhitespaceRenderValue>,
         newline: Option<WhitespaceRenderValue>,
     },
@@ -309,6 +312,14 @@ impl WhitespaceRender {
             Self::Basic(val) => val,
             Self::Specific { default, space, .. } => {
                 space.or(default).unwrap_or(WhitespaceRenderValue::None)
+            }
+        }
+    }
+    pub fn nbsp(&self) -> WhitespaceRenderValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific { default, nbsp, .. } => {
+                nbsp.or(default).unwrap_or(WhitespaceRenderValue::None)
             }
         }
     }
@@ -334,6 +345,7 @@ impl WhitespaceRender {
 #[serde(default)]
 pub struct WhitespaceCharacters {
     pub space: char,
+    pub nbsp: char,
     pub tab: char,
     pub newline: char,
 }
@@ -342,6 +354,7 @@ impl Default for WhitespaceCharacters {
     fn default() -> Self {
         Self {
             space: '·',    // U+00B7
+            nbsp: '⍽',    // U+237D
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
         }
@@ -364,6 +377,7 @@ impl Default for Config {
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
+            auto_format: true,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,

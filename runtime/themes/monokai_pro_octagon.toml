@@ -41,7 +41,7 @@
 "ui.text" = { fg = "base8" }
 "punctuation" = "base6"
 
-# classes, types, primiatives
+# classes, types, primitives
 "type" = "green"
 "type.builtin" = { fg = "red"}
 "label" = "base8"

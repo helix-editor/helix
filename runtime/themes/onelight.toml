@@ -70,11 +70,9 @@
 
 "ui.background" = { bg = "white" }
 
-"ui.cursor" = { fg = "black", modifiers = ["reversed"] }
-"ui.cursor.primary" = { fg = "white", bg="black", modifiers = [] }
-"ui.cursor.match" = { fg = "purple", modifiers = ["underlined", "bold"] }
-"ui.cursor.select" = { bg = "purple" }
-"ui.cursor.insert" = { bg = "white" }
+"ui.cursor" = { fg = "white", bg = "black" }
+"ui.cursor.primary" = { fg = "white", bg = "black" }
+"ui.cursor.match" = { fg = "white", bg = "purple" }
 
 "ui.highlight" = { bg = "light-white" }
 
@@ -84,7 +82,6 @@
 "ui.virtual" = { fg = "light-white"}
 "ui.virtual.ruler" = { bg = "light-white" }
 "ui.virtual.whitespace" = {fg = "light-white" }
-
 
 "ui.linenr" = { fg = "linenr" }
 "ui.linenr.selected" = { fg = "black", modifiers = ["reversed"] }

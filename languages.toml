@@ -424,7 +424,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "nickel"
-source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "85348774ccf7624fac72703b2264d18b6f572be6" }
+source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "c4dd1420b6cfeb6103d38eb1ce5195eb81197edc" }
 
 [[language]]
 name = "nix"
@@ -1263,3 +1263,43 @@ indent = { tab-width = 4, unit = "\t" }
 [[grammar]]
 name = "hare"
 source = { git = "https://git.sr.ht/~ecmma/tree-sitter-hare", rev = "bc26a6a949f2e0d98b7bfc437d459b250900a165" }
+
+[[language]]
+name = "devicetree"
+scope = "source.devicetree"
+injection-regex = "(dtsi?|devicetree|fdt)"
+file-types = ["dts", "dtsi"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "\t" }
+
+[[grammar]]
+name = "devicetree"
+source = { git = "https://github.com/joelspadin/tree-sitter-devicetree", rev = "877adbfa0174d25894c40fa75ad52d4515a36368" }
+
+[[language]]
+name = "cairo"
+scope = "source.cairo"
+injection-regex = "cairo"
+file-types = ["cairo"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "cairo"
+source = { git = "https://github.com/archseer/tree-sitter-cairo", rev = "5155c6eb40db6d437f4fa41b8bcd8890a1c91716" }
+
+[[language]]
+name = "cpon"
+scope = "scope.cpon"
+injection-regex = "^cpon$"
+file-types = ["cpon", "cp"]
+roots = []
+auto-format = true
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "cpon"
+source = { git = "https://github.com/fvacek/tree-sitter-cpon", rev = "11ba46a4de3eb86934003133099c9963a60f9687" }

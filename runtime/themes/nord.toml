@@ -46,7 +46,7 @@
 "punctuation" = "nord6"
 
 # Frost
-# nord7 - classes, types, primiatives
+# nord7 - classes, types, primitives
 "type" = "nord7"
 "type.builtin" = { fg = "nord7"}
 "label" = "nord7"

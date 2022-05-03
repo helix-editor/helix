@@ -3,11 +3,14 @@
 | bash | ✓ |  |  | `bash-language-server` |
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ |  |  | `OmniSharp` |
+| cairo | ✓ |  |  |  |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
+| cpon | ✓ |  | ✓ |  |
 | cpp | ✓ | ✓ | ✓ | `clangd` |
 | css | ✓ |  |  | `vscode-css-language-server` |
 | dart | ✓ |  | ✓ | `dart` |
+| devicetree | ✓ |  | ✓ |  |
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |

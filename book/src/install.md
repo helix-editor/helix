@@ -66,6 +66,15 @@ via the `HELIX_RUNTIME` environment variable.
 |windows    |`xcopy runtime %AppData%/helix/runtime`|
 |linux/macos|`ln -s $PWD/runtime ~/.config/helix/runtime`
 
+## Finishing up the installation 
+
+To make sure everything is set up as expected you should finally run the helix healthcheck via 
+```
+hx --health
+```
+For more information on the information displayed in the healthcheck results refer to [Healthcheck](https://github.com/helix-editor/helix/wiki/Healthcheck).
+
+
 ## Building tree-sitter grammars
 
 Tree-sitter grammars must be fetched and compiled if not pre-packaged.

@@ -1,0 +1,105 @@
+# Author : Joe Mckay joemckay3006@gmail.com
+# Palette from https://github.com/haishanh/night-owl.vim
+
+'warning' = { fg = 'peach' }
+'error' = { fg = 'red' }
+'info' = { fg = 'blue' }
+'hint' = { fg = 'paleblue' }
+'diagnostic' = { fg = 'background', bg = 'red' }
+
+# UI
+'ui.background' = { fg = 'foreground', bg = 'background' }
+'ui.window' = { fg = 'grey7' }
+'ui.gutter' = { bg = 'grey2' }
+'ui.text' = { fg = 'foreground' }
+'ui.text.focus' = { fg = 'foreground' }
+'ui.text.info' = { fg = 'foreground'}
+'ui.cursor' = { fg = 'background', bg = 'blue' }
+'ui.cursor.primary' = { fg = 'background', bg = 'gold' }
+'ui.cursor.match' = { bg = 'selection', modifiers = ['underlined'] }
+'ui.selection' = { fg = 'foreground', bg = 'selection' }
+'ui.linenr' = { fg = 'grey4', bg = 'background2' }
+'ui.linenr.selected' = { fg = 'greyE', bg = 'background2'  }
+'ui.statusline' = { fg = 'greyE', bg = 'background2' }
+'ui.statusline.inactive' = { fg = 'grey7', bg = 'background2' }
+'ui.menu' = { fg = 'foreground', bg = 'selection' }
+'ui.menu.selected' = { fg = 'foreground', bg = 'pink' }
+'ui.popup' = { fg = 'foreground', bg = 'background2' }
+'ui.popup.info' = { fg = 'gold', bg = 'background2'}
+'ui.help' = { fg = 'gold', bg = 'background2'}
+'ui.virtual.ruler' = { bg = 'grey4' }
+'ui.virtual.whitespace' = { fg = 'slate' }
+
+# SYNTAX
+'type' = { fg = 'green' }
+'constructor' = { fg = 'blue' }
+'constant' = { fg = 'foreground' }
+'constant.character.escape' = { fg = 'peach' }
+'string' = { fg = 'gold' }
+'string.regexp' = { fg = 'green' }
+'string.special.url' = { fg = 'gold', modifiers = ['underlined'] }
+'comment' = { fg = 'slate', modifiers = ['italic'] }
+'comment.block.documentation' = { fg = 'slate' }
+'variable' = { fg = 'green' }
+'variable.builtin' = { fg = 'green', modifiers = ['italic'] }
+'label' = { fg = 'foreground' }
+'punctuation' = { fg = 'foreground' }
+'punctuation.special' = { fg = 'pink' }
+'keyword' = { fg = 'pink' }
+'keyword.control.import' = { fg = 'green', modifiers = ['italic'] }
+'keyword.control.return' = { fg = 'pink', modifiers = ['italic'] }
+'keyword.control.exception' = { fg = 'red' }
+'operator' = { fg = 'pink' }
+'function' = { fg = 'blue' }
+'function.macro' = { fg = 'peach' }
+'function.special' = { fg = 'pink' }
+'tag' = { fg = 'blue' }
+'namespace' = { fg = 'peach' }
+'property' = { fg = 'green' }
+'special' = { fg = 'greyE' }
+'module' = { fg = 'greyE' }
+'attribute' = { fg = 'paleblue' }
+
+# MARKUP
+'markup.heading' = { fg = 'blue', modifiers = ['bold'] }
+'markup.heading.marker' = { fg = 'grey4', modifiers = ['dim'] }
+'markup.heading.1' = { fg = 'blue', modifers = ['bold'] }
+'markup.heading.2' = { fg = 'paleblue', modifers = ['bold']  }
+'markup.heading.3' = { fg = 'green', modifiers = ['bold'] }
+'markup.heading.4' = { fg = 'pink', modifiers = ['bold'] }
+'markup.heading.5' = { fg = 'peach', modifiers = ['bold'] }
+'markup.heading.6' = { fg = 'slate', modifiers = ['bold'] }
+'markup.list' = { fg = 'pink' }
+'markup.bold' = { fg = 'foreground', modifiers = ['bold'] }
+'markup.italic' = { fg = 'foreground', modifiers = ['italic'] }
+'markup.link' = { fg = 'pink', modifiers = ['underlined'] }
+'markup.link.url' = { fg = 'slate', modifiers = ['underlined'] }
+'markup.quote' = { fg = 'green', modifiers = ['italic'] }
+'markup.raw' = { fg = 'gold', bg = 'background2' }
+
+# DIFF
+'diff.plus' = { fg = 'green' }
+'diff.minus' = { fg = 'red' }
+'diff.delta' = { fg = 'blue' }
+'diff.delta.moved' = { fg = 'blue', modifiers = ['italic'] }
+
+[palette]
+background = '#011627'
+background2 = '#112630'
+foreground = '#d6deeb'
+selection = '#2d2c5d'
+
+slate = '#637777'
+red = '#ff5874'
+peach = '#f78c6c'
+gold = '#ecc48d'
+pink = '#c792ea'
+green = '#addb67'
+blue = '#82aaff'
+paleblue = '#7fdbca'
+
+# Greys are named after their value.
+grey2 = '#222222'
+grey4 = '#444444'
+grey7 = '#777777'
+greyE = '#eeeeee'
