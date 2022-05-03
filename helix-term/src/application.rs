@@ -439,13 +439,6 @@ impl Application {
                         }
                     }
                     Notification::PublishDiagnostics(params) => {
-                        // Insert the original lsp::Diagnostics here because we may have no open document
-                        // for diagnosic message and so we can't calculate the exact position.
-                        // When using them later in the diagnostics picker, we calculate them on-demand.
-                        self.editor
-                            .diagnostics
-                            .insert(params.uri.clone(), params.diagnostics.clone());
-
                         let path = params.uri.to_file_path().unwrap();
                         let doc = self.editor.document_by_path_mut(&path);
 
@@ -455,7 +448,7 @@ impl Application {
 
                             let diagnostics = params
                                 .diagnostics
-                                .into_iter()
+                                .iter()
                                 .filter_map(|diagnostic| {
                                     use helix_core::diagnostic::{Diagnostic, Range, Severity::*};
                                     use lsp::DiagnosticSeverity;
@@ -508,7 +501,7 @@ impl Application {
                                     Some(Diagnostic {
                                         range: Range { start, end },
                                         line: diagnostic.range.start.line as usize,
-                                        message: diagnostic.message,
+                                        message: diagnostic.message.clone(),
                                         severity,
                                         // code
                                         // source
@@ -517,6 +510,13 @@ impl Application {
                                 .collect();
 
                             doc.set_diagnostics(diagnostics);
+
+                            // Insert the original lsp::Diagnostics here because we may have no open document
+                            // for diagnosic message and so we can't calculate the exact position.
+                            // When using them later in the diagnostics picker, we calculate them on-demand.
+                            self.editor
+                                .diagnostics
+                                .insert(params.uri, params.diagnostics);
                         }
                     }
                     Notification::ShowMessage(params) => {
