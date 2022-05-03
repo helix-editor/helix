@@ -173,6 +173,8 @@ injection-regex = "cpp"
 file-types = ["cc", "hh", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino"]
 roots = []
 comment-token = "//"
+comment-tokens = ["//"]
+block-comment-tokens = { start = "/*", middle = "*", end = "*/" }
 language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
 
@@ -364,6 +366,7 @@ file-types = ["py"]
 shebangs = ["python"]
 roots = []
 comment-token = "#"
+comment-tokens = ["#"]
 language-server = { command = "pylsp" }
 # TODO: pyls needs utf-8 offsets
 indent = { tab-width = 4, unit = "    " }
@@ -523,6 +526,8 @@ file-types = ["ml"]
 shebangs = []
 roots = []
 comment-token = "(**)"
+comment-tokens = ["(**)"]
+block-comment-tokens = { start = "(*", middle = "*", end = "*)" }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -600,6 +605,8 @@ injection-regex = "haskell"
 file-types = ["hs"]
 roots = []
 comment-token = "--"
+comment-tokens = ["--"]
+block-comment-tokens = { start = "{-", middle = "-", end = "-}" }
 language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
 indent = { tab-width = 2, unit = "  " }
 

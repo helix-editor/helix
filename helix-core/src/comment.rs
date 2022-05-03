@@ -6,7 +6,7 @@
 use tree_sitter::QueryCursor;
 
 use crate::{
-    find_first_non_whitespace_char, Change, Rope, RopeSlice, Selection, Tendril, Transaction, Syntax, syntax::LanguageConfiguration, Range,
+    find_first_non_whitespace_char, Change, Rope, RopeSlice, Selection, Tendril, Transaction, Syntax, syntax::{LanguageConfiguration, CapturedNode}, Range,
 };
 use std::borrow::Cow;
 
@@ -129,23 +129,64 @@ pub fn continue_block_comment<'a>(doc: &Rope, syntax: Option<&Syntax>, lang_conf
         let slice = doc.slice(..);
         let line_pos = slice.char_to_line(range.cursor(slice));
         let mut cursor = QueryCursor::new();
-        let nodes = lang_config.textobject_query()
-            .and_then(|query| query.capture_nodes_any(
-                    &["comment.block.around"],
+        let mut found_block_comments = false;
+
+        let should_insert_comment_middle = |node: CapturedNode| {
+            let node_start = doc.byte_to_line(node.start_byte());
+            let node_end = doc.byte_to_line(node.end_byte());
+            // NOTE: we use line comparison to allow opening a comment on the newline after the
+            // end of the block comment.
+            // We also do not want to continue the comment if opening below when the cursor is
+            // on the last line of the block comment.
+            line_pos >= node_start && (line_pos < node_end || (line_pos == node_end && !open_below))
+        };
+
+        {
+            let nodes = lang_config.textobject_query()
+                .and_then(|query| query.capture_nodes_any(
+                        &["comment.block.around"],
+                        slice_tree,
+                        slice,
+                        &mut cursor,
+                ));
+            if let Some(nodes) = nodes {
+                for node in nodes {
+                    found_block_comments = true;
+                    if should_insert_comment_middle(node) {
+                        return Some(&block_comment_tokens.middle);
+                    }
+                }
+            }
+        }
+
+        // Many tree-sitter grammars don't contain a block comment token, so search the comment
+        // token and check that it starts and ends with the correct block comment tokens.
+        // FIXME: this doesn't take into account that a line comment followed by a block comment
+        // counts as only one comment object.
+        if !found_block_comments {
+            let nodes = lang_config.textobject_query()
+                .and_then(|query| query.capture_nodes_any(
+                    &["comment.around"],
                     slice_tree,
                     slice,
                     &mut cursor,
-            ));
-        if let Some(nodes) = nodes {
-            for node in nodes {
-                let node_start = doc.byte_to_line(node.start_byte());
-                let node_end = doc.byte_to_line(node.end_byte());
-                // NOTE: we use line comparison to allow opening a comment on the newline after the
-                // end of the block comment.
-                // We also do not want to continue the comment if opening below when the cursor is
-                // on the last line of the block comment.
-                if line_pos >= node_start && (line_pos < node_end || (line_pos == node_end && !open_below)) {
-                    return Some(&block_comment_tokens.middle);
+                ));
+            if let Some(nodes) = nodes {
+                for node in nodes {
+                    let node_start = doc.byte_to_char(node.start_byte());
+                    let node_end = doc.byte_to_char(node.end_byte());
+                    let start_token_len = block_comment_tokens.start.len();
+                    let end_token_len = block_comment_tokens.end.len();
+                    if doc.len_chars() > node_start + start_token_len && doc.len_chars() > node_end {
+                        let comment_start = doc.slice(node_start..node_start + start_token_len);
+                        let comment_end = doc.slice(node_end - end_token_len..node_end);
+                        if comment_start == block_comment_tokens.start && comment_end == block_comment_tokens.end {
+                            // We're in a block comment.
+                            if should_insert_comment_middle(node) {
+                                return Some(&block_comment_tokens.middle);
+                            }
+                        }
+                    }
                 }
             }
         }
