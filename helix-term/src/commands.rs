@@ -2219,7 +2219,7 @@ pub fn command_palette(cx: &mut Context) {
                     command.execute(&mut ctx);
                 },
             );
-            compositor.push(Box::new(picker));
+            compositor.push(Box::new(overlayed(picker)));
         },
     ));
 }
