@@ -90,16 +90,18 @@ available, which is not defined by default.
 
 ### `[editor.auto-pairs]` Section
 
-Enable automatic insertion of pairs to parentheses, brackets, etc. Can be
-a simple boolean value, or a specific mapping of pairs of single characters.
+Enables automatic insertion of pairs to parentheses, brackets, etc. Can be a
+simple boolean value, or a specific mapping of pairs of single characters.
 
-| Key | Description |
-| --- | ----------- |
-| `false` | Completely disable auto pairing, regardless of language-specific settings
-| `true` | Use the default pairs: <code>(){}[]''""``</code>
-| Mapping of pairs | e.g. `{ "(" =  ")", "{" = "}", ... }`
+To disable auto-pairs altogether, set `auto-pairs` to `false`:
 
-Example
+```toml
+[editor]
+auto-pairs = false # defaults to `true`
+```
+
+The default pairs are <code>(){}[]''""``</code>, but these can be customized by
+setting `auto-pairs` to a TOML table:
 
 ```toml
 [editor.auto-pairs]
