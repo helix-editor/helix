@@ -2295,7 +2295,7 @@ fn open(cx: &mut Context, open: Open) {
         text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
 
-        handle_comment_continue(&doc, range, &mut text, cursor_line, open == Open::Below);
+        handle_comment_continue(doc, range, &mut text, cursor_line, open == Open::Below);
 
         let text = text.repeat(count);
 
@@ -2321,22 +2321,40 @@ fn open(cx: &mut Context, open: Open) {
     goto_line_end_newline(cx);
 }
 
-fn handle_comment_continue(doc: &Document, range: &Range, text: &mut String, cursor_line: usize, open_below: bool) {
+fn handle_comment_continue(
+    doc: &Document,
+    range: &Range,
+    text: &mut String,
+    cursor_line: usize,
+    open_below: bool,
+) {
     if let Some(lang_config) = doc.language_config() {
         let line_comment_tokens = &lang_config.comment_tokens;
-        if let Some(token) = comment::continue_block_comment(doc.text(), doc.syntax(), lang_config, range, open_below) {
+        if let Some(token) = comment::continue_block_comment(
+            doc.text(),
+            doc.syntax(),
+            lang_config,
+            range,
+            open_below,
+        ) {
             text.push(' ');
             text.push_str(token);
             text.push(' ');
-        }
-        else if let Some(token) = comment::continue_comment(doc.text(), cursor_line, line_comment_tokens) {
+        } else if let Some(token) =
+            comment::continue_comment(doc.text(), cursor_line, line_comment_tokens)
+        {
             text.push_str(token);
             text.push(' ');
-        }
-        else if let Some(ref block_comment_tokens) = lang_config.block_comment_tokens {
+        } else if let Some(ref block_comment_tokens) = lang_config.block_comment_tokens {
             // FIXME: this doesn't work for the following lines of a comment start.
             // FIXME: this is too indented in some cases.
-            if comment::continue_comment(doc.text(), cursor_line, &[block_comment_tokens.start.clone()]).is_some() {
+            if comment::continue_comment(
+                doc.text(),
+                cursor_line,
+                &[block_comment_tokens.start.clone()],
+            )
+            .is_some()
+            {
                 text.push(' ');
                 text.push_str(&block_comment_tokens.middle);
                 text.push(' ');
@@ -2806,7 +2824,7 @@ pub mod insert {
                 text.push_str(doc.line_ending.as_str());
                 text.push_str(&indent);
 
-                handle_comment_continue(&doc, range, &mut text, current_line, false);
+                handle_comment_continue(doc, range, &mut text, current_line, false);
 
                 pos + offs + text.chars().count()
             };

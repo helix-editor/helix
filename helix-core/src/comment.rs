@@ -6,7 +6,9 @@
 use tree_sitter::QueryCursor;
 
 use crate::{
-    find_first_non_whitespace_char, Change, Rope, RopeSlice, Selection, Tendril, Transaction, Syntax, syntax::{LanguageConfiguration, CapturedNode}, Range,
+    find_first_non_whitespace_char,
+    syntax::{CapturedNode, LanguageConfiguration},
+    Change, Range, Rope, RopeSlice, Selection, Syntax, Tendril, Transaction,
 };
 use std::borrow::Cow;
 
@@ -124,8 +126,16 @@ pub fn continue_comment<'a>(doc: &Rope, line: usize, tokens: &'a [String]) -> Op
     result
 }
 
-pub fn continue_block_comment<'a>(doc: &Rope, syntax: Option<&Syntax>, lang_config: &'a LanguageConfiguration, range: &Range, open_below: bool) -> Option<&'a str> {
-    if let Some((doc_syntax, block_comment_tokens)) = syntax.zip(lang_config.block_comment_tokens.as_ref()) {
+pub fn continue_block_comment<'a>(
+    doc: &Rope,
+    syntax: Option<&Syntax>,
+    lang_config: &'a LanguageConfiguration,
+    range: &Range,
+    open_below: bool,
+) -> Option<&'a str> {
+    if let Some((doc_syntax, block_comment_tokens)) =
+        syntax.zip(lang_config.block_comment_tokens.as_ref())
+    {
         let slice_tree = doc_syntax.tree().root_node();
         let slice = doc.slice(..);
         let line_pos = slice.char_to_line(range.cursor(slice));
@@ -143,13 +153,9 @@ pub fn continue_block_comment<'a>(doc: &Rope, syntax: Option<&Syntax>, lang_conf
         };
 
         {
-            let nodes = lang_config.textobject_query()
-                .and_then(|query| query.capture_nodes_any(
-                        &["comment.block.around"],
-                        slice_tree,
-                        slice,
-                        &mut cursor,
-                ));
+            let nodes = lang_config.textobject_query().and_then(|query| {
+                query.capture_nodes_any(&["comment.block.around"], slice_tree, slice, &mut cursor)
+            });
             if let Some(nodes) = nodes {
                 for node in nodes {
                     found_block_comments = true;
@@ -165,23 +171,22 @@ pub fn continue_block_comment<'a>(doc: &Rope, syntax: Option<&Syntax>, lang_conf
         // FIXME: this doesn't take into account that a line comment followed by a block comment
         // counts as only one comment object.
         if !found_block_comments {
-            let nodes = lang_config.textobject_query()
-                .and_then(|query| query.capture_nodes_any(
-                    &["comment.around"],
-                    slice_tree,
-                    slice,
-                    &mut cursor,
-                ));
+            let nodes = lang_config.textobject_query().and_then(|query| {
+                query.capture_nodes_any(&["comment.around"], slice_tree, slice, &mut cursor)
+            });
             if let Some(nodes) = nodes {
                 for node in nodes {
                     let node_start = doc.byte_to_char(node.start_byte());
                     let node_end = doc.byte_to_char(node.end_byte());
                     let start_token_len = block_comment_tokens.start.len();
                     let end_token_len = block_comment_tokens.end.len();
-                    if doc.len_chars() > node_start + start_token_len && doc.len_chars() > node_end {
+                    if doc.len_chars() > node_start + start_token_len && doc.len_chars() > node_end
+                    {
                         let comment_start = doc.slice(node_start..node_start + start_token_len);
                         let comment_end = doc.slice(node_end - end_token_len..node_end);
-                        if comment_start == block_comment_tokens.start && comment_end == block_comment_tokens.end {
+                        if comment_start == block_comment_tokens.start
+                            && comment_end == block_comment_tokens.end
+                        {
                             // We're in a block comment.
                             if should_insert_comment_middle(node) {
                                 return Some(&block_comment_tokens.middle);
