@@ -748,7 +748,7 @@ source = { git = "https://github.com/theHamsta/tree-sitter-glsl", rev = "88408ff
 [[language]]
 name = "perl"
 scope = "source.perl"
-file-types = ["pl", "pm"]
+file-types = ["pl", "pm", "t"]
 shebangs = ["perl"]
 roots = []
 comment-token = "#"
