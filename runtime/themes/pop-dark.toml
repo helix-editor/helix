@@ -55,9 +55,6 @@ namespace = { fg = 'orangeL' }
 'constant.character' = { fg = 'greenS' }
 'constant.character.escape' = { fg = 'blueL' }
 'constant.numeric' = { fg = 'redH' }
-'constant.number' = { bg = 'blueH' }
-'constant.number.integer' = { fg = 'orangeS' }
-'constant.number.float' = { fg = 'orangeS' }
 'string' = { fg = 'greenN' }
 'string.regexp' = { fg = 'blueL' }
 'string.special' = { fg = 'orangeW' }
