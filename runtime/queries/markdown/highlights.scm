@@ -35,9 +35,12 @@
   (list_marker_plus)
   (list_marker_minus)
   (list_marker_star)
+] @markup.list.numbered
+
+[
   (list_marker_dot)
   (list_marker_parenthesis)
-] @punctuation.special
+] @markup.list.unnumbered
 
 [
   (backslash_escape)
