@@ -303,7 +303,7 @@ source = { git = "https://github.com/omertuc/tree-sitter-go-work", rev = "6dd9dd
 name = "javascript"
 scope = "source.js"
 injection-regex = "^(js|javascript)$"
-file-types = ["js", "jsx", "mjs"]
+file-types = ["js", "jsx", "mjs", "cjs"]
 shebangs = ["node"]
 roots = []
 comment-token = "//"
