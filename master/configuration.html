@@ -211,14 +211,14 @@ available, which is not defined by default.</p>
 <tr><td><code>max-depth</code></td><td>Set with an integer value for maximum depth to recurse.</td><td>Defaults to <code>None</code>.</td></tr>
 </tbody></table>
 <h3 id="editorauto-pairs-section"><a class="header" href="#editorauto-pairs-section"><code>[editor.auto-pairs]</code> Section</a></h3>
-<p>Enable automatic insertion of pairs to parentheses, brackets, etc. Can be
-a simple boolean value, or a specific mapping of pairs of single characters.</p>
-<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>false</code></td><td>Completely disable auto pairing, regardless of language-specific settings</td></tr>
-<tr><td><code>true</code></td><td>Use the default pairs: <code>(){}[]''&quot;&quot;``</code></td></tr>
-<tr><td>Mapping of pairs</td><td>e.g. <code>{ &quot;(&quot; =  &quot;)&quot;, &quot;{&quot; = &quot;}&quot;, ... }</code></td></tr>
-</tbody></table>
-<p>Example</p>
+<p>Enables automatic insertion of pairs to parentheses, brackets, etc. Can be a
+simple boolean value, or a specific mapping of pairs of single characters.</p>
+<p>To disable auto-pairs altogether, set <code>auto-pairs</code> to <code>false</code>:</p>
+<pre><code class="language-toml">[editor]
+auto-pairs = false # defaults to `true`
+</code></pre>
+<p>The default pairs are <code>(){}[]''&quot;&quot;``</code>, but these can be customized by
+setting <code>auto-pairs</code> to a TOML table:</p>
 <pre><code class="language-toml">[editor.auto-pairs]
 '(' = ')'
 '{' = '}'
