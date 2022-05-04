@@ -330,7 +330,7 @@ impl Prompt {
     pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
         let prompt_color = theme.get("ui.text");
-        let completion_color = theme.get("ui.statusline");
+        let completion_color = theme.get("ui.menu");
         let selected_color = theme.get("ui.menu.selected");
         // completion
 
@@ -358,7 +358,7 @@ impl Prompt {
 
         if !self.completion.is_empty() {
             let area = completion_area;
-            let background = theme.get("ui.statusline");
+            let background = theme.get("ui.menu");
 
             let items = height as usize * cols as usize;
 
