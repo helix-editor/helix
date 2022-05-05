@@ -2777,14 +2777,14 @@ pub mod insert {
         let text = doc.text().slice(..);
 
         let contents = doc.text();
-        let selection = doc.selection(view.id).clone().cursors(text);
+        let selection = doc.selection(view.id).clone();
         let mut ranges = SmallVec::with_capacity(selection.len());
 
         // TODO: this is annoying, but we need to do it to properly calculate pos after edits
-        let mut offs = 0;
+        let mut global_offs = 0;
 
         let mut transaction = Transaction::change_by_selection(contents, &selection, |range| {
-            let pos = range.head;
+            let pos = range.cursor(text);
 
             let prev = if pos == 0 {
                 ' '
@@ -2814,27 +2814,41 @@ pub mod insert {
                 .and_then(|pair| if pair.close == curr { Some(pair) } else { None })
                 .is_some();
 
-            let new_head_pos = if on_auto_pair {
+            let local_offs = if on_auto_pair {
                 let inner_indent = indent.clone() + doc.indent_style.as_str();
                 text.reserve_exact(2 + indent.len() + inner_indent.len());
                 text.push_str(doc.line_ending.as_str());
                 text.push_str(&inner_indent);
-                let new_head_pos = pos + offs + text.chars().count();
+                let local_offs = text.chars().count();
                 text.push_str(doc.line_ending.as_str());
                 text.push_str(&indent);
-                new_head_pos
+                local_offs
             } else {
                 text.reserve_exact(1 + indent.len());
                 text.push_str(doc.line_ending.as_str());
                 text.push_str(&indent);
-                pos + offs + text.chars().count()
+                text.chars().count()
+            };
+
+            let new_range = if doc.restore_cursor {
+                // when appending, extend the range by local_offs
+                Range::new(
+                    range.anchor + global_offs,
+                    range.head + local_offs + global_offs,
+                )
+            } else {
+                // when inserting, slide the range by local_offs
+                Range::new(
+                    range.anchor + local_offs + global_offs,
+                    range.head + local_offs + global_offs,
+                )
             };
 
             // TODO: range replace or extend
             // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
             // can be used with cx.mode to do replace or extend on most changes
-            ranges.push(Range::new(new_head_pos, new_head_pos));
-            offs += text.chars().count();
+            ranges.push(new_range);
+            global_offs += text.chars().count();
 
             (pos, pos, Some(text.into()))
         });
