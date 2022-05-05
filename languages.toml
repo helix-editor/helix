@@ -973,7 +973,7 @@ source = { git = "https://github.com/mtoohey31/tree-sitter-gitattributes", rev =
 name = "git-ignore"
 scope = "source.gitignore"
 roots = []
-file-types = [".gitignore"]
+file-types = [".gitignore", ".gitignore_global"]
 injection-regex = "git-ignore"
 comment-token = "#"
 grammar = "gitignore"
