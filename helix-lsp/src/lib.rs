@@ -360,6 +360,7 @@ impl Registry {
                     language_config.config.clone(),
                     &language_config.roots,
                     id,
+                    config.timeout,
                 )?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));
                 let client = Arc::new(client);
