@@ -1329,3 +1329,16 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "cpon"
 source = { git = "https://github.com/fvacek/tree-sitter-cpon", rev = "11ba46a4de3eb86934003133099c9963a60f9687" }
+
+[[language]]
+name = "odin"
+auto-format = false
+scope = "source.odin"
+file-types = ["odin"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "  " }
+
+[[grammar]]
+name = "odin"
+source = { git = "https://github.com/MineBill/tree-sitter-odin", rev = "da885f4a387f169b9b69fe0968259ee257a8f69a" }
