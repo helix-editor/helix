@@ -700,7 +700,7 @@ impl Editor {
                 let view_id = view!(self).id;
                 let doc = self.documents.get_mut(&id).unwrap();
                 if doc.selections().is_empty() {
-                    doc.selections.insert(view_id, Selection::point(0));
+                    doc.set_selection(view_id, Selection::point(0));
                 }
                 return;
             }
@@ -716,7 +716,7 @@ impl Editor {
                 );
                 // initialize selection for view
                 let doc = self.documents.get_mut(&id).unwrap();
-                doc.selections.insert(view_id, Selection::point(0));
+                doc.set_selection(view_id, Selection::point(0));
             }
         }
 
@@ -851,7 +851,7 @@ impl Editor {
             let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
             let doc = self.documents.get_mut(&doc_id).unwrap();
-            doc.selections.insert(view_id, Selection::point(0));
+            doc.set_selection(view_id, Selection::point(0));
         }
 
         self._refresh();
