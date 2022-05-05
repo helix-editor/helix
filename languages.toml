@@ -980,7 +980,7 @@ grammar = "gitignore"
 
 [[grammar]]
 name = "gitignore"
-source = { git = "https://github.com/shunsambongi/tree-sitter-gitignore", rev = "2e4cd389d2e187864569cf8fa8098a7e3d03bad6" }
+source = { git = "https://github.com/shunsambongi/tree-sitter-gitignore", rev = "f4685bf11ac466dd278449bcfe5fd014e94aa504" }
 
 [[language]]
 name = "graphql"
