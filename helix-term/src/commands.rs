@@ -3614,80 +3614,61 @@ pub fn completion(cx: &mut Context) {
 }
 
 fn completion_sources(cx: &mut Context) {
-    use helix_lsp::lsp;
     let (view, doc) = current_ref!(cx.editor);
-
     let text = doc.text().slice(..);
     let cursor = doc.selection(view.id).primary().cursor(text);
+    let callback = Box::pin(async {
+        let trigger_offset = cursor;
 
-    let trigger_offset = cursor;
+        // TODO: trigger_offset should be the cursor offset but we also need a starting offset from where we want to apply
+        // completion filtering. For example logger.te| should filter the initial suggestion list with "te".
 
-    // TODO: trigger_offset should be the cursor offset but we also need a starting offset from where we want to apply
-    // completion filtering. For example logger.te| should filter the initial suggestion list with "te".
+        use helix_core::chars;
+        let mut iter = text.chars_at(cursor);
+        iter.reverse();
+        let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
+        let start_offset = cursor.saturating_sub(offset);
+        let prefix = text.slice(start_offset..cursor).to_string();
 
-    use helix_core::chars;
-    let mut iter = text.chars_at(cursor);
-    iter.reverse();
-    let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
-    let start_offset = cursor.saturating_sub(offset);
-    let prefix = text.slice(start_offset..cursor).to_string();
+        let candidates = text
+            .chunks()
+            .flat_map(|c| c.split(|c: char| !c.is_alphanumeric()));
+        let call: job::Callback =
+            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                let doc = doc!(editor);
+                if doc.mode() != Mode::Insert {
+                    // we're not in insert mode anymore
+                    return;
+                }
 
-    let text_str = text.to_string();
-    cx.callback(
-        async move {
-            let candidates: std::collections::HashSet<_> =
-                text_str.split(|c: char| !c.is_alphanumeric()).collect();
-            helix_lsp::Result::Ok(serde_json::Value::Array(
-                candidates
-                    .into_iter()
-                    .map(|r| serde_json::json!({"label": r.to_string()}))
-                    .collect(),
-            ))
-        },
-        move |editor, compositor, response: Option<lsp::CompletionResponse>| {
-            let doc = doc!(editor);
-            if doc.mode() != Mode::Insert {
-                // we're not in insert mode anymore
-                return;
-            }
-
-            let mut items = match response {
-                Some(lsp::CompletionResponse::Array(items)) => items,
-                // TODO: do something with is_incomplete
-                Some(lsp::CompletionResponse::List(lsp::CompletionList {
-                    is_incomplete: _is_incomplete,
+                let items = if !prefix.is_empty() {
+                    candidates
+                        .into_iter()
+                        .filter(|item| item.starts_with(&prefix) && item.len() != prefix.len())
+                        .take(20)
+                        .map(|i| helix_lsp::lsp::CompletionItem::new_simple(i.into(), "".into()))
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+                if items.is_empty() {
+                    // editor.set_error("No completion available");
+                    return;
+                }
+                let size = compositor.size();
+                let ui = compositor.find::<ui::EditorView>().unwrap();
+                ui.set_completion(
+                    editor,
                     items,
-                })) => items,
-                None => Vec::new(),
-            };
-
-            if !prefix.is_empty() {
-                items = items
-                    .into_iter()
-                    .filter(|item| {
-                        let item_text = item.filter_text.as_ref().unwrap_or(&item.label);
-
-                        item_text.starts_with(&prefix) && item_text.len() != prefix.len()
-                    })
-                    .collect();
-            }
-
-            if items.is_empty() {
-                // editor.set_error("No completion available");
-                return;
-            }
-            let size = compositor.size();
-            let ui = compositor.find::<ui::EditorView>().unwrap();
-            ui.set_completion(
-                editor,
-                items,
-                helix_lsp::OffsetEncoding::Utf8,
-                start_offset,
-                trigger_offset,
-                size,
-            );
-        },
-    );
+                    helix_lsp::OffsetEncoding::Utf8,
+                    start_offset,
+                    trigger_offset,
+                    size,
+                );
+            });
+        Ok(call)
+    });
+    cx.jobs.callback(callback);
 }
 
 // comments
