@@ -1,8 +1,10 @@
 ; Properties
 ;-----------
 
-(bare_key) @variable.other.member
-(quoted_key) @string
+[
+  (bare_key)
+  (quoted_key)
+] @variable.other.member
 
 ; Literals
 ;---------
