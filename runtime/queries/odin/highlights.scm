@@ -19,7 +19,7 @@
 ; ; Identifiers
 
 (type_identifier) @type
-(field_identifier) @property
+(field_identifier) @variable.other.member
 (identifier) @variable
 
 (const_declaration
@@ -122,19 +122,20 @@
   (rune_literal)
 ] @string
 
-(escape_sequence) @escape
+(escape_sequence) @constant.character.escape
 
-[
-  (int_literal)
-  (float_literal)
-  (imaginary_literal)
-] @number
+(int_literal) @constant.numeric.integer
+(float_literal) @constant.numeric.float
+(imaginary_literal) @constant.numeric
 
 [
   (true)
   (false)
+] @constant.builtin.boolean
+
+[
   (nil)
   (undefined)
-] @constant
+] @constant.builtin
 
-(comment) @comment
+(comment) @comment.line
