@@ -64,6 +64,7 @@ label = "honey"
 "ui.cursor" = { modifiers = ["reversed"] }
 "ui.highlight" = { bg = "bossanova" }
 
+"ui.menu" = { fg = "lilac", bg = "revolver" }
 "ui.menu.selected" = { fg = "revolver", bg = "white" }
 
 diagnostic = { modifiers = ["underlined"] }
