@@ -733,12 +733,19 @@ impl EditorView {
             base_style,
         ));
 
+        // Encoding
         let enc = doc.encoding();
         if enc != encoding::UTF_8 {
             right_side_text
                 .0
                 .push(Span::styled(format!(" {} ", enc.name()), base_style));
         }
+
+        // File type
+        let file_type = doc.language_id().unwrap_or("text");
+        right_side_text
+            .0
+            .push(Span::styled(format!(" {} ", file_type), base_style));
 
         // Render to the statusline.
         surface.set_spans(
