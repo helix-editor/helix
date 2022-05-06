@@ -3615,9 +3615,9 @@ pub fn completion(cx: &mut Context) {
 
 fn completion_sources(cx: &mut Context) {
     let (view, doc) = current_ref!(cx.editor);
-    let text = doc.text().slice(..);
-    let cursor = doc.selection(view.id).primary().cursor(text);
-    let callback = Box::pin(async {
+    let text = doc.text().clone();
+    let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
+    let callback = async move {
         let trigger_offset = cursor;
 
         // TODO: trigger_offset should be the cursor offset but we also need a starting offset from where we want to apply
@@ -3630,9 +3630,17 @@ fn completion_sources(cx: &mut Context) {
         let start_offset = cursor.saturating_sub(offset);
         let prefix = text.slice(start_offset..cursor).to_string();
 
-        let candidates = text
+        let mut candidates = std::collections::HashSet::with_capacity(20);
+        for item in text
             .chunks()
-            .flat_map(|c| c.split(|c: char| !c.is_alphanumeric()));
+            .flat_map(|c| c.split(|c: char| !c.is_alphanumeric()))
+            .filter(|item| item.starts_with(&prefix) && item.len() != prefix.len())
+        {
+            candidates.insert(item.to_string());
+            if candidates.len() == 20 {
+                break;
+            }
+        }
         let call: job::Callback =
             Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
                 let doc = doc!(editor);
@@ -3644,9 +3652,7 @@ fn completion_sources(cx: &mut Context) {
                 let items = if !prefix.is_empty() {
                     candidates
                         .into_iter()
-                        .filter(|item| item.starts_with(&prefix) && item.len() != prefix.len())
-                        .take(20)
-                        .map(|i| helix_lsp::lsp::CompletionItem::new_simple(i.into(), "".into()))
+                        .map(|i| helix_lsp::lsp::CompletionItem::new_simple(i, "".into()))
                         .collect()
                 } else {
                     Vec::new()
@@ -3667,7 +3673,7 @@ fn completion_sources(cx: &mut Context) {
                 );
             });
         Ok(call)
-    });
+    };
     cx.jobs.callback(callback);
 }
 
