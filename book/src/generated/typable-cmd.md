@@ -55,11 +55,13 @@
 | `:tutor` | Open the tutorial. |
 | `:goto`, `:g` | Go to line number. |
 | `:set-language`, `:lang` | Set the language of current buffer. |
-| `:set-option`, `:set` | Set a config option at runtime. |
+| `:set-option`, `:set` | Set a config option at runtime.<br>For example to disable smart case search, use `:set search.smart-case false`. |
 | `:get-option`, `:get` | Get the current value of a config option. |
 | `:sort` | Sort ranges in selection. |
 | `:rsort` | Sort ranges in selection in reverse order. |
+| `:reflow` | Hard-wrap the current selection of lines to a given width. |
 | `:tree-sitter-subtree`, `:ts-subtree` | Display tree sitter subtree under cursor, primarily for debugging queries. |
 | `:config-reload` | Refreshes helix's config. |
 | `:config-open` | Open the helix config.toml file. |
 | `:pipe` | Pipe each selection to the shell command. |
+| `:run-shell-command`, `:sh` | Run a shell command |

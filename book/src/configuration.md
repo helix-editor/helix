@@ -39,6 +39,7 @@ hidden = false
 | `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers. | `absolute` |
 | `gutters` | Gutters to display: Available are `diagnostics` and `line-numbers`, note that `diagnostics` also includes other features like breakpoints | `["diagnostics", "line-numbers"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
+| `auto-format` | Enable automatic formatting on save. | `true` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
 | `auto-info` | Whether to display infoboxes | `true` |
@@ -89,16 +90,18 @@ available, which is not defined by default.
 
 ### `[editor.auto-pairs]` Section
 
-Enable automatic insertion of pairs to parentheses, brackets, etc. Can be
-a simple boolean value, or a specific mapping of pairs of single characters.
+Enables automatic insertion of pairs to parentheses, brackets, etc. Can be a
+simple boolean value, or a specific mapping of pairs of single characters.
 
-| Key | Description |
-| --- | ----------- |
-| `false` | Completely disable auto pairing, regardless of language-specific settings
-| `true` | Use the default pairs: <code>(){}[]''""``</code>
-| Mapping of pairs | e.g. `{ "(" =  ")", "{" = "}", ... }`
+To disable auto-pairs altogether, set `auto-pairs` to `false`:
 
-Example
+```toml
+[editor]
+auto-pairs = false # defaults to `true`
+```
+
+The default pairs are <code>(){}[]''""``</code>, but these can be customized by
+setting `auto-pairs` to a TOML table:
 
 ```toml
 [editor.auto-pairs]
@@ -145,7 +148,7 @@ Options for rendering whitespace with visible characters. Use `:set whitespace.r
 | Key | Description | Default |
 |-----|-------------|---------|
 | `render` | Whether to render whitespace. May either be `"all"` or `"none"`, or a table with sub-keys `space`, `tab`, and `newline`. | `"none"` |
-| `characters` | Literal characters to use when rendering whitespace. Sub-keys may be any of `tab`, `space` or `newline` | See example below |
+| `characters` | Literal characters to use when rendering whitespace. Sub-keys may be any of `tab`, `space`, `nbsp` or `newline` | See example below |
 
 Example
 
@@ -160,6 +163,7 @@ newline = "none"
 
 [editor.whitespace.characters]
 space = "·"
+nbsp = "⍽"
 tab = "→"
 newline = "⏎"
 ```

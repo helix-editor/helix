@@ -3,11 +3,14 @@
 | bash | ✓ |  |  | `bash-language-server` |
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ |  |  | `OmniSharp` |
+| cairo | ✓ |  |  |  |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
+| cpon | ✓ |  | ✓ |  |
 | cpp | ✓ | ✓ | ✓ | `clangd` |
 | css | ✓ |  |  | `vscode-css-language-server` |
 | dart | ✓ |  | ✓ | `dart` |
+| devicetree | ✓ |  | ✓ |  |
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |
@@ -17,9 +20,11 @@
 | erlang | ✓ |  |  | `erlang_ls` |
 | fish | ✓ | ✓ | ✓ |  |
 | gdscript | ✓ |  | ✓ |  |
+| git-attributes | ✓ |  |  |  |
 | git-commit | ✓ |  |  |  |
 | git-config | ✓ |  |  |  |
 | git-diff | ✓ |  |  |  |
+| git-ignore | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |
 | gleam | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |
@@ -54,6 +59,7 @@
 | nu | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |
+| odin | ✓ |  |  |  |
 | org | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |
 | php | ✓ | ✓ | ✓ | `intelephense` |

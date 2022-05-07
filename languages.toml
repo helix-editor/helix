@@ -303,7 +303,7 @@ source = { git = "https://github.com/omertuc/tree-sitter-go-work", rev = "6dd9dd
 name = "javascript"
 scope = "source.js"
 injection-regex = "^(js|javascript)$"
-file-types = ["js", "jsx", "mjs"]
+file-types = ["js", "jsx", "mjs", "cjs"]
 shebangs = ["node"]
 roots = []
 comment-token = "//"
@@ -424,7 +424,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "nickel"
-source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "85348774ccf7624fac72703b2264d18b6f572be6" }
+source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "c4dd1420b6cfeb6103d38eb1ce5195eb81197edc" }
 
 [[language]]
 name = "nix"
@@ -748,7 +748,7 @@ source = { git = "https://github.com/theHamsta/tree-sitter-glsl", rev = "88408ff
 [[language]]
 name = "perl"
 scope = "source.perl"
-file-types = ["pl", "pm"]
+file-types = ["pl", "pm", "t"]
 shebangs = ["perl"]
 roots = []
 comment-token = "#"
@@ -955,6 +955,32 @@ indent = { tab-width = 4, unit = "\t" }
 [[grammar]]
 name = "git-config"
 source = { git = "https://github.com/the-mikedavis/tree-sitter-git-config", rev = "0e4f0baf90b57e5aeb62dcdbf03062c6315d43ea" }
+
+[[language]]
+name = "git-attributes"
+scope = "source.gitattributes"
+roots = []
+file-types = [".gitattributes"]
+injection-regex = "git-attributes"
+comment-token = "#"
+grammar = "gitattributes"
+
+[[grammar]]
+name = "gitattributes"
+source = { git = "https://github.com/mtoohey31/tree-sitter-gitattributes", rev = "3dd50808e3096f93dccd5e9dc7dc3dba2eb12dc4" }
+
+[[language]]
+name = "git-ignore"
+scope = "source.gitignore"
+roots = []
+file-types = [".gitignore", ".gitignore_global"]
+injection-regex = "git-ignore"
+comment-token = "#"
+grammar = "gitignore"
+
+[[grammar]]
+name = "gitignore"
+source = { git = "https://github.com/shunsambongi/tree-sitter-gitignore", rev = "f4685bf11ac466dd278449bcfe5fd014e94aa504" }
 
 [[language]]
 name = "graphql"
@@ -1263,3 +1289,56 @@ indent = { tab-width = 4, unit = "\t" }
 [[grammar]]
 name = "hare"
 source = { git = "https://git.sr.ht/~ecmma/tree-sitter-hare", rev = "bc26a6a949f2e0d98b7bfc437d459b250900a165" }
+
+[[language]]
+name = "devicetree"
+scope = "source.devicetree"
+injection-regex = "(dtsi?|devicetree|fdt)"
+file-types = ["dts", "dtsi"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "\t" }
+
+[[grammar]]
+name = "devicetree"
+source = { git = "https://github.com/joelspadin/tree-sitter-devicetree", rev = "877adbfa0174d25894c40fa75ad52d4515a36368" }
+
+[[language]]
+name = "cairo"
+scope = "source.cairo"
+injection-regex = "cairo"
+file-types = ["cairo"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "cairo"
+source = { git = "https://github.com/archseer/tree-sitter-cairo", rev = "5155c6eb40db6d437f4fa41b8bcd8890a1c91716" }
+
+[[language]]
+name = "cpon"
+scope = "scope.cpon"
+injection-regex = "^cpon$"
+file-types = ["cpon", "cp"]
+roots = []
+auto-format = true
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "cpon"
+source = { git = "https://github.com/fvacek/tree-sitter-cpon", rev = "cc6a22b1fa8917c2d041af399f19f34a0a9d94ff" }
+
+[[language]]
+name = "odin"
+auto-format = false
+scope = "source.odin"
+file-types = ["odin"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "  " }
+
+[[grammar]]
+name = "odin"
+source = { git = "https://github.com/MineBill/tree-sitter-odin", rev = "da885f4a387f169b9b69fe0968259ee257a8f69a" }

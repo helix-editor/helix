@@ -195,6 +195,7 @@ fn write_impl(
     path: Option<&Cow<str>>,
     force: bool,
 ) -> anyhow::Result<()> {
+    let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
     let doc = doc_mut!(cx.editor);
 
@@ -205,17 +206,21 @@ fn write_impl(
     if doc.path().is_none() {
         bail!("cannot write a buffer without a filename");
     }
-    let fmt = doc.auto_format().map(|fmt| {
-        let shared = fmt.shared();
-        let callback = make_format_callback(
-            doc.id(),
-            doc.version(),
-            Modified::SetUnmodified,
-            shared.clone(),
-        );
-        jobs.callback(callback);
-        shared
-    });
+    let fmt = if auto_format {
+        doc.auto_format().map(|fmt| {
+            let shared = fmt.shared();
+            let callback = make_format_callback(
+                doc.id(),
+                doc.version(),
+                Modified::SetUnmodified,
+                shared.clone(),
+            );
+            jobs.callback(callback);
+            shared
+        })
+    } else {
+        None
+    };
     let future = doc.format_and_save(fmt, force);
     cx.jobs.add(Job::new(future).wait_before_exiting());
 
@@ -454,6 +459,7 @@ fn write_all_impl(
     force: bool,
 ) -> anyhow::Result<()> {
     let mut errors = String::new();
+    let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
     // save all documents
     for doc in &mut cx.editor.documents.values_mut() {
@@ -466,17 +472,21 @@ fn write_all_impl(
             continue;
         }
 
-        let fmt = doc.auto_format().map(|fmt| {
-            let shared = fmt.shared();
-            let callback = make_format_callback(
-                doc.id(),
-                doc.version(),
-                Modified::SetUnmodified,
-                shared.clone(),
-            );
-            jobs.callback(callback);
-            shared
-        });
+        let fmt = if auto_format {
+            doc.auto_format().map(|fmt| {
+                let shared = fmt.shared();
+                let callback = make_format_callback(
+                    doc.id(),
+                    doc.version(),
+                    Modified::SetUnmodified,
+                    shared.clone(),
+                );
+                jobs.callback(callback);
+                shared
+            })
+        } else {
+            None
+        };
         let future = doc.format_and_save(fmt, force);
         jobs.add(Job::new(future).wait_before_exiting());
     }
@@ -1051,6 +1061,45 @@ fn sort_impl(
     Ok(())
 }
 
+fn reflow(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    let (view, doc) = current!(cx.editor);
+
+    const DEFAULT_MAX_LEN: usize = 79;
+
+    // Find the max line length by checking the following sources in order:
+    //   - The passed argument in `args`
+    //   - The configured max_line_len for this language in languages.toml
+    //   - The const default we set above
+    let max_line_len: usize = args
+        .get(0)
+        .map(|num| num.parse::<usize>())
+        .transpose()?
+        .or_else(|| {
+            doc.language_config()
+                .and_then(|config| config.max_line_length)
+        })
+        .unwrap_or(DEFAULT_MAX_LEN);
+
+    let rope = doc.text();
+
+    let selection = doc.selection(view.id);
+    let transaction = Transaction::change_by_selection(rope, selection, |range| {
+        let fragment = range.fragment(rope.slice(..));
+        let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, max_line_len);
+
+        (range.from(), range.to(), Some(reflowed_text))
+    });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+
+    Ok(())
+}
+
 fn tree_sitter_subtree(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1113,6 +1162,43 @@ fn pipe(
 ) -> anyhow::Result<()> {
     ensure!(!args.is_empty(), "Shell command required");
     shell(cx, &args.join(" "), &ShellBehavior::Replace);
+    Ok(())
+}
+
+fn run_shell_command(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    let shell = &cx.editor.config().shell;
+    let (output, success) = shell_impl(shell, &args.join(" "), None)?;
+    if success {
+        cx.editor.set_status("Command succeed");
+    } else {
+        cx.editor.set_error("Command failed");
+    }
+
+    if !output.is_empty() {
+        let callback = async move {
+            let call: job::Callback =
+                Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                    let contents = ui::Markdown::new(
+                        format!("```sh\n{}\n```", output),
+                        editor.syn_loader.clone(),
+                    );
+                    let mut popup = Popup::new("shell", contents);
+                    popup.set_position(Some(helix_core::Position::new(
+                        editor.cursor().0.unwrap_or_default().row,
+                        2,
+                    )));
+                    compositor.replace_or_push("shell", popup);
+                });
+            Ok(call)
+        };
+
+        cx.jobs.callback(callback);
+    }
+
     Ok(())
 }
 
@@ -1508,7 +1594,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "set-option",
             aliases: &["set"],
-            doc: "Set a config option at runtime.",
+            doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
             fun: set_option,
             completer: Some(completers::setting),
         },
@@ -1531,6 +1617,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Sort ranges in selection in reverse order.",
             fun: sort_reverse,
+            completer: None,
+        },
+        TypableCommand {
+            name: "reflow",
+            aliases: &[],
+            doc: "Hard-wrap the current selection of lines to a given width.",
+            fun: reflow,
             completer: None,
         },
         TypableCommand {
@@ -1560,6 +1653,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Pipe each selection to the shell command.",
             fun: pipe,
             completer: None,
+        },
+        TypableCommand {
+            name: "run-shell-command",
+            aliases: &["sh"],
+            doc: "Run a shell command",
+            fun: run_shell_command,
+            completer: Some(completers::directory),
         },
     ];
 

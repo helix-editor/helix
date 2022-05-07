@@ -22,6 +22,7 @@
 (record_operand (atom (ident) @variable))
 (let_expr
   "let" @keyword
+  "rec"? @keyword
   pat: (pattern
     (ident) @variable
   )

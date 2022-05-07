@@ -321,6 +321,7 @@ impl MappableCommand {
         redo, "Redo change",
         earlier, "Move backward in history",
         later, "Move forward in history",
+        commit_undo_checkpoint, "Commit changes to a new checkpoint",
         yank, "Yank selection",
         yank_joined_to_clipboard, "Join and yank selections to clipboard",
         yank_main_selection_to_clipboard, "Yank main selection to clipboard",
@@ -2220,7 +2221,7 @@ pub fn command_palette(cx: &mut Context) {
                     command.execute(&mut ctx);
                 },
             );
-            compositor.push(Box::new(picker));
+            compositor.push(Box::new(overlayed(picker)));
         },
     ));
 }
@@ -3001,6 +3002,11 @@ fn later(cx: &mut Context) {
             break;
         }
     }
+}
+
+fn commit_undo_checkpoint(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    doc.append_changes_to_history(view.id);
 }
 
 // Yank / Paste
@@ -4042,14 +4048,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'a' => textobject_treesitter("parameter", range),
                         'o' => textobject_treesitter("comment", range),
                         'p' => textobject::textobject_paragraph(text, range, objtype, count),
-                        'm' => {
-                            let ch = text.char(range.cursor(text));
-                            if !ch.is_ascii_alphanumeric() {
-                                textobject::textobject_surround(text, range, objtype, ch, count)
-                            } else {
-                                range
-                            }
-                        }
+                        'm' => textobject::textobject_surround_closest(text, range, objtype, count),
                         // TODO: cancel new ranges if inconsistent surround matches across lines
                         ch if !ch.is_ascii_alphanumeric() => {
                             textobject::textobject_surround(text, range, objtype, ch, count)
@@ -4120,15 +4119,16 @@ fn surround_add(cx: &mut Context) {
 fn surround_replace(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
-        let from = match event.char() {
-            Some(from) => from,
+        let surround_ch = match event.char() {
+            Some('m') => None, // m selects the closest surround pair
+            Some(ch) => Some(ch),
             None => return,
         };
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
 
-        let change_pos = match surround::get_surround_pos(text, selection, from, count) {
+        let change_pos = match surround::get_surround_pos(text, selection, surround_ch, count) {
             Ok(c) => c,
             Err(err) => {
                 cx.editor.set_error(err.to_string());
@@ -4159,15 +4159,16 @@ fn surround_replace(cx: &mut Context) {
 fn surround_delete(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
-        let ch = match event.char() {
-            Some(ch) => ch,
+        let surround_ch = match event.char() {
+            Some('m') => None, // m selects the closest surround pair
+            Some(ch) => Some(ch),
             None => return,
         };
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
 
-        let change_pos = match surround::get_surround_pos(text, selection, ch, count) {
+        let change_pos = match surround::get_surround_pos(text, selection, surround_ch, count) {
             Ok(c) => c,
             Err(err) => {
                 cx.editor.set_error(err.to_string());
