@@ -64,28 +64,78 @@ fn jump_to_location(
     align_view(doc, view, Align::Center);
 }
 
+/// Returns a string showing the symbol nested in its containing symbol if it exists.
+///
+/// # Arguments
+/// * `symbol` - the symbol that we're creating the string for
+///
+/// # Example
+/// If you have something like:
+/// ```
+/// mod foo {
+///     fn bar() {}
+/// }
+/// ```
+/// the result will be: `function  : foo → bar`
+fn get_symbol_string(symbol: &lsp::SymbolInformation) -> String {
+    let kind = match symbol.kind {
+        lsp::SymbolKind::FILE => "file      ",
+        lsp::SymbolKind::MODULE => "module    ",
+        lsp::SymbolKind::NAMESPACE => "namespace ",
+        lsp::SymbolKind::PACKAGE => "package   ",
+        lsp::SymbolKind::CLASS => "class     ",
+        lsp::SymbolKind::METHOD => "method    ",
+        lsp::SymbolKind::PROPERTY => "property  ",
+        lsp::SymbolKind::FIELD => "field     ",
+        lsp::SymbolKind::CONSTRUCTOR => "construct ",
+        lsp::SymbolKind::ENUM => "enum      ",
+        lsp::SymbolKind::INTERFACE => "interface ",
+        lsp::SymbolKind::FUNCTION => "function  ",
+        lsp::SymbolKind::VARIABLE => "variable  ",
+        lsp::SymbolKind::CONSTANT => "constant  ",
+        lsp::SymbolKind::STRING => "string    ",
+        lsp::SymbolKind::NUMBER => "number    ",
+        lsp::SymbolKind::BOOLEAN => "boolean   ",
+        lsp::SymbolKind::ARRAY => "array     ",
+        lsp::SymbolKind::OBJECT => "object    ",
+        lsp::SymbolKind::KEY => "key       ",
+        lsp::SymbolKind::NULL => "null      ",
+        lsp::SymbolKind::ENUM_MEMBER => "enum mem  ",
+        lsp::SymbolKind::STRUCT => "struct    ",
+        lsp::SymbolKind::EVENT => "event     ",
+        lsp::SymbolKind::OPERATOR => "operator  ",
+        lsp::SymbolKind::TYPE_PARAMETER => "type param",
+        _ => "",
+    };
+
+    let prefix = symbol
+        .clone()
+        .container_name
+        .map_or(String::new(), |name| format!("{} → ", name));
+    format!("{}: {}{}", kind, prefix, symbol.name.clone())
+}
+
 fn sym_picker(
     symbols: Vec<lsp::SymbolInformation>,
-    current_path: Option<lsp::Url>,
     offset_encoding: OffsetEncoding,
+    workspace: bool,
 ) -> FilePicker<lsp::SymbolInformation> {
-    // TODO: drop current_path comparison and instead use workspace: bool flag?
-    let current_path2 = current_path.clone();
     FilePicker::new(
         symbols,
         move |symbol| {
-            if current_path.as_ref() == Some(&symbol.location.uri) {
-                symbol.name.as_str().into()
+            let symbol_string = get_symbol_string(symbol);
+            if !workspace {
+                symbol_string.into()
             } else {
                 let path = symbol.location.uri.to_file_path().unwrap();
                 let relative_path = helix_core::path::get_relative_path(path.as_path())
                     .to_string_lossy()
                     .into_owned();
-                format!("{} ({})", &symbol.name, relative_path).into()
+                format!("{} ({})", &symbol_string, relative_path).into()
             }
         },
         move |cx, symbol, action| {
-            if current_path2.as_ref() == Some(&symbol.location.uri) {
+            if !workspace {
                 push_jump(cx.editor);
             } else {
                 let path = symbol.location.uri.to_file_path().unwrap();
@@ -130,7 +180,6 @@ pub fn symbol_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
 
     let language_server = language_server!(cx.editor, doc);
-    let current_url = doc.url();
     let offset_encoding = language_server.offset_encoding();
 
     let future = language_server.document_symbols(doc.identifier());
@@ -153,7 +202,7 @@ pub fn symbol_picker(cx: &mut Context) {
                     }
                 };
 
-                let picker = sym_picker(symbols, current_url, offset_encoding);
+                let picker = sym_picker(symbols, offset_encoding, false);
                 compositor.push(Box::new(overlayed(picker)))
             }
         },
@@ -162,7 +211,6 @@ pub fn symbol_picker(cx: &mut Context) {
 
 pub fn workspace_symbol_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
-    let current_url = doc.url();
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
     let future = language_server.workspace_symbols("".to_string());
@@ -171,7 +219,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         future,
         move |_editor, compositor, response: Option<Vec<lsp::SymbolInformation>>| {
             if let Some(symbols) = response {
-                let picker = sym_picker(symbols, current_url, offset_encoding);
+                let picker = sym_picker(symbols, offset_encoding, true);
                 compositor.push(Box::new(overlayed(picker)))
             }
         },
@@ -265,6 +313,7 @@ pub fn code_action(cx: &mut Context) {
         },
     )
 }
+
 pub fn execute_lsp_command(editor: &mut Editor, cmd: lsp::Command) {
     let doc = doc!(editor);
     let language_server = language_server!(editor, doc);
@@ -442,6 +491,7 @@ pub fn apply_workspace_edit(
         }
     }
 }
+
 fn goto_impl(
     editor: &mut Editor,
     compositor: &mut Compositor,
@@ -607,6 +657,7 @@ pub fn signature_help(cx: &mut Context) {
         },
     );
 }
+
 pub fn hover(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
@@ -656,6 +707,7 @@ pub fn hover(cx: &mut Context) {
         },
     );
 }
+
 pub fn rename_symbol(cx: &mut Context) {
     ui::prompt(
         cx,
