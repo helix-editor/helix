@@ -78,36 +78,8 @@ impl StatusLine {
         // Right side of the status line.
 
         // Diagnostics
-        let diags = doc.diagnostics().iter().fold((0, 0), |mut counts, diag| {
-            use helix_core::diagnostic::Severity;
-            match diag.severity {
-                Some(Severity::Warning) => counts.0 += 1,
-                Some(Severity::Error) | None => counts.1 += 1,
-                _ => {}
-            }
-            counts
-        });
-        let (warnings, errors) = diags;
-
-        for i in 0..2 {
-            let (count, state_element, count_element) = match i {
-                0 => (
-                    warnings,
-                    Self::render_diagnostics_warning_state(&editor.theme),
-                    Self::render_diagnostics_warning_count(warnings),
-                ),
-                1 => (
-                    errors,
-                    Self::render_diagnostics_error_state(&editor.theme),
-                    Self::render_diagnostics_error_count(errors),
-                ),
-                _ => unreachable!(),
-            };
-
-            if count > 0 {
-                Self::append_right(&mut buffer, &base_style, state_element);
-                Self::append_right(&mut buffer, &base_style, count_element);
-            }
+        for diagnostic_element in Self::render_diagnostics(doc, &editor.theme) {
+            Self::append_right(&mut buffer, &base_style, diagnostic_element);
         }
 
         // Selections
@@ -212,6 +184,45 @@ impl StatusLine {
             ),
             style: None,
         };
+    }
+
+    fn render_diagnostics(doc: &Document, theme: &Theme) -> Vec<StatusLineElement> {
+        // 2 diagnostics types, each consisting of 2 elements (state + count)
+        let mut elements: Vec<StatusLineElement> = Vec::with_capacity(4);
+
+        let diags = doc.diagnostics().iter().fold((0, 0), |mut counts, diag| {
+            use helix_core::diagnostic::Severity;
+            match diag.severity {
+                Some(Severity::Warning) => counts.0 += 1,
+                Some(Severity::Error) | None => counts.1 += 1,
+                _ => {}
+            }
+            counts
+        });
+        let (warnings, errors) = diags;
+
+        for i in 0..2 {
+            let (count, state_element, count_element) = match i {
+                0 => (
+                    warnings,
+                    Self::render_diagnostics_warning_state(theme),
+                    Self::render_diagnostics_warning_count(warnings),
+                ),
+                1 => (
+                    errors,
+                    Self::render_diagnostics_error_state(theme),
+                    Self::render_diagnostics_error_count(errors),
+                ),
+                _ => unreachable!(),
+            };
+
+            if count > 0 {
+                elements.push(state_element);
+                elements.push(count_element);
+            }
+        }
+
+        return elements;
     }
 
     fn render_diagnostics_warning_state(theme: &Theme) -> StatusLineElement {
