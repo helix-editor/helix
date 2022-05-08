@@ -247,17 +247,28 @@ impl EditorView {
         doc: &Document,
         theme: &Theme,
     ) -> Vec<(usize, std::ops::Range<usize>)> {
-        let diagnostic_scope = theme
-            .find_scope_index("diagnostic")
+        use helix_core::diagnostic::Severity;
+        let get_diagnostic_subscope_colors = |maybe_severity: Option<Severity>| {
+            let full_scope = match maybe_severity {
+                Some(Severity::Hint) => "diagnostic.hint",
+                Some(Severity::Info) => "diagnostic.info",
+                Some(Severity::Warning) => "diagnostic.warning",
+                Some(Severity::Error) => "diagnostic.error",
+                None => "diagnostic",
+            };
+            theme
+            .find_scope_index(full_scope)
             .or_else(|| theme.find_scope_index("ui.cursor"))
             .or_else(|| theme.find_scope_index("ui.selection"))
             .expect(
                 "at least one of the following scopes must be defined in the theme: `diagnostic`, `ui.cursor`, or `ui.selection`",
-            );
+            )
+        };
 
         doc.diagnostics()
             .iter()
             .map(|diagnostic| {
+                let diagnostic_scope = get_diagnostic_subscope_colors(diagnostic.severity);
                 (
                     diagnostic_scope,
                     diagnostic.range.start..diagnostic.range.end,
