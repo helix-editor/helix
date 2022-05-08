@@ -1,8 +1,4 @@
-use helix_core::{
-    coords_at_pos,
-    encoding::{self, Encoding},
-    Position,
-};
+use helix_core::{coords_at_pos, encoding};
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
@@ -15,6 +11,7 @@ use crate::ui::ProgressSpinners;
 use tui::buffer::Buffer as Surface;
 use tui::text::{Span, Spans};
 
+/// A status line element contains the information about a component which can be displayed in the status line.
 struct StatusLineElement {
     /// The element
     pub text: String,
@@ -22,6 +19,22 @@ struct StatusLineElement {
     /// The style to be used to render the element (this style will be merged with the base style).
     /// If not set, a default base style will be used.
     pub style: Option<Style>,
+}
+
+struct RenderBuffer<'a> {
+    pub left: Spans<'a>,
+    pub center: Spans<'a>,
+    pub right: Spans<'a>,
+}
+
+impl<'a> RenderBuffer<'a> {
+    pub fn new() -> Self {
+        return Self {
+            left: Spans::default(),
+            center: Spans::default(),
+            right: Spans::default(),
+        };
+    }
 }
 
 pub struct StatusLine;
@@ -36,9 +49,9 @@ impl StatusLine {
         is_focused: bool,
         spinners: &ProgressSpinners,
     ) {
-        //-------------------------------
+        let mut buffer = RenderBuffer::new();
+
         // Left side of the status line.
-        //-------------------------------
 
         let base_style = if is_focused {
             editor.theme.get("ui.statusline")
@@ -48,34 +61,21 @@ impl StatusLine {
 
         surface.set_style(viewport.with_height(1), base_style);
 
-        if is_focused {
-            let mode = Self::render_mode(doc);
-            surface.set_string(
-                viewport.x + 1,
-                viewport.y,
-                mode.text,
-                mode.style
-                    .map_or(base_style, |s| base_style.clone().patch(s)),
-            );
-        }
+        let mode_element = Self::render_mode(doc, is_focused);
+        Self::append_left(&mut buffer, &base_style, mode_element);
 
-        let spinner = Self::render_lsp_spinner(doc, spinners);
-        surface.set_string(
-            viewport.x + 5,
+        let spinner_element = Self::render_lsp_spinner(doc, spinners);
+        Self::append_left(&mut buffer, &base_style, spinner_element);
+
+        // TODO: why x+1?
+        surface.set_spans(
+            viewport.x + 1,
             viewport.y,
-            spinner.text,
-            spinner
-                .style
-                .map_or(base_style, |s| base_style.clone().patch(s)),
+            &buffer.left,
+            buffer.left.width() as u16,
         );
 
-        //-------------------------------
         // Right side of the status line.
-        //-------------------------------
-
-        let mut right_side_text = Spans::default();
-
-        // Compute the individual info strings and add them to `right_side_text`.
 
         // Diagnostics
         let diags = doc.diagnostics().iter().fold((0, 0), |mut counts, diag| {
@@ -105,111 +105,96 @@ impl StatusLine {
             };
 
             if count > 0 {
-                right_side_text.0.push(Span::styled(
-                    state_element.text,
-                    state_element
-                        .style
-                        .map_or(base_style, |s| base_style.clone().patch(s)),
-                ));
-
-                right_side_text.0.push(Span::styled(
-                    count_element.text,
-                    count_element
-                        .style
-                        .map_or(base_style, |s| base_style.clone().patch(s)),
-                ));
+                Self::append_right(&mut buffer, &base_style, state_element);
+                Self::append_right(&mut buffer, &base_style, count_element);
             }
         }
 
         // Selections
         let sels_count = doc.selection(view.id).len();
         let selections_element = Self::render_selections(sels_count);
-        right_side_text.0.push(Span::styled(
-            selections_element.text,
-            selections_element
-                .style
-                .map_or(base_style, |s| base_style.clone().patch(s)),
-        ));
+        Self::append_right(&mut buffer, &base_style, selections_element);
 
         // Position
-        let pos = coords_at_pos(
-            doc.text().slice(..),
-            doc.selection(view.id)
-                .primary()
-                .cursor(doc.text().slice(..)),
-        );
-        let position_element = Self::render_position(&pos);
-        right_side_text.0.push(Span::styled(
-            position_element.text,
-            position_element
-                .style
-                .map_or(base_style, |s| base_style.clone().patch(s)),
-        ));
+        let position_element = Self::render_position(doc, view);
+        Self::append_right(&mut buffer, &base_style, position_element);
 
         // Encoding
-        let enc = doc.encoding();
-        if enc != encoding::UTF_8 {
-            let encoding_element = Self::render_encoding(enc);
-            right_side_text.0.push(Span::styled(
-                encoding_element.text,
-                encoding_element
-                    .style
-                    .map_or(base_style, |s| base_style.clone().patch(s)),
-            ));
+        if let Some(encoding_element) = Self::render_encoding(doc) {
+            Self::append_right(&mut buffer, &base_style, encoding_element);
         }
 
         // File type
-        let file_type = doc.language_id().unwrap_or("text");
-        let file_type_element = Self::render_file_type(file_type);
-        right_side_text.0.push(Span::styled(
-            file_type_element.text,
-            file_type_element
-                .style
-                .map_or(base_style, |s| base_style.clone().patch(s)),
-        ));
+        let file_type_element = Self::render_file_type(doc);
+        Self::append_right(&mut buffer, &base_style, file_type_element);
 
         // Render to the statusline.
         surface.set_spans(
-            viewport.x
-                + viewport
-                    .width
-                    .saturating_sub(right_side_text.width() as u16),
+            viewport.x + viewport.width.saturating_sub(buffer.right.width() as u16),
             viewport.y,
-            &right_side_text,
-            right_side_text.width() as u16,
+            &buffer.right,
+            buffer.right.width() as u16,
         );
 
-        //-------------------------------
-        // Middle / File path / Title
-        //-------------------------------
-        let title_element = Self::render_file_name(doc);
+        // Center of the status line.
 
-        surface.set_string_truncated(
-            viewport.x + 8, // 8: 1 space + 3 char mode string + 1 space + 1 spinner + 1 space
+        let title_element = Self::render_file_name(doc);
+        Self::append_center(&mut buffer, &base_style, title_element);
+
+        // Width of the empty space between the left and center area and between the center and right area.
+        let spacing = 1u16;
+
+        let edge_width = buffer.left.width().max(buffer.right.width()) as u16;
+        //let center_width = viewport.width
+        //    - (buffer.left.width() as u16 + buffer.right.width() as u16 + 2 * spacing);
+        let center_max_width = viewport.width - (2 * edge_width + 2 * spacing);
+        let center_width = center_max_width.min(buffer.center.width() as u16);
+
+        surface.set_spans(
+            viewport.x + viewport.width / 2 - center_width / 2,
             viewport.y,
-            title_element.text.as_str(),
-            viewport
-                .width
-                .saturating_sub(6)
-                .saturating_sub(right_side_text.width() as u16 + 1) as usize, // "+ 1": a space between the title and the selection info
-            |_| {
-                title_element
-                    .style
-                    .map_or(base_style, |s| base_style.clone().patch(s))
-            },
-            true,
-            true,
+            &buffer.center,
+            center_width,
         );
     }
 
-    fn render_mode(doc: &Document) -> StatusLineElement {
+    fn append_left(buffer: &mut RenderBuffer, base_style: &Style, element: StatusLineElement) {
+        buffer.left.0.push(Span::styled(
+            element.text,
+            element
+                .style
+                .map_or(*base_style, |s| base_style.clone().patch(s)),
+        ));
+    }
+
+    fn append_center(buffer: &mut RenderBuffer, base_style: &Style, element: StatusLineElement) {
+        buffer.center.0.push(Span::styled(
+            element.text,
+            element
+                .style
+                .map_or(*base_style, |s| base_style.clone().patch(s)),
+        ));
+    }
+
+    fn append_right(buffer: &mut RenderBuffer, base_style: &Style, element: StatusLineElement) {
+        buffer.right.0.push(Span::styled(
+            element.text,
+            element
+                .style
+                .map_or(*base_style, |s| base_style.clone().patch(s)),
+        ));
+    }
+
+    fn render_mode(doc: &Document, is_focused: bool) -> StatusLineElement {
         return StatusLineElement {
             text: format!(
                 "{}",
                 match doc.mode() {
-                    Mode::Insert => "INS",
-                    Mode::Select => "SEL",
-                    Mode::Normal => "NOR",
+                    Mode::Insert if is_focused => "INS",
+                    Mode::Select if is_focused => "SEL",
+                    Mode::Normal if is_focused => "NOR",
+                    // If not focused, explicitly leave an empty space instead of returning None.
+                    _ => "   ",
                 }
             ),
             style: None,
@@ -219,10 +204,11 @@ impl StatusLine {
     fn render_lsp_spinner(doc: &Document, spinners: &ProgressSpinners) -> StatusLineElement {
         return StatusLineElement {
             text: format!(
-                "{}",
+                " {} ",
                 doc.language_server()
                     .and_then(|srv| spinners.get(srv.id()).and_then(|spinner| spinner.frame()))
-                    .unwrap_or("")
+                    // Even if there's no spinner; reserve its space to avoid elements frequently shifting.
+                    .unwrap_or(" ")
             ),
             style: None,
         };
@@ -267,21 +253,36 @@ impl StatusLine {
         };
     }
 
-    fn render_position(position: &Position) -> StatusLineElement {
+    fn render_position(doc: &Document, view: &View) -> StatusLineElement {
+        let position = coords_at_pos(
+            doc.text().slice(..),
+            doc.selection(view.id)
+                .primary()
+                .cursor(doc.text().slice(..)),
+        );
+
         return StatusLineElement {
             text: format!(" {}:{} ", position.row + 1, position.col + 1),
             style: None,
         };
     }
 
-    fn render_encoding(encoding: &'static Encoding) -> StatusLineElement {
-        return StatusLineElement {
-            text: format!(" {} ", encoding.name()),
-            style: None,
-        };
+    fn render_encoding(doc: &Document) -> Option<StatusLineElement> {
+        let enc = doc.encoding();
+
+        if enc != encoding::UTF_8 {
+            return Some(StatusLineElement {
+                text: format!(" {} ", enc.name()),
+                style: None,
+            });
+        } else {
+            return None;
+        }
     }
 
-    fn render_file_type(file_type: &str) -> StatusLineElement {
+    fn render_file_type(doc: &Document) -> StatusLineElement {
+        let file_type = doc.language_id().unwrap_or("text");
+
         return StatusLineElement {
             text: format!(" {} ", file_type),
             style: None,
