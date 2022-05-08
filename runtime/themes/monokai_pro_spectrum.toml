@@ -62,7 +62,7 @@
 "variable.parameter" = "#f59762"
 
 # error
-"error" = "red"
+"error" = { bg = "red", fg = "yellow" }
 
 # annotations, decorators
 "special" = "#f59762"
