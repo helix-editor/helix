@@ -1146,6 +1146,15 @@ fn open_config(
     Ok(())
 }
 
+fn open_log(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor.open(helix_loader::log_file(), Action::Replace)?;
+    Ok(())
+}
+
 fn refresh_config(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1645,6 +1654,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Open the helix config.toml file.",
             fun: open_config,
+            completer: None,
+        },
+        TypableCommand {
+            name: "log-open",
+            aliases: &[],
+            doc: "Open the helix log file.",
+            fun: open_log,
             completer: None,
         },
         TypableCommand {
