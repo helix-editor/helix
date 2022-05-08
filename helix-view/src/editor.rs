@@ -148,6 +148,7 @@ pub struct Config {
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
     /// Shape for cursor in each mode
+    pub status_line: StatusLineConfig,
     pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
     pub true_color: bool,
@@ -178,6 +179,54 @@ pub struct SearchConfig {
     pub smart_case: bool,
     /// Whether the search should wrap after depleting the matches. Default to true.
     pub wrap_around: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct StatusLineConfig {
+    pub left: Vec<StatusLineElement>,
+    pub center: Vec<StatusLineElement>,
+    pub right: Vec<StatusLineElement>,
+}
+
+impl Default for StatusLineConfig {
+    fn default() -> Self {
+        use StatusLineElement as E;
+
+        return Self {
+            left: vec![E::Mode, E::Spinner, E::FileName],
+            center: vec![],
+            right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
+        };
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum StatusLineElement {
+    /// The editor mode (Normal, Insert, Visual/Selection)
+    Mode,
+
+    /// The LSP activity spinner
+    Spinner,
+
+    /// The file nane/path, including a dirty flag if it's unsaved
+    FileName,
+
+    /// The file encoding
+    FileEncoding,
+
+    /// The file type (language ID or "text")
+    FileType,
+
+    /// A summary of the number of errors and warnings
+    Diagnostics,
+
+    /// The number of selections (cursors)
+    Selections,
+
+    /// The cursor position
+    Position,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -409,6 +458,7 @@ impl Default for Config {
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            status_line: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             search: SearchConfig::default(),

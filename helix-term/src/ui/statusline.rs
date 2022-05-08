@@ -8,6 +8,7 @@ use helix_view::{
 
 use crate::ui::ProgressSpinners;
 
+use helix_view::editor::StatusLineElement as StatusLineElementID;
 use tui::buffer::Buffer as Surface;
 use tui::text::{Span, Spans};
 
@@ -19,6 +20,14 @@ struct StatusLineElement {
     /// The style to be used to render the element (this style will be merged with the base style).
     /// If not set, a default base style will be used.
     pub style: Option<Style>,
+}
+
+struct RenderContext<'a> {
+    pub document: &'a Document,
+    pub view: &'a View,
+    pub theme: &'a Theme,
+    pub focused: bool,
+    pub spinners: &'a ProgressSpinners,
 }
 
 struct RenderBuffer<'a> {
@@ -49,9 +58,14 @@ impl StatusLine {
         is_focused: bool,
         spinners: &ProgressSpinners,
     ) {
+        let context = RenderContext {
+            document: doc,
+            view: view,
+            theme: &editor.theme,
+            focused: is_focused,
+            spinners: spinners,
+        };
         let mut buffer = RenderBuffer::new();
-
-        // Left side of the status line.
 
         let base_style = if is_focused {
             editor.theme.get("ui.statusline")
@@ -61,15 +75,17 @@ impl StatusLine {
 
         surface.set_style(viewport.with_height(1), base_style);
 
-        let mode_element = Self::render_mode(doc, is_focused);
-        Self::append_left(&mut buffer, &base_style, mode_element);
+        // Left side of the status line.
 
-        let spinner_element = Self::render_lsp_spinner(doc, spinners);
-        Self::append_left(&mut buffer, &base_style, spinner_element);
+        for element_id in &editor.config().status_line.left {
+            let elements = Self::render_element(&context, *element_id);
+            for element in elements {
+                Self::append_left(&mut buffer, &base_style, element);
+            }
+        }
 
-        // TODO: why x+1?
         surface.set_spans(
-            viewport.x + 1,
+            viewport.x,
             viewport.y,
             &buffer.left,
             buffer.left.width() as u16,
@@ -77,30 +93,13 @@ impl StatusLine {
 
         // Right side of the status line.
 
-        // Diagnostics
-        for diagnostic_element in Self::render_diagnostics(doc, &editor.theme) {
-            Self::append_right(&mut buffer, &base_style, diagnostic_element);
+        for element_id in &editor.config().status_line.right {
+            let elements = Self::render_element(&context, *element_id);
+            for element in elements {
+                Self::append_right(&mut buffer, &base_style, element);
+            }
         }
 
-        // Selections
-        let sels_count = doc.selection(view.id).len();
-        let selections_element = Self::render_selections(sels_count);
-        Self::append_right(&mut buffer, &base_style, selections_element);
-
-        // Position
-        let position_element = Self::render_position(doc, view);
-        Self::append_right(&mut buffer, &base_style, position_element);
-
-        // Encoding
-        if let Some(encoding_element) = Self::render_encoding(doc) {
-            Self::append_right(&mut buffer, &base_style, encoding_element);
-        }
-
-        // File type
-        let file_type_element = Self::render_file_type(doc);
-        Self::append_right(&mut buffer, &base_style, file_type_element);
-
-        // Render to the statusline.
         surface.set_spans(
             viewport.x + viewport.width.saturating_sub(buffer.right.width() as u16),
             viewport.y,
@@ -110,15 +109,17 @@ impl StatusLine {
 
         // Center of the status line.
 
-        let title_element = Self::render_file_name(doc);
-        Self::append_center(&mut buffer, &base_style, title_element);
+        for element_id in &editor.config().status_line.center {
+            let elements = Self::render_element(&context, *element_id);
+            for element in elements {
+                Self::append_center(&mut buffer, &base_style, element);
+            }
+        }
 
         // Width of the empty space between the left and center area and between the center and right area.
         let spacing = 1u16;
 
         let edge_width = buffer.left.width().max(buffer.right.width()) as u16;
-        //let center_width = viewport.width
-        //    - (buffer.left.width() as u16 + buffer.right.width() as u16 + 2 * spacing);
         let center_max_width = viewport.width - (2 * edge_width + 2 * spacing);
         let center_width = center_max_width.min(buffer.center.width() as u16);
 
@@ -157,14 +158,41 @@ impl StatusLine {
         ));
     }
 
-    fn render_mode(doc: &Document, is_focused: bool) -> StatusLineElement {
+    fn render_element(
+        context: &RenderContext,
+        element_id: StatusLineElementID,
+    ) -> Vec<StatusLineElement> {
+        return match element_id {
+            helix_view::editor::StatusLineElement::Mode => vec![Self::render_mode(context)],
+            helix_view::editor::StatusLineElement::Spinner => {
+                vec![Self::render_lsp_spinner(context)]
+            }
+            helix_view::editor::StatusLineElement::FileName => {
+                vec![Self::render_file_name(context)]
+            }
+            helix_view::editor::StatusLineElement::FileEncoding => {
+                Self::render_file_encoding(context).map_or(Vec::with_capacity(0), |e| vec![e])
+            }
+            helix_view::editor::StatusLineElement::FileType => {
+                vec![Self::render_file_type(context)]
+            }
+            helix_view::editor::StatusLineElement::Diagnostics => Self::render_diagnostics(context),
+            helix_view::editor::StatusLineElement::Selections => {
+                vec![Self::render_selections(context)]
+            }
+            helix_view::editor::StatusLineElement::Position => vec![Self::render_position(context)],
+        };
+    }
+
+    fn render_mode(context: &RenderContext) -> StatusLineElement {
+        let visible = context.focused;
         return StatusLineElement {
             text: format!(
-                "{}",
-                match doc.mode() {
-                    Mode::Insert if is_focused => "INS",
-                    Mode::Select if is_focused => "SEL",
-                    Mode::Normal if is_focused => "NOR",
+                " {} ",
+                match context.document.mode() {
+                    Mode::Insert if visible => "INS",
+                    Mode::Select if visible => "SEL",
+                    Mode::Normal if visible => "NOR",
                     // If not focused, explicitly leave an empty space instead of returning None.
                     _ => "   ",
                 }
@@ -173,12 +201,17 @@ impl StatusLine {
         };
     }
 
-    fn render_lsp_spinner(doc: &Document, spinners: &ProgressSpinners) -> StatusLineElement {
+    fn render_lsp_spinner(context: &RenderContext) -> StatusLineElement {
         return StatusLineElement {
             text: format!(
                 " {} ",
-                doc.language_server()
-                    .and_then(|srv| spinners.get(srv.id()).and_then(|spinner| spinner.frame()))
+                context
+                    .document
+                    .language_server()
+                    .and_then(|srv| context
+                        .spinners
+                        .get(srv.id())
+                        .and_then(|spinner| spinner.frame()))
                     // Even if there's no spinner; reserve its space to avoid elements frequently shifting.
                     .unwrap_or(" ")
             ),
@@ -186,32 +219,36 @@ impl StatusLine {
         };
     }
 
-    fn render_diagnostics(doc: &Document, theme: &Theme) -> Vec<StatusLineElement> {
+    fn render_diagnostics(context: &RenderContext) -> Vec<StatusLineElement> {
         // 2 diagnostics types, each consisting of 2 elements (state + count)
         let mut elements: Vec<StatusLineElement> = Vec::with_capacity(4);
 
-        let diags = doc.diagnostics().iter().fold((0, 0), |mut counts, diag| {
-            use helix_core::diagnostic::Severity;
-            match diag.severity {
-                Some(Severity::Warning) => counts.0 += 1,
-                Some(Severity::Error) | None => counts.1 += 1,
-                _ => {}
-            }
-            counts
-        });
+        let diags = context
+            .document
+            .diagnostics()
+            .iter()
+            .fold((0, 0), |mut counts, diag| {
+                use helix_core::diagnostic::Severity;
+                match diag.severity {
+                    Some(Severity::Warning) => counts.0 += 1,
+                    Some(Severity::Error) | None => counts.1 += 1,
+                    _ => {}
+                }
+                counts
+            });
         let (warnings, errors) = diags;
 
         for i in 0..2 {
             let (count, state_element, count_element) = match i {
                 0 => (
                     warnings,
-                    Self::render_diagnostics_warning_state(theme),
-                    Self::render_diagnostics_warning_count(warnings),
+                    Self::render_diagnostics_warning_state(context),
+                    Self::render_diagnostics_warning_count(context, warnings),
                 ),
                 1 => (
                     errors,
-                    Self::render_diagnostics_error_state(theme),
-                    Self::render_diagnostics_error_count(errors),
+                    Self::render_diagnostics_error_state(context),
+                    Self::render_diagnostics_error_count(context, errors),
                 ),
                 _ => unreachable!(),
             };
@@ -225,51 +262,56 @@ impl StatusLine {
         return elements;
     }
 
-    fn render_diagnostics_warning_state(theme: &Theme) -> StatusLineElement {
+    fn render_diagnostics_warning_state(context: &RenderContext) -> StatusLineElement {
         return StatusLineElement {
             text: format!("●"),
-            style: Some(theme.get("warning")),
+            style: Some(context.theme.get("warning")),
         };
     }
 
-    fn render_diagnostics_warning_count(warnings: usize) -> StatusLineElement {
+    fn render_diagnostics_warning_count(
+        _context: &RenderContext,
+        warning_count: usize,
+    ) -> StatusLineElement {
         return StatusLineElement {
-            text: format!(" {} ", warnings),
+            text: format!(" {} ", warning_count),
             style: None,
         };
     }
 
-    fn render_diagnostics_error_state(theme: &Theme) -> StatusLineElement {
+    fn render_diagnostics_error_state(context: &RenderContext) -> StatusLineElement {
         return StatusLineElement {
             text: format!("●"),
-            style: Some(theme.get("error")),
+            style: Some(context.theme.get("error")),
         };
     }
 
-    fn render_diagnostics_error_count(errors: usize) -> StatusLineElement {
+    fn render_diagnostics_error_count(
+        _context: &RenderContext,
+        error_count: usize,
+    ) -> StatusLineElement {
         return StatusLineElement {
-            text: format!(" {} ", errors),
+            text: format!(" {} ", error_count),
             style: None,
         };
     }
 
-    fn render_selections(selections: usize) -> StatusLineElement {
+    fn render_selections(context: &RenderContext) -> StatusLineElement {
+        let count = context.document.selection(context.view.id).len();
         return StatusLineElement {
-            text: format!(
-                " {} sel{} ",
-                &selections,
-                if selections == 1 { "" } else { "s" }
-            ),
+            text: format!(" {} sel{} ", count, if count == 1 { "" } else { "s" }),
             style: None,
         };
     }
 
-    fn render_position(doc: &Document, view: &View) -> StatusLineElement {
+    fn render_position(context: &RenderContext) -> StatusLineElement {
         let position = coords_at_pos(
-            doc.text().slice(..),
-            doc.selection(view.id)
+            context.document.text().slice(..),
+            context
+                .document
+                .selection(context.view.id)
                 .primary()
-                .cursor(doc.text().slice(..)),
+                .cursor(context.document.text().slice(..)),
         );
 
         return StatusLineElement {
@@ -278,8 +320,8 @@ impl StatusLine {
         };
     }
 
-    fn render_encoding(doc: &Document) -> Option<StatusLineElement> {
-        let enc = doc.encoding();
+    fn render_file_encoding(context: &RenderContext) -> Option<StatusLineElement> {
+        let enc = context.document.encoding();
 
         if enc != encoding::UTF_8 {
             return Some(StatusLineElement {
@@ -291,8 +333,8 @@ impl StatusLine {
         }
     }
 
-    fn render_file_type(doc: &Document) -> StatusLineElement {
-        let file_type = doc.language_id().unwrap_or("text");
+    fn render_file_type(context: &RenderContext) -> StatusLineElement {
+        let file_type = context.document.language_id().unwrap_or("text");
 
         return StatusLineElement {
             text: format!(" {} ", file_type),
@@ -300,14 +342,22 @@ impl StatusLine {
         };
     }
 
-    fn render_file_name(doc: &Document) -> StatusLineElement {
+    fn render_file_name(context: &RenderContext) -> StatusLineElement {
         let title = {
-            let rel_path = doc.relative_path();
+            let rel_path = context.document.relative_path();
             let path = rel_path
                 .as_ref()
                 .map(|p| p.to_string_lossy())
                 .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-            format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" })
+            format!(
+                " {}{} ",
+                path,
+                if context.document.is_modified() {
+                    "[+]"
+                } else {
+                    ""
+                }
+            )
         };
 
         return StatusLineElement {
