@@ -702,6 +702,7 @@ impl Application {
         terminal::enable_raw_mode()?;
         let mut stdout = stdout();
         execute!(stdout, terminal::EnterAlternateScreen)?;
+        execute!(stdout, terminal::SetTitle("Helix Editor"))?;
         execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
         if self.config.load().editor.mouse {
             execute!(stdout, EnableMouseCapture)?;
