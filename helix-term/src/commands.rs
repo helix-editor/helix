@@ -2649,7 +2649,7 @@ pub mod insert {
                 _ => return,
             }
         }
-        super::completion(cx);
+        super::completion_idly(cx);
     }
 
     fn language_server_completion(cx: &mut Context, ch: char) {
@@ -3535,13 +3535,26 @@ fn remove_primary_selection(cx: &mut Context) {
 }
 
 pub fn completion(cx: &mut Context) {
+    completion_lsp(cx, true);
+}
+
+pub fn completion_idly(cx: &mut Context) {
+    completion_lsp(cx, false);
+}
+
+fn completion_lsp(cx: &mut Context, try_local_sources: bool) {
     use helix_lsp::{lsp, util::pos_to_lsp_pos};
 
     let (view, doc) = current!(cx.editor);
 
     let language_server = match doc.language_server() {
         Some(language_server) => language_server,
-        None => return completion_sources(cx),
+        None => {
+            return if try_local_sources {
+                completion_sources(cx);
+            } else {
+            }
+        }
     };
 
     let offset_encoding = language_server.offset_encoding();
