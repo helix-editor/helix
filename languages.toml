@@ -475,7 +475,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-bash", rev = "275ef
 name = "php"
 scope = "source.php"
 injection-regex = "php"
-file-types = ["php"]
+file-types = ["php", "inc"]
 shebangs = ["php"]
 roots = ["composer.json", "index.php"]
 language-server = { command = "intelephense", args = ["--stdio"] }
