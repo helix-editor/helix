@@ -360,6 +360,10 @@ impl MappableCommand {
         jump_view_left, "Jump to the split to the left",
         jump_view_up, "Jump to the split above",
         jump_view_down, "Jump to the split below",
+        swap_view_right, "Swap with the split to the right",
+        swap_view_left, "Swap with the split to the left",
+        swap_view_up, "Swap with the split above",
+        swap_view_down, "Swap with the split below",
         transpose_view, "Transpose splits",
         rotate_view, "Goto next window",
         hsplit, "Horizontal bottom split",
@@ -3862,6 +3866,22 @@ fn jump_view_up(cx: &mut Context) {
 
 fn jump_view_down(cx: &mut Context) {
     cx.editor.focus_down()
+}
+
+fn swap_view_right(cx: &mut Context) {
+    cx.editor.swap_right()
+}
+
+fn swap_view_left(cx: &mut Context) {
+    cx.editor.swap_left()
+}
+
+fn swap_view_up(cx: &mut Context) {
+    cx.editor.swap_up()
+}
+
+fn swap_view_down(cx: &mut Context) {
+    cx.editor.swap_down()
 }
 
 fn transpose_view(cx: &mut Context) {

@@ -538,6 +538,24 @@ impl Tree {
         }
     }
 
+    pub fn swap_split_in_direction(&mut self, direction: Direction) {
+        if let Some(id) = self.find_split_in_direction(self.focus, direction) {
+            if let Some([focused, target]) = self.nodes.get_disjoint_mut([self.focus, id]) {
+                match (&mut focused.content, &mut target.content) {
+                    (Content::View(focused), Content::View(target)) => {
+                        std::mem::swap(&mut focused.doc, &mut target.doc);
+                        std::mem::swap(&mut focused.id, &mut target.id);
+                        self.focus = id;
+                    }
+                    // self.focus always points to a view which has a content of Content::View
+                    // and find_split_in_direction() only returns a view which has content of
+                    // Content::View.
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
+
     pub fn area(&self) -> Rect {
         self.area
     }
@@ -648,5 +666,134 @@ mod test {
         assert_eq!(None, tree.find_split_in_direction(r0, Direction::Down));
         assert_eq!(None, tree.find_split_in_direction(r0, Direction::Right));
         assert_eq!(None, tree.find_split_in_direction(r0, Direction::Up));
+    }
+
+    #[test]
+    fn swap_split_in_direction() {
+        let mut tree = Tree::new(Rect {
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 80,
+        });
+
+        let doc_l0 = DocumentId::default();
+        let mut view = View::new(
+            doc_l0,
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
+        view.area = Rect::new(0, 0, 180, 80);
+        tree.insert(view);
+
+        let l0 = tree.focus;
+
+        let doc_r0 = DocumentId::default();
+        let view = View::new(
+            doc_r0,
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
+        tree.split(view, Layout::Vertical);
+        let r0 = tree.focus;
+
+        tree.focus = l0;
+
+        let doc_l1 = DocumentId::default();
+        let view = View::new(
+            doc_l1,
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
+        tree.split(view, Layout::Horizontal);
+        let l1 = tree.focus;
+
+        tree.focus = l0;
+
+        let doc_l2 = DocumentId::default();
+        let view = View::new(
+            doc_l2,
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
+        tree.split(view, Layout::Vertical);
+        let l2 = tree.focus;
+
+        // Views in test
+        // | L0  | L2 |    |
+        // |    L1    | R0 |
+
+        // Document IDs in test
+        // | l0  | l2 |    |
+        // |    l1    | r0 |
+
+        fn doc_id(tree: &Tree, view_id: ViewId) -> Option<DocumentId> {
+            if let Content::View(view) = &tree.nodes[view_id].content {
+                Some(view.doc)
+            } else {
+                None
+            }
+        }
+
+        tree.focus = l0;
+        // `*` marks the view in focus from view table (here L0)
+        // | l0*  | l2 |    |
+        // |    l1     | r0 |
+        tree.swap_split_in_direction(Direction::Down);
+        // | l1   | l2 |    |
+        // |    l0*    | r0 |
+        assert_eq!(tree.focus, l1);
+        assert_eq!(doc_id(&tree, l0), Some(doc_l1));
+        assert_eq!(doc_id(&tree, l1), Some(doc_l0));
+        assert_eq!(doc_id(&tree, l2), Some(doc_l2));
+        assert_eq!(doc_id(&tree, r0), Some(doc_r0));
+
+        tree.swap_split_in_direction(Direction::Right);
+
+        // | l1  | l2 |     |
+        // |    r0    | l0* |
+        assert_eq!(tree.focus, r0);
+        assert_eq!(doc_id(&tree, l0), Some(doc_l1));
+        assert_eq!(doc_id(&tree, l1), Some(doc_r0));
+        assert_eq!(doc_id(&tree, l2), Some(doc_l2));
+        assert_eq!(doc_id(&tree, r0), Some(doc_l0));
+
+        // cannot swap, nothing changes
+        tree.swap_split_in_direction(Direction::Up);
+        // | l1  | l2 |     |
+        // |    r0    | l0* |
+        assert_eq!(tree.focus, r0);
+        assert_eq!(doc_id(&tree, l0), Some(doc_l1));
+        assert_eq!(doc_id(&tree, l1), Some(doc_r0));
+        assert_eq!(doc_id(&tree, l2), Some(doc_l2));
+        assert_eq!(doc_id(&tree, r0), Some(doc_l0));
+
+        // cannot swap, nothing changes
+        tree.swap_split_in_direction(Direction::Down);
+        // | l1  | l2 |     |
+        // |    r0    | l0* |
+        assert_eq!(tree.focus, r0);
+        assert_eq!(doc_id(&tree, l0), Some(doc_l1));
+        assert_eq!(doc_id(&tree, l1), Some(doc_r0));
+        assert_eq!(doc_id(&tree, l2), Some(doc_l2));
+        assert_eq!(doc_id(&tree, r0), Some(doc_l0));
+
+        tree.focus = l2;
+        // | l1  | l2* |    |
+        // |    r0     | l0 |
+
+        tree.swap_split_in_direction(Direction::Down);
+        // | l1  | r0  |    |
+        // |    l2*    | l0 |
+        assert_eq!(tree.focus, l1);
+        assert_eq!(doc_id(&tree, l0), Some(doc_l1));
+        assert_eq!(doc_id(&tree, l1), Some(doc_l2));
+        assert_eq!(doc_id(&tree, l2), Some(doc_r0));
+        assert_eq!(doc_id(&tree, r0), Some(doc_l0));
+
+        tree.swap_split_in_direction(Direction::Up);
+        // | l2* | r0 |    |
+        // |    l1    | l0 |
+        assert_eq!(tree.focus, l0);
+        assert_eq!(doc_id(&tree, l0), Some(doc_l2));
+        assert_eq!(doc_id(&tree, l1), Some(doc_l1));
+        assert_eq!(doc_id(&tree, l2), Some(doc_r0));
+        assert_eq!(doc_id(&tree, r0), Some(doc_l0));
     }
 }
