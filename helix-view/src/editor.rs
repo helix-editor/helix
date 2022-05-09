@@ -193,11 +193,11 @@ impl Default for StatusLineConfig {
     fn default() -> Self {
         use StatusLineElement as E;
 
-        return Self {
+        Self {
             left: vec![E::Mode, E::Spinner, E::FileName],
             center: vec![],
             right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
-        };
+        }
     }
 }
 
