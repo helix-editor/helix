@@ -665,10 +665,11 @@ fn goto_buffer(editor: &mut Editor, direction: Direction) {
         }
     }
     .unwrap();
-
     let id = *id;
-
     editor.switch(id, Action::Replace);
+    if let Some(doc) = editor.documents.get(&id) {
+        crate::set_title_from_doc(&doc);
+    }
 }
 
 fn extend_to_line_start(cx: &mut Context) {
@@ -1844,7 +1845,12 @@ fn global_search(cx: &mut Context) {
                     },
                     move |cx, (line_num, path), action| {
                         match cx.editor.open(path.into(), action) {
-                            Ok(_) => {}
+                            Ok(ref id) => match cx.editor.documents.get(id) {
+                                Some(ref x) => crate::set_title_from_doc(x),
+                                None => cx
+                                    .editor
+                                    .set_error("Failed to get document info for setting title"),
+                            },
                             Err(e) => {
                                 cx.editor.set_error(format!(
                                     "Failed to open file '{}': {}",
@@ -2149,6 +2155,9 @@ fn buffer_picker(cx: &mut Context) {
         BufferMeta::format,
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
+            if let Some(doc) = cx.editor.documents.get(&meta.id) {
+                crate::set_title_from_doc(&doc);
+            }
         },
         |editor, meta| {
             let doc = &editor.documents.get(&meta.id)?;
@@ -2493,6 +2502,9 @@ fn goto_last_accessed_file(cx: &mut Context) {
     let view = view_mut!(cx.editor);
     if let Some(alt) = view.docs_access_history.pop() {
         cx.editor.switch(alt, Action::Replace);
+        if let Some(doc) = cx.editor.documents.get(&alt) {
+            crate::set_title_from_doc(&doc);
+        }
     } else {
         cx.editor.set_error("no last accessed buffer")
     }
@@ -2520,6 +2532,9 @@ fn goto_last_modified_file(cx: &mut Context) {
         .find(|&id| id != view.doc);
     if let Some(alt) = alternate_file {
         cx.editor.switch(alt, Action::Replace);
+        if let Some(doc) = cx.editor.documents.get(&alt) {
+            crate::set_title_from_doc(&doc);
+        }
     } else {
         cx.editor.set_error("no last modified buffer")
     }
@@ -3844,6 +3859,9 @@ fn split(cx: &mut Context, action: Action) {
     let offset = view.offset;
 
     cx.editor.switch(id, action);
+    if let Some(doc) = cx.editor.documents.get(&id) {
+        crate::set_title_from_doc(&doc);
+    }
 
     // match the selection in the previous view
     let (view, doc) = current!(cx.editor);
@@ -3857,6 +3875,11 @@ fn hsplit(cx: &mut Context) {
 
 fn hsplit_new(cx: &mut Context) {
     cx.editor.new_file(Action::HorizontalSplit);
+    crossterm::execute!(
+        std::io::stdout(),
+        crossterm::terminal::SetTitle("hx [scratch]")
+    )
+    .unwrap();
 }
 
 fn vsplit(cx: &mut Context) {
@@ -3865,6 +3888,11 @@ fn vsplit(cx: &mut Context) {
 
 fn vsplit_new(cx: &mut Context) {
     cx.editor.new_file(Action::VerticalSplit);
+    crossterm::execute!(
+        std::io::stdout(),
+        crossterm::terminal::SetTitle("hx [scratch]")
+    )
+    .unwrap();
 }
 
 fn wclose(cx: &mut Context) {

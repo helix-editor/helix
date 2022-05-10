@@ -136,6 +136,7 @@ impl Application {
         if args.load_tutor {
             let path = helix_loader::runtime_dir().join("tutor.txt");
             editor.open(path, Action::VerticalSplit)?;
+            execute!(std::io::stdout(), terminal::SetTitle("hx - tutor")).unwrap();
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
         } else if !args.files.is_empty() {
@@ -143,6 +144,7 @@ impl Application {
             if first.is_dir() {
                 std::env::set_current_dir(&first)?;
                 editor.new_file(Action::VerticalSplit);
+                execute!(std::io::stdout(), terminal::SetTitle("hx [scratch]")).unwrap();
                 let picker = ui::file_picker(".".into(), &config.load().editor);
                 compositor.push(Box::new(overlayed(picker)));
             } else {
@@ -167,9 +169,11 @@ impl Application {
                 // does not affect views without pos since it is at the top
                 let (view, doc) = current!(editor);
                 align_view(doc, view, Align::Center);
+                crate::set_title_from_doc(doc);
             }
         } else if stdin().is_tty() {
             editor.new_file(Action::VerticalSplit);
+            execute!(std::io::stdout(), terminal::SetTitle("hx [scratch]")).unwrap();
         } else if cfg!(target_os = "macos") {
             // On Linux and Windows, we allow the output of a command to be piped into the new buffer.
             // This doesn't currently work on macOS because of the following issue:
@@ -179,6 +183,7 @@ impl Application {
             editor
                 .new_file_from_stdin(Action::VerticalSplit)
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
+            execute!(std::io::stdout(), terminal::SetTitle("hx [scratch]")).unwrap();
         }
 
         editor.set_theme(theme);
@@ -702,7 +707,7 @@ impl Application {
         terminal::enable_raw_mode()?;
         let mut stdout = stdout();
         execute!(stdout, terminal::EnterAlternateScreen)?;
-        execute!(stdout, terminal::SetTitle("Helix Editor"))?;
+        execute!(stdout, terminal::SetTitle("hx"))?;
         execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
         if self.config.load().editor.mouse {
             execute!(stdout, EnableMouseCapture)?;

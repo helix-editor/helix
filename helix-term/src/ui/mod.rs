@@ -180,9 +180,16 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
             path.strip_prefix(&root).unwrap_or(path).to_string_lossy()
         },
         move |cx, path: &PathBuf, action| {
-            cx.editor
+            let id = cx
+                .editor
                 .open(path.into(), action)
                 .expect("editor.open failed");
+            crate::set_title_from_doc(
+                &cx.editor
+                    .documents
+                    .get(&id)
+                    .expect("Unable to get document info for setting title"),
+            );
         },
         |_editor, path| Some((path.clone(), None)),
     )
