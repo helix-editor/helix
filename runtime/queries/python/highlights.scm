@@ -1,10 +1,19 @@
 ; Identifier naming conventions
 
+((identifier) @constant
+ (#match? @constant "^[A-Z_]*$"))
+
 ((identifier) @constructor
  (#match? @constructor "^[A-Z]"))
 
-((identifier) @constant
- (#match? @constant "^[A-Z][A-Z_]*$"))
+; Types
+
+((identifier) @type
+  (#match?
+    @type
+    "^(bool|bytes|dict|float|frozenset|int|list|set|str|tuple)$"))
+
+(type (identifier)) @type
 
 ; Builtin functions
 
@@ -12,7 +21,7 @@
   function: (identifier) @function.builtin)
  (#match?
    @function.builtin
-   "^(abs|all|any|ascii|bin|bool|breakpoint|bytearray|bytes|callable|chr|classmethod|compile|complex|delattr|dict|dir|divmod|enumerate|eval|exec|filter|float|format|frozenset|getattr|globals|hasattr|hash|help|hex|id|input|int|isinstance|issubclass|iter|len|list|locals|map|max|memoryview|min|next|object|oct|open|ord|pow|print|property|range|repr|reversed|round|set|setattr|slice|sorted|staticmethod|str|sum|super|tuple|type|vars|zip|__import__)$"))
+   "^(abs|all|any|ascii|bin|breakpoint|bytearray|callable|chr|classmethod|compile|complex|delattr|dir|divmod|enumerate|eval|exec|filter|format|getattr|globals|hasattr|hash|help|hex|id|input|isinstance|issubclass|iter|len|locals|map|max|memoryview|min|next|object|oct|open|ord|pow|print|property|range|repr|reversed|round|setattr|slice|sorted|staticmethod|sum|super|type|vars|zip|__import__)$"))
 
 ; Function calls
 
@@ -30,7 +39,6 @@
 
 (identifier) @variable
 (attribute attribute: (identifier) @variable.other.member)
-(type (identifier) @type)
 
 ; Literals
 
@@ -81,41 +89,48 @@
   ">>"
   "|"
   "~"
-  "and"
-  "in"
-  "is"
-  "not"
-  "or"
 ] @operator
 
 [
   "as"
   "assert"
-  "async"
   "await"
   "break"
-  "class"
   "continue"
-  "def"
-  "del"
   "elif"
   "else"
   "except"
-  "exec"
   "finally"
   "for"
   "from"
-  "global"
   "if"
   "import"
-  "lambda"
-  "nonlocal"
   "pass"
-  "print"
   "raise"
   "return"
   "try"
   "while"
   "with"
   "yield"
+] @keyword.control
+
+(for_statement "in" @keyword.control)
+(for_in_clause "in" @keyword.control)
+
+[
+  "and"
+  "async"
+  "class"
+  "def"
+  "del"
+  "exec"
+  "global"
+  "in"
+  "is"
+  "lambda"
+  "nonlocal"
+  "not"
+  "or"
+  "print"
 ] @keyword
+
