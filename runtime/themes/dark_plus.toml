@@ -6,7 +6,7 @@
 "type" = { fg = "type" }
 "type.builtin" = { fg = "type" }
 "type.enum.variant" = { fg = "constant" }
-"constructor" = { fg = "constant" }
+"constructor" = { fg = "type" }
 "variable.other.member" = { fg = "variable" }
 
 "keyword" = { fg = "blue2" }
