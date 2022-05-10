@@ -344,6 +344,7 @@ impl Application {
 
                             #[cfg(feature = "integration")]
                             {
+                                log::debug!("idle handled");
                                 idle_handled = true;
                             }
                         }

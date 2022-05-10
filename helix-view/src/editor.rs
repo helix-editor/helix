@@ -1102,8 +1102,8 @@ impl Editor {
         };
 
         // flush out any pending writes first to clear the modified status
-        if let Some(save_result) = doc.try_flush_saves().await {
-            save_result?;
+        if let Some(Err(err)) = doc.try_flush_saves().await {
+            return Err(CloseError::SaveError(err));
         }
 
         if !force && doc.is_modified() {

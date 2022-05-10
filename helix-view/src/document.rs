@@ -3,7 +3,6 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::Range;
-use log::debug;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::borrow::Cow;
@@ -644,16 +643,15 @@ impl Document {
     async fn await_save_impl(&mut self, block: bool) -> Option<DocumentSaveEventResult> {
         let mut current_save = self.current_save.lock().await;
         if let Some(ref mut save) = *current_save {
+            log::trace!("reawaiting save of '{:?}'", self.path());
             let result = save.await;
             *current_save = None;
-            debug!("save of '{:?}' result: {:?}", self.path(), result);
+            log::trace!("reawait save of '{:?}' result: {:?}", self.path(), result);
             return Some(result);
         }
 
         // return early if the receiver is closed
-        self.save_receiver.as_ref()?;
-
-        let rx = self.save_receiver.as_mut().unwrap();
+        let rx = self.save_receiver.as_mut()?;
 
         let save_req = if block {
             rx.recv().await
@@ -672,12 +670,12 @@ impl Document {
         // save a handle to the future so that when a poll on this
         // function gets cancelled, we don't lose it
         *current_save = Some(save);
-        debug!("awaiting save of '{:?}'", self.path());
+        log::trace!("awaiting save of '{:?}'", self.path());
 
         let result = (*current_save).as_mut().unwrap().await;
         *current_save = None;
 
-        debug!("save of '{:?}' result: {:?}", self.path(), result);
+        log::trace!("save of '{:?}' result: {:?}", self.path(), result);
 
         Some(result)
     }
@@ -715,7 +713,7 @@ impl Document {
     /// it stops early before emptying the rest of the queue.
     pub async fn close(&mut self) -> Option<DocumentSaveEventResult> {
         if self.save_sender.is_some() {
-            self.save_sender = None;
+            self.save_sender.take();
         }
 
         self.flush_saves_impl(true).await

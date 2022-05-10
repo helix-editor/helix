@@ -56,7 +56,9 @@ pub async fn test_key_sequences(
     for (i, (in_keys, test_fn)) in inputs.into_iter().enumerate() {
         if let Some(in_keys) = in_keys {
             for key_event in parse_macro(in_keys)?.into_iter() {
-                tx.send(Ok(Event::Key(KeyEvent::from(key_event))))?;
+                let key = Event::Key(KeyEvent::from(key_event));
+                log::trace!("sending key: {:?}", key);
+                tx.send(Ok(key))?;
             }
         }
 
@@ -70,7 +72,7 @@ pub async fn test_key_sequences(
         // verify if it exited on the last iteration if it should have and
         // the inverse
         if i == num_inputs - 1 && app_exited != should_exit {
-            bail!("expected app to exit: {} != {}", app_exited, should_exit);
+            bail!("expected app to exit: {} != {}", should_exit, app_exited);
         }
 
         if let Some(test) = test_fn {

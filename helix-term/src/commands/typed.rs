@@ -77,9 +77,9 @@ fn buffer_close_by_ids_impl(
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
         .iter()
         .filter_map(|&doc_id| {
-            if let Err(CloseError::BufferModified(name)) =
+            if let Err(CloseError::BufferModified(name)) = tokio::task::block_in_place(|| {
                 helix_lsp::block_on(editor.close_document(doc_id, force))
-            {
+            }) {
                 Some((doc_id, name))
             } else {
                 None
@@ -151,7 +151,6 @@ fn buffer_close(
     }
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
-    log::debug!("closing buffers: {:?}", document_ids);
     buffer_close_by_ids_impl(cx.editor, &document_ids, false)
 }
 
@@ -519,6 +518,7 @@ fn write_quit(
     }
 
     write_impl(cx, args.first(), false)?;
+    // TODO: change to use document close
     helix_lsp::block_on(cx.jobs.finish())?;
     quit(cx, &[], event)
 }

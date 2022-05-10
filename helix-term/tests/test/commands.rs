@@ -25,7 +25,7 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     test_key_sequences(
         &mut Application::new(Args::default(), Config::default())?,
