@@ -526,6 +526,18 @@ impl Tree {
         }
     }
 
+    pub fn transpose(&mut self) {
+        let focus = self.focus;
+        let parent = self.nodes[focus].parent;
+        if let Content::Container(container) = &mut self.nodes[parent].content {
+            container.layout = match container.layout {
+                Layout::Vertical => Layout::Horizontal,
+                Layout::Horizontal => Layout::Vertical,
+            };
+            self.recalculate();
+        }
+    }
+
     pub fn area(&self) -> Rect {
         self.area
     }

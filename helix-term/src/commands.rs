@@ -360,6 +360,7 @@ impl MappableCommand {
         jump_view_left, "Jump to the split to the left",
         jump_view_up, "Jump to the split above",
         jump_view_down, "Jump to the split below",
+        transpose_view, "Transpose splits",
         rotate_view, "Goto next window",
         hsplit, "Horizontal bottom split",
         hsplit_new, "Horizontal bottom split scratch buffer",
@@ -3861,6 +3862,10 @@ fn jump_view_up(cx: &mut Context) {
 
 fn jump_view_down(cx: &mut Context) {
     cx.editor.focus_down()
+}
+
+fn transpose_view(cx: &mut Context) {
+    cx.editor.transpose_view()
 }
 
 // split helper, clear it later
