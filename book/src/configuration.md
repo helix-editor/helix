@@ -153,7 +153,7 @@ to add/edit this section since Helix will use sensible defaults for given system
 | `language-file` | [language.toml](./languages.md) location | `$XDG_CONFIG_HOME/helix/languages.toml` |
 | `log-file`	  | Log file location | `$XDG_STATE_HOME/helix/helix.log` |
 | `query-dir` 	  | Queries location | `$XDG_DATA_HOME/helix/queries` |
-| `theme-dir` 	  | Themes location | `$XDG_CONFIG_HOME/helix/themes` |
+| `theme-dir` 	  | Themes location | `$XDG_DATA_HOME/helix/themes` |
 
 #### Windows
 
