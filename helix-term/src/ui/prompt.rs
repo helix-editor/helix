@@ -28,7 +28,7 @@ pub struct Prompt {
     completion_fn: Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
     pub doc_fn: Box<dyn Fn(&str) -> Option<Cow<str>>>,
-    selecting_register: bool,
+    next_char_handler: Option<Box<dyn Fn(&mut Prompt, char, &Context)>>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -79,7 +79,7 @@ impl Prompt {
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
-            selecting_register: false,
+            next_char_handler: None,
         }
     }
 
@@ -193,6 +193,13 @@ impl Prompt {
     }
 
     pub fn insert_char(&mut self, c: char, cx: &Context) {
+        if let Some(handler) = &self.next_char_handler.take() {
+            handler(self, c, cx);
+
+            self.next_char_handler = None;
+            return;
+        }
+
         self.line.insert(self.cursor, c);
         let mut cursor = GraphemeCursor::new(self.cursor, self.line.len(), false);
         if let Ok(Some(pos)) = cursor.next_boundary(&self.line, 0) {
@@ -541,7 +548,16 @@ impl Component for Prompt {
             }
             ctrl!('q') => self.exit_selection(),
             ctrl!('r') => {
-                self.selecting_register = true;
+                self.next_char_handler = Some(Box::new(|prompt, c, context| {
+                    prompt.insert_str(
+                        context
+                            .editor
+                            .registers
+                            .read(c)
+                            .and_then(|r| r.first())
+                            .map_or("", |r| r.as_str()),
+                    );
+                }));
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 return EventResult::Consumed(None);
             }
@@ -550,23 +566,12 @@ impl Component for Prompt {
                 code: KeyCode::Char(c),
                 modifiers: _,
             } => {
-                if self.selecting_register {
-                    self.insert_str(
-                        cx.editor
-                            .registers
-                            .read(c)
-                            .and_then(|r| r.first())
-                            .map_or("", |r| r.as_str()),
-                    );
-                } else {
-                    self.insert_char(c, cx);
-                }
+                self.insert_char(c, cx);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
             _ => (),
         };
 
-        self.selecting_register = false;
         EventResult::Consumed(None)
     }
 
