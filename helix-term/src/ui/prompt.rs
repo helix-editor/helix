@@ -16,6 +16,7 @@ use helix_view::{
 };
 
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
+type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
 
 pub struct Prompt {
     prompt: Cow<'static, str>,
@@ -28,7 +29,7 @@ pub struct Prompt {
     completion_fn: Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
     pub doc_fn: Box<dyn Fn(&str) -> Option<Cow<str>>>,
-    next_char_handler: Option<Box<dyn Fn(&mut Prompt, char, &Context)>>,
+    next_char_handler: Option<PromptCharHandler>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
