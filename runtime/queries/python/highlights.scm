@@ -1,7 +1,12 @@
 ; Types
 
 (type (identifier) @type)
-(type (subscript (identifier) @type)) ; only one deep...
+; Handle subscript and | binary operator nesting 4 levels deep
+(type
+  (_ (identifier)? @type
+    (_ (identifier)? @type
+      (_ (identifier)? @type
+        (_ (identifier)? @type)))))
 (class_definition name: (identifier) @type)
 (class_definition superclasses: (argument_list (identifier) @type))
 
