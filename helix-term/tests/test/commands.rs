@@ -8,7 +8,7 @@ use helix_term::application::Application;
 
 use super::*;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_quit_fail() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
 
@@ -16,6 +16,11 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
         &mut helpers::app_with_file(file.path())?,
         Some("ihello<esc>:wq<ret>"),
         Some(&|app| {
+            let mut docs: Vec<_> = app.editor.documents().collect();
+            assert_eq!(1, docs.len());
+
+            let doc = docs.pop().unwrap();
+            assert_eq!(Some(file.path()), doc.path().map(PathBuf::as_path));
             assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
         }),
         false,

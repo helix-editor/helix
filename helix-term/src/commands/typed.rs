@@ -518,8 +518,12 @@ fn write_quit(
     }
 
     write_impl(cx, args.first(), false)?;
-    // TODO: change to use document close
-    helix_lsp::block_on(cx.jobs.finish())?;
+    let doc = doc_mut!(cx.editor);
+
+    tokio::task::block_in_place(|| helix_lsp::block_on(doc.try_flush_saves()))
+        .map(|result| result.map(|_| ()))
+        .unwrap_or(Ok(()))?;
+
     quit(cx, &[], event)
 }
 
