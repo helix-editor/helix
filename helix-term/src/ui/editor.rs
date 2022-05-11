@@ -248,16 +248,11 @@ impl EditorView {
         theme: &Theme,
     ) -> Vec<(usize, std::ops::Range<usize>)> {
         use helix_core::diagnostic::Severity;
-        let get_diagnostic_subscope_colors = |maybe_severity: Option<Severity>| {
-            let full_scope = match maybe_severity {
-                Some(Severity::Hint) => "diagnostic.hint",
-                Some(Severity::Info) => "diagnostic.info",
-                Some(Severity::Warning) => "diagnostic.warning",
-                Some(Severity::Error) => "diagnostic.error",
-                None => "diagnostic",
-            };
+        let get_scope_of = |scope| {
             theme
-            .find_scope_index(full_scope)
+            .find_scope_index(scope)
+            // get one of the themes below as fallback values
+            .or_else(|| theme.find_scope_index("diagnostic"))
             .or_else(|| theme.find_scope_index("ui.cursor"))
             .or_else(|| theme.find_scope_index("ui.selection"))
             .expect(
@@ -265,10 +260,23 @@ impl EditorView {
             )
         };
 
+        // basically just queries the theme color defined in the config
+        let hint = get_scope_of("diagnostic.hint");
+        let info = get_scope_of("diagnostic.info");
+        let warning = get_scope_of("diagnostic.warning");
+        let error = get_scope_of("diagnostic.error");
+        let r#default = get_scope_of("diagnostic"); // this is a bit redundant but should be fine
+
         doc.diagnostics()
             .iter()
             .map(|diagnostic| {
-                let diagnostic_scope = get_diagnostic_subscope_colors(diagnostic.severity);
+                let diagnostic_scope = match diagnostic.severity {
+                    Some(Severity::Info) => info,
+                    Some(Severity::Hint) => hint,
+                    Some(Severity::Warning) => warning,
+                    Some(Severity::Error) => error,
+                    _ => r#default,
+                };
                 (
                     diagnostic_scope,
                     diagnostic.range.start..diagnostic.range.end,
