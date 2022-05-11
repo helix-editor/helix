@@ -12,23 +12,25 @@ use crate::{
 pub struct Position {
     pub row: usize,
     pub col: usize,
+    pub char_idx: usize,
 }
 
 impl Position {
-    pub const fn new(row: usize, col: usize) -> Self {
-        Self { row, col }
+    pub const fn new(row: usize, col: usize, char_idx: usize) -> Self {
+        Self { row, col, char_idx }
     }
 
     pub const fn is_zero(self) -> bool {
-        self.row == 0 && self.col == 0
+        self.char_idx == 0
     }
 
     // TODO: generalize
     pub fn traverse(self, text: &crate::Tendril) -> Self {
-        let Self { mut row, mut col } = self;
+        let Self { mut row, mut col, mut char_idx } = self;
         // TODO: there should be a better way here
         let mut chars = text.chars().peekable();
         while let Some(ch) = chars.next() {
+            char_idx += 1;
             if char_is_line_ending(ch) && !(ch == '\r' && chars.peek() == Some(&'\n')) {
                 row += 1;
                 col = 0;
@@ -36,15 +38,16 @@ impl Position {
                 col += 1;
             }
         }
-        Self { row, col }
+        Self { row, col, char_idx }
     }
 }
 
-impl From<(usize, usize)> for Position {
-    fn from(tuple: (usize, usize)) -> Self {
+impl From<(usize, usize, usize)> for Position {
+    fn from(tuple: (usize, usize, usize)) -> Self {
         Self {
             row: tuple.0,
             col: tuple.1,
+            char_idx: tuple.2,
         }
     }
 }
@@ -65,7 +68,7 @@ pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
     let pos = ensure_grapheme_boundary_prev(text, pos);
     let col = RopeGraphemes::new(text.slice(line_start..pos)).count();
 
-    Position::new(line, col)
+    Position::new(line, col, pos)
 }
 
 /// Convert a character index to (line, column) coordinates visually.
@@ -90,7 +93,7 @@ pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Po
         }
     }
 
-    Position::new(line, col)
+    Position::new(line, col, pos)
 }
 
 /// Convert (line, column) coordinates to a character index.
@@ -113,7 +116,7 @@ pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Po
 /// TODO: this should be changed to work in terms of visual row/column, not
 /// graphemes.
 pub fn pos_at_coords(text: RopeSlice, coords: Position, limit_before_line_ending: bool) -> usize {
-    let Position { mut row, col } = coords;
+    let Position { mut row, col, char_idx } = coords;
     if limit_before_line_ending {
         row = row.min(text.len_lines() - 1);
     };
@@ -143,7 +146,7 @@ mod test {
     #[test]
     fn test_ordering() {
         // (0, 5) is less than (1, 0)
-        assert!(Position::new(0, 5) < Position::new(1, 0));
+        assert!(Position::new(0, 5, 5) < Position::new(1, 0, 1));
     }
 
     #[test]
