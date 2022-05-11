@@ -947,7 +947,7 @@ name = "git-config"
 scope = "source.gitconfig"
 roots = []
 # TODO: allow specifying file-types as a regex so we can read directory names (e.g. `.git/config`)
-file-types = [".gitmodules", ".gitconfig"]
+file-types = [".gitmodules", ".gitconfig", ".git/config", ".config/git/config"]
 injection-regex = "git-config"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
@@ -1355,3 +1355,13 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "meson"
 source = { git = "https://github.com/bearcove/tree-sitter-meson", rev = "feea83be9225842490066522ced2d13eb9cce0bd" }
+
+[[language]]
+name = "sshclientconfig"
+scope = "source.sshclientconfig"
+file-types = [".ssh/config"]
+roots = []
+
+[[grammar]]
+name = "sshclientconfig"
+source = { git = "https://github.com/metio/tree-sitter-ssh-client-config.git", rev = "769d7a01a2e5493b4bb5a51096c6bf4be130b024" }
