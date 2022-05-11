@@ -156,15 +156,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "directories"
-version = "4.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f51c5d4ddabd36886dd3e1438cb358cdcb0d7c499cb99cb4ac2e38e18b5cb210"
-dependencies = [
- "dirs-sys",
-]
-
-[[package]]
 name = "dirs-next"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -172,17 +163,6 @@ checksum = "b98cf8ebf19c3d1b223e151f99a4f9f0690dca41414773390fc824184ac833e1"
 dependencies = [
  "cfg-if",
  "dirs-sys-next",
-]
-
-[[package]]
-name = "dirs-sys"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b1d1d91c932ef41c0f2663aa8b0ca0342d444d842c06914aa0a7e352d0bada6"
-dependencies = [
- "libc",
- "redox_users",
- "winapi",
 ]
 
 [[package]]
@@ -235,6 +215,17 @@ name = "etcetera"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "016b04fd1e94fb833d432634245c9bb61cf1c7409668a0e7d4c3ab00c5172dec"
+dependencies = [
+ "cfg-if",
+ "dirs-next",
+ "thiserror",
+]
+
+[[package]]
+name = "etcetera"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d017fce18e4e9bfa75e1db51f49f4487bd3f8a7df509b24a46474a956ee962fd"
 dependencies = [
  "cfg-if",
  "dirs-next",
@@ -381,7 +372,7 @@ dependencies = [
  "arc-swap",
  "chrono",
  "encoding_rs",
- "etcetera",
+ "etcetera 0.3.2",
  "helix-loader",
  "log",
  "once_cell",
@@ -422,7 +413,7 @@ version = "0.6.0"
 dependencies = [
  "anyhow",
  "cc",
- "directories",
+ "etcetera 0.4.0",
  "libloading",
  "once_cell",
  "serde",

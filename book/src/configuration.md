@@ -161,6 +161,6 @@ to add/edit this section since Helix will use sensible defaults for given system
 |--|--|---------|
 | `grammar-dir`	  | Grammars location | `%AppData%/helix/grammars` |
 | `language-file` | [language.toml](./languages.md) location | `%AppData%/helix/languages.toml` |
-| `log-file`	  | Log file location | `%LocalAppData%/helix/helix.log` |
+| `log-file`	  | Log file location | `%AppData%/helix/helix.log` |
 | `query-dir` 	  | Queries location | `%AppData%/helix/queries` |
 | `theme-dir` 	  | Themes location | `%AppData%/helix/themes` |

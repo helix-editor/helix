@@ -1,6 +1,7 @@
 pub mod grammar;
 
 use anyhow::{bail, Result};
+use etcetera::app_strategy::{choose_app_strategy, AppStrategy, AppStrategyArgs};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -121,9 +122,13 @@ fn create_dir(dir: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
-fn project_dirs() -> directories::ProjectDirs {
-    directories::ProjectDirs::from("com", "helix-editor", "helix")
-        .expect("Unable to continue. User has no home.")
+fn project_dirs() -> impl AppStrategy {
+    let args = AppStrategyArgs {
+        top_level_domain: "com".to_string(),
+        author: "helix-editor".to_string(),
+        app_name: "helix".to_string(),
+    };
+    choose_app_strategy(args).expect("Unable to continue. User environment not sane.")
 }
 
 pub fn config_file() -> PathBuf {
@@ -159,9 +164,9 @@ pub fn query_dir() -> &'static std::path::Path {
 
 fn state_dir() -> PathBuf {
     match project_dirs().state_dir() {
-        Some(dir) => dir.to_path_buf(),
-        // state_dir is Linux-specific, fallback to data_local
-        None => project_dirs().data_local_dir().to_path_buf(),
+        Some(dir) => dir,
+        // state_dir is Linux-specific, fallback to data
+        None => project_dirs().data_dir(),
     }
 }
 
