@@ -1,10 +1,15 @@
-; Identifier naming conventions
+; Types
 
-((identifier) @constructor
- (#match? @constructor "^[A-Z]"))
+(type (identifier) @type)
+(type (subscript (identifier) @type)) ; only one deep...
+(class_definition name: (identifier) @type)
+(class_definition superclasses: (argument_list (identifier) @type))
 
-((identifier) @constant
- (#match? @constant "^[A-Z][A-Z_]*$"))
+; Decorators
+
+(decorator) @function
+(decorator (identifier) @function)
+(decorator (call function: (identifier) @function))
 
 ; Builtin functions
 
@@ -16,8 +21,9 @@
 
 ; Function calls
 
-(decorator) @function
-
+((call
+  function: (identifier) @constructor)
+ (#match? @constructor "^[A-Z]"))
 (call
   function: (attribute attribute: (identifier) @function.method))
 (call
@@ -28,9 +34,33 @@
 (function_definition
   name: (identifier) @function)
 
-(identifier) @variable
+; First parameter of a classmethod
+((class_definition
+  body: (block
+          (decorated_definition
+            (decorator (identifier) @_decorator)
+            definition: (function_definition
+              parameters: (parameters . (identifier) @variable.builtin)))))
+ (#eq? @variable.builtin "cls")
+ (#eq? @_decorator "classmethod"))
+
+((identifier) @variable.builtin
+ (#eq? @variable.builtin "self"))
+
+(parameters
+  (identifier) @variable.parameter)
+(parameters (typed_parameter (identifier) @variable.parameter))
 (attribute attribute: (identifier) @variable.other.member)
-(type (identifier) @type)
+
+; Identifier naming conventions
+
+((identifier) @constant
+ (#match? @constant "^[A-Z][A-Z_]*$"))
+
+((identifier) @type
+ (#match? @type "^[A-Z].*[a-z]$"))
+
+(identifier) @variable
 
 ; Literals
 
