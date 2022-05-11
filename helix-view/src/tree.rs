@@ -538,20 +538,72 @@ impl Tree {
         }
     }
 
-    pub fn swap_split_in_direction(&mut self, direction: Direction) {
-        if let Some(id) = self.find_split_in_direction(self.focus, direction) {
-            if let Some([focused, target]) = self.nodes.get_disjoint_mut([self.focus, id]) {
-                match (&mut focused.content, &mut target.content) {
-                    (Content::View(focused), Content::View(target)) => {
-                        std::mem::swap(&mut focused.doc, &mut target.doc);
-                        std::mem::swap(&mut focused.id, &mut target.id);
-                        self.focus = id;
-                    }
-                    // self.focus always points to a view which has a content of Content::View
-                    // and find_split_in_direction() only returns a view which has content of
-                    // Content::View.
-                    _ => unreachable!(),
+    pub fn swap_split_in_direction(&mut self, direction: Direction) -> Option<()> {
+        let focus = self.focus;
+        let target = self.find_split_in_direction(focus, direction)?;
+        let focus_parent = self.nodes[focus].parent;
+        let target_parent = self.nodes[target].parent;
+
+        if focus_parent == target_parent {
+            let parent = focus_parent;
+            let [parent, focus, target] = self.nodes.get_disjoint_mut([parent, focus, target])?;
+            match (&mut parent.content, &mut focus.content, &mut target.content) {
+                (
+                    Content::Container(parent),
+                    Content::View(focus_view),
+                    Content::View(target_view),
+                ) => {
+                    let focus_pos = parent.children.iter().position(|id| focus_view.id == *id)?;
+                    let target_pos = parent
+                        .children
+                        .iter()
+                        .position(|id| target_view.id == *id)?;
+                    // swap node positions so that traversal order is kept
+                    parent.children[focus_pos] = target_view.id;
+                    parent.children[target_pos] = focus_view.id;
+                    // swap area so that views rendered at the correct location
+                    std::mem::swap(&mut focus_view.area, &mut target_view.area);
+
+                    Some(())
                 }
+                _ => unreachable!(),
+            }
+        } else {
+            let [focus_parent, target_parent, focus, target] =
+                self.nodes
+                    .get_disjoint_mut([focus_parent, target_parent, focus, target])?;
+            match (
+                &mut focus_parent.content,
+                &mut target_parent.content,
+                &mut focus.content,
+                &mut target.content,
+            ) {
+                (
+                    Content::Container(focus_parent),
+                    Content::Container(target_parent),
+                    Content::View(focus_view),
+                    Content::View(target_view),
+                ) => {
+                    let focus_pos = focus_parent
+                        .children
+                        .iter()
+                        .position(|id| focus_view.id == *id)?;
+                    let target_pos = target_parent
+                        .children
+                        .iter()
+                        .position(|id| target_view.id == *id)?;
+                    // re-parent target and focus nodes
+                    std::mem::swap(
+                        &mut focus_parent.children[focus_pos],
+                        &mut target_parent.children[target_pos],
+                    );
+                    std::mem::swap(&mut focus.parent, &mut target.parent);
+                    // swap area so that views rendered at the correct location
+                    std::mem::swap(&mut focus_view.area, &mut target_view.area);
+
+                    Some(())
+                }
+                _ => unreachable!(),
             }
         }
     }
@@ -738,7 +790,7 @@ mod test {
         tree.swap_split_in_direction(Direction::Down);
         // | l1   | l2 |    |
         // |    l0*    | r0 |
-        assert_eq!(tree.focus, l1);
+        assert_eq!(tree.focus, l0);
         assert_eq!(doc_id(&tree, l0), Some(doc_l1));
         assert_eq!(doc_id(&tree, l1), Some(doc_l0));
         assert_eq!(doc_id(&tree, l2), Some(doc_l2));
@@ -748,7 +800,7 @@ mod test {
 
         // | l1  | l2 |     |
         // |    r0    | l0* |
-        assert_eq!(tree.focus, r0);
+        assert_eq!(tree.focus, l0);
         assert_eq!(doc_id(&tree, l0), Some(doc_l1));
         assert_eq!(doc_id(&tree, l1), Some(doc_r0));
         assert_eq!(doc_id(&tree, l2), Some(doc_l2));
@@ -758,7 +810,7 @@ mod test {
         tree.swap_split_in_direction(Direction::Up);
         // | l1  | l2 |     |
         // |    r0    | l0* |
-        assert_eq!(tree.focus, r0);
+        assert_eq!(tree.focus, l0);
         assert_eq!(doc_id(&tree, l0), Some(doc_l1));
         assert_eq!(doc_id(&tree, l1), Some(doc_r0));
         assert_eq!(doc_id(&tree, l2), Some(doc_l2));
@@ -768,7 +820,7 @@ mod test {
         tree.swap_split_in_direction(Direction::Down);
         // | l1  | l2 |     |
         // |    r0    | l0* |
-        assert_eq!(tree.focus, r0);
+        assert_eq!(tree.focus, l0);
         assert_eq!(doc_id(&tree, l0), Some(doc_l1));
         assert_eq!(doc_id(&tree, l1), Some(doc_r0));
         assert_eq!(doc_id(&tree, l2), Some(doc_l2));
@@ -781,7 +833,7 @@ mod test {
         tree.swap_split_in_direction(Direction::Down);
         // | l1  | r0  |    |
         // |    l2*    | l0 |
-        assert_eq!(tree.focus, l1);
+        assert_eq!(tree.focus, l2);
         assert_eq!(doc_id(&tree, l0), Some(doc_l1));
         assert_eq!(doc_id(&tree, l1), Some(doc_l2));
         assert_eq!(doc_id(&tree, l2), Some(doc_r0));
@@ -790,7 +842,7 @@ mod test {
         tree.swap_split_in_direction(Direction::Up);
         // | l2* | r0 |    |
         // |    l1    | l0 |
-        assert_eq!(tree.focus, l0);
+        assert_eq!(tree.focus, l2);
         assert_eq!(doc_id(&tree, l0), Some(doc_l2));
         assert_eq!(doc_id(&tree, l1), Some(doc_l1));
         assert_eq!(doc_id(&tree, l2), Some(doc_r0));
