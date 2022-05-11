@@ -2632,6 +2632,18 @@ pub mod insert {
     pub type Hook = fn(&Rope, &Selection, char) -> Option<Transaction>;
     pub type PostHook = fn(&mut Context, char);
 
+    /// Exclude the cursor in range.
+    fn exclude_cursor(text: RopeSlice, range: Range, cursor: Range) -> Range {
+        if range.to() == cursor.to() {
+            Range::new(
+                range.from(),
+                graphemes::prev_grapheme_boundary(text, cursor.to()),
+            )
+        } else {
+            range
+        }
+    }
+
     // It trigger completion when idle timer reaches deadline
     // Only trigger completion if the word under cursor is longer than n characters
     pub fn idle_completion(cx: &mut Context) {
@@ -2948,10 +2960,11 @@ pub mod insert {
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
 
-        let selection = doc
-            .selection(view.id)
-            .clone()
-            .transform(|range| movement::move_prev_word_start(text, range, count));
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            let cursor = Range::point(range.cursor(text));
+            let next = movement::move_prev_word_start(text, cursor, count);
+            exclude_cursor(text, next, range)
+        });
         delete_selection_insert_mode(doc, view, &selection);
     }
 
