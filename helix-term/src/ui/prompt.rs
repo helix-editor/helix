@@ -28,6 +28,7 @@ pub struct Prompt {
     completion_fn: Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
     pub doc_fn: Box<dyn Fn(&str) -> Option<Cow<str>>>,
+    selecting_register: bool,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -78,6 +79,7 @@ impl Prompt {
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
+            selecting_register: false,
         }
     }
 
@@ -538,17 +540,33 @@ impl Component for Prompt {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
             ctrl!('q') => self.exit_selection(),
+            ctrl!('r') => {
+                self.selecting_register = true;
+                (self.callback_fn)(cx, &self.line, PromptEvent::Update);
+                return EventResult::Consumed(None);
+            }
             // any char event that's not mapped to any other combo
             KeyEvent {
                 code: KeyCode::Char(c),
                 modifiers: _,
             } => {
-                self.insert_char(c, cx);
+                if self.selecting_register {
+                    self.insert_str(
+                        cx.editor
+                            .registers
+                            .read(c)
+                            .and_then(|r| r.first())
+                            .map_or("", |r| r.as_str()),
+                    );
+                } else {
+                    self.insert_char(c, cx);
+                }
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
             _ => (),
         };
 
+        self.selecting_register = false;
         EventResult::Consumed(None)
     }
 
