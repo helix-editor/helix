@@ -67,10 +67,27 @@ impl Prompt {
         completion_fn: impl FnMut(&Editor, &str) -> Vec<Completion> + 'static,
         callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
     ) -> Self {
+        Self::new_with_input(
+            prompt,
+            String::new(),
+            history_register,
+            completion_fn,
+            callback_fn,
+        )
+    }
+    pub fn new_with_input(
+        prompt: Cow<'static, str>,
+        input: String,
+        history_register: Option<char>,
+        completion_fn: impl FnMut(&Editor, &str) -> Vec<Completion> + 'static,
+        callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
+    ) -> Self {
+        let line = input;
+        let cursor = line.len();
         Self {
             prompt,
-            line: String::new(),
-            cursor: 0,
+            line,
+            cursor,
             completion: Vec::new(),
             selection: None,
             history_register,
