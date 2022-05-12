@@ -52,7 +52,7 @@ pub fn prompt_with_input(
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
     let mut prompt =
-        Prompt::new_with_input(prompt, input, history_register, completion_fn, callback_fn);
+        Prompt::new(prompt, history_register, completion_fn, callback_fn).with_line(input);
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
     cx.push_layer(Box::new(prompt));
