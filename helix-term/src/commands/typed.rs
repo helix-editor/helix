@@ -1740,30 +1740,26 @@ fn reflow(
     }
 
     let scrolloff = cx.editor.config().scrolloff;
+    let cfg_text_width: usize = cx.editor.config().text_width;
     let (view, doc) = current!(cx.editor);
 
-    const DEFAULT_MAX_LEN: usize = 79;
-
-    // Find the max line length by checking the following sources in order:
+    // Find the text_width by checking the following sources in order:
     //   - The passed argument in `args`
-    //   - The configured max_line_len for this language in languages.toml
-    //   - The const default we set above
-    let max_line_len: usize = args
+    //   - The configured text-width for this language in languages.toml
+    //   - The configured text-width in the config.toml
+    let text_width: usize = args
         .get(0)
         .map(|num| num.parse::<usize>())
         .transpose()?
-        .or_else(|| {
-            doc.language_config()
-                .and_then(|config| config.max_line_length)
-        })
-        .unwrap_or(DEFAULT_MAX_LEN);
+        .or_else(|| doc.language_config().and_then(|config| config.text_width))
+        .unwrap_or(cfg_text_width);
 
     let rope = doc.text();
 
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(rope, selection, |range| {
         let fragment = range.fragment(rope.slice(..));
-        let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, max_line_len);
+        let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, text_width);
 
         (range.from(), range.to(), Some(reflowed_text))
     });

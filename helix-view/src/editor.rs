@@ -241,6 +241,8 @@ pub struct Config {
     pub auto_format: bool,
     /// Automatic save on focus lost. Defaults to false.
     pub auto_save: bool,
+    /// Set a global text_width
+    pub text_width: usize,
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(
@@ -764,6 +766,7 @@ impl Default for Config {
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
             soft_wrap: SoftWrap::default(),
+            text_width: 80,
         }
     }
 }
