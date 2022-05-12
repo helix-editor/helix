@@ -35,6 +35,7 @@ pub struct Client {
     root_path: Option<std::path::PathBuf>,
     root_uri: Option<lsp::Url>,
     workspace_folders: Vec<lsp::WorkspaceFolder>,
+    req_timeout: u64,
 }
 
 impl Client {
@@ -45,6 +46,7 @@ impl Client {
         config: Option<Value>,
         root_markers: &[String],
         id: usize,
+        req_timeout: u64,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
         // Resolve path to the binary
         let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
@@ -97,6 +99,7 @@ impl Client {
             capabilities: OnceCell::new(),
             offset_encoding: OffsetEncoding::Utf8,
             config,
+            req_timeout,
 
             root_path,
             root_uri,
@@ -170,6 +173,7 @@ impl Client {
     {
         let server_tx = self.server_tx.clone();
         let id = self.next_request_id();
+        let timeout_secs = self.req_timeout;
 
         async move {
             use std::time::Duration;
@@ -193,8 +197,8 @@ impl Client {
                 })
                 .map_err(|e| Error::Other(e.into()))?;
 
-            // TODO: specifiable timeout, delay other calls until initialize success
-            timeout(Duration::from_secs(20), rx.recv())
+            // TODO: delay other calls until initialize success
+            timeout(Duration::from_secs(timeout_secs), rx.recv())
                 .await
                 .map_err(|_| Error::Timeout)? // return Timeout
                 .ok_or(Error::StreamClosed)?

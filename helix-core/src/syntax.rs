@@ -50,6 +50,10 @@ where
     Ok(Option::<AutoPairConfig>::deserialize(deserializer)?.and_then(AutoPairConfig::into))
 }
 
+fn default_timeout() -> u64 {
+    20
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
@@ -116,6 +120,8 @@ pub struct LanguageServerConfiguration {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
+    #[serde(default = "default_timeout")]
+    pub timeout: u64,
     pub language_id: Option<String>,
 }
 
