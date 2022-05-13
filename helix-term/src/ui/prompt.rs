@@ -16,7 +16,7 @@ use helix_view::{
 };
 
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
-type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &mut Context)>;
+type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
 
 pub struct Prompt {
     prompt: Cow<'static, str>,
@@ -193,7 +193,7 @@ impl Prompt {
         }
     }
 
-    pub fn insert_char(&mut self, c: char, cx: &mut Context) {
+    pub fn insert_char(&mut self, c: char, cx: &Context) {
         if let Some(handler) = &self.next_char_handler.take() {
             handler(self, c, cx);
 
@@ -549,11 +549,7 @@ impl Component for Prompt {
             }
             ctrl!('q') => self.exit_selection(),
             ctrl!('r') => {
-                self.completion = Vec::new(); //clear completions
-                cx.editor.autoinfo =
-                    Some(helix_view::info::Info::from_registers(&cx.editor.registers)); // show registers info
                 self.next_char_handler = Some(Box::new(|prompt, c, context| {
-                    context.editor.autoinfo = None;
                     prompt.insert_str(
                         context
                             .editor
