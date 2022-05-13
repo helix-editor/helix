@@ -573,6 +573,7 @@ impl Component for Prompt {
                             .and_then(|r| r.first())
                             .map_or("", |r| r.as_str()),
                     );
+                    prompt.recalculate_completion(context.editor);
                 }));
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 return EventResult::Consumed(None);
