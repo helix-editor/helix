@@ -549,6 +549,21 @@ impl Component for Prompt {
             }
             ctrl!('q') => self.exit_selection(),
             ctrl!('r') => {
+                self.completion = cx
+                    .editor
+                    .registers
+                    .inner()
+                    .iter()
+                    .map(|(ch, reg)| {
+                        let content = reg
+                            .read()
+                            .get(0)
+                            .and_then(|s| s.lines().next())
+                            .map(String::from)
+                            .unwrap_or_default();
+                        (0.., format!("{} {}", ch, &content).into())
+                    })
+                    .collect();
                 self.next_char_handler = Some(Box::new(|prompt, c, context| {
                     prompt.insert_str(
                         context
