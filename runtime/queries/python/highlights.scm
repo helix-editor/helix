@@ -1,44 +1,78 @@
-; Identifier naming conventions
-
-((identifier) @constant
- (#match? @constant "^[A-Z_]*$"))
-
-((identifier) @constructor
- (#match? @constructor "^[A-Z]"))
-
-; Types
-
-((identifier) @type
-  (#match?
-    @type
-    "^(bool|bytes|dict|float|frozenset|int|list|set|str|tuple)$"))
-
-(type (identifier)) @type
-
 ; Builtin functions
 
 ((call
   function: (identifier) @function.builtin)
  (#match?
    @function.builtin
-   "^(abs|all|any|ascii|bin|breakpoint|bytearray|callable|chr|classmethod|compile|complex|delattr|dir|divmod|enumerate|eval|exec|filter|format|getattr|globals|hasattr|hash|help|hex|id|input|isinstance|issubclass|iter|len|locals|map|max|memoryview|min|next|object|oct|open|ord|pow|print|property|range|repr|reversed|round|setattr|slice|sorted|staticmethod|sum|super|type|vars|zip|__import__)$"))
+   "^(abs|all|any|ascii|bin|bool|breakpoint|bytearray|bytes|callable|chr|classmethod|compile|complex|delattr|dict|dir|divmod|enumerate|eval|exec|filter|float|format|frozenset|getattr|globals|hasattr|hash|help|hex|id|input|int|isinstance|issubclass|iter|len|list|locals|map|max|memoryview|min|next|object|oct|open|ord|pow|print|property|range|repr|reversed|round|set|setattr|slice|sorted|staticmethod|str|sum|super|tuple|type|vars|zip|__import__)$"))
 
 ; Function calls
 
-(decorator) @function
+(call
+  function: (attribute attribute: (identifier) @constructor)
+ (#match? @constructor "^[A-Z]"))
+(call
+  function: (identifier) @constructor
+ (#match? @constructor "^[A-Z]"))
 
 (call
   function: (attribute attribute: (identifier) @function.method))
+
 (call
   function: (identifier) @function)
 
 ; Function definitions
 
 (function_definition
+  name: (identifier) @constructor
+ (#match? @constructor "^(__new__|__init__)$"))
+
+(function_definition
   name: (identifier) @function)
 
-(identifier) @variable
+; Decorators
+
+(decorator) @function
+(decorator (identifier) @function)
+
+; Parameters
+
+((identifier) @variable.builtin
+ (#match? @variable.builtin "^(self|cls)$"))
+
+(parameters (identifier) @variable.parameter)
+(parameters (typed_parameter (identifier) @variable.parameter))
+
+; Types
+
+((identifier) @type.builtin
+ (#match?
+   @type.builtin
+   "^(bool|bytes|dict|float|frozenset|int|list|set|str|tuple)$"))
+
+; In type hints make everything types to catch non-conforming identifiers
+; (e.g., datetime.datetime) and None
+(type [(identifier) (none)] @type)
+; Handle [] . and | nesting 4 levels deep
+(type
+  (_ [(identifier) (none)]? @type
+    (_ [(identifier) (none)]? @type
+      (_ [(identifier) (none)]? @type
+        (_ [(identifier) (none)]? @type)))))
+
+(class_definition name: (identifier) @type)
+(class_definition superclasses: (argument_list (identifier) @type))
+
+; Variables
+
+((identifier) @constant
+ (#match? @constant "^[A-Z_]{2,}$"))
+
+((identifier) @type
+ (#match? @type "^[A-Z]")) 
+
 (attribute attribute: (identifier) @variable.other.member)
+(identifier) @variable
 
 ; Literals
 
