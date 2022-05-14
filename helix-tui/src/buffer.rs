@@ -15,6 +15,10 @@ pub struct Cell {
 }
 
 impl Cell {
+    pub fn symbol(&self) -> &str {
+        &self.symbol
+    }
+
     pub fn set_symbol(&mut self, symbol: &str) -> &mut Cell {
         self.symbol.clear();
         self.symbol.push_str(symbol);
