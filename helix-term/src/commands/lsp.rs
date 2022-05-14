@@ -108,6 +108,8 @@ fn get_symbol_string(symbol: &lsp::SymbolInformation) -> String {
         _ => "",
     };
 
+    // TODO: we currently only show the symbol directly containing the current symbol; however,
+    // it'd be really useful to have the ability to show all the ancestor symbols as well.
     let prefix = symbol
         .clone()
         .container_name
