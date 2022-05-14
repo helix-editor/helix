@@ -34,6 +34,9 @@
 
 (decorator) @function
 (decorator (identifier) @function)
+(decorator (attribute attribute: (identifier) @function))
+(decorator (call
+  function: (attribute attribute: (identifier) @function)))
 
 ; Parameters
 
