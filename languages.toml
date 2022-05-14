@@ -1359,7 +1359,7 @@ source = { git = "https://github.com/bearcove/tree-sitter-meson", rev = "feea83b
 [[language]]
 name = "sshclientconfig"
 scope = "source.sshclientconfig"
-file-types = [".ssh/config"]
+file-types = [".ssh/config", "/etc/ssh/ssh_config"]
 roots = []
 
 [[grammar]]
