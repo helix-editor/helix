@@ -42,6 +42,9 @@
 
 (parameters (identifier) @variable.parameter)
 (parameters (typed_parameter (identifier) @variable.parameter))
+(parameters (default_parameter name: (identifier) @variable.parameter))
+(parameters (typed_default_parameter name: (identifier) @variable.parameter))
+(keyword_argument name: (identifier) @variable.parameter)
 
 ; Types
 
