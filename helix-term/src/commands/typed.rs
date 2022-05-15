@@ -785,6 +785,19 @@ fn reload(
     doc.reload(view.id)
 }
 
+fn reload_all(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    for doc in cx.editor.documents_mut() {
+        doc.selections().keys().for_each(|view_id| {
+            doc.reload(*view_id);
+        });
+    }
+    Ok(())
+}
+
 fn tree_sitter_scopes(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1521,6 +1534,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Discard changes and reload from the source file.",
             fun: reload,
+            completer: None,
+        },
+        TypableCommand {
+            name: "reload-all",
+            aliases: &[],
+            doc: "Discard changes and reload all buffers from the source file.",
+            fun: reload_all,
             completer: None,
         },
         TypableCommand {
