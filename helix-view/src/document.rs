@@ -32,7 +32,7 @@ const DEFAULT_INDENT: IndentStyle = IndentStyle::Tabs;
 
 /// Threshold for file to be treated as "big".
 /// Big files have their syntax disabled.
-const BIG_FILE_THRESHOLD: u64 = 128 * 1024 * 1024; // 128 Megabytes
+const BIG_FILE_THRESHOLD: usize = 128 * 1024 * 1024; // 128 Megabytes
 
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 
@@ -107,8 +107,8 @@ pub struct Document {
     syntax: Option<Syntax>,
     /// Corresponding language scope name. Usually `source.<lang>`.
     pub(crate) language: Option<Arc<LanguageConfiguration>>,
-    /// Sets if syntax highlighting should be used or not
-    pub highlight_syntax: bool,
+    /// Sets if syntax parser should be used or not
+    pub enable_syntax_parser: bool,
 
     /// Pending changes since last history commit.
     changes: ChangeSet,
@@ -359,7 +359,7 @@ impl Document {
             restore_cursor: false,
             syntax: None,
             language: None,
-            highlight_syntax: true,
+            enable_syntax_parser: true,
             changes,
             old_state,
             diagnostics: Vec::new(),
@@ -572,28 +572,6 @@ impl Document {
         }
     }
 
-    /// Get size (in bytes) of currently opened file.
-    /// If no file is opened, or there is some issue with the file,
-    /// then size will be assumed as 0.
-    pub fn get_file_size(&self) -> u64 {
-        match &self.path {
-            Some(path) => {
-                let file = std::fs::File::open(path);
-                if file.is_err() {
-                    return 0;
-                }
-
-                let metadata = file.unwrap().metadata();
-                if metadata.is_err() {
-                    return 0;
-                }
-
-                metadata.unwrap().len()
-            }
-            None => 0,
-        }
-    }
-
     /// Detect the programming language based on the file type.
     pub fn detect_language(&mut self, config_loader: Arc<syntax::Loader>) {
         if let Some(path) = &self.path {
@@ -663,8 +641,8 @@ impl Document {
         // and error out when document is saved
         self.path = path;
 
-        if self.get_file_size() > BIG_FILE_THRESHOLD {
-            self.highlight_syntax = false;
+        if self.text.len_bytes() > BIG_FILE_THRESHOLD {
+            self.enable_syntax_parser = false;
         }
 
         Ok(())
@@ -678,7 +656,7 @@ impl Document {
         loader: Option<Arc<helix_core::syntax::Loader>>,
     ) {
         if let (Some(language_config), Some(loader)) = (language_config, loader) {
-            if self.highlight_syntax {
+            if self.enable_syntax_parser {
                 if let Some(highlight_config) = language_config.highlight_config(&loader.scopes()) {
                     let syntax = Syntax::new(&self.text, highlight_config, loader);
                     self.syntax = Some(syntax);
