@@ -32,6 +32,4 @@
 
 (line_comment)+ @comment.around
 
-(block_comment) @comment.around
-
-(block_comment) @comment.block.around
+(block_comment) @comment.around @comment.block.around
