@@ -105,7 +105,10 @@ fn get_symbol_string(symbol: &lsp::SymbolInformation) -> String {
         lsp::SymbolKind::EVENT => "event     ",
         lsp::SymbolKind::OPERATOR => "operator  ",
         lsp::SymbolKind::TYPE_PARAMETER => "type param",
-        _ => "",
+        _ => {
+            log::warn!("Unknown symbol kind: {:?}", symbol.kind);
+            ""
+        }
     };
 
     // TODO: we currently only show the symbol directly containing the current symbol; however,
