@@ -1958,8 +1958,8 @@ fn shrink_to_line_bounds(cx: &mut Context) {
 
             // line_to_char gives us the start position of the line, so
             // we need to get the start position of the next line, then
-            // backtrack to get the end position of the last line.
-            let mut end = text.line_to_char(end_line + 1) - 1;
+            // backtrack to get the end position + 1 of the last line.
+            let mut end = text.line_to_char((end_line + 1).min(text.len_lines())) - 1;
 
             if start != range.from() {
                 start = text.line_to_char((start_line + 1).min(text.len_lines()));
