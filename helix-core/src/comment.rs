@@ -170,6 +170,7 @@ pub fn continue_block_comment<'a>(
         // token and check that it starts and ends with the correct block comment tokens.
         // FIXME: this doesn't take into account that a line comment followed by a block comment
         // counts as only one comment object.
+        // TODO: Maybe that's caused by the + in the query?
         if !found_block_comments {
             let nodes = lang_config.textobject_query().and_then(|query| {
                 query.capture_nodes_any(&["comment.around"], slice_tree, slice, &mut cursor)

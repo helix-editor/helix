@@ -863,7 +863,7 @@ file-types = ["dart"]
 roots = ["pubspec.yaml"]
 auto-format = true
 comment-token = "//"
-comment-tokens = ["//"]
+comment-tokens = ["//", "///"]
 block-comment-tokens = { start = "/*", middle = "*", end = "*/" }
 language-server = { command = "dart", args = ["language-server", "--client-id=helix"] }
 indent = { tab-width = 2, unit = "  " }
