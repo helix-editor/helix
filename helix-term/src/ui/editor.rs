@@ -258,8 +258,26 @@ impl EditorView {
         doc.diagnostics()
             .iter()
             .map(|diagnostic| {
+                use helix_core::diagnostic::Severity;
+
                 (
-                    diagnostic_scope,
+                    match diagnostic.severity {
+                        None => diagnostic_scope,
+                        Some(severity) => match severity {
+                            Severity::Hint => theme
+                                .find_scope_index("diagnostic.hint")
+                                .unwrap_or(diagnostic_scope),
+                            Severity::Info => theme
+                                .find_scope_index("diagnostic.info")
+                                .unwrap_or(diagnostic_scope),
+                            Severity::Warning => theme
+                                .find_scope_index("diagnostic.warning")
+                                .unwrap_or(diagnostic_scope),
+                            Severity::Error => theme
+                                .find_scope_index("diagnostic.error")
+                                .unwrap_or(diagnostic_scope),
+                        },
+                    },
                     diagnostic.range.start..diagnostic.range.end,
                 )
             })

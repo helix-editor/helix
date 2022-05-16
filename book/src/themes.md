@@ -235,5 +235,9 @@ These scopes are used for theming the editor interface.
 | `info`                   | Diagnostics info (gutter)                      |
 | `hint`                   | Diagnostics hint (gutter)                      |
 | `diagnostic`             | For text in editing area                       |
+| `diagnostic.hint`        | For text in editing area (hint)                |
+| `diagnostic.info`        | For text in editing area (info)                |
+| `diagnostic.warning`     | For text in editing area (warning)             |
+| `diagnostic.error`       | For text in editing area (error)               |
 
 [rulers-config]: ./configuration.md#editor-section
