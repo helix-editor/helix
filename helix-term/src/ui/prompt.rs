@@ -558,8 +558,7 @@ impl Component for Prompt {
                         let content = reg
                             .read()
                             .get(0)
-                            .and_then(|s| s.lines().next())
-                            .map(String::from)
+                            .and_then(|s| s.lines().next().to_owned())
                             .unwrap_or_default();
                         (0.., format!("{} {}", ch, &content).into())
                     })
