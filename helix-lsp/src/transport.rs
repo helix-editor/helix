@@ -215,20 +215,21 @@ impl Transport {
             }
         };
 
-        let tx = self
-            .pending_requests
-            .lock()
-            .await
-            .remove(&id)
-            .expect("pending_request with id not found!");
-
-        match tx.send(result).await {
-            Ok(_) => (),
-            Err(_) => error!(
-                "Tried sending response into a closed channel (id={:?}), original request likely timed out",
-                id
-            ),
-        };
+        if let Some(tx) = self.pending_requests.lock().await.remove(&id) {
+            match tx.send(result).await {
+                Ok(_) => (),
+                Err(_) => error!(
+                    "Tried sending response into a closed channel (id={:?}), original request likely timed out",
+                    id
+                ),
+            };
+        } else {
+            log::error!(
+                "Discarding Language Server response without a request (id={:?}) {:?}",
+                id,
+                result
+            );
+        }
 
         Ok(())
     }
