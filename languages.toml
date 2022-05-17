@@ -1127,7 +1127,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "gleam"
-source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "7159ce961592192b0e7cdf88782cda0fdf41a4cb" }
+source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "d7861b2a4b4d594c58bb4f1be5f1f4ee4c67e5c3" }
 
 [[language]]
 name = "ron"
