@@ -251,6 +251,9 @@ impl Application {
     where
         S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
     {
+        #[cfg(feature = "integration")]
+        let mut idle_handled = false;
+
         loop {
             if self.editor.should_close() {
                 return false;
@@ -263,11 +266,9 @@ impl Application {
 
                 Some(event) = input_stream.next() => {
                     self.handle_terminal_events(event);
-                    self.editor.reset_idle_timer();
                 }
                 Some(signal) = self.signals.next() => {
                     self.handle_signals(signal).await;
-                    self.editor.reset_idle_timer();
                 }
                 Some((id, call)) = self.editor.language_servers.incoming.next() => {
                     self.handle_language_server_message(call, id).await;
@@ -278,37 +279,46 @@ impl Application {
                         self.render();
                         self.last_render = Instant::now();
                     }
-
-                    self.editor.reset_idle_timer();
                 }
                 Some(payload) = self.editor.debugger_events.next() => {
                     let needs_render = self.editor.handle_debugger_message(payload).await;
                     if needs_render {
                         self.render();
                     }
-                    self.editor.reset_idle_timer();
                 }
                 Some(config_event) = self.editor.config_events.1.recv() => {
                     self.handle_config_events(config_event);
                     self.render();
-                    self.editor.reset_idle_timer();
                 }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
-                    self.editor.reset_idle_timer();
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
-                    self.editor.reset_idle_timer();
                 }
                 _ = &mut self.editor.idle_timer => {
                     // idle timeout
                     self.editor.clear_idle_timer();
                     self.handle_idle_timeout();
+
+                    #[cfg(feature = "integration")]
+                    {
+                        idle_handled = true;
+                    }
+                }
+            }
+
+            // for integration tests only, reset the idle timer after every
+            // event to make a signal when test events are done processing
+            #[cfg(feature = "integration")]
+            {
+                if idle_handled {
                     return true;
                 }
+
+                self.editor.reset_idle_timer();
             }
         }
     }
