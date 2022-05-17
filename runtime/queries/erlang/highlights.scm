@@ -85,6 +85,11 @@
   operator: "/"
   right: (integer) @constant.numeric.integer)
 
+((binary_operator operator: _ @keyword.operator)
+ (#match? @keyword.operator "^\\w+$"))
+((unary_operator operator: _ @keyword.operator)
+ (#match? @keyword.operator "^\\w+$"))
+
 (binary_operator operator: _ @operator)
 (unary_operator operator: _ @operator)
 ["/" ":" "#" "->"] @operator
