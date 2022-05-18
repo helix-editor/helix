@@ -78,6 +78,7 @@
 | scala | ✓ |  | ✓ | `metals` |
 | solidity | ✓ |  |  | `solc` |
 | sql | ✓ |  |  |  |
+| sshclientconfig | ✓ |  |  |  |
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
