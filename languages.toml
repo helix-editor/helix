@@ -1284,7 +1284,7 @@ injection-regex = "hare"
 file-types = ["ha"]
 roots = []
 comment-token = "//"
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "hare"

@@ -212,9 +212,9 @@ dependencies = [
 
 [[package]]
 name = "etcetera"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "016b04fd1e94fb833d432634245c9bb61cf1c7409668a0e7d4c3ab00c5172dec"
+checksum = "d017fce18e4e9bfa75e1db51f49f4487bd3f8a7df509b24a46474a956ee962fd"
 dependencies = [
  "cfg-if",
  "dirs-next",
@@ -928,9 +928,9 @@ dependencies = [
 
 [[package]]
 name = "signal-hook"
-version = "0.3.13"
+version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "647c97df271007dcea485bb74ffdb57f2e683f1306c854f468a0c244badabf2d"
+checksum = "a253b5e89e2698464fc26b545c9edceb338e18a89effeeecfea192c3025be29d"
 dependencies = [
  "libc",
  "signal-hook-registry",
