@@ -1356,12 +1356,3 @@ indent = { tab-width = 2, unit = "  " }
 name = "meson"
 source = { git = "https://github.com/bearcove/tree-sitter-meson", rev = "feea83be9225842490066522ced2d13eb9cce0bd" }
 
-[[language]]
-name = "sshclientconfig"
-scope = "source.sshclientconfig"
-file-types = [".ssh/config", "/etc/ssh/ssh_config"]
-roots = []
-
-[[grammar]]
-name = "sshclientconfig"
-source = { git = "https://github.com/metio/tree-sitter-ssh-client-config.git", rev = "769d7a01a2e5493b4bb5a51096c6bf4be130b024" }
