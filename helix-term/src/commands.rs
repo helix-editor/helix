@@ -1224,11 +1224,11 @@ fn replace(cx: &mut Context) {
     // need to wait for next key
     cx.on_next_key(move |cx, event| {
         let (view, doc) = current!(cx.editor);
-        let ch = match event {
+        let ch: Option<&str> = match event {
             KeyEvent {
                 code: KeyCode::Char(ch),
                 ..
-            } => Some(&ch.encode_utf8(&mut buf[..])[..]),
+            } => Some(ch.encode_utf8(&mut buf[..])),
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
