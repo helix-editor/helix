@@ -782,9 +782,8 @@ fn reload(
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
     let (view, doc) = current!(cx.editor);
-    doc.reload(view.id).and_then(|_| {
+    doc.reload(view.id).map(|_| {
         view.ensure_cursor_in_view(doc, 0);
-        Ok(())
     })
 }
 
