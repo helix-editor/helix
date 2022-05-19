@@ -19,7 +19,6 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
           override: true
 
       - name: Cache cargo registry
@@ -59,7 +58,6 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ matrix.rust }}
           override: true
 
       - name: Cache cargo registry
@@ -102,7 +100,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [stable]
 
   lints:
     name: Lints
@@ -115,7 +112,6 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
           override: true
           components: rustfmt, clippy
 
@@ -163,7 +159,6 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
           override: true
 
       - name: Cache cargo registry
