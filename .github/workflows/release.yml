@@ -13,11 +13,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install stable toolchain
+      - name: Install 1.60.0 toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: 1.60.0
           override: true
 
       - name: Cache cargo registry
@@ -68,35 +68,35 @@ jobs:
         include:
         - build: x86_64-linux
           os: ubuntu-20.04
-          rust: stable
+          rust: 1.60.0
           target: x86_64-unknown-linux-gnu
           cross: false
         # - build: aarch64-linux
         #   os: ubuntu-20.04
-        #   rust: stable
+        #   rust: 1.60.0
         #   target: aarch64-unknown-linux-gnu
         #   cross: true
         - build: x86_64-macos
           os: macos-latest
-          rust: stable
+          rust: 1.60.0
           target: x86_64-apple-darwin
           cross: false
         - build: x86_64-windows
           os: windows-2019
-          rust: stable
+          rust: 1.60.0
           target: x86_64-pc-windows-msvc
           cross: false
         # - build: aarch64-macos
         #   os: macos-latest
-        #   rust: stable
+        #   rust: 1.60.0
         #   target: aarch64-apple-darwin
         # - build: x86_64-win-gnu
         #   os: windows-2019
-        #   rust: stable-x86_64-gnu
+        #   rust: 1.60.0-x86_64-gnu
         #   target: x86_64-pc-windows-gnu
         # - build: win32-msvc
         #   os: windows-2019
-        #   rust: stable
+        #   rust: 1.60.0
         #   target: i686-pc-windows-msvc
 
     steps:

@@ -15,11 +15,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install stable toolchain
+      - name: Install 1.60.0 toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: 1.60.0
           override: true
 
       - name: Cache cargo registry
@@ -55,7 +55,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install stable toolchain
+      - name: Install 1.60.0 toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -102,7 +102,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [stable]
+        rust: [1.60.0]
 
   lints:
     name: Lints
@@ -111,11 +111,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install stable toolchain
+      - name: Install 1.60.0 toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: 1.60.0
           override: true
           components: rustfmt, clippy
 
@@ -159,11 +159,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install stable toolchain
+      - name: Install 1.60.0 toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: 1.60.0
           override: true
 
       - name: Cache cargo registry
