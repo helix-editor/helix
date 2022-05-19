@@ -782,7 +782,10 @@ fn reload(
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
     let (view, doc) = current!(cx.editor);
-    doc.reload(view.id)
+    doc.reload(view.id).and_then(|_| {
+        view.ensure_cursor_in_view(doc, 0);
+        Ok(())
+    })
 }
 
 fn tree_sitter_scopes(
