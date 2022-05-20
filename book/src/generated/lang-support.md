@@ -38,7 +38,7 @@
 | heex | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
 | iex | ✓ |  |  |  |
-| java | ✓ |  |  |  |
+| java | ✓ |  |  | `jdtls` |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
 | json | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsx | ✓ |  | ✓ | `typescript-language-server` |
