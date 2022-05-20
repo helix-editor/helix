@@ -234,6 +234,10 @@ These scopes are used for theming the editor interface.
 | `error`                  | Diagnostics error (gutter)                     |
 | `info`                   | Diagnostics info (gutter)                      |
 | `hint`                   | Diagnostics hint (gutter)                      |
-| `diagnostic`             | For text in editing area                       |
+| `diagnostic`             | Diagnostics fallback style (editing area)      |
+| `diagnostic.hint`        | Diagnostics hint (editing area)                |
+| `diagnostic.info`        | Diagnostics info (editing area)                |
+| `diagnostic.warning`     | Diagnostics warning (editing area)             |
+| `diagnostic.error`       | Diagnostics error (editing area)               |
 
 [rulers-config]: ./configuration.md#editor-section
