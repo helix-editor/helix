@@ -885,6 +885,10 @@ impl Editor {
         self.tree.focus_direction(tree::Direction::Down);
     }
 
+    pub fn transpose_view(&mut self) {
+        self.tree.transpose();
+    }
+
     pub fn should_close(&self) -> bool {
         self.tree.is_empty()
     }
