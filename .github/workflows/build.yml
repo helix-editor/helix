@@ -9,7 +9,7 @@ on:
 
 jobs:
   check:
-    name: Check
+    name: Check Stable
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -47,6 +47,53 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
+
+  check-msrv:
+    name: Check MSRV
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-registry-
+
+      - name: Cache cargo index
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-index-
+
+      - name: Cache cargo target dir
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-v2-cargo-build-target-
+
+      - name: Install cargo-msrv
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-msrv
+
+      - name: Check MSRV compatibility
+        uses: actions-rs/cargo@v1
+        with:
+          command: msrv
+          args: --verify --path=helix-term
 
   test:
     name: Test Suite
