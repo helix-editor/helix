@@ -302,7 +302,9 @@ impl Editor {
                                     .arg(arguments.args.join(" "))
                                     .spawn()
                                     .unwrap(),
-                                e => panic!("Error to start debug console: {}", e),
+                                // TODO replace pretty-print with standard format when MSRV
+                                // is raised to 1.60.0
+                                e => panic!("Error to start debug console: {:?}", e),
                             })
                     } else {
                         std::process::Command::new("tmux")

@@ -10,7 +10,7 @@ repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 include = ["src/**/*", "README.md"]
 default-run = "hx"
-metadata.msrv = "1.60.0"
+metadata.msrv = "1.57.0"
 
 [package.metadata.nix]
 build = true
