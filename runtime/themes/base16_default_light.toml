@@ -10,7 +10,6 @@
 "ui.selection" = { bg = "base02" }
 "comment" = { fg = "base03", modifiers = ["italic"] }
 "ui.statusline" = { fg = "base04", bg = "base01" }
-"ui.help" = { fg = "base04", bg = "base01" }
 "ui.cursor" = { fg = "base04", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "base05", modifiers = ["reversed"] }
 "ui.virtual" = "base03"
