@@ -4,39 +4,18 @@ use super::*;
 
 #[tokio::test]
 async fn insert_mode_cursor_position() -> anyhow::Result<()> {
-    test_key_sequence_text_result(
-        Args::default(),
-        Config::default(),
-        TestCase {
-            in_text: String::new(),
-            in_selection: Selection::single(0, 0),
-            in_keys: "i".into(),
-            out_text: String::new(),
-            out_selection: Selection::single(0, 0),
-        },
-    )
+    test(TestCase {
+        in_text: String::new(),
+        in_selection: Selection::single(0, 0),
+        in_keys: "i".into(),
+        out_text: String::new(),
+        out_selection: Selection::single(0, 0),
+    })
     .await?;
 
-    test_key_sequence_text_result(
-        Args::default(),
-        Config::default(),
-        ("#[\n|]#", "i", "#[|\n]#"),
-    )
-    .await?;
-
-    test_key_sequence_text_result(
-        Args::default(),
-        Config::default(),
-        ("#[\n|]#", "i<esc>", "#[|\n]#"),
-    )
-    .await?;
-
-    test_key_sequence_text_result(
-        Args::default(),
-        Config::default(),
-        ("#[\n|]#", "i<esc>i", "#[|\n]#"),
-    )
-    .await?;
+    test(("#[\n|]#", "i", "#[|\n]#")).await?;
+    test(("#[\n|]#", "i<esc>", "#[|\n]#")).await?;
+    test(("#[\n|]#", "i<esc>i", "#[|\n]#")).await?;
 
     Ok(())
 }
@@ -44,62 +23,44 @@ async fn insert_mode_cursor_position() -> anyhow::Result<()> {
 /// Range direction is preserved when escaping insert mode to normal
 #[tokio::test]
 async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
-    test_key_sequence_text_result(
-        Args::default(),
-        Config::default(),
-        ("#[f|]#oo\n", "vll<A-;><esc>", "#[|foo]#\n"),
-    )
-    .await?;
-
-    test_key_sequence_text_result(
-        Args::default(),
-        Config::default(),
-        (
-            indoc! {"\
+    test(("#[f|]#oo\n", "vll<A-;><esc>", "#[|foo]#\n")).await?;
+    test((
+        indoc! {"\
                 #[f|]#oo
                 #(b|)#ar"
-            },
-            "vll<A-;><esc>",
-            indoc! {"\
+        },
+        "vll<A-;><esc>",
+        indoc! {"\
                 #[|foo]#
                 #(|bar)#"
-            },
-        ),
-    )
+        },
+    ))
     .await?;
 
-    test_key_sequence_text_result(
-        Args::default(),
-        Config::default(),
-        (
-            indoc! {"\
+    test((
+        indoc! {"\
                 #[f|]#oo
                 #(b|)#ar"
-            },
-            "a",
-            indoc! {"\
+        },
+        "a",
+        indoc! {"\
                 #[fo|]#o
                 #(ba|)#r"
-            },
-        ),
-    )
+        },
+    ))
     .await?;
 
-    test_key_sequence_text_result(
-        Args::default(),
-        Config::default(),
-        (
-            indoc! {"\
+    test((
+        indoc! {"\
                 #[f|]#oo
                 #(b|)#ar"
-            },
-            "a<esc>",
-            indoc! {"\
+        },
+        "a<esc>",
+        indoc! {"\
                 #[f|]#oo
                 #(b|)#ar"
-            },
-        ),
-    )
+        },
+    ))
     .await?;
 
     Ok(())

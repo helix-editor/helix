@@ -13,13 +13,7 @@ mod test {
 
     #[tokio::test]
     async fn hello_world() -> anyhow::Result<()> {
-        test_key_sequence_text_result(
-            Args::default(),
-            Config::default(),
-            ("#[\n|]#", "ihello world<esc>", "hello world#[|\n]#"),
-        )
-        .await?;
-
+        test(("#[\n|]#", "ihello world<esc>", "hello world#[|\n]#")).await?;
         Ok(())
     }
 

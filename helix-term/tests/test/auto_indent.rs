@@ -2,7 +2,7 @@ use super::*;
 
 #[tokio::test]
 async fn auto_indent_c() -> anyhow::Result<()> {
-    test_key_sequence_text_result(
+    test_with_config(
         Args {
             files: vec![(PathBuf::from("foo.c"), Position::default())],
             ..Default::default()

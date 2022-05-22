@@ -41,6 +41,7 @@ pub async fn test_key_sequence(
     test_key_sequences(app, vec![(in_keys, test_fn)]).await
 }
 
+#[allow(clippy::type_complexity)]
 pub async fn test_key_sequences(
     app: &mut Application,
     inputs: Vec<(Option<&str>, Option<&dyn Fn(&Application)>)>,
@@ -51,7 +52,7 @@ pub async fn test_key_sequences(
 
     for (in_keys, test_fn) in inputs {
         if let Some(in_keys) = in_keys {
-            for key_event in parse_macro(&in_keys)?.into_iter() {
+            for key_event in parse_macro(in_keys)?.into_iter() {
                 tx.send(Ok(Event::Key(KeyEvent::from(key_event))))?;
             }
         }
@@ -92,7 +93,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
 
     // replace the initial text with the input text
     doc.apply(
-        &Transaction::change_by_selection(&doc.text(), &sel, |_| {
+        &Transaction::change_by_selection(doc.text(), &sel, |_| {
             (0, doc.text().len_chars(), Some((&test_case.in_text).into()))
         })
         .with_selection(test_case.in_selection.clone()),
@@ -105,7 +106,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
 /// Use this for very simple test cases where there is one input
 /// document, selection, and sequence of key presses, and you just
 /// want to verify the resulting document and selection.
-pub async fn test_key_sequence_text_result<T: Into<TestCase>>(
+pub async fn test_with_config<T: Into<TestCase>>(
     args: Args,
     config: Config,
     test_case: T,
@@ -124,6 +125,10 @@ pub async fn test_key_sequence_text_result<T: Into<TestCase>>(
         assert_eq!(test_case.out_selection, sel);
     })
     .await
+}
+
+pub async fn test<T: Into<TestCase>>(test_case: T) -> anyhow::Result<()> {
+    test_with_config(Args::default(), Config::default(), test_case).await
 }
 
 pub fn temp_file_with_contents<S: AsRef<str>>(
@@ -148,7 +153,7 @@ pub fn platform_line(input: &str) -> String {
 
     // we can assume that the source files in this code base will always
     // be LF, so indoc strings will always insert LF
-    let mut output = input.replace("\n", line_end);
+    let mut output = input.replace('\n', line_end);
 
     if !output.ends_with(line_end) {
         output.push_str(line_end);

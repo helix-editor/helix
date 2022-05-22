@@ -2,14 +2,9 @@ use super::*;
 
 #[tokio::test]
 async fn auto_pairs_basic() -> anyhow::Result<()> {
-    test_key_sequence_text_result(
-        Args::default(),
-        Config::default(),
-        ("#[\n|]#", "i(<esc>", "(#[|)]#\n"),
-    )
-    .await?;
+    test(("#[\n|]#", "i(<esc>", "(#[|)]#\n")).await?;
 
-    test_key_sequence_text_result(
+    test_with_config(
         Args::default(),
         Config {
             editor: helix_view::editor::Config {
