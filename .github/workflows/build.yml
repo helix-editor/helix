@@ -11,9 +11,16 @@ jobs:
   check:
     name: Check
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [stable, msrv]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
+
+      - name: Use MSRV rust toolchain
+        if: matrix.rust == 'msrv'
+        run: cp .github/workflows/msrv-rust-toolchain.toml rust-toolchain.toml
 
       - name: Install stable toolchain
         uses: helix-editor/rust-toolchain@v1
@@ -50,8 +57,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: runtime/grammars
-          key: ${{ runner.os }}-v2-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
-          restore-keys: ${{ runner.os }}-v2-tree-sitter-grammars-
+          key: ${{ runner.os }}-stable-v${{ env.CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
+          restore-keys: ${{ runner.os }}-stable-v${{ env.CACHE_VERSION }}-tree-sitter-grammars-
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
