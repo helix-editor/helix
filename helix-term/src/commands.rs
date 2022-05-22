@@ -247,6 +247,7 @@ impl MappableCommand {
         extend_line, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
         extend_to_line_bounds, "Extend selection to line bounds (line-wise selection)",
+        shrink_to_line_bounds, "Shrink selection to line bounds (line-wise selection)",
         delete_selection, "Delete selection",
         delete_selection_noyank, "Delete selection, without yanking",
         change_selection, "Change selection (delete and enter insert mode)",
@@ -1932,6 +1933,47 @@ fn extend_to_line_bounds(cx: &mut Context) {
             let (start_line, end_line) = range.line_range(text.slice(..));
             let start = text.line_to_char(start_line);
             let end = text.line_to_char((end_line + 1).min(text.len_lines()));
+
+            if range.anchor <= range.head {
+                Range::new(start, end)
+            } else {
+                Range::new(end, start)
+            }
+        }),
+    );
+}
+
+fn shrink_to_line_bounds(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    doc.set_selection(
+        view.id,
+        doc.selection(view.id).clone().transform(|range| {
+            let text = doc.text();
+
+            let (start_line, end_line) = range.line_range(text.slice(..));
+
+            // Do nothing if the selection is within one line to prevent
+            // conditional logic for the behavior of this command
+            if start_line == end_line {
+                return range;
+            }
+
+            let mut start = text.line_to_char(start_line);
+
+            // line_to_char gives us the start position of the line, so
+            // we need to get the start position of the next line. In
+            // the editor, this will correspond to the cursor being on
+            // the EOL whitespace charactor, which is what we want.
+            let mut end = text.line_to_char((end_line + 1).min(text.len_lines()));
+
+            if start != range.from() {
+                start = text.line_to_char((start_line + 1).min(text.len_lines()));
+            }
+
+            if end != range.to() {
+                end = text.line_to_char(end_line);
+            }
 
             if range.anchor <= range.head {
                 Range::new(start, end)

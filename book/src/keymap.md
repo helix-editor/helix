@@ -107,6 +107,7 @@
 | `%`                   | Select entire file                                                | `select_all`                         |
 | `x`                   | Select current line, if already selected, extend to next line     | `extend_line`                        |
 | `X`                   | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
+| `Alt-x`               | Shrink selection to line bounds (line-wise selection)             | `shrink_to_line_bounds`              |
 | `J`                   | Join lines inside selection                                       | `join_selections`                    |
 | `K`                   | Keep selections matching the regex                                | `keep_selections`                    |
 | `Alt-K`               | Remove selections matching the regex                              | `remove_selections`                  |
