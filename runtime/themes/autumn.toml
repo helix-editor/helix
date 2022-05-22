@@ -18,7 +18,6 @@
 "comment" = { fg = "my_gray4", modifiers = ["italic"] }
 "ui.statusline" = { fg = "my_gray6", bg = "my_gray2" }
 "ui.statusline.inactive" = { fg = 'my_gray4', bg = 'my_gray2' }
-"ui.help" = { fg = "my_gray5", bg = "my_gray2" }
 "ui.cursor" = { fg = "my_gray5", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "my_white", modifiers = ["reversed"] }
 "ui.text" = "my_white"

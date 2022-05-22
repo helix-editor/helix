@@ -6,7 +6,7 @@ punctuation = "lavender"
 "punctuation.delimiter" = "lavender"
 operator = "lilac"
 special = "honey"
-variable.other.member = "white"
+"variable.other.member" = "white"
 variable = "lavender"
 # variable = "almond" # TODO: metavariables only
 # "variable.parameter" = { fg = "lavender", modifiers = ["underlined"] }
