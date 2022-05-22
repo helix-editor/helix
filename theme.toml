@@ -43,6 +43,7 @@ label = "honey"
 # concat (ERROR) @error.syntax and "MISSING ;" selectors for errors
 
 "ui.background" = { bg = "midnight" }
+"ui.background.separator" = { fg = "comet" }
 "ui.linenr" = { fg = "comet" }
 "ui.linenr.selected" = { fg = "lilac" }
 "ui.statusline" = { fg = "lilac", bg = "revolver" }
