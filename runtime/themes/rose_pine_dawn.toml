@@ -10,7 +10,6 @@
 "comment" = "subtle"
 "ui.statusline" = {fg = "foam", bg = "surface" }
 "ui.statusline.inactive" = { fg = "iris", bg = "surface" }
-"ui.help" = { fg = "foam", bg = "surface" }
 "ui.cursor" = { fg = "rose", modifiers = ["reversed"] }
 "ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "foam", modifiers = ["bold"]}
