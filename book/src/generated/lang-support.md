@@ -90,6 +90,7 @@
 | twig | ✓ |  |  |  |
 | typescript | ✓ |  | ✓ | `typescript-language-server` |
 | vala | ✓ |  |  | `vala-language-server` |
+| verilog | ✓ | ✓ |  | `svlangserver` |
 | vue | ✓ |  |  | `vls` |
 | wgsl | ✓ |  |  |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |

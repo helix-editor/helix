@@ -1379,3 +1379,17 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "scheme"
 source = { git = "https://github.com/6cdh/tree-sitter-scheme", rev = "27fb77db05f890c2823b4bd751c6420378df146b" }
+
+[[language]]
+name = "verilog"
+scope = "source.verilog"
+file-types = ["v", "sv", "svh"]
+roots = []
+comment-token = "//"
+language-server = { command = "svlangserver", args = [] }
+indent = { tab-width = 2, unit = "  " }
+injection-regex = "verilog"
+
+[[grammar]]
+name = "verilog"
+source = { git = "https://github.com/andreytkachenko/tree-sitter-verilog", rev = "514d8d70593d29ef3ef667fa6b0e504ae7c977e3" }
