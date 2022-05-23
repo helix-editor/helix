@@ -23,6 +23,7 @@ use helix_core::{
     regex::{self, Regex, RegexBuilder},
     search::{self, CharMatcher},
     selection, shellwords, surround,
+    syntax::LanguageServerFeature,
     text_annotations::TextAnnotations,
     textobject,
     tree_sitter::Node,
@@ -54,13 +55,13 @@ use crate::{
     job::Callback,
     keymap::ReverseKeymap,
     ui::{
-        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, FilePicker, Picker,
-        Popup, Prompt, PromptEvent,
+        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, CompletionItem,
+        FilePicker, Picker, Popup, Prompt, PromptEvent,
     },
 };
 
 use crate::job::{self, Jobs};
-use futures_util::StreamExt;
+use futures_util::{stream::FuturesUnordered, StreamExt, TryStreamExt};
 use std::{collections::HashMap, fmt, future::Future};
 use std::{collections::HashSet, num::NonZeroUsize};
 
@@ -3029,7 +3030,7 @@ fn exit_select_mode(cx: &mut Context) {
 
 fn goto_first_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let selection = match doc.diagnostics().first() {
+    let selection = match doc.shown_diagnostics().next() {
         Some(diag) => Selection::single(diag.range.start, diag.range.end),
         None => return,
     };
@@ -3038,7 +3039,7 @@ fn goto_first_diag(cx: &mut Context) {
 
 fn goto_last_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let selection = match doc.diagnostics().last() {
+    let selection = match doc.shown_diagnostics().last() {
         Some(diag) => Selection::single(diag.range.start, diag.range.end),
         None => return,
     };
@@ -3054,10 +3055,9 @@ fn goto_next_diag(cx: &mut Context) {
         .cursor(doc.text().slice(..));
 
     let diag = doc
-        .diagnostics()
-        .iter()
+        .shown_diagnostics()
         .find(|diag| diag.range.start > cursor_pos)
-        .or_else(|| doc.diagnostics().first());
+        .or_else(|| doc.shown_diagnostics().next());
 
     let selection = match diag {
         Some(diag) => Selection::single(diag.range.start, diag.range.end),
@@ -3075,11 +3075,12 @@ fn goto_prev_diag(cx: &mut Context) {
         .cursor(doc.text().slice(..));
 
     let diag = doc
-        .diagnostics()
-        .iter()
+        .shown_diagnostics()
+        .collect::<Vec<_>>()
+        .into_iter()
         .rev()
         .find(|diag| diag.range.start < cursor_pos)
-        .or_else(|| doc.diagnostics().last());
+        .or_else(|| doc.shown_diagnostics().last());
 
     let selection = match diag {
         // NOTE: the selection is reversed because we're jumping to the
@@ -3234,60 +3235,72 @@ pub mod insert {
         use helix_lsp::lsp;
         // if ch matches completion char, trigger completion
         let doc = doc_mut!(cx.editor);
-        let language_server = match doc.language_server() {
-            Some(language_server) => language_server,
-            None => return,
-        };
+        let trigger_completion = doc
+            .language_servers_with_feature(LanguageServerFeature::Completion)
+            .iter()
+            .any(|ls| {
+                let capabilities = ls.capabilities();
 
-        let capabilities = language_server.capabilities();
+                // TODO: what if trigger is multiple chars long
+                matches!(&capabilities.completion_provider, Some(lsp::CompletionOptions {
+                    trigger_characters: Some(triggers),
+                    ..
+                }) if triggers.iter().any(|trigger| trigger.contains(ch)))
+            });
 
-        if let Some(lsp::CompletionOptions {
-            trigger_characters: Some(triggers),
-            ..
-        }) = &capabilities.completion_provider
-        {
-            // TODO: what if trigger is multiple chars long
-            if triggers.iter().any(|trigger| trigger.contains(ch)) {
-                cx.editor.clear_idle_timer();
-                super::completion(cx);
-            }
+        if trigger_completion {
+            cx.editor.clear_idle_timer();
+            super::completion(cx);
         }
     }
 
     fn signature_help(cx: &mut Context, ch: char) {
+        use futures_util::FutureExt;
         use helix_lsp::lsp;
         // if ch matches signature_help char, trigger
-        let doc = doc_mut!(cx.editor);
-        // The language_server!() macro is not used here since it will
-        // print an "LSP not active for current buffer" message on
-        // every keypress.
-        let language_server = match doc.language_server() {
-            Some(language_server) => language_server,
-            None => return,
-        };
+        let (view, doc) = current!(cx.editor);
+        // lsp doesn't tell us when to close the signature help, so we request
+        // the help information again after common close triggers which should
+        // return None, which in turn closes the popup.
+        let close_triggers = &[')', ';', '.'];
+        // TODO support multiple language servers (not just the first that is found)
+        let future = doc
+            .language_servers_with_feature(LanguageServerFeature::SignatureHelp)
+            .iter()
+            .find_map(|ls| {
+                let capabilities = ls.capabilities();
 
-        let capabilities = language_server.capabilities();
+                match capabilities {
+                    lsp::ServerCapabilities {
+                        signature_help_provider:
+                            Some(lsp::SignatureHelpOptions {
+                                trigger_characters: Some(triggers),
+                                // TODO: retrigger_characters
+                                ..
+                            }),
+                        ..
+                    } if triggers.iter().any(|trigger| trigger.contains(ch))
+                        || close_triggers.contains(&ch) =>
+                    {
+                        let pos = doc.position(view.id, ls.offset_encoding());
+                        ls.text_document_signature_help(doc.identifier(), pos, None)
+                    }
+                    _ if close_triggers.contains(&ch) => ls.text_document_signature_help(
+                        doc.identifier(),
+                        doc.position(view.id, ls.offset_encoding()),
+                        None,
+                    ),
+                    // TODO: what if trigger is multiple chars long
+                    _ => None,
+                }
+            });
 
-        if let lsp::ServerCapabilities {
-            signature_help_provider:
-                Some(lsp::SignatureHelpOptions {
-                    trigger_characters: Some(triggers),
-                    // TODO: retrigger_characters
-                    ..
-                }),
-            ..
-        } = capabilities
-        {
-            // TODO: what if trigger is multiple chars long
-            let is_trigger = triggers.iter().any(|trigger| trigger.contains(ch));
-            // lsp doesn't tell us when to close the signature help, so we request
-            // the help information again after common close triggers which should
-            // return None, which in turn closes the popup.
-            let close_triggers = &[')', ';', '.'];
-
-            if is_trigger || close_triggers.contains(&ch) {
-                super::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
-            }
+        if let Some(future) = future {
+            super::signature_help_impl_with_future(
+                cx,
+                future.boxed(),
+                SignatureHelpInvoked::Automatic,
+            )
         }
     }
 
@@ -3301,7 +3314,7 @@ pub mod insert {
         Some(transaction)
     }
 
-    use helix_core::auto_pairs;
+    use helix_core::{auto_pairs, syntax::LanguageServerFeature};
 
     pub fn insert_char(cx: &mut Context, c: char) {
         let (view, doc) = current_ref!(cx.editor);
@@ -4046,55 +4059,55 @@ fn format_selections(cx: &mut Context) {
     use helix_lsp::{lsp, util::range_to_lsp_range};
 
     let (view, doc) = current!(cx.editor);
+    let view_id = view.id;
 
     // via lsp if available
     // TODO: else via tree-sitter indentation calculations
 
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
-        None => return,
-    };
-
-    let ranges: Vec<lsp::Range> = doc
-        .selection(view.id)
-        .iter()
-        .map(|range| range_to_lsp_range(doc.text(), *range, language_server.offset_encoding()))
-        .collect();
-
-    if ranges.len() != 1 {
+    if doc.selection(view_id).len() != 1 {
         cx.editor
             .set_error("format_selections only supports a single selection for now");
         return;
     }
 
-    // TODO: handle fails
-    // TODO: concurrent map over all ranges
+    let (future, offset_encoding) = match doc
+        .language_servers_with_feature(LanguageServerFeature::Format)
+        .iter()
+        .find_map(|language_server| {
+            let offset_encoding = language_server.offset_encoding();
+            let ranges: Vec<lsp::Range> = doc
+                .selection(view_id)
+                .iter()
+                .map(|range| range_to_lsp_range(doc.text(), *range, offset_encoding))
+                .collect();
 
-    let range = ranges[0];
+            // TODO: handle fails
+            // TODO: concurrent map over all ranges
 
-    let request = match language_server.text_document_range_formatting(
-        doc.identifier(),
-        range,
-        lsp::FormattingOptions::default(),
-        None,
-    ) {
-        Some(future) => future,
+            let range = ranges[0];
+
+            let future = language_server.text_document_range_formatting(
+                doc.identifier(),
+                range,
+                lsp::FormattingOptions::default(),
+                None,
+            )?;
+            Some((future, offset_encoding))
+        }) {
+        Some(future_offset_encoding) => future_offset_encoding,
         None => {
             cx.editor
-                .set_error("Language server does not support range formatting");
+                .set_error("No language server supports range formatting");
             return;
         }
     };
 
-    let edits = tokio::task::block_in_place(|| helix_lsp::block_on(request)).unwrap_or_default();
+    let edits = tokio::task::block_in_place(|| helix_lsp::block_on(future)).unwrap_or_default();
 
-    let transaction = helix_lsp::util::generate_transaction_from_edits(
-        doc.text(),
-        edits,
-        language_server.offset_encoding(),
-    );
+    let transaction =
+        helix_lsp::util::generate_transaction_from_edits(doc.text(), edits, offset_encoding);
 
-    doc.apply(&transaction, view.id);
+    doc.apply(&transaction, view_id);
 }
 
 fn join_selections_impl(cx: &mut Context, select_space: bool) {
@@ -4231,21 +4244,45 @@ pub fn completion(cx: &mut Context) {
         doc.savepoint(view)
     };
 
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
-        None => return,
-    };
-
-    let offset_encoding = language_server.offset_encoding();
     let text = savepoint.text.clone();
     let cursor = savepoint.cursor();
 
-    let pos = pos_to_lsp_pos(&text, cursor, offset_encoding);
+    let mut futures: FuturesUnordered<_> = doc
+        .language_servers_with_feature(LanguageServerFeature::Completion)
+        .iter()
+        // TODO this should probably already been filtered in something like "language_servers_with_feature"
+        .filter_map(|language_server| {
+            let language_server_id = language_server.id();
+            let offset_encoding = language_server.offset_encoding();
+            let pos = pos_to_lsp_pos(doc.text(), cursor, helix_lsp::OffsetEncoding::Utf8);
+            let completion_request = language_server.completion(doc.identifier(), pos, None)?;
 
-    let future = match language_server.completion(doc.identifier(), pos, None) {
-        Some(future) => future,
-        None => return,
-    };
+            Some(async move {
+                let json = completion_request.await?;
+                let response: Option<lsp::CompletionResponse> = serde_json::from_value(json)?;
+
+                let items = match response {
+                    Some(lsp::CompletionResponse::Array(items)) => items,
+                    // TODO: do something with is_incomplete
+                    Some(lsp::CompletionResponse::List(lsp::CompletionList {
+                        is_incomplete: _is_incomplete,
+                        items,
+                    })) => items,
+                    None => Vec::new(),
+                }
+                .into_iter()
+                .map(|item| CompletionItem {
+                    item,
+                    language_server_id,
+                    offset_encoding,
+                    resolved: false,
+                })
+                .collect();
+
+                anyhow::Ok(items)
+            })
+        })
+        .collect();
 
     // setup a channel that allows the request to be canceled
     let (tx, rx) = oneshot::channel();
@@ -4254,12 +4291,20 @@ pub fn completion(cx: &mut Context) {
     // and the associated request is automatically dropped
     cx.editor.completion_request_handle = Some(tx);
     let future = async move {
+        let items_future = async move {
+            let mut items = Vec::new();
+            // TODO if one completion request errors, all other completion requests are discarded (even if they're valid)
+            while let Some(mut lsp_items) = futures.try_next().await? {
+                items.append(&mut lsp_items);
+            }
+            anyhow::Ok(items)
+        };
         tokio::select! {
             biased;
             _ = rx => {
-                Ok(serde_json::Value::Null)
+                Ok(Vec::new())
             }
-            res = future => {
+            res = items_future => {
                 res
             }
         }
@@ -4293,9 +4338,9 @@ pub fn completion(cx: &mut Context) {
         },
     ));
 
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::CompletionResponse>| {
+    cx.jobs.callback(async move {
+        let items = future.await?;
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             let (view, doc) = current_ref!(editor);
             // check if the completion request is stale.
             //
@@ -4305,16 +4350,6 @@ pub fn completion(cx: &mut Context) {
             if editor.mode != Mode::Insert || view.id != trigger_view || doc.id() != trigger_doc {
                 return;
             }
-
-            let items = match response {
-                Some(lsp::CompletionResponse::Array(items)) => items,
-                // TODO: do something with is_incomplete
-                Some(lsp::CompletionResponse::List(lsp::CompletionList {
-                    is_incomplete: _is_incomplete,
-                    items,
-                })) => items,
-                None => Vec::new(),
-            };
 
             if items.is_empty() {
                 // editor.set_error("No completion available");
@@ -4326,7 +4361,6 @@ pub fn completion(cx: &mut Context) {
                 editor,
                 savepoint,
                 items,
-                offset_encoding,
                 start_offset,
                 trigger_offset,
                 size,
@@ -4340,8 +4374,9 @@ pub fn completion(cx: &mut Context) {
             {
                 compositor.remove(SignatureHelp::ID);
             }
-        },
-    );
+        };
+        Ok(Callback::EditorCompositor(Box::new(call)))
+    });
 }
 
 // comments
@@ -5141,7 +5176,7 @@ async fn shell_impl_async(
                 helix_view::document::to_writer(&mut stdin, (encoding::UTF_8, false), &input)
                     .await?;
             }
-            Ok::<_, anyhow::Error>(())
+            anyhow::Ok(())
         });
         let (output, _) = tokio::join! {
             process.wait_with_output(),

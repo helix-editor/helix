@@ -15,7 +15,7 @@ use helix_view::{graphics::Rect, Document, Editor};
 use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 
-use helix_lsp::{lsp, util};
+use helix_lsp::{lsp, util, OffsetEncoding};
 
 impl menu::Item for CompletionItem {
     type Data = ();
@@ -38,6 +38,7 @@ impl menu::Item for CompletionItem {
             || self.item.tags.as_ref().map_or(false, |tags| {
                 tags.contains(&lsp::CompletionItemTag::DEPRECATED)
             });
+
         menu::Row::new(vec![
             menu::Cell::from(Span::styled(
                 self.item.label.as_str(),
@@ -79,19 +80,16 @@ impl menu::Item for CompletionItem {
                 }
                 None => "",
             }),
-            // self.detail.as_deref().unwrap_or("")
-            // self.label_details
-            //     .as_ref()
-            //     .or(self.detail())
-            //     .as_str(),
         ])
     }
 }
 
 #[derive(Debug, PartialEq, Default, Clone)]
-struct CompletionItem {
-    item: lsp::CompletionItem,
-    resolved: bool,
+pub struct CompletionItem {
+    pub item: lsp::CompletionItem,
+    pub language_server_id: usize,
+    pub offset_encoding: OffsetEncoding,
+    pub resolved: bool,
 }
 
 /// Wraps a Menu.
@@ -109,21 +107,13 @@ impl Completion {
     pub fn new(
         editor: &Editor,
         savepoint: Arc<SavePoint>,
-        mut items: Vec<lsp::CompletionItem>,
-        offset_encoding: helix_lsp::OffsetEncoding,
+        mut items: Vec<CompletionItem>,
         start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
         let replace_mode = editor.config().completion_replace;
         // Sort completion items according to their preselect status (given by the LSP server)
-        items.sort_by_key(|item| !item.preselect.unwrap_or(false));
-        let items = items
-            .into_iter()
-            .map(|item| CompletionItem {
-                item,
-                resolved: false,
-            })
-            .collect();
+        items.sort_by_key(|item| !item.item.preselect.unwrap_or(false));
 
         // Then create the menu
         let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
@@ -131,7 +121,6 @@ impl Completion {
                 doc: &Document,
                 view_id: ViewId,
                 item: &CompletionItem,
-                offset_encoding: helix_lsp::OffsetEncoding,
                 trigger_offset: usize,
                 include_placeholder: bool,
                 replace_mode: bool,
@@ -153,6 +142,8 @@ impl Completion {
                             lsp::TextEdit::new(range, item.new_text.clone())
                         }
                     };
+
+                    let offset_encoding = item.offset_encoding;
 
                     let Some(range) = util::lsp_range_to_range(doc.text(), edit.range, offset_encoding) else{
                         return Transaction::new(doc.text());
@@ -247,15 +238,8 @@ impl Completion {
                     // always present here
                     let item = item.unwrap();
 
-                    let transaction = item_to_transaction(
-                        doc,
-                        view.id,
-                        item,
-                        offset_encoding,
-                        trigger_offset,
-                        true,
-                        replace_mode,
-                    );
+                    let transaction =
+                        item_to_transaction(doc, view.id, item, trigger_offset, true, replace_mode);
                     doc.apply_temporary(&transaction, view.id);
                 }
                 PromptEvent::Validate => {
@@ -267,10 +251,15 @@ impl Completion {
                     // always present here
                     let mut item = item.unwrap().clone();
 
+                    let language_server = editor
+                        .language_servers
+                        .get_by_id(item.language_server_id)
+                        .unwrap();
+
                     // resolve item if not yet resolved
                     if !item.resolved {
                         if let Some(resolved) =
-                            Self::resolve_completion_item(doc, item.item.clone())
+                            Self::resolve_completion_item(language_server, item.item.clone())
                         {
                             item.item = resolved;
                         }
@@ -281,7 +270,6 @@ impl Completion {
                         doc,
                         view.id,
                         &item,
-                        offset_encoding,
                         trigger_offset,
                         false,
                         replace_mode,
@@ -299,7 +287,7 @@ impl Completion {
                             let transaction = util::generate_transaction_from_edits(
                                 doc.text(),
                                 additional_edits,
-                                offset_encoding, // TODO: should probably transcode in Client
+                                item.offset_encoding, // TODO: should probably transcode in Client
                             );
                             doc.apply(&transaction, view.id);
                         }
@@ -323,10 +311,17 @@ impl Completion {
     }
 
     fn resolve_completion_item(
-        doc: &Document,
+        language_server: &helix_lsp::Client,
         completion_item: lsp::CompletionItem,
     ) -> Option<lsp::CompletionItem> {
-        let language_server = doc.language_server()?;
+        let completion_resolve_provider = language_server
+            .capabilities()
+            .completion_provider
+            .as_ref()?
+            .resolve_provider;
+        if completion_resolve_provider != Some(true) {
+            return None;
+        }
 
         let future = language_server.resolve_completion_item(completion_item)?;
         let response = helix_lsp::block_on(future);
@@ -397,8 +392,11 @@ impl Completion {
             Some(item) if !item.resolved => item.clone(),
             _ => return false,
         };
-
-        let language_server = match doc!(cx.editor).language_server() {
+        let language_server = match cx
+            .editor
+            .language_servers
+            .get_by_id(current_item.language_server_id)
+        {
             Some(language_server) => language_server,
             None => return false,
         };
@@ -422,13 +420,14 @@ impl Completion {
                     .unwrap()
                     .completion
                 {
-                    completion.replace_item(
-                        current_item,
-                        CompletionItem {
-                            item: resolved_item,
-                            resolved: true,
-                        },
-                    );
+                    let resolved_item = CompletionItem {
+                        item: resolved_item,
+                        language_server_id: current_item.language_server_id,
+                        offset_encoding: current_item.offset_encoding,
+                        resolved: true,
+                    };
+
+                    completion.replace_item(current_item, resolved_item);
                 }
             },
         );

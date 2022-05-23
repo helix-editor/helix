@@ -44,6 +44,7 @@ fn workspace_for_uri(uri: lsp::Url) -> WorkspaceFolder {
 #[derive(Debug)]
 pub struct Client {
     id: usize,
+    name: String,
     _process: Child,
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
@@ -166,8 +167,7 @@ impl Client {
         tokio::spawn(self.did_change_workspace(vec![workspace_for_uri(root_uri)], Vec::new()));
     }
 
-    #[allow(clippy::type_complexity)]
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::type_complexity, clippy::too_many_arguments)]
     pub fn start(
         cmd: &str,
         args: &[String],
@@ -176,6 +176,7 @@ impl Client {
         root_markers: &[String],
         manual_roots: &[PathBuf],
         id: usize,
+        name: String,
         req_timeout: u64,
         doc_path: Option<&std::path::PathBuf>,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
@@ -200,7 +201,7 @@ impl Client {
         let stderr = BufReader::new(process.stderr.take().expect("Failed to open stderr"));
 
         let (server_rx, server_tx, initialize_notify) =
-            Transport::start(reader, writer, stderr, id);
+            Transport::start(reader, writer, stderr, id, name.clone());
         let (workspace, workspace_is_cwd) = find_workspace();
         let workspace = path::get_normalized_path(&workspace);
         let root = find_lsp_workspace(
@@ -225,6 +226,7 @@ impl Client {
 
         let client = Self {
             id,
+            name,
             _process: process,
             server_tx,
             request_counter: AtomicU64::new(0),
@@ -238,6 +240,10 @@ impl Client {
         };
 
         Ok((client, server_rx, initialize_notify))
+    }
+
+    pub fn name(&self) -> &String {
+        &self.name
     }
 
     pub fn id(&self) -> usize {

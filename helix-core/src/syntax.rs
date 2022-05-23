@@ -17,7 +17,7 @@ use std::{
     borrow::Cow,
     cell::RefCell,
     collections::{HashMap, VecDeque},
-    fmt,
+    fmt::{self, Display},
     hash::{Hash, Hasher},
     mem::{replace, transmute},
     path::{Path, PathBuf},
@@ -60,8 +60,11 @@ fn default_timeout() -> u64 {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
+    #[serde(default)]
+    pub language_server: HashMap<String, LanguageServerConfiguration>,
 }
 
 impl Default for Configuration {
@@ -75,7 +78,10 @@ impl Default for Configuration {
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
-    pub language_id: String, // c-sharp, rust
+    pub language_id: String, // c-sharp, rust, tsx
+    #[serde(rename = "language-id")]
+    // see the table under https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentItem
+    pub language_server_language_id: Option<String>, // csharp, rust, typescriptreact, for the language-server
     pub scope: String,             // source.rust
     pub file_types: Vec<FileType>, // filename extension or ends_with? <Gemfile, rb, etc>
     #[serde(default)]
@@ -84,9 +90,6 @@ pub struct LanguageConfiguration {
     pub comment_token: Option<String>,
     pub text_width: Option<usize>,
     pub soft_wrap: Option<SoftWrap>,
-
-    #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
-    pub config: Option<serde_json::Value>,
 
     #[serde(default)]
     pub auto_format: bool,
@@ -107,8 +110,8 @@ pub struct LanguageConfiguration {
     #[serde(skip)]
     pub(crate) highlight_config: OnceCell<Option<Arc<HighlightConfiguration>>>,
     // tags_config OnceCell<> https://github.com/tree-sitter/tree-sitter/pull/583
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub language_server: Option<LanguageServerConfiguration>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub language_servers: Vec<LanguageServerFeatureConfiguration>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub indent: Option<IndentationConfiguration>,
 
@@ -208,6 +211,68 @@ impl<'de> Deserialize<'de> for FileType {
     }
 }
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum LanguageServerFeature {
+    Format,
+    GotoDeclaration,
+    GotoDefinition,
+    GotoTypeDefinition,
+    GotoReference,
+    GotoImplementation,
+    // Goto, use bitflags, combining previous Goto members?
+    SignatureHelp,
+    Hover,
+    DocumentHighlight,
+    Completion,
+    CodeAction,
+    WorkspaceCommand,
+    DocumentSymbols,
+    WorkspaceSymbols,
+    // Symbols, use bitflags, see above?
+    Diagnostics,
+    RenameSymbol,
+    InlayHints,
+}
+
+impl Display for LanguageServerFeature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LanguageServerFeature::Format => write!(f, "format"),
+            LanguageServerFeature::GotoDeclaration => write!(f, "goto-declaration"),
+            LanguageServerFeature::GotoDefinition => write!(f, "goto-definition"),
+            LanguageServerFeature::GotoTypeDefinition => write!(f, "goto-type-definition"),
+            LanguageServerFeature::GotoReference => write!(f, "goto-type-definition"),
+            LanguageServerFeature::GotoImplementation => write!(f, "goto-implementation"),
+            LanguageServerFeature::SignatureHelp => write!(f, "signature-help"),
+            LanguageServerFeature::Hover => write!(f, "hover"),
+            LanguageServerFeature::DocumentHighlight => write!(f, "document-highlight"),
+            LanguageServerFeature::Completion => write!(f, "completion"),
+            LanguageServerFeature::CodeAction => write!(f, "code-action"),
+            LanguageServerFeature::WorkspaceCommand => write!(f, "workspace-command"),
+            LanguageServerFeature::DocumentSymbols => write!(f, "document-symbols"),
+            LanguageServerFeature::WorkspaceSymbols => write!(f, "workspace-symbols"),
+            LanguageServerFeature::Diagnostics => write!(f, "diagnostics"),
+            LanguageServerFeature::RenameSymbol => write!(f, "rename-symbol"),
+            LanguageServerFeature::InlayHints => write!(f, "inlay-hints"),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged, rename_all = "kebab-case", deny_unknown_fields)]
+pub enum LanguageServerFeatureConfiguration {
+    #[serde(rename_all = "kebab-case")]
+    Features {
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        only_features: Vec<LanguageServerFeature>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        except_features: Vec<LanguageServerFeature>,
+        name: String,
+    },
+    Simple(String),
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageServerConfiguration {
@@ -217,9 +282,10 @@ pub struct LanguageServerConfiguration {
     pub args: Vec<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub environment: HashMap<String, String>,
+    #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
+    pub config: Option<serde_json::Value>,
     #[serde(default = "default_timeout")]
     pub timeout: u64,
-    pub language_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -584,6 +650,15 @@ pub struct SoftWrap {
     pub wrap_at_text_width: Option<bool>,
 }
 
+impl LanguageServerFeatureConfiguration {
+    pub fn name(&self) -> &String {
+        match self {
+            LanguageServerFeatureConfiguration::Simple(name) => name,
+            LanguageServerFeatureConfiguration::Features { name, .. } => name,
+        }
+    }
+}
+
 // Expose loader as Lazy<> global since it's always static?
 
 #[derive(Debug)]
@@ -594,6 +669,8 @@ pub struct Loader {
     language_config_ids_by_suffix: HashMap<String, usize>,
     language_config_ids_by_shebang: HashMap<String, usize>,
 
+    language_server_configs: HashMap<String, LanguageServerConfiguration>,
+
     scopes: ArcSwap<Vec<String>>,
 }
 
@@ -601,6 +678,7 @@ impl Loader {
     pub fn new(config: Configuration) -> Self {
         let mut loader = Self {
             language_configs: Vec::new(),
+            language_server_configs: config.language_server,
             language_config_ids_by_extension: HashMap::new(),
             language_config_ids_by_suffix: HashMap::new(),
             language_config_ids_by_shebang: HashMap::new(),
@@ -723,6 +801,10 @@ impl Loader {
 
     pub fn language_configs(&self) -> impl Iterator<Item = &Arc<LanguageConfiguration>> {
         self.language_configs.iter()
+    }
+
+    pub fn language_server_configs(&self) -> &HashMap<String, LanguageServerConfiguration> {
+        &self.language_server_configs
     }
 
     pub fn set_scopes(&self, scopes: Vec<String>) {
@@ -2370,7 +2452,10 @@ mod test {
         "#,
         );
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(Configuration {
+            language: vec![],
+            language_server: HashMap::new(),
+        });
         let language = get_language("rust").unwrap();
 
         let query = Query::new(language, query_str).unwrap();
@@ -2429,7 +2514,10 @@ mod test {
         .map(String::from)
         .collect();
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(Configuration {
+            language: vec![],
+            language_server: HashMap::new(),
+        });
 
         let language = get_language("rust").unwrap();
         let config = HighlightConfiguration::new(
@@ -2532,7 +2620,10 @@ mod test {
     ) {
         let source = Rope::from_str(source);
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(Configuration {
+            language: vec![],
+            language_server: HashMap::new(),
+        });
         let language = get_language(language_name).unwrap();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();

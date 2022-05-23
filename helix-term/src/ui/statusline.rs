@@ -197,15 +197,16 @@ where
     );
 }
 
+// TODO think about handling multiple language servers
 fn render_lsp_spinner<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
+    let language_servers = context.doc.language_servers();
     write(
         context,
-        context
-            .doc
-            .language_server()
+        language_servers
+            .first()
             .and_then(|srv| {
                 context
                     .spinners
@@ -225,8 +226,7 @@ where
 {
     let (warnings, errors) = context
         .doc
-        .diagnostics()
-        .iter()
+        .shown_diagnostics()
         .fold((0, 0), |mut counts, diag| {
             use helix_core::diagnostic::Severity;
             match diag.severity {
@@ -266,7 +266,7 @@ where
             .diagnostics
             .values()
             .flatten()
-            .fold((0, 0), |mut counts, diag| {
+            .fold((0, 0), |mut counts, (diag, _, _)| {
                 match diag.severity {
                     Some(DiagnosticSeverity::WARNING) => counts.0 += 1,
                     Some(DiagnosticSeverity::ERROR) | None => counts.1 += 1,

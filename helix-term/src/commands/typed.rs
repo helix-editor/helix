@@ -1329,23 +1329,20 @@ fn lsp_workspace_command(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    let (_, doc) = current!(cx.editor);
-
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
+    let doc = doc!(cx.editor);
+    let language_servers =
+        doc.language_servers_with_feature(LanguageServerFeature::WorkspaceCommand);
+    let (language_server_id, options) = match language_servers.iter().find_map(|ls| {
+        ls.capabilities()
+            .execute_command_provider
+            .as_ref()
+            .map(|options| (ls.id(), options))
+    }) {
+        Some(id_options) => id_options,
         None => {
-            cx.editor
-                .set_status("Language server not active for current buffer");
-            return Ok(());
-        }
-    };
-
-    let options = match &language_server.capabilities().execute_command_provider {
-        Some(options) => options,
-        None => {
-            cx.editor
-                .set_status("Workspace commands are not supported for this language server");
+            cx.editor.set_status(
+                "No active language servers for this document support workspace commands",
+            );
             return Ok(());
         }
     };
@@ -1362,8 +1359,8 @@ fn lsp_workspace_command(
         let callback = async move {
             let call: job::Callback = Callback::EditorCompositor(Box::new(
                 move |_editor: &mut Editor, compositor: &mut Compositor| {
-                    let picker = ui::Picker::new(commands, (), |cx, command, _action| {
-                        execute_lsp_command(cx.editor, command.clone());
+                    let picker = ui::Picker::new(commands, (), move |cx, command, _action| {
+                        execute_lsp_command(cx.editor, language_server_id, command.clone());
                     });
                     compositor.push(Box::new(overlaid(picker)))
                 },
@@ -1376,6 +1373,7 @@ fn lsp_workspace_command(
         if options.commands.iter().any(|c| c == &command) {
             execute_lsp_command(
                 cx.editor,
+                language_server_id,
                 helix_lsp::lsp::Command {
                     title: command.clone(),
                     arguments: None,
@@ -1426,7 +1424,7 @@ fn lsp_restart(
         .collect();
 
     for document_id in document_ids_to_refresh {
-        cx.editor.refresh_language_server(document_id);
+        cx.editor.refresh_language_servers(document_id);
     }
 
     Ok(())
@@ -1443,21 +1441,63 @@ fn lsp_stop(
 
     let doc = doc!(cx.editor);
 
-    let ls_id = doc
-        .language_server()
-        .map(|ls| ls.id())
-        .context("LSP not running for the current document")?;
+    // TODO this stops language servers which may be used in another doc/language type that uses the same language servers
+    // I'm not sure if this is really what we want
+    let ls_shutdown_names = doc
+        .language_servers()
+        .iter()
+        .map(|ls| ls.name())
+        .collect::<Vec<_>>();
 
-    let config = doc
-        .language_config()
-        .context("LSP not defined for the current document")?;
-    cx.editor.language_servers.stop(config);
+    for ls_name in &ls_shutdown_names {
+        cx.editor.language_servers.stop(ls_name);
+    }
 
-    for doc in cx.editor.documents_mut() {
-        if doc.language_server().map_or(false, |ls| ls.id() == ls_id) {
-            doc.set_language_server(None);
-            doc.set_diagnostics(Default::default());
+    let doc_ids_active_clients: Vec<_> = cx
+        .editor
+        .documents()
+        .filter_map(|doc| {
+            let doc_active_ls_ids: Vec<_> = doc
+                .language_servers()
+                .iter()
+                .filter(|ls| !ls_shutdown_names.contains(&ls.name()))
+                .map(|ls| ls.id())
+                .collect();
+
+            let active_clients: Vec<_> = cx
+                .editor
+                .language_servers
+                .iter_clients()
+                .filter(|client| doc_active_ls_ids.contains(&client.id()))
+                .map(Clone::clone)
+                .collect();
+
+            if active_clients.len() != doc.language_servers().len() {
+                Some((doc.id(), active_clients))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    for (doc_id, active_clients) in doc_ids_active_clients {
+        let doc = cx.editor.documents.get_mut(&doc_id).unwrap();
+
+        let stopped_clients: Vec<_> = doc
+            .language_servers()
+            .iter()
+            .filter(|ls| {
+                !active_clients
+                    .iter()
+                    .any(|active_ls| active_ls.id() == ls.id())
+            })
+            .map(|ls| ls.id())
+            .collect(); // is necessary because of borrow-checking
+
+        for client_id in stopped_clients {
+            doc.clear_diagnostics(client_id)
         }
+        doc.set_language_servers(active_clients);
     }
 
     Ok(())
@@ -1850,7 +1890,7 @@ fn language(
     doc.detect_indent_and_line_ending();
 
     let id = doc.id();
-    cx.editor.refresh_language_server(id);
+    cx.editor.refresh_language_servers(id);
     Ok(())
 }
 
@@ -2588,7 +2628,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "lsp-restart",
             aliases: &[],
-            doc: "Restarts the Language Server that is in use by the current doc",
+            doc: "Restarts the language servers used by the current doc",
             fun: lsp_restart,
             signature: CommandSignature::none(),
         },
