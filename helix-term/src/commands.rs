@@ -3571,6 +3571,16 @@ pub fn completion(cx: &mut Context) {
         None => return,
     };
 
+    let capabilities = language_server.capabilities();
+    let mut trigger_list = Vec::new();
+    if let Some(lsp::CompletionOptions {
+        trigger_characters: Some(triggers),
+        ..
+    }) = &capabilities.completion_provider
+    {
+        trigger_list = triggers.clone();
+    }
+
     let offset_encoding = language_server.offset_encoding();
     let text = doc.text().slice(..);
     let cursor = doc.selection(view.id).primary().cursor(text);
@@ -3587,7 +3597,12 @@ pub fn completion(cx: &mut Context) {
     use helix_core::chars;
     let mut iter = text.chars_at(cursor);
     iter.reverse();
-    let offset = iter.take_while(|ch| chars::char_is_word(*ch) || *ch == '\\').count();
+    let offset;
+    if trigger_list.len() == 0 {
+        offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
+    } else {
+        offset = iter.take_while(|ch| trigger_list.iter().any(|trigger| trigger.contains(*ch))).count();
+    }    
     let start_offset = cursor.saturating_sub(offset);
     let prefix = text.slice(start_offset..cursor).to_string();
 
