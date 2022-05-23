@@ -297,7 +297,7 @@ impl Completion {
             let fragment = doc.text().slice(self.start_offset..cursor);
             let text = Cow::from(fragment);
             // TODO: logic is same as ui/picker
-            menu.score(&text);
+            menu.score(&text, true);
         } else {
             // we backspaced before the start offset, clear the menu
             // this will cause the editor to remove the completion popup
