@@ -14,11 +14,14 @@
 (type_declaration
   (type_spec (type_identifier) (interface_type (method_spec)+ @class.inside))) @class.around
 
+(type_parameter_list
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+
 (parameter_list
-  (_) @parameter.inside)
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
 
 (argument_list
-  (_) @parameter.inside)
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
 
 (comment) @comment.inside
 

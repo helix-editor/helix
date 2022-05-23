@@ -52,17 +52,20 @@
   (impl_item
     body: (_) @class.inside)) @class.around
 
-(parameters
-  (_) @parameter.inside)
-  
+(parameters 
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+
 (type_parameters
-  (_) @parameter.inside)
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+
+(type_arguments
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
 
 (closure_parameters
-  (_) @parameter.inside)
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
 
 (arguments
-  (_) @parameter.inside)
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
 
 [
   (line_comment)
