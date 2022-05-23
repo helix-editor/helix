@@ -302,7 +302,7 @@ impl Editor {
                                     .arg(arguments.args.join(" "))
                                     .spawn()
                                     .unwrap(),
-                                e => panic!("Error to start debug console: {}", e),
+                                e => panic!("Error to start debug console: {:#?}", e),
                             })
                     } else {
                         std::process::Command::new("tmux")
