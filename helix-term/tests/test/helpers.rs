@@ -37,28 +37,40 @@ pub async fn test_key_sequence(
     app: &mut Application,
     in_keys: Option<&str>,
     test_fn: Option<&dyn Fn(&Application)>,
+    should_exit: bool,
 ) -> anyhow::Result<()> {
-    test_key_sequences(app, vec![(in_keys, test_fn)]).await
+    test_key_sequences(app, vec![(in_keys, test_fn)], should_exit).await
 }
 
 #[allow(clippy::type_complexity)]
 pub async fn test_key_sequences(
     app: &mut Application,
     inputs: Vec<(Option<&str>, Option<&dyn Fn(&Application)>)>,
+    should_exit: bool,
 ) -> anyhow::Result<()> {
     const TIMEOUT: Duration = Duration::from_millis(500);
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     let mut rx_stream = UnboundedReceiverStream::new(rx);
+    let num_inputs = inputs.len();
 
-    for (in_keys, test_fn) in inputs {
+    for (i, (in_keys, test_fn)) in inputs.into_iter().enumerate() {
         if let Some(in_keys) = in_keys {
             for key_event in parse_macro(in_keys)?.into_iter() {
                 tx.send(Ok(Event::Key(KeyEvent::from(key_event))))?;
             }
         }
 
-        if !app.event_loop_until_idle(&mut rx_stream).await {
+        let app_exited = !app.event_loop_until_idle(&mut rx_stream).await;
+
+        // the app should not exit from any test until the last one
+        if i < num_inputs - 1 && app_exited {
             bail!("application exited before test function could run");
+        }
+
+        // verify if it exited on the last iteration if it should have and
+        // the inverse
+        if i == num_inputs - 1 && app_exited != should_exit {
+            bail!("expected app to exit: {} != {}", app_exited, should_exit);
         }
 
         if let Some(test) = test_fn {
@@ -66,12 +78,15 @@ pub async fn test_key_sequences(
         };
     }
 
-    for key_event in parse_macro("<esc>:q!<ret>")?.into_iter() {
-        tx.send(Ok(Event::Key(KeyEvent::from(key_event))))?;
+    if !should_exit {
+        for key_event in parse_macro("<esc>:q!<ret>")?.into_iter() {
+            tx.send(Ok(Event::Key(KeyEvent::from(key_event))))?;
+        }
+
+        let event_loop = app.event_loop(&mut rx_stream);
+        tokio::time::timeout(TIMEOUT, event_loop).await?;
     }
 
-    let event_loop = app.event_loop(&mut rx_stream);
-    tokio::time::timeout(TIMEOUT, event_loop).await?;
     app.close().await?;
 
     Ok(())
@@ -81,6 +96,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     app: Option<Application>,
     test_case: T,
     test_fn: &dyn Fn(&Application),
+    should_exit: bool,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
     let mut app = match app {
@@ -100,7 +116,13 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
         view.id,
     );
 
-    test_key_sequence(&mut app, Some(&test_case.in_keys), Some(test_fn)).await
+    test_key_sequence(
+        &mut app,
+        Some(&test_case.in_keys),
+        Some(test_fn),
+        should_exit,
+    )
+    .await
 }
 
 /// Use this for very simple test cases where there is one input
@@ -114,16 +136,21 @@ pub async fn test_with_config<T: Into<TestCase>>(
     let test_case = test_case.into();
     let app = Application::new(args, config)?;
 
-    test_key_sequence_with_input_text(Some(app), test_case.clone(), &|app| {
-        let doc = doc!(app.editor);
-        assert_eq!(&test_case.out_text, doc.text());
+    test_key_sequence_with_input_text(
+        Some(app),
+        test_case.clone(),
+        &|app| {
+            let doc = doc!(app.editor);
+            assert_eq!(&test_case.out_text, doc.text());
 
-        let mut selections: Vec<_> = doc.selections().values().cloned().collect();
-        assert_eq!(1, selections.len());
+            let mut selections: Vec<_> = doc.selections().values().cloned().collect();
+            assert_eq!(1, selections.len());
 
-        let sel = selections.pop().unwrap();
-        assert_eq!(test_case.out_selection, sel);
-    })
+            let sel = selections.pop().unwrap();
+            assert_eq!(test_case.out_selection, sel);
+        },
+        false,
+    )
     .await
 }
 

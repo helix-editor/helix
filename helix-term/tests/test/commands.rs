@@ -25,6 +25,7 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
         Some(&|app| {
             assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
         }),
+        false,
     )
     .await?;
 
@@ -59,6 +60,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
                 }),
             ),
         ],
+        false,
     )
     .await?;
 
@@ -89,6 +91,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
             let doc = app.editor.document_by_path(file.path());
             assert!(doc.is_none(), "found doc: {:?}", doc);
         }),
+        false,
     )
     .await?;
 

@@ -23,6 +23,7 @@ async fn test_write() -> anyhow::Result<()> {
         )?,
         Some("ii can eat glass, it will not hurt me<ret><esc>:w<ret>"),
         None,
+        false,
     )
     .await?;
 
@@ -31,6 +32,39 @@ async fn test_write() -> anyhow::Result<()> {
 
     let mut file_content = String::new();
     file.as_file_mut().read_to_string(&mut file_content)?;
+
+    assert_eq!(
+        helpers::platform_line("i can eat glass, it will not hurt me"),
+        file_content
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_write_quit() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+
+    test_key_sequence(
+        &mut Application::new(
+            Args {
+                files: vec![(file.path().to_path_buf(), Position::default())],
+                ..Default::default()
+            },
+            Config::default(),
+        )?,
+        Some("ii can eat glass, it will not hurt me<ret><esc>:wq<ret>"),
+        None,
+        true,
+    )
+    .await?;
+
+    file.as_file_mut().flush()?;
+    file.as_file_mut().sync_all()?;
+
+    let mut file_content = String::new();
+    file.as_file_mut().read_to_string(&mut file_content)?;
+
     assert_eq!(
         helpers::platform_line("i can eat glass, it will not hurt me"),
         file_content
@@ -61,6 +95,7 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
         )?,
         Some(&command),
         None,
+        false,
     )
     .await?;
 
@@ -112,6 +147,7 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
                 }),
             ),
         ],
+        false,
     )
     .await?;
 
@@ -149,6 +185,7 @@ async fn test_write_fail_new_path() -> anyhow::Result<()> {
                 }),
             ),
         ],
+        false,
     )
     .await?;
 
