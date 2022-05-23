@@ -6,7 +6,7 @@ punctuation = "white"
 "punctuation.delimiter" = "blue"
 operator = "blue"
 special = "peach"
-variable.other.member = "green"
+"variable.other.member" = "green"
 variable = "peach"
 "variable.parameter" = { fg = "pink" }
 "variable.builtin" = "green"
