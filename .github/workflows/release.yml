@@ -20,26 +20,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Cache cargo registry
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-v2-cargo-registry-
-
-      - name: Cache cargo index
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-v2-cargo-index-
-
-      - name: Cache cargo target dir
-        uses: actions/cache@v3
-        with:
-          path: target
-          key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-v2-cargo-build-target-
+      - uses: Swatinem/rust-cache@v1
 
       - name: Fetch tree-sitter grammars
         uses: actions-rs/cargo@v1

@@ -22,26 +22,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Cache cargo registry
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-v2-cargo-registry-
-
-      - name: Cache cargo index
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-v2-cargo-index-
-
-      - name: Cache cargo target dir
-        uses: actions/cache@v3
-        with:
-          path: target
-          key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-v2-cargo-build-target-
+      - uses: Swatinem/rust-cache@v1
 
       - name: Run cargo check
         uses: actions-rs/cargo@v1
@@ -62,26 +43,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
 
-      - name: Cache cargo registry
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-v2-cargo-registry-
-
-      - name: Cache cargo index
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-v2-cargo-index-
-
-      - name: Cache cargo target dir
-        uses: actions/cache@v3
-        with:
-          path: target
-          key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-v2-cargo-build-target-
+      - uses: Swatinem/rust-cache@v1
 
       - name: Copy minimal languages config
         run: cp .github/workflows/languages.toml ./languages.toml
@@ -119,26 +81,7 @@ jobs:
           override: true
           components: rustfmt, clippy
 
-      - name: Cache cargo registry
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-v2-cargo-registry-
-
-      - name: Cache cargo index
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-v2-cargo-index-
-
-      - name: Cache cargo target dir
-        uses: actions/cache@v3
-        with:
-          path: target
-          key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-v2-cargo-build-target-
+      - uses: Swatinem/rust-cache@v1
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
@@ -166,26 +109,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Cache cargo registry
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-v2-cargo-registry-
-
-      - name: Cache cargo index
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-v2-cargo-index-
-
-      - name: Cache cargo target dir
-        uses: actions/cache@v3
-        with:
-          path: target
-          key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-v2-cargo-build-target-
+      - uses: Swatinem/rust-cache@v1
 
       - name: Generate docs
         uses: actions-rs/cargo@v1
