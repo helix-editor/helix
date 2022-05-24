@@ -50,7 +50,7 @@
 | llvm | ✓ | ✓ | ✓ |  |
 | llvm-mir | ✓ | ✓ | ✓ |  |
 | llvm-mir-yaml | ✓ |  | ✓ |  |
-| lua | ✓ |  | ✓ | [lua-language-server][lua] |
+| lua | ✓ |  | ✓ | `lua-language-server` |
 | make | ✓ |  |  |  |
 | markdown | ✓ |  |  |  |
 | meson | ✓ |  | ✓ |  |
@@ -94,6 +94,3 @@
 | wgsl | ✓ |  |  |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |
 | zig | ✓ |  | ✓ | `zls` |
-
-
-[lua]: https://github.com/sumneko/lua-language-server
