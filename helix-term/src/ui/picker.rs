@@ -132,6 +132,10 @@ impl<T: Item> FilePicker<T> {
         self
     }
 
+    pub fn add_options(&mut self, options: Vec<T>) {
+        self.picker.add_options(options);
+    }
+
     fn current_file(&self, editor: &Editor) -> Option<FileLocation> {
         self.picker
             .selection()
@@ -412,30 +416,35 @@ impl<T: Item> Picker<T> {
             completion_height: 0,
         };
 
-        // scoring on empty input:
-        // TODO: just reuse score()
-        picker
-            .matches
-            .extend(picker.options.iter().enumerate().map(|(index, option)| {
-                let text = option.filter_text(&picker.editor_data);
-                PickerMatch {
-                    index,
-                    score: 0,
-                    len: text.chars().count(),
-                }
-            }));
-
+        picker.recalculate_score(None, true, true);
         picker
     }
 
-    pub fn score(&mut self) {
+    pub fn recalculate_score(
+        &mut self,
+        pattern: Option<String>,
+        reset_cursor: bool,
+        force_recalculation: bool,
+    ) {
+        let cursor = self.cursor;
+        if reset_cursor {
+            self.cursor = 0
+        }
+
+        let pattern = match pattern {
+            Some(pattern) if pattern == self.previous_pattern && !force_recalculation => return,
+            None if !force_recalculation => return,
+            None => self.previous_pattern.clone(),
+            Some(pattern) => pattern,
+        };
+
         let now = Instant::now();
 
-        let pattern = self.prompt.line();
-
-        if pattern == &self.previous_pattern {
-            return;
-        }
+        let prev_matched_option = if !reset_cursor {
+            self.matches.get(cursor).map(|item| item.index)
+        } else {
+            None
+        };
 
         if pattern.is_empty() {
             // Fast path for no pattern.
@@ -450,7 +459,7 @@ impl<T: Item> Picker<T> {
                     }
                 }));
         } else if pattern.starts_with(&self.previous_pattern) {
-            let query = FuzzyQuery::new(pattern);
+            let query = FuzzyQuery::new(&pattern);
             // optimization: if the pattern is a more specific version of the previous one
             // then we can score the filtered set.
             self.matches.retain_mut(|pmatch| {
@@ -469,7 +478,7 @@ impl<T: Item> Picker<T> {
 
             self.matches.sort_unstable();
         } else {
-            let query = FuzzyQuery::new(pattern);
+            let query = FuzzyQuery::new(&pattern);
             self.matches.clear();
             self.matches.extend(
                 self.options
@@ -492,9 +501,32 @@ impl<T: Item> Picker<T> {
 
         log::debug!("picker score {:?}", Instant::now().duration_since(now));
 
-        // reset cursor position
-        self.cursor = 0;
-        self.previous_pattern.clone_from(pattern);
+        // reset cursor position or recover position based on previous matched option
+        if let Some(prev_matched_option) = prev_matched_option {
+            self.cursor = self
+                .matches
+                .iter()
+                .enumerate()
+                .find_map(|(index, m)| {
+                    if m.index == prev_matched_option {
+                        Some(index)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or(0);
+        }
+        self.previous_pattern = pattern;
+    }
+
+    pub fn score(&mut self, reset_cursor: bool) {
+        let pattern = self.prompt.line().clone();
+        self.recalculate_score(Some(pattern), reset_cursor, false);
+    }
+
+    pub fn add_options(&mut self, mut options: Vec<T>) {
+        self.options.append(&mut options);
+        self.recalculate_score(None, false, true);
     }
 
     /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
@@ -548,8 +580,7 @@ impl<T: Item> Picker<T> {
 
     fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
-            // TODO: recalculate only if pattern changed
-            self.score();
+            self.score(true);
         }
         EventResult::Consumed(None)
     }
