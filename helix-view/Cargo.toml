@@ -22,7 +22,7 @@ helix-dap = { version = "0.6", path = "../helix-dap" }
 crossterm = { version = "0.23", optional = true }
 
 # Conversion traits
-once_cell = "1.10"
+once_cell = "1.12"
 url = "2"
 
 arc-swap = { version = "1.5.0" }
