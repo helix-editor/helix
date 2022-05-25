@@ -26,7 +26,7 @@ use crate::ui::{Prompt, PromptEvent};
 use helix_core::{movement::Direction, Position};
 use helix_view::{
     editor::Action,
-    graphics::{Color, CursorKind, Margin, Modifier, Rect, Style},
+    graphics::{CursorKind, Margin, Modifier, Rect},
     Document, Editor,
 };
 
@@ -366,6 +366,7 @@ impl<T> Picker<T> {
             );
         } else if pattern.starts_with(&self.previous_pattern) {
             // TODO: remove when retain_mut is in stable rust
+            #[allow(unused_imports)]
             use retain_mut::RetainMut;
 
             // optimization: if the pattern is a more specific version of the previous one
@@ -586,7 +587,7 @@ impl<T: 'static> Component for Picker<T> {
         self.prompt.render(area, surface, cx);
 
         // -- Separator
-        let sep_style = Style::default().fg(Color::Rgb(90, 89, 119));
+        let sep_style = cx.editor.theme.get("ui.background.separator");
         let borders = BorderType::line_symbols(BorderType::Plain);
         for x in inner.left()..inner.right() {
             if let Some(cell) = surface.get_mut(x, inner.y + 1) {

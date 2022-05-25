@@ -247,6 +247,7 @@ impl MappableCommand {
         extend_line, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
         extend_to_line_bounds, "Extend selection to line bounds (line-wise selection)",
+        shrink_to_line_bounds, "Shrink selection to line bounds (line-wise selection)",
         delete_selection, "Delete selection",
         delete_selection_noyank, "Delete selection, without yanking",
         change_selection, "Change selection (delete and enter insert mode)",
@@ -360,6 +361,11 @@ impl MappableCommand {
         jump_view_left, "Jump to the split to the left",
         jump_view_up, "Jump to the split above",
         jump_view_down, "Jump to the split below",
+        swap_view_right, "Swap with the split to the right",
+        swap_view_left, "Swap with the split to the left",
+        swap_view_up, "Swap with the split above",
+        swap_view_down, "Swap with the split below",
+        transpose_view, "Transpose splits",
         rotate_view, "Goto next window",
         hsplit, "Horizontal bottom split",
         hsplit_new, "Horizontal bottom split scratch buffer",
@@ -1224,11 +1230,11 @@ fn replace(cx: &mut Context) {
     // need to wait for next key
     cx.on_next_key(move |cx, event| {
         let (view, doc) = current!(cx.editor);
-        let ch = match event {
+        let ch: Option<&str> = match event {
             KeyEvent {
                 code: KeyCode::Char(ch),
                 ..
-            } => Some(&ch.encode_utf8(&mut buf[..])[..]),
+            } => Some(ch.encode_utf8(&mut buf[..])),
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
@@ -1927,6 +1933,47 @@ fn extend_to_line_bounds(cx: &mut Context) {
             let (start_line, end_line) = range.line_range(text.slice(..));
             let start = text.line_to_char(start_line);
             let end = text.line_to_char((end_line + 1).min(text.len_lines()));
+
+            if range.anchor <= range.head {
+                Range::new(start, end)
+            } else {
+                Range::new(end, start)
+            }
+        }),
+    );
+}
+
+fn shrink_to_line_bounds(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    doc.set_selection(
+        view.id,
+        doc.selection(view.id).clone().transform(|range| {
+            let text = doc.text();
+
+            let (start_line, end_line) = range.line_range(text.slice(..));
+
+            // Do nothing if the selection is within one line to prevent
+            // conditional logic for the behavior of this command
+            if start_line == end_line {
+                return range;
+            }
+
+            let mut start = text.line_to_char(start_line);
+
+            // line_to_char gives us the start position of the line, so
+            // we need to get the start position of the next line. In
+            // the editor, this will correspond to the cursor being on
+            // the EOL whitespace charactor, which is what we want.
+            let mut end = text.line_to_char((end_line + 1).min(text.len_lines()));
+
+            if start != range.from() {
+                start = text.line_to_char((start_line + 1).min(text.len_lines()));
+            }
+
+            if end != range.to() {
+                end = text.line_to_char(end_line);
+            }
 
             if range.anchor <= range.head {
                 Range::new(start, end)
@@ -3861,6 +3908,26 @@ fn jump_view_up(cx: &mut Context) {
 
 fn jump_view_down(cx: &mut Context) {
     cx.editor.focus_down()
+}
+
+fn swap_view_right(cx: &mut Context) {
+    cx.editor.swap_right()
+}
+
+fn swap_view_left(cx: &mut Context) {
+    cx.editor.swap_left()
+}
+
+fn swap_view_up(cx: &mut Context) {
+    cx.editor.swap_up()
+}
+
+fn swap_view_down(cx: &mut Context) {
+    cx.editor.swap_down()
+}
+
+fn transpose_view(cx: &mut Context) {
+    cx.editor.transpose_view()
 }
 
 // split helper, clear it later

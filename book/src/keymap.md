@@ -107,6 +107,7 @@
 | `%`                   | Select entire file                                                | `select_all`                         |
 | `x`                   | Select current line, if already selected, extend to next line     | `extend_line`                        |
 | `X`                   | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
+| `Alt-x`               | Shrink selection to line bounds (line-wise selection)             | `shrink_to_line_bounds`              |
 | `J`                   | Join lines inside selection                                       | `join_selections`                    |
 | `K`                   | Keep selections matching the regex                                | `keep_selections`                    |
 | `Alt-K`               | Remove selections matching the regex                              | `remove_selections`                  |
@@ -367,6 +368,7 @@ Keys to use within prompt, Remapping currently not supported.
 | `Ctrl-s`                | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
 | `Ctrl-p`, `Up`          | Select previous history                                                 |
 | `Ctrl-n`, `Down`        | Select next history                                                     |
+| `Ctrl-r`                | Insert the content of the register selected by following input char     |
 | `Tab`                   | Select next completion item                                             |
 | `BackTab`               | Select previous completion item                                         |
 | `Enter`                 | Open selected                                                           |

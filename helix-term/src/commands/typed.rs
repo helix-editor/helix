@@ -781,8 +781,11 @@ fn reload(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
+    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
-    doc.reload(view.id)
+    doc.reload(view.id).map(|_| {
+        view.ensure_cursor_in_view(doc, scrolloff);
+    })
 }
 
 fn tree_sitter_scopes(

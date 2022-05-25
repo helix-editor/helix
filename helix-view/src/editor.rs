@@ -885,6 +885,26 @@ impl Editor {
         self.tree.focus_direction(tree::Direction::Down);
     }
 
+    pub fn swap_right(&mut self) {
+        self.tree.swap_split_in_direction(tree::Direction::Right);
+    }
+
+    pub fn swap_left(&mut self) {
+        self.tree.swap_split_in_direction(tree::Direction::Left);
+    }
+
+    pub fn swap_up(&mut self) {
+        self.tree.swap_split_in_direction(tree::Direction::Up);
+    }
+
+    pub fn swap_down(&mut self) {
+        self.tree.swap_split_in_direction(tree::Direction::Down);
+    }
+
+    pub fn transpose_view(&mut self) {
+        self.tree.transpose();
+    }
+
     pub fn should_close(&self) -> bool {
         self.tree.is_empty()
     }

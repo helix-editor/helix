@@ -551,6 +551,7 @@ scope = "source.java"
 injection-regex = "java"
 file-types = ["java"]
 roots = ["pom.xml"]
+language-server = { command = "jdtls" }
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
@@ -604,9 +605,10 @@ name = "lua"
 scope = "source.lua"
 file-types = ["lua"]
 shebangs = ["lua"]
-roots = []
+roots = [".luarc.json", ".luacheckrc", ".stylua.toml", "selene.toml", ".git"]
 comment-token = "--"
 indent = { tab-width = 2, unit = "  " }
+language-server = { command = "lua-language-server", args = [] }
 
 [[grammar]]
 name = "lua"
@@ -1365,3 +1367,30 @@ roots = []
 [[grammar]]
 name = "sshclientconfig"
 source = { git = "https://github.com/metio/tree-sitter-ssh-client-config", rev = "769d7a01a2e5493b4bb5a51096c6bf4be130b024" }
+
+[[language]]
+name = "scheme"
+scope = "source.scheme"
+injection-regex = "scheme"
+file-types = ["ss", "rkt"] # "scm",
+roots = []
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "scheme"
+source = { git = "https://github.com/6cdh/tree-sitter-scheme", rev = "27fb77db05f890c2823b4bd751c6420378df146b" }
+
+[[language]]
+name = "verilog"
+scope = "source.verilog"
+file-types = ["v", "sv", "svh"]
+roots = []
+comment-token = "//"
+language-server = { command = "svlangserver", args = [] }
+indent = { tab-width = 2, unit = "  " }
+injection-regex = "verilog"
+
+[[grammar]]
+name = "verilog"
+source = { git = "https://github.com/andreytkachenko/tree-sitter-verilog", rev = "514d8d70593d29ef3ef667fa6b0e504ae7c977e3" }
