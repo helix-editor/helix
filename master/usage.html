@@ -181,6 +181,56 @@ on the closest pairs found and selections are not required; use counts to act in
 <li><code>mr([</code> to replace the parens with square brackets</li>
 </ul>
 <p>Multiple characters are currently not supported, but planned.</p>
+<h2 id="syntax-tree-motions"><a class="header" href="#syntax-tree-motions">Syntax-tree Motions</a></h2>
+<p><code>A-p</code>, <code>A-o</code>, <code>A-i</code>, and <code>A-n</code> (or <code>Alt</code> and arrow keys) move the primary
+selection according to the selection's place in the syntax tree. Let's walk
+through an example to get familiar with them. Many languages have a syntax like
+so for function calls:</p>
+<pre><code>func(arg1, arg2, arg3)
+</code></pre>
+<p>A function call might be parsed by tree-sitter into a tree like the following.</p>
+<pre><code class="language-tsq">(call
+  function: (identifier) ; func
+  arguments:
+    (arguments           ; (arg1, arg2, arg3)
+      (identifier)       ; arg1
+      (identifier)       ; arg2
+      (identifier)))     ; arg3
+</code></pre>
+<p>Use <code>:tree-sitter-subtree</code> to view the syntax tree of the primary selection. In
+a more intuitive tree format:</p>
+<pre><code>            ┌────┐
+            │call│
+      ┌─────┴────┴─────┐
+      │                │
+┌─────▼────┐      ┌────▼────┐
+│identifier│      │arguments│
+│  &quot;func&quot;  │ ┌────┴───┬─────┴───┐
+└──────────┘ │        │         │
+             │        │         │
+   ┌─────────▼┐  ┌────▼─────┐  ┌▼─────────┐
+   │identifier│  │identifier│  │identifier│
+   │  &quot;arg1&quot;  │  │  &quot;arg2&quot;  │  │  &quot;arg3&quot;  │
+   └──────────┘  └──────────┘  └──────────┘
+</code></pre>
+<p>Say we have a selection that wraps <code>arg1</code>. The selection is on the <code>arg1</code> leaf
+in the tree above.</p>
+<pre><code>func([arg1], arg2, arg3)
+</code></pre>
+<p>Using <code>A-n</code> would select the next sibling in the syntax tree: <code>arg2</code>.</p>
+<pre><code>func(arg1, [arg2], arg3)
+</code></pre>
+<p>While <code>A-o</code> would expand the selection to the parent node. In the tree above we
+can see that we would select the <code>arguments</code> node.</p>
+<pre><code>func[(arg1, arg2, arg3)]
+</code></pre>
+<p>There is also some nuanced behavior that prevents you from getting stuck on a
+node with no sibling. If we have a selection on <code>arg1</code>, <code>A-p</code> would bring us
+to the previous child node. Since <code>arg1</code> doesn't have a sibling to its left,
+though, we climb the syntax tree and then take the previous selection. So <code>A-p</code>
+will move the selection over to the &quot;func&quot; <code>identifier</code>.</p>
+<pre><code>[func](arg1, arg2, arg3)
+</code></pre>
 <h2 id="textobjects"><a class="header" href="#textobjects">Textobjects</a></h2>
 <p>Currently supported: <code>word</code>, <code>surround</code>, <code>function</code>, <code>class</code>, <code>parameter</code>.</p>
 <p><img src="https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif" alt="textobject-demo" />
