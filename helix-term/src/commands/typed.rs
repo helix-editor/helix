@@ -1139,6 +1139,18 @@ fn tree_sitter_subtree(
     Ok(())
 }
 
+fn open_keymap(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    let path = helix_loader::runtime_dir().join("keymap.md");
+    cx.editor.open(path, Action::Replace)?;
+    // Unset path to prevent accidentally saving to the original keymap file.
+    doc_mut!(cx.editor).set_path(None)?;
+    Ok(())
+}
+
 fn open_config(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1664,6 +1676,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Open the helix log file.",
             fun: open_log,
+            completer: None,
+        },
+        TypableCommand {
+            name: "keymap-open",
+            aliases: &[],
+            doc: "Open the default keymap.",
+            fun: open_keymap,
             completer: None,
         },
         TypableCommand {
