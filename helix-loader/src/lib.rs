@@ -113,11 +113,7 @@ pub fn find_root_impl(root: Option<&str>, root_markers: &[String]) -> Vec<std::p
 /// documents that use a top-level array of values like the `languages.toml`,
 /// where one usually wants to override or add to the array instead of
 /// replacing it altogether.
-pub fn merge_toml_values(
-    left: toml::Value,
-    right: toml::Value,
-    merge_toplevel_arrays: bool,
-) -> toml::Value {
+pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usize) -> toml::Value {
     use toml::Value;
 
     fn get_name(v: &Value) -> Option<&str> {
@@ -131,7 +127,7 @@ pub fn merge_toml_values(
             // that you can specify a sub-set of languages in an overriding
             // `languages.toml` but that nested arrays like Language Server
             // arguments are replaced instead of merged.
-            if merge_toplevel_arrays {
+            if merge_depth > 0 {
                 left_items.reserve(right_items.len());
                 for rvalue in right_items {
                     let lvalue = get_name(&rvalue)
@@ -140,7 +136,7 @@ pub fn merge_toml_values(
                         })
                         .map(|lpos| left_items.remove(lpos));
                     let mvalue = match lvalue {
-                        Some(lvalue) => merge_toml_values(lvalue, rvalue, false),
+                        Some(lvalue) => merge_toml_values(lvalue, rvalue, merge_depth - 1),
                         None => rvalue,
                     };
                     left_items.push(mvalue);
@@ -151,18 +147,22 @@ pub fn merge_toml_values(
             }
         }
         (Value::Table(mut left_map), Value::Table(right_map)) => {
-            for (rname, rvalue) in right_map {
-                match left_map.remove(&rname) {
-                    Some(lvalue) => {
-                        let merged_value = merge_toml_values(lvalue, rvalue, merge_toplevel_arrays);
-                        left_map.insert(rname, merged_value);
-                    }
-                    None => {
-                        left_map.insert(rname, rvalue);
+            if merge_depth > 0 {
+                for (rname, rvalue) in right_map {
+                    match left_map.remove(&rname) {
+                        Some(lvalue) => {
+                            let merged_value = merge_toml_values(lvalue, rvalue, merge_depth - 1);
+                            left_map.insert(rname, merged_value);
+                        }
+                        None => {
+                            left_map.insert(rname, rvalue);
+                        }
                     }
                 }
+                Value::Table(left_map)
+            } else {
+                Value::Table(right_map)
             }
-            Value::Table(left_map)
         }
         // Catch everything else we didn't handle, and use the right value
         (_, value) => value,
@@ -187,7 +187,7 @@ mod merge_toml_tests {
             .expect("Couldn't parse built-in languages config");
         let user: Value = toml::from_str(USER).unwrap();
 
-        let merged = merge_toml_values(base, user, true);
+        let merged = merge_toml_values(base, user, 3);
         let languages = merged.get("language").unwrap().as_array().unwrap();
         let nix = languages
             .iter()
@@ -220,7 +220,7 @@ mod merge_toml_tests {
             .expect("Couldn't parse built-in languages config");
         let user: Value = toml::from_str(USER).unwrap();
 
-        let merged = merge_toml_values(base, user, true);
+        let merged = merge_toml_values(base, user, 3);
         let languages = merged.get("language").unwrap().as_array().unwrap();
         let ts = languages
             .iter()
