@@ -349,7 +349,7 @@ impl<T> Picker<T> {
     pub fn score(&mut self) {
         let now = Instant::now();
 
-        let pattern = self.prompt.line();
+        let pattern = &self.prompt.line().trim_start().to_string();
 
         if pattern == &self.previous_pattern {
             return;
@@ -618,7 +618,7 @@ impl<T: 'static> Component for Picker<T> {
 
             let (_score, highlights) = self
                 .matcher
-                .fuzzy_indices(&formatted, self.prompt.line())
+                .fuzzy_indices(&formatted, self.prompt.line().trim_start())
                 .unwrap_or_default();
 
             surface.set_string_truncated(
