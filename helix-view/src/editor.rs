@@ -1,6 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::{DocumentEvent, Mode, SCRATCH_BUFFER_NAME},
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,

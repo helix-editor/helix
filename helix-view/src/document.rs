@@ -13,6 +13,8 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+
 use helix_core::{
     encoding,
     history::{History, UndoKind},
@@ -86,6 +88,11 @@ impl Serialize for Mode {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum DocumentEvent {
+    DisabledSyntax = 0,
+}
+
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
@@ -128,6 +135,11 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
+
+    pub document_events: (
+        UnboundedSender<DocumentEvent>,
+        UnboundedReceiver<DocumentEvent>,
+    ),
 }
 
 use std::{fmt, mem};
@@ -369,6 +381,7 @@ impl Document {
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_server: None,
+            document_events: unbounded_channel(),
         }
     }
 
@@ -664,6 +677,11 @@ impl Document {
             } else {
                 // If there is some syntax and it should be disabled, disable it.
                 self.syntax = None;
+                // Notify that syntax has been disabled
+                self.document_events
+                    .0
+                    .send(DocumentEvent::DisabledSyntax)
+                    .unwrap();
             }
 
             self.language = Some(language_config);
