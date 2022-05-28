@@ -1,37 +1,38 @@
-(ERROR) @error
-(comment) @comment
-
-(identifier) @variable
-(module_identifier) @variable
-(import_path) @variable
-
 (parameter_declaration
-  name: (identifier) @parameter)
+  name: (identifier) @variable.parameter)
 (function_declaration
   name: (identifier) @function)
 (function_declaration
   receiver: (parameter_list)
-  name: (identifier) @method)
+  name: (identifier) @function.method)
 
 (call_expression
   function: (identifier) @function)
 (call_expression
   function: (selector_expression
-    field: (identifier) @method))
+    field: (identifier) @function.method))
 
-(type_identifier) @type
-(builtin_type) @type
-(pointer_type) @type
-(array_type) @type
-
-(field_identifier) @property
+(field_identifier) @variable.other.member
 (selector_expression
-  field: (identifier) @property)
+  field: (identifier) @variable.other.member)
 
-(int_literal) @number
+(int_literal) @constant.numeric.integer
 (interpreted_string_literal) @string
 (rune_literal) @string
-(escape_sequence) @string.escape
+(escape_sequence) @constant.character.escape
+
+[
+  (type_identifier)
+  (builtin_type)
+  (pointer_type)
+  (array_type)
+] @type
+
+[
+  (identifier)
+  (module_identifier)
+  (import_path)
+] @variable
 
 [
  "as"
@@ -145,3 +146,5 @@
  ".."
  "..."
 ] @operator
+
+(comment) @comment
