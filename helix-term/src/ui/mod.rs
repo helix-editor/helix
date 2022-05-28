@@ -65,9 +65,28 @@ pub fn regex_prompt(
                 }
                 PromptEvent::Validate => match Regex::new(input) {
                     Ok(regex) => {
+                        let (view, doc) = current_ref!(cx.editor);
+
+                        // If the current view is an empty scratch buffer and is not displayed in any other views, do not push to jump.
+                        // Boolean value is determined before the call to `view_mut` because the operation requires a borrow
+                        // of `self.tree`, which is mutably borrowed when `view_mut` is called.
+                        let prevent_empty_scratch_push = !doc.is_modified()
+                            // If the buffer has no path and is not modified, it is an empty scratch buffer.
+                            && doc.path().is_none()
+                            // If the buffer we are changing to is not this buffer
+                            && doc_id != doc.id()
+                            // Ensure the buffer is not displayed in any other splits.
+                            && !cx.editor
+                                .tree
+                                .traverse()
+                                .any(|(_, v)| v.doc == doc.id() && v.id != view.id);
+
                         let (view, doc) = current!(cx.editor);
+
                         // Equivalent to push_jump to store selection just before jump
-                        view.jumps.push((doc_id, snapshot.clone()));
+                        if prevent_empty_scratch_push {
+                            view.jumps.push((doc_id, snapshot.clone()));
+                        }
                         fun(view, doc, regex, event);
                     }
                     Err(_err) => (), // TODO: mark command line as error
