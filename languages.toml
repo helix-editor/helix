@@ -1382,6 +1382,21 @@ name = "scheme"
 source = { git = "https://github.com/6cdh/tree-sitter-scheme", rev = "27fb77db05f890c2823b4bd751c6420378df146b" }
 
 [[language]]
+name = "v"
+scope = "source.v"
+file-types = ["v", "vv"]
+shebangs = ["v run"]
+roots = ["v.mod"]
+language-server = { command = "vls", args = [] }
+auto-format = true
+comment-token = "//"
+indent = { tab-width = 4, unit = "\t" }
+
+[[grammar]]
+name = "v"
+source = { git = "https://github.com/vlang/vls", subpath = "tree_sitter_v", rev = "3e8124ea4ab80aa08ec77f03df53f577902a0cdd" }
+
+[[language]]
 name = "verilog"
 scope = "source.verilog"
 file-types = ["v", "sv", "svh"]
