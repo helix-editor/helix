@@ -103,7 +103,7 @@ Themes:
 - Use border colors from the original `dark_plus` theme ([#2186](https://github.com/helix-editor/helix/pull/2186))
 - Add `autumn` ([#2212](https://github.com/helix-editor/helix/pull/2212), [#2270](https://github.com/helix-editor/helix/pull/2270), [#2531](https://github.com/helix-editor/helix/pull/2531))
 - Add `tokyonight_storm` ([#2240](https://github.com/helix-editor/helix/pull/2240))
-- Add `pop-dark` ([#2240](https://github.com/helix-editor/helix/pull/2240))
+- Add `pop-dark` ([#2189](https://github.com/helix-editor/helix/pull/2189))
 - Fix `base16_terminal` theme using incorrect ansi-color ([#2279](https://github.com/helix-editor/helix/pull/2279))
 - Add `onelight` ([#2287](https://github.com/helix-editor/helix/pull/2287), [#2323](https://github.com/helix-editor/helix/pull/2323))
 - Add `ui.virtual` scopes to `onedark` theme ([3626e38](https://github.com/helix-editor/helix/commit/3626e38))
