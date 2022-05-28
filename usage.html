@@ -77,7 +77,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html" class="active"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">4.3.</strong> Hooks</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.4.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html" class="active"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">4.3.</strong> Hooks</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.4.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li><li class="chapter-item expanded "><a href="guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding Indent Queries</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -181,6 +181,56 @@ on the closest pairs found and selections are not required; use counts to act in
 <li><code>mr([</code> to replace the parens with square brackets</li>
 </ul>
 <p>Multiple characters are currently not supported, but planned.</p>
+<h2 id="syntax-tree-motions"><a class="header" href="#syntax-tree-motions">Syntax-tree Motions</a></h2>
+<p><code>A-p</code>, <code>A-o</code>, <code>A-i</code>, and <code>A-n</code> (or <code>Alt</code> and arrow keys) move the primary
+selection according to the selection's place in the syntax tree. Let's walk
+through an example to get familiar with them. Many languages have a syntax like
+so for function calls:</p>
+<pre><code>func(arg1, arg2, arg3)
+</code></pre>
+<p>A function call might be parsed by tree-sitter into a tree like the following.</p>
+<pre><code class="language-tsq">(call
+  function: (identifier) ; func
+  arguments:
+    (arguments           ; (arg1, arg2, arg3)
+      (identifier)       ; arg1
+      (identifier)       ; arg2
+      (identifier)))     ; arg3
+</code></pre>
+<p>Use <code>:tree-sitter-subtree</code> to view the syntax tree of the primary selection. In
+a more intuitive tree format:</p>
+<pre><code>            ┌────┐
+            │call│
+      ┌─────┴────┴─────┐
+      │                │
+┌─────▼────┐      ┌────▼────┐
+│identifier│      │arguments│
+│  &quot;func&quot;  │ ┌────┴───┬─────┴───┐
+└──────────┘ │        │         │
+             │        │         │
+   ┌─────────▼┐  ┌────▼─────┐  ┌▼─────────┐
+   │identifier│  │identifier│  │identifier│
+   │  &quot;arg1&quot;  │  │  &quot;arg2&quot;  │  │  &quot;arg3&quot;  │
+   └──────────┘  └──────────┘  └──────────┘
+</code></pre>
+<p>Say we have a selection that wraps <code>arg1</code>. The selection is on the <code>arg1</code> leaf
+in the tree above.</p>
+<pre><code>func([arg1], arg2, arg3)
+</code></pre>
+<p>Using <code>A-n</code> would select the next sibling in the syntax tree: <code>arg2</code>.</p>
+<pre><code>func(arg1, [arg2], arg3)
+</code></pre>
+<p>While <code>A-o</code> would expand the selection to the parent node. In the tree above we
+can see that we would select the <code>arguments</code> node.</p>
+<pre><code>func[(arg1, arg2, arg3)]
+</code></pre>
+<p>There is also some nuanced behavior that prevents you from getting stuck on a
+node with no sibling. If we have a selection on <code>arg1</code>, <code>A-p</code> would bring us
+to the previous child node. Since <code>arg1</code> doesn't have a sibling to its left,
+though, we climb the syntax tree and then take the previous selection. So <code>A-p</code>
+will move the selection over to the &quot;func&quot; <code>identifier</code>.</p>
+<pre><code>[func](arg1, arg2, arg3)
+</code></pre>
 <h2 id="textobjects"><a class="header" href="#textobjects">Textobjects</a></h2>
 <p>Currently supported: <code>word</code>, <code>surround</code>, <code>function</code>, <code>class</code>, <code>parameter</code>.</p>
 <p><img src="https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif" alt="textobject-demo" />
@@ -193,6 +243,7 @@ on the closest pairs found and selections are not required; use counts to act in
 <tr><td><code>w</code></td><td>Word</td></tr>
 <tr><td><code>W</code></td><td>WORD</td></tr>
 <tr><td><code>(</code>, <code>[</code>, <code>'</code>, etc</td><td>Specified surround pairs</td></tr>
+<tr><td><code>m</code></td><td>Closest surround pair</td></tr>
 <tr><td><code>f</code></td><td>Function</td></tr>
 <tr><td><code>c</code></td><td>Class</td></tr>
 <tr><td><code>a</code></td><td>Argument/parameter</td></tr>
