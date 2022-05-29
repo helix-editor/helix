@@ -1013,31 +1013,70 @@ fn goto_file_vsplit(cx: &mut Context) {
     goto_file_impl(cx, Action::VerticalSplit);
 }
 
+fn resolve_selected_path(
+    selection_text: String,
+    doc_path_parent: Option<&Path>,
+) -> Option<PathBuf> {
+    let trimmed = selection_text.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let selected_path = PathBuf::from(trimmed);
+    match (selected_path.is_relative(), doc_path_parent) {
+        (true, Some(parent_path)) => {
+            let mut result = PathBuf::new();
+            result.push(parent_path);
+            result.push(selected_path);
+            Some(result)
+        }
+        _ => Some(selected_path),
+    }
+}
+
 fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text();
     let selections = doc.selection(view.id);
-    let mut paths: Vec<_> = selections
-        .iter()
-        .map(|r| text.slice(r.from()..r.to()).to_string())
-        .collect();
     let primary = selections.primary();
+    let doc_path_parent = doc.path().and_then(|path| path.parent());
+
     if selections.len() == 1 && primary.to() - primary.from() == 1 {
-        let current_word = movement::move_next_long_word_start(
+        let current_word = textobject::textobject_word(
             text.slice(..),
-            movement::move_prev_long_word_start(text.slice(..), primary, 1),
+            primary,
+            textobject::TextObject::Inside,
             1,
+            true,
         );
-        paths.clear();
-        paths.push(
-            text.slice(current_word.from()..current_word.to())
-                .to_string(),
-        );
-    }
-    for sel in paths {
-        let p = sel.trim();
-        if !p.is_empty() {
-            if let Err(e) = cx.editor.open(&PathBuf::from(p), action) {
+        let selection_text = text
+            .slice(current_word.from()..current_word.to())
+            .to_string();
+        if let Some(path) = resolve_selected_path(selection_text, doc_path_parent) {
+            match path.metadata() {
+                Ok(metadata) => {
+                    if metadata.is_dir() {
+                        let picker = ui::file_picker(path, &cx.editor.config());
+                        cx.push_layer(Box::new(overlayed(picker)));
+                    } else if let Err(e) = cx.editor.open(path, action) {
+                        cx.editor.set_error(format!("Open file failed: {:?}", e));
+                    }
+                }
+                Err(err) => cx.editor.set_error(format!(
+                    "Couldn't get metadata for path {}: {:?}",
+                    path.to_string_lossy(),
+                    err
+                )),
+            }
+        }
+    } else {
+        let paths: Vec<_> = selections
+            .iter()
+            .map(|r| text.slice(r.from()..r.to()).to_string())
+            .filter_map(|selection_text| resolve_selected_path(selection_text, doc_path_parent))
+            .collect();
+        for path in paths {
+            if let Err(e) = cx.editor.open(path, action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
             }
         }
