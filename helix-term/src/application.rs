@@ -799,14 +799,13 @@ impl Application {
                 &self.editor,
                 "File is big. Do you want to enable syntax highlighting anyway (it will slow down the editor) ? ".into(),
                 ui::YesNoAnswer::No,
-                move |cx: &mut crate::compositor::Context, answer: ui::YesNoAnswer| match answer {
-                    ui::YesNoAnswer::Yes => {
+                move |cx: &mut crate::compositor::Context, answer: ui::YesNoAnswer| {
+                    if let ui::YesNoAnswer::Yes = answer {
                         let view = cx.editor.tree.get(cx.editor.tree.focus);
                         let document_in_focus = cx.editor.documents.get_mut(&view.doc).unwrap();
                         document_in_focus.enable_syntax = true;
                         document_in_focus.detect_language(cx.editor.syn_loader.clone());
                     }
-                    _ => {}
                 },
             )),
         };

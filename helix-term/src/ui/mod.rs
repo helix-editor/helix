@@ -145,8 +145,8 @@ pub fn yesno_prompt(
         prompt,
         None,
         completers::yesno,
-        move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| match event {
-            PromptEvent::Validate => {
+        move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
+            if let PromptEvent::Validate = event {
                 let answer = match input {
                     "yes" => YesNoAnswer::Yes,
                     "no" => YesNoAnswer::No,
@@ -155,7 +155,6 @@ pub fn yesno_prompt(
 
                 callback_fn(cx, answer);
             }
-            _ => {}
         },
     );
 
