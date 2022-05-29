@@ -366,7 +366,7 @@ impl<T> Picker<T> {
             );
         } else if pattern.starts_with(&self.previous_pattern) {
             // TODO: remove when retain_mut is in stable rust
-            #[allow(unused_imports)]
+            #[allow(unused_imports, deprecated)]
             use retain_mut::RetainMut;
 
             // optimization: if the pattern is a more specific version of the previous one
