@@ -6,6 +6,7 @@ use helix_core::{
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
+use helix_view::document::DocumentEvent;
 use helix_view::{align_view, editor::ConfigEvent, document::DocumentEvent, editor::ConfigEvent, theme, Align, Editor};
 use serde_json::json;
 
@@ -298,7 +299,7 @@ impl Application {
                     self.handle_config_events(config_event);
                     self.render();
                 }
-                Some(document_event) = document_in_focus.unwrap().document_events.1.recv(), if document_in_focus.is_some()  => {
+                Some(document_event) = document_in_focus.unwrap().document_events.1.recv(), if document_in_focus.is_some() => {
                     self.handle_document_events(document_event);
                     self.render();
                 }
@@ -792,17 +793,23 @@ impl Application {
         }
     }
 
-    pub fn handle_document_events(&mut self, event: DocumentEvent) {
-        let mut cx = crate::compositor::Context {
-            editor: &mut self.editor,
-            jobs: &mut self.jobs,
-            scroll: None,
+    pub fn handle_document_events(&mut self, document_event: DocumentEvent) {
+        match document_event {
+            DocumentEvent::DisabledSyntax => self.compositor.push(ui::yesno_prompt(
+                &self.editor,
+                "File is big. Do you want to enable syntax highlighting anyway (it will slow down the editor) ? ".into(),
+                ui::YesNoAnswer::No,
+                move |cx: &mut crate::compositor::Context, answer: ui::YesNoAnswer| match answer {
+                    ui::YesNoAnswer::Yes => {
+                        let view = cx.editor.tree.get(cx.editor.tree.focus);
+                        let document_in_focus = cx.editor.documents.get_mut(&view.doc).unwrap();
+                        document_in_focus.enable_syntax_parser = true;
+                        document_in_focus.detect_language(cx.editor.syn_loader.clone());
+                    }
+                    _ => {}
+                },
+            )),
         };
-
-        self.compositor.push(Box::new(helix_view::info::Info::new(
-            "Hello world !",
-            vec![],
-        )));
     }
 
     async fn claim_term(&mut self) -> Result<(), Error> {

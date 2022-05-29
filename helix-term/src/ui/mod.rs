@@ -18,7 +18,7 @@ pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::{FileLocation, FilePicker, Picker};
 pub use popup::Popup;
-pub use prompt::{Prompt, PromptEvent};
+pub use prompt::{CompletionDirection, Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
@@ -127,6 +127,56 @@ pub fn regex_prompt(
     prompt.recalculate_completion(cx.editor);
     // prompt
     cx.push_layer(Box::new(prompt));
+}
+
+pub enum YesNoAnswer {
+    Yes,
+    No,
+    Other(Option<String>),
+}
+
+pub fn yesno_prompt(
+    editor: &Editor,
+    prompt: std::borrow::Cow<'static, str>,
+    initial_answer: YesNoAnswer,
+    mut callback_fn: impl FnMut(&mut crate::compositor::Context, YesNoAnswer) + 'static,
+) -> Box<Prompt> {
+    let mut prompt = Prompt::new(
+        prompt,
+        None,
+        completers::yesno,
+        move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| match event {
+            PromptEvent::Validate => {
+                let answer = match input {
+                    "yes" => YesNoAnswer::Yes,
+                    "no" => YesNoAnswer::No,
+                    other_answer => YesNoAnswer::Other(Some(other_answer.to_string())),
+                };
+
+                callback_fn(cx, answer);
+            }
+            _ => {}
+        },
+    );
+
+    match initial_answer {
+        YesNoAnswer::Yes => {
+            prompt.insert_str("yes");
+            prompt.recalculate_completion(editor);
+            prompt.change_completion_selection(CompletionDirection::Forward);
+        }
+        YesNoAnswer::No => {
+            prompt.insert_str("no");
+            prompt.recalculate_completion(editor);
+            prompt.change_completion_selection(CompletionDirection::Backward);
+        }
+        YesNoAnswer::Other(Some(custom_input)) => {
+            prompt.insert_str(custom_input.as_str());
+        }
+        YesNoAnswer::Other(None) => {}
+    }
+
+    Box::new(prompt)
 }
 
 pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
@@ -366,6 +416,10 @@ pub mod completers {
                 FileMatch::Reject
             }
         })
+    }
+
+    pub fn yesno(_editor: &Editor, _input: &str) -> Vec<Completion> {
+        vec![(0.., Cow::from("yes")), (0.., Cow::from("no"))]
     }
 
     #[derive(Copy, Clone, PartialEq, Eq)]
