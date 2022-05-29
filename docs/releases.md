@@ -5,12 +5,11 @@ Helix releases are versioned in the Calendar Versioning scheme:
 we'll use `<tag>` as a placeholder for the tag being published.
 
 * Merge the changelog PR
-* Edit the `VERSION` file and remove the `-dev`
 * Tag and push
     * `git tag -s -m "<tag>" -a <tag> && git push`
     * Make sure to switch to master and pull first
-* Edit the `VERSION` file and add back the `-dev` and change the date to the next planned release
-    * Releases are planned to happen every two months, so `22.05` should be changed to `22.07-dev` in this step
+* Edit the `VERSION` file and change the date to the next planned release
+    * Releases are planned to happen every two months, so `22.05` would change to `22.07`
 * Wait for the Release CI to finish
     * It will automatically turn the git tag into a GitHub release when it uploads artifacts
 * Edit the new release
