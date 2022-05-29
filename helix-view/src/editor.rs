@@ -671,11 +671,18 @@ impl Editor {
                         .any(|(_, v)| v.doc == doc.id && v.id != view.id);
 
                 let (view, doc) = current!(self);
+                let view_id = view.id;
+
                 if remove_empty_scratch {
                     // Copy `doc.id` into a variable before calling `self.documents.remove`, which requires a mutable
                     // borrow, invalidating direct access to `doc.id`.
                     let id = doc.id;
                     self.documents.remove(&id);
+
+                    // Remove the scratch buffer from any jumplists
+                    for (view, _) in self.tree.views_mut() {
+                        view.jumps.remove(&id)
+                    }
                 } else {
                     let jump = (view.doc, doc.selection(view.id).clone());
                     view.jumps.push(jump);
@@ -691,7 +698,6 @@ impl Editor {
                     }
                 }
 
-                let view_id = view.id;
                 self.replace_document_in_view(view_id, id);
 
                 return;
