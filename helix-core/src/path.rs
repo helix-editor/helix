@@ -5,9 +5,8 @@ use std::path::{Component, Path, PathBuf};
 /// is available, otherwise returns the path unchanged.
 pub fn fold_home_dir(path: &Path) -> PathBuf {
     if let Ok(home) = home_dir() {
-        if path.starts_with(&home) {
-            // it's ok to unwrap, the path starts with home dir
-            return PathBuf::from("~").join(path.strip_prefix(&home).unwrap());
+        if let Ok(stripped) = path.strip_prefix(&home) {
+            return PathBuf::from("~").join(stripped);
         }
     }
 
