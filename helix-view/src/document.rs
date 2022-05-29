@@ -115,7 +115,7 @@ pub struct Document {
     /// Corresponding language scope name. Usually `source.<lang>`.
     pub(crate) language: Option<Arc<LanguageConfiguration>>,
     /// Sets if syntax parser should be used or not
-    pub enable_syntax_parser: bool,
+    pub enable_syntax: bool,
 
     /// Pending changes since last history commit.
     changes: ChangeSet,
@@ -371,7 +371,7 @@ impl Document {
             restore_cursor: false,
             syntax: None,
             language: None,
-            enable_syntax_parser: true,
+            enable_syntax: true,
             changes,
             old_state,
             diagnostics: Vec::new(),
@@ -655,7 +655,7 @@ impl Document {
         self.path = path;
 
         if self.text.len_bytes() > BIG_FILE_THRESHOLD {
-            self.enable_syntax_parser = false;
+            self.enable_syntax = false;
         }
 
         Ok(())
@@ -669,7 +669,7 @@ impl Document {
         loader: Option<Arc<helix_core::syntax::Loader>>,
     ) {
         if let (Some(language_config), Some(loader)) = (language_config, loader) {
-            if self.enable_syntax_parser {
+            if self.enable_syntax {
                 if let Some(highlight_config) = language_config.highlight_config(&loader.scopes()) {
                     let syntax = Syntax::new(&self.text, highlight_config, loader);
                     self.syntax = Some(syntax);

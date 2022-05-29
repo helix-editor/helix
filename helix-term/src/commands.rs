@@ -432,7 +432,7 @@ impl MappableCommand {
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         command_palette, "Open command pallete",
-        toggle_syntax_parser, "Toggle (on/off) syntax parser for current document",
+        toggle_syntax, "Toggle (on/off) syntax for current document",
     );
 }
 
@@ -4857,9 +4857,9 @@ fn replay_macro(cx: &mut Context) {
     }));
 }
 
-fn toggle_syntax_parser(cx: &mut Context) {
+fn toggle_syntax(cx: &mut Context) {
     let (_, doc) = current!(cx.editor);
-    doc.enable_syntax_parser = !doc.enable_syntax_parser;
+    doc.enable_syntax = !doc.enable_syntax;
     // Force reload syntax
     doc.detect_language(cx.editor.syn_loader.clone());
 }

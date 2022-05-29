@@ -803,7 +803,7 @@ impl Application {
                     ui::YesNoAnswer::Yes => {
                         let view = cx.editor.tree.get(cx.editor.tree.focus);
                         let document_in_focus = cx.editor.documents.get_mut(&view.doc).unwrap();
-                        document_in_focus.enable_syntax_parser = true;
+                        document_in_focus.enable_syntax = true;
                         document_in_focus.detect_language(cx.editor.syn_loader.clone());
                     }
                     _ => {}
