@@ -350,7 +350,10 @@ fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> 
             }
         }
         command.arg("-xc").arg(parser_path);
-        if cfg!(all(unix, not(target_os = "macos"))) {
+        if cfg!(all(
+            unix,
+            not(any(target_os = "macos", target_os = "illumos"))
+        )) {
             command.arg("-Wl,-z,relro,-z,now");
         }
     }
