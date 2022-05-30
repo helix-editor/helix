@@ -1013,7 +1013,7 @@ fn goto_file_vsplit(cx: &mut Context) {
     goto_file_impl(cx, Action::VerticalSplit);
 }
 
-fn resolve_selected_path(
+fn trim_and_resolve_path(
     selection_text: String,
     doc_path_parent: Option<&Path>,
 ) -> Option<PathBuf> {
@@ -1052,7 +1052,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         let selection_text = text
             .slice(current_word.from()..current_word.to())
             .to_string();
-        if let Some(path) = resolve_selected_path(selection_text, doc_path_parent) {
+        if let Some(path) = trim_and_resolve_path(selection_text, doc_path_parent) {
             match path.metadata() {
                 Ok(metadata) => {
                     if metadata.is_dir() {
@@ -1073,7 +1073,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         let paths: Vec<_> = selections
             .iter()
             .map(|r| text.slice(r.from()..r.to()).to_string())
-            .filter_map(|selection_text| resolve_selected_path(selection_text, doc_path_parent))
+            .filter_map(|selection_text| trim_and_resolve_path(selection_text, doc_path_parent))
             .collect();
         for path in paths {
             if let Err(e) = cx.editor.open(path, action) {
