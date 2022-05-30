@@ -29,13 +29,14 @@ use std::borrow::Cow;
 
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
+use tui::text::{Span, Spans};
 
 pub struct EditorView {
     pub keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
-    spinners: ProgressSpinners,
+    statusline: StatusLineRender,
 }
 
 #[derive(Debug, Clone)]
@@ -58,12 +59,12 @@ impl EditorView {
             on_next_key: None,
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
-            spinners: ProgressSpinners::default(),
+            statusline: StatusLineRender::from(""),
         }
     }
 
     pub fn spinners_mut(&mut self) -> &mut ProgressSpinners {
-        &mut self.spinners
+        &mut self.statusline.spinners
     }
 
     pub fn render_view(
@@ -158,7 +159,8 @@ impl EditorView {
             .area
             .clip_top(view.area.height.saturating_sub(1))
             .clip_bottom(1); // -1 from bottom to remove commandline
-        self.render_statusline(doc, view, statusline_area, surface, theme, is_focused);
+        self.statusline
+            .render(doc, view, statusline_area, surface, theme, is_focused);
     }
 
     pub fn render_rulers(
@@ -648,151 +650,6 @@ impl EditorView {
         paragraph.render(
             Rect::new(viewport.right() - width, viewport.y + 1, width, height),
             surface,
-        );
-    }
-
-    pub fn render_statusline(
-        &self,
-        doc: &Document,
-        view: &View,
-        viewport: Rect,
-        surface: &mut Surface,
-        theme: &Theme,
-        is_focused: bool,
-    ) {
-        use tui::text::{Span, Spans};
-
-        //-------------------------------
-        // Left side of the status line.
-        //-------------------------------
-
-        let mode = match doc.mode() {
-            Mode::Insert => "INS",
-            Mode::Select => "SEL",
-            Mode::Normal => "NOR",
-        };
-        let progress = doc
-            .language_server()
-            .and_then(|srv| {
-                self.spinners
-                    .get(srv.id())
-                    .and_then(|spinner| spinner.frame())
-            })
-            .unwrap_or("");
-
-        let base_style = if is_focused {
-            theme.get("ui.statusline")
-        } else {
-            theme.get("ui.statusline.inactive")
-        };
-        // statusline
-        surface.set_style(viewport.with_height(1), base_style);
-        if is_focused {
-            surface.set_string(viewport.x + 1, viewport.y, mode, base_style);
-        }
-        surface.set_string(viewport.x + 5, viewport.y, progress, base_style);
-
-        //-------------------------------
-        // Right side of the status line.
-        //-------------------------------
-
-        let mut right_side_text = Spans::default();
-
-        // Compute the individual info strings and add them to `right_side_text`.
-
-        // Diagnostics
-        let diags = doc.diagnostics().iter().fold((0, 0), |mut counts, diag| {
-            use helix_core::diagnostic::Severity;
-            match diag.severity {
-                Some(Severity::Warning) => counts.0 += 1,
-                Some(Severity::Error) | None => counts.1 += 1,
-                _ => {}
-            }
-            counts
-        });
-        let (warnings, errors) = diags;
-        let warning_style = theme.get("warning");
-        let error_style = theme.get("error");
-        for i in 0..2 {
-            let (count, style) = match i {
-                0 => (warnings, warning_style),
-                1 => (errors, error_style),
-                _ => unreachable!(),
-            };
-            if count == 0 {
-                continue;
-            }
-            let style = base_style.patch(style);
-            right_side_text.0.push(Span::styled("●", style));
-            right_side_text
-                .0
-                .push(Span::styled(format!(" {} ", count), base_style));
-        }
-
-        // Selections
-        let sels_count = doc.selection(view.id).len();
-        right_side_text.0.push(Span::styled(
-            format!(
-                " {} sel{} ",
-                sels_count,
-                if sels_count == 1 { "" } else { "s" }
-            ),
-            base_style,
-        ));
-
-        // Position
-        let pos = coords_at_pos(
-            doc.text().slice(..),
-            doc.selection(view.id)
-                .primary()
-                .cursor(doc.text().slice(..)),
-        );
-        right_side_text.0.push(Span::styled(
-            format!(" {}:{} ", pos.row + 1, pos.col + 1), // Convert to 1-indexing.
-            base_style,
-        ));
-
-        let enc = doc.encoding();
-        if enc != encoding::UTF_8 {
-            right_side_text
-                .0
-                .push(Span::styled(format!(" {} ", enc.name()), base_style));
-        }
-
-        // Render to the statusline.
-        surface.set_spans(
-            viewport.x
-                + viewport
-                    .width
-                    .saturating_sub(right_side_text.width() as u16),
-            viewport.y,
-            &right_side_text,
-            right_side_text.width() as u16,
-        );
-
-        //-------------------------------
-        // Middle / File path / Title
-        //-------------------------------
-        let title = {
-            let rel_path = doc.relative_path();
-            let path = rel_path
-                .as_ref()
-                .map(|p| p.to_string_lossy())
-                .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-            format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" })
-        };
-
-        surface.set_string_truncated(
-            viewport.x + 8, // 8: 1 space + 3 char mode string + 1 space + 1 spinner + 1 space
-            viewport.y,
-            &title,
-            viewport
-                .width
-                .saturating_sub(6)
-                .saturating_sub(right_side_text.width() as u16 + 1) as usize, // "+ 1": a space between the title and the selection info
-            |_| base_style,
-            true,
-            true,
         );
     }
 
@@ -1400,6 +1257,230 @@ impl Component for EditorView {
             // All block cursors are drawn manually
             (pos, CursorKind::Block) => (pos, CursorKind::Hidden),
             cursor => cursor,
+        }
+    }
+}
+
+pub struct StatusLineRender {
+    statusline_left: Vec<StatusLineElements>,
+    statusline_middle: Vec<StatusLineElements>,
+    statusline_right: Vec<StatusLineElements>,
+    spinners: ProgressSpinners,
+}
+
+impl<T: ToString> From<T> for StatusLineRender {
+    fn from(_: T) -> Self {
+        // TODO     Replace with placeholder detect and replace
+        StatusLineRender {
+            statusline_left: vec![
+                StatusLineElements::EditorMode(Mode::Normal),
+                StatusLineElements::Spinner,
+            ],
+            statusline_middle: vec![StatusLineElements::Filename],
+            statusline_right: vec![
+                StatusLineElements::Diagnostics("●", "●"),
+                StatusLineElements::SelectionCount,
+                StatusLineElements::CursorPosition,
+                StatusLineElements::DocEncoding,
+            ],
+            spinners: ProgressSpinners::default(),
+        }
+    }
+}
+
+impl StatusLineRender {
+    pub fn render(
+        &self,
+        doc: &Document,
+        view: &View,
+        viewport: Rect,
+        surface: &mut Surface,
+        theme: &Theme,
+        is_focused: bool,
+    ) {
+        let base_style = if is_focused {
+            theme.get("ui.statusline")
+        } else {
+            theme.get("ui.statusline.inactive")
+        };
+        surface.set_style(viewport.with_height(1), base_style);
+
+        let mut left_text = Spans::default();
+        for element in self.statusline_left.iter() {
+            element.render(
+                &mut left_text,
+                &self,
+                doc,
+                view,
+                is_focused,
+                &base_style,
+                theme,
+            );
+        }
+        surface.set_spans(viewport.x, viewport.y, &left_text, left_text.width() as u16);
+
+        let mut right_text = Spans::default();
+        for element in self.statusline_right.iter() {
+            element.render(
+                &mut right_text,
+                &self,
+                doc,
+                view,
+                is_focused,
+                &base_style,
+                theme,
+            );
+        }
+        surface.set_spans(
+            viewport.x + viewport.width.saturating_sub(right_text.width() as u16),
+            viewport.y,
+            &right_text,
+            right_text.width() as u16,
+        );
+
+        let mut middle_text = Spans::default();
+        for element in self.statusline_middle.iter() {
+            element.render(
+                &mut middle_text,
+                &self,
+                doc,
+                view,
+                is_focused,
+                &base_style,
+                theme,
+            );
+        }
+        let width_rest = viewport
+            .width
+            .saturating_sub(left_text.width() as u16)
+            .saturating_sub(right_text.width() as u16);
+        let mid_width = width_rest.min(middle_text.width() as u16);
+        surface.set_spans(
+            viewport.x + (width_rest / 2) - (mid_width / 2),
+            viewport.y,
+            &middle_text,
+            mid_width,
+        );
+    }
+}
+
+#[derive(Debug)]
+pub enum StatusLineElements {
+    EditorMode(Mode),
+    Spinner,
+    Filename,
+    Diagnostics(&'static str, &'static str),
+    SelectionCount,
+    CursorPosition,
+    DocEncoding,
+}
+
+impl StatusLineElements {
+    pub fn render(
+        &self,
+        span: &mut Spans,
+        render: &StatusLineRender,
+        doc: &Document,
+        view: &View,
+        is_focused: bool,
+        bar_style: &Style,
+        theme: &Theme,
+    ) {
+        match self {
+            StatusLineElements::EditorMode(mode) => {
+                if is_focused {
+                    span.0.push(Span::styled(
+                        format!(
+                            "{} ",
+                            match mode {
+                                Mode::Insert => "INS",
+                                Mode::Select => "SEL",
+                                Mode::Normal => "NOR",
+                            }
+                        ),
+                        *bar_style,
+                    ));
+                }
+            }
+            StatusLineElements::Spinner => {
+                let progress = doc
+                    .language_server()
+                    .and_then(|srv| {
+                        render
+                            .spinners
+                            .get(srv.id())
+                            .and_then(|spinner| spinner.frame())
+                    })
+                    .unwrap_or("");
+                span.0
+                    .push(Span::styled(format!("{} ", progress), *bar_style));
+            }
+            StatusLineElements::Filename => {
+                let rel_path = doc.relative_path();
+                let path = rel_path
+                    .as_ref()
+                    .map(|p| p.to_string_lossy())
+                    .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
+                span.0.push(Span::styled(
+                    format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" }),
+                    *bar_style,
+                ));
+            }
+
+            StatusLineElements::Diagnostics(errchr, wrnchr) => {
+                let diags = doc.diagnostics().iter().fold((0, 0), |mut counts, diag| {
+                    use helix_core::diagnostic::Severity;
+                    match diag.severity {
+                        Some(Severity::Warning) => counts.0 += 1,
+                        Some(Severity::Error) | None => counts.1 += 1,
+                        _ => {}
+                    }
+                    counts
+                });
+
+                if diags.1 > 0 {
+                    span.0.push(Span::styled(
+                        format!("{} {} ", errchr, diags.1),
+                        bar_style.patch(theme.get("error")),
+                    ));
+                }
+                if diags.0 > 0 {
+                    span.0.push(Span::styled(
+                        format!("{} {} ", wrnchr, diags.0),
+                        bar_style.patch(theme.get("warning")),
+                    ));
+                }
+            }
+            StatusLineElements::SelectionCount => {
+                let sels_count = doc.selection(view.id).len();
+                span.0.push(Span::styled(
+                    format!(
+                        "{} sel{} ",
+                        sels_count,
+                        if sels_count == 1 { " " } else { "s" }
+                    ),
+                    *bar_style,
+                ));
+            }
+            StatusLineElements::CursorPosition => {
+                let pos = coords_at_pos(
+                    doc.text().slice(..),
+                    doc.selection(view.id)
+                        .primary()
+                        .cursor(doc.text().slice(..)),
+                );
+                span.0.push(Span::styled(
+                    format!("{}:{} ", pos.row + 1, pos.col + 1), // Convert to 1-indexing.
+                    *bar_style,
+                ));
+            }
+            StatusLineElements::DocEncoding => {
+                let enc = doc.encoding();
+                if enc != encoding::UTF_8 {
+                    span.0
+                        .push(Span::styled(format!("{} ", enc.name()), *bar_style));
+                }
+            }
         }
     }
 }
