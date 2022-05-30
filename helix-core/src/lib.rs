@@ -52,7 +52,7 @@ pub fn find_root(root: Option<&str>, root_markers: &[String]) -> Option<std::pat
         .cloned()
 }
 
-pub use ropey::{Rope, RopeBuilder, RopeSlice};
+pub use ropey::{str_utils, Rope, RopeBuilder, RopeSlice};
 
 // pub use tendril::StrTendril as Tendril;
 pub use smartstring::SmartString;

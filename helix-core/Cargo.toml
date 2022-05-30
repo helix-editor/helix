@@ -16,7 +16,7 @@ unicode-lines = ["ropey/unicode_lines"]
 [dependencies]
 helix-loader = { version = "0.6", path = "../helix-loader" }
 
-ropey = { version = "1.4", default-features = false }
+ropey = { version = "1.5", default-features = false, features = ["simd"] }
 smallvec = "1.8"
 smartstring = "1.0.1"
 unicode-segmentation = "1.9"

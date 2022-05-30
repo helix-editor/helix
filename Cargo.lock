@@ -457,7 +457,6 @@ dependencies = [
  "once_cell",
  "pulldown-cmark",
  "retain_mut",
- "ropey",
  "serde",
  "serde_json",
  "signal-hook",
@@ -835,9 +834,9 @@ checksum = "4389f1d5789befaf6029ebd9f7dac4af7f7e3d61b69d4f30e2ac02b57e7712b0"
 
 [[package]]
 name = "ropey"
-version = "1.4.1"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa0dd9b26e2a102b33d400b7b7d196c81a4014eb96eda90b1c5b48d7215d9633"
+checksum = "bbd22239fafefc42138ca5da064f3c17726a80d2379d817a3521240e78dd0064"
 dependencies = [
  "smallvec",
  "str_indices",
@@ -1016,9 +1015,9 @@ checksum = "9e08d8363704e6c71fc928674353e6b7c23dcea9d82d7012c8faf2a3a025f8d0"
 
 [[package]]
 name = "str_indices"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adfad63a1b47951101cd667a85b2959a62910cf03f814fff25df89c460b873f8"
+checksum = "9d9199fa80c817e074620be84374a520062ebac833f358d74b37060ce4a0f2c0"
 
 [[package]]
 name = "syn"

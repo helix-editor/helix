@@ -467,7 +467,7 @@ impl EditorView {
                                 // make sure we display tab as appropriate amount of spaces
                                 let visual_tab_width = tab_width - (visual_x as usize % tab_width);
                                 let grapheme_tab_width =
-                                    ropey::str_utils::char_to_byte_idx(&tab, visual_tab_width);
+                                    helix_core::str_utils::char_to_byte_idx(&tab, visual_tab_width);
 
                                 (&tab[..grapheme_tab_width], visual_tab_width)
                             } else if grapheme == " " {
