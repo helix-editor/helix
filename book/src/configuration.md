@@ -25,6 +25,9 @@ select = "underline"
 hidden = false
 ```
 
+You may also specify a file to use for configuration with the `-c` or
+`--config` CLI argument: `hx -c path/to/custom-config.toml`.
+
 ## Editor
 
 ### `[editor]` Section

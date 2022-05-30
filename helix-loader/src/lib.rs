@@ -2,11 +2,28 @@ pub mod config;
 pub mod grammar;
 
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
+use std::path::PathBuf;
 
-pub static RUNTIME_DIR: once_cell::sync::Lazy<std::path::PathBuf> =
-    once_cell::sync::Lazy::new(runtime_dir);
+pub static RUNTIME_DIR: once_cell::sync::Lazy<PathBuf> = once_cell::sync::Lazy::new(runtime_dir);
 
-pub fn runtime_dir() -> std::path::PathBuf {
+static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+
+pub fn initialize_config_file(specified_file: Option<PathBuf>) {
+    let config_file = specified_file.unwrap_or_else(|| {
+        let config_dir = config_dir();
+
+        if !config_dir.exists() {
+            std::fs::create_dir_all(&config_dir).ok();
+        }
+
+        config_dir.join("config.toml")
+    });
+
+    // We should only initialize this value once.
+    CONFIG_FILE.set(config_file).ok();
+}
+
+pub fn runtime_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
         return dir.into();
     }
@@ -31,7 +48,7 @@ pub fn runtime_dir() -> std::path::PathBuf {
         .unwrap()
 }
 
-pub fn config_dir() -> std::path::PathBuf {
+pub fn config_dir() -> PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
     let mut path = strategy.config_dir();
@@ -39,7 +56,7 @@ pub fn config_dir() -> std::path::PathBuf {
     path
 }
 
-pub fn local_config_dirs() -> Vec<std::path::PathBuf> {
+pub fn local_config_dirs() -> Vec<PathBuf> {
     let directories = find_root_impl(None, &[".helix".to_string()])
         .into_iter()
         .map(|path| path.join(".helix"))
@@ -48,7 +65,7 @@ pub fn local_config_dirs() -> Vec<std::path::PathBuf> {
     directories
 }
 
-pub fn cache_dir() -> std::path::PathBuf {
+pub fn cache_dir() -> PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
     let mut path = strategy.cache_dir();
@@ -56,19 +73,22 @@ pub fn cache_dir() -> std::path::PathBuf {
     path
 }
 
-pub fn config_file() -> std::path::PathBuf {
-    config_dir().join("config.toml")
+pub fn config_file() -> PathBuf {
+    CONFIG_FILE
+        .get()
+        .map(|path| path.to_path_buf())
+        .unwrap_or_else(|| config_dir().join("config.toml"))
 }
 
-pub fn lang_config_file() -> std::path::PathBuf {
+pub fn lang_config_file() -> PathBuf {
     config_dir().join("languages.toml")
 }
 
-pub fn log_file() -> std::path::PathBuf {
+pub fn log_file() -> PathBuf {
     cache_dir().join("helix.log")
 }
 
-pub fn find_root_impl(root: Option<&str>, root_markers: &[String]) -> Vec<std::path::PathBuf> {
+pub fn find_root_impl(root: Option<&str>, root_markers: &[String]) -> Vec<PathBuf> {
     let current_dir = std::env::current_dir().expect("unable to determine current directory");
     let mut directories = Vec::new();
 
