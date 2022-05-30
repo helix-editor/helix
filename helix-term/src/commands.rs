@@ -2107,25 +2107,32 @@ fn append_mode(cx: &mut Context) {
     enter_insert_mode(doc);
     doc.restore_cursor = true;
     let text = doc.text().slice(..);
-
-    // Make sure there's room at the end of the document if the last
-    // selection butts up against it.
-    let end = text.len_chars();
     let last_range = doc.selection(view.id).iter().last().unwrap();
-    if !last_range.is_empty() && last_range.head == end {
-        let transaction = Transaction::change(
-            doc.text(),
-            [(end, end, Some(doc.line_ending.as_str().into()))].into_iter(),
-        );
-        doc.apply(&transaction, view.id);
-    }
+    let to = last_range.to();
+    let to_weol = last_range.to_without_eol(&text);
 
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        Range::new(
-            range.from(),
-            graphemes::next_grapheme_boundary(doc.text().slice(..), range.to()),
-        )
-    });
+    let selection = if to != to_weol {
+        doc.selection(view.id).clone()
+    } else {
+        // Make sure there's room at the end of the document if the last
+        // selection butts up against it.
+        let end = text.len_chars();
+        if !last_range.is_empty() && last_range.head == end {
+            let transaction = Transaction::change(
+                doc.text(),
+                [(end, end, Some(doc.line_ending.as_str().into()))].into_iter(),
+            );
+            doc.apply(&transaction, view.id);
+        }
+
+        doc.selection(view.id).clone().transform(|range| {
+            Range::new(
+                range.from(),
+                graphemes::next_grapheme_boundary(doc.text().slice(..), range.to()),
+            )
+        })
+    };
+
     doc.set_selection(view.id, selection);
 }
 
@@ -3230,7 +3237,7 @@ fn paste_impl(
             // paste insert
             (Paste::Before, false) => range.from(),
             // paste append
-            (Paste::After, false) => range.to(),
+            (Paste::After, false) => range.to_without_eol(&text.slice(..)),
             // paste at cursor
             (Paste::Cursor, _) => range.cursor(text.slice(..)),
         };
@@ -4421,9 +4428,14 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
         let (from, to) = match behavior {
             ShellBehavior::Replace => (range.from(), range.to()),
             ShellBehavior::Insert => (range.from(), range.from()),
-            ShellBehavior::Append => (range.to(), range.to()),
+            ShellBehavior::Append => {
+                let to_weol = range.to_without_eol(&text);
+
+                (to_weol, to_weol)
+            }
             _ => (range.from(), range.from()),
         };
+
         changes.push((from, to, Some(output)));
     }
 

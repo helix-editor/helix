@@ -83,6 +83,18 @@ impl Range {
         std::cmp::max(self.anchor, self.head)
     }
 
+    /// End of the range taking into account end of line.
+    #[inline]
+    #[must_use]
+    pub fn to_without_eol(&self, text: &RopeSlice) -> usize {
+        let to = self.to();
+        if text.char(to - 1) == '\n' {
+            to - 1
+        } else {
+            to
+        }
+    }
+
     /// Total length of the range.
     #[inline]
     #[must_use]
