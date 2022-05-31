@@ -5,7 +5,6 @@ use tree_sitter::{Node, QueryCursor};
 
 use crate::{
     chars::{categorize_char, char_is_line_ending, CharCategory},
-    coords_at_pos,
     graphemes::{
         next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
         prev_grapheme_boundary,
@@ -14,7 +13,7 @@ use crate::{
     pos_at_coords,
     syntax::LanguageConfiguration,
     textobject::TextObject,
-    Position, Range, RopeSlice,
+    visual_coords_at_pos, Position, Range, RopeSlice,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -35,6 +34,7 @@ pub fn move_horizontally(
     dir: Direction,
     count: usize,
     behaviour: Movement,
+    _: usize,
 ) -> Range {
     let pos = range.cursor(slice);
 
@@ -54,15 +54,12 @@ pub fn move_vertically(
     dir: Direction,
     count: usize,
     behaviour: Movement,
+    tab_width: usize,
 ) -> Range {
     let pos = range.cursor(slice);
 
     // Compute the current position's 2d coordinates.
-    // TODO: switch this to use `visual_coords_at_pos` rather than
-    // `coords_at_pos` as this will cause a jerky movement when the visual
-    // position does not match, like moving from a line with tabs/CJK to
-    // a line without
-    let Position { row, col } = coords_at_pos(slice, pos);
+    let Position { row, col } = visual_coords_at_pos(slice, pos, tab_width);
     let horiz = range.horiz.unwrap_or(col as u32);
 
     // Compute the new position.
@@ -71,7 +68,7 @@ pub fn move_vertically(
         Direction::Backward => row.saturating_sub(count),
     };
     let new_col = col.max(horiz as usize);
-    let new_pos = pos_at_coords(slice, Position::new(new_row, new_col), true);
+    let new_pos = pos_at_coords(slice, Position::new(new_row, new_col), tab_width, true);
 
     // Special-case to avoid moving to the end of the last non-empty line.
     if behaviour == Movement::Extend && slice.line(new_row).len_chars() == 0 {
@@ -446,6 +443,8 @@ pub fn goto_treesitter_object(
 mod test {
     use ropey::Rope;
 
+    use crate::coords_at_pos;
+
     use super::*;
 
     const SINGLE_LINE_SAMPLE: &str = "This is a simple alphabetic line";
@@ -466,13 +465,13 @@ mod test {
     fn test_vertical_move() {
         let text = Rope::from("abcd\nefg\nwrs");
         let slice = text.slice(..);
-        let pos = pos_at_coords(slice, (0, 4).into(), true);
+        let pos = pos_at_coords(slice, (0, 4).into(), 4, true);
 
         let range = Range::new(pos, pos);
         assert_eq!(
             coords_at_pos(
                 slice,
-                move_vertically(slice, range, Direction::Forward, 1, Movement::Move).head
+                move_vertically(slice, range, Direction::Forward, 1, Movement::Move, 4).head
             ),
             (1, 3).into()
         );
@@ -482,7 +481,7 @@ mod test {
     fn horizontal_moves_through_single_line_text() {
         let text = Rope::from(SINGLE_LINE_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into(), true);
+        let position = pos_at_coords(slice, (0, 0).into(), 4, true);
 
         let mut range = Range::point(position);
 
@@ -496,7 +495,7 @@ mod test {
         ];
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
-            range = move_horizontally(slice, range, direction, amount, Movement::Move);
+            range = move_horizontally(slice, range, direction, amount, Movement::Move, 0);
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into())
         }
     }
@@ -505,7 +504,7 @@ mod test {
     fn horizontal_moves_through_multiline_text() {
         let text = Rope::from(MULTILINE_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into(), true);
+        let position = pos_at_coords(slice, (0, 0).into(), 4, true);
 
         let mut range = Range::point(position);
 
@@ -522,7 +521,7 @@ mod test {
         ];
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
-            range = move_horizontally(slice, range, direction, amount, Movement::Move);
+            range = move_horizontally(slice, range, direction, amount, Movement::Move, 0);
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
         }
@@ -532,7 +531,7 @@ mod test {
     fn selection_extending_moves_in_single_line_text() {
         let text = Rope::from(SINGLE_LINE_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into(), true);
+        let position = pos_at_coords(slice, (0, 0).into(), 4, true);
 
         let mut range = Range::point(position);
         let original_anchor = range.anchor;
@@ -544,7 +543,7 @@ mod test {
         ];
 
         for (direction, amount) in moves {
-            range = move_horizontally(slice, range, direction, amount, Movement::Extend);
+            range = move_horizontally(slice, range, direction, amount, Movement::Extend, 0);
             assert_eq!(range.anchor, original_anchor);
         }
     }
@@ -553,7 +552,7 @@ mod test {
     fn vertical_moves_in_single_column() {
         let text = Rope::from(MULTILINE_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into(), true);
+        let position = pos_at_coords(slice, (0, 0).into(), 4, true);
         let mut range = Range::point(position);
         let moves_and_expected_coordinates = [
             ((Direction::Forward, 1usize), (1, 0)),
@@ -568,7 +567,7 @@ mod test {
         ];
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
-            range = move_vertically(slice, range, direction, amount, Movement::Move);
+            range = move_vertically(slice, range, direction, amount, Movement::Move, 4);
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
         }
@@ -578,7 +577,7 @@ mod test {
     fn vertical_moves_jumping_column() {
         let text = Rope::from(MULTILINE_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into(), true);
+        let position = pos_at_coords(slice, (0, 0).into(), 4, true);
         let mut range = Range::point(position);
 
         enum Axis {
@@ -602,8 +601,8 @@ mod test {
 
         for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {
             range = match axis {
-                Axis::H => move_horizontally(slice, range, direction, amount, Movement::Move),
-                Axis::V => move_vertically(slice, range, direction, amount, Movement::Move),
+                Axis::H => move_horizontally(slice, range, direction, amount, Movement::Move, 0),
+                Axis::V => move_vertically(slice, range, direction, amount, Movement::Move, 4),
             };
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
@@ -614,7 +613,7 @@ mod test {
     fn multibyte_character_wide_column_jumps() {
         let text = Rope::from(MULTIBYTE_CHARACTER_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into(), true);
+        let position = pos_at_coords(slice, (0, 0).into(), 4, true);
         let mut range = Range::point(position);
 
         // FIXME: The behaviour captured in this test diverges from both Kakoune and Vim. These
@@ -627,18 +626,18 @@ mod test {
         let moves_and_expected_coordinates = [
             // Places cursor at the fourth kana.
             ((Axis::H, Direction::Forward, 4), (0, 4)),
-            // Descent places cursor at the 4th character.
-            ((Axis::V, Direction::Forward, 1usize), (1, 4)),
-            // Moving back 1 character.
-            ((Axis::H, Direction::Backward, 1usize), (1, 3)),
+            // Descent places cursor at the 8th character.
+            ((Axis::V, Direction::Forward, 1usize), (1, 8)),
+            // Moving back 2 characters.
+            ((Axis::H, Direction::Backward, 2usize), (1, 6)),
             // Jumping back up 1 line.
             ((Axis::V, Direction::Backward, 1usize), (0, 3)),
         ];
 
         for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {
             range = match axis {
-                Axis::H => move_horizontally(slice, range, direction, amount, Movement::Move),
-                Axis::V => move_vertically(slice, range, direction, amount, Movement::Move),
+                Axis::H => move_horizontally(slice, range, direction, amount, Movement::Move, 0),
+                Axis::V => move_vertically(slice, range, direction, amount, Movement::Move, 4),
             };
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);

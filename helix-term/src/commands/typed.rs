@@ -48,7 +48,12 @@ fn open(
         let (path, pos) = args::parse_file(arg);
         let _ = cx.editor.open(path, Action::Replace)?;
         let (view, doc) = current!(cx.editor);
-        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+        let pos = Selection::point(pos_at_coords(
+            doc.text().slice(..),
+            pos,
+            doc.tab_width(),
+            true,
+        ));
         doc.set_selection(view.id, pos);
         // does not affect opening a buffer without pos
         align_view(doc, view, Align::Center);
