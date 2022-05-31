@@ -1409,3 +1409,16 @@ injection-regex = "verilog"
 [[grammar]]
 name = "verilog"
 source = { git = "https://github.com/andreytkachenko/tree-sitter-verilog", rev = "514d8d70593d29ef3ef667fa6b0e504ae7c977e3" }
+
+[[language]]
+name = "nim"
+scope = "source.nim"
+file-types = ["nim", "nimble"]
+roots = ["config.nims"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "nimlsp" }
+
+[[grammar]]
+name = "nim"
+source = { git = "https://github.com/aMOPel/tree-sitter-nim", rev = "ee473d02313040794e5b765f0a8e201bbc311b4b" }
