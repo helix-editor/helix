@@ -10,13 +10,13 @@ pub mod handlers {
     pub mod dap;
     pub mod lsp;
 }
+pub mod file_watcher;
 pub mod info;
 pub mod input;
 pub mod keyboard;
 pub mod theme;
 pub mod tree;
 pub mod view;
-pub mod file_watcher;
 
 use std::num::NonZeroUsize;
 

@@ -1,7 +1,7 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    file_watcher::{self, NotifyActor, NotifyHandle},
     document::{Mode, SCRATCH_BUFFER_NAME},
+    file_watcher::{self, NotifyActor, NotifyHandle},
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
@@ -29,7 +29,7 @@ use tokio::{
     time::{sleep, Duration, Instant, Sleep},
 };
 
-use anyhow::{bail, Error, Context};
+use anyhow::{bail, Context, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
@@ -461,7 +461,7 @@ pub struct Editor {
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
-    
+
     pub watcher: Arc<NotifyHandle>,
     pub watcher_receiver: UnboundedReceiver<file_watcher::Message>,
 }
@@ -499,7 +499,7 @@ impl Editor {
             let watcher = NotifyActor::spawn(Box::new(move |e| watcher_sender.send(e).unwrap()))
                 .context("Failed to spawn watcher")?;
             (Arc::new(watcher), watcher_receiver)
-        };        
+        };
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
 
@@ -533,7 +533,7 @@ impl Editor {
             exit_code: 0,
             config_events: unbounded_channel(),
             watcher,
-            watcher_receiver,       
+            watcher_receiver,
         })
     }
 
@@ -782,14 +782,14 @@ impl Editor {
         };
 
         self.switch(id, action);
-        
+
         {
             let watcher = self.watcher.clone();
             tokio::spawn(async move {
-                    watcher.watch(path.clone()).await;
+                watcher.watch(path.clone()).await;
             });
-        }   
-             
+        }
+
         Ok(id)
     }
 

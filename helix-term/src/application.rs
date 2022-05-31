@@ -4,7 +4,7 @@ use helix_core::{
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{file_watcher, align_view, editor::ConfigEvent, theme, Align, Editor};
+use helix_view::{align_view, editor::ConfigEvent, file_watcher, theme, Align, Editor};
 use serde_json::json;
 
 use crate::{
@@ -715,7 +715,6 @@ impl Application {
         }
     }
 
-    
     fn handle_watcher_message(&mut self, msg: file_watcher::Message) {
         match msg {
             file_watcher::Message::NotifyEvents(event) => {
@@ -726,7 +725,7 @@ impl Application {
             // },
         }
     }
-        
+
     async fn claim_term(&mut self) -> Result<(), Error> {
         terminal::enable_raw_mode()?;
         let mut stdout = stdout();
