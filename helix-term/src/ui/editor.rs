@@ -131,7 +131,7 @@ impl EditorView {
             surface,
             theme,
             highlights,
-            &editor.config().whitespace,
+            &editor.config(),
         );
         Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
         Self::render_rulers(editor, doc, view, inner, surface, theme);
@@ -371,8 +371,9 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         highlights: H,
-        whitespace: &helix_view::editor::WhitespaceConfig,
+        config: &helix_view::editor::Config,
     ) {
+        let whitespace = &config.whitespace;
         use helix_view::editor::WhitespaceRenderValue;
 
         // It's slightly more efficient to produce a full RopeSlice from the Rope, then slice that a bunch
@@ -395,22 +396,25 @@ impl EditorView {
         } else {
             " ".to_string()
         };
+        let indent_guide_char = config.indent_guides.character.to_string();
 
         let text_style = theme.get("ui.text");
         let whitespace_style = theme.get("ui.virtual.whitespace");
 
         let mut is_in_indent_area = true;
         let mut last_line_indent_level = 0;
-        let indent_style = theme
-            .try_get("ui.virtual.indent-guide")
-            .unwrap_or_else(|| theme.get("comment"));
+        let indent_style = theme.get("ui.virtual.indent-guide");
 
         let draw_indent_guides = |indent_level, line, surface: &mut Surface| {
+            if !config.indent_guides.render {
+                return;
+            }
+
             for i in 0..(indent_level / tab_width as u16) {
                 surface.set_string(
                     viewport.x + (i * tab_width as u16) - offset.col as u16,
                     viewport.y + line,
-                    "│",
+                    &indent_guide_char,
                     indent_style,
                 );
             }
@@ -489,7 +493,7 @@ impl EditorView {
                             let grapheme = Cow::from(grapheme);
                             let is_whitespace;
 
-                            let (grapheme, width) = if grapheme == "\t" {
+                            let (display_grapheme, width) = if grapheme == "\t" {
                                 is_whitespace = true;
                                 // make sure we display tab as appropriate amount of spaces
                                 let visual_tab_width = tab_width - (visual_x as usize % tab_width);
@@ -516,7 +520,7 @@ impl EditorView {
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
                                     viewport.y + line,
-                                    grapheme,
+                                    display_grapheme,
                                     if is_whitespace {
                                         style.patch(whitespace_style)
                                     } else {
