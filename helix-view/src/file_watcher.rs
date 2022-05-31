@@ -116,6 +116,7 @@ impl NotifyActor {
         }
 
         for (path, op) in events.iter_mut() {
+            #[allow(clippy::single_match)]
             match op {
                 Operation::Delete => {
                     let meta = fs::metadata(&path).await;
