@@ -156,6 +156,8 @@ pub struct Config {
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
+    /// Vertical indent width guides.
+    pub indent_guides: IndentGuidesConfig,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -364,6 +366,22 @@ impl Default for WhitespaceCharacters {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct IndentGuidesConfig {
+    pub render: bool,
+    pub character: char,
+}
+
+impl Default for IndentGuidesConfig {
+    fn default() -> Self {
+        Self {
+            render: false,
+            character: '│',
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -391,6 +409,7 @@ impl Default for Config {
             lsp: LspConfig::default(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
+            indent_guides: IndentGuidesConfig::default(),
         }
     }
 }
