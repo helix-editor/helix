@@ -56,6 +56,7 @@
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
 | nickel | ✓ |  | ✓ | `nls` |
+| nim |  |  |  | `nimlsp` |
 | nix | ✓ |  | ✓ | `rnix-lsp` |
 | nu | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
