@@ -4430,6 +4430,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     if behavior != &ShellBehavior::Ignore {
         let transaction = Transaction::change(doc.text(), changes.into_iter());
         doc.apply(&transaction, view.id);
+        doc.append_changes_to_history(view.id);
     }
 
     // after replace cursor may be out of bounds, do this to
