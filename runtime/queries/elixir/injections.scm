@@ -18,7 +18,7 @@
 (unary_operator
   operator: "@"
   operand: (call
-  target: ((identifier) @_identifier (#any-of? @_identifier "moduledoc" "typedoc" "shortdoc" "doc"))
+  target: ((identifier) @_identifier (#match? @_identifier "^(module|type|short)?doc$"))
     (arguments [
       (string (quoted_content) @injection.content)
       (sigil (quoted_content) @injection.content)
