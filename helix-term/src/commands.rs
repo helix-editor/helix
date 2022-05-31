@@ -1023,14 +1023,10 @@ fn trim_and_resolve_path(
     }
 
     let selected_path = PathBuf::from(trimmed);
-    match (selected_path.is_relative(), doc_path_parent) {
-        (true, Some(parent_path)) => {
-            let mut result = PathBuf::new();
-            result.push(parent_path);
-            result.push(selected_path);
-            Some(result)
-        }
-        _ => Some(selected_path),
+    if let (true, Some(parent_path)) = (selected_path.is_relative(), doc_path_parent) {
+        Some(parent_path.join(selected_path))
+    } else {
+        Some(selected_path)
     }
 }
 
