@@ -1,5 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
+    file_watcher::{self, NotifyActor, NotifyHandle},
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::{CursorKind, Rect},
     info::Info,
@@ -28,7 +29,7 @@ use tokio::{
     time::{sleep, Duration, Instant, Sleep},
 };
 
-use anyhow::{bail, Error};
+use anyhow::{bail, Error, Context};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
@@ -460,6 +461,9 @@ pub struct Editor {
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
+    
+    pub watcher: Arc<NotifyHandle>,
+    pub watcher_receiver: UnboundedReceiver<file_watcher::Message>,
 }
 
 #[derive(Debug, Clone)]
@@ -488,15 +492,21 @@ impl Editor {
         theme_loader: Arc<theme::Loader>,
         syn_loader: Arc<syntax::Loader>,
         config: Box<dyn DynAccess<Config>>,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         let language_servers = helix_lsp::Registry::new();
+        let (watcher, watcher_receiver) = {
+            let (watcher_sender, watcher_receiver) = unbounded_channel();
+            let watcher = NotifyActor::spawn(Box::new(move |e| watcher_sender.send(e).unwrap()))
+                .context("Failed to spawn watcher")?;
+            (Arc::new(watcher), watcher_receiver)
+        };        
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
 
-        Self {
+        Ok(Self {
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
@@ -522,7 +532,9 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
-        }
+            watcher,
+            watcher_receiver,       
+        })
     }
 
     pub fn config(&self) -> DynGuard<Config> {
@@ -770,6 +782,14 @@ impl Editor {
         };
 
         self.switch(id, action);
+        
+        {
+            let watcher = self.watcher.clone();
+            tokio::spawn(async move {
+                    watcher.watch(path.clone()).await;
+            });
+        }   
+             
         Ok(id)
     }
 

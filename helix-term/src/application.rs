@@ -4,7 +4,7 @@ use helix_core::{
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{align_view, editor::ConfigEvent, theme, Align, Editor};
+use helix_view::{file_watcher, align_view, editor::ConfigEvent, theme, Align, Editor};
 use serde_json::json;
 
 use crate::{
@@ -125,7 +125,7 @@ impl Application {
             Box::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
-        );
+        )?;
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -264,6 +264,9 @@ impl Application {
                 Some(callback) = self.jobs.wait_futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
+                }
+                Some(msg) = self.editor.watcher_receiver.recv() => {
+                    self.handle_watcher_message(msg)
                 }
                 _ = &mut self.editor.idle_timer => {
                     // idle timeout
@@ -712,6 +715,18 @@ impl Application {
         }
     }
 
+    
+    fn handle_watcher_message(&mut self, msg: file_watcher::Message) {
+        match msg {
+            file_watcher::Message::NotifyEvents(event) => {
+                log::info!("handling file watcher event: {:?}", event);
+            }
+                // match event.unwrap() {
+                // _ => unimplemented!(),
+            // },
+        }
+    }
+        
     async fn claim_term(&mut self) -> Result<(), Error> {
         terminal::enable_raw_mode()?;
         let mut stdout = stdout();
