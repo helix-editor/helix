@@ -135,11 +135,12 @@ pub fn pos_at_coords(
             let grapheme = Cow::from(grapheme);
             grapheme_width(&grapheme)
         };
-        if let Some(new_cols_remaining) = cols_remaining.checked_sub(grapheme_width) {
-            cols_remaining = new_cols_remaining;
-        } else {
+
+        if grapheme_width > cols_remaining {
             break;
         }
+
+        cols_remaining -= grapheme_width;
         col_char_offset += grapheme.chars().count();
     }
 
