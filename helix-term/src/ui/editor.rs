@@ -310,6 +310,7 @@ impl EditorView {
         let cursor_scope = match mode {
             Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
             Mode::Select => theme.find_scope_index("ui.cursor.select"),
+            Mode::LineSelect => theme.find_scope_index("ui.cursor.select"),
             Mode::Normal => Some(base_cursor_scope),
         }
         .unwrap_or(base_cursor_scope);
@@ -669,6 +670,7 @@ impl EditorView {
         let mode = match doc.mode() {
             Mode::Insert => "INS",
             Mode::Select => "SEL",
+            Mode::LineSelect => "LIN",
             Mode::Normal => "NOR",
         };
         let progress = doc

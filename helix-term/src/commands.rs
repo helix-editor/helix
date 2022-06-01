@@ -200,6 +200,8 @@ impl MappableCommand {
         extend_char_right, "Extend right",
         extend_line_up, "Extend up",
         extend_line_down, "Extend down",
+        extend_full_line_up, "Extend full line up",
+        extend_full_line_down, "Extend full line down",
         copy_selection_on_next_line, "Copy selection on next line",
         copy_selection_on_prev_line, "Copy selection on previous line",
         move_next_word_start, "Move to beginning of next word",
@@ -247,6 +249,8 @@ impl MappableCommand {
         extend_line, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
         extend_to_line_bounds, "Extend selection to line bounds (line-wise selection)",
+        extend_full_line_to_file_start, "Extend line-wise selection to first line",
+        extend_full_line_to_file_end, "Extend line-wise selection to last line",
         shrink_to_line_bounds, "Shrink selection to line bounds (line-wise selection)",
         delete_selection, "Delete selection",
         delete_selection_noyank, "Delete selection, without yanking",
@@ -271,7 +275,9 @@ impl MappableCommand {
         open_above, "Open new line above selection",
         normal_mode, "Enter normal mode",
         select_mode, "Enter selection extend mode",
+        line_select_mode, "Enter line-wise selection extend mode",
         exit_select_mode, "Exit selection mode",
+        exit_line_select_mode, "Exit line selection mode",
         goto_definition, "Goto definition",
         add_newline_above, "Add newline above",
         add_newline_below, "Add newline below",
@@ -556,6 +562,57 @@ fn extend_line_down(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Forward, Movement::Extend)
 }
 
+fn extend_full_line_vertically(cx: &mut Context, direction: Direction) {
+    // Count is handled here because we need to check the range at each movement
+    let mut count = 1;
+    if cx.count() != 0 {
+        count = cx.count();
+    }
+    cx.count = None;
+    for _i in 1..=count {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+        let primary_range = doc.selection(view.id).primary();
+        let current_line = text.char_to_line(primary_range.clone().head);
+        let anchor_line = text.char_to_line(primary_range.anchor);
+
+        // If not already extended to the end in forward mode, only extend to the end, not to the next line
+        if direction == Direction::Forward && current_line == anchor_line {
+            extend_to_line_bounds(cx);
+            return;
+        }
+
+        // If going against the range direction
+        extend_to_line_bounds(cx);
+        if primary_range.direction() != direction {
+            if current_line == anchor_line {
+                flip_selections(cx);
+            }
+        }
+        move_impl(cx, move_vertically, direction, Movement::Extend);
+        extend_to_line_bounds(cx);
+    }
+}
+
+fn extend_full_line_up(cx: &mut Context) {
+    extend_full_line_vertically(cx, Direction::Backward);
+}
+
+fn extend_full_line_down(cx: &mut Context) {
+    extend_full_line_vertically(cx, Direction::Forward);
+}
+
+fn extend_full_line_to_file_start(cx: &mut Context) {
+    flip_selections(cx);
+    goto_file_start(cx);
+    extend_to_line_bounds(cx);
+}
+
+fn extend_full_line_to_file_end(cx: &mut Context) {
+    goto_file_end(cx);
+    extend_to_line_bounds(cx);
+}
+
 fn goto_line_end_impl(view: &mut View, doc: &mut Document, movement: Movement) {
     let text = doc.text().slice(..);
 
@@ -576,7 +633,7 @@ fn goto_line_end(cx: &mut Context) {
     goto_line_end_impl(
         view,
         doc,
-        if doc.mode == Mode::Select {
+        if doc.mode == Mode::Select || doc.mode == Mode::LineSelect {
             Movement::Extend
         } else {
             Movement::Move
@@ -606,7 +663,7 @@ fn goto_line_end_newline(cx: &mut Context) {
     goto_line_end_newline_impl(
         view,
         doc,
-        if doc.mode == Mode::Select {
+        if doc.mode == Mode::Select || doc.mode == Mode::LineSelect {
             Movement::Extend
         } else {
             Movement::Move
@@ -637,7 +694,7 @@ fn goto_line_start(cx: &mut Context) {
     goto_line_start_impl(
         view,
         doc,
-        if doc.mode == Mode::Select {
+        if doc.mode == Mode::Select || doc.mode == Mode::LineSelect {
             Movement::Extend
         } else {
             Movement::Move
@@ -738,7 +795,11 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
 
         if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
             let pos = pos + text.line_to_char(line);
-            range.put_cursor(text, pos, doc.mode == Mode::Select)
+            range.put_cursor(
+                text,
+                pos,
+                doc.mode == Mode::Select || doc.mode == Mode::LineSelect,
+            )
         } else {
             range
         }
@@ -937,7 +998,7 @@ where
     let motion = move |editor: &mut Editor| {
         let (view, doc) = current!(editor);
         let text = doc.text().slice(..);
-        let behavior = if doc.mode == Mode::Select {
+        let behavior = if doc.mode == Mode::Select || doc.mode == Mode::LineSelect {
             Movement::Extend
         } else {
             Movement::Move
@@ -968,10 +1029,13 @@ fn goto_file_start(cx: &mut Context) {
         push_jump(cx.editor);
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
-        let selection = doc
-            .selection(view.id)
-            .clone()
-            .transform(|range| range.put_cursor(text, 0, doc.mode == Mode::Select));
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            range.put_cursor(
+                text,
+                0,
+                doc.mode == Mode::Select || doc.mode == Mode::LineSelect,
+            )
+        });
         doc.set_selection(view.id, selection);
     }
 }
@@ -981,10 +1045,13 @@ fn goto_file_end(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
     let pos = doc.text().len_chars();
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        range.put_cursor(
+            text,
+            pos,
+            doc.mode == Mode::Select || doc.mode == Mode::LineSelect,
+        )
+    });
     doc.set_selection(view.id, selection);
 }
 
@@ -2509,10 +2576,13 @@ fn goto_line_impl(editor: &mut Editor, count: Option<NonZeroUsize>) {
         let line_idx = std::cmp::min(count.get() - 1, max_line);
         let text = doc.text().slice(..);
         let pos = doc.text().line_to_char(line_idx);
-        let selection = doc
-            .selection(view.id)
-            .clone()
-            .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            range.put_cursor(
+                text,
+                pos,
+                doc.mode == Mode::Select || doc.mode == Mode::LineSelect,
+            )
+        });
         doc.set_selection(view.id, selection);
     }
 }
@@ -2529,10 +2599,13 @@ fn goto_last_line(cx: &mut Context) {
     };
     let text = doc.text().slice(..);
     let pos = doc.text().line_to_char(line_idx);
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        range.put_cursor(
+            text,
+            pos,
+            doc.mode == Mode::Select || doc.mode == Mode::LineSelect,
+        )
+    });
     doc.set_selection(view.id, selection);
 }
 
@@ -2550,10 +2623,13 @@ fn goto_last_modification(cx: &mut Context) {
     let pos = doc.history.get_mut().last_edit_pos();
     let text = doc.text().slice(..);
     if let Some(pos) = pos {
-        let selection = doc
-            .selection(view.id)
-            .clone()
-            .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            range.put_cursor(
+                text,
+                pos,
+                doc.mode == Mode::Select || doc.mode == Mode::LineSelect,
+            )
+        });
         doc.set_selection(view.id, selection);
     }
 }
@@ -2597,6 +2673,36 @@ fn exit_select_mode(cx: &mut Context) {
     let doc = doc_mut!(cx.editor);
     if doc.mode == Mode::Select {
         doc.mode = Mode::Normal;
+    }
+}
+
+fn line_select_mode(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    // Make sure end-of-document selections are also 1-width.
+    // (With the exception of being in an empty document, of course.)
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        if range.is_empty() && range.head == text.len_chars() {
+            Range::new(
+                graphemes::prev_grapheme_boundary(text, range.anchor),
+                range.head,
+            )
+        } else {
+            range
+        }
+    });
+    doc.set_selection(view.id, selection);
+
+    extend_to_line_bounds(cx);
+    doc_mut!(cx.editor).mode = Mode::LineSelect;
+}
+
+fn exit_line_select_mode(cx: &mut Context) {
+    let doc = doc_mut!(cx.editor);
+    if doc.mode == Mode::LineSelect {
+        doc.mode = Mode::Normal;
+        collapse_selection(cx);
     }
 }
 
@@ -3846,7 +3952,11 @@ fn match_brackets(cx: &mut Context) {
             if let Some(pos) =
                 match_brackets::find_matching_bracket_fuzzy(syntax, doc.text(), range.cursor(text))
             {
-                range.put_cursor(text, pos, doc.mode == Mode::Select)
+                range.put_cursor(
+                    text,
+                    pos,
+                    doc.mode == Mode::Select || doc.mode == Mode::LineSelect,
+                )
             } else {
                 range
             }
