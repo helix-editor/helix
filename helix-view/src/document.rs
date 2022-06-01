@@ -416,18 +416,10 @@ impl Document {
             .language_config()
             .and_then(|cfg| cfg.format.as_ref().and_then(|c| c.as_object()))
         {
-            for (key, value) in fmt {
-                let prop = if let Some(s) = value.as_str() {
-                    lsp::FormattingProperty::String(s.to_owned())
-                } else if let Some(b) = value.as_bool() {
-                    lsp::FormattingProperty::Bool(b)
-                } else if let Some(n) = value.as_i64() {
-                    lsp::FormattingProperty::Number(n as i32)
-                } else {
-                    log::warn!("invalid formatting property type {:?} for {}", value, key);
-                    continue;
-                };
-                properties.insert(key.to_owned(), prop);
+            for (key, value) in fmt.iter() {
+                if let Ok(prop) = serde_json::from_value(value.clone()) {
+                    properties.insert(key.to_owned(), prop);
+                }
             }
         }
 
