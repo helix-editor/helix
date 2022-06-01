@@ -155,7 +155,7 @@ pub struct Config {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
     /// Display LSP progress messages below statusline
     pub display_messages: bool,
