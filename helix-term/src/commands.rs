@@ -1964,7 +1964,7 @@ fn shrink_to_line_bounds(cx: &mut Context) {
             // line_to_char gives us the start position of the line, so
             // we need to get the start position of the next line. In
             // the editor, this will correspond to the cursor being on
-            // the EOL whitespace charactor, which is what we want.
+            // the EOL whitespace character, which is what we want.
             let mut end = text.line_to_char((end_line + 1).min(text.len_lines()));
 
             if start != range.from() {
@@ -2929,7 +2929,7 @@ pub mod insert {
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
                 let pos = range.cursor(text);
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
-                // considier to delete by indent level if all characters before `pos` are indent units.
+                // consider to delete by indent level if all characters before `pos` are indent units.
                 let fragment = Cow::from(text.slice(line_start_pos..pos));
                 if !fragment.is_empty() && fragment.chars().all(|ch| ch.is_whitespace()) {
                     if text.get_char(pos.saturating_sub(1)) == Some('\t') {

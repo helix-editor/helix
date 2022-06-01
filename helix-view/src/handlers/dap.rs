@@ -86,7 +86,7 @@ pub fn breakpoints_changed(
     path: PathBuf,
     breakpoints: &mut [Breakpoint],
 ) -> Result<(), anyhow::Error> {
-    // TODO: handle capabilities correctly again, by filterin breakpoints when emitting
+    // TODO: handle capabilities correctly again, by filtering breakpoints when emitting
     // if breakpoint.condition.is_some()
     //     && !debugger
     //         .caps
