@@ -18,7 +18,7 @@
 | elixir | ✓ |  |  | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
 | erb | ✓ |  |  |  |
-| erlang | ✓ |  |  | `erlang_ls` |
+| erlang | ✓ | ✓ |  | `erlang_ls` |
 | fish | ✓ | ✓ | ✓ |  |
 | gdscript | ✓ |  | ✓ |  |
 | git-attributes | ✓ |  |  |  |
