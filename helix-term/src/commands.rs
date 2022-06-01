@@ -573,7 +573,7 @@ fn extend_full_line_vertically(cx: &mut Context, direction: Direction) {
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
         let primary_range = doc.selection(view.id).primary();
-        let current_line = text.char_to_line(primary_range.clone().head);
+        let current_line = text.char_to_line(primary_range.head);
         let anchor_line = text.char_to_line(primary_range.anchor);
 
         // If not already extended to the end in forward mode, only extend to the end, not to the next line
@@ -584,11 +584,10 @@ fn extend_full_line_vertically(cx: &mut Context, direction: Direction) {
 
         // If going against the range direction
         extend_to_line_bounds(cx);
-        if primary_range.direction() != direction {
-            if current_line == anchor_line {
-                flip_selections(cx);
-            }
+        if primary_range.direction() != direction && current_line == anchor_line {
+            flip_selections(cx);
         }
+
         move_impl(cx, move_vertically, direction, Movement::Extend);
         extend_to_line_bounds(cx);
     }
