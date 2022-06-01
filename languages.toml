@@ -1413,7 +1413,7 @@ source = { git = "https://github.com/andreytkachenko/tree-sitter-verilog", rev =
 [[language]]
 name = "nim"
 scope = "source.nim"
-file-types = ["nim", "nimble"]
+file-types = ["nim", "nims", "nimble"]
 roots = ["config.nims"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
