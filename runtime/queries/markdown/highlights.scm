@@ -45,5 +45,5 @@
 [
   (backslash_escape)
   (hard_line_break)
-] @string.character.escape
+] @constant.character.escape
 
