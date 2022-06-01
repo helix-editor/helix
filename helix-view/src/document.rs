@@ -410,11 +410,33 @@ impl Document {
         let language_server = self.language_server()?;
         let text = self.text.clone();
         let offset_encoding = language_server.offset_encoding();
+
+        let mut properties = HashMap::new();
+        if let Some(fmt) = self
+            .language_config()
+            .and_then(|cfg| cfg.format.as_ref().and_then(|c| c.as_object()))
+        {
+            for (key, value) in fmt {
+                let prop = if let Some(s) = value.as_str() {
+                    lsp::FormattingProperty::String(s.to_owned())
+                } else if let Some(b) = value.as_bool() {
+                    lsp::FormattingProperty::Bool(b)
+                } else if let Some(n) = value.as_i64() {
+                    lsp::FormattingProperty::Number(n as i32)
+                } else {
+                    log::warn!("invalid formatting property type {:?} for {}", value, key);
+                    continue;
+                };
+                properties.insert(key.to_owned(), prop);
+            }
+        }
+
         let request = language_server.text_document_formatting(
             self.identifier(),
             lsp::FormattingOptions {
                 tab_size: self.tab_width() as u32,
                 insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
+                properties,
                 ..Default::default()
             },
             None,

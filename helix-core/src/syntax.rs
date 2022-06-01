@@ -78,6 +78,9 @@ pub struct LanguageConfiguration {
 
     #[serde(default)]
     pub auto_format: bool,
+    #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
+    pub format: Option<serde_json::Value>,
+
     #[serde(default)]
     pub diagnostic_severity: Severity,
 
