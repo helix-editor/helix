@@ -14,7 +14,7 @@ pub fn grapheme_width(g: &str) -> usize {
         // Point 1: theoretically, ascii control characters should have zero
         // width, but in our case we actually want them to have width: if they
         // show up in text, we want to treat them as textual elements that can
-        // be editied.  So we can get away with making all ascii single width
+        // be edited.  So we can get away with making all ascii single width
         // here.
         // Point 2: we're only examining the first codepoint here, which means
         // we're ignoring graphemes formed with combining characters.  However,

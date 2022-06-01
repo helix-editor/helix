@@ -416,8 +416,8 @@ pub fn apply_workspace_edit(
             }
             lsp::DocumentChanges::Operations(operations) => {
                 log::debug!("document changes - operations: {:?}", operations);
-                for operateion in operations {
-                    match operateion {
+                for operation in operations {
+                    match operation {
                         lsp::DocumentChangeOperation::Op(op) => {
                             apply_document_resource_op(op).unwrap();
                         }

@@ -177,7 +177,7 @@ impl History {
         }
     }
 
-    /// List of nodes on the way from `n` to 'a`. Doesn`t include `a`.
+    /// List of nodes on the way from `n` to 'a`. Doesn't include `a`.
     /// Includes `n` unless `a == n`. `a` must be an ancestor of `n`.
     fn path_up(&self, mut n: usize, a: usize) -> Vec<usize> {
         let mut path = Vec::new();
@@ -546,8 +546,8 @@ mod test {
 
         // Units are validated.
         assert_eq!(
-            "1 millenium".parse::<UndoKind>(),
-            Err("incorrect time unit: millenium".to_string())
+            "1 millennium".parse::<UndoKind>(),
+            Err("incorrect time unit: millennium".to_string())
         );
 
         // Units can't be specified twice.
