@@ -1049,7 +1049,7 @@ language-server = { command = "erlang_ls" }
 
 [[grammar]]
 name = "erlang"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "6cd8f956ada445b277de1581b5328ae8e8be9aac" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "481e7f8ddf27f07a47d1531b6e2b154b89ece31d" }
 
 [[language]]
 name = "kotlin"
@@ -1409,3 +1409,15 @@ injection-regex = "verilog"
 [[grammar]]
 name = "verilog"
 source = { git = "https://github.com/andreytkachenko/tree-sitter-verilog", rev = "514d8d70593d29ef3ef667fa6b0e504ae7c977e3" }
+
+[[language]]
+name = "edoc"
+scope = "source.edoc"
+file-types = ["edoc", "edoc.in"]
+injection-regex = "edoc"
+roots = []
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "edoc"
+source = { git = "https://github.com/the-mikedavis/tree-sitter-edoc", rev = "1691ec0aa7ad1ed9fa295590545f27e570d12d60" }
