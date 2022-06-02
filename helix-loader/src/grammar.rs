@@ -133,7 +133,9 @@ where
         let tx = tx.clone();
 
         pool.execute(move || {
-            tx.send(job(grammar)).unwrap();
+            // Ignore any SendErrors, if any job in another thread has encountered an
+            // error the Receiver will be closed causing this send to fail.
+            let _ = tx.send(job(grammar));
         });
     }
 
