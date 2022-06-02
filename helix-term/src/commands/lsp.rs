@@ -46,10 +46,16 @@ fn jump_to_location(
     offset_encoding: OffsetEncoding,
     action: Action,
 ) {
-    let path = location
-        .uri
-        .to_file_path()
-        .expect("unable to convert URI to filepath");
+    let path = match location.uri.to_file_path() {
+        Ok(path) => path,
+        Err(_) => {
+            editor.set_error(format!(
+                "unable to convert URI to filepath: {}",
+                location.uri
+            ));
+            return;
+        }
+    };
     let _id = editor.open(path, action).expect("editor.open failed");
     let (view, doc) = current!(editor);
     let definition_pos = location.range.start;
@@ -344,9 +350,15 @@ pub fn apply_workspace_edit(
     workspace_edit: &lsp::WorkspaceEdit,
 ) {
     let mut apply_edits = |uri: &helix_lsp::Url, text_edits: Vec<lsp::TextEdit>| {
-        let path = uri
-            .to_file_path()
-            .expect("unable to convert URI to filepath");
+        let path = match uri.to_file_path() {
+            Ok(path) => path,
+            Err(_) => {
+                let err = format!("unable to convert URI to filepath: {}", uri);
+                log::error!("{}", err);
+                editor.set_error(err);
+                return;
+            }
+        };
 
         let current_view_id = view!(editor).id;
         let doc_id = editor.open(path, Action::Load).unwrap();
@@ -381,7 +393,7 @@ pub fn apply_workspace_edit(
         log::debug!("workspace changes: {:?}", changes);
         for (uri, text_edits) in changes {
             let text_edits = text_edits.to_vec();
-            apply_edits(uri, text_edits);
+            apply_edits(uri, text_edits)
         }
         return;
         // Not sure if it works properly, it'll be safer to just panic here to avoid breaking some parts of code on which code actions will be used
