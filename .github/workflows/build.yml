@@ -64,7 +64,12 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --workspace --features integration
+          args: --workspace
+
+      - name: Run cargo integration-test
+        uses: actions-rs/cargo@v1
+        with:
+          command: integration-test
 
     strategy:
       matrix:
