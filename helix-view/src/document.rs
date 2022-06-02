@@ -411,24 +411,11 @@ impl Document {
         let text = self.text.clone();
         let offset_encoding = language_server.offset_encoding();
 
-        let mut properties = HashMap::new();
-        if let Some(fmt) = self
-            .language_config()
-            .and_then(|cfg| cfg.format.as_ref().and_then(|c| c.as_object()))
-        {
-            for (key, value) in fmt.iter() {
-                if let Ok(prop) = serde_json::from_value(value.clone()) {
-                    properties.insert(key.to_owned(), prop);
-                }
-            }
-        }
-
         let request = language_server.text_document_formatting(
             self.identifier(),
             lsp::FormattingOptions {
                 tab_size: self.tab_width() as u32,
                 insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
-                properties,
                 ..Default::default()
             },
             None,

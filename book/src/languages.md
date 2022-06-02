@@ -23,7 +23,7 @@ Use `format` field to pass extra formatting options to [Document Formatting Requ
 name = "typescript"
 auto-format = true
 # pass format options according to https://github.com/typescript-language-server/typescript-language-server#workspacedidchangeconfiguration omitting the "[language].format." prefix.
-format = { "semicolons" = "insert", "insertSpaceBeforeFunctionParenthesis" = true }
+config = { format = { "semicolons" = "insert", "insertSpaceBeforeFunctionParenthesis" = true } }
 ```
 
 ## Tree-sitter grammars
