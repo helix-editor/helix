@@ -4617,6 +4617,17 @@ fn record_macro(cx: &mut Context) {
 
 fn replay_macro(cx: &mut Context) {
     let reg = cx.register.unwrap_or('@');
+
+    if cx.editor.macro_replaying.contains(&reg) {
+        cx.editor.set_error(format!(
+            "Cannot replay from register [{}] because already replaying from same register",
+            reg
+        ));
+        return;
+    }
+
+    cx.editor.macro_replaying.push(reg);
+
     let keys: Vec<KeyEvent> = if let Some([keys_str]) = cx.editor.registers.read(reg) {
         match helix_view::input::parse_macro(keys_str) {
             Ok(keys) => keys,
@@ -4638,4 +4649,6 @@ fn replay_macro(cx: &mut Context) {
             }
         }
     }));
+
+    cx.editor.macro_replaying.pop();
 }

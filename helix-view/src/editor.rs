@@ -433,6 +433,7 @@ pub struct Editor {
     pub selected_register: Option<char>,
     pub registers: Registers,
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
+    pub macro_replaying: Vec<char>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
 
@@ -503,6 +504,7 @@ impl Editor {
             count: None,
             selected_register: None,
             macro_recording: None,
+            macro_replaying: Vec::new(),
             theme: theme_loader.default(),
             language_servers,
             debugger: None,
