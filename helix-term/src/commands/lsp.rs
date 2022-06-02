@@ -49,10 +49,8 @@ fn jump_to_location(
     let path = match location.uri.to_file_path() {
         Ok(path) => path,
         Err(_) => {
-            editor.set_error(format!(
-                "unable to convert URI to filepath: {}",
-                location.uri
-            ));
+            let err = format!("unable to convert URI to filepath: {}", location.uri);
+            editor.set_error(err);
             return;
         }
     };
@@ -83,19 +81,37 @@ fn sym_picker(
             if current_path.as_ref() == Some(&symbol.location.uri) {
                 symbol.name.as_str().into()
             } else {
-                let path = symbol.location.uri.to_file_path().unwrap();
-                let relative_path = helix_core::path::get_relative_path(path.as_path())
-                    .to_string_lossy()
-                    .into_owned();
-                format!("{} ({})", &symbol.name, relative_path).into()
+                match symbol.location.uri.to_file_path() {
+                    Ok(path) => {
+                        let relative_path = helix_core::path::get_relative_path(path.as_path())
+                            .to_string_lossy()
+                            .into_owned();
+                        format!("{} ({})", &symbol.name, relative_path).into()
+                    }
+                    Err(_) => format!("{} ({})", &symbol.name, &symbol.location.uri).into(),
+                }
             }
         },
         move |cx, symbol, action| {
             if current_path2.as_ref() == Some(&symbol.location.uri) {
                 push_jump(cx.editor);
             } else {
-                let path = symbol.location.uri.to_file_path().unwrap();
-                cx.editor.open(path, action).expect("editor.open failed");
+                let uri = &symbol.location.uri;
+                let path = match uri.to_file_path() {
+                    Ok(path) => path,
+                    Err(_) => {
+                        let err = format!("unable to convert URI to filepath: {}", uri);
+                        log::error!("{}", err);
+                        cx.editor.set_error(err);
+                        return;
+                    }
+                };
+                if let Err(err) = cx.editor.open(path, action) {
+                    let err = format!("failed to open document: {}: {}", uri, err);
+                    log::error!("{}", err);
+                    cx.editor.set_error(err);
+                    return;
+                }
             }
 
             let (view, doc) = current!(cx.editor);
@@ -361,7 +377,16 @@ pub fn apply_workspace_edit(
         };
 
         let current_view_id = view!(editor).id;
-        let doc_id = editor.open(path, Action::Load).unwrap();
+        let doc_id = match editor.open(path, Action::Load) {
+            Ok(doc_id) => doc_id,
+            Err(err) => {
+                let err = format!("failed to open document: {}: {}", uri, err);
+                log::error!("{}", err);
+                editor.set_error(err);
+                return;
+            }
+        };
+
         let doc = editor
             .document_mut(doc_id)
             .expect("Document for document_changes not found");
