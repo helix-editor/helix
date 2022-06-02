@@ -637,13 +637,25 @@ pub fn signature_help(cx: &mut Context) {
 
 pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
     let (view, doc) = current!(cx.editor);
-    let language_server = language_server!(cx.editor, doc);
+    let was_manually_invoked = invoked == SignatureHelpInvoked::Manual;
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => {
+            // Do not show the message if signature help was invoked
+            // automatically on backspace, trigger characters, etc.
+            if was_manually_invoked {
+                cx.editor
+                    .set_status("Language server not active for current buffer");
+            }
+            return;
+        }
+    };
     let offset_encoding = language_server.offset_encoding();
 
     let pos = doc.position(view.id, offset_encoding);
 
     let future = language_server.text_document_signature_help(doc.identifier(), pos, None);
-    let was_manually_invoked = invoked == SignatureHelpInvoked::Manual;
 
     cx.callback(
         future,

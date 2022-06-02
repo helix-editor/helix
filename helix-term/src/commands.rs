@@ -2741,6 +2741,9 @@ pub mod insert {
         use helix_lsp::lsp;
         // if ch matches signature_help char, trigger
         let doc = doc_mut!(cx.editor);
+        // The language_server!() macro is not used here since it will
+        // print an "LSP not active for current buffer" message on
+        // every keypress.
         let language_server = match doc.language_server() {
             Some(language_server) => language_server,
             None => return,
