@@ -6,6 +6,7 @@ use crate::{
     input::KeyEvent,
     theme::{self, Theme},
     tree::{self, Tree},
+    watcher::FileWatcher,
     Document, DocumentId, View, ViewId,
 };
 
@@ -435,6 +436,7 @@ pub struct Editor {
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
+    pub watcher: Option<FileWatcher>,
 
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
@@ -505,6 +507,7 @@ impl Editor {
             macro_recording: None,
             theme: theme_loader.default(),
             language_servers,
+            watcher: None,
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
@@ -527,6 +530,26 @@ impl Editor {
 
     pub fn config(&self) -> DynGuard<Config> {
         self.config.load()
+    }
+
+    pub fn file_watcher(&mut self) -> Option<&FileWatcher> {
+        // lazily initialize file watching
+        if self.watcher.is_none() {
+            let watcher = FileWatcher::new().ok()?;
+            for workspace in self
+                .language_servers
+                .iter_clients()
+                .flat_map(|c| c.workspace_folders())
+                .filter_map(|f| f.uri.to_file_path().ok())
+                // uniqueness
+                .collect::<std::collections::HashSet<_>>()
+            {
+                watcher.add_workspace(workspace);
+            }
+            self.watcher = Some(watcher);
+        }
+
+        self.watcher.as_ref()
     }
 
     pub fn clear_idle_timer(&mut self) {
