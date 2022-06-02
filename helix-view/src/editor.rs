@@ -139,6 +139,12 @@ pub struct Config {
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
+    #[serde(
+        serialize_with = "serialize_duration_millis",
+        deserialize_with = "deserialize_duration_millis"
+    )]
+    /// Delay in milliseconds before infoboxes are displayed. Defaults to 0 (disabled).
+    pub auto_info_delay: Duration,
     pub file_picker: FilePickerConfig,
     /// Shape for cursor in each mode
     pub cursor_shape: CursorShapeConfig,
@@ -380,6 +386,7 @@ impl Default for Config {
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
+            auto_info_delay: Duration::default(),
             file_picker: FilePickerConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,

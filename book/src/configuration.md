@@ -43,6 +43,7 @@ hidden = false
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
 | `auto-info` | Whether to display infoboxes | `true` |
+| `auto-info-delay` | Delay in milliseconds before infoboxes are displayed | 0 |
 | `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. | `false` |
 | `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file. | `[]` |
 

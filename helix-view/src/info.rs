@@ -3,6 +3,11 @@ use helix_core::{register::Registers, unicode::width::UnicodeWidthStr};
 use std::{collections::BTreeSet, fmt::Write};
 
 #[derive(Debug)]
+pub struct Delay {
+    pub cancel_tx: tokio::sync::oneshot::Sender<()>,
+}
+
+#[derive(Debug)]
 /// Info box used in editor. Rendering logic will be in other crate.
 pub struct Info {
     /// Title shown at top.
@@ -13,6 +18,8 @@ pub struct Info {
     pub width: u16,
     /// Body height.
     pub height: u16,
+    /// Popup delay.
+    pub delay: Option<Delay>,
 }
 
 impl Info {
@@ -23,6 +30,7 @@ impl Info {
                 height: 1,
                 width: title.len() as u16,
                 text: "".to_string(),
+                delay: None,
             };
         }
 
@@ -38,6 +46,7 @@ impl Info {
             width: text.lines().map(|l| l.width()).max().unwrap() as u16,
             height: body.len() as u16,
             text,
+            delay: None,
         }
     }
 
@@ -71,5 +80,16 @@ impl Info {
         let mut infobox = Self::new("Registers", body);
         infobox.width = 30; // copied content could be very long
         infobox
+    }
+}
+
+impl Info {
+    pub fn with_delay(mut self, delay: Delay) -> Info {
+        self.delay = Some(delay);
+        self
+    }
+
+    pub fn is_delayed(&self) -> bool {
+        self.delay.is_some()
     }
 }
