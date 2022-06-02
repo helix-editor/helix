@@ -376,6 +376,7 @@ fn set_line_ending(
         }),
     );
     doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
 
     Ok(())
 }
