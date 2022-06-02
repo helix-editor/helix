@@ -173,9 +173,13 @@ pub mod util {
 
     pub fn generate_transaction_from_edits(
         doc: &Rope,
-        edits: Vec<lsp::TextEdit>,
+        mut edits: Vec<lsp::TextEdit>,
         offset_encoding: OffsetEncoding,
     ) -> Transaction {
+        // Sort edits by start range, since some LSPs (Omnisharp) send them
+        // in reverse order.
+        edits.sort_unstable_by_key(|edit| edit.range.start);
+
         Transaction::change(
             doc,
             edits.into_iter().map(|edit| {
