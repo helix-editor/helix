@@ -12,25 +12,35 @@ use helix_view::editor::StatusLineElement as StatusLineElementID;
 use tui::buffer::Buffer as Surface;
 use tui::text::{Span, Spans};
 
-/// A status line element contains the information about a component which can be displayed in the status line.
-struct StatusLineElement {
-    /// The element
-    pub text: String,
-
-    /// The style to be used to render the element (this style will be merged with the base style).
-    /// If not set, a default base style will be used.
-    pub style: Option<Style>,
-}
-
 pub struct RenderContext<'a> {
     pub doc: &'a Document,
     pub view: &'a View,
     pub theme: &'a Theme,
     pub focused: bool,
     pub spinners: &'a ProgressSpinners,
+    pub buffer: RenderBuffer<'a>,
 }
 
-struct RenderBuffer<'a> {
+impl<'a> RenderContext<'a> {
+    pub fn new(
+        doc: &'a Document,
+        view: &'a View,
+        theme: &'a Theme,
+        focused: bool,
+        spinners: &'a ProgressSpinners,
+    ) -> Self {
+        RenderContext {
+            doc,
+            view,
+            theme,
+            focused,
+            spinners,
+            buffer: RenderBuffer::new(),
+        }
+    }
+}
+
+pub struct RenderBuffer<'a> {
     pub left: Spans<'a>,
     pub center: Spans<'a>,
     pub right: Spans<'a>,
@@ -49,9 +59,12 @@ impl<'a> RenderBuffer<'a> {
 pub struct StatusLine;
 
 impl StatusLine {
-    pub fn render(editor: &Editor, context: &RenderContext, viewport: Rect, surface: &mut Surface) {
-        let mut buffer = RenderBuffer::new();
-
+    pub fn render(
+        editor: &Editor,
+        context: &mut RenderContext,
+        viewport: Rect,
+        surface: &mut Surface,
+    ) {
         let base_style = if context.focused {
             context.theme.get("ui.statusline")
         } else {
@@ -60,119 +73,113 @@ impl StatusLine {
 
         surface.set_style(viewport.with_height(1), base_style);
 
+        let write_left = |context: &mut RenderContext, text, style| {
+            Self::append(&mut context.buffer.left, text, &base_style, style)
+        };
+        let write_center = |context: &mut RenderContext, text, style| {
+            Self::append(&mut context.buffer.center, text, &base_style, style)
+        };
+        let write_right = |context: &mut RenderContext, text, style| {
+            Self::append(&mut context.buffer.right, text, &base_style, style)
+        };
+
         // Left side of the status line.
 
-        for element_id in &editor.config().status_line.left {
-            let elements = Self::render_element(context, *element_id);
-            for element in elements {
-                Self::append_left(&mut buffer, &base_style, element);
-            }
+        let config = &editor.config().status_line.left;
+        for render in config.into_iter().map(|id| Self::get_render_function(*id)) {
+            render(context, write_left);
         }
+
+        let element_ids = &editor.config().status_line.left;
+        element_ids
+            .into_iter()
+            .map(|element_id| Self::get_render_function(*element_id))
+            .for_each(|render| render(context, write_left));
 
         surface.set_spans(
             viewport.x,
             viewport.y,
-            &buffer.left,
-            buffer.left.width() as u16,
+            &context.buffer.left,
+            context.buffer.left.width() as u16,
         );
 
         // Right side of the status line.
 
-        for element_id in &editor.config().status_line.right {
-            let elements = Self::render_element(context, *element_id);
-            for element in elements {
-                Self::append_right(&mut buffer, &base_style, element);
-            }
-        }
+        let element_ids = &editor.config().status_line.right;
+        element_ids
+            .into_iter()
+            .map(|element_id| Self::get_render_function(*element_id))
+            .for_each(|render| render(context, write_right));
 
         surface.set_spans(
-            viewport.x + viewport.width.saturating_sub(buffer.right.width() as u16),
+            viewport.x
+                + viewport
+                    .width
+                    .saturating_sub(context.buffer.right.width() as u16),
             viewport.y,
-            &buffer.right,
-            buffer.right.width() as u16,
+            &context.buffer.right,
+            context.buffer.right.width() as u16,
         );
 
         // Center of the status line.
 
-        for element_id in &editor.config().status_line.center {
-            let elements = Self::render_element(context, *element_id);
-            for element in elements {
-                Self::append_center(&mut buffer, &base_style, element);
-            }
-        }
+        let element_ids = &editor.config().status_line.center;
+        element_ids
+            .into_iter()
+            .map(|element_id| Self::get_render_function(*element_id))
+            .for_each(|render| render(context, write_center));
 
         // Width of the empty space between the left and center area and between the center and right area.
         let spacing = 1u16;
 
-        let edge_width = buffer.left.width().max(buffer.right.width()) as u16;
+        let edge_width = context
+            .buffer
+            .left
+            .width()
+            .max(context.buffer.right.width()) as u16;
         let center_max_width = viewport.width - (2 * edge_width + 2 * spacing);
-        let center_width = center_max_width.min(buffer.center.width() as u16);
+        let center_width = center_max_width.min(context.buffer.center.width() as u16);
 
         surface.set_spans(
             viewport.x + viewport.width / 2 - center_width / 2,
             viewport.y,
-            &buffer.center,
+            &context.buffer.center,
             center_width,
         );
     }
 
-    fn append_left(buffer: &mut RenderBuffer, base_style: &Style, element: StatusLineElement) {
-        buffer.left.0.push(Span::styled(
-            element.text,
-            element
-                .style
-                .map_or(*base_style, |s| (*base_style).patch(s)),
+    fn append(buffer: &mut Spans, text: String, base_style: &Style, style: Option<Style>) {
+        buffer.0.push(Span::styled(
+            text,
+            style.map_or(*base_style, |s| (*base_style).patch(s)),
         ));
     }
 
-    fn append_center(buffer: &mut RenderBuffer, base_style: &Style, element: StatusLineElement) {
-        buffer.center.0.push(Span::styled(
-            element.text,
-            element
-                .style
-                .map_or(*base_style, |s| (*base_style).patch(s)),
-        ));
-    }
-
-    fn append_right(buffer: &mut RenderBuffer, base_style: &Style, element: StatusLineElement) {
-        buffer.right.0.push(Span::styled(
-            element.text,
-            element
-                .style
-                .map_or(*base_style, |s| (*base_style).patch(s)),
-        ));
-    }
-
-    fn render_element(
-        context: &RenderContext,
-        element_id: StatusLineElementID,
-    ) -> Vec<StatusLineElement> {
+    fn get_render_function<F>(element_id: StatusLineElementID) -> impl Fn(&mut RenderContext, F)
+    where
+        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+    {
         match element_id {
-            helix_view::editor::StatusLineElement::Mode => vec![Self::render_mode(context)],
-            helix_view::editor::StatusLineElement::Spinner => {
-                vec![Self::render_lsp_spinner(context)]
-            }
-            helix_view::editor::StatusLineElement::FileName => {
-                vec![Self::render_file_name(context)]
-            }
-            helix_view::editor::StatusLineElement::FileEncoding => {
-                Self::render_file_encoding(context).map_or(Vec::with_capacity(0), |e| vec![e])
-            }
-            helix_view::editor::StatusLineElement::FileType => {
-                vec![Self::render_file_type(context)]
-            }
-            helix_view::editor::StatusLineElement::Diagnostics => Self::render_diagnostics(context),
-            helix_view::editor::StatusLineElement::Selections => {
-                vec![Self::render_selections(context)]
-            }
-            helix_view::editor::StatusLineElement::Position => vec![Self::render_position(context)],
+            helix_view::editor::StatusLineElement::Mode => Self::render_mode,
+            helix_view::editor::StatusLineElement::Spinner => Self::render_lsp_spinner,
+            helix_view::editor::StatusLineElement::FileName => Self::render_file_name,
+            helix_view::editor::StatusLineElement::FileEncoding => Self::render_file_encoding,
+            helix_view::editor::StatusLineElement::FileType => Self::render_file_type,
+            helix_view::editor::StatusLineElement::Diagnostics => Self::render_diagnostics,
+            helix_view::editor::StatusLineElement::Selections => Self::render_selections,
+            helix_view::editor::StatusLineElement::Position => Self::render_position,
         }
     }
 
-    fn render_mode(context: &RenderContext) -> StatusLineElement {
+    fn render_mode<F>(context: &mut RenderContext, write: F)
+    where
+        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+    {
         let visible = context.focused;
-        return StatusLineElement {
-            text: format!(
+
+        write(
+            context,
+            format!(
                 " {} ",
                 match context.doc.mode() {
                     Mode::Insert if visible => "INS",
@@ -182,13 +189,17 @@ impl StatusLine {
                     _ => "   ",
                 }
             ),
-            style: None,
-        };
+            None,
+        );
     }
 
-    fn render_lsp_spinner(context: &RenderContext) -> StatusLineElement {
-        return StatusLineElement {
-            text: format!(
+    fn render_lsp_spinner<F>(context: &mut RenderContext, write: F)
+    where
+        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+    {
+        write(
+            context,
+            format!(
                 " {} ",
                 context
                     .doc
@@ -200,96 +211,87 @@ impl StatusLine {
                     // Even if there's no spinner; reserve its space to avoid elements frequently shifting.
                     .unwrap_or(" ")
             ),
-            style: None,
-        };
+            None,
+        );
     }
 
-    fn render_diagnostics(context: &RenderContext) -> Vec<StatusLineElement> {
-        // 2 diagnostics types, each consisting of 2 elements (state + count)
-        let mut elements: Vec<StatusLineElement> = Vec::with_capacity(4);
+    fn render_diagnostics<F>(context: &mut RenderContext, write: F)
+    where
+        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+    {
+        let (warnings, errors) =
+            context
+                .doc
+                .diagnostics()
+                .iter()
+                .fold((0, 0), |mut counts, diag| {
+                    use helix_core::diagnostic::Severity;
+                    match diag.severity {
+                        Some(Severity::Warning) => counts.0 += 1,
+                        Some(Severity::Error) | None => counts.1 += 1,
+                        _ => {}
+                    }
+                    counts
+                });
 
-        let diags = context
-            .doc
-            .diagnostics()
-            .iter()
-            .fold((0, 0), |mut counts, diag| {
-                use helix_core::diagnostic::Severity;
-                match diag.severity {
-                    Some(Severity::Warning) => counts.0 += 1,
-                    Some(Severity::Error) | None => counts.1 += 1,
-                    _ => {}
-                }
-                counts
-            });
-        let (warnings, errors) = diags;
-
-        for i in 0..2 {
-            let (count, state_element, count_element) = match i {
-                0 => (
-                    warnings,
-                    Self::render_diagnostics_warning_state(context),
-                    Self::render_diagnostics_warning_count(context, warnings),
-                ),
-                1 => (
-                    errors,
-                    Self::render_diagnostics_error_state(context),
-                    Self::render_diagnostics_error_count(context, errors),
-                ),
-                _ => unreachable!(),
-            };
-
-            if count > 0 {
-                elements.push(state_element);
-                elements.push(count_element);
-            }
+        if warnings > 0 {
+            Self::render_diagnostics_warning_state(context, write);
+            Self::render_diagnostics_warning_count(context, warnings, write);
         }
 
-        elements
-    }
-
-    fn render_diagnostics_warning_state(context: &RenderContext) -> StatusLineElement {
-        StatusLineElement {
-            text: "●".to_string(),
-            style: Some(context.theme.get("warning")),
+        if errors > 0 {
+            Self::render_diagnostics_error_state(context, write);
+            Self::render_diagnostics_error_count(context, errors, write);
         }
     }
 
-    fn render_diagnostics_warning_count(
-        _context: &RenderContext,
+    fn render_diagnostics_warning_state<F>(context: &mut RenderContext, write: F)
+    where
+        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+    {
+        write(context, "●".to_string(), Some(context.theme.get("warning")));
+    }
+
+    fn render_diagnostics_warning_count<F>(
+        context: &mut RenderContext,
         warning_count: usize,
-    ) -> StatusLineElement {
-        StatusLineElement {
-            text: format!(" {} ", warning_count),
-            style: None,
-        }
+        write: F,
+    ) where
+        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+    {
+        write(context, format!(" {} ", warning_count), None);
     }
 
-    fn render_diagnostics_error_state(context: &RenderContext) -> StatusLineElement {
-        StatusLineElement {
-            text: "●".to_string(),
-            style: Some(context.theme.get("error")),
-        }
+    fn render_diagnostics_error_state<F>(context: &mut RenderContext, write: F)
+    where
+        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+    {
+        write(context, "●".to_string(), Some(context.theme.get("error")));
     }
 
-    fn render_diagnostics_error_count(
-        _context: &RenderContext,
-        error_count: usize,
-    ) -> StatusLineElement {
-        StatusLineElement {
-            text: format!(" {} ", error_count),
-            style: None,
-        }
+    fn render_diagnostics_error_count<F>(context: &mut RenderContext, error_count: usize, write: F)
+    where
+        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+    {
+        write(context, format!(" {} ", error_count), None);
     }
 
-    fn render_selections(context: &RenderContext) -> StatusLineElement {
+    fn render_selections<F>(context: &mut RenderContext, write: F)
+    where
+        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+    {
         let count = context.doc.selection(context.view.id).len();
-        StatusLineElement {
-            text: format!(" {} sel{} ", count, if count == 1 { "" } else { "s" }),
-            style: None,
-        }
+        write(
+            context,
+            format!(" {} sel{} ", count, if count == 1 { "" } else { "s" }),
+            None,
+        );
     }
 
-    fn render_position(context: &RenderContext) -> StatusLineElement {
+    fn render_position<F>(context: &mut RenderContext, write: F)
+    where
+        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+    {
         let position = coords_at_pos(
             context.doc.text().slice(..),
             context
@@ -299,35 +301,37 @@ impl StatusLine {
                 .cursor(context.doc.text().slice(..)),
         );
 
-        return StatusLineElement {
-            text: format!(" {}:{} ", position.row + 1, position.col + 1),
-            style: None,
-        };
+        write(
+            context,
+            format!(" {}:{} ", position.row + 1, position.col + 1),
+            None,
+        );
     }
 
-    fn render_file_encoding(context: &RenderContext) -> Option<StatusLineElement> {
+    fn render_file_encoding<F>(context: &mut RenderContext, write: F)
+    where
+        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+    {
         let enc = context.doc.encoding();
 
         if enc != encoding::UTF_8 {
-            Some(StatusLineElement {
-                text: format!(" {} ", enc.name()),
-                style: None,
-            })
-        } else {
-            None
+            write(context, format!(" {} ", enc.name()), None);
         }
     }
 
-    fn render_file_type(context: &RenderContext) -> StatusLineElement {
+    fn render_file_type<F>(context: &mut RenderContext, write: F)
+    where
+        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+    {
         let file_type = context.doc.language_id().unwrap_or("text");
 
-        StatusLineElement {
-            text: format!(" {} ", file_type),
-            style: None,
-        }
+        write(context, format!(" {} ", file_type), None);
     }
 
-    fn render_file_name(context: &RenderContext) -> StatusLineElement {
+    fn render_file_name<F>(context: &mut RenderContext, write: F)
+    where
+        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+    {
         let title = {
             let rel_path = context.doc.relative_path();
             let path = rel_path
@@ -341,9 +345,6 @@ impl StatusLine {
             )
         };
 
-        StatusLineElement {
-            text: title,
-            style: None,
-        }
+        write(context, title, None);
     }
 }

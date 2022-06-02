@@ -163,15 +163,10 @@ impl EditorView {
             .clip_top(view.area.height.saturating_sub(1))
             .clip_bottom(1); // -1 from bottom to remove commandline
 
-        let context = statusline::RenderContext {
-            doc,
-            view,
-            theme,
-            focused: is_focused,
-            spinners: &self.spinners,
-        };
+        let mut context =
+            statusline::RenderContext::new(doc, view, theme, is_focused, &self.spinners);
 
-        StatusLine::render(editor, &context, statusline_area, surface);
+        StatusLine::render(editor, &mut context, statusline_area, surface);
     }
 
     pub fn render_rulers(
