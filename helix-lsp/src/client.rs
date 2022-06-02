@@ -291,6 +291,9 @@ impl Client {
                     did_change_configuration: Some(lsp::DynamicRegistrationClientCapabilities {
                         dynamic_registration: Some(false),
                     }),
+                    did_change_watched_files: Some(lsp::DidChangeWatchedFilesClientCapabilities {
+                        dynamic_registration: Some(true),
+                    }),
                     workspace_folders: Some(true),
                     ..Default::default()
                 }),
@@ -395,6 +398,15 @@ impl Client {
         self.notify::<lsp::notification::DidChangeConfiguration>(
             lsp::DidChangeConfigurationParams { settings },
         )
+    }
+
+    pub fn did_change_watched_files(
+        &self,
+        changes: Vec<lsp::FileEvent>,
+    ) -> impl Future<Output = Result<()>> {
+        self.notify::<lsp::notification::DidChangeWatchedFiles>(lsp::DidChangeWatchedFilesParams {
+            changes,
+        })
     }
 
     // -------------------------------------------------------------------------------------------

@@ -3,8 +3,12 @@ use helix_core::{
     config::{default_syntax_loader, user_syntax_loader},
     pos_at_coords, syntax, Selection,
 };
-use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{align_view, editor::ConfigEvent, theme, Align, Editor};
+use helix_lsp::{
+    lsp::{self, notification::Notification},
+    util::lsp_pos_to_pos,
+    LspProgressMap,
+};
+use helix_view::{align_view, editor::ConfigEvent, theme, watcher, Align, Editor};
 use serde_json::json;
 
 use crate::{
@@ -24,7 +28,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anyhow::Error;
+use anyhow::{Context, Error};
 
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream},
@@ -696,6 +700,35 @@ impl Application {
                             .collect();
                         Ok(json!(result))
                     }
+                    MethodCall::RegisterCapability(params) => {
+                        for reg in params.registrations {
+                            if let Err(e) = self.register(reg, server_id).await {
+                                log::warn!("failed LSP dynamic registration: {}", e);
+                            }
+                        }
+                        Ok(serde_json::Value::Null)
+                    }
+                    MethodCall::UnregisterCapability(params) => {
+                        params
+                            .unregisterations // "unregisterations" is a known typo in the LSP spec
+                            .into_iter()
+                            .map(|unreg| match unreg.method.as_str() {
+                                lsp::notification::DidChangeWatchedFiles::METHOD => {
+                                    // TODO: unregister tokens from watcher once they're actually
+                                    // being saved somewhere
+                                    Ok(serde_json::Value::Null)
+                                }
+                                _ => Err(anyhow::anyhow!(
+                                    "attempt to register unsupported capability"
+                                )),
+                            })
+                            .collect::<anyhow::Result<_>>()
+                            .map_err(|e| helix_lsp::jsonrpc::Error {
+                                code: helix_lsp::jsonrpc::ErrorCode::InvalidParams,
+                                message: e.to_string(),
+                                data: None,
+                            })
+                    }
                 };
 
                 let language_server = match self.editor.language_servers.get_by_id(server_id) {
@@ -709,6 +742,89 @@ impl Application {
                 tokio::spawn(language_server.reply(id, reply));
             }
             Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
+        }
+    }
+
+    async fn register(&mut self, reg: lsp::Registration, server_id: usize) -> anyhow::Result<()> {
+        use lsp::{FileChangeType as Change, WatchKind};
+        use watcher::notify_event::EventKind;
+
+        match reg.method.as_str() {
+            lsp::notification::DidChangeWatchedFiles::METHOD => {
+                let opts: lsp::DidChangeWatchedFilesRegistrationOptions = reg
+                    .register_options
+                    .context("missing register options")
+                    .and_then(|v| Ok(serde_json::from_value(v)?))?;
+
+                // need lsp wrapped in `Arc`, so can't use `Registry::find_by_id`
+                let language_server = self
+                    .editor
+                    .language_servers
+                    .iter_clients()
+                    .find(|c| c.id() == server_id)
+                    .map(Arc::clone)
+                    .unwrap();
+
+                let watcher = self
+                    .editor
+                    .file_watcher()
+                    .context("file watching is unavailable")?;
+
+                // TODO: save watch tokens somewhere so they can be deregistered
+                // in `UnregisterCapability`. This state seems to belong with
+                // the individual `lsp::Client` but the current API doesn't allow
+                // mutation on clients without adding internal mutability.
+                for watch in opts.watchers {
+                    let language_server = Arc::clone(&language_server);
+
+                    let workspace = language_server
+                        .workspace_folders()
+                        .get(0)
+                        .and_then(|f| f.uri.to_file_path().ok())
+                        .context("language server lacks valid workspace folder")?;
+
+                    let cb = move |event: &watcher::Event| {
+                        // If no `kind` is specified, defaults to CREATED | CHANGED | DELETED.
+                        let has = |op| watch.kind.map(|kind| kind.contains(op)).unwrap_or(true);
+                        let typ = match event.kind {
+                            EventKind::Create(_) if has(WatchKind::Create) => Change::CREATED,
+                            EventKind::Modify(_) if has(WatchKind::Change) => Change::CHANGED,
+                            EventKind::Remove(_) if has(WatchKind::Delete) => Change::DELETED,
+                            _ => return,
+                        };
+                        let uri = match event
+                            .paths
+                            .get(0)
+                            .and_then(|p| lsp::Url::from_file_path(p).ok())
+                        {
+                            Some(p) => p,
+                            None => {
+                                log::warn!("file watch event lacks valid path: {:?}", event);
+                                return;
+                            }
+                        };
+
+                        let events = vec![lsp::FileEvent { uri, typ }];
+                        tokio::spawn(language_server.did_change_watched_files(events));
+                    };
+
+                    if let Err(e) = watcher
+                        .register_glob(workspace, &watch.glob_pattern, cb)
+                        .await
+                    {
+                        log::warn!(
+                            "failed to set watch on glob `{}`: {}",
+                            watch.glob_pattern,
+                            e
+                        );
+                    }
+                }
+
+                Ok(())
+            }
+            _ => Err(anyhow::anyhow!(
+                "attempt to register unsupported capability"
+            )),
         }
     }
 
