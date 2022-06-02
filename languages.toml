@@ -1421,3 +1421,15 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "edoc"
 source = { git = "https://github.com/the-mikedavis/tree-sitter-edoc", rev = "1691ec0aa7ad1ed9fa295590545f27e570d12d60" }
+
+[[language]]
+name = "jsdoc"
+scope = "source.jsdoc"
+injection-regex = "jsdoc"
+file-types = ["jsdoc"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "jsdoc"
+source = { git = "https://github.com/tree-sitter/tree-sitter-jsdoc", rev = "189a6a4829beb9cdbe837260653b4a3dfb0cc3db" }

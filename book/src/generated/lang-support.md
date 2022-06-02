@@ -41,6 +41,7 @@
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  | `jdtls` |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
+| jsdoc | ✓ |  |  |  |
 | json | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsx | ✓ |  | ✓ | `typescript-language-server` |
 | julia | ✓ |  |  | `julia` |
