@@ -826,6 +826,9 @@ impl Editor {
                         Some(Action::Close(view.id))
                     }
                 } else {
+                    // documents also need be removed from the view "document access history"
+                    // so we don't accidentally try to jump back to them after they have been deleted
+                    view.docs_access_history.retain(|doc| doc != &doc_id);
                     None
                 }
             })
