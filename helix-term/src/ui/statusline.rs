@@ -85,11 +85,6 @@ impl StatusLine {
 
         // Left side of the status line.
 
-        let config = &editor.config().status_line.left;
-        for render in config.into_iter().map(|id| Self::get_render_function(*id)) {
-            render(context, write_left);
-        }
-
         let element_ids = &editor.config().status_line.left;
         element_ids
             .into_iter()
