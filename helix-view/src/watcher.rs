@@ -153,7 +153,7 @@ impl FileWatcher {
         };
         let ev = WatcherEvent::Register(watch, tx);
         if let Err(e) = self.tx.send(ev) {
-            anyhow::bail!("file watcher channel error: {e}");
+            anyhow::bail!("file watcher channel error: {}", e);
         }
 
         Ok(rx.await?)
