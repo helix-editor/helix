@@ -20,7 +20,7 @@ use helix_core::{
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
-    graphics::{CursorKind, Modifier, Rect, Style},
+    graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
@@ -170,7 +170,20 @@ impl EditorView {
         theme: &Theme,
     ) {
         let editor_rulers = &editor.config().rulers;
-        let ruler_theme = theme.get("ui.virtual.ruler");
+        let default_style = Style {
+            bg: Some(Color::Red),
+            ..Default::default()
+        };
+        let ruler_theme = theme
+            .try_get("ui.virtual.ruler")
+            .map(|style| {
+                if let None = style.bg {
+                    default_style
+                } else {
+                    style
+                }
+            })
+            .unwrap_or(default_style);
 
         let rulers = doc
             .language_config()
