@@ -681,7 +681,7 @@ impl Editor {
 
                     // Remove the scratch buffer from any jumplists
                     for (view, _) in self.tree.views_mut() {
-                        view.jumps.remove(&id)
+                        view.remove_document(&id);
                     }
                 } else {
                     let jump = (view.doc, doc.selection(view.id).clone());
