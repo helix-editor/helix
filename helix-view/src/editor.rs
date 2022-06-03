@@ -814,8 +814,7 @@ impl Editor {
             .tree
             .views_mut()
             .filter_map(|(view, _focus)| {
-                // remove the document from jump list of all views
-                view.jumps.remove(&doc_id);
+                view.remove_document(&doc_id);
 
                 if view.doc == doc_id {
                     // something was previously open in the view, switch to previous doc
@@ -826,9 +825,6 @@ impl Editor {
                         Some(Action::Close(view.id))
                     }
                 } else {
-                    // documents also need be removed from the view "document access history"
-                    // so we don't accidentally try to jump back to them after they have been deleted
-                    view.docs_access_history.retain(|doc| doc != &doc_id);
                     None
                 }
             })
