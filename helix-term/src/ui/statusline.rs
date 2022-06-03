@@ -35,25 +35,16 @@ impl<'a> RenderContext<'a> {
             theme,
             focused,
             spinners,
-            buffer: RenderBuffer::new(),
+            buffer: RenderBuffer::default(),
         }
     }
 }
 
+#[derive(Default)]
 pub struct RenderBuffer<'a> {
     pub left: Spans<'a>,
     pub center: Spans<'a>,
     pub right: Spans<'a>,
-}
-
-impl<'a> RenderBuffer<'a> {
-    pub fn new() -> Self {
-        Self {
-            left: Spans::default(),
-            center: Spans::default(),
-            right: Spans::default(),
-        }
-    }
 }
 
 pub struct StatusLine;
@@ -87,7 +78,7 @@ impl StatusLine {
 
         let element_ids = &editor.config().status_line.left;
         element_ids
-            .into_iter()
+            .iter()
             .map(|element_id| Self::get_render_function(*element_id))
             .for_each(|render| render(context, write_left));
 
@@ -102,7 +93,7 @@ impl StatusLine {
 
         let element_ids = &editor.config().status_line.right;
         element_ids
-            .into_iter()
+            .iter()
             .map(|element_id| Self::get_render_function(*element_id))
             .for_each(|render| render(context, write_right));
 
@@ -120,7 +111,7 @@ impl StatusLine {
 
         let element_ids = &editor.config().status_line.center;
         element_ids
-            .into_iter()
+            .iter()
             .map(|element_id| Self::get_render_function(*element_id))
             .for_each(|render| render(context, write_center));
 
