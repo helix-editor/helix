@@ -17,7 +17,7 @@
 'ui.cursor' = { fg = 'background', bg = 'blue' }
 'ui.cursor.primary' = { fg = 'background', bg = 'gold' }
 'ui.cursor.match' = { bg = 'selection', modifiers = ['underlined'] }
-'ui.selection' = { fg = 'foreground', bg = 'selection' }
+'ui.selection' = { bg = 'selection', modifiers = ['dim'] }
 'ui.linenr' = { fg = 'grey4', bg = 'background2' }
 'ui.linenr.selected' = { fg = 'greyE', bg = 'background2'  }
 'ui.statusline' = { fg = 'greyE', bg = 'background2' }
