@@ -485,8 +485,6 @@ fn goto_impl(
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
 ) {
-    push_jump(editor);
-
     let cwdir = std::env::current_dir().expect("couldn't determine current directory");
 
     match locations.as_slice() {
@@ -520,6 +518,7 @@ fn goto_impl(
                     format!("{}:{}", file, line).into()
                 },
                 move |cx, location, action| {
+                    push_jump(cx.editor);
                     jump_to_location(cx.editor, location, offset_encoding, action)
                 },
                 move |_editor, location| Some(location_to_file_location(location)),
