@@ -255,7 +255,7 @@ pub mod completers {
             })
             .collect();
 
-        matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+        matches.sort_unstable_by_key(|(name, score)| (Reverse(*score), name.to_lowercase()));
         names = matches.into_iter().map(|(name, _)| ((0..), name)).collect();
 
         names
