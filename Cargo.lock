@@ -1033,8 +1033,7 @@ dependencies = [
 [[package]]
 name = "textwrap"
 version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1141d4d61095b28419e22cb0bbf02755f5e54e0526f97f1e3d1d160e60885fb"
+source = "git+https://github.com/mgeisler/textwrap?rev=9c648da#9c648da603fd99f4b37aeafbe5c617c3e1b64a1f"
 dependencies = [
  "smawk",
  "unicode-linebreak",

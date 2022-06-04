@@ -41,7 +41,7 @@ encoding_rs = "0.8"
 chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }
 
 etcetera = "0.4"
-textwrap = "0.15.0"
+textwrap = { git = "https://github.com/mgeisler/textwrap", rev = "9c648da" }
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }

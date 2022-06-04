@@ -1093,7 +1093,8 @@ fn reflow(
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(rope, selection, |range| {
         let fragment = range.fragment(rope.slice(..));
-        let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, max_line_len);
+        let reflowed_text =
+            helix_core::wrap::reflow_hard_wrap(&fragment, max_line_len, doc.line_ending);
 
         (range.from(), range.to(), Some(reflowed_text))
     });
