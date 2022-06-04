@@ -701,10 +701,10 @@ impl EditorView {
         // Left side of the status line.
         //-------------------------------
 
-        let mode = match doc.mode() {
-            Mode::Insert => "INS",
-            Mode::Select => "SEL",
-            Mode::Normal => "NOR",
+        let (mode, mode_style) = match doc.mode() {
+            Mode::Insert => (" INS ", theme.get("ui.statusline.insert")),
+            Mode::Select => (" SEL ", theme.get("ui.statusline.select")),
+            Mode::Normal => (" NOR ", theme.get("ui.statusline.normal")),
         };
         let progress = doc
             .language_server()
@@ -723,7 +723,7 @@ impl EditorView {
         // statusline
         surface.set_style(viewport.with_height(1), base_style);
         if is_focused {
-            surface.set_string(viewport.x + 1, viewport.y, mode, base_style);
+            surface.set_string(viewport.x, viewport.y, mode, mode_style);
         }
         surface.set_string(viewport.x + 5, viewport.y, progress, base_style);
 
