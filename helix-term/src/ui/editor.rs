@@ -170,10 +170,7 @@ impl EditorView {
         theme: &Theme,
     ) {
         let editor_rulers = &editor.config().rulers;
-        let default_style = Style {
-            bg: Some(Color::Red),
-            ..Default::default()
-        };
+        let default_style = Style::default().bg(Color::Red);
         let ruler_theme = theme
             .try_get("ui.virtual.ruler")
             .map(|style| {
