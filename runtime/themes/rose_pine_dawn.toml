@@ -14,7 +14,7 @@
 "ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "foam", modifiers = ["bold"]}
 "ui.text.info" = {fg = "pine", modifiers = ["bold"]}
-"ui.virtual" = "highlight"
+"ui.virtual.whitespace" = "highlight"
 "operator" = "rose"
 "variable" = "text"
 "number" = "iris"
