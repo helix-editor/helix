@@ -64,5 +64,7 @@
 | `:config-reload` | Refreshes helix's config. |
 | `:config-open` | Open the helix config.toml file. |
 | `:log-open` | Open the helix log file. |
+| `:insert-output` | Run shell command, inserting output after each selection. |
+| `:append-output` | Run shell command, appending output after each selection. |
 | `:pipe` | Pipe each selection to the shell command. |
 | `:run-shell-command`, `:sh` | Run a shell command |
