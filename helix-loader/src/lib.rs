@@ -39,6 +39,12 @@ pub fn config_dir() -> std::path::PathBuf {
     path
 }
 
+pub fn plugin_dir() -> std::path::PathBuf {
+    let mut path = config_dir();
+    path.push("plugins");
+    path
+}
+
 pub fn local_config_dirs() -> Vec<std::path::PathBuf> {
     let directories = find_root_impl(None, &[".helix".to_string()])
         .into_iter()

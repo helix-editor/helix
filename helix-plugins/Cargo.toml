@@ -1,0 +1,18 @@
+[package]
+name = "helix-plugins"
+version = "0.6.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0"
+helix-loader = { version = "0.6", path = "../helix-loader" }
+wasmer = "2.3.0"
+wasmer-wasi = "2.3.0"
+log = "0.4"
+protobuf = "3.0.3"
+crossterm = "0.23"
+
+[build-dependencies]
+protobuf-codegen = "3.0.3"

@@ -5,6 +5,7 @@ use helix_core::{
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
+use helix_plugins::PluginManager;
 use helix_view::{align_view, editor::ConfigEvent, theme, tree::Layout, Align, Editor};
 use serde_json::json;
 
@@ -52,6 +53,8 @@ pub struct Application {
     theme_loader: Arc<theme::Loader>,
     #[allow(dead_code)]
     syn_loader: Arc<syntax::Loader>,
+    #[allow(dead_code)]
+    plugin_manager: PluginManager,
 
     signals: Signals,
     jobs: Jobs,
@@ -121,6 +124,13 @@ impl Application {
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         let mut compositor = Compositor::new().context("build compositor")?;
+
+        let mut plugin_manager = PluginManager::new();
+        match plugin_manager.load_plugins() {
+            Ok(_) => plugin_manager.start_plugins(),
+            Err(e) => log::error!("Failed to load plugins: {}", e),
+        }
+
         let config = Arc::new(ArcSwap::from_pointee(config));
         let mut editor = Editor::new(
             compositor.size(),
@@ -218,6 +228,7 @@ impl Application {
 
             theme_loader,
             syn_loader,
+            plugin_manager,
 
             signals,
             jobs: Jobs::new(),
@@ -304,6 +315,10 @@ impl Application {
                 Some(callback) = self.jobs.wait_futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
+                }
+                Some(request) = self.plugin_manager.next_plugin_request() => {
+                    // TODO: Map into something useful
+                    log::info!("received request from plugin: {}", request);
                 }
                 _ = &mut self.editor.idle_timer => {
                     // idle timeout
@@ -426,15 +441,13 @@ impl Application {
             jobs: &mut self.jobs,
             scroll: None,
         };
+
         // Handle key events
         let should_redraw = match event {
-            Ok(Event::Resize(width, height)) => {
-                self.compositor.resize(width, height);
-
-                self.compositor
-                    .handle_event(Event::Resize(width, height), &mut cx)
+            Ok(event) => {
+                self.plugin_manager.handle_term_event(event);
+                self.compositor.handle_event(event, &mut cx)
             }
-            Ok(event) => self.compositor.handle_event(event, &mut cx),
             Err(x) => panic!("{}", x),
         };
 

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+message Event {
+  EventType event_type = 1;
+  bytes payload = 2;
+
+  enum EventType {
+    PLUGIN_STARTED = 1;
+    KEY_EVENT = 2;
+  }
+}
+
+message KeyEvent {
+  string code = 1;
+  bool mod_shift = 2;
+  bool mod_ctrl = 3;
+  bool mod_alt = 4;
+}
