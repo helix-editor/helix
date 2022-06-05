@@ -4,7 +4,7 @@ use helix_lsp::{
     OffsetEncoding,
 };
 
-use super::{align_view, push_jump, Align, Context, Editor};
+use super::{align_view, job, push_jump, Align, Context, Editor};
 
 use helix_core::Selection;
 use helix_view::editor::Action;
@@ -484,12 +484,13 @@ fn goto_impl(
     compositor: &mut Compositor,
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
+    action: Action,
 ) {
     let cwdir = std::env::current_dir().expect("couldn't determine current directory");
 
     match locations.as_slice() {
         [location] => {
-            jump_to_location(editor, location, offset_encoding, Action::Replace);
+            jump_to_location(editor, location, offset_encoding, action);
         }
         [] => {
             editor.set_error("No definition found.");
@@ -543,7 +544,18 @@ fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<lsp::Lo
     }
 }
 
-pub fn goto_definition(cx: &mut Context) {
+pub fn goto_definition_replace(cx: &mut Context) {
+    goto_definition(
+        &mut compositor::Context {
+            editor: cx.editor,
+            jobs: cx.jobs,
+            scroll: None,
+        },
+        Action::Replace,
+    )
+}
+
+pub fn goto_definition(cx: &mut compositor::Context, action: Action) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
@@ -552,13 +564,17 @@ pub fn goto_definition(cx: &mut Context) {
 
     let future = language_server.goto_definition(doc.identifier(), pos, None);
 
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
-            let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
-        },
-    );
+    let callback = Box::pin(async move {
+        let json = future.await?;
+        let response = serde_json::from_value(json)?;
+        let call: job::Callback =
+            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                let items = to_locations(response);
+                goto_impl(editor, compositor, items, offset_encoding, action);
+            });
+        Ok(call)
+    });
+    cx.jobs.callback(callback);
 }
 
 pub fn goto_type_definition(cx: &mut Context) {
@@ -574,7 +590,7 @@ pub fn goto_type_definition(cx: &mut Context) {
         future,
         move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
             let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
+            goto_impl(editor, compositor, items, offset_encoding, Action::Replace);
         },
     );
 }
@@ -592,7 +608,7 @@ pub fn goto_implementation(cx: &mut Context) {
         future,
         move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
             let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
+            goto_impl(editor, compositor, items, offset_encoding, Action::Replace);
         },
     );
 }
@@ -610,7 +626,7 @@ pub fn goto_reference(cx: &mut Context) {
         future,
         move |editor, compositor, response: Option<Vec<lsp::Location>>| {
             let items = response.unwrap_or_default();
-            goto_impl(editor, compositor, items, offset_encoding);
+            goto_impl(editor, compositor, items, offset_encoding, Action::Replace);
         },
     );
 }

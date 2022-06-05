@@ -1202,6 +1202,20 @@ fn pipe(
     Ok(())
 }
 
+fn goto_definition(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    let action = match args[0].as_ref() {
+        "vsplit" => Action::VerticalSplit,
+        "hsplit" => Action::HorizontalSplit,
+        &_ => Action::Replace,
+    };
+    lsp::goto_definition(cx, action);
+    Ok(())
+}
+
 fn run_shell_command(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1717,6 +1731,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["sh"],
             doc: "Run a shell command",
             fun: run_shell_command,
+            completer: Some(completers::directory),
+        },
+         TypableCommand {
+            name: "goto_definition",
+            aliases: &[],
+            doc: "Go to definition",
+            fun: goto_definition,
             completer: Some(completers::directory),
         },
     ];
