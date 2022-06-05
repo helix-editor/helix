@@ -147,6 +147,14 @@
 name = &quot;rust&quot;
 auto-format = false
 </code></pre>
+<h2 id="lsp-formatting-options"><a class="header" href="#lsp-formatting-options">LSP formatting options</a></h2>
+<p>Use <code>format</code> field to pass extra formatting options to <a href="https://github.com/microsoft/language-server-protocol/blob/gh-pages/_specifications/specification-3-16.md#document-formatting-request--leftwards_arrow_with_hook">Document Formatting Requests</a>.</p>
+<pre><code class="language-toml">[[language]]
+name = &quot;typescript&quot;
+auto-format = true
+# pass format options according to https://github.com/typescript-language-server/typescript-language-server#workspacedidchangeconfiguration omitting the &quot;[language].format.&quot; prefix.
+config = { format = { &quot;semicolons&quot; = &quot;insert&quot;, &quot;insertSpaceBeforeFunctionParenthesis&quot; = true } }
+</code></pre>
 <h2 id="tree-sitter-grammars"><a class="header" href="#tree-sitter-grammars">Tree-sitter grammars</a></h2>
 <p>Tree-sitter grammars can also be configured in <code>languages.toml</code>:</p>
 <pre><code class="language-toml"># in &lt;config_dir&gt;/helix/languages.toml
