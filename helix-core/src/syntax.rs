@@ -78,6 +78,7 @@ pub struct LanguageConfiguration {
 
     #[serde(default)]
     pub auto_format: bool,
+
     #[serde(default)]
     pub diagnostic_severity: Severity,
 

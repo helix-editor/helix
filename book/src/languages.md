@@ -14,6 +14,18 @@ name = "rust"
 auto-format = false
 ```
 
+## LSP formatting options
+
+Use `format` field to pass extra formatting options to [Document Formatting Requests](https://github.com/microsoft/language-server-protocol/blob/gh-pages/_specifications/specification-3-16.md#document-formatting-request--leftwards_arrow_with_hook).
+
+```toml
+[[language]]
+name = "typescript"
+auto-format = true
+# pass format options according to https://github.com/typescript-language-server/typescript-language-server#workspacedidchangeconfiguration omitting the "[language].format." prefix.
+config = { format = { "semicolons" = "insert", "insertSpaceBeforeFunctionParenthesis" = true } }
+```
+
 ## Tree-sitter grammars
 
 Tree-sitter grammars can also be configured in `languages.toml`:

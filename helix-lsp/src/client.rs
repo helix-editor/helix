@@ -7,7 +7,9 @@ use anyhow::anyhow;
 use helix_core::{find_root, ChangeSet, Rope};
 use jsonrpc_core as jsonrpc;
 use lsp_types as lsp;
+use serde::Deserialize;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::future::Future;
 use std::process::Stdio;
 use std::sync::{
@@ -692,6 +694,24 @@ impl Client {
             _ => return None,
         };
         // TODO: return err::unavailable so we can fall back to tree sitter formatting
+
+        // merge FormattingOptions with 'config.format'
+        let config_format = self
+            .config
+            .as_ref()
+            .and_then(|cfg| cfg.get("format"))
+            .and_then(|fmt| HashMap::<String, lsp::FormattingProperty>::deserialize(fmt).ok());
+
+        let options = if let Some(mut properties) = config_format {
+            // passed in options take precedence over 'config.format'
+            properties.extend(options.properties);
+            lsp::FormattingOptions {
+                properties,
+                ..options
+            }
+        } else {
+            options
+        };
 
         let params = lsp::DocumentFormattingParams {
             text_document,

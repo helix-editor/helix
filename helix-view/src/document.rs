@@ -410,6 +410,7 @@ impl Document {
         let language_server = self.language_server()?;
         let text = self.text.clone();
         let offset_encoding = language_server.offset_encoding();
+
         let request = language_server.text_document_formatting(
             self.identifier(),
             lsp::FormattingOptions {
