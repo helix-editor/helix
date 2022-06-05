@@ -229,7 +229,9 @@ impl Dispatcher {
                     self.watches.remove(id);
                 }
                 WatcherEvent::AddWorkspace(path) => {
-                    self.watch_workspace(path);
+                    if let Err(e) = self.watch_workspace(path) {
+                        log::warn!("failed to watch workspace root: {}", e);
+                    }
                 }
                 WatcherEvent::RemoveWorkspace(path) => {
                     if let Some(dirs) = self.workspaces.remove(&path) {
@@ -260,8 +262,12 @@ impl Dispatcher {
             if let Some(dirs) = self.workspaces.get_mut(parent) {
                 match event.kind {
                     EventKind::Create(CreateKind::Folder) => {
-                        self.inner.watch(path, RecursiveMode::Recursive).unwrap();
-                        dirs.insert(path.to_owned());
+                        match self.inner.watch(path, RecursiveMode::Recursive) {
+                            Ok(()) => {
+                                dirs.insert(path.to_owned());
+                            }
+                            Err(e) => log::warn!("error watching new directory: {}", e),
+                        }
                     }
                     EventKind::Remove(RemoveKind::Folder) => {
                         dirs.remove(path);
@@ -269,11 +275,13 @@ impl Dispatcher {
                     EventKind::Modify(ModifyKind::Name(RenameMode::Both)) => {
                         // This event kind always involves two paths.
                         let new_path = event.paths.get(1).unwrap();
-                        self.inner
-                            .watch(new_path, RecursiveMode::Recursive)
-                            .unwrap();
-                        dirs.insert(new_path.to_owned());
-                        dirs.remove(path);
+                        match self.inner.watch(new_path, RecursiveMode::Recursive) {
+                            Ok(()) => {
+                                dirs.insert(new_path.to_owned());
+                                dirs.remove(path);
+                            }
+                            Err(e) => log::warn!("error watching renamed directory: {}", e),
+                        }
                     }
                     _ => {}
                 }
@@ -296,7 +304,7 @@ impl Dispatcher {
         }
     }
 
-    fn watch_workspace(&mut self, root: PathBuf) {
+    fn watch_workspace(&mut self, root: PathBuf) -> anyhow::Result<()> {
         // The set of individual directory watches issued, necessary for unwatching
         // the workspace.
         let mut watches = HashSet::new();
@@ -306,9 +314,7 @@ impl Dispatcher {
         // Note that if directories are created or deleted after calling
         // `add_directory`, they must have watches set/unset on them in response
         // to events from this watch call.
-        self.inner
-            .watch(&root, RecursiveMode::NonRecursive)
-            .unwrap();
+        self.inner.watch(&root, RecursiveMode::NonRecursive)?;
         watches.insert(root.clone());
 
         // Watch the root's children directories recursively, ignoring those in
@@ -325,12 +331,11 @@ impl Dispatcher {
                     .unwrap_or(true) // Allow non-utf8 paths.
             })
         {
-            self.inner
-                .watch(&entry.path(), RecursiveMode::Recursive)
-                .unwrap();
+            self.inner.watch(&entry.path(), RecursiveMode::Recursive)?;
             watches.insert(entry.path());
         }
 
         self.workspaces.insert(root, watches);
+        Ok(())
     }
 }
