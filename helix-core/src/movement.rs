@@ -10,7 +10,7 @@ use crate::{
         prev_grapheme_boundary,
     },
     line_ending::rope_is_line_ending,
-    pos_at_coords,
+    pos_at_visual_coords,
     syntax::LanguageConfiguration,
     textobject::TextObject,
     visual_coords_at_pos, Position, Range, RopeSlice,
@@ -68,7 +68,7 @@ pub fn move_vertically(
         Direction::Backward => row.saturating_sub(count),
     };
     let new_col = col.max(horiz as usize);
-    let new_pos = pos_at_coords(slice, Position::new(new_row, new_col), tab_width, true);
+    let new_pos = pos_at_visual_coords(slice, Position::new(new_row, new_col), tab_width);
 
     // Special-case to avoid moving to the end of the last non-empty line.
     if behaviour == Movement::Extend && slice.line(new_row).len_chars() == 0 {
@@ -443,7 +443,7 @@ pub fn goto_treesitter_object(
 mod test {
     use ropey::Rope;
 
-    use crate::coords_at_pos;
+    use crate::{coords_at_pos, pos_at_coords};
 
     use super::*;
 
@@ -465,7 +465,7 @@ mod test {
     fn test_vertical_move() {
         let text = Rope::from("abcd\nefg\nwrs");
         let slice = text.slice(..);
-        let pos = pos_at_coords(slice, (0, 4).into(), 4, true);
+        let pos = pos_at_coords(slice, (0, 4).into(), true);
 
         let range = Range::new(pos, pos);
         assert_eq!(
@@ -481,7 +481,7 @@ mod test {
     fn horizontal_moves_through_single_line_text() {
         let text = Rope::from(SINGLE_LINE_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into(), 4, true);
+        let position = pos_at_coords(slice, (0, 0).into(), true);
 
         let mut range = Range::point(position);
 
@@ -504,7 +504,7 @@ mod test {
     fn horizontal_moves_through_multiline_text() {
         let text = Rope::from(MULTILINE_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into(), 4, true);
+        let position = pos_at_coords(slice, (0, 0).into(), true);
 
         let mut range = Range::point(position);
 
@@ -531,7 +531,7 @@ mod test {
     fn selection_extending_moves_in_single_line_text() {
         let text = Rope::from(SINGLE_LINE_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into(), 4, true);
+        let position = pos_at_coords(slice, (0, 0).into(), true);
 
         let mut range = Range::point(position);
         let original_anchor = range.anchor;
@@ -552,7 +552,7 @@ mod test {
     fn vertical_moves_in_single_column() {
         let text = Rope::from(MULTILINE_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into(), 4, true);
+        let position = pos_at_coords(slice, (0, 0).into(), true);
         let mut range = Range::point(position);
         let moves_and_expected_coordinates = [
             ((Direction::Forward, 1usize), (1, 0)),
@@ -577,7 +577,7 @@ mod test {
     fn vertical_moves_jumping_column() {
         let text = Rope::from(MULTILINE_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into(), 4, true);
+        let position = pos_at_coords(slice, (0, 0).into(), true);
         let mut range = Range::point(position);
 
         enum Axis {
@@ -613,7 +613,7 @@ mod test {
     fn multibyte_character_wide_column_jumps() {
         let text = Rope::from(MULTIBYTE_CHARACTER_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into(), 4, true);
+        let position = pos_at_coords(slice, (0, 0).into(), true);
         let mut range = Range::point(position);
 
         // FIXME: The behaviour captured in this test diverges from both Kakoune and Vim. These

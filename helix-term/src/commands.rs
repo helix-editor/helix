@@ -1351,7 +1351,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
 
     // If cursor needs moving, replace primary selection
     if line != cursor.row {
-        let head = pos_at_coords(text, Position::new(line, cursor.col), doc.tab_width(), true); // this func will properly truncate to line end
+        let head = pos_at_coords(text, Position::new(line, cursor.col), true); // this func will properly truncate to line end
 
         let anchor = if doc.mode == Mode::Select {
             range.anchor
@@ -1442,18 +1442,8 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
                 break;
             }
 
-            let anchor = pos_at_coords(
-                text,
-                Position::new(anchor_row, anchor_pos.col),
-                doc.tab_width(),
-                true,
-            );
-            let head = pos_at_coords(
-                text,
-                Position::new(head_row, head_pos.col),
-                doc.tab_width(),
-                true,
-            );
+            let anchor = pos_at_coords(text, Position::new(anchor_row, anchor_pos.col), true);
+            let head = pos_at_coords(text, Position::new(head_row, head_pos.col), true);
 
             // skip lines that are too short
             if coords_at_pos(text, anchor).col == anchor_pos.col

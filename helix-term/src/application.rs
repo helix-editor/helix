@@ -158,12 +158,7 @@ impl Application {
                         // with Action::Load all documents have the same view
                         let view_id = editor.tree.focus;
                         let doc = editor.document_mut(doc_id).unwrap();
-                        let pos = Selection::point(pos_at_coords(
-                            doc.text().slice(..),
-                            pos,
-                            doc.tab_width(),
-                            true,
-                        ));
+                        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
                         doc.set_selection(view_id, pos);
                     }
                 }
