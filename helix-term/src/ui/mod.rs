@@ -441,7 +441,7 @@ pub mod completers {
 
             // TODO: complete to longest common match
         } else {
-            files.sort_unstable_by(|(_, path1), (_, path2)| path1.cmp(&path2));
+            files.sort_unstable_by(|(_, path1), (_, path2)| path1.cmp(path2));
         }
 
         files
