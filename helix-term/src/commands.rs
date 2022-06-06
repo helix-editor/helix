@@ -1488,7 +1488,7 @@ fn select_regex(cx: &mut Context) {
         Some(reg),
         ui::completers::none,
         move |view, doc, regex, event| {
-            if event != PromptEvent::Update {
+            if !matches!(event, PromptEvent::Update | PromptEvent::Validate) {
                 return;
             }
             let text = doc.text().slice(..);
@@ -1509,7 +1509,7 @@ fn split_selection(cx: &mut Context) {
         Some(reg),
         ui::completers::none,
         move |view, doc, regex, event| {
-            if event != PromptEvent::Update {
+            if !matches!(event, PromptEvent::Update | PromptEvent::Validate) {
                 return;
             }
             let text = doc.text().slice(..);
@@ -1657,7 +1657,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
                 .collect()
         },
         move |view, doc, regex, event| {
-            if event != PromptEvent::Update {
+            if !matches!(event, PromptEvent::Update | PromptEvent::Validate) {
                 return;
             }
             search_impl(
@@ -3563,7 +3563,7 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
         Some(reg),
         ui::completers::none,
         move |view, doc, regex, event| {
-            if event != PromptEvent::Update {
+            if !matches!(event, PromptEvent::Update | PromptEvent::Validate) {
                 return;
             }
             let text = doc.text().slice(..);
