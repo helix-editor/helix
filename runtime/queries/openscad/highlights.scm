@@ -3,6 +3,9 @@
 (boolean) @constant.builtin.boolean
 (include_path) @string.special.path
 
+(parameters_declaration (identifier) @variable.parameter)
+(function_declaration name: (identifier) @function)
+
 (function_call function: (identifier) @function)
 (module_call name: (identifier) @function)
 
