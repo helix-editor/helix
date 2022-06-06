@@ -1433,3 +1433,18 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "jsdoc"
 source = { git = "https://github.com/tree-sitter/tree-sitter-jsdoc", rev = "189a6a4829beb9cdbe837260653b4a3dfb0cc3db" }
+
+
+[[language]]
+name = "openscad"
+scope = "source.openscad"
+injection-regex = "openscad"
+file-types = ["scad"]
+roots = []
+comment-token = "//"
+language-server = { command = "openscad-language-server" }
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "openscad"
+source = { git = "https://github.com/bollian/tree-sitter-openscad", rev = "5c3ce93df0ac1da7197cf6ae125aade26d6b8972" }
