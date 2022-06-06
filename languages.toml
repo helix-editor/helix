@@ -1443,7 +1443,7 @@ file-types = ["scad"]
 roots = []
 comment-token = "//"
 language-server = { command = "openscad-language-server" }
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 2, unit = "\t" }
 
 [[grammar]]
 name = "openscad"
