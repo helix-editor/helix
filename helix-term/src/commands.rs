@@ -965,19 +965,18 @@ fn goto_file_start(cx: &mut Context) {
     if cx.count.is_some() {
         goto_line(cx);
     } else {
-        push_jump(cx.editor);
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
         let selection = doc
             .selection(view.id)
             .clone()
             .transform(|range| range.put_cursor(text, 0, doc.mode == Mode::Select));
+        push_jump(view, doc);
         doc.set_selection(view.id, selection);
     }
 }
 
 fn goto_file_end(cx: &mut Context) {
-    push_jump(cx.editor);
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
     let pos = doc.text().len_chars();
@@ -985,6 +984,7 @@ fn goto_file_end(cx: &mut Context) {
         .selection(view.id)
         .clone()
         .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
+    push_jump(view, doc);
     doc.set_selection(view.id, selection);
 }
 
@@ -2485,8 +2485,7 @@ fn try_restore_indent(doc: &mut Document, view_id: ViewId) {
 }
 
 // Store a jump on the jumplist.
-fn push_jump(editor: &mut Editor) {
-    let (view, doc) = current!(editor);
+fn push_jump(view: &mut View, doc: &Document) {
     let jump = (doc.id(), doc.selection(view.id).clone());
     view.jumps.push(jump);
 }
@@ -2497,8 +2496,6 @@ fn goto_line(cx: &mut Context) {
 
 fn goto_line_impl(editor: &mut Editor, count: Option<NonZeroUsize>) {
     if let Some(count) = count {
-        push_jump(editor);
-
         let (view, doc) = current!(editor);
         let max_line = if doc.text().line(doc.text().len_lines() - 1).len_chars() == 0 {
             // If the last line is blank, don't jump to it.
@@ -2513,13 +2510,13 @@ fn goto_line_impl(editor: &mut Editor, count: Option<NonZeroUsize>) {
             .selection(view.id)
             .clone()
             .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
+
+        push_jump(view, doc);
         doc.set_selection(view.id, selection);
     }
 }
 
 fn goto_last_line(cx: &mut Context) {
-    push_jump(cx.editor);
-
     let (view, doc) = current!(cx.editor);
     let line_idx = if doc.text().line(doc.text().len_lines() - 1).len_chars() == 0 {
         // If the last line is blank, don't jump to it.
@@ -2533,6 +2530,8 @@ fn goto_last_line(cx: &mut Context) {
         .selection(view.id)
         .clone()
         .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
+
+    push_jump(view, doc);
     doc.set_selection(view.id, selection);
 }
 
@@ -2601,10 +2600,9 @@ fn exit_select_mode(cx: &mut Context) {
 }
 
 fn goto_pos(editor: &mut Editor, pos: usize) {
-    push_jump(editor);
-
     let (view, doc) = current!(editor);
 
+    push_jump(view, doc);
     doc.set_selection(view.id, Selection::point(pos));
     align_view(doc, view, Align::Center);
 }
@@ -3886,7 +3884,8 @@ fn jump_backward(cx: &mut Context) {
 }
 
 fn save_selection(cx: &mut Context) {
-    push_jump(cx.editor);
+    let (view, doc) = current!(cx.editor);
+    push_jump(view, doc);
     cx.editor.set_status("Selection saved to jumplist");
 }
 
