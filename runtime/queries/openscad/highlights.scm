@@ -55,6 +55,6 @@
   ";"
   ","
   "."
-] @punctuation.delimeter
+] @punctuation.delimiter
 
 (comment) @comment
