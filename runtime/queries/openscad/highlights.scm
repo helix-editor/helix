@@ -1,4 +1,4 @@
-(number) @constant.number
+(number) @constant.numeric
 (string) @string
 (boolean) @constant.builtin.boolean
 (include_path) @string
