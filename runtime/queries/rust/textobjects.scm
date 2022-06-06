@@ -7,6 +7,8 @@
   (function_item
     body: (_) @function.inside)) @function.around
 
+(closure_expression body: (_) @function.inside) @function.around
+
 (
   [
     (attribute_item)+
