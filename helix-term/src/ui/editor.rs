@@ -30,10 +30,21 @@ use std::borrow::Cow;
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
 
+pub struct LastInsert {
+    commands: Vec<commands::MappableCommand>,
+    inputs: Vec<InsertEvent>,
+}
+
+impl LastInsert {
+    pub fn new(commands: Vec<commands::MappableCommand>, inputs: Vec<InsertEvent>) -> Self {
+        Self { commands, inputs }
+    }
+}
+
 pub struct EditorView {
     pub keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
-    last_insert: (commands::MappableCommand, Vec<InsertEvent>),
+    last_insert: LastInsert,
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
 }
@@ -56,7 +67,7 @@ impl EditorView {
         Self {
             keymaps,
             on_next_key: None,
-            last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
+            last_insert: LastInsert::new(vec![commands::MappableCommand::normal_mode], Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
         }
@@ -860,9 +871,11 @@ impl EditorView {
             // special handling for repeat operator
             (key!('.'), _) if self.keymaps.pending().is_empty() => {
                 // first execute whatever put us into insert mode
-                self.last_insert.0.execute(cxt);
+                for command in &self.last_insert.commands {
+                    command.execute(cxt);
+                }
                 // then replay the inputs
-                for key in self.last_insert.1.clone() {
+                for key in self.last_insert.inputs.clone() {
                     match key {
                         InsertEvent::Key(key) => self.insert_mode(cxt, key),
                         InsertEvent::CompletionApply(compl) => {
@@ -930,7 +943,7 @@ impl EditorView {
         doc_mut!(editor).savepoint();
 
         editor.last_completion = None;
-        self.last_insert.1.push(InsertEvent::TriggerCompletion);
+        self.last_insert.inputs.push(InsertEvent::TriggerCompletion);
 
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
@@ -1237,13 +1250,15 @@ impl Component for EditorView {
                             // if completion didn't take the event, we pass it onto commands
                             if !consumed {
                                 if let Some(compl) = cx.editor.last_completion.take() {
-                                    self.last_insert.1.push(InsertEvent::CompletionApply(compl));
+                                    self.last_insert
+                                        .inputs
+                                        .push(InsertEvent::CompletionApply(compl));
                                 }
 
                                 self.insert_mode(&mut cx, key);
 
                                 // record last_insert key
-                                self.last_insert.1.push(InsertEvent::Key(key));
+                                self.last_insert.inputs.push(InsertEvent::Key(key));
 
                                 // lastly we recalculate completion
                                 if let Some(completion) = &mut self.completion {
@@ -1286,12 +1301,13 @@ impl Component for EditorView {
                         // how we entered insert mode is important, and we should track that so
                         // we can repeat the side effect.
 
-                        self.last_insert.0 = match self.keymaps.get(mode, key) {
-                            KeymapResult::Matched(command) => command,
-                            // FIXME: insert mode can only be entered through single KeyCodes
+                        self.last_insert.commands = match self.keymaps.get(mode, key) {
+                            KeymapResult::Matched(command) => vec![command],
+                            KeymapResult::MatchedSequence(commands) => commands,
+                            // FIXME: insert mode can only be entered through mappable commands
                             _ => unimplemented!(),
                         };
-                        self.last_insert.1.clear();
+                        self.last_insert.inputs.clear();
                     }
                     (Mode::Insert, Mode::Normal) => {
                         // if exiting insert mode, remove completion

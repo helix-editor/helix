@@ -256,9 +256,7 @@ impl MappableCommand {
         flip_selections, "Flip selection cursor and anchor",
         ensure_selections_forward, "Ensure the selection is in forward direction",
         insert_mode, "Insert before selection",
-        insert_mode_collapse, "Insert before selection without extending",
         append_mode, "Insert after selection (append)",
-        append_mode_collapse, "Insert after selection (append) without extending",
         command_mode, "Enter command mode",
         file_picker, "Open file picker",
         file_picker_in_current_directory, "Open file picker at current working directory",
@@ -2103,12 +2101,6 @@ fn insert_mode(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-// inserts at the start of each selection, without extending
-fn insert_mode_collapse(cx: &mut Context) {
-    insert_mode(cx);
-    collapse_selection(cx);
-}
-
 // inserts at the end of each selection
 fn append_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
@@ -2135,12 +2127,6 @@ fn append_mode(cx: &mut Context) {
         )
     });
     doc.set_selection(view.id, selection);
-}
-
-// inserts at the end of each selection, without extending
-fn append_mode_collapse(cx: &mut Context) {
-    append_mode(cx);
-    collapse_selection(cx);
 }
 
 fn file_picker(cx: &mut Context) {
