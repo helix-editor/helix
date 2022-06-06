@@ -163,12 +163,17 @@ pub struct Config {
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
+    /// Whether to show the documentation of the first item in the completion menu. Defaults to false.
+    pub completion_doc_preview: bool,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
-    pub display_messages: bool,
+    /// Whether to display LSP status messages below the statusline
+    pub display_messages: Option<bool>,
+    /// Whether to use show the LSP server preselected suggestion at the top of the menu. Defaults to true.
+    pub preselect: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -417,6 +422,7 @@ impl Default for Config {
             whitespace: WhitespaceConfig::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
+            completion_doc_preview: false,
         }
     }
 }

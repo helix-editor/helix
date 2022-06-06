@@ -190,7 +190,9 @@ pub struct Table<'a> {
     /// Space between each column
     column_spacing: u16,
     /// Style used to render the selected row
-    highlight_style: Style,
+    selected_style: Style,
+    /// Style used so render a highlighted row
+    highlighted_style: Style,
     /// Symbol in front of the selected rom
     highlight_symbol: Option<&'a str>,
     /// Optional header
@@ -209,7 +211,8 @@ impl<'a> Table<'a> {
             style: Style::default(),
             widths: &[],
             column_spacing: 1,
-            highlight_style: Style::default(),
+            selected_style: Style::default(),
+            highlighted_style: Style::default(),
             highlight_symbol: None,
             header: None,
             rows: rows.into_iter().collect(),
@@ -249,8 +252,13 @@ impl<'a> Table<'a> {
         self
     }
 
-    pub fn highlight_style(mut self, highlight_style: Style) -> Self {
-        self.highlight_style = highlight_style;
+    pub fn selected_style(mut self, selected_style: Style) -> Self {
+        self.selected_style = selected_style;
+        self
+    }
+
+    pub fn highlighted_style(mut self, highlighted_style: Style) -> Self {
+        self.highlighted_style = highlighted_style;
         self
     }
 
@@ -367,6 +375,7 @@ impl<'a> Table<'a> {
 pub struct TableState {
     pub offset: usize,
     pub selected: Option<usize>,
+    pub highlighted: Option<usize>,
 }
 
 impl TableState {
@@ -463,8 +472,15 @@ impl<'a> Table<'a> {
             };
             buf.set_style(table_row_area, table_row.style);
             let is_selected = state.selected.map(|s| s == i).unwrap_or(false);
+            let is_highlighted = match has_selection {
+                true => false,
+                false => match state.highlighted {
+                    Some(h) => h == i,
+                    None => false,
+                },
+            };
             let table_row_start_col = if has_selection {
-                let symbol = if is_selected {
+                let symbol = if is_selected || is_highlighted {
                     highlight_symbol
                 } else {
                     &blank_symbol
@@ -490,7 +506,9 @@ impl<'a> Table<'a> {
                 col += *width + self.column_spacing;
             }
             if is_selected {
-                buf.set_style(table_row_area, self.highlight_style);
+                buf.set_style(table_row_area, self.selected_style);
+            } else if is_highlighted {
+                buf.set_style(table_row_area, self.highlighted_style);
             }
         }
     }

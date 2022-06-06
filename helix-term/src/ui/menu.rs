@@ -15,6 +15,11 @@ use fuzzy_matcher::FuzzyMatcher;
 use helix_view::{graphics::Rect, Editor};
 use tui::layout::Constraint;
 
+pub enum SortStrategy {
+    Text,
+    Score,
+}
+
 pub trait Item {
     /// Additional editor state that is used for label calculation.
     type Data;
@@ -33,6 +38,10 @@ pub trait Item {
 
     fn row(&self, data: &Self::Data) -> Row {
         Row::new(vec![Cell::from(self.label(data))])
+    }
+
+    fn preselected(&self) -> bool {
+        false
     }
 }
 
@@ -66,6 +75,8 @@ pub struct Menu<T: Item> {
     size: (u16, u16),
     viewport: (u16, u16),
     recalculate: bool,
+    sort_strategy: SortStrategy,
+    use_preselect: bool,
 }
 
 impl<T: Item> Menu<T> {
@@ -76,6 +87,8 @@ impl<T: Item> Menu<T> {
     pub fn new(
         options: Vec<T>,
         editor_data: <T as Item>::Data,
+        sort_strategy: SortStrategy,
+        use_preselect: bool,
         callback_fn: impl Fn(&mut Editor, Option<&T>, MenuEvent) + 'static,
     ) -> Self {
         let mut menu = Self {
@@ -90,6 +103,8 @@ impl<T: Item> Menu<T> {
             size: (0, 0),
             viewport: (0, 0),
             recalculate: true,
+            sort_strategy,
+            use_preselect,
         };
 
         // TODO: scoring on empty input should just use a fastpath
@@ -99,6 +114,10 @@ impl<T: Item> Menu<T> {
     }
 
     pub fn score(&mut self, pattern: &str) {
+        // dereference pointers here, not inside of the filter_map() loop
+        let is_pattern_empty = pattern.is_empty();
+        let use_preselect = self.use_preselect;
+
         // reuse the matches allocation
         self.matches.clear();
         self.matches.extend(
@@ -108,15 +127,34 @@ impl<T: Item> Menu<T> {
                 .filter_map(|(index, option)| {
                     let text: String = option.filter_text(&self.editor_data).into();
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
-                    self.matcher
-                        .fuzzy_match(&text, pattern)
-                        .map(|score| (index, score))
+
+                    // If prompt pattern is empty, show the preselected item as first option
+                    if use_preselect && is_pattern_empty {
+                        if option.preselected() {
+                            // The LSP server can preselect multiple items, however it doesn't give any preference
+                            // for one over the other, so they all have the same score
+                            Some((index, 1))
+                        } else {
+                            Some((index, 0))
+                        }
+                    } else {
+                        self.matcher
+                            .fuzzy_match(&text, pattern)
+                            .map(|score| (index, score))
+                    }
                 }),
         );
-        // matches.sort_unstable_by_key(|(_, score)| -score);
-        self.matches.sort_unstable_by_key(|(index, _score)| {
-            self.options[*index].sort_text(&self.editor_data)
-        });
+
+        match self.sort_strategy {
+            SortStrategy::Text => {
+                self.matches.sort_unstable_by_key(|(index, _score)| {
+                    self.options[*index].sort_text(&self.editor_data)
+                });
+            }
+            SortStrategy::Score => {
+                self.matches.sort_unstable_by_key(|(_, score)| -score);
+            }
+        };
 
         // reset cursor position
         self.cursor = None;
@@ -206,12 +244,14 @@ impl<T: Item> Menu<T> {
         }
     }
 
+    pub fn get_match(&self, index: usize) -> Option<&T> {
+        self.matches
+            .get(index)
+            .map(|(index, _score)| &self.options[*index])
+    }
+
     pub fn selection(&self) -> Option<&T> {
-        self.cursor.and_then(|cursor| {
-            self.matches
-                .get(cursor)
-                .map(|(index, _score)| &self.options[*index])
-        })
+        self.cursor.and_then(|cursor| self.get_match(cursor))
     }
 
     pub fn is_empty(&self) -> bool {
@@ -220,6 +260,14 @@ impl<T: Item> Menu<T> {
 
     pub fn len(&self) -> usize {
         self.matches.len()
+    }
+
+    pub fn options(&self) -> &[T] {
+        &self.options
+    }
+
+    pub fn matches(&self) -> &[(usize, i64)] {
+        self.matches.as_ref()
     }
 }
 
@@ -298,6 +346,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             .try_get("ui.menu")
             .unwrap_or_else(|| theme.get("ui.text"));
         let selected = theme.get("ui.menu.selected");
+        let highlighted = theme.get("ui.menu.highlighted");
         surface.clear_with(area, style);
 
         let scroll = self.scroll;
@@ -327,7 +376,8 @@ impl<T: Item + 'static> Component for Menu<T> {
         let rows = options.iter().map(|option| option.row(&self.editor_data));
         let table = Table::new(rows)
             .style(style)
-            .highlight_style(selected)
+            .selected_style(selected)
+            .highlighted_style(highlighted)
             .column_spacing(1)
             .widths(&self.widths);
 
@@ -339,6 +389,10 @@ impl<T: Item + 'static> Component for Menu<T> {
             &mut TableState {
                 offset: scroll,
                 selected: self.cursor,
+                highlighted: match cx.editor.config().completion_doc_preview {
+                    true => Some(0),
+                    false => None,
+                },
             },
         );
 
