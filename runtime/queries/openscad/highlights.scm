@@ -1,6 +1,6 @@
-(number) @number
-(string) @string
-(boolean) @constant.builtin
+(number) @constant.number
+(string) @constant.string
+(boolean) @constant.builtin.boolean
 (include_path) @string
 
 (function_call function: (identifier) @function)
@@ -10,17 +10,26 @@
 (special_variable) @variable.builtin
 
 [
-  "module"
   "function"
-  "for"
-  "intersection_for"
-  "if"
   "let"
   "assign"
+] @keyword
+
+[
+  "for"
+  "each"
+  "intersection_for"
+] @keyword.control.repeat
+
+[
+  "if"
+] @keyword.control.conditional
+
+[
+  "module"
   "use"
   "include"
-  "each"
-] @keyword
+] @keyword.control.import
 
 [
   "||"
@@ -46,6 +55,6 @@
   ";"
   ","
   "."
-] @delimeter
+] @punctuation.delimeter
 
 (comment) @comment
