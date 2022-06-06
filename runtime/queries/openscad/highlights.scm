@@ -1,7 +1,7 @@
 (number) @constant.numeric
 (string) @string
 (boolean) @constant.builtin.boolean
-(include_path) @string
+(include_path) @string.special.path
 
 (function_call function: (identifier) @function)
 (module_call name: (identifier) @function)
