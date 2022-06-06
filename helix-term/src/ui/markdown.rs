@@ -234,9 +234,10 @@ impl Markdown {
                     spans.push(Span::styled(text, code_style));
                 }
                 Event::SoftBreak | Event::HardBreak => {
-                    // let spans = std::mem::replace(&mut spans, Vec::new());
-                    // lines.push(Spans::from(spans));
-                    spans.push(Span::raw(" "));
+                    let spans = std::mem::take(&mut spans);
+                    if !spans.is_empty() {
+                        lines.push(Spans::from(spans));
+                    }
                 }
                 Event::Rule => {
                     lines.push(Spans::from(Span::styled("---", code_style)));
