@@ -1448,3 +1448,17 @@ indent = { tab-width = 2, unit = "\t" }
 [[grammar]]
 name = "openscad"
 source = { git = "https://github.com/bollian/tree-sitter-openscad", rev = "5c3ce93df0ac1da7197cf6ae125aade26d6b8972" }
+
+[[language]]
+name = "prisma"
+scope = "source.prisma"
+injection-regex = "prisma"
+file-types = ["prisma"]
+roots = [".git", "package.json"]
+comment-token = "//"
+language-server = { command = "prisma-language-server", args = ["--stdio"] }
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "prisma"
+source = { git = "https://github.com/victorhqc/tree-sitter-prisma", rev = "0ac307e4be0409d4327082ddc737ed432a49dfc3" }
