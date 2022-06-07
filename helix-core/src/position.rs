@@ -156,6 +156,8 @@ pub fn pos_at_visual_coords(text: RopeSlice, coords: Position, tab_width: usize)
             grapheme_width(&grapheme)
         };
 
+        // If pos is in the middle of a wider grapheme (tab for example)
+        // return the starting offset.
         if grapheme_width > cols_remaining {
             break;
         }
