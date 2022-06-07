@@ -43,6 +43,7 @@ hidden = false
 | `auto-format` | Enable automatic formatting on save. | `true` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
+| `completion-doc-preview` | Show the documentation of the first item in the completion menu | `false` |
 | `auto-info` | Whether to display infoboxes | `true` |
 | `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. | `false` |
 | `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file. | `[]` |
@@ -50,9 +51,10 @@ hidden = false
 
 ### `[editor.lsp]` Section
 
-| Key                | Description                                 | Default |
-| ---                | -----------                                 | ------- |
-| `display-messages` | Display LSP progress messages below statusline[^1] | `false` |
+| Key                | Description                                         | Default |
+| ---                | -----------                                         | ------- |
+| `display-messages` | Display LSP progress messages below statusline[^1]  | `false` |
+| `preselect`        | Show the LSP server's preselected suggestions first | `true`  |
 
 [^1]: A progress spinner is always shown in the statusline beside the file path.
 
