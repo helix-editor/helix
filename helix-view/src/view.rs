@@ -1,15 +1,9 @@
-use std::borrow::Cow;
-
 use crate::{
     graphics::Rect,
     gutter::{self, Gutter},
     Document, DocumentId, ViewId,
 };
-use helix_core::{
-    graphemes::{grapheme_width, RopeGraphemes},
-    line_ending::line_end_char_index,
-    visual_coords_at_pos, Position, RopeSlice, Selection,
-};
+use helix_core::{pos_at_visual_coords, visual_coords_at_pos, Position, RopeSlice, Selection};
 
 use std::fmt;
 
@@ -251,44 +245,21 @@ impl View {
             return None;
         }
 
-        let line_number = (row - inner.y) as usize + self.offset.row;
-
-        if line_number > text.len_lines() - 1 {
+        let text_row = (row - inner.y) as usize + self.offset.row;
+        if text_row > text.len_lines() - 1 {
             return Some(text.len_chars());
         }
 
-        let mut pos = text.line_to_char(line_number);
+        let text_col = (column - inner.x) as usize + self.offset.col;
 
-        let current_line = text.line(line_number);
-
-        let target = (column - inner.x) as usize + self.offset.col;
-        let mut col = 0;
-
-        // TODO: extract this part as pos_at_visual_coords
-        for grapheme in RopeGraphemes::new(current_line) {
-            if col >= target {
-                break;
-            }
-
-            let width = if grapheme == "\t" {
-                tab_width - (col % tab_width)
-            } else {
-                let grapheme = Cow::from(grapheme);
-                grapheme_width(&grapheme)
-            };
-
-            // If pos is in the middle of a wider grapheme (tab for example)
-            // return the starting offset.
-            if col + width > target {
-                break;
-            }
-
-            col += width;
-            // TODO: use byte pos that converts back to char pos?
-            pos += grapheme.chars().count();
-        }
-
-        Some(pos.min(line_end_char_index(&text.slice(..), line_number)))
+        Some(pos_at_visual_coords(
+            *text,
+            Position {
+                row: text_row,
+                col: text_col,
+            },
+            tab_width,
+        ))
     }
 
     /// Translates a screen position to position in the text document.
