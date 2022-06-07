@@ -16,14 +16,14 @@ use helix_core::{
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
     movement::{self, Direction},
-    object, pos_at_coords,
+    object, pos_at_coords, pos_at_visual_coords,
     regex::{self, Regex, RegexBuilder},
     search::{self, CharMatcher},
     selection, shellwords, surround, textobject,
     tree_sitter::Node,
     unicode::width::UnicodeWidthChar,
-    LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril,
-    Transaction,
+    visual_coords_at_pos, LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection,
+    SmallVec, Tendril, Transaction,
 };
 use helix_view::{
     clipboard::ClipboardType,
@@ -1410,9 +1410,10 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
             range.head
         };
 
-        // TODO: this should use visual offsets / pos_at_screen_coords
-        let head_pos = coords_at_pos(text, head);
-        let anchor_pos = coords_at_pos(text, range.anchor);
+        let tab_width = doc.tab_width();
+
+        let head_pos = visual_coords_at_pos(text, head, tab_width);
+        let anchor_pos = visual_coords_at_pos(text, range.anchor, tab_width);
 
         let height = std::cmp::max(head_pos.row, anchor_pos.row)
             - std::cmp::min(head_pos.row, anchor_pos.row)
@@ -1442,12 +1443,13 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
                 break;
             }
 
-            let anchor = pos_at_coords(text, Position::new(anchor_row, anchor_pos.col), true);
-            let head = pos_at_coords(text, Position::new(head_row, head_pos.col), true);
+            let anchor =
+                pos_at_visual_coords(text, Position::new(anchor_row, anchor_pos.col), tab_width);
+            let head = pos_at_visual_coords(text, Position::new(head_row, head_pos.col), tab_width);
 
             // skip lines that are too short
-            if coords_at_pos(text, anchor).col == anchor_pos.col
-                && coords_at_pos(text, head).col == head_pos.col
+            if visual_coords_at_pos(text, anchor, tab_width).col == anchor_pos.col
+                && visual_coords_at_pos(text, head, tab_width).col == head_pos.col
             {
                 if is_primary {
                     primary_index = ranges.len();
