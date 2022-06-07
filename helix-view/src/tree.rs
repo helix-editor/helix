@@ -65,6 +65,14 @@ pub struct Container {
     layout: Layout,
     children: Vec<ViewId>,
     area: Rect,
+    node_bounds: Vec<ContainerBounds>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ContainerBounds {
+    width: usize,
+    height: usize,
+    focus: bool,
 }
 
 impl Container {
@@ -73,7 +81,79 @@ impl Container {
             layout,
             children: Vec::new(),
             area: Rect::default(),
+            node_bounds: Vec::new(),
         }
+    }
+
+    fn get_child_by_view_id(&mut self, node: ViewId) -> Option<&mut ContainerBounds> {
+        if let Some(index) = self.children.iter().position(|child| child == &node) {
+            return self.node_bounds.get_mut(index);
+        };
+        None
+    }
+
+    fn push_child(&mut self, node: ViewId) -> &mut Self {
+        self.children.push(node);
+        self.add_child_bounds();
+        self
+    }
+
+    fn insert_child(&mut self, index: usize, node: ViewId) -> &mut Self {
+        self.children.insert(index, node);
+        self.insert_child_bounds(index);
+        self
+    }
+
+    fn remove_child(&mut self, index: usize) -> &mut Self {
+        self.children.remove(index);
+        self.remove_child_bounds(index);
+        self
+    }
+
+    fn add_child_bounds(&mut self) -> &mut Self {
+        self.node_bounds.push(ContainerBounds {
+            width: 10,
+            height: 10,
+            focus: false,
+        });
+        self
+    }
+
+    fn insert_child_bounds(&mut self, index: usize) -> &mut Self {
+        self.node_bounds.insert(
+            index,
+            ContainerBounds {
+                width: 10,
+                height: 10,
+                focus: false,
+            },
+        );
+        self
+    }
+
+    fn remove_child_bounds(&mut self, index: usize) -> &mut Self {
+        self.node_bounds.remove(index);
+        self
+    }
+
+    fn calculate_slots_width(&self) -> usize {
+        self.node_bounds
+            .iter()
+            .map(|bounds| match bounds.focus {
+                true => 40,
+                false => bounds.width,
+            })
+            .sum()
+    }
+
+    fn calculate_slots_height(&self) -> usize {
+        self.node_bounds
+            .iter()
+            .map(|bounds| match bounds.focus {
+                true => 40,
+                false => bounds.height,
+            })
+            .sum()
     }
 }
 
@@ -131,7 +211,7 @@ impl Tree {
             pos + 1
         };
 
-        container.children.insert(pos, node);
+        container.insert_child(pos, node);
         // focus the new node
         self.focus = node;
 
@@ -168,7 +248,7 @@ impl Tree {
                     .unwrap();
                 pos + 1
             };
-            container.children.insert(pos, node);
+            container.insert_child(pos, node);
             self.nodes[node].parent = parent;
         } else {
             let mut split = Node::container(layout);
@@ -182,8 +262,8 @@ impl Tree {
                 } => container,
                 _ => unreachable!(),
             };
-            container.children.push(focus);
-            container.children.push(node);
+            container.push_child(focus);
+            container.push_child(node);
             self.nodes[focus].parent = split;
             self.nodes[node].parent = split;
 
@@ -383,11 +463,18 @@ impl Tree {
                         Layout::Horizontal => {
                             let len = container.children.len();
 
-                            let height = area.height / len as u16;
+                            let slots = container.calculate_slots_height();
+                            let slot_height = area.height as f32 / slots as f32;
 
                             let mut child_y = area.y;
 
                             for (i, child) in container.children.iter().enumerate() {
+                                let bounds = container.node_bounds[i];
+                                let height = match bounds.focus {
+                                    true => (40.0 * slot_height) as u16,
+                                    false => (slot_height * bounds.height as f32).floor() as u16,
+                                };
+
                                 let mut area = Rect::new(
                                     container.area.x,
                                     child_y,
@@ -396,7 +483,7 @@ impl Tree {
                                 );
                                 child_y += height;
 
-                                // last child takes the remaining width because we can get uneven
+                                // last child takes the remaining height because we can get uneven
                                 // space from rounding
                                 if i == len - 1 {
                                     area.height = container.area.y + container.area.height - area.y;
@@ -413,11 +500,19 @@ impl Tree {
                             let total_gap = inner_gap * len_u16.saturating_sub(2);
 
                             let used_area = area.width.saturating_sub(total_gap);
-                            let width = used_area / len_u16;
+
+                            let slots = container.calculate_slots_width();
+                            let slot_width: f32 = used_area as f32 / slots as f32;
 
                             let mut child_x = area.x;
 
                             for (i, child) in container.children.iter().enumerate() {
+                                let bounds = container.node_bounds[i];
+                                let width = match bounds.focus {
+                                    true => (40.0 * slot_width) as u16,
+                                    false => (slot_width * bounds.width as f32).floor() as u16,
+                                };
+
                                 let mut area = Rect::new(
                                     child_x,
                                     container.area.y,
@@ -594,6 +689,80 @@ impl Tree {
             };
             self.recalculate();
         }
+    }
+
+    fn get_active_node_bounds_mut(
+        &mut self,
+        expect_layout: Layout,
+    ) -> Option<&mut ContainerBounds> {
+        let mut focus = self.focus;
+        let mut parent = self.nodes[focus].parent;
+
+        // Parent expected to be container
+        if let Some(focused_layout) = match &self.nodes[parent].content {
+            Content::View(_) => unreachable!(),
+            Content::Container(node) => Some(node.layout),
+        } {
+            // if we want to make a width change and we have a `Horizontal` layout focused,
+            // alter the parent `Vertical` layout instead and vice versa
+            if focused_layout != expect_layout {
+                focus = parent;
+                parent = self.nodes[parent].parent;
+            }
+
+            if let Content::Container(node) = &mut self.nodes[parent].content {
+                return node.as_mut().get_child_by_view_id(focus);
+            };
+        }
+        None
+    }
+
+    pub fn grow_buffer_width(&mut self) {
+        if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Vertical) {
+            if bounds.width < 20 {
+                bounds.width += 1;
+                self.recalculate();
+            }
+        }
+    }
+
+    pub fn shrink_buffer_width(&mut self) {
+        if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Vertical) {
+            if bounds.width > 1 {
+                bounds.width -= 1;
+                self.recalculate();
+            }
+        }
+    }
+
+    pub fn grow_buffer_height(&mut self) {
+        if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Horizontal) {
+            if bounds.height < 20 {
+                bounds.height += 1;
+                self.recalculate();
+            }
+        }
+    }
+
+    pub fn shrink_buffer_height(&mut self) {
+        if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Horizontal) {
+            if bounds.height > 1 {
+                bounds.height -= 1;
+                self.recalculate();
+            }
+        }
+    }
+
+    pub fn buffer_focus_mode(&mut self) {
+        if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Horizontal) {
+            bounds.focus = !bounds.focus;
+        }
+
+        if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Vertical) {
+            bounds.focus = !bounds.focus;
+        }
+
+        self.recalculate();
     }
 
     pub fn swap_split_in_direction(&mut self, direction: Direction) -> Option<()> {

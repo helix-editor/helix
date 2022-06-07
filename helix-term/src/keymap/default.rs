@@ -26,6 +26,14 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "home" => goto_line_start,
         "end" => goto_line_end,
 
+        "A-w" => { "Alter Window"
+            "A-w"|"A-left" => shrink_buffer_width,
+            "A-l"|"A-right" => grow_buffer_width,
+            "A-j"|"A-down" => shrink_buffer_height,
+            "A-k"|"A-up" => grow_buffer_height,
+            "A-f" => buffer_focus_mode,
+        },
+
         "w" => move_next_word_start,
         "b" => move_prev_word_start,
         "e" => move_next_word_end,
