@@ -1454,7 +1454,7 @@ name = "prisma"
 scope = "source.prisma"
 injection-regex = "prisma"
 file-types = ["prisma"]
-roots = [".git", "package.json"]
+roots = ["package.json"]
 comment-token = "//"
 language-server = { command = "prisma-language-server", args = ["--stdio"] }
 indent = { tab-width = 2, unit = "  " }
