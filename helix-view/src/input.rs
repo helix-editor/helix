@@ -323,7 +323,39 @@ mod test {
                 code: KeyCode::Char('%'),
                 modifiers: KeyModifiers::NONE
             }
-        )
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>(";").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char(';'),
+                modifiers: KeyModifiers::NONE
+            }
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>(">").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('>'),
+                modifiers: KeyModifiers::NONE
+            }
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("<").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('<'),
+                modifiers: KeyModifiers::NONE
+            }
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("+").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('+'),
+                modifiers: KeyModifiers::NONE
+            }
+        );
     }
 
     #[test]
@@ -349,6 +381,14 @@ mod test {
             KeyEvent {
                 code: KeyCode::Char('2'),
                 modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL
+            }
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("A-C-+").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('+'),
+                modifiers: KeyModifiers::ALT | KeyModifiers::CONTROL
             }
         );
     }
