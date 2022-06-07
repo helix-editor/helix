@@ -2120,6 +2120,26 @@ impl Editor {
         self.tree.transpose();
     }
 
+    pub fn grow_buffer_width(&mut self) {
+        self.tree.grow_buffer_width();
+    }
+
+    pub fn shrink_buffer_width(&mut self) {
+        self.tree.shrink_buffer_width();
+    }
+
+    pub fn grow_buffer_height(&mut self) {
+        self.tree.grow_buffer_height();
+    }
+
+    pub fn shrink_buffer_height(&mut self) {
+        self.tree.shrink_buffer_height();
+    }
+
+    pub fn buffer_focus_mode(&mut self) {
+        self.tree.buffer_focus_mode();
+    }
+
     pub fn should_close(&self) -> bool {
         self.tree.is_empty()
     }
