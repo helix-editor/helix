@@ -88,6 +88,7 @@ shebangs = ["elixir"]
 roots = []
 comment-token = "#"
 language-server = { command = "elixir-ls" }
+config = { elixirLS.dialyzerEnabled = false }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
