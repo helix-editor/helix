@@ -21,7 +21,7 @@ use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{CursorKind, Modifier, Rect, Style},
-    info::Info,
+    info::{Delay, Info},
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
@@ -29,7 +29,6 @@ use helix_view::{
 use std::borrow::Cow;
 
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
-use helix_view::info::Delay;
 use tui::buffer::Buffer as Surface;
 
 pub struct EditorView {
