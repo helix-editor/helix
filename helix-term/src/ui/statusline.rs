@@ -18,7 +18,7 @@ pub struct RenderContext<'a> {
     pub theme: &'a Theme,
     pub focused: bool,
     pub spinners: &'a ProgressSpinners,
-    pub buffer: RenderBuffer<'a>,
+    pub parts: RenderBuffer<'a>,
 }
 
 impl<'a> RenderContext<'a> {
@@ -35,7 +35,7 @@ impl<'a> RenderContext<'a> {
             theme,
             focused,
             spinners,
-            buffer: RenderBuffer::default(),
+            parts: RenderBuffer::default(),
         }
     }
 }
@@ -65,13 +65,13 @@ impl StatusLine {
         surface.set_style(viewport.with_height(1), base_style);
 
         let write_left = |context: &mut RenderContext, text, style| {
-            Self::append(&mut context.buffer.left, text, &base_style, style)
+            Self::append(&mut context.parts.left, text, &base_style, style)
         };
         let write_center = |context: &mut RenderContext, text, style| {
-            Self::append(&mut context.buffer.center, text, &base_style, style)
+            Self::append(&mut context.parts.center, text, &base_style, style)
         };
         let write_right = |context: &mut RenderContext, text, style| {
-            Self::append(&mut context.buffer.right, text, &base_style, style)
+            Self::append(&mut context.parts.right, text, &base_style, style)
         };
 
         // Left side of the status line.
@@ -85,8 +85,8 @@ impl StatusLine {
         surface.set_spans(
             viewport.x,
             viewport.y,
-            &context.buffer.left,
-            context.buffer.left.width() as u16,
+            &context.parts.left,
+            context.parts.left.width() as u16,
         );
 
         // Right side of the status line.
@@ -101,10 +101,10 @@ impl StatusLine {
             viewport.x
                 + viewport
                     .width
-                    .saturating_sub(context.buffer.right.width() as u16),
+                    .saturating_sub(context.parts.right.width() as u16),
             viewport.y,
-            &context.buffer.right,
-            context.buffer.right.width() as u16,
+            &context.parts.right,
+            context.parts.right.width() as u16,
         );
 
         // Center of the status line.
@@ -118,18 +118,14 @@ impl StatusLine {
         // Width of the empty space between the left and center area and between the center and right area.
         let spacing = 1u16;
 
-        let edge_width = context
-            .buffer
-            .left
-            .width()
-            .max(context.buffer.right.width()) as u16;
+        let edge_width = context.parts.left.width().max(context.parts.right.width()) as u16;
         let center_max_width = viewport.width - (2 * edge_width + 2 * spacing);
-        let center_width = center_max_width.min(context.buffer.center.width() as u16);
+        let center_width = center_max_width.min(context.parts.center.width() as u16);
 
         surface.set_spans(
             viewport.x + viewport.width / 2 - center_width / 2,
             viewport.y,
-            &context.buffer.center,
+            &context.parts.center,
             center_width,
         );
     }
