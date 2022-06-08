@@ -75,9 +75,9 @@ _________________________________________________________________
     delete it.
 
  --> Thhiss senttencee haass exxtra charracterss.
+     This sentence has extra characters.
 
  Once the sentence is correct, move on to the next lesson.
-
 
 
 
@@ -191,7 +191,7 @@ _________________________________________________________________
  5. Repeat for all extra words in the line.
 
  --> This sentence pencil has vacuum extra words in the it.
-
+     This sentence has extra words in it.
 
 
 
@@ -247,16 +247,16 @@ _________________________________________________________________
  Type a number before a motion to repeat it that many times.
 
  1. Move the cursor to the line below marked -->.
-
  2. Type 2w to move 2 words forward.
-
  3. Type 3e to move to the end of the third word forward.
-
  4. Type 2b to move 2 words backwards
-
  5. Try the above with different numbers.
 
  --> This is just a line with words you can move around in.
+
+
+
+
 
 
 
@@ -366,7 +366,7 @@ _________________________________________________________________
  6. Type , to remove the second cursor.
 
  --> I like to eat apples since my favorite fruit is apples.
-
+     I like to eat oranges since my favourite fruit is oranges.
 
 
 
@@ -385,12 +385,12 @@ _________________________________________________________________
  4. Type c and change the matches to single spaces.
 
  --> This  sentence has   some      extra spaces.
+     This sentence has some extra spaces.
 
  Note: If you want to perform find-and-replace, the select
        command is the way to do it. Select the text you want
        to replace in — type % to select the whole file — and
        then perform the steps explained above.
-
 
 
 
@@ -621,17 +621,17 @@ _________________________________________________________________
  Type J to join together lines in selection.
 
  1. Move the cursor to the line below marked -->.
- 2. Type J thrice or 3J to join the sentence to one line.
+ 2. Type x four times or 4x to join the sentence to one line.
+ 3. Type J to join the lines together.
 
- --> This line sentence
+ --> This sentence
 is spilling over
 onto other
 lines.
+     This sentence is spilling over onto other lines.
 
  Note: J works on all lines in selection, so typing xxx or 3x to
        select the lines and then a single J will work the same.
-
-
 
 
 
