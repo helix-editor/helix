@@ -135,6 +135,7 @@ impl Markdown {
         "markup.heading.5",
         "markup.heading.6",
     ];
+    const INDENT: &'static str = "  ";
 
     pub fn new(contents: String, config_loader: Arc<syntax::Loader>) -> Self {
         Self {
@@ -144,6 +145,13 @@ impl Markdown {
     }
 
     fn parse(&self, theme: Option<&Theme>) -> tui::text::Text<'_> {
+        fn push_line<'a>(spans: &mut Vec<Span<'a>>, lines: &mut Vec<Spans<'a>>) {
+            let spans = std::mem::take(spans);
+            if !spans.is_empty() {
+                lines.push(Spans::from(spans));
+            }
+        }
+
         let mut options = Options::empty();
         options.insert(Options::ENABLE_STRIKETHROUGH);
         let parser = Parser::new_ext(&self.contents, options);
@@ -152,6 +160,15 @@ impl Markdown {
         let mut tags = Vec::new();
         let mut spans = Vec::new();
         let mut lines = Vec::new();
+        let mut list_stack = Vec::new();
+
+        let get_indent = |level: usize| {
+            if level < 1 {
+                String::new()
+            } else {
+                Self::INDENT.repeat(level - 1)
+            }
+        };
 
         let get_theme = |key: &str| -> Style { theme.map(|t| t.get(key)).unwrap_or_default() };
         let text_style = get_theme(Self::TEXT_STYLE);
@@ -161,22 +178,53 @@ impl Markdown {
             .map(|key| get_theme(key))
             .collect();
 
-        let mut list_stack = Vec::new();
-
         for event in parser {
             match event {
-                Event::Start(Tag::List(list)) => list_stack.push(list),
+                Event::Start(Tag::List(list)) => {
+                    // if the list stack is not empty this is a sub list, in that
+                    // case we need to push the current line before proceeding
+                    if !list_stack.is_empty() {
+                        push_line(&mut spans, &mut lines);
+                    }
+
+                    list_stack.push(list);
+                }
                 Event::End(Tag::List(_)) => {
                     list_stack.pop();
-                    // whenever list closes, new line
-                    lines.push(Spans::default());
+
+                    // whenever top-level list closes, empty line
+                    if list_stack.is_empty() {
+                        lines.push(Spans::default());
+                    }
                 }
                 Event::Start(Tag::Item) => {
+                    if list_stack.is_empty() {
+                        log::warn!("markdown parsing error, list item without list");
+                    }
+
                     tags.push(Tag::Item);
-                    spans.push(Span::from("- "));
+
+                    // get the approriate bullet for the current list
+                    let bullet = list_stack
+                        .last()
+                        .unwrap_or(&None) // use the '- ' bullet in case the list stack would be empty
+                        .map_or(String::from("- "), |number| format!("{}. ", number));
+
+                    // increment the current list number if there is one
+                    if let Some(v) = list_stack.last_mut().unwrap_or(&mut None).as_mut() {
+                        *v += 1;
+                    }
+
+                    let prefix = get_indent(list_stack.len()) + bullet.as_str();
+                    spans.push(Span::from(prefix));
                 }
                 Event::Start(tag) => {
                     tags.push(tag);
+                    if spans.is_empty() && !list_stack.is_empty() {
+                        // TODO: could push indent + 2 or 3 spaces to align with
+                        // the rest of the list.
+                        spans.push(Span::from(get_indent(list_stack.len())));
+                    }
                 }
                 Event::End(tag) => {
                     tags.pop();
@@ -185,15 +233,12 @@ impl Markdown {
                         | Tag::Paragraph
                         | Tag::CodeBlock(CodeBlockKind::Fenced(_))
                         | Tag::Item => {
-                            let spans = std::mem::take(&mut spans);
-                            if !spans.is_empty() {
-                                lines.push(Spans::from(spans));
-                            }
+                            push_line(&mut spans, &mut lines);
                         }
                         _ => (),
                     }
 
-                    // whenever heading, code block or paragraph closes, new line
+                    // whenever heading, code block or paragraph closes, empty line
                     match tag {
                         Tag::Heading(_, _, _)
                         | Tag::Paragraph
@@ -234,9 +279,11 @@ impl Markdown {
                     spans.push(Span::styled(text, code_style));
                 }
                 Event::SoftBreak | Event::HardBreak => {
-                    let spans = std::mem::take(&mut spans);
-                    if !spans.is_empty() {
-                        lines.push(Spans::from(spans));
+                    push_line(&mut spans, &mut lines);
+                    if !list_stack.is_empty() {
+                        // TODO: could push indent + 2 or 3 spaces to align with
+                        // the rest of the list.
+                        spans.push(Span::from(get_indent(list_stack.len())));
                     }
                 }
                 Event::Rule => {
