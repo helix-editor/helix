@@ -171,6 +171,8 @@ impl Markdown {
                 Event::Start(Tag::List(list)) => list_stack.push(list),
                 Event::End(Tag::List(_)) => {
                     list_stack.pop();
+                    // whenever list closes, new line
+                    lines.push(Spans::default());
                 }
                 Event::Start(Tag::Item) => {
                     tags.push(Tag::Item);
@@ -186,11 +188,19 @@ impl Markdown {
                         | Tag::Paragraph
                         | Tag::CodeBlock(CodeBlockKind::Fenced(_))
                         | Tag::Item => {
-                            // whenever code block or paragraph closes, new line
                             let spans = std::mem::take(&mut spans);
                             if !spans.is_empty() {
                                 lines.push(Spans::from(spans));
                             }
+                        }
+                        _ => (),
+                    }
+
+                    // whenever heading, code block or paragraph closes, new line
+                    match tag {
+                        Tag::Heading(_, _, _)
+                        | Tag::Paragraph
+                        | Tag::CodeBlock(CodeBlockKind::Fenced(_)) => {
                             lines.push(Spans::default());
                         }
                         _ => (),
