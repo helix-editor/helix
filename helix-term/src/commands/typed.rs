@@ -50,7 +50,7 @@ fn open(
             let callback = async move {
                 let call: job::Callback =
                     Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let picker = ui::file_picker(path.clone(), &*editor.config.load());
+                        let picker = ui::file_picker(path, &*editor.config.load());
                         compositor.push(Box::new(overlayed(picker)));
                     });
                 Ok(call)
