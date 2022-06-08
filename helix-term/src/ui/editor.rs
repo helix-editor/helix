@@ -808,7 +808,11 @@ impl EditorView {
         event: KeyEvent,
     ) -> Option<KeymapResult> {
         let key_result = self.keymaps.get(mode, event);
-        cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
+        let is_pending = matches!(key_result, KeymapResult::Pending(_));
+        if !is_pending {
+            // if there is no pending popup, reset autoinfo immediately
+            cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
+        }
 
         match &key_result {
             KeymapResult::Matched(command) => command.execute(cxt),
@@ -913,6 +917,19 @@ impl EditorView {
     fn schedule_autoinfo(&mut self, cxt: &mut commands::Context, infobox: Info) {
         let auto_info_delay = cxt.editor.config().auto_info_delay;
         if auto_info_delay.is_zero() {
+            cxt.editor.autoinfo = Some(infobox);
+            return;
+        }
+
+        // if autoinfo popup already opened
+        if cxt
+            .editor
+            .autoinfo
+            .as_ref()
+            .map(|info| !info.is_delayed())
+            .unwrap_or(false)
+        {
+            // replace it without any delay
             cxt.editor.autoinfo = Some(infobox);
             return;
         }
