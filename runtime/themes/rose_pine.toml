@@ -4,6 +4,7 @@
 "ui.background" = { bg = "base" }
 "ui.menu" = { fg = "text", bg = "overlay" }
 "ui.menu.selected" = { fg = "iris", bg = "surface" }
+"ui.menu.highlighted" = { fg = "iris"}
 "ui.linenr" = {fg = "subtle" }
 "ui.liner.selected" = "highlightOverlay"
 "ui.selection" = { bg = "highlight" }

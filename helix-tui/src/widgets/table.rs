@@ -175,7 +175,9 @@ impl<'a> Row<'a> {
 /// // ...and they can be separated by a fixed spacing.
 /// .column_spacing(1)
 /// // If you wish to highlight a row in any specific way when it is selected...
-/// .highlight_style(Style::default().add_modifier(Modifier::BOLD))
+/// .selected_style(Style::default().add_modifier(Modifier::BOLD))
+/// // If you wish to highlight a row in any specific way when it is preselected...
+/// .highlighted_style(Style::default().add_modifier(Modifier::BOLD))
 /// // ...and potentially show a symbol in front of the selection.
 /// .highlight_symbol(">>");
 /// ```

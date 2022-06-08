@@ -686,14 +686,7 @@ impl Application {
                             self.lsp_progress.update(server_id, token, work);
                         }
 
-                        if self
-                            .config
-                            .load()
-                            .editor
-                            .lsp
-                            .display_messages
-                            .unwrap_or(false)
-                        {
+                        if self.config.load().editor.lsp.display_messages {
                             self.editor.set_status(status);
                         }
                     }

@@ -171,7 +171,7 @@ pub struct Config {
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
     /// Whether to display LSP status messages below the statusline
-    pub display_messages: Option<bool>,
+    pub display_messages: bool,
     /// Whether to use show the LSP server preselected suggestion at the top of the menu. Defaults to true.
     pub preselect: Option<bool>,
 }

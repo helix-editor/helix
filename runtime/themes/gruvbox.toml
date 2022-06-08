@@ -54,6 +54,7 @@
 "ui.menu" = { fg = "fg1", bg = "bg2" }
 "ui.menu.selected" = { fg = "bg2", bg = "blue1", modifiers = ["bold"] }
 "ui.virtual.whitespace" = "bg2"
+"ui.menu.highlighted" = { fg = "green1" }
 
 "diagnostic" = { modifiers = ["underlined"] }
 
