@@ -139,11 +139,11 @@ pub struct Config {
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
+    /// Delay in milliseconds before infoboxes are displayed. Defaults to 0 (disabled).
     #[serde(
         serialize_with = "serialize_duration_millis",
         deserialize_with = "deserialize_duration_millis"
     )]
-    /// Delay in milliseconds before infoboxes are displayed. Defaults to 0 (disabled).
     pub auto_info_delay: Duration,
     pub file_picker: FilePickerConfig,
     /// Shape for cursor in each mode
