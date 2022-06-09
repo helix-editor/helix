@@ -430,10 +430,7 @@ impl Prompt {
                 .borders(Borders::ALL)
                 .border_style(background);
 
-            let inner = block.inner(area).inner(&Margin {
-                vertical: 0,
-                horizontal: 1,
-            });
+            let inner = block.inner(area).inner(&Margin::horizontal(1));
 
             block.render(area, surface);
             text.render(inner, surface, cx);
