@@ -15,9 +15,11 @@ pub struct TypableCommand {
 
 fn quit(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
+    ensure!(args.is_empty(), ":quit takes no arguments");
+
     // last view and we have unsaved changes
     if cx.editor.tree.views().count() == 1 {
         buffers_remaining_impl(cx.editor)?
@@ -30,9 +32,11 @@ fn quit(
 
 fn force_quit(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
+    ensure!(args.is_empty(), ":quit! takes no arguments");
+
     cx.editor.close(view!(cx.editor).id);
 
     Ok(())
@@ -1180,6 +1184,26 @@ fn refresh_config(
     Ok(())
 }
 
+fn append_output(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    ensure!(!args.is_empty(), "Shell command required");
+    shell(cx, &args.join(" "), &ShellBehavior::Append);
+    Ok(())
+}
+
+fn insert_output(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    ensure!(!args.is_empty(), "Shell command required");
+    shell(cx, &args.join(" "), &ShellBehavior::Insert);
+    Ok(())
+}
+
 fn pipe(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1677,6 +1701,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Open the helix log file.",
             fun: open_log,
+            completer: None,
+        },
+        TypableCommand {
+            name: "insert-output",
+            aliases: &[],
+            doc: "Run shell command, inserting output after each selection.",
+            fun: insert_output,
+            completer: None,
+        },
+        TypableCommand {
+            name: "append-output",
+            aliases: &[],
+            doc: "Run shell command, appending output after each selection.",
+            fun: append_output,
             completer: None,
         },
         TypableCommand {
