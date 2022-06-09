@@ -6,7 +6,7 @@ use helix_lsp::{
 
 use super::{align_view, push_jump, Align, Context, Editor};
 
-use helix_core::Selection;
+use helix_core::{Selection, SmallVec};
 use helix_view::editor::Action;
 
 use crate::{
@@ -645,6 +645,7 @@ pub fn signature_help(cx: &mut Context) {
         },
     );
 }
+
 pub fn hover(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
@@ -694,6 +695,7 @@ pub fn hover(cx: &mut Context) {
         },
     );
 }
+
 pub fn rename_symbol(cx: &mut Context) {
     ui::prompt(
         cx,
@@ -715,6 +717,53 @@ pub fn rename_symbol(cx: &mut Context) {
             match block_on(task) {
                 Ok(edits) => apply_workspace_edit(cx.editor, offset_encoding, &edits),
                 Err(err) => cx.editor.set_error(err.to_string()),
+            }
+        },
+    );
+}
+
+pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = doc.position(view.id, offset_encoding);
+
+    let future = language_server.text_document_document_highlight(doc.identifier(), pos, None);
+
+    cx.callback(
+        future,
+        move |editor, _compositor, response: Option<Vec<lsp::DocumentHighlight>>| {
+            if let Some(document_highlights) = response {
+                if !document_highlights.is_empty() {
+                    let (view, doc) = current!(editor);
+                    let language_server = language_server!(editor, doc);
+                    let offset_encoding = language_server.offset_encoding();
+                    let text = doc.text();
+                    let pos = doc.selection(view.id).primary().head;
+
+                    let mut ranges = SmallVec::with_capacity(document_highlights.len());
+
+                    // We must find the range that contains our primary cursor to prevent our primary cursor to move
+                    let mut primary_index = 0;
+                    let mut i = 0;
+
+                    for document_highlight in document_highlights {
+                        let lsp_range: lsp::Range = document_highlight.range.into();
+                        let range =
+                            helix_lsp::util::lsp_range_to_range(text, lsp_range, offset_encoding);
+                        if let Some(range) = range {
+                            if range.contains(pos) || range.head == pos {
+                                primary_index = i;
+                            }
+                            ranges.push(range);
+                            i += 1;
+                        }
+                    }
+
+                    let selection = Selection::new(ranges, primary_index);
+                    doc.set_selection(view.id, selection);
+                }
             }
         },
     );

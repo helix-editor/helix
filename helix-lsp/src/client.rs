@@ -759,6 +759,26 @@ impl Client {
         Ok(response.unwrap_or_default())
     }
 
+    pub fn text_document_document_highlight(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> impl Future<Output = Result<Value>> {
+        let params = lsp::DocumentHighlightParams {
+            text_document_position_params: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
+            partial_result_params: lsp::PartialResultParams {
+                partial_result_token: None,
+            },
+        };
+
+        self.call::<lsp::request::DocumentHighlightRequest>(params)
+    }
+
     fn goto_request<
         T: lsp::request::Request<
             Params = lsp::GotoDefinitionParams,
