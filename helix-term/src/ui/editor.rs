@@ -816,7 +816,7 @@ impl EditorView {
 
         match &key_result {
             KeymapResult::Matched(command) => command.execute(cxt),
-            KeymapResult::Pending(node) => self.schedule_autoinfo(cxt, node),
+            KeymapResult::Pending(node) => self.handle_pending_node(cxt, node),
             KeymapResult::MatchedSequence(commands) => {
                 for command in commands {
                     command.execute(cxt);
@@ -914,7 +914,7 @@ impl EditorView {
         }
     }
 
-    fn schedule_autoinfo(&mut self, cxt: &mut commands::Context, node: &KeyTrieNode) {
+    fn handle_pending_node(&mut self, cxt: &mut commands::Context, node: &KeyTrieNode) {
         let infobox = node.infobox();
 
         let auto_info_delay = cxt.editor.config().auto_info_delay;
