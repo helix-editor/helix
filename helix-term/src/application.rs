@@ -316,7 +316,12 @@ impl Application {
                     }),
             );
         }
+
         self.config.store(Arc::new(config));
+
+        // Update all the relevant members in the editor after replacing
+        // the configuration.
+        self.editor.refresh_config();
     }
 
     fn true_color(&self) -> bool {
