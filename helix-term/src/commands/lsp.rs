@@ -749,7 +749,7 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
                     let mut i = 0;
 
                     for document_highlight in document_highlights {
-                        let lsp_range: lsp::Range = document_highlight.range.into();
+                        let lsp_range: lsp::Range = document_highlight.range;
                         let range =
                             helix_lsp::util::lsp_range_to_range(text, lsp_range, offset_encoding);
                         if let Some(range) = range {
