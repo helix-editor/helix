@@ -263,7 +263,7 @@ impl MappableCommand {
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         symbol_picker, "Open symbol picker",
-        select_references_to_symbol_under_cursor, "Select references to symbol under cursor",
+        select_references_to_symbol_under_cursor, "Select symbol references",
         workspace_symbol_picker, "Open workspace symbol picker",
         last_picker, "Open last picker",
         prepend_to_line, "Insert at start of line",
