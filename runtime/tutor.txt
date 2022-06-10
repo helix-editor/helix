@@ -347,6 +347,8 @@ _________________________________________________________________
      Fix these two lines at the same time.
 
  Note: Type alt-C to do the same above the cursor.
+ Note: This also works for selections, but it will pick the first
+       line that is long enough for the selection to fit.
 
 
 
@@ -442,7 +444,7 @@ _________________________________________________________________
 =                        CHAPTER 3 RECAP                        =
 =================================================================
 
- * Type C to copy the selection on the line below and Alt-C for
+ * Type C to copy the current selection to below and Alt-C for
    above.
 
  * Type s to select all instances of a regex pattern inside
