@@ -2,7 +2,7 @@ use crate::{
     commands,
     compositor::{Component, Context, EventResult},
     job, key,
-    keymap::{KeymapResult, Keymaps},
+    keymap::{KeyTrieNode, KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
 
@@ -21,7 +21,7 @@ use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{CursorKind, Modifier, Rect, Style},
-    info::{Delay, Info},
+    info::Delay,
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
@@ -816,7 +816,7 @@ impl EditorView {
 
         match &key_result {
             KeymapResult::Matched(command) => command.execute(cxt),
-            KeymapResult::Pending(node) => self.schedule_autoinfo(cxt, node.infobox()),
+            KeymapResult::Pending(node) => self.schedule_autoinfo(cxt, node),
             KeymapResult::MatchedSequence(commands) => {
                 for command in commands {
                     command.execute(cxt);
@@ -914,9 +914,11 @@ impl EditorView {
         }
     }
 
-    fn schedule_autoinfo(&mut self, cxt: &mut commands::Context, infobox: Info) {
+    fn schedule_autoinfo(&mut self, cxt: &mut commands::Context, node: &KeyTrieNode) {
+        let infobox = node.infobox();
+
         let auto_info_delay = cxt.editor.config().auto_info_delay;
-        if auto_info_delay.is_zero() {
+        if auto_info_delay.is_zero() || node.is_sticky {
             cxt.editor.autoinfo = Some(infobox);
             return;
         }
