@@ -621,7 +621,7 @@ _________________________________________________________________
  Type J to join together lines in selection.
 
  1. Move the cursor to the line below marked -->.
- 2. Type x four times or 4x to join the sentence to one line.
+ 2. Type x four times or 4x to select all four lines.
  3. Type J to join the lines together.
 
  --> This sentence
