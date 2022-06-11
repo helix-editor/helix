@@ -169,7 +169,11 @@ _________________________________________________________________
 
  * Type i to enter Insert mode and type text. Type <ESC> to
    return to Normal mode.
-
+   * Use a to enter Insert mode after the current selection
+     instead of before.
+   * Use I to enter Insert mode at the first non-whitespace
+     character at the start of a line.
+   * Use A to enter Insert mode at the end of a line.
 
 
 
