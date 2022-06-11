@@ -1068,7 +1068,7 @@ impl Config {
 
     /// Tries to parse a config from editorconfig properties.
     pub fn try_from_editorconfig(for_file_at: &std::path::Path) -> Result<Config, ec4rs::Error> {
-        let mut ecfg = ec4rs::config_for(for_file_at)?;
+        let mut ecfg = ec4rs::properties_of(for_file_at)?;
         ecfg.use_fallbacks();
 
         use ec4rs::property::{Charset, EndOfLine, IndentSize, IndentStyle as EcIndentStyle};
@@ -1087,10 +1087,11 @@ impl Config {
                 _ => None,
             },
             line_ending: match ecfg.get::<EndOfLine>() {
+                #[cfg(feature = "helix-core/unicode-lines")]
                 Ok(EndOfLine::Cr) => Some(LineEnding::CR),
                 Ok(EndOfLine::Lf) => Some(LineEnding::LF),
                 Ok(EndOfLine::CrLf) => Some(LineEnding::Crlf),
-                Err(_) => None,
+                _ => None,
             },
         })
     }

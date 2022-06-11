@@ -769,12 +769,12 @@ impl Editor {
             id
         } else {
             let syn_loader = Some(self.syn_loader.clone());
-            let mut doc = if self.config.editorconfig {
+            let mut doc = if self.config().editorconfig {
                 Document::open_with_config(&path, syn_loader, |path| {
                     match document::Config::try_from_editorconfig(path) {
                         Ok(cfg) => cfg,
-                        Err(_) => {
-                            //TODO: Log error.
+                        Err(e) => {
+                            log::warn!("failed to load EditorConfig: {}", e);
                             document::Config::default()
                         }
                     }

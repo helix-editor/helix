@@ -178,9 +178,9 @@ dependencies = [
 
 [[package]]
 name = "ec4rs"
-version = "1.0.0-rc.1"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0255cdb161744c81c8a656dbdd2f6f0eec392e64bcf80770c638f1882fed1da5"
+checksum = "b3fefc59b5315efdc02320780f635635216a07f06827a55130c357f4bff611c7"
 
 [[package]]
 name = "either"

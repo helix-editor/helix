@@ -42,7 +42,7 @@ log = "~0.4"
 
 which = "4.2"
 
-ec4rs = "1.0.0-rc.1"
+ec4rs = "1.0.0"
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "4.4", features = ["std"] }
