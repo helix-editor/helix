@@ -46,7 +46,7 @@ _________________________________________________________________
 =                      1.2 EXITING HELIX                        =
 =================================================================
 
- 1. Type : to enter command mode. Your cursor will
+ 1. Type : to enter Command mode. Your cursor will
     move to the bottom of the screen.
  2. Type q or quit and type <ENTER> to exit Helix.
 
@@ -54,7 +54,7 @@ _________________________________________________________________
        To force quit and DISCARD these changes, type q! or quit!.
        You will learn how to save files later.
 
- To exit command mode without entering a command, type <ESC>.
+ To exit Command mode without entering a command, type <ESC>.
 
  Now, move on to the next lesson.
 
@@ -140,7 +140,7 @@ _________________________________________________________________
     terminal.
  2. Open a file in Helix by running: hx FILENAME
  3. Make some edits to the file.
- 4. Type : to enter command mode.
+ 4. Type : to enter Command mode.
  5. Type w or write, and type <ENTER> to save the file.
 
  You can also type wq or write-quit to save and exit.
@@ -158,7 +158,7 @@ _________________________________________________________________
 
  * Use the h,j,k,l keys to move the cursor.
 
- * Type : to enter command mode.
+ * Type : to enter Command mode.
    * The q/quit and q!/quit! commands will exit Helix. The
      former fails when there are unsaved changes. The latter
      discards them.
