@@ -126,7 +126,7 @@ scope = "source.json"
 injection-regex = "json"
 file-types = ["json"]
 roots = []
-language-server = { command = "vscode-json-language-server", args = ["--stdio"] }
+language-server = { command = "vscode-json-languageserver", args = ["--stdio"] }
 auto-format = true
 config = { "provideFormatter" = true }
 indent = { tab-width = 2, unit = "  " }
@@ -374,7 +374,7 @@ scope = "source.css"
 injection-regex = "css"
 file-types = ["css", "scss"]
 roots = []
-language-server = { command = "vscode-css-language-server", args = ["--stdio"] }
+language-server = { command = "vscode-css-languageserver", args = ["--stdio"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -387,7 +387,7 @@ scope = "text.html.basic"
 injection-regex = "html"
 file-types = ["html"]
 roots = []
-language-server = { command = "vscode-html-language-server", args = ["--stdio"] }
+language-server = { command = "vscode-html-languageserver", args = ["--stdio"] }
 auto-format = true
 config = { "provideFormatter" = true }
 indent = { tab-width = 2, unit = "  " }
