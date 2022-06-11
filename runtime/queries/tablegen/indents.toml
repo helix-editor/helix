@@ -1,7 +1,0 @@
-indent = [
-  "statement",
-]
-
-outdent = [
-  "}",
-]

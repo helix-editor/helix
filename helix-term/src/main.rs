@@ -1,8 +1,6 @@
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Result};
 use helix_term::application::Application;
 use helix_term::args::Args;
-use helix_term::config::Config;
-use helix_term::keymap::merge_keys;
 use std::path::PathBuf;
 
 fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
@@ -40,12 +38,12 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let cache_dir = helix_core::cache_dir();
-    if !cache_dir.exists() {
-        std::fs::create_dir_all(&cache_dir).ok();
+    let logpath = helix_loader::log_file();
+    let parent = logpath.parent().unwrap();
+    if !parent.exists() {
+        std::fs::create_dir_all(parent).ok();
     }
 
-    let logpath = cache_dir.join("helix.log");
     let help = format!(
         "\
 {} {}
@@ -59,11 +57,14 @@ ARGS:
     <files>...    Sets the input file to use, position can also be specified via file[:row[:col]]
 
 FLAGS:
-    -h, --help       Prints help information
-    --tutor          Loads the tutorial
-    -v               Increases logging verbosity each use for up to 3 times
-                     (default file: {})
-    -V, --version    Prints version information
+    -h, --help                     Prints help information
+    --tutor                        Loads the tutorial
+    --health [LANG]                Checks for potential errors in editor setup
+                                   If given, checks for config errors in language LANG
+    -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
+    -v                             Increases logging verbosity each use for up to 3 times
+                                   (default file: {})
+    -V, --version                  Prints version information
 ",
         env!("CARGO_PKG_NAME"),
         env!("VERSION_AND_GIT_HASH"),
@@ -85,30 +86,32 @@ FLAGS:
         std::process::exit(0);
     }
 
-    let conf_dir = helix_core::config_dir();
-    if !conf_dir.exists() {
-        std::fs::create_dir_all(&conf_dir).ok();
+    if args.health {
+        if let Err(err) = helix_term::health::print_health(args.health_arg) {
+            // Piping to for example `head -10` requires special handling:
+            // https://stackoverflow.com/a/65760807/7115678
+            if err.kind() != std::io::ErrorKind::BrokenPipe {
+                return Err(err.into());
+            }
+        }
+
+        std::process::exit(0);
     }
 
-    let config = match std::fs::read_to_string(conf_dir.join("config.toml")) {
-        Ok(config) => toml::from_str(&config)
-            .map(merge_keys)
-            .unwrap_or_else(|err| {
-                eprintln!("Bad config: {}", err);
-                eprintln!("Press <ENTER> to continue with default config");
-                use std::io::Read;
-                // This waits for an enter press.
-                let _ = std::io::stdin().read(&mut []);
-                Config::default()
-            }),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
-        Err(err) => return Err(Error::new(err)),
-    };
+    if args.fetch_grammars {
+        helix_loader::grammar::fetch_grammars()?;
+        return Ok(0);
+    }
+
+    if args.build_grammars {
+        helix_loader::grammar::build_grammars()?;
+        return Ok(0);
+    }
 
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app = Application::new(args, config).context("unable to create new application")?;
+    let mut app = Application::new(args).context("unable to create new application")?;
 
     let exit_code = app.run().await?;
 

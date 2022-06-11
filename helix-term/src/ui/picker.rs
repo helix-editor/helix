@@ -26,7 +26,7 @@ use crate::ui::{Prompt, PromptEvent};
 use helix_core::{movement::Direction, Position};
 use helix_view::{
     editor::Action,
-    graphics::{Color, CursorKind, Margin, Modifier, Rect, Style},
+    graphics::{CursorKind, Margin, Modifier, Rect},
     Document, Editor,
 };
 
@@ -91,13 +91,23 @@ impl<T> FilePicker<T> {
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
+        let truncate_start = true;
+        let mut picker = Picker::new(options, format_fn, callback_fn);
+        picker.truncate_start = truncate_start;
+
         Self {
-            picker: Picker::new(options, format_fn, callback_fn),
-            truncate_start: true,
+            picker,
+            truncate_start,
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: Box::new(preview_fn),
         }
+    }
+
+    pub fn truncate_start(mut self, truncate_start: bool) -> Self {
+        self.truncate_start = truncate_start;
+        self.picker.truncate_start = truncate_start;
+        self
     }
 
     fn current_file(&self, editor: &Editor) -> Option<FileLocation> {
@@ -176,7 +186,6 @@ impl<T: 'static> Component for FilePicker<T> {
         };
 
         let picker_area = area.with_width(picker_width);
-        self.picker.truncate_start = self.truncate_start;
         self.picker.render(picker_area, surface, cx);
 
         if !render_preview {
@@ -231,6 +240,7 @@ impl<T: 'static> Component for FilePicker<T> {
                 surface,
                 &cx.editor.theme,
                 highlights,
+                &cx.editor.config().whitespace,
             );
 
             // highlight the line
@@ -339,7 +349,7 @@ impl<T> Picker<T> {
     pub fn score(&mut self) {
         let now = Instant::now();
 
-        let pattern = &self.prompt.line;
+        let pattern = self.prompt.line();
 
         if pattern == &self.previous_pattern {
             return;
@@ -356,6 +366,7 @@ impl<T> Picker<T> {
             );
         } else if pattern.starts_with(&self.previous_pattern) {
             // TODO: remove when retain_mut is in stable rust
+            #[allow(unused_imports, deprecated)]
             use retain_mut::RetainMut;
 
             // optimization: if the pattern is a more specific version of the previous one
@@ -414,6 +425,11 @@ impl<T> Picker<T> {
     /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
     pub fn move_by(&mut self, amount: usize, direction: Direction) {
         let len = self.matches.len();
+
+        if len == 0 {
+            // No results, can't move.
+            return;
+        }
 
         match direction {
             Direction::Forward => {
@@ -484,16 +500,16 @@ impl<T: 'static> Component for Picker<T> {
         })));
 
         match key_event.into() {
-            shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
+            shift!(Tab) | key!(Up) | ctrl!('p') => {
                 self.move_by(1, Direction::Backward);
             }
-            key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
+            key!(Tab) | key!(Down) | ctrl!('n') => {
                 self.move_by(1, Direction::Forward);
             }
-            key!(PageDown) | ctrl!('f') => {
+            key!(PageDown) | ctrl!('d') => {
                 self.page_down();
             }
-            key!(PageUp) | ctrl!('b') => {
+            key!(PageUp) | ctrl!('u') => {
                 self.page_up();
             }
             key!(Home) => {
@@ -571,7 +587,7 @@ impl<T: 'static> Component for Picker<T> {
         self.prompt.render(area, surface, cx);
 
         // -- Separator
-        let sep_style = Style::default().fg(Color::Rgb(90, 89, 119));
+        let sep_style = cx.editor.theme.get("ui.background.separator");
         let borders = BorderType::line_symbols(BorderType::Plain);
         for x in inner.left()..inner.right() {
             if let Some(cell) = surface.get_mut(x, inner.y + 1) {
@@ -588,7 +604,7 @@ impl<T: 'static> Component for Picker<T> {
 
         let files = self
             .matches
-            .iter_mut()
+            .iter()
             .skip(offset)
             .map(|(index, _score)| (*index, self.options.get(*index).unwrap()));
 
@@ -602,7 +618,7 @@ impl<T: 'static> Component for Picker<T> {
 
             let (_score, highlights) = self
                 .matcher
-                .fuzzy_indices(&formatted, &self.prompt.line)
+                .fuzzy_indices(&formatted, self.prompt.line())
                 .unwrap_or_default();
 
             surface.set_string_truncated(

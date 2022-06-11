@@ -10,7 +10,11 @@
 (union_specifier
   body: (_) @class.inside) @class.around
 
-(parameter_declaration) @parameter.inside
+(parameter_list 
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+
+(argument_list
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
 
 (comment) @comment.inside
 

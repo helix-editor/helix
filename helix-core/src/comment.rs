@@ -72,7 +72,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
         let end = (end + 1).min(text.len_lines());
 
         lines.extend(start..end);
-        min_next_line = end + 1;
+        min_next_line = end;
     }
 
     let (commented, to_change, min, margin) = find_line_comment(token, text, lines);

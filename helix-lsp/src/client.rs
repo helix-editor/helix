@@ -3,10 +3,13 @@ use crate::{
     Call, Error, OffsetEncoding, Result,
 };
 
+use anyhow::anyhow;
 use helix_core::{find_root, ChangeSet, Rope};
 use jsonrpc_core as jsonrpc;
 use lsp_types as lsp;
+use serde::Deserialize;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::future::Future;
 use std::process::Stdio;
 use std::sync::{
@@ -31,7 +34,10 @@ pub struct Client {
     pub(crate) capabilities: OnceCell<lsp::ServerCapabilities>,
     offset_encoding: OffsetEncoding,
     config: Option<Value>,
-    root_markers: Vec<String>,
+    root_path: Option<std::path::PathBuf>,
+    root_uri: Option<lsp::Url>,
+    workspace_folders: Vec<lsp::WorkspaceFolder>,
+    req_timeout: u64,
 }
 
 impl Client {
@@ -40,8 +46,9 @@ impl Client {
         cmd: &str,
         args: &[String],
         config: Option<Value>,
-        root_markers: Vec<String>,
+        root_markers: &[String],
         id: usize,
+        req_timeout: u64,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
         // Resolve path to the binary
         let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
@@ -65,6 +72,27 @@ impl Client {
         let (server_rx, server_tx, initialize_notify) =
             Transport::start(reader, writer, stderr, id);
 
+        let root_path = find_root(None, root_markers);
+
+        let root_uri = root_path
+            .clone()
+            .and_then(|root| lsp::Url::from_file_path(root).ok());
+
+        // TODO: support multiple workspace folders
+        let workspace_folders = root_uri
+            .clone()
+            .map(|root| {
+                vec![lsp::WorkspaceFolder {
+                    name: root
+                        .path_segments()
+                        .and_then(|segments| segments.last())
+                        .map(|basename| basename.to_string())
+                        .unwrap_or_default(),
+                    uri: root,
+                }]
+            })
+            .unwrap_or_default();
+
         let client = Self {
             id,
             _process: process,
@@ -73,7 +101,11 @@ impl Client {
             capabilities: OnceCell::new(),
             offset_encoding: OffsetEncoding::Utf8,
             config,
-            root_markers,
+            req_timeout,
+
+            root_path,
+            root_uri,
+            workspace_folders,
         };
 
         Ok((client, server_rx, initialize_notify))
@@ -117,6 +149,10 @@ impl Client {
         self.config.as_ref()
     }
 
+    pub fn workspace_folders(&self) -> &[lsp::WorkspaceFolder] {
+        &self.workspace_folders
+    }
+
     /// Execute a RPC request on the language server.
     async fn request<R: lsp::request::Request>(&self, params: R::Params) -> Result<R::Result>
     where
@@ -139,6 +175,7 @@ impl Client {
     {
         let server_tx = self.server_tx.clone();
         let id = self.next_request_id();
+        let timeout_secs = self.req_timeout;
 
         async move {
             use std::time::Duration;
@@ -162,8 +199,8 @@ impl Client {
                 })
                 .map_err(|e| Error::Other(e.into()))?;
 
-            // TODO: specifiable timeout, delay other calls until initialize success
-            timeout(Duration::from_secs(20), rx.recv())
+            // TODO: delay other calls until initialize success
+            timeout(Duration::from_secs(timeout_secs), rx.recv())
                 .await
                 .map_err(|_| Error::Timeout)? // return Timeout
                 .ok_or(Error::StreamClosed)?
@@ -234,10 +271,6 @@ impl Client {
     // -------------------------------------------------------------------------------------------
 
     pub(crate) async fn initialize(&self) -> Result<lsp::InitializeResult> {
-        // TODO: delay any requests that are triggered prior to initialize
-        let root = find_root(None, &self.root_markers)
-            .and_then(|root| lsp::Url::from_file_path(root).ok());
-
         if self.config.is_some() {
             log::info!("Using custom LSP config: {}", self.config.as_ref().unwrap());
         }
@@ -245,9 +278,14 @@ impl Client {
         #[allow(deprecated)]
         let params = lsp::InitializeParams {
             process_id: Some(std::process::id()),
-            // root_path is obsolete, use root_uri
-            root_path: None,
-            root_uri: root,
+            workspace_folders: Some(self.workspace_folders.clone()),
+            // root_path is obsolete, but some clients like pyright still use it so we specify both.
+            // clients will prefer _uri if possible
+            root_path: self
+                .root_path
+                .clone()
+                .and_then(|path| path.to_str().map(|path| path.to_owned())),
+            root_uri: self.root_uri.clone(),
             initialization_options: self.config.clone(),
             capabilities: lsp::ClientCapabilities {
                 workspace: Some(lsp::WorkspaceClientCapabilities {
@@ -255,12 +293,20 @@ impl Client {
                     did_change_configuration: Some(lsp::DynamicRegistrationClientCapabilities {
                         dynamic_registration: Some(false),
                     }),
+                    workspace_folders: Some(true),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
                     completion: Some(lsp::CompletionClientCapabilities {
                         completion_item: Some(lsp::CompletionItemCapability {
                             snippet_support: Some(false),
+                            resolve_support: Some(lsp::CompletionItemCapabilityResolveSupport {
+                                properties: vec![
+                                    String::from("documentation"),
+                                    String::from("detail"),
+                                    String::from("additionalTextEdits"),
+                                ],
+                            }),
                             ..Default::default()
                         }),
                         completion_item_kind: Some(lsp::CompletionItemKindCapability {
@@ -301,6 +347,9 @@ impl Client {
                         }),
                         ..Default::default()
                     }),
+                    publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 }),
                 window: Some(lsp::WindowClientCapabilities {
@@ -310,7 +359,6 @@ impl Client {
                 ..Default::default()
             },
             trace: None,
-            workspace_folders: None,
             client_info: None,
             locale: None, // TODO
         };
@@ -647,6 +695,24 @@ impl Client {
         };
         // TODO: return err::unavailable so we can fall back to tree sitter formatting
 
+        // merge FormattingOptions with 'config.format'
+        let config_format = self
+            .config
+            .as_ref()
+            .and_then(|cfg| cfg.get("format"))
+            .and_then(|fmt| HashMap::<String, lsp::FormattingProperty>::deserialize(fmt).ok());
+
+        let options = if let Some(mut properties) = config_format {
+            // passed in options take precedence over 'config.format'
+            properties.extend(options.properties);
+            lsp::FormattingOptions {
+                properties,
+                ..options
+            }
+        } else {
+            options
+        };
+
         let params = lsp::DocumentFormattingParams {
             text_document,
             options,
@@ -804,11 +870,12 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         range: lsp::Range,
+        context: lsp::CodeActionContext,
     ) -> impl Future<Output = Result<Value>> {
         let params = lsp::CodeActionParams {
             text_document,
             range,
-            context: lsp::CodeActionContext::default(),
+            context,
             work_done_progress_params: lsp::WorkDoneProgressParams::default(),
             partial_result_params: lsp::PartialResultParams::default(),
         };
@@ -822,6 +889,19 @@ impl Client {
         position: lsp::Position,
         new_name: String,
     ) -> anyhow::Result<lsp::WorkspaceEdit> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        // check if we're able to rename
+        match capabilities.rename_provider {
+            Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_)) => (),
+            // None | Some(false)
+            _ => {
+                let err = "The server does not support rename";
+                log::warn!("rename_symbol failed: {}", err);
+                return Err(anyhow!(err));
+            }
+        };
+
         let params = lsp::RenameParams {
             text_document_position: lsp::TextDocumentPositionParams {
                 text_document,

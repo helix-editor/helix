@@ -830,7 +830,7 @@ mod test {
     }
 
     #[test]
-    fn test_graphem_aligned() {
+    fn test_grapheme_aligned() {
         let r = Rope::from_str("\r\nHi\r\n");
         let s = r.slice(..);
 

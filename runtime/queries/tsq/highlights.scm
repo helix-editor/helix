@@ -16,6 +16,7 @@
 ] @punctuation.bracket
 
 ":" @punctuation.delimiter
+"!" @operator
 
 [
   (one_or_more)

@@ -12,7 +12,8 @@
 "ui.statusline.inactive" = { fg = "gray", bg = "black" }
 "ui.help" = { fg = "white", bg = "black" }
 "ui.cursor" = { fg = "light-gray", modifiers = ["reversed"] }
-"ui.cursor.primary" = { fg = "light-white", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "light-gray", modifiers = ["reversed"] }
+"ui.virtual" = "light-gray"
 "variable" = "light-red"
 "constant.numeric" = "yellow"
 "constant" = "yellow"

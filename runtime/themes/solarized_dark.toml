@@ -39,6 +39,8 @@
 # 背景
 "ui.background" = { bg = "base03" }
 
+"ui.virtual" = { fg = "base01" }
+
 # 行号栏
 "ui.linenr" = { fg = "base0", bg = "base02" }
 # 当前行号栏
@@ -81,7 +83,7 @@
 "ui.cursor" = {fg = "base02", bg = "cyan"}
 "ui.cursor.insert" = {fg = "base03", bg = "base3"}
 # 当前光标匹配的标点符号
-"ui.cursor.match" = {modifiers = ["reversed"]}
+"ui.cursor.match" = { fg = "base03", bg = "base00" }
 
 "warning" =  { fg = "orange", modifiers= ["bold", "underlined"] }
 "error" = { fg = "red", modifiers= ["bold", "underlined"] }

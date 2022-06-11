@@ -9,42 +9,33 @@
 
 > NOTE: Unlike vim, `f`, `F`, `t` and `T` are not confined to the current line.
 
-| Key         | Description                                        | Command                     |
-| -----       | -----------                                        | -------                     |
-| `h`/`Left`  | Move left                                          | `move_char_left`            |
-| `j`/`Down`  | Move down                                          | `move_line_down`            |
-| `k`/`Up`    | Move up                                            | `move_line_up`              |
-| `l`/`Right` | Move right                                         | `move_char_right`           |
-| `w`         | Move next word start                               | `move_next_word_start`      |
-| `b`         | Move previous word start                           | `move_prev_word_start`      |
-| `e`         | Move next word end                                 | `move_next_word_end`        |
-| `W`         | Move next WORD start                               | `move_next_long_word_start` |
-| `B`         | Move previous WORD start                           | `move_prev_long_word_start` |
-| `E`         | Move next WORD end                                 | `move_next_long_word_end`   |
-| `t`         | Find 'till next char                               | `find_till_char`            |
-| `f`         | Find next char                                     | `find_next_char`            |
-| `T`         | Find 'till previous char                           | `till_prev_char`            |
-| `F`         | Find previous char                                 | `find_prev_char`            |
-| `G`         | Go to line number `<n>`                            | `goto_line`                 |
-| `Alt-.`     | Repeat last motion (`f`, `t` or `m`)               | `repeat_last_motion`        |
-| `Alt-:`     | Ensures the selection is in forward direction      | `ensure_selections_forward` |
-| `Home`      | Move to the start of the line                      | `goto_line_start`           |
-| `End`       | Move to the end of the line                        | `goto_line_end`             |
-| `PageUp`    | Move page up                                       | `page_up`                   |
-| `PageDown`  | Move page down                                     | `page_down`                 |
-| `Ctrl-u`    | Move half page up                                  | `half_page_up`              |
-| `Ctrl-d`    | Move half page down                                | `half_page_down`            |
-| `Ctrl-i`    | Jump forward on the jumplist                       | `jump_forward`              |
-| `Ctrl-o`    | Jump backward on the jumplist                      | `jump_backward`             |
-| `Ctrl-s`    | Save the current selection to the jumplist         | `save_selection`            |
-| `v`         | Enter [select (extend) mode](#select--extend-mode) | `select_mode`               |
-| `g`         | Enter [goto mode](#goto-mode)                      | N/A                         |
-| `m`         | Enter [match mode](#match-mode)                    | N/A                         |
-| `:`         | Enter command mode                                 | `command_mode`              |
-| `z`         | Enter [view mode](#view-mode)                      | N/A                         |
-| `Z`         | Enter sticky [view mode](#view-mode)               | N/A                         |
-| `Ctrl-w`    | Enter [window mode](#window-mode)                  | N/A                         |
-| `Space`     | Enter [space mode](#space-mode)                    | N/A                         |
+| Key                   | Description                                        | Command                     |
+| -----                 | -----------                                        | -------                     |
+| `h`, `Left`           | Move left                                          | `move_char_left`            |
+| `j`, `Down`           | Move down                                          | `move_line_down`            |
+| `k`, `Up`             | Move up                                            | `move_line_up`              |
+| `l`, `Right`          | Move right                                         | `move_char_right`           |
+| `w`                   | Move next word start                               | `move_next_word_start`      |
+| `b`                   | Move previous word start                           | `move_prev_word_start`      |
+| `e`                   | Move next word end                                 | `move_next_word_end`        |
+| `W`                   | Move next WORD start                               | `move_next_long_word_start` |
+| `B`                   | Move previous WORD start                           | `move_prev_long_word_start` |
+| `E`                   | Move next WORD end                                 | `move_next_long_word_end`   |
+| `t`                   | Find 'till next char                               | `find_till_char`            |
+| `f`                   | Find next char                                     | `find_next_char`            |
+| `T`                   | Find 'till previous char                           | `till_prev_char`            |
+| `F`                   | Find previous char                                 | `find_prev_char`            |
+| `G`                   | Go to line number `<n>`                            | `goto_line`                 |
+| `Alt-.`               | Repeat last motion (`f`, `t` or `m`)               | `repeat_last_motion`        |
+| `Home`                | Move to the start of the line                      | `goto_line_start`           |
+| `End`                 | Move to the end of the line                        | `goto_line_end`             |
+| `Ctrl-b`, `PageUp`    | Move page up                                       | `page_up`                   |
+| `Ctrl-f`, `PageDown`  | Move page down                                     | `page_down`                 |
+| `Ctrl-u`              | Move half page up                                  | `half_page_up`              |
+| `Ctrl-d`              | Move half page down                                | `half_page_down`            |
+| `Ctrl-i`              | Jump forward on the jumplist                       | `jump_forward`              |
+| `Ctrl-o`              | Jump backward on the jumplist                      | `jump_backward`             |
+| `Ctrl-s`              | Save the current selection to the jumplist         | `save_selection`            |
 
 ### Changes
 
@@ -84,48 +75,51 @@
 
 #### Shell
 
-| Key                     | Description                                                      | Command               |
-| ------                  | -----------                                                      | -------               |
-| <code>&#124;</code>     | Pipe each selection through shell command, replacing with output | `shell_pipe`          |
-| <code>Alt-&#124;</code> | Pipe each selection into shell command, ignoring output          | `shell_pipe_to`       |
-| `!`                     | Run shell command, inserting output before each selection        | `shell_insert_output` |
-| `Alt-!`                 | Run shell command, appending output after each selection         | `shell_append_output` |
+| Key     | Description                                                                      | Command               |
+| ------  | -----------                                                                      | -------               |
+| <code>&#124;</code>     | Pipe each selection through shell command, replacing with output                 | `shell_pipe`          |
+| <code>Alt-&#124;</code> | Pipe each selection into shell command, ignoring output                          | `shell_pipe_to`       |
+| `!`     | Run shell command, inserting output before each selection                        | `shell_insert_output` |
+| `Alt-!` | Run shell command, appending output after each selection                         | `shell_append_output` |
 | `$`     | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
 
 
 ### Selection manipulation
 
-| Key      | Description                                                       | Command                              |
-| -----    | -----------                                                       | -------                              |
-| `s`      | Select all regex matches inside selections                        | `select_regex`                       |
-| `S`      | Split selection into subselections on regex matches               | `split_selection`                    |
-| `Alt-s`  | Split selection on newlines                                       | `split_selection_on_newline`         |
-| `&`      | Align selection in columns                                        | `align_selections`                   |
-| `_`      | Trim whitespace from the selection                                | `trim_selections`                    |
-| `;`      | Collapse selection onto a single cursor                           | `collapse_selection`                 |
-| `Alt-;`  | Flip selection cursor and anchor                                  | `flip_selections`                    |
-| `,`      | Keep only the primary selection                                   | `keep_primary_selection`             |
-| `Alt-,`  | Remove the primary selection                                      | `remove_primary_selection`           |
-| `C`      | Copy selection onto the next line (Add cursor below)              | `copy_selection_on_next_line`        |
-| `Alt-C`  | Copy selection onto the previous line (Add cursor above)          | `copy_selection_on_prev_line`        |
-| `(`      | Rotate main selection backward                                    | `rotate_selections_backward`         |
-| `)`      | Rotate main selection forward                                     | `rotate_selections_forward`          |
-| `Alt-(`  | Rotate selection contents backward                                | `rotate_selection_contents_backward` |
-| `Alt-)`  | Rotate selection contents forward                                 | `rotate_selection_contents_forward`  |
-| `%`      | Select entire file                                                | `select_all`                         |
-| `x`      | Select current line, if already selected, extend to next line     | `extend_line`                        |
-| `X`      | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
-| `J`      | Join lines inside selection                                       | `join_selections`                    |
-| `K`      | Keep selections matching the regex                                | `keep_selections`                    |
-| `Alt-K`  | Remove selections matching the regex                              | `remove_selections`                  |
-| `Ctrl-c` | Comment/uncomment the selections                                  | `toggle_comments`                    |
-| `Alt-k`  | Expand selection to parent syntax node (**TS**)                   | `expand_selection`                   |
-| `Alt-j`  | Shrink syntax tree object selection (**TS**)                      | `shrink_selection`                   |
-| `Alt-h`  | Select previous sibling node in syntax tree (**TS**)              | `select_prev_sibling`                |
-| `Alt-l`  | Select next sibling node in syntax tree (**TS**)                  | `select_next_sibling`                |
+| Key                   | Description                                                       | Command                              |
+| -----                 | -----------                                                       | -------                              |
+| `s`                   | Select all regex matches inside selections                        | `select_regex`                       |
+| `S`                   | Split selection into subselections on regex matches               | `split_selection`                    |
+| `Alt-s`               | Split selection on newlines                                       | `split_selection_on_newline`         |
+| `&`                   | Align selection in columns                                        | `align_selections`                   |
+| `_`                   | Trim whitespace from the selection                                | `trim_selections`                    |
+| `;`                   | Collapse selection onto a single cursor                           | `collapse_selection`                 |
+| `Alt-;`               | Flip selection cursor and anchor                                  | `flip_selections`                    |
+| `Alt-:`               | Ensures the selection is in forward direction                     | `ensure_selections_forward`          |
+| `,`                   | Keep only the primary selection                                   | `keep_primary_selection`             |
+| `Alt-,`               | Remove the primary selection                                      | `remove_primary_selection`           |
+| `C`                   | Copy selection onto the next line (Add cursor below)              | `copy_selection_on_next_line`        |
+| `Alt-C`               | Copy selection onto the previous line (Add cursor above)          | `copy_selection_on_prev_line`        |
+| `(`                   | Rotate main selection backward                                    | `rotate_selections_backward`         |
+| `)`                   | Rotate main selection forward                                     | `rotate_selections_forward`          |
+| `Alt-(`               | Rotate selection contents backward                                | `rotate_selection_contents_backward` |
+| `Alt-)`               | Rotate selection contents forward                                 | `rotate_selection_contents_forward`  |
+| `%`                   | Select entire file                                                | `select_all`                         |
+| `x`                   | Select current line, if already selected, extend to next line     | `extend_line`                        |
+| `X`                   | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
+| `Alt-x`               | Shrink selection to line bounds (line-wise selection)             | `shrink_to_line_bounds`              |
+| `J`                   | Join lines inside selection                                       | `join_selections`                    |
+| `K`                   | Keep selections matching the regex                                | `keep_selections`                    |
+| `Alt-K`               | Remove selections matching the regex                              | `remove_selections`                  |
+| `Ctrl-c`              | Comment/uncomment the selections                                  | `toggle_comments`                    |
+| `Alt-o`, `Alt-up`     | Expand selection to parent syntax node (**TS**)                   | `expand_selection`                   |
+| `Alt-i`, `Alt-down`   | Shrink syntax tree object selection (**TS**)                      | `shrink_selection`                   |
+| `Alt-p`, `Alt-left`   | Select previous sibling node in syntax tree (**TS**)              | `select_prev_sibling`                |
+| `Alt-n`, `Alt-right`  | Select next sibling node in syntax tree (**TS**)                  | `select_next_sibling`                |
 
 ### Search
 
+Search commands all operate on the `/` register by default. Use `"<char>` to operate on a different one.
 
 | Key   | Description                                 | Command              |
 | ----- | -----------                                 | -------              |
@@ -139,6 +133,17 @@
 
 These sub-modes are accessible from normal mode and typically switch back to normal mode after a command.
 
+| Key      | Description                                        | Command        |
+| -----    | -----------                                        | -------        |
+| `v`      | Enter [select (extend) mode](#select--extend-mode) | `select_mode`  |
+| `g`      | Enter [goto mode](#goto-mode)                      | N/A            |
+| `m`      | Enter [match mode](#match-mode)                    | N/A            |
+| `:`      | Enter command mode                                 | `command_mode` |
+| `z`      | Enter [view mode](#view-mode)                      | N/A            |
+| `Z`      | Enter sticky [view mode](#view-mode)               | N/A            |
+| `Ctrl-w` | Enter [window mode](#window-mode)                  | N/A            |
+| `Space`  | Enter [space mode](#space-mode)                    | N/A            |
+
 #### View mode
 
 View mode is intended for scrolling and manipulating the view without changing
@@ -147,18 +152,18 @@ key to return to normal mode after usage (useful when you're simply looking
 over text and not actively editing it).
 
 
-| Key           | Description                                               | Command             |
-| -----         | -----------                                               | -------             |
-| `z` , `c`     | Vertically center the line                                | `align_view_center` |
-| `t`           | Align the line to the top of the screen                   | `align_view_top`    |
-| `b`           | Align the line to the bottom of the screen                | `align_view_bottom` |
-| `m`           | Align the line to the middle of the screen (horizontally) | `align_view_middle` |
-| `j` , `down`  | Scroll the view downwards                                 | `scroll_down`       |
-| `k` , `up`    | Scroll the view upwards                                   | `scroll_up`         |
-| `Ctrl-f`      | Move page down                                            | `page_down`         |
-| `Ctrl-b`      | Move page up                                              | `page_up`           |
-| `Ctrl-d`      | Move half page down                                       | `half_page_down`    |
-| `Ctrl-u`      | Move half page up                                         | `half_page_up`      |
+| Key                  | Description                                               | Command             |
+| -----                | -----------                                               | -------             |
+| `z`, `c`             | Vertically center the line                                | `align_view_center` |
+| `t`                  | Align the line to the top of the screen                   | `align_view_top`    |
+| `b`                  | Align the line to the bottom of the screen                | `align_view_bottom` |
+| `m`                  | Align the line to the middle of the screen (horizontally) | `align_view_middle` |
+| `j`, `down`          | Scroll the view downwards                                 | `scroll_down`       |
+| `k`, `up`            | Scroll the view upwards                                   | `scroll_up`         |
+| `Ctrl-f`, `PageDown` | Move page down                                            | `page_down`         |
+| `Ctrl-b`, `PageUp`   | Move page up                                              | `page_up`           |
+| `Ctrl-d`             | Move half page down                                       | `half_page_down`    |
+| `Ctrl-u`             | Move half page up                                         | `half_page_up`      |
 
 #### Goto mode
 
@@ -187,7 +192,7 @@ Jumps to various locations.
 
 #### Match mode
 
-Enter this mode using `m` from normal mode. See the relavant section
+Enter this mode using `m` from normal mode. See the relevant section
 in [Usage](./usage.md) for an explanation about [surround](./usage.md#surround)
 and [textobject](./usage.md#textobject) usage.
 
@@ -206,19 +211,23 @@ TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
 This layer is similar to vim keybindings as kakoune does not support window.
 
-| Key                    | Description                    | Command           |
-| -----                  | -------------                  | -------           |
-| `w`, `Ctrl-w`          | Switch to next window          | `rotate_view`     |
-| `v`, `Ctrl-v`          | Vertical right split           | `vsplit`          |
-| `s`, `Ctrl-s`          | Horizontal bottom split        | `hsplit`          |
-| `h`, `Ctrl-h`, `left`  | Move to left split             | `jump_view_left`  |
-| `f`                    | Go to files in the selection in horizontal splits  | `goto_file`                |
-| `F`                    | Go to files in the selection in vertical splits    | `goto_file`                |
-| `j`, `Ctrl-j`, `down`  | Move to split below            | `jump_view_down`  |
-| `k`, `Ctrl-k`, `up`    | Move to split above            | `jump_view_up`    |
-| `l`, `Ctrl-l`, `right` | Move to right split            | `jump_view_right` |
-| `q`, `Ctrl-q`          | Close current window           | `wclose`          |
-| `o`, `Ctrl-o`          | Only keep the current window, closing all the others            | `wonly`           |
+| Key                    | Description                                          | Command           |
+| -----                  | -------------                                        | -------           |
+| `w`, `Ctrl-w`          | Switch to next window                                | `rotate_view`     |
+| `v`, `Ctrl-v`          | Vertical right split                                 | `vsplit`          |
+| `s`, `Ctrl-s`          | Horizontal bottom split                              | `hsplit`          |
+| `f`                    | Go to files in the selection in horizontal splits    | `goto_file`       |
+| `F`                    | Go to files in the selection in vertical splits      | `goto_file`       |
+| `h`, `Ctrl-h`, `Left`  | Move to left split                                   | `jump_view_left`  |
+| `j`, `Ctrl-j`, `Down`  | Move to split below                                  | `jump_view_down`  |
+| `k`, `Ctrl-k`, `Up`    | Move to split above                                  | `jump_view_up`    |
+| `l`, `Ctrl-l`, `Right` | Move to right split                                  | `jump_view_right` |
+| `q`, `Ctrl-q`          | Close current window                                 | `wclose`          |
+| `o`, `Ctrl-o`          | Only keep the current window, closing all the others | `wonly`           |
+| `H`                    | Swap window to the left                              | `swap_view_left`  |
+| `J`                    | Swap window downwards                                | `swap_view_down`  |
+| `K`                    | Swap window upwards                                  | `swap_view_up`    |
+| `L`                    | Swap window to the right                             | `swap_view_right` |
 
 #### Space mode
 
@@ -242,6 +251,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `Y`     | Yank main selection to clipboard                                        | `yank_main_selection_to_clipboard`  |
 | `R`     | Replace selections by clipboard contents                                | `replace_selections_with_clipboard` |
 | `/`     | Global search in workspace folder                                       | `global_search`                     |
+| `?`     | Open command palette                                                    | `command_palette`                   |
 
 > TIP: Global search displays results in a fuzzy picker, use `space + '` to bring it back up after opening a file.
 
@@ -272,38 +282,55 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `[a`     | Go to previous argument/parameter (**TS**)   | `goto_prev_parameter` |
 | `]o`     | Go to next comment (**TS**)                  | `goto_next_comment`   |
 | `[o`     | Go to previous comment (**TS**)              | `goto_prev_comment`   |
+| `]p`     | Go to next paragraph                         | `goto_next_paragraph` |
+| `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
 | `[space` | Add newline above                            | `add_newline_above`   |
 | `]space` | Add newline below                            | `add_newline_below`   |
 
 ## Insert Mode
 
-| Key                     | Description                 | Command                 |
-| -----                   | -----------                 | -------                 |
-| `Escape`                | Switch to normal mode       | `normal_mode`           |
-| `Ctrl-x`                | Autocomplete                | `completion`            |
-| `Ctrl-r`                | Insert a register content   | `insert_register`       |
-| `Ctrl-w`                | Delete previous word        | `delete_word_backward`  |
-| `Alt-d`                 | Delete next word            | `delete_word_forward`   |
-| `Alt-b`, `Alt-Left`     | Backward a word             | `move_prev_word_end`    |
-| `Ctrl-b`, `Left`        | Backward a char             | `move_char_left`        |
-| `Alt-f`, `Alt-Right`    | Forward a word              | `move_next_word_start`  |
-| `Ctrl-f`, `Right`       | Forward a char              | `move_char_right`       |
-| `Ctrl-e`, `End`         | move to line end            | `goto_line_end_newline` |
-| `Ctrl-a`, `Home`        | move to line start          | `goto_line_start`       |
-| `Ctrl-u`                | delete to start of line     | `kill_to_line_start`    |
-| `Ctrl-k`                | delete to end of line       | `kill_to_line_end`      |
-| `backspace`, `Ctrl-h`   | delete previous char        | `delete_char_backward`  |
-| `delete`, `Ctrl-d`      | delete previous char        | `delete_char_forward`   |
-| `Ctrl-p`, `Up`          | move to previous line       | `move_line_up`          |
-| `Ctrl-n`, `Down`        | move to next line           | `move_line_down`        |
+We support many readline/emacs style bindings in insert mode for
+convenience. These can be helpful for making simple modifications
+without escaping to normal mode, but beware that you will not have an
+undo-able "save point" until you return to normal mode.
+
+| Key                       | Description                 | Command                 |
+| -----                     | -----------                 | -------                 |
+| `Escape`                  | Switch to normal mode       | `normal_mode`           |
+| `Ctrl-x`                  | Autocomplete                | `completion`            |
+| `Ctrl-r`                  | Insert a register content   | `insert_register`       |
+| `Ctrl-w`, `Alt-Backspace` | Delete previous word        | `delete_word_backward`  |
+| `Alt-d`                   | Delete next word            | `delete_word_forward`   |
+| `Alt-b`, `Ctrl-Left`      | Backward a word             | `move_prev_word_end`    |
+| `Ctrl-b`, `Left`          | Backward a char             | `move_char_left`        |
+| `Alt-f`, `Ctrl-Right`     | Forward a word              | `move_next_word_start`  |
+| `Ctrl-f`, `Right`         | Forward a char              | `move_char_right`       |
+| `Ctrl-e`, `End`           | Move to line end            | `goto_line_end_newline` |
+| `Ctrl-a`, `Home`          | Move to line start          | `goto_line_start`       |
+| `Ctrl-u`                  | Delete to start of line     | `kill_to_line_start`    |
+| `Ctrl-k`                  | Delete to end of line       | `kill_to_line_end`      |
+| `Ctrl-j`, `Enter`         | Insert new line             | `insert_newline`        |
+| `Backspace`, `Ctrl-h`     | Delete previous char        | `delete_char_backward`  |
+| `Delete`, `Ctrl-d`        | Delete next char            | `delete_char_forward`   |
+| `Ctrl-p`, `Up`            | Move to previous line       | `move_line_up`          |
+| `Ctrl-n`, `Down`          | Move to next line           | `move_line_down`        |
+| `PageUp`                  | Move one page up            | `page_up`               |
+| `PageDown`                | Move one page down          | `page_down`             |
+| `Alt->`                   | Go to end of buffer         | `goto_file_end`         |
+| `Alt-<`                   | Go to start of buffer       | `goto_file_start`       |
 
 ## Select / extend mode
 
-I'm still pondering whether to keep this mode or not. It changes movement
-commands (including goto) to extend the existing selection instead of replacing it.
+This mode echoes Normal mode, but changes any movements to extend
+selections rather than replace them. Goto motions are also changed to
+extend, so that `vgl` for example extends the selection to the end of
+the line.
 
-> NOTE: It's a bit confusing at the moment because extend hasn't been
-> implemented for all movement commands yet.
+Search is also affected. By default, `n` and `N` will remove the current
+selection and select the next instance of the search term. Toggling this
+mode before pressing `n` or `N` makes it possible to keep the current
+selection. Toggling it on and off during your iterative searching allows
+you to selectively add search terms to your selections.
 
 # Picker
 
@@ -311,10 +338,10 @@ Keys to use within picker. Remapping currently not supported.
 
 | Key                          | Description       |
 | -----                        | -------------     |
-| `Up`, `Ctrl-k`, `Ctrl-p`     | Previous entry    |
-| `PageUp`, `Ctrl-b`           | Page up           |
-| `Down`, `Ctrl-j`, `Ctrl-n`   | Next entry        |
-| `PageDown`, `Ctrl-f`         | Page down         |
+| `Up`, `Ctrl-p`               | Previous entry    |
+| `PageUp`, `Ctrl-u`           | Page up           |
+| `Down`, `Ctrl-n`             | Next entry        |
+| `PageDown`, `Ctrl-d`         | Page down         |
 | `Home`                       | Go to first entry |
 | `End`                        | Go to last entry  |
 | `Ctrl-space`                 | Filter options    |
@@ -345,6 +372,7 @@ Keys to use within prompt, Remapping currently not supported.
 | `Ctrl-s`                | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
 | `Ctrl-p`, `Up`          | Select previous history                                                 |
 | `Ctrl-n`, `Down`        | Select next history                                                     |
+| `Ctrl-r`                | Insert the content of the register selected by following input char     |
 | `Tab`                   | Select next completion item                                             |
 | `BackTab`               | Select previous completion item                                         |
 | `Enter`                 | Open selected                                                           |

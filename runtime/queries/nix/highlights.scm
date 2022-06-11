@@ -1,15 +1,16 @@
 (comment) @comment
 
 [
-  "if"
+  "if" 
   "then"
   "else"
   "let"
   "inherit"
   "in"
   "rec"
-  "with"
+  "with" 
   "assert"
+  "or"
 ] @keyword
 
 ((identifier) @variable.builtin
@@ -21,25 +22,25 @@
  (#is-not? local))
 
 [
-  (string)
-  (indented_string)
+  (string_expression)
+  (indented_string_expression)
 ] @string
 
 [
-  (path)
-  (hpath)
-  (spath)
+  (path_expression)
+  (hpath_expression)
+  (spath_expression)
 ] @string.special.path
 
-(uri) @string.special.uri
+(uri_expression) @string.special.uri
 
 ; boolean
 ((identifier) @constant.builtin.boolean (#match? @constant.builtin.boolean "^(true|false)$")) @constant.builtin.boolean
 ; null
 ((identifier) @constant.builtin (#eq? @constant.builtin "null")) @constant.builtin
 
-(integer) @constant.numeric.integer
-(float) @constant.numeric.float
+(integer_expression) @constant.numeric.integer
+(float_expression) @constant.numeric.float
 
 (interpolation
   "${" @punctuation.special
@@ -47,7 +48,7 @@
 
 (escape_sequence) @constant.character.escape
 
-(function
+(function_expression
   universal: (identifier) @variable.parameter
 )
 
@@ -55,27 +56,36 @@
   name: (identifier) @variable.parameter
   "?"? @punctuation.delimiter)
 
-(app
+(select_expression
+  attrpath: (attrpath (identifier)) @variable.other.member)
+
+(apply_expression
   function: [
-    (identifier) @function
-    (select
+    (variable_expression (identifier)) @function
+    (select_expression
       attrpath: (attrpath
-        attr: (attr_identifier) @function .))])
+        attr: (identifier) @function .))])
 
-
-(unary
+(unary_expression
   operator: _ @operator)
 
-(binary
+(binary_expression
   operator: _ @operator)
 
-(attr_identifier) @variable.other.member
-(inherit attrs: (attrs_inherited (identifier) @variable.other.member) )
+(variable_expression (identifier) @variable)
+
+(binding
+  attrpath: (attrpath (identifier)) @variable.other.member)
+
+(identifier) @variable.other.member
+
+(inherit_from attrs: (inherited_attrs attr: (identifier) @variable.other.member) )
 
 [
   ";"
   "."
   ","
+  "="
 ] @punctuation.delimiter
 
 [
@@ -86,5 +96,3 @@
   "{"
   "}"
 ] @punctuation.bracket
-
-(identifier) @variable

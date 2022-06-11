@@ -390,7 +390,7 @@ ul#searchresults span.teaser em {
 
 .chapter li {
     display: flex;
-    color: var(--sidebar-non-existant);
+    color: var(--sidebar-non-existent);
 }
 .chapter li a {
     display: block;

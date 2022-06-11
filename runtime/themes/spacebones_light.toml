@@ -61,9 +61,10 @@
 "ui.text.focus" = { fg = "fg1" }
 "ui.selection" = { bg = "bg3", modifiers = ["reversed"] }
 "ui.cursor.primary" = { modifiers = ["reversed"] }
-"ui.cursor.match" = { modifiers = ["reversed"] }
+"ui.cursor.match" = { bg = "bg3" }
 "ui.menu" = { fg = "fg1", bg = "bg2" }
 "ui.menu.selected" = { fg = "#655370", bg = "#d1dcdf", modifiers = ["bold"] }
+"ui.virtual" = "bg2"
 
 "diagnostic" = { modifiers = ["underlined"] }
 

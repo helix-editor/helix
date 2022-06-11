@@ -4,7 +4,9 @@
 
 "ui.linenr.selected" = { bg = "base3" }
 "ui.text.focus" = { fg = "yellow", modifiers= ["bold"] }
+"ui.menu" = { fg = "base8", bg = "base3" }
 "ui.menu.selected" = { fg = "base2", bg = "yellow" }
+"ui.virtual" = "base5"
 
 "info" = "base8"
 "hint" = "base8"
@@ -40,7 +42,7 @@
 "ui.text" = { fg = "base8" }
 "punctuation" = "base6"
 
-# classes, types, primiatives
+# classes, types, primitives
 "type" = "green"
 "type.builtin" = { fg = "red"}
 "label" = "base8"

@@ -1,5 +1,7 @@
 # Summary
 
+[Helix](./title-page.md)
+
 - [Installation](./install.md)
 - [Usage](./usage.md)
   - [Keymap](./keymap.md)
@@ -14,3 +16,4 @@
 - [Guides](./guides/README.md)
   - [Adding Languages](./guides/adding_languages.md)
   - [Adding Textobject Queries](./guides/textobject.md)
+  - [Adding Indent Queries](./guides/indent.md)
