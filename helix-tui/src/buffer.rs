@@ -620,13 +620,8 @@ impl Buffer {
                         cell.modifier.insert(Modifier::DIM);
                     }
                     Lighten | Darken => {
-                        match cell.fg {
-                            Color::Rgb(..) => {
-                                cell.fg = modify(cell.fg);
-                            }
-                            _ => {
-                                // cell.modifier.insert(Modifier::DIM);
-                            }
+                        if let Color::Rgb(..) = cell.fg {
+                            cell.fg = modify(cell.fg);
                         };
                         if let Color::Rgb(..) = cell.bg {
                             cell.bg = modify(cell.bg);
