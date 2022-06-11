@@ -5,6 +5,35 @@ use std::{
     str::FromStr,
 };
 
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DimFunction {
+    // Set text modifier DIM
+    Dim,
+    // Lighten the shade of an RGB color
+    Lighten,
+    // Darken the shade of an RGB color
+    Darken,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct DimOperation {
+    /// Function to perform on cells
+    pub func: DimFunction,
+    /// 0-100 Instensity of the applied function. Has no effect with DimFunction.Dim
+    pub intensity: u8,
+}
+
+impl Default for DimOperation {
+    fn default() -> Self {
+        Self {
+            func: DimFunction::Darken,
+            intensity: 50,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 /// UNSTABLE
@@ -262,7 +291,7 @@ impl Rect {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Color {
     Reset,

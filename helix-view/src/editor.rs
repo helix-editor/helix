@@ -1,7 +1,7 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
     document::{Mode, SCRATCH_BUFFER_NAME},
-    graphics::{CursorKind, Rect},
+    graphics::{CursorKind, DimOperation, Rect},
     info::Info,
     input::KeyEvent,
     theme::{self, Theme},
@@ -109,6 +109,15 @@ impl Default for FilePickerConfig {
     }
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct DimConfig {
+    /// dim function for margin around content of dimmable overlays
+    pub overlay_backdrops: Option<DimOperation>,
+    /// dim function for unfocused editor views
+    pub unfocused_views: Option<DimOperation>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
@@ -163,6 +172,9 @@ pub struct Config {
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
+    /// Dim configuration
+    #[serde(default)]
+    pub dim: DimConfig,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -417,6 +429,7 @@ impl Default for Config {
             whitespace: WhitespaceConfig::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
+            dim: DimConfig::default(),
         }
     }
 }

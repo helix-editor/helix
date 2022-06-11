@@ -1,9 +1,10 @@
 use crate::text::{Span, Spans};
 use helix_core::unicode::width::UnicodeWidthStr;
+use helix_view::graphics::{Color, DimFunction, DimOperation, Modifier, Rect, Style};
+use palette::Shade;
 use std::cmp::min;
+use std::collections::HashMap;
 use unicode_segmentation::UnicodeSegmentation;
-
-use helix_view::graphics::{Color, Modifier, Rect, Style};
 
 /// A buffer cell
 #[derive(Debug, Clone, PartialEq)]
@@ -582,6 +583,58 @@ impl Buffer {
             invalidated = std::cmp::max(affected_width, invalidated).saturating_sub(1);
         }
         updates
+    }
+
+    /// Apply DimOperation to all cells in area
+    pub fn dim(&mut self, area: Rect, op: &DimOperation) {
+        use DimFunction::*;
+
+        type Srgb8 = palette::rgb::Rgb<palette::encoding::Srgb, u8>;
+
+        let mut cache: HashMap<Color, Color> = HashMap::new();
+        let intensity = op.intensity as f32 / 100.0; // TODO: clamp
+
+        let mut modify = |col| {
+            let result = cache.entry(col).or_insert_with(|| {
+                if let Color::Rgb(r, g, b) = col {
+                    let mut rgb = Srgb8::new(r, g, b).into_format().into_linear();
+                    rgb = match op.func {
+                        Lighten => rgb.lighten(intensity),
+                        Darken => rgb.darken(intensity),
+                        _ => unimplemented!(),
+                    };
+                    let rgb = Srgb8::from(rgb).into_components();
+                    Color::Rgb(rgb.0, rgb.1, rgb.2)
+                } else {
+                    col
+                }
+            });
+            *result
+        };
+        for y in area.top()..area.bottom() {
+            for x in area.left()..area.right() {
+                let cell = &mut self[(x, y)];
+
+                match op.func {
+                    Dim => {
+                        cell.modifier.insert(Modifier::DIM);
+                    }
+                    Lighten | Darken => {
+                        match cell.fg {
+                            Color::Rgb(..) => {
+                                cell.fg = modify(cell.fg);
+                            }
+                            _ => {
+                                // cell.modifier.insert(Modifier::DIM);
+                            }
+                        };
+                        if let Color::Rgb(..) = cell.bg {
+                            cell.bg = modify(cell.bg);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
