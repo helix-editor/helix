@@ -8,7 +8,7 @@
 | comment | ✓ |  |  |  |
 | cpon | ✓ |  | ✓ |  |
 | cpp | ✓ | ✓ | ✓ | `clangd` |
-| css | ✓ |  |  | `vscode-css-language-server` |
+| css | ✓ |  |  | `vscode-css-languageserver` |
 | dart | ✓ |  | ✓ | `dart` |
 | devicetree | ✓ |  | ✓ |  |
 | dockerfile | ✓ |  |  | `docker-langserver` |
@@ -37,12 +37,12 @@
 | haskell | ✓ |  |  | `haskell-language-server-wrapper` |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ |  |  |  |
-| html | ✓ |  |  | `vscode-html-language-server` |
+| html | ✓ |  |  | `vscode-html-languageserver` |
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  | `jdtls` |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
 | jsdoc | ✓ |  |  |  |
-| json | ✓ |  | ✓ | `vscode-json-language-server` |
+| json | ✓ |  | ✓ | `vscode-json-languageserver` |
 | jsx | ✓ |  | ✓ | `typescript-language-server` |
 | julia | ✓ |  |  | `julia` |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
