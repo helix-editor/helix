@@ -310,7 +310,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         use tui::widgets::TableState;
 
         table.render_table(
-            area.clip_left(Self::LEFT_PADDING as u16),
+            area.clip_left(Self::LEFT_PADDING as u16).clip_right(1),
             surface,
             &mut TableState {
                 offset: scroll,
@@ -320,20 +320,32 @@ impl<T: Item + 'static> Component for Menu<T> {
 
         if let Some(cursor) = self.cursor {
             let offset_from_top = cursor - scroll;
-            let cell = &mut surface[(area.x, area.y + offset_from_top as u16)];
-            cell.set_style(selected);
+            let left = &mut surface[(area.left(), area.y + offset_from_top as u16)];
+            left.set_style(selected);
+            let right = &mut surface[(
+                area.right().saturating_sub(1),
+                area.y + offset_from_top as u16,
+            )];
+            right.set_style(selected);
         }
 
         let fits = len <= win_height;
 
+        let scroll_style = theme.get("ui.menu.scroll");
         for (i, _) in (scroll..(scroll + win_height).min(len)).enumerate() {
+            let cell = &mut surface[(area.x + area.width - 1, area.y + i as u16)];
+
+            if !fits {
+                // Draw scroll track
+                cell.set_symbol("▐"); // right half block
+                cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
+            }
+
             let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
 
             if !fits && is_marked {
-                let cell = &mut surface[(area.x + area.width - 2, area.y + i as u16)];
-                cell.set_symbol("▐");
-                // cell.set_style(selected);
-                // cell.set_style(if is_marked { selected } else { style });
+                // Draw scroll thumb
+                cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
             }
         }
     }
