@@ -1,6 +1,6 @@
 use super::*;
 
-use helix_view::editor::Action;
+use helix_view::editor::{Action, ConfigEvent};
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -15,9 +15,11 @@ pub struct TypableCommand {
 
 fn quit(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
+    ensure!(args.is_empty(), ":quit takes no arguments");
+
     // last view and we have unsaved changes
     if cx.editor.tree.views().count() == 1 {
         buffers_remaining_impl(cx.editor)?
@@ -30,9 +32,11 @@ fn quit(
 
 fn force_quit(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
+    ensure!(args.is_empty(), ":quit! takes no arguments");
+
     cx.editor.close(view!(cx.editor).id);
 
     Ok(())
@@ -172,7 +176,30 @@ fn force_buffer_close_all(
     buffer_close_by_ids_impl(cx.editor, &document_ids, true)
 }
 
-fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::Result<()> {
+fn buffer_next(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    goto_buffer(cx.editor, Direction::Forward);
+    Ok(())
+}
+
+fn buffer_previous(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    goto_buffer(cx.editor, Direction::Backward);
+    Ok(())
+}
+
+fn write_impl(
+    cx: &mut compositor::Context,
+    path: Option<&Cow<str>>,
+    force: bool,
+) -> anyhow::Result<()> {
+    let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
     let doc = doc_mut!(cx.editor);
 
@@ -183,22 +210,27 @@ fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::
     if doc.path().is_none() {
         bail!("cannot write a buffer without a filename");
     }
-    let fmt = doc.auto_format().map(|fmt| {
-        let shared = fmt.shared();
-        let callback = make_format_callback(
-            doc.id(),
-            doc.version(),
-            Modified::SetUnmodified,
-            shared.clone(),
-        );
-        jobs.callback(callback);
-        shared
-    });
-    let future = doc.format_and_save(fmt);
+    let fmt = if auto_format {
+        doc.auto_format().map(|fmt| {
+            let shared = fmt.shared();
+            let callback = make_format_callback(
+                doc.id(),
+                doc.version(),
+                Modified::SetUnmodified,
+                shared.clone(),
+            );
+            jobs.callback(callback);
+            shared
+        })
+    } else {
+        None
+    };
+    let future = doc.format_and_save(fmt, force);
     cx.jobs.add(Job::new(future).wait_before_exiting());
 
     if path.is_some() {
         let id = doc.id();
+        doc.detect_language(cx.editor.syn_loader.clone());
         let _ = cx.editor.refresh_language_server(id);
     }
     Ok(())
@@ -209,7 +241,15 @@ fn write(
     args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    write_impl(cx, args.first())
+    write_impl(cx, args.first(), false)
+}
+
+fn force_write(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    write_impl(cx, args.first(), true)
 }
 
 fn new_file(
@@ -288,11 +328,15 @@ fn set_line_ending(
         cx.editor.set_status(match line_ending {
             Crlf => "crlf",
             LF => "line feed",
+            #[cfg(feature = "unicode-lines")]
             FF => "form feed",
+            #[cfg(feature = "unicode-lines")]
             CR => "carriage return",
+            #[cfg(feature = "unicode-lines")]
             Nel => "next line",
 
             // These should never be a document's default line ending.
+            #[cfg(feature = "unicode-lines")]
             VT | LS | PS => "error",
         });
 
@@ -307,15 +351,37 @@ fn set_line_ending(
     // Attempt to parse argument as a line ending.
     let line_ending = match arg {
         // We check for CR first because it shares a common prefix with CRLF.
+        #[cfg(feature = "unicode-lines")]
         arg if arg.starts_with("cr") => CR,
         arg if arg.starts_with("crlf") => Crlf,
         arg if arg.starts_with("lf") => LF,
+        #[cfg(feature = "unicode-lines")]
         arg if arg.starts_with("ff") => FF,
+        #[cfg(feature = "unicode-lines")]
         arg if arg.starts_with("nel") => Nel,
         _ => bail!("invalid line ending"),
     };
+    let (view, doc) = current!(cx.editor);
+    doc.line_ending = line_ending;
 
-    doc_mut!(cx.editor).line_ending = line_ending;
+    let mut pos = 0;
+    let transaction = Transaction::change(
+        doc.text(),
+        doc.text().lines().filter_map(|line| {
+            pos += line.len_chars();
+            match helix_core::line_ending::get_line_ending(&line) {
+                Some(ending) if ending != line_ending => {
+                    let start = pos - ending.len_chars();
+                    let end = pos;
+                    Some((start, end, Some(line_ending.as_str().into())))
+                }
+                _ => None,
+            }
+        }),
+    );
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+
     Ok(())
 }
 
@@ -355,7 +421,7 @@ fn write_quit(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    write_impl(cx, args.first())?;
+    write_impl(cx, args.first(), false)?;
     quit(cx, &[], event)
 }
 
@@ -364,7 +430,7 @@ fn force_write_quit(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    write_impl(cx, args.first())?;
+    write_impl(cx, args.first(), true)?;
     force_quit(cx, &[], event)
 }
 
@@ -398,6 +464,7 @@ fn write_all_impl(
     force: bool,
 ) -> anyhow::Result<()> {
     let mut errors = String::new();
+    let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
     // save all documents
     for doc in &mut cx.editor.documents.values_mut() {
@@ -410,18 +477,22 @@ fn write_all_impl(
             continue;
         }
 
-        let fmt = doc.auto_format().map(|fmt| {
-            let shared = fmt.shared();
-            let callback = make_format_callback(
-                doc.id(),
-                doc.version(),
-                Modified::SetUnmodified,
-                shared.clone(),
-            );
-            jobs.callback(callback);
-            shared
-        });
-        let future = doc.format_and_save(fmt);
+        let fmt = if auto_format {
+            doc.auto_format().map(|fmt| {
+                let shared = fmt.shared();
+                let callback = make_format_callback(
+                    doc.id(),
+                    doc.version(),
+                    Modified::SetUnmodified,
+                    shared.clone(),
+                );
+                jobs.callback(callback);
+                shared
+            })
+        } else {
+            None
+        };
+        let future = doc.format_and_save(fmt, force);
         jobs.add(Job::new(future).wait_before_exiting());
     }
 
@@ -533,7 +604,7 @@ fn theme(
         .theme_loader
         .load(theme)
         .with_context(|| format!("Failed setting theme {}", theme))?;
-    let true_color = cx.editor.config.true_color || crate::true_color();
+    let true_color = cx.editor.config().true_color || crate::true_color();
     if !(true_color || theme.is_16_color()) {
         bail!("Unsupported theme: theme requires true color support");
     }
@@ -592,7 +663,7 @@ fn paste_clipboard_before(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Clipboard, 1)
+    paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Clipboard, 1)
 }
 
 fn paste_primary_clipboard_after(
@@ -608,7 +679,7 @@ fn paste_primary_clipboard_before(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Selection, 1)
+    paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Selection, 1)
 }
 
 fn replace_selections_with_clipboard_impl(
@@ -715,8 +786,11 @@ fn reload(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
+    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
-    doc.reload(view.id)
+    doc.reload(view.id).map(|_| {
+        view.ensure_cursor_in_view(doc, scrolloff);
+    })
 }
 
 fn tree_sitter_scopes(
@@ -767,6 +841,26 @@ fn hsplit(
                 .open(PathBuf::from(arg.as_ref()), Action::HorizontalSplit)?;
         }
     }
+
+    Ok(())
+}
+
+fn vsplit_new(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor.new_file(Action::VerticalSplit);
+
+    Ok(())
+}
+
+fn hsplit_new(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor.new_file(Action::HorizontalSplit);
 
     Ok(())
 }
@@ -828,7 +922,7 @@ fn tutor(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    let path = helix_core::runtime_dir().join("tutor.txt");
+    let path = helix_loader::runtime_dir().join("tutor.txt");
     cx.editor.open(path, Action::Replace)?;
     // Unset path to prevent accidentally saving to the original tutor file.
     doc_mut!(cx.editor).set_path(None)?;
@@ -852,35 +946,76 @@ pub(super) fn goto_line_number(
     Ok(())
 }
 
-fn setting(
+// Fetch the current value of a config option and output as status.
+fn get_option(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    let runtime_config = &mut cx.editor.config;
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:get key`");
+    }
 
+    let key = &args[0].to_lowercase();
+    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+
+    let config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
+    let pointer = format!("/{}", key.replace('.', "/"));
+    let value = config.pointer(&pointer).ok_or_else(key_error)?;
+
+    cx.editor.set_status(value.to_string());
+    Ok(())
+}
+
+/// Change config at runtime. Access nested values by dot syntax, for
+/// example to disable smart case search, use `:set search.smart-case false`.
+fn set_option(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
     if args.len() != 2 {
         anyhow::bail!("Bad arguments. Usage: `:set key field`");
     }
-
     let (key, arg) = (&args[0].to_lowercase(), &args[1]);
 
-    match key.as_ref() {
-        "scrolloff" => runtime_config.scrolloff = arg.parse()?,
-        "scroll-lines" => runtime_config.scroll_lines = arg.parse()?,
-        "mouse" => runtime_config.mouse = arg.parse()?,
-        "line-number" => runtime_config.line_number = arg.parse()?,
-        "middle-click_paste" => runtime_config.middle_click_paste = arg.parse()?,
-        "auto-pairs" => runtime_config.auto_pairs = arg.parse()?,
-        "auto-completion" => runtime_config.auto_completion = arg.parse()?,
-        "completion-trigger-len" => runtime_config.completion_trigger_len = arg.parse()?,
-        "auto-info" => runtime_config.auto_info = arg.parse()?,
-        "true-color" => runtime_config.true_color = arg.parse()?,
-        "search.smart-case" => runtime_config.search.smart_case = arg.parse()?,
-        "search.wrap-around" => runtime_config.search.wrap_around = arg.parse()?,
-        _ => anyhow::bail!("Unknown key `{}`.", args[0]),
+    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+    let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
+
+    let mut config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
+    let pointer = format!("/{}", key.replace('.', "/"));
+    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+
+    *value = if value.is_string() {
+        // JSON strings require quotes, so we can't .parse() directly
+        serde_json::Value::String(arg.to_string())
+    } else {
+        arg.parse().map_err(field_error)?
+    };
+    let config = serde_json::from_value(config).map_err(field_error)?;
+
+    cx.editor
+        .config_events
+        .0
+        .send(ConfigEvent::Update(config))?;
+    Ok(())
+}
+
+/// Change the language of the current buffer at runtime.
+fn language(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:set-language language`");
     }
 
+    let doc = doc_mut!(cx.editor);
+    doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone());
+
+    let id = doc.id();
+    cx.editor.refresh_language_server(id);
     Ok(())
 }
 
@@ -934,6 +1069,45 @@ fn sort_impl(
     Ok(())
 }
 
+fn reflow(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    let (view, doc) = current!(cx.editor);
+
+    const DEFAULT_MAX_LEN: usize = 79;
+
+    // Find the max line length by checking the following sources in order:
+    //   - The passed argument in `args`
+    //   - The configured max_line_len for this language in languages.toml
+    //   - The const default we set above
+    let max_line_len: usize = args
+        .get(0)
+        .map(|num| num.parse::<usize>())
+        .transpose()?
+        .or_else(|| {
+            doc.language_config()
+                .and_then(|config| config.max_line_length)
+        })
+        .unwrap_or(DEFAULT_MAX_LEN);
+
+    let rope = doc.text();
+
+    let selection = doc.selection(view.id);
+    let transaction = Transaction::change_by_selection(rope, selection, |range| {
+        let fragment = range.fragment(rope.slice(..));
+        let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, max_line_len);
+
+        (range.from(), range.to(), Some(reflowed_text))
+    });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+
+    Ok(())
+}
+
 fn tree_sitter_subtree(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -965,6 +1139,101 @@ fn tree_sitter_subtree(
 
             cx.jobs.callback(callback);
         }
+    }
+
+    Ok(())
+}
+
+fn open_config(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor
+        .open(helix_loader::config_file(), Action::Replace)?;
+    Ok(())
+}
+
+fn open_log(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor.open(helix_loader::log_file(), Action::Replace)?;
+    Ok(())
+}
+
+fn refresh_config(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
+    Ok(())
+}
+
+fn append_output(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    ensure!(!args.is_empty(), "Shell command required");
+    shell(cx, &args.join(" "), &ShellBehavior::Append);
+    Ok(())
+}
+
+fn insert_output(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    ensure!(!args.is_empty(), "Shell command required");
+    shell(cx, &args.join(" "), &ShellBehavior::Insert);
+    Ok(())
+}
+
+fn pipe(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    ensure!(!args.is_empty(), "Shell command required");
+    shell(cx, &args.join(" "), &ShellBehavior::Replace);
+    Ok(())
+}
+
+fn run_shell_command(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    let shell = &cx.editor.config().shell;
+    let (output, success) = shell_impl(shell, &args.join(" "), None)?;
+    if success {
+        cx.editor.set_status("Command succeed");
+    } else {
+        cx.editor.set_error("Command failed");
+    }
+
+    if !output.is_empty() {
+        let callback = async move {
+            let call: job::Callback =
+                Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                    let contents = ui::Markdown::new(
+                        format!("```sh\n{}\n```", output),
+                        editor.syn_loader.clone(),
+                    );
+                    let mut popup = Popup::new("shell", contents);
+                    popup.set_position(Some(helix_core::Position::new(
+                        editor.cursor().0.unwrap_or_default().row,
+                        2,
+                    )));
+                    compositor.replace_or_push("shell", popup);
+                });
+            Ok(call)
+        };
+
+        cx.jobs.callback(callback);
     }
 
     Ok(())
@@ -1023,15 +1292,29 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "buffer-close-all",
             aliases: &["bca", "bcloseall"],
-            doc: "Close all buffers, without quiting.",
+            doc: "Close all buffers, without quitting.",
             fun: buffer_close_all,
             completer: None,
         },
         TypableCommand {
             name: "buffer-close-all!",
             aliases: &["bca!", "bcloseall!"],
-            doc: "Close all buffers forcefully (ignoring unsaved changes), without quiting.",
+            doc: "Close all buffers forcefully (ignoring unsaved changes), without quitting.",
             fun: force_buffer_close_all,
+            completer: None,
+        },
+        TypableCommand {
+            name: "buffer-next",
+            aliases: &["bn", "bnext"],
+            doc: "Go to next buffer.",
+            fun: buffer_next,
+            completer: None,
+        },
+        TypableCommand {
+            name: "buffer-previous",
+            aliases: &["bp", "bprev"],
+            doc: "Go to previous buffer.",
+            fun: buffer_previous,
             completer: None,
         },
         TypableCommand {
@@ -1039,6 +1322,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["w"],
             doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
             fun: write,
+            completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "write!",
+            aliases: &["w!"],
+            doc: "Write changes to disk forcefully (creating necessary subdirectories). Accepts an optional path (:write some/path.txt)",
+            fun: force_write,
             completer: Some(completers::filename),
         },
         TypableCommand {
@@ -1065,6 +1355,9 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "line-ending",
             aliases: &[],
+            #[cfg(not(feature = "unicode-lines"))]
+            doc: "Set the document's default line ending. Options: crlf, lf.",
+            #[cfg(feature = "unicode-lines")]
             doc: "Set the document's default line ending. Options: crlf, lf, cr, ff, nel.",
             fun: set_line_ending,
             completer: None,
@@ -1294,11 +1587,25 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: Some(completers::filename),
         },
         TypableCommand {
+            name: "vsplit-new",
+            aliases: &["vnew"],
+            doc: "Open a scratch buffer in a vertical split.",
+            fun: vsplit_new,
+            completer: None,
+        },
+        TypableCommand {
             name: "hsplit",
             aliases: &["hs", "sp"],
             doc: "Open the file in a horizontal split.",
             fun: hsplit,
             completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "hsplit-new",
+            aliases: &["hnew"],
+            doc: "Open a scratch buffer in a horizontal split.",
+            fun: hsplit_new,
+            completer: None,
         },
         TypableCommand {
             name: "tutor",
@@ -1315,10 +1622,24 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: None,
         },
         TypableCommand {
+            name: "set-language",
+            aliases: &["lang"],
+            doc: "Set the language of current buffer.",
+            fun: language,
+            completer: Some(completers::language),
+        },
+        TypableCommand {
             name: "set-option",
             aliases: &["set"],
-            doc: "Set a config option at runtime",
-            fun: setting,
+            doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
+            fun: set_option,
+            completer: Some(completers::setting),
+        },
+        TypableCommand {
+            name: "get-option",
+            aliases: &["get"],
+            doc: "Get the current value of a config option.",
+            fun: get_option,
             completer: Some(completers::setting),
         },
         TypableCommand {
@@ -1336,11 +1657,67 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: None,
         },
         TypableCommand {
+            name: "reflow",
+            aliases: &[],
+            doc: "Hard-wrap the current selection of lines to a given width.",
+            fun: reflow,
+            completer: None,
+        },
+        TypableCommand {
             name: "tree-sitter-subtree",
             aliases: &["ts-subtree"],
             doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
             fun: tree_sitter_subtree,
             completer: None,
+        },
+        TypableCommand {
+            name: "config-reload",
+            aliases: &[],
+            doc: "Refreshes helix's config.",
+            fun: refresh_config,
+            completer: None,
+        },
+        TypableCommand {
+            name: "config-open",
+            aliases: &[],
+            doc: "Open the helix config.toml file.",
+            fun: open_config,
+            completer: None,
+        },
+        TypableCommand {
+            name: "log-open",
+            aliases: &[],
+            doc: "Open the helix log file.",
+            fun: open_log,
+            completer: None,
+        },
+        TypableCommand {
+            name: "insert-output",
+            aliases: &[],
+            doc: "Run shell command, inserting output after each selection.",
+            fun: insert_output,
+            completer: None,
+        },
+        TypableCommand {
+            name: "append-output",
+            aliases: &[],
+            doc: "Run shell command, appending output after each selection.",
+            fun: append_output,
+            completer: None,
+        },
+        TypableCommand {
+            name: "pipe",
+            aliases: &[],
+            doc: "Pipe each selection to the shell command.",
+            fun: pipe,
+            completer: None,
+        },
+        TypableCommand {
+            name: "run-shell-command",
+            aliases: &["sh"],
+            doc: "Run a shell command",
+            fun: run_shell_command,
+            completer: Some(completers::directory),
         },
     ];
 

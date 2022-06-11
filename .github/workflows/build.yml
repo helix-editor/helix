@@ -11,36 +11,24 @@ jobs:
   check:
     name: Check
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [stable, msrv]
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-        with:
-          submodules: true
+        uses: actions/checkout@v3
+
+      - name: Use MSRV rust toolchain
+        if: matrix.rust == 'msrv'
+        run: cp .github/workflows/msrv-rust-toolchain.toml rust-toolchain.toml
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: helix-editor/rust-toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
           override: true
 
-      - name: Cache cargo registry
-        uses: actions/cache@v2.1.7
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v2.1.7
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo target dir
-        uses: actions/cache@v2.1.7
-        with:
-          path: target
-          key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v1
 
       - name: Run cargo check
         uses: actions-rs/cargo@v1
@@ -52,79 +40,51 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-        with:
-          submodules: true
+        uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: helix-editor/rust-toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ matrix.rust }}
           override: true
 
-      - name: Cache cargo registry
-        uses: actions/cache@v2.1.7
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v1
 
-      - name: Cache cargo index
-        uses: actions/cache@v2.1.7
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+      - name: Copy minimal languages config
+        run: cp .github/workflows/languages.toml ./languages.toml
 
-      - name: Cache cargo target dir
-        uses: actions/cache@v2.1.7
+      - name: Cache test tree-sitter grammar
+        uses: actions/cache@v3
         with:
-          path: target
-          key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          path: runtime/grammars
+          key: ${{ runner.os }}-stable-v${{ env.CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
+          restore-keys: ${{ runner.os }}-stable-v${{ env.CACHE_VERSION }}-tree-sitter-grammars-
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --workspace
 
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [stable]
 
   lints:
     name: Lints
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-        with:
-          submodules: true
+        uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: helix-editor/rust-toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
           override: true
           components: rustfmt, clippy
 
-      - name: Cache cargo registry
-        uses: actions/cache@v2.1.7
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v2.1.7
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo target dir
-        uses: actions/cache@v2.1.7
-        with:
-          path: target
-          key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v1
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
@@ -143,34 +103,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-        with:
-          submodules: true
+        uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: helix-editor/rust-toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
           override: true
 
-      - name: Cache cargo registry
-        uses: actions/cache@v2.1.6
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v2.1.6
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo target dir
-        uses: actions/cache@v2.1.6
-        with:
-          path: target
-          key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v1
 
       - name: Generate docs
         uses: actions-rs/cargo@v1

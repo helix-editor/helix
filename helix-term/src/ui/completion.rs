@@ -135,6 +135,7 @@ impl Completion {
 
             match event {
                 PromptEvent::Abort => {
+                    doc.restore(view.id);
                     editor.last_completion = None;
                 }
                 PromptEvent::Update => {
@@ -178,17 +179,21 @@ impl Completion {
                     });
 
                     // apply additional edits, mostly used to auto import unqualified types
-                    let resolved_additional_text_edits = if item.additional_text_edits.is_some() {
+                    let resolved_item = if item
+                        .additional_text_edits
+                        .as_ref()
+                        .map(|edits| !edits.is_empty())
+                        .unwrap_or(false)
+                    {
                         None
                     } else {
                         Self::resolve_completion_item(doc, item.clone())
-                            .and_then(|item| item.additional_text_edits)
                     };
 
-                    if let Some(additional_edits) = item
-                        .additional_text_edits
+                    if let Some(additional_edits) = resolved_item
                         .as_ref()
-                        .or(resolved_additional_text_edits.as_ref())
+                        .and_then(|item| item.additional_text_edits.as_ref())
+                        .or(item.additional_text_edits.as_ref())
                     {
                         if !additional_edits.is_empty() {
                             let transaction = util::generate_transaction_from_edits(

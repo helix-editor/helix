@@ -91,7 +91,10 @@ mod test {
 
     #[test]
     fn test_categorize() {
-        const EOL_TEST_CASE: &str = "\n\r\u{000B}\u{000C}\u{0085}\u{2028}\u{2029}";
+        #[cfg(not(feature = "unicode-lines"))]
+        const EOL_TEST_CASE: &str = "\n";
+        #[cfg(feature = "unicode-lines")]
+        const EOL_TEST_CASE: &str = "\n\u{000B}\u{000C}\u{0085}\u{2028}\u{2029}";
         const WORD_TEST_CASE: &str = "_hello_world_あいうえおー1234567890１２３４５６７８９０";
         const PUNCTUATION_TEST_CASE: &str =
             "!\"#$%&\'()*+,-./:;<=>?@[\\]^`{|}~！”＃＄％＆’（）＊＋、。：；＜＝＞？＠「」＾｀｛｜｝～";

@@ -47,6 +47,8 @@ diagnostic = { modifiers = ["underlined"] }
 "error" = { fg = "red", modifiers = ["bold"] }
 
 "ui.background" = { bg = "black" }
+"ui.virtual.whitespace" = { fg = "light-gray" }
+"ui.virtual.ruler" = { bg = "gray" }
 
 "ui.cursor" = { fg = "white", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }
@@ -55,7 +57,7 @@ diagnostic = { modifiers = ["underlined"] }
 "ui.selection" = { bg = "light-gray" }
 "ui.selection.primary" = { bg = "gray" }
 
-"ui.linenr" = { fg = "linenr", modifiers = ["dim"] }
+"ui.linenr" = { fg = "linenr" }
 "ui.linenr.selected" = { fg = "white" }
 
 "ui.statusline" = { fg = "white", bg = "light-black" }
@@ -67,6 +69,7 @@ diagnostic = { modifiers = ["underlined"] }
 "ui.help" = { bg = "gray" }
 "ui.popup" = { bg = "gray" }
 "ui.window" = { bg = "gray" }
+"ui.menu" = { fg = "white", bg = "gray" }
 "ui.menu.selected" = { fg = "black", bg = "blue" }
 
 [palette]

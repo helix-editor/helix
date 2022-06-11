@@ -11,6 +11,8 @@ use helix_core::{
     visual_coords_at_pos, Position, RopeSlice, Selection,
 };
 
+use std::fmt;
+
 type Jump = (DocumentId, Selection);
 
 #[derive(Debug, Clone)]
@@ -64,51 +66,68 @@ impl JumpList {
     }
 }
 
-const GUTTERS: &[(Gutter, usize)] = &[
-    (gutter::diagnostics_or_breakpoints, 1),
-    (gutter::line_number, 5),
-];
-
-#[derive(Debug)]
 pub struct View {
     pub id: ViewId,
-    pub doc: DocumentId,
     pub offset: Position,
     pub area: Rect,
+    pub doc: DocumentId,
     pub jumps: JumpList,
-    /// the last accessed file before the current one
-    pub last_accessed_doc: Option<DocumentId>,
+    // documents accessed from this view from the oldest one to last viewed one
+    pub docs_access_history: Vec<DocumentId>,
     /// the last modified files before the current one
     /// ordered from most frequent to least frequent
     // uses two docs because we want to be able to swap between the
     // two last modified docs which we need to manually keep track of
     pub last_modified_docs: [Option<DocumentId>; 2],
-    /// used to store previous selections of tree-sitter objecs
+    /// used to store previous selections of tree-sitter objects
     pub object_selections: Vec<Selection>,
+    pub gutters: Vec<(Gutter, usize)>,
+}
+
+impl fmt::Debug for View {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("View")
+            .field("id", &self.id)
+            .field("area", &self.area)
+            .field("doc", &self.doc)
+            .finish()
+    }
 }
 
 impl View {
-    pub fn new(doc: DocumentId) -> Self {
+    pub fn new(doc: DocumentId, gutter_types: Vec<crate::editor::GutterType>) -> Self {
+        let mut gutters: Vec<(Gutter, usize)> = vec![];
+        use crate::editor::GutterType;
+        for gutter_type in &gutter_types {
+            match gutter_type {
+                GutterType::Diagnostics => gutters.push((gutter::diagnostics_or_breakpoints, 1)),
+                GutterType::LineNumbers => gutters.push((gutter::line_numbers, 5)),
+            }
+        }
         Self {
             id: ViewId::default(),
             doc,
             offset: Position::new(0, 0),
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
-            last_accessed_doc: None,
+            docs_access_history: Vec::new(),
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
+            gutters,
         }
     }
 
-    pub fn gutters(&self) -> &[(Gutter, usize)] {
-        GUTTERS
+    pub fn add_to_history(&mut self, id: DocumentId) {
+        if let Some(pos) = self.docs_access_history.iter().position(|&doc| doc == id) {
+            self.docs_access_history.remove(pos);
+        }
+        self.docs_access_history.push(id);
     }
 
     pub fn inner_area(&self) -> Rect {
         // TODO: cache this
         let offset = self
-            .gutters()
+            .gutters
             .iter()
             .map(|(_, width)| *width as u16)
             .sum::<u16>()
@@ -297,6 +316,11 @@ impl View {
         ))
     }
 
+    pub fn remove_document(&mut self, doc_id: &DocumentId) {
+        self.jumps.remove(doc_id);
+        self.docs_access_history.retain(|doc| doc != doc_id);
+    }
+
     // pub fn traverse<F>(&self, text: RopeSlice, start: usize, end: usize, fun: F)
     // where
     //     F: Fn(usize, usize),
@@ -324,11 +348,16 @@ mod tests {
     use super::*;
     use helix_core::Rope;
     const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
-                           // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
+    const OFFSET_WITHOUT_LINE_NUMBERS: u16 = 2; // 1 diagnostic + 1 gutter
+                                                // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
+    use crate::editor::GutterType;
 
     #[test]
     fn test_text_pos_at_screen_coords() {
-        let mut view = View::new(DocumentId::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let text = rope.slice(..);
@@ -373,8 +402,35 @@ mod tests {
     }
 
     #[test]
+    fn test_text_pos_at_screen_coords_without_line_numbers_gutter() {
+        let mut view = View::new(DocumentId::default(), vec![GutterType::Diagnostics]);
+        view.area = Rect::new(40, 40, 40, 40);
+        let rope = Rope::from_str("abc\n\tdef");
+        let text = rope.slice(..);
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 41, 40 + OFFSET_WITHOUT_LINE_NUMBERS + 1, 4),
+            Some(4)
+        );
+    }
+
+    #[test]
+    fn test_text_pos_at_screen_coords_without_any_gutters() {
+        let mut view = View::new(DocumentId::default(), vec![]);
+        view.area = Rect::new(40, 40, 40, 40);
+        let rope = Rope::from_str("abc\n\tdef");
+        let text = rope.slice(..);
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 41, 40 + 1, 4),
+            Some(4)
+        );
+    }
+
+    #[test]
     fn test_text_pos_at_screen_coords_cjk() {
-        let mut view = View::new(DocumentId::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
         let text = rope.slice(..);
@@ -411,7 +467,10 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_graphemes() {
-        let mut view = View::new(DocumentId::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");
         let text = rope.slice(..);

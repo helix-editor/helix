@@ -69,6 +69,10 @@ impl Registers {
         self.get(name).map(|reg| reg.read())
     }
 
+    pub fn first(&self, name: char) -> Option<&String> {
+        self.read(name).and_then(|entries| entries.first())
+    }
+
     pub fn inner(&self) -> &HashMap<char, Register> {
         &self.inner
     }

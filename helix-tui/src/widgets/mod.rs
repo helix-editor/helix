@@ -27,17 +27,16 @@ use helix_view::graphics::Rect;
 
 bitflags! {
     /// Bitflags that can be composed to set the visible borders essentially on the block widget.
-    pub struct Borders: u32 {
-        /// Show no border (default)
-        const NONE  = 0b0000_0001;
+    #[derive(Default)]
+    pub struct Borders: u8 {
         /// Show the top border
-        const TOP   = 0b0000_0010;
+        const TOP = 0b0000_0001;
         /// Show the right border
-        const RIGHT = 0b0000_0100;
+        const RIGHT = 0b0000_0010;
         /// Show the bottom border
-        const BOTTOM = 0b000_1000;
+        const BOTTOM = 0b000_0100;
         /// Show the left border
-        const LEFT = 0b0001_0000;
+        const LEFT = 0b0000_1000;
         /// Show all borders
         const ALL = Self::TOP.bits | Self::RIGHT.bits | Self::BOTTOM.bits | Self::LEFT.bits;
     }

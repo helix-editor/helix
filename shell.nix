@@ -1,6 +1,8 @@
 # Flake's devShell for non-flake-enabled nix instances
 let
-  src = (builtins.fromJSON (builtins.readFile ./flake.lock)).nodes.flakeCompat.locked;
-  compat = fetchTarball { url = "https://github.com/edolstra/flake-compat/archive/${src.rev}.tar.gz"; sha256 = src.narHash; };
+  compat = builtins.fetchGit {
+    url = "https://github.com/edolstra/flake-compat.git";
+    rev = "b4a34015c698c7793d592d66adbab377907a2be8";
+  };
 in
-(import compat { src = ./.; }).shellNix.default
+  (import compat {src = ./.;}).shellNix.default

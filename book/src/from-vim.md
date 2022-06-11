@@ -9,4 +9,4 @@ single width selection.
 
 See also Kakoune's [Migrating from Vim](https://github.com/mawww/kakoune/wiki/Migrating-from-Vim).
 
-> TODO: Mention texobjects, surround, registers
+> TODO: Mention textobjects, surround, registers

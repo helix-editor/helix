@@ -1,9 +1,0 @@
-indent = [
-  "object",
-  "array"
-]
-
-outdent = [
-  "]",
-  "}"
-]
