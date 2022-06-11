@@ -13,13 +13,7 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
 
     test_key_sequence(
-        &mut Application::new(
-            Args {
-                files: vec![(file.path().to_path_buf(), Position::default())],
-                ..Default::default()
-            },
-            Config::default(),
-        )?,
+        &mut helpers::app_with_file(file.path())?,
         Some("ihello<esc>:wq<ret>"),
         Some(&|app| {
             assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
@@ -76,13 +70,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     command.push_str(":buffer<minus>close<ret>");
 
     test_key_sequence(
-        &mut Application::new(
-            Args {
-                files: vec![(file.path().to_path_buf(), Position::default())],
-                ..Default::default()
-            },
-            Config::default(),
-        )?,
+        &mut helpers::app_with_file(file.path())?,
         Some(&command),
         Some(&|app| {
             assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status());

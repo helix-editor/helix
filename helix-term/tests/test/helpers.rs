@@ -1,4 +1,4 @@
-use std::{io::Write, time::Duration};
+use std::{io::Write, path::PathBuf, time::Duration};
 
 use anyhow::bail;
 use crossterm::event::{Event, KeyEvent};
@@ -198,4 +198,16 @@ pub fn new_readonly_tempfile() -> anyhow::Result<NamedTempFile> {
     perms.set_readonly(true);
     file.as_file_mut().set_permissions(perms)?;
     Ok(file)
+}
+
+/// Creates a new Application with default config that opens the given file
+/// path
+pub fn app_with_file<P: Into<PathBuf>>(path: P) -> anyhow::Result<Application> {
+    Application::new(
+        Args {
+            files: vec![(path.into(), helix_core::Position::default())],
+            ..Default::default()
+        },
+        Config::default(),
+    )
 }

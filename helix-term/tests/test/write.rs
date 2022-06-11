@@ -14,13 +14,7 @@ async fn test_write() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 
     test_key_sequence(
-        &mut Application::new(
-            Args {
-                files: vec![(file.path().to_path_buf(), Position::default())],
-                ..Default::default()
-            },
-            Config::default(),
-        )?,
+        &mut helpers::app_with_file(file.path())?,
         Some("ii can eat glass, it will not hurt me<ret><esc>:w<ret>"),
         None,
         false,
@@ -46,13 +40,7 @@ async fn test_write_quit() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 
     test_key_sequence(
-        &mut Application::new(
-            Args {
-                files: vec![(file.path().to_path_buf(), Position::default())],
-                ..Default::default()
-            },
-            Config::default(),
-        )?,
+        &mut helpers::app_with_file(file.path())?,
         Some("ii can eat glass, it will not hurt me<ret><esc>:wq<ret>"),
         None,
         true,
@@ -86,13 +74,7 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
     }
 
     test_key_sequence(
-        &mut Application::new(
-            Args {
-                files: vec![(file.path().to_path_buf(), Position::default())],
-                ..Default::default()
-            },
-            Config::default(),
-        )?,
+        &mut helpers::app_with_file(file.path())?,
         Some(&command),
         None,
         false,
@@ -115,13 +97,7 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
 
     test_key_sequences(
-        &mut Application::new(
-            Args {
-                files: vec![(file.path().to_path_buf(), Position::default())],
-                ..Default::default()
-            },
-            Config::default(),
-        )?,
+        &mut helpers::app_with_file(file.path())?,
         vec![
             (
                 None,

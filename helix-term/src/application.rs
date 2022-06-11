@@ -239,11 +239,9 @@ impl Application {
         self.last_render = Instant::now();
 
         loop {
-            if self.editor.should_close() {
+            if !self.event_loop_until_idle(input_stream).await {
                 break;
             }
-
-            self.event_loop_until_idle(input_stream).await;
         }
     }
 
