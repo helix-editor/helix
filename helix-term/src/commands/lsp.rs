@@ -16,6 +16,11 @@ use crate::{
 
 use std::borrow::Cow;
 
+/// Gets the language server that is attached to a document, and
+/// if it's not active displays a status message. Using this macro
+/// in a context where the editor automatically queries the LSP
+/// (instead of when the user explicitly does so via a keybind like
+/// `gd`) will spam the "LSP inactive" status message confusingly.
 #[macro_export]
 macro_rules! language_server {
     ($editor:expr, $doc:expr) => {
