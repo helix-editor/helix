@@ -668,8 +668,10 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
             }
 
             let response = match response {
-                Some(s) => s,
-                None => {
+                // According to the spec the response should be None if there
+                // are no signatures, but some servers don't follow this.
+                Some(s) if !s.signatures.is_empty() => s,
+                _ => {
                     compositor.remove(SignatureHelp::ID);
                     return;
                 }
@@ -680,9 +682,13 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
                 .and_then(|scope| scope.strip_prefix("source."))
                 .unwrap_or("");
 
-            // If there are no signatures, response will be None, therefore
-            // at least one signature exists.
-            let signature = &response.signatures[response.active_signature.unwrap_or(0) as usize];
+            let signature = match response
+                .signatures
+                .get(response.active_signature.unwrap_or(0) as usize)
+            {
+                Some(s) => s,
+                None => return,
+            };
             let mut contents = SignatureHelp::new(
                 signature.label.clone(),
                 language.to_string(),
