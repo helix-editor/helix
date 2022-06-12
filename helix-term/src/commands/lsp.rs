@@ -13,7 +13,7 @@ use crate::{
     compositor::{self, Compositor},
     ui::{
         self, lsp::SignatureHelp, overlay::overlayed, popup, FileLocation, FilePicker, Popup,
-        Prompt, PromptEvent,
+        PromptEvent,
     },
 };
 
@@ -655,7 +655,10 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.text_document_signature_help(doc.identifier(), pos, None);
+    let future = match language_server.text_document_signature_help(doc.identifier(), pos, None) {
+        Some(f) => f,
+        None => return,
+    };
 
     cx.callback(
         future,

@@ -655,7 +655,14 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> impl Future<Output = Result<Value>> {
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        #[allow(clippy::question_mark)]
+        if capabilities.signature_help_provider.is_none() {
+            return None;
+        }
+
         let params = lsp::SignatureHelpParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
@@ -666,7 +673,7 @@ impl Client {
             // lsp::SignatureHelpContext
         };
 
-        self.call::<lsp::request::SignatureHelpRequest>(params)
+        Some(self.call::<lsp::request::SignatureHelpRequest>(params))
     }
 
     pub fn text_document_hover(
