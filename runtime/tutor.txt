@@ -332,23 +332,25 @@ _________________________________________________________________
 =                     3.1 MULTIPLE CURSORS                      =
 =================================================================
 
- Type C to duplicate the cursor to the next line.
+ Type C to duplicate the cursor to the next suitable line.
 
  1. Move the cursor to the first line below marked -->.
- 2. Type C to duplicate the cursor to the next line. Keys you
-    type will now affect both cursors.
+ 2. Type C to duplicate the cursor to the next suitable line.
+    Notice how it skips the line in the middle. Keys you type
+    will now affect both cursors.
  3. Use Insert mode to correct the lines. The two cursors will
     fix both lines simultaneously.
  4. Type , to remove the second cursor.
 
  --> Fix th two nes at same ime.
+ -->
  --> Fix th two nes at same ime.
 
      Fix these two lines at the same time.
 
  Note: Type alt-C to do the same above the cursor.
  Note: This also works for selections, but it will pick the first
-       line that is long enough for the selection to fit.
+       line that fits the entire selection at the same column.
 
 
 
