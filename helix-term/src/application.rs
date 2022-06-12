@@ -287,6 +287,10 @@ impl Application {
                 self.config.store(Arc::new(app_config));
             }
         }
+
+        // Update all the relevant members in the editor after updating
+        // the configuration.
+        self.editor.refresh_config();
     }
 
     fn refresh_config(&mut self) {
@@ -318,10 +322,6 @@ impl Application {
         }
 
         self.config.store(Arc::new(config));
-
-        // Update all the relevant members in the editor after replacing
-        // the configuration.
-        self.editor.refresh_config();
     }
 
     fn true_color(&self) -> bool {
