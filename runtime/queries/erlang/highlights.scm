@@ -58,7 +58,7 @@
  (#eq? @keyword "(spec|callback)"))
 
 ; Functions
-(function name: (atom) @function)
+(function_clause name: (atom) @function)
 (call module: (atom) @module)
 (call function: (atom) @function)
 (stab_clause name: (atom) @function)
@@ -84,6 +84,11 @@
   left: (atom) @function
   operator: "/"
   right: (integer) @constant.numeric.integer)
+
+((binary_operator operator: _ @keyword.operator)
+ (#match? @keyword.operator "^\\w+$"))
+((unary_operator operator: _ @keyword.operator)
+ (#match? @keyword.operator "^\\w+$"))
 
 (binary_operator operator: _ @operator)
 (unary_operator operator: _ @operator)

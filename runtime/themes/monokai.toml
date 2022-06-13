@@ -59,7 +59,8 @@
 "ui.window" = { bg = "widget" }
 "ui.popup" = { bg = "widget" }
 "ui.help" = { bg = "widget" }
-"ui.menu.selected" = { bg = "widget" }
+"ui.menu" = { bg = "widget" }
+"ui.menu.selected" = { bg = "#414339" }
 
 "ui.cursor" = { fg = "cursor", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "cursor", modifiers = ["reversed"] }
@@ -71,7 +72,7 @@
 "ui.linenr" = { fg = "#90908a" }
 "ui.linenr.selected" = { fg = "#c2c2bf" }
 
-"ui.statusline" = { fg = "active_text", bg = "#75715e" }
+"ui.statusline" = { fg = "active_text", bg = "#414339" }
 "ui.statusline.inactive" = { fg = "active_text", bg = "#75715e" }
 
 "ui.text" = { fg = "text", bg = "background" }
@@ -98,3 +99,4 @@ active_text = "#ffffff"
 cursor = "#a6a6a6"
 inactive_cursor = "#878b91"
 widget = "#1e1f1c"
+selection = "#414339"

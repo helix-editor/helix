@@ -51,6 +51,78 @@ It can also act on multiple selections (yay!). For example, to change every occu
 
 Multiple characters are currently not supported, but planned.
 
+## Syntax-tree Motions
+
+`A-p`, `A-o`, `A-i`, and `A-n` (or `Alt` and arrow keys) move the primary
+selection according to the selection's place in the syntax tree. Let's walk
+through an example to get familiar with them. Many languages have a syntax like
+so for function calls:
+
+```
+func(arg1, arg2, arg3)
+```
+
+A function call might be parsed by tree-sitter into a tree like the following.
+
+```tsq
+(call
+  function: (identifier) ; func
+  arguments:
+    (arguments           ; (arg1, arg2, arg3)
+      (identifier)       ; arg1
+      (identifier)       ; arg2
+      (identifier)))     ; arg3
+```
+
+Use `:tree-sitter-subtree` to view the syntax tree of the primary selection. In
+a more intuitive tree format:
+
+```
+            ┌────┐
+            │call│
+      ┌─────┴────┴─────┐
+      │                │
+┌─────▼────┐      ┌────▼────┐
+│identifier│      │arguments│
+│  "func"  │ ┌────┴───┬─────┴───┐
+└──────────┘ │        │         │
+             │        │         │
+   ┌─────────▼┐  ┌────▼─────┐  ┌▼─────────┐
+   │identifier│  │identifier│  │identifier│
+   │  "arg1"  │  │  "arg2"  │  │  "arg3"  │
+   └──────────┘  └──────────┘  └──────────┘
+```
+
+Say we have a selection that wraps `arg1`. The selection is on the `arg1` leaf
+in the tree above.
+
+```
+func([arg1], arg2, arg3)
+```
+
+Using `A-n` would select the next sibling in the syntax tree: `arg2`.
+
+```
+func(arg1, [arg2], arg3)
+```
+
+While `A-o` would expand the selection to the parent node. In the tree above we
+can see that we would select the `arguments` node.
+
+```
+func[(arg1, arg2, arg3)]
+```
+
+There is also some nuanced behavior that prevents you from getting stuck on a
+node with no sibling. If we have a selection on `arg1`, `A-p` would bring us
+to the previous child node. Since `arg1` doesn't have a sibling to its left,
+though, we climb the syntax tree and then take the previous selection. So `A-p`
+will move the selection over to the "func" `identifier`.
+
+```
+[func](arg1, arg2, arg3)
+```
+
 ## Textobjects
 
 Currently supported: `word`, `surround`, `function`, `class`, `parameter`.

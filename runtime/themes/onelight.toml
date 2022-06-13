@@ -92,9 +92,10 @@
 "ui.text" = { fg = "black" }
 "ui.text.focus" = { fg = "red", bg = "light-white", modifiers = ["bold"] }
 
-"ui.help" = { bg = "light-white" }
+"ui.help" = { fg = "black", bg = "light-white" }
 "ui.popup" = { bg = "light-white" }
 "ui.window" = { bg = "light-white" }
+"ui.menu" = { fg = "black", bg = "light-white" }
 "ui.menu.selected" = { fg = "white", bg = "light-blue" }
 
 [palette]

@@ -410,6 +410,7 @@ impl Document {
         let language_server = self.language_server()?;
         let text = self.text.clone();
         let offset_encoding = language_server.offset_encoding();
+
         let request = language_server.text_document_formatting(
             self.identifier(),
             lsp::FormattingOptions {
@@ -853,9 +854,11 @@ impl Document {
     /// `language-server` configuration, or the document language if no
     /// `language-id` has been specified.
     pub fn language_id(&self) -> Option<&str> {
-        self.language_config()
-            .and_then(|config| config.language_server.as_ref())
-            .and_then(|lsp_config| lsp_config.language_id.as_deref())
+        self.language_config()?
+            .language_server
+            .as_ref()?
+            .language_id
+            .as_deref()
             .or_else(|| Some(self.language()?.rsplit_once('.')?.1))
     }
 

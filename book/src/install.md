@@ -79,4 +79,4 @@ For more information on the information displayed in the healthcheck results ref
 
 Tree-sitter grammars must be fetched and compiled if not pre-packaged.
 Fetch grammars with `hx --grammar fetch` (requires `git`) and compile them
-with `hx --grammar build` (requires a C compiler).
+with `hx --grammar build` (requires a C++ compiler).

@@ -65,18 +65,8 @@ pub fn regex_prompt(
                     doc.set_selection(view.id, snapshot.clone());
                     view.offset = offset_snapshot;
                 }
-                PromptEvent::Validate => match Regex::new(input) {
-                    Ok(regex) => {
-                        let (view, doc) = current!(cx.editor);
-                        // Equivalent to push_jump to store selection just before jump
-                        view.jumps.push((doc_id, snapshot.clone()));
-                        fun(view, doc, regex, event);
-                    }
-                    Err(_err) => (), // TODO: mark command line as error
-                },
-
-                PromptEvent::Update => {
-                    // skip empty input, TODO: trigger default
+                PromptEvent::Update | PromptEvent::Validate => {
+                    // skip empty input
                     if input.is_empty() {
                         return;
                     }
@@ -97,6 +87,11 @@ pub fn regex_prompt(
 
                             // revert state to what it was before the last update
                             doc.set_selection(view.id, snapshot.clone());
+
+                            if event == PromptEvent::Validate {
+                                // Equivalent to push_jump to store selection just before jump
+                                view.jumps.push((doc_id, snapshot.clone()));
+                            }
 
                             fun(view, doc, regex, event);
 

@@ -399,8 +399,14 @@ impl Application {
         match call {
             Call::Notification(helix_lsp::jsonrpc::Notification { method, params, .. }) => {
                 let notification = match Notification::parse(&method, params) {
-                    Some(notification) => notification,
-                    None => return,
+                    Ok(notification) => notification,
+                    Err(err) => {
+                        log::error!(
+                            "received malformed notification from Language Server: {}",
+                            err
+                        );
+                        return;
+                    }
                 };
 
                 match notification {
@@ -617,9 +623,17 @@ impl Application {
                 method, params, id, ..
             }) => {
                 let call = match MethodCall::parse(&method, params) {
-                    Some(call) => call,
-                    None => {
-                        error!("Method not found {}", method);
+                    Ok(call) => call,
+                    Err(helix_lsp::Error::Unhandled) => {
+                        error!("Language Server: Method not found {}", method);
+                        return;
+                    }
+                    Err(err) => {
+                        log::error!(
+                            "received malformed method call from Language Server: {}: {}",
+                            method,
+                            err
+                        );
                         return;
                     }
                 };

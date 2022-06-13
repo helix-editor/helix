@@ -40,6 +40,8 @@ pub enum Error {
     StreamClosed,
     #[error("LSP not defined")]
     LspNotDefined,
+    #[error("Unhandled")]
+    Unhandled,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -171,9 +173,13 @@ pub mod util {
 
     pub fn generate_transaction_from_edits(
         doc: &Rope,
-        edits: Vec<lsp::TextEdit>,
+        mut edits: Vec<lsp::TextEdit>,
         offset_encoding: OffsetEncoding,
     ) -> Transaction {
+        // Sort edits by start range, since some LSPs (Omnisharp) send them
+        // in reverse order.
+        edits.sort_unstable_by_key(|edit| edit.range.start);
+
         Transaction::change(
             doc,
             edits.into_iter().map(|edit| {
@@ -226,34 +232,27 @@ pub enum MethodCall {
 }
 
 impl MethodCall {
-    pub fn parse(method: &str, params: jsonrpc::Params) -> Option<MethodCall> {
+    pub fn parse(method: &str, params: jsonrpc::Params) -> Result<MethodCall> {
         use lsp::request::Request;
         let request = match method {
             lsp::request::WorkDoneProgressCreate::METHOD => {
-                let params: lsp::WorkDoneProgressCreateParams = params
-                    .parse()
-                    .expect("Failed to parse WorkDoneCreate params");
+                let params: lsp::WorkDoneProgressCreateParams = params.parse()?;
                 Self::WorkDoneProgressCreate(params)
             }
             lsp::request::ApplyWorkspaceEdit::METHOD => {
-                let params: lsp::ApplyWorkspaceEditParams = params
-                    .parse()
-                    .expect("Failed to parse ApplyWorkspaceEdit params");
+                let params: lsp::ApplyWorkspaceEditParams = params.parse()?;
                 Self::ApplyWorkspaceEdit(params)
             }
             lsp::request::WorkspaceFoldersRequest::METHOD => Self::WorkspaceFolders,
             lsp::request::WorkspaceConfiguration::METHOD => {
-                let params: lsp::ConfigurationParams = params
-                    .parse()
-                    .expect("Failed to parse WorkspaceConfiguration params");
+                let params: lsp::ConfigurationParams = params.parse()?;
                 Self::WorkspaceConfiguration(params)
             }
             _ => {
-                log::warn!("unhandled lsp request: {}", method);
-                return None;
+                return Err(Error::Unhandled);
             }
         };
-        Some(request)
+        Ok(request)
     }
 }
 
@@ -268,48 +267,34 @@ pub enum Notification {
 }
 
 impl Notification {
-    pub fn parse(method: &str, params: jsonrpc::Params) -> Option<Notification> {
+    pub fn parse(method: &str, params: jsonrpc::Params) -> Result<Notification> {
         use lsp::notification::Notification as _;
 
         let notification = match method {
             lsp::notification::Initialized::METHOD => Self::Initialized,
             lsp::notification::PublishDiagnostics::METHOD => {
-                let params: lsp::PublishDiagnosticsParams = params
-                    .parse()
-                    .map_err(|err| {
-                        log::error!(
-                            "received malformed PublishDiagnostic from Language Server: {}",
-                            err
-                        )
-                    })
-                    .ok()?;
-
-                // TODO: need to loop over diagnostics and distinguish them by URI
+                let params: lsp::PublishDiagnosticsParams = params.parse()?;
                 Self::PublishDiagnostics(params)
             }
 
             lsp::notification::ShowMessage::METHOD => {
-                let params: lsp::ShowMessageParams = params.parse().ok()?;
-
+                let params: lsp::ShowMessageParams = params.parse()?;
                 Self::ShowMessage(params)
             }
             lsp::notification::LogMessage::METHOD => {
-                let params: lsp::LogMessageParams = params.parse().ok()?;
-
+                let params: lsp::LogMessageParams = params.parse()?;
                 Self::LogMessage(params)
             }
             lsp::notification::Progress::METHOD => {
-                let params: lsp::ProgressParams = params.parse().ok()?;
-
+                let params: lsp::ProgressParams = params.parse()?;
                 Self::ProgressMessage(params)
             }
             _ => {
-                log::error!("unhandled LSP notification: {}", method);
-                return None;
+                return Err(Error::Unhandled);
             }
         };
 
-        Some(notification)
+        Ok(notification)
     }
 }
 
@@ -360,6 +345,7 @@ impl Registry {
                     language_config.config.clone(),
                     &language_config.roots,
                     id,
+                    config.timeout,
                 )?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));
                 let client = Arc::new(client);

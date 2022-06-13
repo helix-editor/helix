@@ -1,10 +1,10 @@
 # The structure is based on `base16_default_dark` by Ray Gervais.  Most of
-# the colors come the so called Autumn theme, a color scheme inspired by
-# the colors you can find in autumn. Originally it was designed as a
+# the colors come from the so called Autumn theme, a color scheme inspired by
+# the colors you can find in the autumn. Originally it was designed as a
 # color scheme for the Komodo IDE and then ported to Vim by Kenneth Love
 # and Chris Jones. Later, Yorick Peterse improved their work. See:
 # <https://github.com/YorickPeterse/Autumn.vim>
-# Jens Getreu finally ported and optimised the color theme for the Helix editor.
+# Jens Getreu ported and optimised the color theme for the Helix editor.
 # Author: Jens Getreu <getreu at web.de>
 
 "ui.background" = { bg = "my_gray0" }
@@ -12,12 +12,12 @@
 "ui.menu.selected" = { fg = "my_gray2", bg = "my_gray5" }
 "ui.linenr" = { fg = "my_gray4", bg = "my_gray2" }
 "ui.popup" = { bg = "my_gray2" }
-"ui.window" = { bg = "my_gray2" }
-"ui.linenr.selected" = { fg = "my_gray5", bg = "my_gray2", modifiers = ["bold"] }
+"ui.window" = { fg = "my_gray4", bg = "my_gray2" }
+"ui.linenr.selected" = { fg = "my_gray6", bg = "my_gray2", modifiers = ["bold"]}
 "ui.selection" = { bg = "my_gray3" }
 "comment" = { fg = "my_gray4", modifiers = ["italic"] }
-"ui.statusline" = { fg = "my_gray5", bg = "my_gray2" }
-"ui.help" = { fg = "my_gray5", bg = "my_gray2" }
+"ui.statusline" = { fg = "my_gray6", bg = "my_gray2" }
+"ui.statusline.inactive" = { fg = 'my_gray4', bg = 'my_gray2' }
 "ui.cursor" = { fg = "my_gray5", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "my_white", modifiers = ["reversed"] }
 "ui.text" = "my_white"
@@ -70,8 +70,8 @@ my_gray2      = "#3a3a3a" # Lighter Background (Used for status bars, line numbe
 my_gray3      = "#525252" # Selection Background
 my_gray4      = "#7c7c7c" # Comments, Invisibles, Line Highlighting
 my_gray5      = "#aaaaaa" # Dark Foreground (Used for status bars)
-my_gray6      = "#e8e8e8" # Light Foreground (Not often used)
-my_gray7      = "#f8f8f8" # Light Background (Not often used)
+my_gray6      = "#c0c0c0" # Light Foreground (Not often used)
+my_gray7      = "#e8e8e8" # Light Background (Not often used)
 my_white      = "#F3F2CC" # Default Foreground, Caret, Delimiters, Operators
 my_white2     = "#F3F2CC" # Variables, XML Tags, Markup Link Text, Markup Lists, Diff Deleted
 my_white3     = "#F3F2CC" # Classes, Markup Bold, Search Text Background

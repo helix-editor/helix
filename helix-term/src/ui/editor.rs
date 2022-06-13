@@ -247,17 +247,36 @@ impl EditorView {
         doc: &Document,
         theme: &Theme,
     ) -> Vec<(usize, std::ops::Range<usize>)> {
-        let diagnostic_scope = theme
-            .find_scope_index("diagnostic")
+        use helix_core::diagnostic::Severity;
+        let get_scope_of = |scope| {
+            theme
+            .find_scope_index(scope)
+            // get one of the themes below as fallback values
+            .or_else(|| theme.find_scope_index("diagnostic"))
             .or_else(|| theme.find_scope_index("ui.cursor"))
             .or_else(|| theme.find_scope_index("ui.selection"))
             .expect(
                 "at least one of the following scopes must be defined in the theme: `diagnostic`, `ui.cursor`, or `ui.selection`",
-            );
+            )
+        };
+
+        // basically just queries the theme color defined in the config
+        let hint = get_scope_of("diagnostic.hint");
+        let info = get_scope_of("diagnostic.info");
+        let warning = get_scope_of("diagnostic.warning");
+        let error = get_scope_of("diagnostic.error");
+        let r#default = get_scope_of("diagnostic"); // this is a bit redundant but should be fine
 
         doc.diagnostics()
             .iter()
             .map(|diagnostic| {
+                let diagnostic_scope = match diagnostic.severity {
+                    Some(Severity::Info) => info,
+                    Some(Severity::Hint) => hint,
+                    Some(Severity::Warning) => warning,
+                    Some(Severity::Error) => error,
+                    _ => r#default,
+                };
                 (
                     diagnostic_scope,
                     diagnostic.range.start..diagnostic.range.end,
@@ -448,7 +467,7 @@ impl EditorView {
                                 // make sure we display tab as appropriate amount of spaces
                                 let visual_tab_width = tab_width - (visual_x as usize % tab_width);
                                 let grapheme_tab_width =
-                                    ropey::str_utils::char_to_byte_idx(&tab, visual_tab_width);
+                                    helix_core::str_utils::char_to_byte_idx(&tab, visual_tab_width);
 
                                 (&tab[..grapheme_tab_width], visual_tab_width)
                             } else if grapheme == " " {

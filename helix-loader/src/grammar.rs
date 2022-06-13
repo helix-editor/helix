@@ -133,7 +133,9 @@ where
         let tx = tx.clone();
 
         pool.execute(move || {
-            tx.send(job(grammar)).unwrap();
+            // Ignore any SendErrors, if any job in another thread has encountered an
+            // error the Receiver will be closed causing this send to fail.
+            let _ = tx.send(job(grammar));
         });
     }
 
@@ -350,12 +352,17 @@ fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> 
             }
         }
         command.arg("-xc").arg(parser_path);
-        if cfg!(all(unix, not(target_os = "macos"))) {
+        if cfg!(all(
+            unix,
+            not(any(target_os = "macos", target_os = "illumos"))
+        )) {
             command.arg("-Wl,-z,relro,-z,now");
         }
     }
 
-    let output = command.output().context("Failed to execute C compiler")?;
+    let output = command
+        .output()
+        .context("Failed to execute C/C++ compiler")?;
     if !output.status.success() {
         return Err(anyhow!(
             "Parser compilation failed.\nStdout: {}\nStderr: {}",

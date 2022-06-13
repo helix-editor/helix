@@ -542,7 +542,7 @@ mod tests {
                     vec![vec![key!('j')], vec![key!('k')]]
                 ),
             ]),
-            "Mistmatch"
+            "Mismatch"
         )
     }
 }

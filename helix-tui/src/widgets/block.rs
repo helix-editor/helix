@@ -6,6 +6,7 @@ use crate::{
 };
 use helix_view::graphics::{Rect, Style};
 
+/// Border render type. Defaults to [`BorderType::Plain`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BorderType {
     Plain,
@@ -25,6 +26,12 @@ impl BorderType {
     }
 }
 
+impl Default for BorderType {
+    fn default() -> BorderType {
+        BorderType::Plain
+    }
+}
+
 /// Base widget to be used with all upper level ones. It may be used to display a box border around
 /// the widget and/or add a title.
 ///
@@ -40,7 +47,7 @@ impl BorderType {
 ///     .border_type(BorderType::Rounded)
 ///     .style(Style::default().bg(Color::Black));
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct Block<'a> {
     /// Optional title place on the upper left of the block
     title: Option<Spans<'a>>,
@@ -53,18 +60,6 @@ pub struct Block<'a> {
     border_type: BorderType,
     /// Widget style
     style: Style,
-}
-
-impl<'a> Default for Block<'a> {
-    fn default() -> Block<'a> {
-        Block {
-            title: None,
-            borders: Borders::NONE,
-            border_style: Default::default(),
-            border_type: BorderType::Plain,
-            style: Default::default(),
-        }
-    }
 }
 
 impl<'a> Block<'a> {

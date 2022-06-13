@@ -59,7 +59,9 @@
 # "ui.cursor.match"  # TODO might want to override this because dimmed is not widely supported
 "ui.cursor.match" = { fg = "#313f4e", bg = "#dc7759" }
 "ui.cursor" = { fg = "#ABB2BF", modifiers = ["reversed"] }
-"ui.menu.selected" = { fg = "#e5ded6", bg = "#313f4e" }
+
+"ui.menu" = { fg = "#e5ded6bg", bg = "#232d38" }
+"ui.menu.selected" = { bg = "#313f4e" }
 
 "warning" = "#dc7759"
 "error" = "#dc597f"

@@ -316,6 +316,11 @@ impl View {
         ))
     }
 
+    pub fn remove_document(&mut self, doc_id: &DocumentId) {
+        self.jumps.remove(doc_id);
+        self.docs_access_history.retain(|doc| doc != doc_id);
+    }
+
     // pub fn traverse<F>(&self, text: RopeSlice, start: usize, end: usize, fun: F)
     // where
     //     F: Fn(usize, usize),

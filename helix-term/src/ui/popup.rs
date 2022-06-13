@@ -88,8 +88,6 @@ impl<T: Component> Popup<T> {
 
     pub fn scroll(&mut self, offset: usize, direction: bool) {
         if direction {
-            self.scroll += offset;
-
             let max_offset = self.child_size.1.saturating_sub(self.size.1);
             self.scroll = (self.scroll + offset).min(max_offset as usize);
         } else {

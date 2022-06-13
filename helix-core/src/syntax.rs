@@ -50,6 +50,10 @@ where
     Ok(Option::<AutoPairConfig>::deserialize(deserializer)?.and_then(AutoPairConfig::into))
 }
 
+fn default_timeout() -> u64 {
+    20
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
@@ -74,6 +78,7 @@ pub struct LanguageConfiguration {
 
     #[serde(default)]
     pub auto_format: bool,
+
     #[serde(default)]
     pub diagnostic_severity: Severity,
 
@@ -116,6 +121,8 @@ pub struct LanguageServerConfiguration {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
+    #[serde(default = "default_timeout")]
+    pub timeout: u64,
     pub language_id: Option<String>,
 }
 
@@ -228,6 +235,7 @@ pub struct TextObjectQuery {
     pub query: Query,
 }
 
+#[derive(Debug)]
 pub enum CapturedNode<'a> {
     Single(Node<'a>),
     /// Guaranteed to be not empty
@@ -262,12 +270,12 @@ impl TextObjectQuery {
     /// and support for this is partial and could use improvement.
     ///
     /// ```query
-    /// ;; supported:
     /// (comment)+ @capture
     ///
-    /// ;; unsupported:
+    /// ; OR
     /// (
-    ///   (comment)+
+    ///   (comment)*
+    ///   .
     ///   (function)
     /// ) @capture
     /// ```
@@ -293,28 +301,23 @@ impl TextObjectQuery {
         let capture_idx = capture_names
             .iter()
             .find_map(|cap| self.query.capture_index_for_name(cap))?;
-        let captures = cursor.matches(&self.query, node, RopeProvider(slice));
 
-        let nodes = captures.flat_map(move |mat| {
-            let captures = mat.captures.iter().filter(move |c| c.index == capture_idx);
-            let nodes = captures.map(|c| c.node);
-            let pattern_idx = mat.pattern_index;
-            let quantifier = self.query.capture_quantifiers(pattern_idx)[capture_idx as usize];
+        let nodes = cursor
+            .captures(&self.query, node, RopeProvider(slice))
+            .filter_map(move |(mat, _)| {
+                let nodes: Vec<_> = mat
+                    .captures
+                    .iter()
+                    .filter_map(|cap| (cap.index == capture_idx).then(|| cap.node))
+                    .collect();
 
-            let iter: Box<dyn Iterator<Item = CapturedNode>> = match quantifier {
-                CaptureQuantifier::OneOrMore | CaptureQuantifier::ZeroOrMore => {
-                    let nodes: Vec<Node> = nodes.collect();
-                    if nodes.is_empty() {
-                        Box::new(std::iter::empty())
-                    } else {
-                        Box::new(std::iter::once(CapturedNode::Grouped(nodes)))
-                    }
+                if nodes.len() > 1 {
+                    Some(CapturedNode::Grouped(nodes))
+                } else {
+                    nodes.into_iter().map(CapturedNode::Single).next()
                 }
-                _ => Box::new(nodes.map(CapturedNode::Single)),
-            };
+            });
 
-            iter
-        });
         Some(nodes)
     }
 }
@@ -1116,8 +1119,8 @@ pub(crate) fn generate_edits(
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{iter, mem, ops, str, usize};
 use tree_sitter::{
-    CaptureQuantifier, Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor,
-    QueryError, QueryMatch, Range, TextProvider, Tree,
+    Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError,
+    QueryMatch, Range, TextProvider, Tree,
 };
 
 const CANCELLATION_CHECK_INTERVAL: usize = 100;

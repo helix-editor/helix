@@ -43,7 +43,7 @@ pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
 ///
 /// Order of detection:
 /// * Top-most folder containing a root marker in current git repository
-/// * Git repostory root if no marker detected
+/// * Git repository root if no marker detected
 /// * Top-most folder containing a root marker if not git repository detected
 /// * Current working directory as fallback
 pub fn find_root(root: Option<&str>, root_markers: &[String]) -> Option<std::path::PathBuf> {
@@ -52,7 +52,7 @@ pub fn find_root(root: Option<&str>, root_markers: &[String]) -> Option<std::pat
         .cloned()
 }
 
-pub use ropey::{Rope, RopeBuilder, RopeSlice};
+pub use ropey::{str_utils, Rope, RopeBuilder, RopeSlice};
 
 // pub use tendril::StrTendril as Tendril;
 pub use smartstring::SmartString;

@@ -434,6 +434,7 @@ pub struct Editor {
     pub selected_register: Option<char>,
     pub registers: Registers,
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
+    pub macro_replaying: Vec<char>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
@@ -505,6 +506,7 @@ impl Editor {
             count: None,
             selected_register: None,
             macro_recording: None,
+            macro_replaying: Vec::new(),
             theme: theme_loader.default(),
             language_servers,
             diagnostics: BTreeMap::new(),
@@ -674,11 +676,18 @@ impl Editor {
                         .any(|(_, v)| v.doc == doc.id && v.id != view.id);
 
                 let (view, doc) = current!(self);
+                let view_id = view.id;
+
                 if remove_empty_scratch {
                     // Copy `doc.id` into a variable before calling `self.documents.remove`, which requires a mutable
                     // borrow, invalidating direct access to `doc.id`.
                     let id = doc.id;
                     self.documents.remove(&id);
+
+                    // Remove the scratch buffer from any jumplists
+                    for (view, _) in self.tree.views_mut() {
+                        view.remove_document(&id);
+                    }
                 } else {
                     let jump = (view.doc, doc.selection(view.id).clone());
                     view.jumps.push(jump);
@@ -694,7 +703,6 @@ impl Editor {
                     }
                 }
 
-                let view_id = view.id;
                 self.replace_document_in_view(view_id, id);
 
                 return;
@@ -703,7 +711,7 @@ impl Editor {
                 let view_id = view!(self).id;
                 let doc = self.documents.get_mut(&id).unwrap();
                 if doc.selections().is_empty() {
-                    doc.selections.insert(view_id, Selection::point(0));
+                    doc.set_selection(view_id, Selection::point(0));
                 }
                 return;
             }
@@ -719,7 +727,7 @@ impl Editor {
                 );
                 // initialize selection for view
                 let doc = self.documents.get_mut(&id).unwrap();
-                doc.selections.insert(view_id, Selection::point(0));
+                doc.set_selection(view_id, Selection::point(0));
             }
         }
 
@@ -811,8 +819,7 @@ impl Editor {
             .tree
             .views_mut()
             .filter_map(|(view, _focus)| {
-                // remove the document from jump list of all views
-                view.jumps.remove(&doc_id);
+                view.remove_document(&doc_id);
 
                 if view.doc == doc_id {
                     // something was previously open in the view, switch to previous doc
@@ -854,7 +861,7 @@ impl Editor {
             let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
             let doc = self.documents.get_mut(&doc_id).unwrap();
-            doc.selections.insert(view_id, Selection::point(0));
+            doc.set_selection(view_id, Selection::point(0));
         }
 
         self._refresh();
@@ -886,6 +893,26 @@ impl Editor {
 
     pub fn focus_down(&mut self) {
         self.tree.focus_direction(tree::Direction::Down);
+    }
+
+    pub fn swap_right(&mut self) {
+        self.tree.swap_split_in_direction(tree::Direction::Right);
+    }
+
+    pub fn swap_left(&mut self) {
+        self.tree.swap_split_in_direction(tree::Direction::Left);
+    }
+
+    pub fn swap_up(&mut self) {
+        self.tree.swap_split_in_direction(tree::Direction::Up);
+    }
+
+    pub fn swap_down(&mut self) {
+        self.tree.swap_split_in_direction(tree::Direction::Down);
+    }
+
+    pub fn transpose_view(&mut self) {
+        self.tree.transpose();
     }
 
     pub fn should_close(&self) -> bool {

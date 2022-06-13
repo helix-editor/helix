@@ -21,6 +21,11 @@ use crate::{
 
 use std::{borrow::Cow, collections::BTreeMap};
 
+/// Gets the language server that is attached to a document, and
+/// if it's not active displays a status message. Using this macro
+/// in a context where the editor automatically queries the LSP
+/// (instead of when the user explicitly does so via a keybind like
+/// `gd`) will spam the "LSP inactive" status message confusingly.
 #[macro_export]
 macro_rules! language_server {
     ($editor:expr, $doc:expr) => {
@@ -44,17 +49,23 @@ fn location_to_file_location(location: &lsp::Location) -> FileLocation {
 }
 
 // TODO: share with symbol picker(symbol.location)
-// TODO: need to use push_jump() before?
 fn jump_to_location(
     editor: &mut Editor,
     location: &lsp::Location,
     offset_encoding: OffsetEncoding,
     action: Action,
 ) {
-    let path = location
-        .uri
-        .to_file_path()
-        .expect("unable to convert URI to filepath");
+    let (view, doc) = current!(editor);
+    push_jump(view, doc);
+
+    let path = match location.uri.to_file_path() {
+        Ok(path) => path,
+        Err(_) => {
+            let err = format!("unable to convert URI to filepath: {}", location.uri);
+            editor.set_error(err);
+            return;
+        }
+    };
     let _id = editor.open(path, action).expect("editor.open failed");
     let (view, doc) = current!(editor);
     let definition_pos = location.range.start;
@@ -82,19 +93,38 @@ fn sym_picker(
             if current_path.as_ref() == Some(&symbol.location.uri) {
                 symbol.name.as_str().into()
             } else {
-                let path = symbol.location.uri.to_file_path().unwrap();
-                let relative_path = helix_core::path::get_relative_path(path.as_path())
-                    .to_string_lossy()
-                    .into_owned();
-                format!("{} ({})", &symbol.name, relative_path).into()
+                match symbol.location.uri.to_file_path() {
+                    Ok(path) => {
+                        let relative_path = helix_core::path::get_relative_path(path.as_path())
+                            .to_string_lossy()
+                            .into_owned();
+                        format!("{} ({})", &symbol.name, relative_path).into()
+                    }
+                    Err(_) => format!("{} ({})", &symbol.name, &symbol.location.uri).into(),
+                }
             }
         },
         move |cx, symbol, action| {
-            if current_path2.as_ref() == Some(&symbol.location.uri) {
-                push_jump(cx.editor);
-            } else {
-                let path = symbol.location.uri.to_file_path().unwrap();
-                cx.editor.open(path, action).expect("editor.open failed");
+            let (view, doc) = current!(cx.editor);
+            push_jump(view, doc);
+
+            if current_path2.as_ref() != Some(&symbol.location.uri) {
+                let uri = &symbol.location.uri;
+                let path = match uri.to_file_path() {
+                    Ok(path) => path,
+                    Err(_) => {
+                        let err = format!("unable to convert URI to filepath: {}", uri);
+                        log::error!("{}", err);
+                        cx.editor.set_error(err);
+                        return;
+                    }
+                };
+                if let Err(err) = cx.editor.open(path, action) {
+                    let err = format!("failed to open document: {}: {}", uri, err);
+                    log::error!("{}", err);
+                    cx.editor.set_error(err);
+                    return;
+                }
             }
 
             let (view, doc) = current!(cx.editor);
@@ -464,12 +494,27 @@ pub fn apply_workspace_edit(
     workspace_edit: &lsp::WorkspaceEdit,
 ) {
     let mut apply_edits = |uri: &helix_lsp::Url, text_edits: Vec<lsp::TextEdit>| {
-        let path = uri
-            .to_file_path()
-            .expect("unable to convert URI to filepath");
+        let path = match uri.to_file_path() {
+            Ok(path) => path,
+            Err(_) => {
+                let err = format!("unable to convert URI to filepath: {}", uri);
+                log::error!("{}", err);
+                editor.set_error(err);
+                return;
+            }
+        };
 
         let current_view_id = view!(editor).id;
-        let doc_id = editor.open(path, Action::Load).unwrap();
+        let doc_id = match editor.open(path, Action::Load) {
+            Ok(doc_id) => doc_id,
+            Err(err) => {
+                let err = format!("failed to open document: {}: {}", uri, err);
+                log::error!("{}", err);
+                editor.set_error(err);
+                return;
+            }
+        };
+
         let doc = editor
             .document_mut(doc_id)
             .expect("Document for document_changes not found");
@@ -501,7 +546,7 @@ pub fn apply_workspace_edit(
         log::debug!("workspace changes: {:?}", changes);
         for (uri, text_edits) in changes {
             let text_edits = text_edits.to_vec();
-            apply_edits(uri, text_edits);
+            apply_edits(uri, text_edits)
         }
         return;
         // Not sure if it works properly, it'll be safer to just panic here to avoid breaking some parts of code on which code actions will be used
@@ -536,8 +581,8 @@ pub fn apply_workspace_edit(
             }
             lsp::DocumentChanges::Operations(operations) => {
                 log::debug!("document changes - operations: {:?}", operations);
-                for operateion in operations {
-                    match operateion {
+                for operation in operations {
+                    match operation {
                         lsp::DocumentChangeOperation::Op(op) => {
                             apply_document_resource_op(op).unwrap();
                         }
@@ -568,8 +613,6 @@ fn goto_impl(
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
 ) {
-    push_jump(editor);
-
     let cwdir = std::env::current_dir().expect("couldn't determine current directory");
 
     match locations.as_slice() {
