@@ -152,6 +152,8 @@ pub struct Config {
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
+    /// Persistently display open buffers with tabs
+    pub tabs: bool,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -387,6 +389,7 @@ impl Default for Config {
             lsp: LspConfig::default(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
+            tabs: true,
         }
     }
 }

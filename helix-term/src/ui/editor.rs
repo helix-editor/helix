@@ -25,7 +25,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::borrow::Cow;
+use std::{borrow::Cow, path::PathBuf};
 
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
@@ -75,8 +75,16 @@ impl EditorView {
         surface: &mut Surface,
         is_focused: bool,
     ) {
-        let inner = view.inner_area();
-        let area = view.area;
+        let inner = if editor.config().tabs {
+            view.inner_area().clip_top(1)
+        } else {
+            view.inner_area()
+        };
+        let area = if editor.config().tabs {
+            view.area.clip_top(1)
+        } else {
+            view.area
+        };
         let theme = &editor.theme;
 
         // DAP: Highlight current stack frame position
@@ -133,8 +141,13 @@ impl EditorView {
             highlights,
             &editor.config().whitespace,
         );
-        Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
+        Self::render_gutter(editor, doc, view, area, surface, theme, is_focused);
         Self::render_rulers(editor, doc, view, inner, surface, theme);
+
+        if editor.config().tabs {
+            let tabs_area = view.area.clip_bottom(view.area.height.saturating_sub(1));
+            Self::render_tabs(editor, doc, view, tabs_area, surface, theme);
+        }
 
         if is_focused {
             Self::render_focused_view_elements(view, doc, inner, theme, surface);
@@ -539,6 +552,44 @@ impl EditorView {
                 }
             }
         }
+    }
+
+    /// Render bufferline at the top
+    pub fn render_tabs(
+        editor: &Editor,
+        doc: &Document,
+        view: &View,
+        viewport: Rect,
+        surface: &mut Surface,
+        theme: &Theme,
+    ) {
+        let pb = PathBuf::from(" [scratch] "); // default filename to use for scratch buffer
+        surface.clear_with(viewport, theme.get("ui.statusline"));
+        let mut len = 0usize;
+        editor.documents().for_each(|doc| {
+            let fname = doc
+                .path()
+                .unwrap_or_else(|| &pb)
+                .file_name()
+                .unwrap_or_default()
+                .to_str()
+                .unwrap();
+
+            let style = if view.doc == doc.id() {
+                theme.get("ui.background")
+            } else {
+                theme.get("ui.statusline")
+            };
+
+            surface.set_string(
+                1 + viewport.x + len as u16,
+                viewport.y,
+                format!(" {fname} "),
+                style,
+            );
+
+            len += fname.len() + 2; // add some padding between tabs
+        });
     }
 
     pub fn render_gutter(
