@@ -152,8 +152,8 @@ pub struct Config {
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
-    /// Persistently display open buffers with tabs
-    pub tabs: bool,
+    /// Persistently display open buffers along the top
+    pub bufferline: BufferLine,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -222,6 +222,24 @@ impl std::ops::Deref for CursorShapeConfig {
 impl Default for CursorShapeConfig {
     fn default() -> Self {
         Self([CursorKind::Block; 3])
+    }
+}
+
+/// bufferline render modes
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BufferLine {
+    /// Don't render bufferline
+    Never,
+    /// Always render
+    Always,
+    /// Only if multiple buffers are open
+    Multiple,
+}
+
+impl Default for BufferLine {
+    fn default() -> Self {
+        BufferLine::Multiple
     }
 }
 
@@ -389,7 +407,7 @@ impl Default for Config {
             lsp: LspConfig::default(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
-            tabs: true,
+            bufferline: BufferLine::default(),
         }
     }
 }
