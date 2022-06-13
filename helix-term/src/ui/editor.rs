@@ -564,11 +564,18 @@ impl EditorView {
             surface.set_string(
                 1 + viewport.x + len as u16,
                 viewport.y,
-                format!(" {} ", fname),
+                format!(" {} {}", fname, if doc.is_modified() { "● " } else { "" }),
                 style,
             );
 
-            len += fname.len() + 2; // add some padding between tabs
+            let (text, offset) = if doc.is_modified() {
+                (format!(" {} ● ", fname), fname.len() + 4)
+            } else {
+                (format!(" {} ", fname), fname.len() + 2)
+            };
+
+            surface.set_string(1 + viewport.x + len as u16, viewport.y, text, style);
+            len += offset;
         }
     }
 
