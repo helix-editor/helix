@@ -146,7 +146,7 @@ impl EditorView {
 
         if editor.config().tabs {
             let tabs_area = view.area.clip_bottom(view.area.height.saturating_sub(1));
-            Self::render_tabs(editor, doc, view, tabs_area, surface, theme);
+            Self::render_tabs(editor, view, tabs_area, surface, theme);
         }
 
         if is_focused {
@@ -557,7 +557,6 @@ impl EditorView {
     /// Render bufferline at the top
     pub fn render_tabs(
         editor: &Editor,
-        doc: &Document,
         view: &View,
         viewport: Rect,
         surface: &mut Surface,
