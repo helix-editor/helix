@@ -549,7 +549,7 @@ impl EditorView {
         for doc in editor.documents() {
             let fname = doc
                 .path()
-                .unwrap_or_else(|| &pb)
+                .unwrap_or(&pb)
                 .file_name()
                 .unwrap_or_default()
                 .to_str()
