@@ -204,7 +204,8 @@ fn diag_picker(
         },
         move |cx, (url, diag), action| {
             if current_path.as_ref() == Some(url) {
-                push_jump(cx.editor);
+                let (view, doc) = current!(cx.editor);
+                push_jump(view, doc);
             } else {
                 let path = url.to_file_path().unwrap();
                 cx.editor.open(path, action).expect("editor.open failed");
