@@ -3771,11 +3771,14 @@ fn expand_selection(cx: &mut Context) {
 
             let current_selection = doc.selection(view.id);
 
-            // save current selection so it can be restored using shrink_selection
-            view.object_selections.push(current_selection.clone());
+            // check if selection is different from the last one
+            if view.object_selections.last() != Some(current_selection) {
+                // save current selection so it can be restored using shrink_selection
+                view.object_selections.push(current_selection.clone());
 
-            let selection = object::expand_selection(syntax, text, current_selection.clone());
-            doc.set_selection(view.id, selection);
+                let selection = object::expand_selection(syntax, text, current_selection.clone());
+                doc.set_selection(view.id, selection);
+            }
         }
     };
     motion(cx.editor);
