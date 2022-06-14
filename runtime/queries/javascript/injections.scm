@@ -22,7 +22,12 @@
 ((regex_pattern) @injection.content
  (#set! injection.language "regex"))
 
- ; Parse JSDoc annotations in comments
+; Parse JSDoc annotations in comments
 
 ((comment) @injection.content
  (#set! injection.language "jsdoc"))
+
+; Parse comment tags (TODO, FIXME, ...)
+
+([(comment)] @injection.content
+ (#set! injection.language "comment"))
