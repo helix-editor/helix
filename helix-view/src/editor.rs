@@ -1,7 +1,7 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
     document::{Mode, SCRATCH_BUFFER_NAME},
-    graphics::{CursorKind, DimOperation, Rect},
+    graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
     theme::{self, Theme},
@@ -112,10 +112,10 @@ impl Default for FilePickerConfig {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct DimConfig {
-    /// dim function for margin around content of dimmable overlays
-    pub overlay_backdrops: Option<DimOperation>,
-    /// dim function for unfocused editor views
-    pub unfocused_views: Option<DimOperation>,
+    /// shade for margin around content of overlays
+    pub overlay_backdrops: Option<i8>,
+    /// shade for unfocused editor views
+    pub unfocused_views: Option<i8>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

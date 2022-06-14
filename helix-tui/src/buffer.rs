@@ -1,7 +1,6 @@
 use crate::text::{Span, Spans};
 use helix_core::unicode::width::UnicodeWidthStr;
-use helix_view::graphics::{Color, DimFunction, DimOperation, Modifier, Rect, Style};
-use palette::Shade;
+use helix_view::graphics::{Color, Modifier, Rect, Style};
 use std::cmp::min;
 use std::collections::HashMap;
 use unicode_segmentation::UnicodeSegmentation;
@@ -585,26 +584,26 @@ impl Buffer {
         updates
     }
 
-    /// Apply DimOperation to all cells in area
-    pub fn dim(&mut self, area: Rect, op: &DimOperation) {
-        use DimFunction::*;
-
-        type Srgb8 = palette::rgb::Rgb<palette::encoding::Srgb, u8>;
+    /// Apply shade to all cells in area.
+    ///
+    /// shade = 0 -> set text modifier DIM
+    /// shade < 0 -> darken rgb color
+    /// shade > 0 -> lighten rgb color
+    pub fn dim(&mut self, area: Rect, shade: i8) {
+        let shade_amount = shade.unsigned_abs().saturating_mul(2);
+        let shade_fn = if shade < 0 {
+            u8::saturating_sub
+        } else {
+            u8::saturating_add
+        };
+        // TODO: replace with saturating_add_signed when mixed_integer_ops (https://github.com/rust-lang/rust/issues/87840) get stabilized.
+        let shaded = |v| shade_fn(v, shade_amount);
 
         let mut cache: HashMap<Color, Color> = HashMap::new();
-        let intensity = op.intensity as f32 / 100.0; // TODO: clamp
-
         let mut modify = |col| {
             let result = cache.entry(col).or_insert_with(|| {
                 if let Color::Rgb(r, g, b) = col {
-                    let mut rgb = Srgb8::new(r, g, b).into_format().into_linear();
-                    rgb = match op.func {
-                        Lighten => rgb.lighten(intensity),
-                        Darken => rgb.darken(intensity),
-                        _ => unimplemented!(),
-                    };
-                    let rgb = Srgb8::from(rgb).into_components();
-                    Color::Rgb(rgb.0, rgb.1, rgb.2)
+                    Color::Rgb(shaded(r), shaded(g), shaded(b))
                 } else {
                     col
                 }
@@ -615,17 +614,14 @@ impl Buffer {
             for x in area.left()..area.right() {
                 let cell = &mut self[(x, y)];
 
-                match op.func {
-                    Dim => {
-                        cell.modifier.insert(Modifier::DIM);
-                    }
-                    Lighten | Darken => {
-                        if let Color::Rgb(..) = cell.fg {
-                            cell.fg = modify(cell.fg);
-                        };
-                        if let Color::Rgb(..) = cell.bg {
-                            cell.bg = modify(cell.bg);
-                        }
+                if shade == 0 {
+                    cell.modifier.insert(Modifier::DIM);
+                } else {
+                    if let Color::Rgb(..) = cell.fg {
+                        cell.fg = modify(cell.fg);
+                    };
+                    if let Color::Rgb(..) = cell.bg {
+                        cell.bg = modify(cell.bg);
                     }
                 }
             }
