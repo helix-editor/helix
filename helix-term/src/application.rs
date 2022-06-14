@@ -444,7 +444,7 @@ impl Application {
                             ));
                         }
                     }
-                    Notification::PublishDiagnostics(params) => {
+                    Notification::PublishDiagnostics(mut params) => {
                         let path = params.uri.to_file_path().unwrap();
                         let doc = self.editor.document_by_path_mut(&path);
 
@@ -517,6 +517,17 @@ impl Application {
 
                             doc.set_diagnostics(diagnostics);
                         }
+
+                        // Sort diagnostics first by URL and then by severity.
+                        // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
+                        params.diagnostics.sort_unstable_by(|a, b| {
+                            if let (Some(a), Some(b)) = (a.severity, b.severity) {
+                                a.partial_cmp(&b).unwrap()
+                            } else {
+                                unreachable!("unrecognized diagnostic severity")
+                            }
+                        });
+
                         // Insert the original lsp::Diagnostics here because we may have no open document
                         // for diagnosic message and so we can't calculate the exact position.
                         // When using them later in the diagnostics picker, we calculate them on-demand.
