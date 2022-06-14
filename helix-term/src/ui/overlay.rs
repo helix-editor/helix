@@ -45,11 +45,27 @@ fn clip_rect_relative(rect: Rect, percent_horizontal: u8, percent_vertical: u8) 
 
 impl<T: Component + 'static> Component for Overlay<T> {
     fn render(&mut self, area: Rect, frame: &mut Buffer, ctx: &mut Context) {
-        if let Some(shade) = ctx.editor.config().dim.overlay_backdrops {
-            // TODO: optimise. we don't need to dim behind the child content
-            frame.dim(area, shade);
-        }
         let dimensions = (self.calc_child_size)(area);
+        if let Some(shade) = ctx.editor.config().dim.overlay_backdrops {
+            frame.dim(area.clip_left(dimensions.right()), shade);
+            frame.dim(area.with_width(dimensions.left()), shade);
+            frame.dim(
+                Rect {
+                    y: 0,
+                    height: dimensions.y,
+                    ..dimensions
+                },
+                shade,
+            );
+            frame.dim(
+                Rect {
+                    y: dimensions.bottom(),
+                    height: area.height - dimensions.bottom(),
+                    ..dimensions
+                },
+                shade,
+            );
+        }
         self.content.render(dimensions, frame, ctx)
     }
 
