@@ -123,7 +123,6 @@ fn sym_picker(
             }
 
             let (view, doc) = current!(cx.editor);
-
             if let Some(range) =
                 lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
             {
@@ -132,6 +131,7 @@ fn sym_picker(
                 doc.set_selection(view.id, Selection::single(range.head, range.anchor));
                 align_view(doc, view, Align::Center);
             }
+            crate::set_title_from_doc(&doc);
         },
         move |_editor, symbol| Some(location_to_file_location(&symbol.location)),
     )

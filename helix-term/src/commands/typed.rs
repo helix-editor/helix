@@ -56,6 +56,7 @@ fn open(
         doc.set_selection(view.id, pos);
         // does not affect opening a buffer without pos
         align_view(doc, view, Align::Center);
+        crate::set_title_from_doc(&doc);
     }
     Ok(())
 }
@@ -258,7 +259,11 @@ fn new_file(
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
     cx.editor.new_file(Action::Replace);
-
+    crossterm::execute!(
+        std::io::stdout(),
+        crossterm::terminal::SetTitle("hx [scratch]")
+    )
+    .unwrap();
     Ok(())
 }
 
@@ -816,10 +821,18 @@ fn vsplit(
 
     if args.is_empty() {
         cx.editor.switch(id, Action::VerticalSplit);
+        if let Some(doc) = cx.editor.documents.get(&id) {
+            crate::set_title_from_doc(&doc);
+        }
     } else {
         for arg in args {
             cx.editor
                 .open(PathBuf::from(arg.as_ref()), Action::VerticalSplit)?;
+            crossterm::execute!(
+                std::io::stdout(),
+                crossterm::terminal::SetTitle(format!("hx {}", arg))
+            )
+            .unwrap();
         }
     }
 
@@ -835,10 +848,15 @@ fn hsplit(
 
     if args.is_empty() {
         cx.editor.switch(id, Action::HorizontalSplit);
+        if let Some(doc) = cx.editor.documents.get(&id) {
+            crate::set_title_from_doc(&doc);
+        }
     } else {
         for arg in args {
-            cx.editor
+            let id = cx
+                .editor
                 .open(PathBuf::from(arg.as_ref()), Action::HorizontalSplit)?;
+            crate::set_title_from_doc(cx.editor.documents.get(&id).unwrap());
         }
     }
 
@@ -851,7 +869,11 @@ fn vsplit_new(
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
     cx.editor.new_file(Action::VerticalSplit);
-
+    crossterm::execute!(
+        std::io::stdout(),
+        crossterm::terminal::SetTitle("hx [scratch]")
+    )
+    .unwrap();
     Ok(())
 }
 
@@ -861,6 +883,11 @@ fn hsplit_new(
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
     cx.editor.new_file(Action::HorizontalSplit);
+    crossterm::execute!(
+        std::io::stdout(),
+        crossterm::terminal::SetTitle("hx [scratch]")
+    )
+    .unwrap();
 
     Ok(())
 }
@@ -924,6 +951,11 @@ fn tutor(
 ) -> anyhow::Result<()> {
     let path = helix_loader::runtime_dir().join("tutor.txt");
     cx.editor.open(path, Action::Replace)?;
+    crossterm::execute!(
+        std::io::stdout(),
+        crossterm::terminal::SetTitle("hx - tutor")
+    )
+    .unwrap();
     // Unset path to prevent accidentally saving to the original tutor file.
     doc_mut!(cx.editor).set_path(None)?;
     Ok(())
@@ -1151,6 +1183,11 @@ fn open_config(
 ) -> anyhow::Result<()> {
     cx.editor
         .open(helix_loader::config_file(), Action::Replace)?;
+    crossterm::execute!(
+        std::io::stdout(),
+        crossterm::terminal::SetTitle("hx - config")
+    )
+    .unwrap();
     Ok(())
 }
 

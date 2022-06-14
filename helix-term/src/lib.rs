@@ -22,3 +22,18 @@ fn true_color() -> bool {
 fn true_color() -> bool {
     true
 }
+
+pub fn set_title_from_doc(doc: &helix_view::Document) {
+    crossterm::execute!(
+        std::io::stdout(),
+        crossterm::terminal::SetTitle(format!(
+            "settitle hx {}",
+            doc.relative_path()
+                .as_deref()
+                .unwrap_or(std::path::Path::new("[scratch]"))
+                .to_str()
+                .unwrap() //,
+        ))
+    )
+    .unwrap();
+}
