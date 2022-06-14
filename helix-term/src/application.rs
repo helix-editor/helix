@@ -148,14 +148,31 @@ impl Application {
             } else {
                 let nr_of_files = args.files.len();
                 editor.open(first.to_path_buf(), Action::VerticalSplit)?;
-                for (file, pos) in args.files {
+                // Because the line above already opens the first file, we can
+                // simply skip opening it a second time by using .skip(1) here.
+                for (file, pos) in args.files.into_iter().skip(1) {
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
                             "expected a path to file, found a directory. (to open a directory pass it as first argument)"
                         ));
                     } else {
-                        let doc_id = editor.open(file, Action::Load)?;
+                        // If the user passes in either `--vsplit` or
+                        // `--hsplit` as a command line argument, all the given
+                        // files will be opened according to the selected
+                        // option. If neither of those two arguments are passed
+                        // in, just load the files normally.
+                        let action = if args.vsplit {
+                            Action::VerticalSplit
+                        } else if args.hsplit {
+                            Action::HorizontalSplit
+                        } else {
+                            Action::Load    // neither vsplit nor hsplit were passed in, so just open files normally
+                        };
+                        let doc_id = editor.open(file, action)?;
                         // with Action::Load all documents have the same view
+                        // NOTE: this isn't necessarily true anymore, if
+                        // `--vsplit` or `--hsplit` are used, the file which is
+                        // opened last is focused on.
                         let view_id = editor.tree.focus;
                         let doc = editor.document_mut(doc_id).unwrap();
                         let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
