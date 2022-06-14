@@ -516,14 +516,13 @@ impl Application {
                                 .collect();
 
                             doc.set_diagnostics(diagnostics);
-
-                            // Insert the original lsp::Diagnostics here because we may have no open document
-                            // for diagnosic message and so we can't calculate the exact position.
-                            // When using them later in the diagnostics picker, we calculate them on-demand.
-                            self.editor
-                                .diagnostics
-                                .insert(params.uri, params.diagnostics);
                         }
+                        // Insert the original lsp::Diagnostics here because we may have no open document
+                        // for diagnosic message and so we can't calculate the exact position.
+                        // When using them later in the diagnostics picker, we calculate them on-demand.
+                        self.editor
+                            .diagnostics
+                            .insert(params.uri, params.diagnostics);
                     }
                     Notification::ShowMessage(params) => {
                         log::warn!("unhandled window/showMessage: {:?}", params);
