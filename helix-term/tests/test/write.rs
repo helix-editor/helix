@@ -15,7 +15,7 @@ async fn test_write() -> anyhow::Result<()> {
 
     test_key_sequence(
         &mut helpers::app_with_file(file.path())?,
-        Some("ii can eat glass, it will not hurt me<ret><esc>:w<ret>"),
+        Some("ithe gostak distims the doshes<ret><esc>:w<ret>"),
         None,
         false,
     )
@@ -28,7 +28,7 @@ async fn test_write() -> anyhow::Result<()> {
     file.as_file_mut().read_to_string(&mut file_content)?;
 
     assert_eq!(
-        helpers::platform_line("i can eat glass, it will not hurt me"),
+        helpers::platform_line("the gostak distims the doshes"),
         file_content
     );
 
@@ -41,7 +41,7 @@ async fn test_write_quit() -> anyhow::Result<()> {
 
     test_key_sequence(
         &mut helpers::app_with_file(file.path())?,
-        Some("ii can eat glass, it will not hurt me<ret><esc>:wq<ret>"),
+        Some("ithe gostak distims the doshes<ret><esc>:wq<ret>"),
         None,
         true,
     )
@@ -54,7 +54,7 @@ async fn test_write_quit() -> anyhow::Result<()> {
     file.as_file_mut().read_to_string(&mut file_content)?;
 
     assert_eq!(
-        helpers::platform_line("i can eat glass, it will not hurt me"),
+        helpers::platform_line("the gostak distims the doshes"),
         file_content
     );
 
