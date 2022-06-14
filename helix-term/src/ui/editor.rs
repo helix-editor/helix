@@ -556,20 +556,21 @@ impl EditorView {
                 .unwrap();
 
             let style = if view!(editor).doc == doc.id() {
-                editor.theme.get("ui.background")
+                // editor.theme.get("ui.background")
+                editor
+                    .theme
+                    .try_get("ui.bufferline.active")
+                    .unwrap_or_else(|| editor.theme.get("ui.background"))
             } else {
-                editor.theme.get("ui.statusline")
+                // editor.theme.get("ui.statusline")
+                editor
+                    .theme
+                    .try_get("ui.bufferline")
+                    .unwrap_or_else(|| editor.theme.get("ui.statusline"))
             };
 
-            surface.set_string(
-                1 + viewport.x + len as u16,
-                viewport.y,
-                format!(" {} {}", fname, if doc.is_modified() { "● " } else { "" }),
-                style,
-            );
-
             let (text, offset) = if doc.is_modified() {
-                (format!(" {} ● ", fname), fname.len() + 4)
+                (format!(" {}[+] ", fname), fname.len() + 5)
             } else {
                 (format!(" {} ", fname), fname.len() + 2)
             };
