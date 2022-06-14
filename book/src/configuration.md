@@ -185,4 +185,25 @@ Example:
 [editor.indent-guides]
 render = true
 character = "╎"
+
+### `[editor.dim]` Section
+
+Enable dimming in certain areas. Disabled by default. Enable by assigning:
+- 0 = set text modifier flag DIM
+- negative value = darken colors (-127 = 100% darker)
+- positive value = lighten colors (+127 = 100% lighter)
+
+> darken/lighten colors only works with themes that set rgb colors, not indexed colors.
+
+| Key | Description | Default |
+|--|--|---------|
+| `overlay-backdrops` | Enable dimming and set shade of content behind overlays. | `None` |
+| `unfocused-views`| Enable dimming and set shade of unfocused editor views. | `None` |
+
+```toml
+[editor.dim]
+# darken backdrop of overlays
+overlay-backdrops = -25
+# dim fg color of unfocused views
+unfocused-views = 0
 ```
