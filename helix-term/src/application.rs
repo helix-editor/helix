@@ -524,21 +524,13 @@ impl Application {
                             if let (Some(a), Some(b)) = (a.severity, b.severity) {
                                 a.partial_cmp(&b).unwrap()
                             } else {
-                                unreachable!("unrecognized diagnostic severity")
+                                std::cmp::Ordering::Equal
                             }
                         });
 
                         // Insert the original lsp::Diagnostics here because we may have no open document
                         // for diagnosic message and so we can't calculate the exact position.
                         // When using them later in the diagnostics picker, we calculate them on-demand.
-                        params.diagnostics.sort_unstable_by(|a, b| {
-                            if let (Some(a), Some(b)) = (a.severity, b.severity) {
-                                a.partial_cmp(&b).unwrap()
-                            } else {
-                                unreachable!("unrecognized diagnostic severity")
-                            }
-                        });
-
                         self.editor
                             .diagnostics
                             .insert(params.uri, params.diagnostics);
