@@ -167,7 +167,7 @@ impl Application {
                             Action::HorizontalSplit
                         } else {
                             // neither vsplit nor hsplit were passed in, so just open files normally
-                            Action::Load 
+                            Action::Load
                         };
                         let doc_id = editor.open(file, action)?;
                         // with Action::Load all documents have the same view
