@@ -72,7 +72,7 @@
           packages =
             prev.packages
             ++ (
-              with common.pkgs; [lld_13 lldb cargo-tarpaulin cargo-flamegraph]
+              with common.pkgs; [lld_13 lldb cargo-tarpaulin cargo-flamegraph rust-analyzer]
             );
           env =
             prev.env

@@ -54,7 +54,7 @@ pub fn line_numbers<'doc>(
     let draw_last = text.line_to_byte(last_line) < text.len_bytes();
 
     let linenr = theme.get("ui.linenr");
-    let linenr_select: Style = theme.try_get("ui.linenr.selected").unwrap_or(linenr);
+    let linenr_select = theme.get("ui.linenr.selected");
 
     let current_line = doc
         .text()

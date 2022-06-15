@@ -3770,12 +3770,15 @@ fn expand_selection(cx: &mut Context) {
             let text = doc.text().slice(..);
 
             let current_selection = doc.selection(view.id);
-
-            // save current selection so it can be restored using shrink_selection
-            view.object_selections.push(current_selection.clone());
-
             let selection = object::expand_selection(syntax, text, current_selection.clone());
-            doc.set_selection(view.id, selection);
+
+            // check if selection is different from the last one
+            if *current_selection != selection {
+                // save current selection so it can be restored using shrink_selection
+                view.object_selections.push(current_selection.clone());
+
+                doc.set_selection(view.id, selection);
+            }
         }
     };
     motion(cx.editor);
