@@ -71,6 +71,9 @@ pub struct FilePickerConfig {
     /// Enables ignoring hidden files.
     /// Whether to hide hidden files in file picker and global search results. Defaults to true.
     pub hidden: bool,
+    /// Enables following symlinks.
+    /// Whether to follow symbolic links in file picker and file or directory completions. Defaults to true.
+    pub follow_symlinks: bool,
     /// Enables reading ignore files from parent directories. Defaults to true.
     pub parents: bool,
     /// Enables reading `.ignore` files.
@@ -94,6 +97,7 @@ impl Default for FilePickerConfig {
     fn default() -> Self {
         Self {
             hidden: true,
+            follow_symlinks: true,
             parents: true,
             ignore: true,
             git_ignore: true,
