@@ -1467,7 +1467,7 @@ source = { git = "https://github.com/victorhqc/tree-sitter-prisma", rev = "17a59
 [[language]]
 name = "clojure"
 scope = "source.clojure"
-injection-regex = "clojure"
+injection-regex = "(clojure|clj)"
 file-types = ["clj"]
 roots = ["project.clj"]
 comment-token = ";;"

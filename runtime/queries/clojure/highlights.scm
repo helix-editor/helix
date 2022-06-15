@@ -10,8 +10,6 @@
 
 (comment) @comment
 
-(regex_lit) @string.special
-
 ;; metadata experiment
 (meta_lit
  marker: "^" @punctuation)
