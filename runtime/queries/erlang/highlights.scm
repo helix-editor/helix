@@ -92,7 +92,7 @@
 
 (binary_operator operator: _ @operator)
 (unary_operator operator: _ @operator)
-["/" ":" "#" "->"] @operator
+["/" ":" "->"] @operator
 
 (tripledot) @comment.discard
 
@@ -123,6 +123,6 @@
 
 ; Punctuation
 ["," "." "-" ";"] @punctuation.delimiter
-["(" ")" "{" "}" "[" "]" "<<" ">>"] @punctuation.bracket
+["(" ")" "#" "{" "}" "[" "]" "<<" ">>"] @punctuation.bracket
 
 ; (ERROR) @error
