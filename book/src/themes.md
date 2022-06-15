@@ -151,6 +151,7 @@ We use a similar set of scopes as
   - `operator` - `or`, `in`
   - `directive` - Preprocessor directives (`#if` in C) 
   - `function` - `fn`, `func`
+  - `storage` - Keywords that affect the storage of a variable, function or data structure `static`, `mut`, `const`, `ref`
 
 - `operator` - `||`, `+=`, `>`
 
