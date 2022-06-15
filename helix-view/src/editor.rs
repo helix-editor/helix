@@ -535,6 +535,14 @@ impl Editor {
         self.config.load()
     }
 
+    /// Call if the config has changed to let the editor update all
+    /// relevant members.
+    pub fn refresh_config(&mut self) {
+        let config = self.config();
+        self.auto_pairs = (&config.auto_pairs).into();
+        self.reset_idle_timer();
+    }
+
     pub fn clear_idle_timer(&mut self) {
         // equivalent to internal Instant::far_future() (30 years)
         self.idle_timer
