@@ -42,6 +42,9 @@ log = "~0.4"
 
 which = "4.2"
 
+notify = "5.0.0-pre.15"
+globset = "0.4.8"
+
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "4.4", features = ["std"] }
 
