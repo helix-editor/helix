@@ -71,6 +71,9 @@ pub struct FilePickerConfig {
     /// Enables ignoring hidden files.
     /// Whether to hide hidden files in file picker and global search results. Defaults to true.
     pub hidden: bool,
+    /// Enables following symlinks.
+    /// Whether to follow symbolic links in file picker and file or directory completions. Defaults to true.
+    pub follow_symlinks: bool,
     /// Enables reading ignore files from parent directories. Defaults to true.
     pub parents: bool,
     /// Enables reading `.ignore` files.
@@ -94,6 +97,7 @@ impl Default for FilePickerConfig {
     fn default() -> Self {
         Self {
             hidden: true,
+            follow_symlinks: true,
             parents: true,
             ignore: true,
             git_ignore: true,
@@ -541,6 +545,14 @@ impl Editor {
 
     pub fn config(&self) -> DynGuard<Config> {
         self.config.load()
+    }
+
+    /// Call if the config has changed to let the editor update all
+    /// relevant members.
+    pub fn refresh_config(&mut self) {
+        let config = self.config();
+        self.auto_pairs = (&config.auto_pairs).into();
+        self.reset_idle_timer();
     }
 
     pub fn clear_idle_timer(&mut self) {
