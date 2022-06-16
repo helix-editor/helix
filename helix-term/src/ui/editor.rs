@@ -13,7 +13,6 @@ use helix_core::{
     },
     movement::Direction,
     syntax::{self, HighlightEvent},
-    unicode::segmentation::UnicodeSegmentation,
     unicode::width::UnicodeWidthStr,
     LineEnding, Position, Range, Selection, Transaction,
 };
@@ -1353,12 +1352,7 @@ impl Component for EditorView {
                 disp.push_str(&count.to_string())
             }
             for key in self.keymaps.pending() {
-                let s = key.to_string();
-                if s.graphemes(true).count() > 1 {
-                    disp.push_str(&format!("<{}>", s));
-                } else {
-                    disp.push_str(&s);
-                }
+                disp.push_str(&key.key_sequence_format());
             }
             if let Some(pseudo_pending) = &cx.editor.pseudo_pending {
                 disp.push_str(pseudo_pending.as_str())

@@ -2233,9 +2233,8 @@ pub fn command_palette(cx: &mut Context) {
                     .iter()
                     .map(|bind| {
                         bind.iter()
-                            .map(|key| key.to_string())
-                            .collect::<Vec<String>>()
-                            .join("+")
+                            .map(|key| key.key_sequence_format())
+                            .collect::<String>()
                     })
                     .collect::<Vec<String>>()
                     .join(", ")
