@@ -549,7 +549,51 @@ _________________________________________________________________
 
 
 =================================================================
-=                 5.4 SELECTING TO A CHARACTER                  =
+=                      5.4 ALIGN SELECTIONS                     =
+=================================================================
+
+ Type & to align the contents of the selections.
+
+ 1. Move the cursor to the first line below marked -->.
+ 2. Type C four times or 4C.
+ 3. Type W until the cursors are between the numbers and the words.
+ 4. Type & to align the words.
+
+ --> 97) lorem
+ --> 98) ipsum
+ --> 99) dolor
+ --> 100) sit
+ --> 101) amet
+
+
+
+
+
+
+=================================================================
+=                 5.5 SPLIT SELECTION INTO LINES                =
+=================================================================
+
+ Type A-s (Alt-s) to split the selection(s) on newlines.
+
+ 1. Move the first row of the table below.
+ 2. Select the entire table with 6x.
+ 3. Type A-s to split into selections at each line.
+ 4. Align the table with &.
+
+    | FRUIT   | AMOUNT |
+    |---------|--------|
+ | Apples  | 8      |
+    | Bananas | 6      |
+  | Oranges | 3      |
+     | Donuts  | 4      |
+
+
+
+
+
+=================================================================
+=                 5.6 SELECTING TO A CHARACTER                  =
 =================================================================
 
  Type f<ch> to select up to and including (find) a character.
@@ -580,6 +624,10 @@ _________________________________________________________________
  * Type s to select all instances of a regex pattern inside
    the current selection.
 
+ * Type & to align selections.
+
+ * Type A-s to split the selection into lines.
+
  * Type f / F to extend selection up to & including a character.
 
  * Type t / T to extend selection until a character.
@@ -588,12 +636,8 @@ _________________________________________________________________
 
 
 
-
-
-
-
 =================================================================
-=                     6.2 CHANGING CASE                         =
+=                     6.1 CHANGING CASE                         =
 =================================================================
 
  Type ~ to switch the case of all selected letters.
@@ -615,7 +659,7 @@ _________________________________________________________________
  --> THIS sentence should ALL BE IN uppercase!
 
 =================================================================
-=                          6.3 MACROS                           =
+=                          6.2 MACROS                           =
 =================================================================
 
  Macros are a way to record a set of actions you want to repeat.
