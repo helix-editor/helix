@@ -426,6 +426,7 @@ impl MappableCommand {
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
+        insert_digraphs, "Insert unicode character with prompt",
     );
 }
 
@@ -4678,4 +4679,8 @@ fn replay_macro(cx: &mut Context) {
     }));
 
     cx.editor.macro_replaying.pop();
+}
+
+fn insert_digraphs(cx: &mut Context) {
+    todo!() //cx.
 }
