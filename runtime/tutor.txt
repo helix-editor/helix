@@ -593,7 +593,29 @@ _________________________________________________________________
 
 
 =================================================================
-=                 5.6 SELECTING TO A CHARACTER                  =
+=                        CHAPTER 5 RECAP                        =
+=================================================================
+
+ * Type C to copy the current selection to below and Alt-C for
+   above.
+
+ * Type s to select all instances of a regex pattern inside
+   the current selection.
+
+ * Type & to align selections.
+
+ * Type A-s to split the selection into lines.
+
+
+
+
+
+
+
+
+
+=================================================================
+=                 6.1 SELECTING TO A CHARACTER                  =
 =================================================================
 
  Type f<ch> to select up to and including (find) a character.
@@ -615,29 +637,51 @@ _________________________________________________________________
        current line. It searches for the character in the file.
 
 =================================================================
-=                        CHAPTER 5 RECAP                        =
+=                    6.2 THE REPLACE COMMAND                    =
 =================================================================
 
- * Type C to copy the current selection to below and Alt-C for
-   above.
+ Type r<ch> to replace all selected characters with <ch>.
 
- * Type s to select all instances of a regex pattern inside
-   the current selection.
+ 1. Move to the second line of the table, place the cursor on the
+    first =.
+ 2. Type t| (Shift-\) to select the = separator.
+ 3. Type r- to replace the separator with dashes.
 
- * Type & to align selections.
 
- * Type A-s to split the selection into lines.
+ | Month | Days |
+ |=======|------|
+ | Jan   | 31   |
+ | Feb   | 28   |
+ | Mar   | 31   |
+ | ...   | ...  |
+
+
+
+
+=================================================================
+=                        CHAPTER 6 RECAP                        =
+=================================================================
 
  * Type f / F to extend selection up to & including a character.
 
  * Type t / T to extend selection until a character.
 
+ * Type r to replace selected characters.
+
+
+
+
+
+
+
+
+
 
 
 
 
 =================================================================
-=                     6.1 CHANGING CASE                         =
+=                     7.1 CHANGING CASE                         =
 =================================================================
 
  Type ~ to switch the case of all selected letters.
@@ -659,7 +703,7 @@ _________________________________________________________________
  --> THIS sentence should ALL BE IN uppercase!
 
 =================================================================
-=                          6.2 MACROS                           =
+=                          7.2 MACROS                           =
 =================================================================
 
  Macros are a way to record a set of actions you want to repeat.
@@ -703,7 +747,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                    7.1 USING THE JUMPLIST                     =
+=                    8.1 USING THE JUMPLIST                     =
 =================================================================
 
  Helix can keep track of "jumps" which are big movements, like
@@ -747,7 +791,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                       8.1 JOINING LINES                       =
+=                       9.1 JOINING LINES                       =
 =================================================================
 
  Type J to join together lines in selection.
@@ -769,7 +813,7 @@ lines.
 
 
 =================================================================
-=                      8.2 INDENTING LINES                      =
+=                      9.2 INDENTING LINES                      =
 =================================================================
 
  Type > to indent a line and < to outdent it.
