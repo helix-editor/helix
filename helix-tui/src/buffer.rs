@@ -595,17 +595,6 @@ impl Buffer {
         let src = if shade > 0 { 255u32 } else { 0u32 } * src_factor;
         let shaded = |dst_color: u8| ((u32::from(dst_color) * dst_factor + src) >> 8) as u8;
 
-        let mut cache: HashMap<Color, Color> = HashMap::new();
-        let mut modify = |col| {
-            let result = cache.entry(col).or_insert_with(|| {
-                if let Color::Rgb(r, g, b) = col {
-                    Color::Rgb(shaded(r), shaded(g), shaded(b))
-                } else {
-                    col
-                }
-            });
-            *result
-        };
         for y in area.top()..area.bottom() {
             for x in area.left()..area.right() {
                 let cell = &mut self[(x, y)];
@@ -613,11 +602,11 @@ impl Buffer {
                 if shade == 0 {
                     cell.modifier.insert(Modifier::DIM);
                 } else {
-                    if let Color::Rgb(..) = cell.fg {
-                        cell.fg = modify(cell.fg);
+                    if let Color::Rgb(r, g, b) = cell.fg {
+                        cell.fg = Color::Rgb(shaded(r), shaded(g), shaded(b))
                     };
-                    if let Color::Rgb(..) = cell.bg {
-                        cell.bg = modify(cell.bg);
+                    if let Color::Rgb(r, g, b) = cell.bg {
+                        cell.bg = Color::Rgb(shaded(r), shaded(g), shaded(b))
                     }
                 }
             }
