@@ -286,20 +286,42 @@ impl Prompt {
         self.exit_selection();
     }
 
-    pub fn change_history(&mut self, register: &[String], direction: CompletionDirection) {
+    pub fn change_history(
+        &mut self,
+        register: &[String],
+        direction: CompletionDirection,
+        prefix: &str,
+    ) {
         if register.is_empty() {
             return;
         }
 
         let end = register.len().saturating_sub(1);
 
-        let index = match direction {
+        let mut index = match direction {
             CompletionDirection::Forward => self.history_pos.map_or(0, |i| i + 1),
             CompletionDirection::Backward => {
                 self.history_pos.unwrap_or(register.len()).saturating_sub(1)
             }
         }
         .min(end);
+        if prefix.len() > 0 {
+            loop {
+                if register[index].starts_with(prefix) {
+                    break;
+                }
+                if index == end || index == 0 {
+                    // can't find a match, revert to current position
+                    index = self.history_pos.unwrap_or(end);
+                    break;
+                }
+                index = match direction {
+                    CompletionDirection::Forward => index + 1,
+                    CompletionDirection::Backward => index.saturating_sub(1),
+                }
+                .min(end);
+            }
+        }
 
         self.line = register[index].clone();
 
@@ -545,14 +567,30 @@ impl Component for Prompt {
             ctrl!('p') | key!(Up) => {
                 if let Some(register) = self.history_register {
                     let register = cx.editor.registers.get_mut(register);
-                    self.change_history(register.read(), CompletionDirection::Backward);
+                    self.change_history(register.read(), CompletionDirection::Backward, "");
                     (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
             ctrl!('n') | key!(Down) => {
                 if let Some(register) = self.history_register {
                     let register = cx.editor.registers.get_mut(register);
-                    self.change_history(register.read(), CompletionDirection::Forward);
+                    self.change_history(register.read(), CompletionDirection::Forward, "");
+                    (self.callback_fn)(cx, &self.line, PromptEvent::Update);
+                }
+            }
+            alt!('p') => {
+                if let Some(register) = self.history_register {
+                    let register = cx.editor.registers.get_mut(register);
+                    let prefix = &self.line().clone();
+                    self.change_history(register.read(), CompletionDirection::Backward, prefix);
+                    (self.callback_fn)(cx, &self.line, PromptEvent::Update);
+                }
+            }
+            alt!('n') => {
+                if let Some(register) = self.history_register {
+                    let register = cx.editor.registers.get_mut(register);
+                    let prefix = &self.line().clone();
+                    self.change_history(register.read(), CompletionDirection::Forward, prefix);
                     (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
