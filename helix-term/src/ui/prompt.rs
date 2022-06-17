@@ -305,7 +305,7 @@ impl Prompt {
             }
         }
         .min(end);
-        if prefix.len() > 0 {
+        if !prefix.is_empty() {
             loop {
                 if register[index].starts_with(prefix) {
                     break;
