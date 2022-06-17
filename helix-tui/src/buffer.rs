@@ -590,7 +590,7 @@ impl Buffer {
     /// shade < 0 -> darken rgb color
     /// shade > 0 -> lighten rgb color
     pub fn dim(&mut self, area: Rect, shade: i8) {
-        let alpha = i32::from(shade).unsigned_abs();
+        let alpha = i32::from(shade).unsigned_abs() << 1;
         let (src_factor, dst_factor) = (alpha, 256 - alpha);
         let src = if shade > 0 { 255u32 } else { 0u32 } * src_factor;
         let shaded = |dst_color: u8| ((u32::from(dst_color) * dst_factor + src) >> 8) as u8;
