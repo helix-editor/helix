@@ -1223,7 +1223,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "heex"
-source = { git = "https://github.com/connorlay/tree-sitter-heex", rev = "592e22292a367312c35e13de7fdb888f029981d6" }
+source = { git = "https://github.com/phoenixframework/tree-sitter-heex", rev = "961bc4d2937cfd24ceb0a5a6b2da607809f8822e" }
 
 [[language]]
 name = "sql"
