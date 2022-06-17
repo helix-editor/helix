@@ -590,14 +590,10 @@ impl Buffer {
     /// shade < 0 -> darken rgb color
     /// shade > 0 -> lighten rgb color
     pub fn dim(&mut self, area: Rect, shade: i8) {
-        let shade_amount = shade.unsigned_abs().saturating_mul(2);
-        let shade_fn = if shade < 0 {
-            u8::saturating_sub
-        } else {
-            u8::saturating_add
-        };
-        // TODO: replace with saturating_add_signed when mixed_integer_ops (https://github.com/rust-lang/rust/issues/87840) get stabilized.
-        let shaded = |v| shade_fn(v, shade_amount);
+        let alpha = i32::from(shade).unsigned_abs();
+        let (src_factor, dst_factor) = (alpha, 256 - alpha);
+        let src = if shade > 0 { 255u32 } else { 0u32 } * src_factor;
+        let shaded = |dst_color: u8| ((u32::from(dst_color) * dst_factor + src) >> 8) as u8;
 
         let mut cache: HashMap<Color, Color> = HashMap::new();
         let mut modify = |col| {
