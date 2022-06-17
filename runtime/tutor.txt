@@ -351,6 +351,28 @@ _________________________________________________________________
        subsequent lines. X on an empty line does nothing.
 
 =================================================================
+=                   3.7 COLLAPSING SELECTIONS                   =
+=================================================================
+
+ Type ; to collapse selections to single cursors.
+
+ Sometimes, you want to deselect without having to move the
+ cursor(s). This can be done using the ; key.
+
+ 1. Move the cursor to the line below marked -->.
+ 2. Use the motions you have learned to move around the line,
+    and try using ; to deselect the text after it is selected
+    by the motions.
+
+ --> This is an error-free line with words to move around in.
+
+ NOTE: This works the same in select mode.
+
+
+
+
+
+=================================================================
 =                        CHAPTER 3 RECAP                        =
 =================================================================
 
@@ -359,10 +381,8 @@ _________________________________________________________________
    * Type b to select backward to the start of the current word.
    * Use uppercase counterparts, W,E,B, to traverse WORDS.
 
- * Typing d deletes the entire selection, so you can delete a
-   word forward by typing wd.
-
- * Type c to delete the selection and enter Insert mode.
+ * Type d to delete the entire selection.
+   * Type c to delete the selection and enter Insert mode.
 
  * Type a number before a motion to repeat it that many times.
 
@@ -371,6 +391,8 @@ _________________________________________________________________
 
  * Type x to select the entire current line. Type x again to
    select the next line.
+
+ * Type semicolon ( ; ) to collapse selection.
 
 =================================================================
 =                         4.1 UNDOING                           =
@@ -527,29 +549,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                   5.4 COLLAPSING SELECTIONS                   =
-=================================================================
-
- Type ; to collapse selections to single cursors.
-
- Sometimes, you want to deselect without having to move the
- cursor(s). This can be done using the ; key.
-
- 1. Move the cursor to the line below marked -->.
- 2. Use the motions you have learned to move around the line,
-    and try using ; to deselect the text after it is selected
-    by the motions.
-
- --> This is an error-free line with words to move around in.
-
-
-
-
-
-
-
-=================================================================
-=                 5.5 SELECTING TO A CHARACTER                  =
+=                 5.4 SELECTING TO A CHARACTER                  =
 =================================================================
 
  Type f<ch> to select up to and including (find) a character.
@@ -580,11 +580,11 @@ _________________________________________________________________
  * Type s to select all instances of a regex pattern inside
    the current selection.
 
- * Type semicolon ( ; ) to collapse selection.
-
  * Type f / F to extend selection up to & including a character.
 
  * Type t / T to extend selection until a character.
+
+
 
 
 
