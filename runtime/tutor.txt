@@ -307,7 +307,29 @@ _________________________________________________________________
 
 
 =================================================================
-=                     3.5 SELECTING LINES                       =
+=                    3.5 SELECT/EXTEND MODE                     =
+=================================================================
+
+ Type v to enter Select mode.
+ Type v again or <ESC> to return to normal mode
+ In Select mode every movement will extend the selection, as
+ oppposed to replacing it.
+
+ 1. Move the cursor to the line below marked -->.
+ 2. Move to the F of FOO and type v2w to select the two words.
+ 3. Type d to remove the two words. Notice d returns you to
+    Normal mode.
+ 4. Move to the B of BAZ and repeat the sequence to delete them.
+
+ --> Remove the FOO BAR distracting words BAZ BIZ from this line.
+
+
+
+
+
+
+=================================================================
+=                     3.6 SELECTING LINES                       =
 =================================================================
 
  Type x to select a whole line. Type x again to select the next.
@@ -325,8 +347,8 @@ _________________________________________________________________
  --> 6) Sugar is sweet,
  --> 7) And so are you.
 
-
-
+ NOTE: X works similarly to x although it does not extend to
+       subsequent lines. X on an empty line does nothing.
 
 =================================================================
 =                        CHAPTER 3 RECAP                        =
@@ -344,11 +366,11 @@ _________________________________________________________________
 
  * Type a number before a motion to repeat it that many times.
 
+ * Type v to enter Select mode, where all motions extend the
+   selection.
+
  * Type x to select the entire current line. Type x again to
    select the next line.
-
-
-
 
 =================================================================
 =                         4.1 UNDOING                           =
