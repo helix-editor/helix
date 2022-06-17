@@ -2,7 +2,6 @@ use crate::text::{Span, Spans};
 use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::graphics::{Color, Modifier, Rect, Style};
 use std::cmp::min;
-use std::collections::HashMap;
 use unicode_segmentation::UnicodeSegmentation;
 
 /// A buffer cell
