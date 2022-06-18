@@ -659,6 +659,28 @@ _________________________________________________________________
 
 
 =================================================================
+=                    6.3 REVERSING SELECTION                    =
+=================================================================
+
+ Type A-; (Alt-;) to reverse the selection(s).
+
+ TODO
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+================================================================
 =                        CHAPTER 6 RECAP                        =
 =================================================================
 
@@ -820,7 +842,7 @@ lines.
 
  1. Move the cursor to the line below marked -->.
  2. Move down to the second line and type > to indent it.
- 3. Move to the third line and type < to unindent it.
+ 3. Move to the third line and type < to outdent it.
 
  --> These lines
     are indented
