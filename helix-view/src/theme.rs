@@ -106,6 +106,7 @@ impl Loader {
 
 #[derive(Clone, Debug)]
 pub struct Theme {
+    /// The name of the theme, taken from the filename that it came from.
     pub name: String,
     // UI styles are stored in a HashMap
     styles: HashMap<String, Style>,

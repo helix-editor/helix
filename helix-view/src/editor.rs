@@ -449,6 +449,7 @@ pub struct Editor {
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
+    // last_theme is currently just used for theme previews
     pub last_theme: Option<String>,
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
