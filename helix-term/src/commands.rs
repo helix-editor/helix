@@ -4063,16 +4063,18 @@ fn goto_ts_object_impl(cx: &mut Context, object: &str, direction: Direction) {
         None => range,
     };
 
-    if doc.mode == Mode::Select {
+    let selection = if doc.mode == Mode::Select {
         if range.direction() != direction {
-            doc.set_selection(view.id, Selection::single(range.anchor, new_range.head));
+            Selection::single(range.anchor, new_range.head)
         } else {
             let merge = range.merge(new_range);
-            doc.set_selection(view.id, Selection::single(merge.anchor, merge.head));
+            Selection::single(merge.anchor, merge.head)
         }
     } else {
-        doc.set_selection(view.id, Selection::single(new_range.anchor, new_range.head));
-    }
+        Selection::single(new_range.anchor, new_range.head)
+    };
+
+    doc.set_selection(view.id, selection);
 }
 
 fn goto_next_function(cx: &mut Context) {
