@@ -143,6 +143,7 @@ Currently supported: `word`, `surround`, `function`, `class`, `parameter`.
 | `c`                    | Class                    |
 | `a`                    | Argument/parameter       |
 | `o`                    | Comment                  |
+| `t`                    | Test                     |
 
 > NOTE: `f`, `c`, etc need a tree-sitter grammar active for the current
 document and a special tree-sitter query file to work properly. [Only
