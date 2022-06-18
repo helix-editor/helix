@@ -86,9 +86,11 @@ impl Application {
 
         let true_color = config.editor.true_color || crate::true_color();
 
-        let theme = match config.theme.as_ref() {
-            Some(theme_name) => {
-                match theme_loader
+        let theme = config
+            .theme
+            .as_ref()
+            .and_then(|theme_name| {
+                theme_loader
                     .load(theme_name)
                     .map_err(|e| {
                         log::warn!("failed to load theme `{}` - {}", theme_name, e);
@@ -96,13 +98,8 @@ impl Application {
                     })
                     .ok()
                     .filter(|theme| (true_color || theme.is_16_color()))
-                {
-                    Some(theme) => theme,
-                    None => Application::default_theme(theme_loader.clone(), true_color),
-                }
-            }
-            None => Application::default_theme(theme_loader.clone(), true_color),
-        };
+            })
+            .unwrap_or_else(|| theme_loader.default_theme(true_color));
 
         let syn_loader_conf = user_syntax_loader().unwrap_or_else(|err| {
             eprintln!("Bad language config: {}", err);
@@ -202,14 +199,6 @@ impl Application {
         };
 
         Ok(app)
-    }
-
-    fn default_theme(theme_loader: Arc<theme::Loader>, true_color: bool) -> theme::Theme {
-        if true_color {
-            theme_loader.default()
-        } else {
-            theme_loader.base16_default()
-        }
     }
 
     fn render(&mut self) {
@@ -318,13 +307,7 @@ impl Application {
                     })
                     .ok()
                     .filter(|theme| (true_color || theme.is_16_color()))
-                    .unwrap_or_else(|| {
-                        if true_color {
-                            self.theme_loader.default()
-                        } else {
-                            self.theme_loader.base16_default()
-                        }
-                    }),
+                    .unwrap_or_else(|| self.theme_loader.default_theme(true_color)),
             );
         }
 
