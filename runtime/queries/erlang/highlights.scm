@@ -22,7 +22,7 @@
       (tuple
         (binary_operator
           left: (atom) @variable.other.member
-          operator: "="))
+          operator: ["=" "::"]))
       (tuple
         (binary_operator
           left:
@@ -48,11 +48,17 @@
 
 (attribute
   name: (atom) @keyword
+  (arguments
+    (_) @keyword.directive)
+ (#match? @keyword "ifn?def"))
+
+(attribute
+  name: (atom) @keyword
   module: (atom) @module
- (#eq? @keyword "spec"))
+ (#eq? @keyword "(spec|callback)"))
 
 ; Functions
-(function name: (atom) @function)
+(function_clause name: (atom) @function)
 (call module: (atom) @module)
 (call function: (atom) @function)
 (stab_clause name: (atom) @function)
@@ -69,12 +75,9 @@
 (record name: (atom) @type)
 
 ; Keywords
-((attribute name: (atom) @keyword)
- (#match?
-  @keyword
-  "^(define|export|export_type|include|include_lib|ifdef|ifndef|if|elif|else|endif|vsn|on_load|behaviour|record|file|type|opaque|spec)$"))
+(attribute name: (atom) @keyword)
 
-["case" "fun" "if" "of" "when" "end" "receive" "try" "catch" "after"] @keyword
+["case" "fun" "if" "of" "when" "end" "receive" "try" "catch" "after" "begin" "maybe"] @keyword
 
 ; Operators
 (binary_operator
@@ -82,13 +85,14 @@
   operator: "/"
   right: (integer) @constant.numeric.integer)
 
+((binary_operator operator: _ @keyword.operator)
+ (#match? @keyword.operator "^\\w+$"))
+((unary_operator operator: _ @keyword.operator)
+ (#match? @keyword.operator "^\\w+$"))
+
 (binary_operator operator: _ @operator)
 (unary_operator operator: _ @operator)
 ["/" ":" "#" "->"] @operator
-
-; Comments
-((variable) @comment.discard
- (#match? @comment.discard "^_"))
 
 (tripledot) @comment.discard
 
@@ -99,12 +103,13 @@
   "?"+ @keyword.directive
   name: (_) @keyword.directive)
 
+; Comments
+((variable) @comment.discard
+ (#match? @comment.discard "^_"))
+
 ; Basic types
 (variable) @variable
-[
-  (atom)
-  (quoted_atom)
-] @string.special.symbol
+(atom) @string.special.symbol
 (string) @string
 (character) @constant.character
 

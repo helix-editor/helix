@@ -50,6 +50,10 @@ where
     Ok(Option::<AutoPairConfig>::deserialize(deserializer)?.and_then(AutoPairConfig::into))
 }
 
+fn default_timeout() -> u64 {
+    20
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
@@ -67,12 +71,14 @@ pub struct LanguageConfiguration {
     pub shebangs: Vec<String>, // interpreter(s) associated with language
     pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
+    pub max_line_length: Option<usize>,
 
     #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
     pub config: Option<serde_json::Value>,
 
     #[serde(default)]
     pub auto_format: bool,
+
     #[serde(default)]
     pub diagnostic_severity: Severity,
 
@@ -92,7 +98,7 @@ pub struct LanguageConfiguration {
     pub indent: Option<IndentationConfiguration>,
 
     #[serde(skip)]
-    pub(crate) indent_query: OnceCell<Option<IndentQuery>>,
+    pub(crate) indent_query: OnceCell<Option<Query>>,
     #[serde(skip)]
     pub(crate) textobject_query: OnceCell<Option<TextObjectQuery>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -104,6 +110,8 @@ pub struct LanguageConfiguration {
     /// global setting.
     #[serde(default, skip_serializing, deserialize_with = "deserialize_auto_pairs")]
     pub auto_pairs: Option<AutoPairs>,
+
+    pub rulers: Option<Vec<u16>>, // if set, override editor's rulers
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -113,6 +121,8 @@ pub struct LanguageServerConfiguration {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
+    #[serde(default = "default_timeout")]
+    pub timeout: u64,
     pub language_id: Option<String>,
 }
 
@@ -220,25 +230,15 @@ impl FromStr for AutoPairConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct IndentQuery {
-    #[serde(default)]
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    pub indent: HashSet<String>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    pub outdent: HashSet<String>,
-}
-
 #[derive(Debug)]
 pub struct TextObjectQuery {
     pub query: Query,
 }
 
+#[derive(Debug)]
 pub enum CapturedNode<'a> {
     Single(Node<'a>),
-    /// Guarenteed to be not empty
+    /// Guaranteed to be not empty
     Grouped(Vec<Node<'a>>),
 }
 
@@ -270,12 +270,12 @@ impl TextObjectQuery {
     /// and support for this is partial and could use improvement.
     ///
     /// ```query
-    /// ;; supported:
     /// (comment)+ @capture
     ///
-    /// ;; unsupported:
+    /// ; OR
     /// (
-    ///   (comment)+
+    ///   (comment)*
+    ///   .
     ///   (function)
     /// ) @capture
     /// ```
@@ -301,35 +301,30 @@ impl TextObjectQuery {
         let capture_idx = capture_names
             .iter()
             .find_map(|cap| self.query.capture_index_for_name(cap))?;
-        let captures = cursor.matches(&self.query, node, RopeProvider(slice));
 
-        let nodes = captures.flat_map(move |mat| {
-            let captures = mat.captures.iter().filter(move |c| c.index == capture_idx);
-            let nodes = captures.map(|c| c.node);
-            let pattern_idx = mat.pattern_index;
-            let quantifier = self.query.capture_quantifiers(pattern_idx)[capture_idx as usize];
+        let nodes = cursor
+            .captures(&self.query, node, RopeProvider(slice))
+            .filter_map(move |(mat, _)| {
+                let nodes: Vec<_> = mat
+                    .captures
+                    .iter()
+                    .filter_map(|cap| (cap.index == capture_idx).then(|| cap.node))
+                    .collect();
 
-            let iter: Box<dyn Iterator<Item = CapturedNode>> = match quantifier {
-                CaptureQuantifier::OneOrMore | CaptureQuantifier::ZeroOrMore => {
-                    let nodes: Vec<Node> = nodes.collect();
-                    if nodes.is_empty() {
-                        Box::new(std::iter::empty())
-                    } else {
-                        Box::new(std::iter::once(CapturedNode::Grouped(nodes)))
-                    }
+                if nodes.len() > 1 {
+                    Some(CapturedNode::Grouped(nodes))
+                } else {
+                    nodes.into_iter().map(CapturedNode::Single).next()
                 }
-                _ => Box::new(nodes.map(CapturedNode::Single)),
-            };
+            });
 
-            iter
-        });
         Some(nodes)
     }
 }
 
 fn read_query(language: &str, filename: &str) -> String {
     static INHERITS_REGEX: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r";+\s*inherits\s*:?\s*([a-z_,()]+)\s*").unwrap());
+        Lazy::new(|| Regex::new(r";+\s*inherits\s*:?\s*([a-z_,()-]+)\s*").unwrap());
 
     let query = load_runtime_file(language, filename).unwrap_or_default();
 
@@ -381,7 +376,7 @@ impl LanguageConfiguration {
                 &injections_query,
                 &locals_query,
             )
-            .unwrap_or_else(|query_error| panic!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar build' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, query_error));
+            .unwrap_or_else(|query_error| panic!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar fetch' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, query_error));
 
             config.configure(scopes);
             Some(Arc::new(config))
@@ -404,13 +399,16 @@ impl LanguageConfiguration {
         self.highlight_config.get().is_some()
     }
 
-    pub fn indent_query(&self) -> Option<&IndentQuery> {
+    pub fn indent_query(&self) -> Option<&Query> {
         self.indent_query
             .get_or_init(|| {
-                let language = self.language_id.to_ascii_lowercase();
-
-                let toml = load_runtime_file(&language, "indents.toml").ok()?;
-                toml::from_slice(toml.as_bytes()).ok()
+                let lang_name = self.language_id.to_ascii_lowercase();
+                let query_text = read_query(&lang_name, "indents.scm");
+                if query_text.is_empty() {
+                    return None;
+                }
+                let lang = self.highlight_config.get()?.as_ref()?.language;
+                Query::new(lang, &query_text).ok()
             })
             .as_ref()
     }
@@ -421,7 +419,9 @@ impl LanguageConfiguration {
                 let lang_name = self.language_id.to_ascii_lowercase();
                 let query_text = read_query(&lang_name, "textobjects.scm");
                 let lang = self.highlight_config.get()?.as_ref()?.language;
-                let query = Query::new(lang, &query_text).ok()?;
+                let query = Query::new(lang, &query_text)
+                    .map_err(|e| log::error!("Failed to parse textobjects.scm queries: {}", e))
+                    .ok()?;
                 Some(TextObjectQuery { query })
             })
             .as_ref()
@@ -512,6 +512,13 @@ impl Loader {
             .cloned()
     }
 
+    pub fn language_config_for_language_id(&self, id: &str) -> Option<Arc<LanguageConfiguration>> {
+        self.language_configs
+            .iter()
+            .find(|config| config.language_id == id)
+            .cloned()
+    }
+
     pub fn language_configuration_for_injection_string(
         &self,
         string: &str,
@@ -537,6 +544,10 @@ impl Loader {
         None
     }
 
+    pub fn language_configs(&self) -> impl Iterator<Item = &Arc<LanguageConfiguration>> {
+        self.language_configs.iter()
+    }
+
     pub fn set_scopes(&self, scopes: Vec<String>) {
         self.scopes.store(Arc::new(scopes));
 
@@ -557,7 +568,7 @@ impl Loader {
 
 pub struct TsParser {
     parser: tree_sitter::Parser,
-    cursors: Vec<QueryCursor>,
+    pub cursors: Vec<QueryCursor>,
 }
 
 // could also just use a pool, or a single instance?
@@ -1108,8 +1119,8 @@ pub(crate) fn generate_edits(
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{iter, mem, ops, str, usize};
 use tree_sitter::{
-    CaptureQuantifier, Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor,
-    QueryError, QueryMatch, Range, TextProvider, Tree,
+    Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError,
+    QueryMatch, Range, TextProvider, Tree,
 };
 
 const CANCELLATION_CHECK_INTERVAL: usize = 100;
@@ -1134,7 +1145,7 @@ pub enum HighlightEvent {
     HighlightEnd,
 }
 
-/// Contains the data neeeded to higlight code written in a particular language.
+/// Contains the data needed to highlight code written in a particular language.
 ///
 /// This struct is immutable and can be shared between threads.
 #[derive(Debug)]
@@ -1180,7 +1191,7 @@ struct HighlightIter<'a> {
 }
 
 // Adapter to convert rope chunks to bytes
-struct ChunksBytes<'a> {
+pub struct ChunksBytes<'a> {
     chunks: ropey::iter::Chunks<'a>,
 }
 impl<'a> Iterator for ChunksBytes<'a> {
@@ -1190,7 +1201,7 @@ impl<'a> Iterator for ChunksBytes<'a> {
     }
 }
 
-struct RopeProvider<'a>(RopeSlice<'a>);
+pub struct RopeProvider<'a>(pub RopeSlice<'a>);
 impl<'a> TextProvider<'a> for RopeProvider<'a> {
     type I = ChunksBytes<'a>;
 
@@ -1969,7 +1980,7 @@ mod test {
         let source = Rope::from_str(
             r#"
 /// a comment on
-/// mutiple lines
+/// multiple lines
         "#,
         );
 
@@ -1993,14 +2004,16 @@ mod test {
             assert_eq!(
                 matches[0].byte_range(),
                 range,
-                "@{capture} expected {range:?}"
+                "@{} expected {:?}",
+                capture,
+                range
             )
         };
 
-        test("quantified_nodes", 1..35);
+        test("quantified_nodes", 1..36);
         // NOTE: Enable after implementing proper node group capturing
-        // test("quantified_nodes_grouped", 1..35);
-        // test("multiple_nodes_grouped", 1..35);
+        // test("quantified_nodes_grouped", 1..36);
+        // test("multiple_nodes_grouped", 1..36);
     }
 
     #[test]
@@ -2126,7 +2139,7 @@ mod test {
     #[test]
     fn test_load_runtime_file() {
         // Test to make sure we can load some data from the runtime directory.
-        let contents = load_runtime_file("rust", "indents.toml").unwrap();
+        let contents = load_runtime_file("rust", "indents.scm").unwrap();
         assert!(!contents.is_empty());
 
         let results = load_runtime_file("rust", "does-not-exist");

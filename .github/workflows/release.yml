@@ -1,32 +1,59 @@
 name: Release
 on:
-  # schedule:
-  # - cron: '0 0 * * *' # midnight UTC
-
   push:
     tags:
-    - 'v[0-9]+.[0-9]+.[0-9]+'
-    ## - release
+    - '[0-9]+.[0-9]+'
+    - '[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
+  fetch-grammars:
+    name: Fetch Grammars
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install stable toolchain
+        uses: helix-editor/rust-toolchain@v1
+        with:
+          profile: minimal
+          override: true
+
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Fetch tree-sitter grammars
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --package=helix-loader --bin=hx-loader
+
+      - name: Bundle grammars
+        run: tar cJf grammars.tar.xz -C runtime/grammars/sources .
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: grammars
+          path: grammars.tar.xz
+
   dist:
     name: Dist
+    needs: [fetch-grammars]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false # don't fail other jobs if one fails
       matrix:
-        build: [x86_64-linux, aarch64-linux, x86_64-macos, x86_64-windows] #, x86_64-win-gnu, win32-msvc
+        build: [x86_64-linux, x86_64-macos, x86_64-windows] #, x86_64-win-gnu, win32-msvc
         include:
         - build: x86_64-linux
           os: ubuntu-20.04
           rust: stable
           target: x86_64-unknown-linux-gnu
           cross: false
-        - build: aarch64-linux
-          os: ubuntu-20.04
-          rust: stable
-          target: aarch64-unknown-linux-gnu
-          cross: true
+        # - build: aarch64-linux
+        #   os: ubuntu-20.04
+        #   rust: stable
+        #   target: aarch64-unknown-linux-gnu
+        #   cross: true
         - build: x86_64-macos
           os: macos-latest
           rust: stable
@@ -53,6 +80,15 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
+
+      - name: Download grammars
+        uses: actions/download-artifact@v3
+
+      - name: Move grammars under runtime
+        if: "!startsWith(matrix.os, 'windows')"
+        run: |
+          mkdir -p runtime/grammars/sources
+          tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
 
       - name: Install ${{ matrix.rust }} toolchain
         uses: actions-rs/toolchain@v1
@@ -89,14 +125,59 @@ jobs:
             aarch64-linux-gnu-strip \
             /target/${{ matrix.target }}/release/hx
 
+      - name: Build AppImage
+        shell: bash
+        if: matrix.build == 'x86_64-linux'
+        run: |
+          mkdir dist
+
+          name=dev
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            name=${GITHUB_REF:10}
+          fi
+
+          export VERSION="$name"
+          export ARCH=x86_64
+          export APP=helix
+          export OUTPUT="helix-$VERSION-$ARCH.AppImage"
+          export UPDATE_INFORMATION="gh-releases-zsync|$GITHUB_REPOSITORY_OWNER|helix|latest|$APP-*-$ARCH.AppImage.zsync"
+
+          mkdir -p "$APP.AppDir"/usr/{bin,lib/helix}
+
+          cp "target/${{ matrix.target }}/release/hx" "$APP.AppDir/usr/bin/hx"
+          rm -rf runtime/grammars/sources
+          cp -r runtime "$APP.AppDir/usr/lib/helix/runtime"
+
+          cat << 'EOF' > "$APP.AppDir/AppRun"
+          #!/bin/sh
+
+          APPDIR="$(dirname "$(readlink -f "${0}")")"
+          HELIX_RUNTIME="$APPDIR/usr/lib/helix/runtime" exec "$APPDIR/usr/bin/hx" "$@"
+          EOF
+          chmod 755 "$APP.AppDir/AppRun"
+
+          curl -Lo linuxdeploy-x86_64.AppImage \
+              https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
+
+          ./linuxdeploy-x86_64.AppImage \
+              --appdir "$APP.AppDir" -d contrib/Helix.desktop \
+              -i contrib/helix.png --output appimage
+
+          mv "$APP-$VERSION-$ARCH.AppImage" \
+              "$APP-$VERSION-$ARCH.AppImage.zsync" dist
+
       - name: Build archive
         shell: bash
         run: |
-          mkdir dist
+          mkdir -p dist
           if [ "${{ matrix.os }}" = "windows-2019" ]; then
             cp "target/${{ matrix.target }}/release/hx.exe" "dist/"
           else
             cp "target/${{ matrix.target }}/release/hx" "dist/"
+          fi
+          if [ -d runtime/grammars/sources ]; then
+            rm -rf runtime/grammars/sources
           fi
           cp -r runtime dist
 
@@ -113,12 +194,12 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
 
       - name: Calculate tag name
         run: |
           name=dev
-          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
             name=${GITHUB_REF:10}
           fi
           echo ::set-output name=val::$name
@@ -130,8 +211,13 @@ jobs:
         run: |
           set -ex
 
-          rm -rf tmp
-          mkdir tmp
+          source="$(pwd)"
+          mkdir -p runtime/grammars/sources
+          tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
+          rm -rf grammars
+
+          cd "$(mktemp -d)"
+          mv $source/bins-* .
           mkdir dist
 
           for dir in bins-* ; do
@@ -140,18 +226,27 @@ jobs:
                   exe=".exe"
               fi
               pkgname=helix-$TAG-$platform
-              mkdir tmp/$pkgname
-              cp LICENSE README.md tmp/$pkgname
-              mv bins-$platform/runtime tmp/$pkgname/
-              mv bins-$platform/hx$exe tmp/$pkgname
-              chmod +x tmp/$pkgname/hx$exe
+              mkdir $pkgname
+              cp $source/LICENSE $source/README.md $pkgname
+              mkdir $pkgname/contrib
+              cp -r $source/contrib/completion $pkgname/contrib
+              mv bins-$platform/runtime $pkgname/
+              mv bins-$platform/hx$exe $pkgname
+              chmod +x $pkgname/hx$exe
+
+              if [[ "$platform" = "x86_64-linux" ]]; then
+                  mv bins-$platform/helix-*.AppImage* dist/
+              fi
 
               if [ "$exe" = "" ]; then
-                  tar cJf dist/$pkgname.tar.xz -C tmp $pkgname
+                  tar cJf dist/$pkgname.tar.xz $pkgname
               else
-                  (cd tmp && 7z a -r ../dist/$pkgname.zip $pkgname)
+                  7z a -r dist/$pkgname.zip $pkgname
               fi
           done
+
+          tar cJf dist/helix-$TAG-source.tar.xz -C $source .
+          mv dist $source/
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2

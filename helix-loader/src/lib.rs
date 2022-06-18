@@ -1,3 +1,4 @@
+pub mod config;
 pub mod grammar;
 
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
@@ -36,6 +37,15 @@ pub fn config_dir() -> std::path::PathBuf {
     path
 }
 
+pub fn local_config_dirs() -> Vec<std::path::PathBuf> {
+    let directories = find_root_impl(None, &[".helix".to_string()])
+        .into_iter()
+        .map(|path| path.join(".helix"))
+        .collect();
+    log::debug!("Located configuration folders: {:?}", directories);
+    directories
+}
+
 pub fn cache_dir() -> std::path::PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
@@ -56,29 +66,56 @@ pub fn log_file() -> std::path::PathBuf {
     cache_dir().join("helix.log")
 }
 
-/// Default bultin-in languages.toml.
-pub fn default_lang_config() -> toml::Value {
-    toml::from_slice(include_bytes!("../../languages.toml"))
-        .expect("Could not parse bultin-in languages.toml to valid toml")
-}
+pub fn find_root_impl(root: Option<&str>, root_markers: &[String]) -> Vec<std::path::PathBuf> {
+    let current_dir = std::env::current_dir().expect("unable to determine current directory");
+    let mut directories = Vec::new();
 
-/// User configured languages.toml file, merged with the default config.
-pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
-    let def_lang_conf = default_lang_config();
-    let data = std::fs::read(crate::config_dir().join("languages.toml"));
-    let user_lang_conf = match data {
-        Ok(raw) => {
-            let value = toml::from_slice(&raw)?;
-            merge_toml_values(def_lang_conf, value)
+    let root = match root {
+        Some(root) => {
+            let root = std::path::Path::new(root);
+            if root.is_absolute() {
+                root.to_path_buf()
+            } else {
+                current_dir.join(root)
+            }
         }
-        Err(_) => def_lang_conf,
+        None => current_dir,
     };
 
-    Ok(user_lang_conf)
+    for ancestor in root.ancestors() {
+        // don't go higher than repo
+        if ancestor.join(".git").is_dir() {
+            // Use workspace if detected from marker
+            directories.push(ancestor.to_path_buf());
+            break;
+        } else if root_markers
+            .iter()
+            .any(|marker| ancestor.join(marker).exists())
+        {
+            directories.push(ancestor.to_path_buf());
+        }
+    }
+    directories
 }
 
-// right overrides left
-pub fn merge_toml_values(left: toml::Value, right: toml::Value) -> toml::Value {
+/// Merge two TOML documents, merging values from `right` onto `left`
+///
+/// When an array exists in both `left` and `right`, `right`'s array is
+/// used. When a table exists in both `left` and `right`, the merged table
+/// consists of all keys in `left`'s table unioned with all keys in `right`
+/// with the values of `right` being merged recursively onto values of
+/// `left`.
+///
+/// `merge_toplevel_arrays` controls whether a top-level array in the TOML
+/// document is merged instead of overridden. This is useful for TOML
+/// documents that use a top-level array of values like the `languages.toml`,
+/// where one usually wants to override or add to the array instead of
+/// replacing it altogether.
+pub fn merge_toml_values(
+    left: toml::Value,
+    right: toml::Value,
+    merge_toplevel_arrays: bool,
+) -> toml::Value {
     use toml::Value;
 
     fn get_name(v: &Value) -> Option<&str> {
@@ -87,24 +124,35 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value) -> toml::Value {
 
     match (left, right) {
         (Value::Array(mut left_items), Value::Array(right_items)) => {
-            left_items.reserve(right_items.len());
-            for rvalue in right_items {
-                let lvalue = get_name(&rvalue)
-                    .and_then(|rname| left_items.iter().position(|v| get_name(v) == Some(rname)))
-                    .map(|lpos| left_items.remove(lpos));
-                let mvalue = match lvalue {
-                    Some(lvalue) => merge_toml_values(lvalue, rvalue),
-                    None => rvalue,
-                };
-                left_items.push(mvalue);
+            // The top-level arrays should be merged but nested arrays should
+            // act as overrides. For the `languages.toml` config, this means
+            // that you can specify a sub-set of languages in an overriding
+            // `languages.toml` but that nested arrays like Language Server
+            // arguments are replaced instead of merged.
+            if merge_toplevel_arrays {
+                left_items.reserve(right_items.len());
+                for rvalue in right_items {
+                    let lvalue = get_name(&rvalue)
+                        .and_then(|rname| {
+                            left_items.iter().position(|v| get_name(v) == Some(rname))
+                        })
+                        .map(|lpos| left_items.remove(lpos));
+                    let mvalue = match lvalue {
+                        Some(lvalue) => merge_toml_values(lvalue, rvalue, false),
+                        None => rvalue,
+                    };
+                    left_items.push(mvalue);
+                }
+                Value::Array(left_items)
+            } else {
+                Value::Array(right_items)
             }
-            Value::Array(left_items)
         }
         (Value::Table(mut left_map), Value::Table(right_map)) => {
             for (rname, rvalue) in right_map {
                 match left_map.remove(&rname) {
                     Some(lvalue) => {
-                        let merged_value = merge_toml_values(lvalue, rvalue);
+                        let merged_value = merge_toml_values(lvalue, rvalue, merge_toplevel_arrays);
                         left_map.insert(rname, merged_value);
                     }
                     None => {
@@ -122,23 +170,22 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value) -> toml::Value {
 #[cfg(test)]
 mod merge_toml_tests {
     use super::merge_toml_values;
+    use toml::Value;
 
     #[test]
-    fn language_tomls() {
-        use toml::Value;
-
-        const USER: &str = "
+    fn language_toml_map_merges() {
+        const USER: &str = r#"
         [[language]]
-        name = \"nix\"
-        test = \"bbb\"
-        indent = { tab-width = 4, unit = \"    \", test = \"aaa\" }
-        ";
+        name = "nix"
+        test = "bbb"
+        indent = { tab-width = 4, unit = "    ", test = "aaa" }
+        "#;
 
         let base: Value = toml::from_slice(include_bytes!("../../languages.toml"))
             .expect("Couldn't parse built-in languages config");
         let user: Value = toml::from_str(USER).unwrap();
 
-        let merged = merge_toml_values(base, user);
+        let merged = merge_toml_values(base, user, true);
         let languages = merged.get("language").unwrap().as_array().unwrap();
         let nix = languages
             .iter()
@@ -157,5 +204,34 @@ mod merge_toml_tests {
         assert_eq!(nix_indent.get("test").unwrap().as_str().unwrap(), "aaa");
         // We didn't change comment-token so it should be same
         assert_eq!(nix.get("comment-token").unwrap().as_str().unwrap(), "#");
+    }
+
+    #[test]
+    fn language_toml_nested_array_merges() {
+        const USER: &str = r#"
+        [[language]]
+        name = "typescript"
+        language-server = { command = "deno", args = ["lsp"] }
+        "#;
+
+        let base: Value = toml::from_slice(include_bytes!("../../languages.toml"))
+            .expect("Couldn't parse built-in languages config");
+        let user: Value = toml::from_str(USER).unwrap();
+
+        let merged = merge_toml_values(base, user, true);
+        let languages = merged.get("language").unwrap().as_array().unwrap();
+        let ts = languages
+            .iter()
+            .find(|v| v.get("name").unwrap().as_str().unwrap() == "typescript")
+            .unwrap();
+        assert_eq!(
+            ts.get("language-server")
+                .unwrap()
+                .get("args")
+                .unwrap()
+                .as_array()
+                .unwrap(),
+            &vec![Value::String("lsp".into())]
+        )
     }
 }

@@ -2,7 +2,9 @@
 
 "ui.linenr.selected" = { fg = "nord4" }
 "ui.text.focus" = { fg = "nord8", modifiers= ["bold"] }
+"ui.menu" = { fg = "nord6", bg = "#232d38" }
 "ui.menu.selected" = { fg = "nord8", bg = "nord2" }
+"ui.virtual" = "gray"
 
 "info" = "nord8"
 "hint" = "nord8"
@@ -45,7 +47,7 @@
 "punctuation" = "nord6"
 
 # Frost
-# nord7 - classes, types, primiatives
+# nord7 - classes, types, primitives
 "type" = "nord7"
 "type.builtin" = { fg = "nord7"}
 "label" = "nord7"

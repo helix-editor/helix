@@ -410,9 +410,14 @@ impl Document {
         let language_server = self.language_server()?;
         let text = self.text.clone();
         let offset_encoding = language_server.offset_encoding();
+
         let request = language_server.text_document_formatting(
             self.identifier(),
-            lsp::FormattingOptions::default(),
+            lsp::FormattingOptions {
+                tab_size: self.tab_width() as u32,
+                insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
+                ..Default::default()
+            },
             None,
         )?;
 
@@ -430,15 +435,16 @@ impl Document {
         Some(fut)
     }
 
-    pub fn save(&mut self) -> impl Future<Output = Result<(), anyhow::Error>> {
-        self.save_impl::<futures_util::future::Ready<_>>(None)
+    pub fn save(&mut self, force: bool) -> impl Future<Output = Result<(), anyhow::Error>> {
+        self.save_impl::<futures_util::future::Ready<_>>(None, force)
     }
 
     pub fn format_and_save(
         &mut self,
         formatting: Option<impl Future<Output = LspFormatting>>,
+        force: bool,
     ) -> impl Future<Output = anyhow::Result<()>> {
-        self.save_impl(formatting)
+        self.save_impl(formatting, force)
     }
 
     // TODO: do we need some way of ensuring two save operations on the same doc can't run at once?
@@ -450,6 +456,7 @@ impl Document {
     fn save_impl<F: Future<Output = LspFormatting>>(
         &mut self,
         formatting: Option<F>,
+        force: bool,
     ) -> impl Future<Output = Result<(), anyhow::Error>> {
         // we clone and move text + path into the future so that we asynchronously save the current
         // state without blocking any further edits.
@@ -471,7 +478,11 @@ impl Document {
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
-                    bail!("can't save file, parent directory does not exist");
+                    if force {
+                        std::fs::DirBuilder::new().recursive(true).create(parent)?;
+                    } else {
+                        bail!("can't save file, parent directory does not exist");
+                    }
                 }
             }
 
@@ -603,6 +614,17 @@ impl Document {
         self.set_language(language_config, Some(config_loader));
     }
 
+    /// Set the programming language for the file if you know the language but don't have the
+    /// [`syntax::LanguageConfiguration`] for it.
+    pub fn set_language_by_language_id(
+        &mut self,
+        language_id: &str,
+        config_loader: Arc<syntax::Loader>,
+    ) {
+        let language_config = config_loader.language_config_for_language_id(language_id);
+        self.set_language(language_config, Some(config_loader));
+    }
+
     /// Set the LSP.
     pub fn set_language_server(&mut self, language_server: Option<Arc<helix_lsp::Client>>) {
         self.language_server = language_server;
@@ -627,7 +649,7 @@ impl Document {
                     .clone()
                     // Map through changes
                     .map(transaction.changes())
-                    // Ensure all selections accross all views still adhere to invariants.
+                    // Ensure all selections across all views still adhere to invariants.
                     .ensure_invariants(self.text.slice(..));
             }
 
@@ -731,7 +753,7 @@ impl Document {
         self.undo_redo_impl(view_id, true)
     }
 
-    /// Redo the last modification to the [`Document`]. Returns whether the redo was sucessful.
+    /// Redo the last modification to the [`Document`]. Returns whether the redo was successful.
     pub fn redo(&mut self, view_id: ViewId) -> bool {
         self.undo_redo_impl(view_id, false)
     }
@@ -832,9 +854,11 @@ impl Document {
     /// `language-server` configuration, or the document language if no
     /// `language-id` has been specified.
     pub fn language_id(&self) -> Option<&str> {
-        self.language_config()
-            .and_then(|config| config.language_server.as_ref())
-            .and_then(|lsp_config| lsp_config.language_id.as_deref())
+        self.language_config()?
+            .language_server
+            .as_ref()?
+            .language_id
+            .as_deref()
             .or_else(|| Some(self.language()?.rsplit_once('.')?.1))
     }
 

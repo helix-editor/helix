@@ -5,16 +5,15 @@ use std::path::{Component, Path, PathBuf};
 /// is available, otherwise returns the path unchanged.
 pub fn fold_home_dir(path: &Path) -> PathBuf {
     if let Ok(home) = home_dir() {
-        if path.starts_with(&home) {
-            // it's ok to unwrap, the path starts with home dir
-            return PathBuf::from("~").join(path.strip_prefix(&home).unwrap());
+        if let Ok(stripped) = path.strip_prefix(&home) {
+            return PathBuf::from("~").join(stripped);
         }
     }
 
     path.to_path_buf()
 }
 
-/// Expands tilde `~` into users home directory if avilable, otherwise returns the path
+/// Expands tilde `~` into users home directory if available, otherwise returns the path
 /// unchanged. The tilde will only be expanded when present as the first component of the path
 /// and only slash follows it.
 pub fn expand_tilde(path: &Path) -> PathBuf {

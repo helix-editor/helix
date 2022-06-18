@@ -2,7 +2,7 @@ use crate::compositor::{Component, Compositor, Context, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
 use crossterm::event::Event;
 use helix_view::input::KeyEvent;
-use helix_view::keyboard::{KeyCode, KeyModifiers};
+use helix_view::keyboard::KeyCode;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
 use tui::widgets::{Block, Borders, Widget};
@@ -16,10 +16,11 @@ use helix_view::{
 };
 
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
+type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
 
 pub struct Prompt {
     prompt: Cow<'static, str>,
-    pub line: String,
+    line: String,
     cursor: usize,
     completion: Vec<Completion>,
     selection: Option<usize>,
@@ -28,6 +29,7 @@ pub struct Prompt {
     completion_fn: Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
     pub doc_fn: Box<dyn Fn(&str) -> Option<Cow<str>>>,
+    next_char_handler: Option<PromptCharHandler>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -56,6 +58,10 @@ pub enum Movement {
     None,
 }
 
+fn is_word_sep(c: char) -> bool {
+    c == std::path::MAIN_SEPARATOR || c.is_whitespace()
+}
+
 impl Prompt {
     pub fn new(
         prompt: Cow<'static, str>,
@@ -74,7 +80,12 @@ impl Prompt {
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
+            next_char_handler: None,
         }
+    }
+
+    pub fn line(&self) -> &String {
+        &self.line
     }
 
     pub fn recalculate_completion(&mut self, editor: &Editor) {
@@ -114,7 +125,7 @@ impl Prompt {
 
                     let mut found = None;
                     for prev in (0..char_position - 1).rev() {
-                        if char_indices[prev].1.is_whitespace() {
+                        if is_word_sep(char_indices[prev].1) {
                             found = Some(prev + 1);
                             break;
                         }
@@ -137,14 +148,14 @@ impl Prompt {
                 for _ in 0..rep {
                     // Skip any non-whitespace characters
                     while char_position < char_indices.len()
-                        && !char_indices[char_position].1.is_whitespace()
+                        && !is_word_sep(char_indices[char_position].1)
                     {
                         char_position += 1;
                     }
 
                     // Skip any whitespace characters
                     while char_position < char_indices.len()
-                        && char_indices[char_position].1.is_whitespace()
+                        && is_word_sep(char_indices[char_position].1)
                     {
                         char_position += 1;
                     }
@@ -183,6 +194,13 @@ impl Prompt {
     }
 
     pub fn insert_char(&mut self, c: char, cx: &Context) {
+        if let Some(handler) = &self.next_char_handler.take() {
+            handler(self, c, cx);
+
+            self.next_char_handler = None;
+            return;
+        }
+
         self.line.insert(self.cursor, c);
         let mut cursor = GraphemeCursor::new(self.cursor, self.line.len(), false);
         if let Ok(Some(pos)) = cursor.next_boundary(&self.line, 0) {
@@ -322,7 +340,7 @@ impl Prompt {
     pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
         let prompt_color = theme.get("ui.text");
-        let completion_color = theme.get("ui.statusline");
+        let completion_color = theme.get("ui.menu");
         let selected_color = theme.get("ui.menu.selected");
         // completion
 
@@ -350,7 +368,7 @@ impl Prompt {
 
         if !self.completion.is_empty() {
             let area = completion_area;
-            let background = theme.get("ui.statusline");
+            let background = theme.get("ui.menu");
 
             let items = height as usize * cols as usize;
 
@@ -424,10 +442,21 @@ impl Prompt {
         let line = area.height - 1;
         // render buffer text
         surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
+
+        let input: Cow<str> = if self.line.is_empty() {
+            // latest value in the register list
+            self.history_register
+                .and_then(|reg| cx.editor.registers.first(reg).cloned()) // TODO: can we avoid cloning?
+                .map(|entry| entry.into())
+                .unwrap_or_else(|| Cow::from(""))
+        } else {
+            self.line.as_str().into()
+        };
+
         surface.set_string(
             area.x + self.prompt.len() as u16,
             area.y + line,
-            &self.line,
+            &input,
             prompt_color,
         );
     }
@@ -492,7 +521,18 @@ impl Component for Prompt {
                     self.recalculate_completion(cx.editor);
                     self.exit_selection();
                 } else {
-                    (self.callback_fn)(cx, &self.line, PromptEvent::Validate);
+                    // handle executing with last command in history if nothing entered
+                    let input: Cow<str> = if self.line.is_empty() {
+                        // latest value in the register list
+                        self.history_register
+                            .and_then(|reg| cx.editor.registers.first(reg).cloned())
+                            .map(|entry| entry.into())
+                            .unwrap_or_else(|| Cow::from(""))
+                    } else {
+                        self.line.as_str().into()
+                    };
+
+                    (self.callback_fn)(cx, &input, PromptEvent::Validate);
 
                     if let Some(register) = self.history_register {
                         // store in history
@@ -518,6 +558,11 @@ impl Component for Prompt {
             }
             key!(Tab) => {
                 self.change_completion_selection(CompletionDirection::Forward);
+                // if single completion candidate is a directory list content in completion
+                if self.completion.len() == 1 && self.line.ends_with(std::path::MAIN_SEPARATOR) {
+                    self.recalculate_completion(cx.editor);
+                    self.exit_selection();
+                }
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
             shift!(Tab) => {
@@ -525,11 +570,40 @@ impl Component for Prompt {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
             ctrl!('q') => self.exit_selection(),
-            // any char event that's not combined with control or mapped to any other combo
+            ctrl!('r') => {
+                self.completion = cx
+                    .editor
+                    .registers
+                    .inner()
+                    .iter()
+                    .map(|(ch, reg)| {
+                        let content = reg
+                            .read()
+                            .get(0)
+                            .and_then(|s| s.lines().next().to_owned())
+                            .unwrap_or_default();
+                        (0.., format!("{} {}", ch, &content).into())
+                    })
+                    .collect();
+                self.next_char_handler = Some(Box::new(|prompt, c, context| {
+                    prompt.insert_str(
+                        context
+                            .editor
+                            .registers
+                            .read(c)
+                            .and_then(|r| r.first())
+                            .map_or("", |r| r.as_str()),
+                    );
+                    prompt.recalculate_completion(context.editor);
+                }));
+                (self.callback_fn)(cx, &self.line, PromptEvent::Update);
+                return EventResult::Consumed(None);
+            }
+            // any char event that's not mapped to any other combo
             KeyEvent {
                 code: KeyCode::Char(c),
-                modifiers,
-            } if !modifiers.contains(KeyModifiers::CONTROL) => {
+                modifiers: _,
+            } => {
                 self.insert_char(c, cx);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }

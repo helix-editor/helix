@@ -13,7 +13,6 @@ use futures_util::future;
 use futures_util::stream::select_all::SelectAll;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use log::debug;
 use std::{
     borrow::Cow,
     collections::{BTreeMap, HashMap},
@@ -24,7 +23,10 @@ use std::{
     sync::Arc,
 };
 
-use tokio::time::{sleep, Duration, Instant, Sleep};
+use tokio::{
+    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    time::{sleep, Duration, Instant, Sleep},
+};
 
 use anyhow::{bail, Error};
 
@@ -39,6 +41,8 @@ use helix_core::{Position, Selection};
 use helix_dap as dap;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
+
+use arc_swap::access::{DynAccess, DynGuard};
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -67,6 +71,9 @@ pub struct FilePickerConfig {
     /// Enables ignoring hidden files.
     /// Whether to hide hidden files in file picker and global search results. Defaults to true.
     pub hidden: bool,
+    /// Enables following symlinks.
+    /// Whether to follow symbolic links in file picker and file or directory completions. Defaults to true.
+    pub follow_symlinks: bool,
     /// Enables reading ignore files from parent directories. Defaults to true.
     pub parents: bool,
     /// Enables reading `.ignore` files.
@@ -90,6 +97,7 @@ impl Default for FilePickerConfig {
     fn default() -> Self {
         Self {
             hidden: true,
+            follow_symlinks: true,
             parents: true,
             ignore: true,
             git_ignore: true,
@@ -113,6 +121,8 @@ pub struct Config {
     pub shell: Vec<String>,
     /// Line number mode.
     pub line_number: LineNumber,
+    /// Gutters. Default ["diagnostics", "line-numbers"]
+    pub gutters: Vec<GutterType>,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
     /// Automatic insertion of pairs to parentheses, brackets,
@@ -121,6 +131,8 @@ pub struct Config {
     pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
+    /// Automatic formatting on save. Defaults to true.
+    pub auto_format: bool,
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(
@@ -139,6 +151,17 @@ pub struct Config {
     /// Search configuration.
     #[serde(default)]
     pub search: SearchConfig,
+    pub lsp: LspConfig,
+    /// Column numbers at which to draw the rulers. Default to `[]`, meaning no rulers.
+    pub rulers: Vec<u16>,
+    #[serde(default)]
+    pub whitespace: WhitespaceConfig,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct LspConfig {
+    pub display_messages: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -227,6 +250,120 @@ impl std::str::FromStr for LineNumber {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum GutterType {
+    /// Show diagnostics and other features like breakpoints
+    Diagnostics,
+    /// Show line numbers
+    LineNumbers,
+}
+
+impl std::str::FromStr for GutterType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "diagnostics" => Ok(Self::Diagnostics),
+            "line-numbers" => Ok(Self::LineNumbers),
+            _ => anyhow::bail!("Gutter type can only be `diagnostics` or `line-numbers`."),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct WhitespaceConfig {
+    pub render: WhitespaceRender,
+    pub characters: WhitespaceCharacters,
+}
+
+impl Default for WhitespaceConfig {
+    fn default() -> Self {
+        Self {
+            render: WhitespaceRender::Basic(WhitespaceRenderValue::None),
+            characters: WhitespaceCharacters::default(),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged, rename_all = "kebab-case")]
+pub enum WhitespaceRender {
+    Basic(WhitespaceRenderValue),
+    Specific {
+        default: Option<WhitespaceRenderValue>,
+        space: Option<WhitespaceRenderValue>,
+        nbsp: Option<WhitespaceRenderValue>,
+        tab: Option<WhitespaceRenderValue>,
+        newline: Option<WhitespaceRenderValue>,
+    },
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum WhitespaceRenderValue {
+    None,
+    // TODO
+    // Selection,
+    All,
+}
+
+impl WhitespaceRender {
+    pub fn space(&self) -> WhitespaceRenderValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific { default, space, .. } => {
+                space.or(default).unwrap_or(WhitespaceRenderValue::None)
+            }
+        }
+    }
+    pub fn nbsp(&self) -> WhitespaceRenderValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific { default, nbsp, .. } => {
+                nbsp.or(default).unwrap_or(WhitespaceRenderValue::None)
+            }
+        }
+    }
+    pub fn tab(&self) -> WhitespaceRenderValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific { default, tab, .. } => {
+                tab.or(default).unwrap_or(WhitespaceRenderValue::None)
+            }
+        }
+    }
+    pub fn newline(&self) -> WhitespaceRenderValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific {
+                default, newline, ..
+            } => newline.or(default).unwrap_or(WhitespaceRenderValue::None),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct WhitespaceCharacters {
+    pub space: char,
+    pub nbsp: char,
+    pub tab: char,
+    pub newline: char,
+}
+
+impl Default for WhitespaceCharacters {
+    fn default() -> Self {
+        Self {
+            space: '·',    // U+00B7
+            nbsp: '⍽',    // U+237D
+            tab: '→',     // U+2192
+            newline: '⏎', // U+23CE
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -239,9 +376,11 @@ impl Default for Config {
                 vec!["sh".to_owned(), "-c".to_owned()]
             },
             line_number: LineNumber::Absolute,
+            gutters: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
+            auto_format: true,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
@@ -249,6 +388,9 @@ impl Default for Config {
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             search: SearchConfig::default(),
+            lsp: LspConfig::default(),
+            rulers: Vec::new(),
+            whitespace: WhitespaceConfig::default(),
         }
     }
 }
@@ -287,7 +429,6 @@ pub struct Breakpoint {
     pub log_message: Option<String>,
 }
 
-#[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
     pub next_document_id: DocumentId,
@@ -296,6 +437,7 @@ pub struct Editor {
     pub selected_register: Option<char>,
     pub registers: Registers,
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
+    pub macro_replaying: Vec<char>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
 
@@ -311,7 +453,7 @@ pub struct Editor {
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
-    pub config: Config,
+    pub config: Box<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
@@ -321,6 +463,14 @@ pub struct Editor {
     pub last_completion: Option<CompleteAction>,
 
     pub exit_code: i32,
+
+    pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
+}
+
+#[derive(Debug, Clone)]
+pub enum ConfigEvent {
+    Refresh,
+    Update(Box<Config>),
 }
 
 #[derive(Debug, Clone)]
@@ -342,13 +492,12 @@ impl Editor {
         mut area: Rect,
         theme_loader: Arc<theme::Loader>,
         syn_loader: Arc<syntax::Loader>,
-        config: Config,
+        config: Box<dyn DynAccess<Config>>,
         current_theme: String,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
-        let auto_pairs = (&config.auto_pairs).into();
-
-        debug!("Editor config: {config:#?}");
+        let conf = config.load();
+        let auto_pairs = (&conf.auto_pairs).into();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
@@ -360,6 +509,7 @@ impl Editor {
             count: None,
             selected_register: None,
             macro_recording: None,
+            macro_replaying: Vec::new(),
             theme: theme_loader.default(),
             language_servers,
             debugger: None,
@@ -372,14 +522,27 @@ impl Editor {
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
             autoinfo: None,
-            idle_timer: Box::pin(sleep(config.idle_timeout)),
+            idle_timer: Box::pin(sleep(conf.idle_timeout)),
             last_motion: None,
             last_completion: None,
             pseudo_pending: None,
             config,
             auto_pairs,
             exit_code: 0,
+            config_events: unbounded_channel(),
         }
+    }
+
+    pub fn config(&self) -> DynGuard<Config> {
+        self.config.load()
+    }
+
+    /// Call if the config has changed to let the editor update all
+    /// relevant members.
+    pub fn refresh_config(&mut self) {
+        let config = self.config();
+        self.auto_pairs = (&config.auto_pairs).into();
+        self.reset_idle_timer();
     }
 
     pub fn clear_idle_timer(&mut self) {
@@ -390,9 +553,10 @@ impl Editor {
     }
 
     pub fn reset_idle_timer(&mut self) {
+        let config = self.config();
         self.idle_timer
             .as_mut()
-            .reset(Instant::now() + self.config.idle_timeout);
+            .reset(Instant::now() + config.idle_timeout);
     }
 
     pub fn clear_status(&mut self) {
@@ -447,12 +611,14 @@ impl Editor {
     /// Refreshes the language server for a given document
     pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
         let doc = self.documents.get_mut(&doc_id)?;
-        doc.detect_language(self.syn_loader.clone());
         Self::launch_language_server(&mut self.language_servers, doc)
     }
 
     /// Launch a language server for a given document
     fn launch_language_server(ls: &mut helix_lsp::Registry, doc: &mut Document) -> Option<()> {
+        // if doc doesn't have a URL it's a scratch buffer, ignore it
+        let doc_url = doc.url()?;
+
         // try to find a language server based on the language name
         let language_server = doc.language.as_ref().and_then(|language| {
             ls.get(language)
@@ -476,7 +642,7 @@ impl Editor {
 
                 // TODO: this now races with on_init code if the init happens too quickly
                 tokio::spawn(language_server.text_document_did_open(
-                    doc.url().unwrap(),
+                    doc_url,
                     doc.version(),
                     doc.text(),
                     language_id,
@@ -489,9 +655,10 @@ impl Editor {
     }
 
     fn _refresh(&mut self) {
+        let config = self.config();
         for (view, _) in self.tree.views_mut() {
             let doc = &self.documents[&view.doc];
-            view.ensure_cursor_in_view(doc, self.config.scrolloff)
+            view.ensure_cursor_in_view(doc, config.scrolloff)
         }
     }
 
@@ -541,17 +708,24 @@ impl Editor {
                         .any(|(_, v)| v.doc == doc.id && v.id != view.id);
 
                 let (view, doc) = current!(self);
+                let view_id = view.id;
+
                 if remove_empty_scratch {
                     // Copy `doc.id` into a variable before calling `self.documents.remove`, which requires a mutable
                     // borrow, invalidating direct access to `doc.id`.
                     let id = doc.id;
                     self.documents.remove(&id);
+
+                    // Remove the scratch buffer from any jumplists
+                    for (view, _) in self.tree.views_mut() {
+                        view.remove_document(&id);
+                    }
                 } else {
                     let jump = (view.doc, doc.selection(view.id).clone());
                     view.jumps.push(jump);
                     // Set last accessed doc if it is a different document
                     if doc.id != id {
-                        view.last_accessed_doc = Some(view.doc);
+                        view.add_to_history(view.doc);
                         // Set last modified doc if modified and last modified doc is different
                         if std::mem::take(&mut doc.modified_since_accessed)
                             && view.last_modified_docs[0] != Some(view.doc)
@@ -561,7 +735,6 @@ impl Editor {
                     }
                 }
 
-                let view_id = view.id;
                 self.replace_document_in_view(view_id, id);
 
                 return;
@@ -570,12 +743,12 @@ impl Editor {
                 let view_id = view!(self).id;
                 let doc = self.documents.get_mut(&id).unwrap();
                 if doc.selections().is_empty() {
-                    doc.selections.insert(view_id, Selection::point(0));
+                    doc.set_selection(view_id, Selection::point(0));
                 }
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
-                let view = View::new(id);
+                let view = View::new(id, self.config().gutters.clone());
                 let view_id = self.tree.split(
                     view,
                     match action {
@@ -586,7 +759,7 @@ impl Editor {
                 );
                 // initialize selection for view
                 let doc = self.documents.get_mut(&id).unwrap();
-                doc.selections.insert(view_id, Selection::point(0));
+                doc.set_selection(view_id, Selection::point(0));
             }
         }
 
@@ -669,20 +842,40 @@ impl Editor {
             tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
 
-        let views_to_close = self
+        enum Action {
+            Close(ViewId),
+            ReplaceDoc(ViewId, DocumentId),
+        }
+
+        let actions: Vec<Action> = self
             .tree
-            .views()
+            .views_mut()
             .filter_map(|(view, _focus)| {
+                view.remove_document(&doc_id);
+
                 if view.doc == doc_id {
-                    Some(view.id)
+                    // something was previously open in the view, switch to previous doc
+                    if let Some(prev_doc) = view.docs_access_history.pop() {
+                        Some(Action::ReplaceDoc(view.id, prev_doc))
+                    } else {
+                        // only the document that is being closed was in the view, close it
+                        Some(Action::Close(view.id))
+                    }
                 } else {
                     None
                 }
             })
-            .collect::<Vec<_>>();
+            .collect();
 
-        for view_id in views_to_close {
-            self.close(view_id);
+        for action in actions {
+            match action {
+                Action::Close(view_id) => {
+                    self.close(view_id);
+                }
+                Action::ReplaceDoc(view_id, doc_id) => {
+                    self.replace_document_in_view(view_id, doc_id);
+                }
+            }
         }
 
         self.documents.remove(&doc_id);
@@ -697,10 +890,10 @@ impl Editor {
                 .map(|(&doc_id, _)| doc_id)
                 .next()
                 .unwrap_or_else(|| self.new_document(Document::default()));
-            let view = View::new(doc_id);
+            let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
             let doc = self.documents.get_mut(&doc_id).unwrap();
-            doc.selections.insert(view_id, Selection::point(0));
+            doc.set_selection(view_id, Selection::point(0));
         }
 
         self._refresh();
@@ -734,14 +927,35 @@ impl Editor {
         self.tree.focus_direction(tree::Direction::Down);
     }
 
+    pub fn swap_right(&mut self) {
+        self.tree.swap_split_in_direction(tree::Direction::Right);
+    }
+
+    pub fn swap_left(&mut self) {
+        self.tree.swap_split_in_direction(tree::Direction::Left);
+    }
+
+    pub fn swap_up(&mut self) {
+        self.tree.swap_split_in_direction(tree::Direction::Up);
+    }
+
+    pub fn swap_down(&mut self) {
+        self.tree.swap_split_in_direction(tree::Direction::Down);
+    }
+
+    pub fn transpose_view(&mut self) {
+        self.tree.transpose();
+    }
+
     pub fn should_close(&self) -> bool {
         self.tree.is_empty()
     }
 
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
+        let config = self.config();
         let view = self.tree.get_mut(id);
         let doc = &self.documents[&view.doc];
-        view.ensure_cursor_in_view(doc, self.config.scrolloff)
+        view.ensure_cursor_in_view(doc, config.scrolloff)
     }
 
     #[inline]
@@ -775,6 +989,7 @@ impl Editor {
     }
 
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
+        let config = self.config();
         let (view, doc) = current_ref!(self);
         let cursor = doc
             .selection(view.id)
@@ -784,7 +999,7 @@ impl Editor {
             let inner = view.inner_area();
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            let cursorkind = self.config.cursor_shape.from_mode(doc.mode());
+            let cursorkind = config.cursor_shape.from_mode(doc.mode());
             (Some(pos), cursorkind)
         } else {
             (None, CursorKind::default())

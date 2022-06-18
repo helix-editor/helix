@@ -1,0 +1,67 @@
+# made by bootra
+
+"comment" = { fg = "berry_desaturated" }
+"constant" = { fg = "gold" }
+"function" = { fg = "mint" }
+"function.macro" = { fg = "bubblegum" }
+"keyword" = { fg = "bubblegum" }
+"operator" = { fg = "bubblegum" }
+"punctuation" = { fg = "lilac" }
+"string" = { fg = "gold" }
+"type" = { fg = "violet" }
+"variable" = { fg = "lilac" }
+"variable.builtin" = { fg = "violet" }
+"tag" = { fg = "gold" }
+"label" = { fg = "gold" }
+"attribute" = { fg = "lilac" }
+"namespace" = { fg = "lilac" }
+"module" = { fg = "lilac" }
+
+"markup.heading" = { fg = "gold", modifiers = ["bold"] }
+"markup.heading.marker" = { fg = "berry_desaturated" }
+"markup.list" = { fg = "bubblegum" }
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.link.url" = { fg = "violet", modifiers = ["underlined"] }
+"markup.link.text" = { fg = "violet" }
+"markup.quote" = { fg = "berry_desaturated" }
+"markup.raw" = { fg = "mint" }
+
+"ui.background" = { bg = "berry" }
+"ui.cursor" =  { fg = "berry", bg = "lilac" }
+"ui.cursor.match" = { fg = "berry", bg = "berry_desaturated" }
+"ui.cursor.select" = { fg = "berry", bg = "mint" }
+"ui.cursor.insert" = { fg = "berry", bg = "mint" }
+"ui.linenr" = { fg = "berry_desaturated" }
+"ui.linenr.selected" = { fg = "lilac" }
+"ui.statusline" = { fg = "lilac", bg = "berry_saturated" }
+"ui.statusline.inactive" = { fg = "berry_desaturated", bg = "berry_saturated" }
+"ui.popup" = { fg = "lilac", bg = "berry_saturated" }
+"ui.window" = { fg = "berry_desaturated", bg = "berry" }
+"ui.help" = { fg = "lilac", bg = "berry_saturated" }
+"ui.text" = { fg = "lilac" }
+"ui.text.focus" = { fg = "mint" }
+"ui.menu" = { fg = "lilac", bg = "berry_saturated" }
+"ui.menu.selected" = { fg = "mint", bg = "berry_saturated" }
+"ui.selection" = { bg = "berry_saturated" }
+"ui.virtual" = { fg = "berry_desaturated" }
+
+"diff.plus" = { fg = "mint" }
+"diff.delta" = { fg = "gold" }
+"diff.minus" = { fg = "bubblegum" }
+
+"error" = { fg = "bubblegum" }
+"warning" = { fg = "gold" }
+"info" = { fg = "lilac" }
+"hint" = { fg = "lilac" }
+"diagnostic" = { modifiers = ["underlined"] }
+
+[palette]
+berry = "#3A2A4D"
+berry_saturated = "#2B1C3D"
+berry_desaturated = "#886C9C"
+bubblegum = "#D678B5"
+gold = "#E3C0A8"
+lilac = "#C7B8E0"
+mint = "#7FC9AB"
+violet = "#C78DFC"

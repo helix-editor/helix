@@ -1,18 +1,19 @@
+use arc_swap::{access::Map, ArcSwap};
 use helix_core::{
     config::{default_syntax_loader, user_syntax_loader},
     pos_at_coords, syntax, Selection,
 };
-use helix_dap::{self as dap, Payload, Request};
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{editor::Breakpoint, theme, Editor};
+use helix_view::{align_view, editor::ConfigEvent, theme, Align, Editor};
 use serde_json::json;
 
 use crate::{
     args::Args,
-    commands::{align_view, apply_workspace_edit, fetch_stack_trace, Align},
+    commands::apply_workspace_edit,
     compositor::Compositor,
     config::Config,
     job::Jobs,
+    keymap::Keymaps,
     ui::{self, overlay::overlayed},
 };
 
@@ -42,8 +43,7 @@ pub struct Application {
     compositor: Compositor,
     editor: Editor,
 
-    // TODO: share an ArcSwap with Editor?
-    config: Config,
+    config: Arc<ArcSwap<Config>>,
 
     #[allow(dead_code)]
     theme_loader: Arc<theme::Loader>,
@@ -56,15 +56,33 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(args: Args, mut config: Config) -> Result<Self, Error> {
+    pub fn new(args: Args) -> Result<Self, Error> {
         use helix_view::editor::Action;
-        let mut compositor = Compositor::new()?;
-        let size = compositor.size();
 
-        let conf_dir = helix_loader::config_dir();
+        let config_dir = helix_loader::config_dir();
+        if !config_dir.exists() {
+            std::fs::create_dir_all(&config_dir).ok();
+        }
 
-        let theme_loader =
-            std::sync::Arc::new(theme::Loader::new(&conf_dir, &helix_loader::runtime_dir()));
+        let config = match std::fs::read_to_string(config_dir.join("config.toml")) {
+            Ok(config) => toml::from_str(&config)
+                .map(crate::keymap::merge_keys)
+                .unwrap_or_else(|err| {
+                    eprintln!("Bad config: {}", err);
+                    eprintln!("Press <ENTER> to continue with default config");
+                    use std::io::Read;
+                    // This waits for an enter press.
+                    let _ = std::io::stdin().read(&mut []);
+                    Config::default()
+                }),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
+            Err(err) => return Err(Error::new(err)),
+        };
+
+        let theme_loader = std::sync::Arc::new(theme::Loader::new(
+            &config_dir,
+            &helix_loader::runtime_dir(),
+        ));
 
         let true_color = config.editor.true_color || crate::true_color();
 
@@ -96,15 +114,22 @@ impl Application {
         });
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
+        let mut compositor = Compositor::new()?;
+        let config = Arc::new(ArcSwap::from_pointee(config));
         let mut editor = Editor::new(
-            size,
+            compositor.size(),
             theme_loader.clone(),
             syn_loader.clone(),
-            config.editor.clone(),
+            Box::new(Map::new(Arc::clone(&config), |config: &Config| {
+                &config.editor
+            })),
             theme.name.clone(),
         );
 
-        let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
+        let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
+            &config.keys
+        }));
+        let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
         compositor.push(editor_view);
 
         if args.load_tutor {
@@ -112,15 +137,12 @@ impl Application {
             editor.open(path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
-        } else if args.edit_config {
-            let path = conf_dir.join("config.toml");
-            editor.open(path, Action::VerticalSplit)?;
         } else if !args.files.is_empty() {
             let first = &args.files[0].0; // we know it's not empty
             if first.is_dir() {
                 std::env::set_current_dir(&first)?;
                 editor.new_file(Action::VerticalSplit);
-                let picker = ui::file_picker(".".into(), &config.editor);
+                let picker = ui::file_picker(".".into(), &config.load().editor);
                 compositor.push(Box::new(overlayed(picker)));
             } else {
                 let nr_of_files = args.files.len();
@@ -233,7 +255,14 @@ impl Application {
                     }
                 }
                 Some(payload) = self.editor.debugger_events.next() => {
-                    self.handle_debugger_message(payload).await;
+                    let needs_render = self.editor.handle_debugger_message(payload).await;
+                    if needs_render {
+                        self.render();
+                    }
+                }
+                Some(config_event) = self.editor.config_events.1.recv() => {
+                    self.handle_config_events(config_event);
+                    self.render();
                 }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
@@ -250,6 +279,60 @@ impl Application {
                 }
             }
         }
+    }
+
+    pub fn handle_config_events(&mut self, config_event: ConfigEvent) {
+        match config_event {
+            ConfigEvent::Refresh => self.refresh_config(),
+
+            // Since only the Application can make changes to Editor's config,
+            // the Editor must send up a new copy of a modified config so that
+            // the Application can apply it.
+            ConfigEvent::Update(editor_config) => {
+                let mut app_config = (*self.config.load().clone()).clone();
+                app_config.editor = *editor_config;
+                self.config.store(Arc::new(app_config));
+            }
+        }
+
+        // Update all the relevant members in the editor after updating
+        // the configuration.
+        self.editor.refresh_config();
+    }
+
+    fn refresh_config(&mut self) {
+        let config = Config::load(helix_loader::config_file()).unwrap_or_else(|err| {
+            self.editor.set_error(err.to_string());
+            Config::default()
+        });
+
+        // Refresh theme
+        if let Some(theme) = config.theme.clone() {
+            let true_color = self.true_color();
+            self.editor.set_theme(
+                self.theme_loader
+                    .load(&theme)
+                    .map_err(|e| {
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        e
+                    })
+                    .ok()
+                    .filter(|theme| (true_color || theme.is_16_color()))
+                    .unwrap_or_else(|| {
+                        if true_color {
+                            self.theme_loader.default()
+                        } else {
+                            self.theme_loader.base16_default()
+                        }
+                    }),
+            );
+        }
+
+        self.config.store(Arc::new(config));
+    }
+
+    fn true_color(&self) -> bool {
+        self.config.load().editor.true_color || crate::true_color()
     }
 
     #[cfg(windows)]
@@ -318,184 +401,6 @@ impl Application {
         }
     }
 
-    pub async fn handle_debugger_message(&mut self, payload: helix_dap::Payload) {
-        use crate::commands::dap::{breakpoints_changed, select_thread_id};
-        use dap::requests::RunInTerminal;
-        use helix_dap::{events, Event};
-
-        let debugger = match self.editor.debugger.as_mut() {
-            Some(debugger) => debugger,
-            None => return,
-        };
-        match payload {
-            Payload::Event(ev) => match *ev {
-                Event::Stopped(events::Stopped {
-                    thread_id,
-                    description,
-                    text,
-                    reason,
-                    all_threads_stopped,
-                    ..
-                }) => {
-                    let all_threads_stopped = all_threads_stopped.unwrap_or_default();
-
-                    if all_threads_stopped {
-                        if let Ok(response) = debugger.request::<dap::requests::Threads>(()).await {
-                            for thread in response.threads {
-                                fetch_stack_trace(debugger, thread.id).await;
-                            }
-                            select_thread_id(
-                                &mut self.editor,
-                                thread_id.unwrap_or_default(),
-                                false,
-                            )
-                            .await;
-                        }
-                    } else if let Some(thread_id) = thread_id {
-                        debugger.thread_states.insert(thread_id, reason.clone()); // TODO: dap uses "type" || "reason" here
-
-                        // whichever thread stops is made "current" (if no previously selected thread).
-                        select_thread_id(&mut self.editor, thread_id, false).await;
-                    }
-
-                    let scope = match thread_id {
-                        Some(id) => format!("Thread {}", id),
-                        None => "Target".to_owned(),
-                    };
-
-                    let mut status = format!("{} stopped because of {}", scope, reason);
-                    if let Some(desc) = description {
-                        status.push_str(&format!(" {}", desc));
-                    }
-                    if let Some(text) = text {
-                        status.push_str(&format!(" {}", text));
-                    }
-                    if all_threads_stopped {
-                        status.push_str(" (all threads stopped)");
-                    }
-
-                    self.editor.set_status(status);
-                }
-                Event::Continued(events::Continued { thread_id, .. }) => {
-                    debugger
-                        .thread_states
-                        .insert(thread_id, "running".to_owned());
-                    if debugger.thread_id == Some(thread_id) {
-                        debugger.resume_application();
-                    }
-                }
-                Event::Thread(_) => {
-                    // TODO: update thread_states, make threads request
-                }
-                Event::Breakpoint(events::Breakpoint { reason, breakpoint }) => {
-                    match &reason[..] {
-                        "new" => {
-                            if let Some(source) = breakpoint.source {
-                                self.editor
-                                    .breakpoints
-                                    .entry(source.path.unwrap()) // TODO: no unwraps
-                                    .or_default()
-                                    .push(Breakpoint {
-                                        id: breakpoint.id,
-                                        verified: breakpoint.verified,
-                                        message: breakpoint.message,
-                                        line: breakpoint.line.unwrap().saturating_sub(1), // TODO: no unwrap
-                                        column: breakpoint.column,
-                                        ..Default::default()
-                                    });
-                            }
-                        }
-                        "changed" => {
-                            for breakpoints in self.editor.breakpoints.values_mut() {
-                                if let Some(i) =
-                                    breakpoints.iter().position(|b| b.id == breakpoint.id)
-                                {
-                                    breakpoints[i].verified = breakpoint.verified;
-                                    breakpoints[i].message = breakpoint.message.clone();
-                                    breakpoints[i].line =
-                                        breakpoint.line.unwrap().saturating_sub(1); // TODO: no unwrap
-                                    breakpoints[i].column = breakpoint.column;
-                                }
-                            }
-                        }
-                        "removed" => {
-                            for breakpoints in self.editor.breakpoints.values_mut() {
-                                if let Some(i) =
-                                    breakpoints.iter().position(|b| b.id == breakpoint.id)
-                                {
-                                    breakpoints.remove(i);
-                                }
-                            }
-                        }
-                        reason => {
-                            warn!("Unknown breakpoint event: {}", reason);
-                        }
-                    }
-                }
-                Event::Output(events::Output {
-                    category, output, ..
-                }) => {
-                    let prefix = match category {
-                        Some(category) => {
-                            if &category == "telemetry" {
-                                return;
-                            }
-                            format!("Debug ({}):", category)
-                        }
-                        None => "Debug:".to_owned(),
-                    };
-
-                    log::info!("{}", output);
-                    self.editor.set_status(format!("{} {}", prefix, output));
-                }
-                Event::Initialized => {
-                    // send existing breakpoints
-                    for (path, breakpoints) in &mut self.editor.breakpoints {
-                        // TODO: call futures in parallel, await all
-                        let _ = breakpoints_changed(debugger, path.clone(), breakpoints);
-                    }
-                    // TODO: fetch breakpoints (in case we're attaching)
-
-                    if debugger.configuration_done().await.is_ok() {
-                        self.editor.set_status("Debugged application started");
-                    }; // TODO: do we need to handle error?
-                }
-                ev => {
-                    log::warn!("Unhandled event {:?}", ev);
-                    return; // return early to skip render
-                }
-            },
-            Payload::Response(_) => unreachable!(),
-            Payload::Request(request) => match request.command.as_str() {
-                RunInTerminal::COMMAND => {
-                    let arguments: dap::requests::RunInTerminalArguments =
-                        serde_json::from_value(request.arguments.unwrap_or_default()).unwrap();
-                    // TODO: no unwrap
-
-                    let process = std::process::Command::new("tmux")
-                        .arg("split-window")
-                        .arg(arguments.args.join(" "))
-                        .spawn()
-                        .unwrap();
-
-                    let _ = debugger
-                        .reply(
-                            request.seq,
-                            dap::requests::RunInTerminal::COMMAND,
-                            serde_json::to_value(dap::requests::RunInTerminalResponse {
-                                process_id: Some(process.id()),
-                                shell_process_id: None,
-                            })
-                            .map_err(|e| e.into()),
-                        )
-                        .await;
-                }
-                _ => log::error!("DAP reverse request not implemented: {:?}", request),
-            },
-        }
-        self.render();
-    }
-
     pub async fn handle_language_server_message(
         &mut self,
         call: helix_lsp::Call,
@@ -506,8 +411,14 @@ impl Application {
         match call {
             Call::Notification(helix_lsp::jsonrpc::Notification { method, params, .. }) => {
                 let notification = match Notification::parse(&method, params) {
-                    Some(notification) => notification,
-                    None => return,
+                    Ok(notification) => notification,
+                    Err(err) => {
+                        log::error!(
+                            "received malformed notification from Language Server: {}",
+                            err
+                        );
+                        return;
+                    }
                 };
 
                 match notification {
@@ -707,7 +618,7 @@ impl Application {
                             self.lsp_progress.update(server_id, token, work);
                         }
 
-                        if self.config.lsp.display_messages {
+                        if self.config.load().editor.lsp.display_messages {
                             self.editor.set_status(status);
                         }
                     }
@@ -720,14 +631,22 @@ impl Application {
                 method, params, id, ..
             }) => {
                 let call = match MethodCall::parse(&method, params) {
-                    Some(call) => call,
-                    None => {
-                        error!("Method not found {}", method);
+                    Ok(call) => call,
+                    Err(helix_lsp::Error::Unhandled) => {
+                        error!("Language Server: Method not found {}", method);
+                        return;
+                    }
+                    Err(err) => {
+                        log::error!(
+                            "received malformed method call from Language Server: {}: {}",
+                            method,
+                            err
+                        );
                         return;
                     }
                 };
 
-                match call {
+                let reply = match call {
                     MethodCall::WorkDoneProgressCreate(params) => {
                         self.lsp_progress.create(server_id, params.token);
 
@@ -739,16 +658,8 @@ impl Application {
                         if spinner.is_stopped() {
                             spinner.start();
                         }
-                        let language_server =
-                            match self.editor.language_servers.get_by_id(server_id) {
-                                Some(language_server) => language_server,
-                                None => {
-                                    warn!("can't find language server with id `{}`", server_id);
-                                    return;
-                                }
-                            };
 
-                        tokio::spawn(language_server.reply(id, Ok(serde_json::Value::Null)));
+                        Ok(serde_json::Value::Null)
                     }
                     MethodCall::ApplyWorkspaceEdit(params) => {
                         apply_workspace_edit(
@@ -757,33 +668,19 @@ impl Application {
                             &params.edit,
                         );
 
+                        Ok(json!(lsp::ApplyWorkspaceEditResponse {
+                            applied: true,
+                            failure_reason: None,
+                            failed_change: None,
+                        }))
+                    }
+                    MethodCall::WorkspaceFolders => {
                         let language_server =
-                            match self.editor.language_servers.get_by_id(server_id) {
-                                Some(language_server) => language_server,
-                                None => {
-                                    warn!("can't find language server with id `{}`", server_id);
-                                    return;
-                                }
-                            };
+                            self.editor.language_servers.get_by_id(server_id).unwrap();
 
-                        tokio::spawn(language_server.reply(
-                            id,
-                            Ok(json!(lsp::ApplyWorkspaceEditResponse {
-                                applied: true,
-                                failure_reason: None,
-                                failed_change: None,
-                            })),
-                        ));
+                        Ok(json!(language_server.workspace_folders()))
                     }
                     MethodCall::WorkspaceConfiguration(params) => {
-                        let language_server =
-                            match self.editor.language_servers.get_by_id(server_id) {
-                                Some(language_server) => language_server,
-                                None => {
-                                    warn!("can't find language server with id `{}`", server_id);
-                                    return;
-                                }
-                            };
                         let result: Vec<_> = params
                             .items
                             .iter()
@@ -794,7 +691,12 @@ impl Application {
                                         let doc = self.editor.document_by_path(path)?;
                                         doc.language_config()?.config.as_ref()?
                                     }
-                                    None => language_server.config()?,
+                                    None => self
+                                        .editor
+                                        .language_servers
+                                        .get_by_id(server_id)
+                                        .unwrap()
+                                        .config()?,
                                 };
                                 if let Some(section) = item.section.as_ref() {
                                     for part in section.split('.') {
@@ -804,11 +706,21 @@ impl Application {
                                 Some(config)
                             })
                             .collect();
-                        tokio::spawn(language_server.reply(id, Ok(json!(result))));
+                        Ok(json!(result))
                     }
-                }
+                };
+
+                let language_server = match self.editor.language_servers.get_by_id(server_id) {
+                    Some(language_server) => language_server,
+                    None => {
+                        warn!("can't find language server with id `{}`", server_id);
+                        return;
+                    }
+                };
+
+                tokio::spawn(language_server.reply(id, reply));
             }
-            e => unreachable!("{:?}", e),
+            Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
         }
     }
 
@@ -816,7 +728,8 @@ impl Application {
         terminal::enable_raw_mode()?;
         let mut stdout = stdout();
         execute!(stdout, terminal::EnterAlternateScreen)?;
-        if self.config.editor.mouse {
+        execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
+        if self.config.load().editor.mouse {
             execute!(stdout, EnableMouseCapture)?;
         }
         Ok(())

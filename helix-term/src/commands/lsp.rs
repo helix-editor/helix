@@ -1,6 +1,6 @@
 use helix_lsp::{
     block_on, lsp,
-    util::{lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
+    util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
 
@@ -11,11 +11,16 @@ use helix_view::editor::Action;
 
 use crate::{
     compositor::{self, Compositor},
-    ui::{self, overlay::overlayed, FileLocation, FilePicker, Popup, Prompt, PromptEvent},
+    ui::{self, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent},
 };
 
 use std::borrow::Cow;
 
+/// Gets the language server that is attached to a document, and
+/// if it's not active displays a status message. Using this macro
+/// in a context where the editor automatically queries the LSP
+/// (instead of when the user explicitly does so via a keybind like
+/// `gd`) will spam the "LSP inactive" status message confusingly.
 #[macro_export]
 macro_rules! language_server {
     ($editor:expr, $doc:expr) => {
@@ -39,17 +44,23 @@ fn location_to_file_location(location: &lsp::Location) -> FileLocation {
 }
 
 // TODO: share with symbol picker(symbol.location)
-// TODO: need to use push_jump() before?
 fn jump_to_location(
     editor: &mut Editor,
     location: &lsp::Location,
     offset_encoding: OffsetEncoding,
     action: Action,
 ) {
-    let path = location
-        .uri
-        .to_file_path()
-        .expect("unable to convert URI to filepath");
+    let (view, doc) = current!(editor);
+    push_jump(view, doc);
+
+    let path = match location.uri.to_file_path() {
+        Ok(path) => path,
+        Err(_) => {
+            let err = format!("unable to convert URI to filepath: {}", location.uri);
+            editor.set_error(err);
+            return;
+        }
+    };
     let _id = editor.open(path, action).expect("editor.open failed");
     let (view, doc) = current!(editor);
     let definition_pos = location.range.start;
@@ -71,25 +82,44 @@ fn sym_picker(
 ) -> FilePicker<lsp::SymbolInformation> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
     let current_path2 = current_path.clone();
-    let mut picker = FilePicker::new(
+    FilePicker::new(
         symbols,
         move |symbol| {
             if current_path.as_ref() == Some(&symbol.location.uri) {
                 symbol.name.as_str().into()
             } else {
-                let path = symbol.location.uri.to_file_path().unwrap();
-                let relative_path = helix_core::path::get_relative_path(path.as_path())
-                    .to_string_lossy()
-                    .into_owned();
-                format!("{} ({})", &symbol.name, relative_path).into()
+                match symbol.location.uri.to_file_path() {
+                    Ok(path) => {
+                        let relative_path = helix_core::path::get_relative_path(path.as_path())
+                            .to_string_lossy()
+                            .into_owned();
+                        format!("{} ({})", &symbol.name, relative_path).into()
+                    }
+                    Err(_) => format!("{} ({})", &symbol.name, &symbol.location.uri).into(),
+                }
             }
         },
         move |cx, symbol, action| {
-            if current_path2.as_ref() == Some(&symbol.location.uri) {
-                push_jump(cx.editor);
-            } else {
-                let path = symbol.location.uri.to_file_path().unwrap();
-                cx.editor.open(path, action).expect("editor.open failed");
+            let (view, doc) = current!(cx.editor);
+            push_jump(view, doc);
+
+            if current_path2.as_ref() != Some(&symbol.location.uri) {
+                let uri = &symbol.location.uri;
+                let path = match uri.to_file_path() {
+                    Ok(path) => path,
+                    Err(_) => {
+                        let err = format!("unable to convert URI to filepath: {}", uri);
+                        log::error!("{}", err);
+                        cx.editor.set_error(err);
+                        return;
+                    }
+                };
+                if let Err(err) = cx.editor.open(path, action) {
+                    let err = format!("failed to open document: {}: {}", uri, err);
+                    log::error!("{}", err);
+                    cx.editor.set_error(err);
+                    return;
+                }
             }
 
             let (view, doc) = current!(cx.editor);
@@ -104,9 +134,8 @@ fn sym_picker(
             }
         },
         move |_editor, symbol| Some(location_to_file_location(&symbol.location)),
-    );
-    picker.truncate_start = false;
-    picker
+    )
+    .truncate_start(false)
 }
 
 pub fn symbol_picker(cx: &mut Context) {
@@ -138,9 +167,7 @@ pub fn symbol_picker(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |editor: &mut Editor,
-              compositor: &mut Compositor,
-              response: Option<lsp::DocumentSymbolResponse>| {
+        move |editor, compositor, response: Option<lsp::DocumentSymbolResponse>| {
             if let Some(symbols) = response {
                 // lsp has two ways to represent symbols (flat/nested)
                 // convert the nested variant to flat, so that we have a homogeneous list
@@ -172,9 +199,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |_editor: &mut Editor,
-              compositor: &mut Compositor,
-              response: Option<Vec<lsp::SymbolInformation>>| {
+        move |_editor, compositor, response: Option<Vec<lsp::SymbolInformation>>| {
             if let Some(symbols) = response {
                 let picker = sym_picker(symbols, current_url, offset_encoding);
                 compositor.push(Box::new(overlayed(picker)))
@@ -197,20 +222,32 @@ pub fn code_action(cx: &mut Context) {
 
     let language_server = language_server!(cx.editor, doc);
 
-    let range = range_to_lsp_range(
-        doc.text(),
-        doc.selection(view.id).primary(),
-        language_server.offset_encoding(),
-    );
-
-    let future = language_server.code_actions(doc.identifier(), range);
+    let selection_range = doc.selection(view.id).primary();
     let offset_encoding = language_server.offset_encoding();
+
+    let range = range_to_lsp_range(doc.text(), selection_range, offset_encoding);
+
+    let future = language_server.code_actions(
+        doc.identifier(),
+        range,
+        // Filter and convert overlapping diagnostics
+        lsp::CodeActionContext {
+            diagnostics: doc
+                .diagnostics()
+                .iter()
+                .filter(|&diag| {
+                    selection_range
+                        .overlaps(&helix_core::Range::new(diag.range.start, diag.range.end))
+                })
+                .map(|diag| diagnostic_to_lsp_diagnostic(doc.text(), diag, offset_encoding))
+                .collect(),
+            only: None,
+        },
+    );
 
     cx.callback(
         future,
-        move |editor: &mut Editor,
-              compositor: &mut Compositor,
-              response: Option<lsp::CodeActionResponse>| {
+        move |editor, compositor, response: Option<lsp::CodeActionResponse>| {
             let actions = match response {
                 Some(a) => a,
                 None => return,
@@ -337,12 +374,27 @@ pub fn apply_workspace_edit(
     workspace_edit: &lsp::WorkspaceEdit,
 ) {
     let mut apply_edits = |uri: &helix_lsp::Url, text_edits: Vec<lsp::TextEdit>| {
-        let path = uri
-            .to_file_path()
-            .expect("unable to convert URI to filepath");
+        let path = match uri.to_file_path() {
+            Ok(path) => path,
+            Err(_) => {
+                let err = format!("unable to convert URI to filepath: {}", uri);
+                log::error!("{}", err);
+                editor.set_error(err);
+                return;
+            }
+        };
 
         let current_view_id = view!(editor).id;
-        let doc_id = editor.open(path, Action::Load).unwrap();
+        let doc_id = match editor.open(path, Action::Load) {
+            Ok(doc_id) => doc_id,
+            Err(err) => {
+                let err = format!("failed to open document: {}: {}", uri, err);
+                log::error!("{}", err);
+                editor.set_error(err);
+                return;
+            }
+        };
+
         let doc = editor
             .document_mut(doc_id)
             .expect("Document for document_changes not found");
@@ -374,7 +426,7 @@ pub fn apply_workspace_edit(
         log::debug!("workspace changes: {:?}", changes);
         for (uri, text_edits) in changes {
             let text_edits = text_edits.to_vec();
-            apply_edits(uri, text_edits);
+            apply_edits(uri, text_edits)
         }
         return;
         // Not sure if it works properly, it'll be safer to just panic here to avoid breaking some parts of code on which code actions will be used
@@ -409,8 +461,8 @@ pub fn apply_workspace_edit(
             }
             lsp::DocumentChanges::Operations(operations) => {
                 log::debug!("document changes - operations: {:?}", operations);
-                for operateion in operations {
-                    match operateion {
+                for operation in operations {
+                    match operation {
                         lsp::DocumentChangeOperation::Op(op) => {
                             apply_document_resource_op(op).unwrap();
                         }
@@ -441,8 +493,6 @@ fn goto_impl(
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
 ) {
-    push_jump(editor);
-
     let cwdir = std::env::current_dir().expect("couldn't determine current directory");
 
     match locations.as_slice() {
@@ -613,7 +663,7 @@ pub fn hover(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |editor: &mut Editor, compositor: &mut Compositor, response: Option<lsp::Hover>| {
+        move |editor, compositor, response: Option<lsp::Hover>| {
             if let Some(hover) = response {
                 // hover.contents / .range <- used for visualizing
 
@@ -650,7 +700,8 @@ pub fn hover(cx: &mut Context) {
     );
 }
 pub fn rename_symbol(cx: &mut Context) {
-    let prompt = Prompt::new(
+    ui::prompt(
+        cx,
         "rename-to:".into(),
         None,
         ui::completers::none,
@@ -666,9 +717,10 @@ pub fn rename_symbol(cx: &mut Context) {
             let pos = doc.position(view.id, offset_encoding);
 
             let task = language_server.rename_symbol(doc.identifier(), pos, input.to_string());
-            let edits = block_on(task).unwrap_or_default();
-            apply_workspace_edit(cx.editor, offset_encoding, &edits);
+            match block_on(task) {
+                Ok(edits) => apply_workspace_edit(cx.editor, offset_encoding, &edits),
+                Err(err) => cx.editor.set_error(err.to_string()),
+            }
         },
     );
-    cx.push_layer(Box::new(prompt));
 }

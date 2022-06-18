@@ -7,20 +7,23 @@
 | `:buffer-close!`, `:bc!`, `:bclose!` | Close the current buffer forcefully (ignoring unsaved changes). |
 | `:buffer-close-others`, `:bco`, `:bcloseother` | Close all buffers but the currently focused one. |
 | `:buffer-close-others!`, `:bco!`, `:bcloseother!` | Close all buffers but the currently focused one. |
-| `:buffer-close-all`, `:bca`, `:bcloseall` | Close all buffers, without quiting. |
-| `:buffer-close-all!`, `:bca!`, `:bcloseall!` | Close all buffers forcefully (ignoring unsaved changes), without quiting. |
+| `:buffer-close-all`, `:bca`, `:bcloseall` | Close all buffers, without quitting. |
+| `:buffer-close-all!`, `:bca!`, `:bcloseall!` | Close all buffers forcefully (ignoring unsaved changes), without quitting. |
+| `:buffer-next`, `:bn`, `:bnext` | Go to next buffer. |
+| `:buffer-previous`, `:bp`, `:bprev` | Go to previous buffer. |
 | `:write`, `:w` | Write changes to disk. Accepts an optional path (:write some/path.txt) |
+| `:write!`, `:w!` | Write changes to disk forcefully (creating necessary subdirectories). Accepts an optional path (:write some/path.txt) |
 | `:new`, `:n` | Create a new scratch buffer. |
 | `:format`, `:fmt` | Format the file using the LSP formatter. |
 | `:indent-style` | Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.) |
-| `:line-ending` | Set the document's default line ending. Options: crlf, lf, cr, ff, nel. |
+| `:line-ending` | Set the document's default line ending. Options: crlf, lf. |
 | `:earlier`, `:ear` | Jump back to an earlier point in edit history. Accepts a number of steps or a time span. |
 | `:later`, `:lat` | Jump to a later point in edit history. Accepts a number of steps or a time span. |
 | `:write-quit`, `:wq`, `:x` | Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt) |
 | `:write-quit!`, `:wq!`, `:x!` | Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt) |
-| `:write-all`, `:wa` | Write changes from all views to disk. |
-| `:write-quit-all`, `:wqa`, `:xa` | Write changes from all views to disk and close all views. |
-| `:write-quit-all!`, `:wqa!`, `:xa!` | Write changes from all views to disk and close all views forcefully (ignoring unsaved changes). |
+| `:write-all`, `:wa` | Write changes from all buffers to disk. |
+| `:write-quit-all`, `:wqa`, `:xa` | Write changes from all buffers to disk and close all views. |
+| `:write-quit-all!`, `:wqa!`, `:xa!` | Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes). |
 | `:quit-all`, `:qa` | Close all views. |
 | `:quit-all!`, `:qa!` | Close all views forcefully (ignoring unsaved changes). |
 | `:cquit`, `:cq` | Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2). |
@@ -51,7 +54,17 @@
 | `:hsplit-new`, `:hnew` | Open a scratch buffer in a horizontal split. |
 | `:tutor` | Open the tutorial. |
 | `:goto`, `:g` | Go to line number. |
-| `:set-option`, `:set` | Set a config option at runtime |
+| `:set-language`, `:lang` | Set the language of current buffer. |
+| `:set-option`, `:set` | Set a config option at runtime.<br>For example to disable smart case search, use `:set search.smart-case false`. |
+| `:get-option`, `:get` | Get the current value of a config option. |
 | `:sort` | Sort ranges in selection. |
 | `:rsort` | Sort ranges in selection in reverse order. |
+| `:reflow` | Hard-wrap the current selection of lines to a given width. |
 | `:tree-sitter-subtree`, `:ts-subtree` | Display tree sitter subtree under cursor, primarily for debugging queries. |
+| `:config-reload` | Refreshes helix's config. |
+| `:config-open` | Open the helix config.toml file. |
+| `:log-open` | Open the helix log file. |
+| `:insert-output` | Run shell command, inserting output after each selection. |
+| `:append-output` | Run shell command, appending output after each selection. |
+| `:pipe` | Pipe each selection to the shell command. |
+| `:run-shell-command`, `:sh` | Run a shell command |

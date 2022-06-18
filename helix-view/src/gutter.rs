@@ -39,7 +39,7 @@ pub fn diagnostic<'doc>(
     })
 }
 
-pub fn line_number<'doc>(
+pub fn line_numbers<'doc>(
     editor: &'doc Editor,
     doc: &'doc Document,
     view: &View,
@@ -54,13 +54,13 @@ pub fn line_number<'doc>(
     let draw_last = text.line_to_byte(last_line) < text.len_bytes();
 
     let linenr = theme.get("ui.linenr");
-    let linenr_select: Style = theme.try_get("ui.linenr.selected").unwrap_or(linenr);
+    let linenr_select = theme.get("ui.linenr.selected");
 
     let current_line = doc
         .text()
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
-    let config = editor.config.line_number;
+    let line_number = editor.config().line_number;
     let mode = doc.mode;
 
     Box::new(move |line: usize, selected: bool, out: &mut String| {
@@ -70,7 +70,7 @@ pub fn line_number<'doc>(
         } else {
             use crate::{document::Mode, editor::LineNumber};
 
-            let relative = config == LineNumber::Relative
+            let relative = line_number == LineNumber::Relative
                 && mode != Mode::Insert
                 && is_focused
                 && current_line != line;

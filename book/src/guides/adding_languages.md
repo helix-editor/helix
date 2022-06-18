@@ -16,6 +16,7 @@ injection-regex = "^mylang$"
 file-types = ["mylang", "myl"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
+language-server = { command = "mylang-lsp", args = ["--stdio"] }
 ```
 
 These are the available keys and descriptions for the file.
@@ -32,8 +33,15 @@ These are the available keys and descriptions for the file.
 | `diagnostic-severity` | Minimal severity of diagnostic for it to be displayed. (Allowed values: `Error`, `Warning`, `Info`, `Hint`) |
 | `comment-token`       | The token to use as a comment-token                           |
 | `indent`              | The indent to use. Has sub keys `tab-width` and `unit`        |
-| `config`              | Language server configuration                                 |
+| `language-server`     | The Language Server to run. Has sub keys `command` and `args` |
+| `config`              | Language Server configuration                                 |
 | `grammar`             | The tree-sitter grammar to use (defaults to the value of `name`) |
+
+When adding a new language or Language Server configuration for an existing
+language, run `cargo xtask docgen` to add the new configuration to the
+[Language Support][lang-support] docs before creating a pull request.
+When adding a Language Server configuration, be sure to update the
+[Language Server Wiki][install-lsp-wiki] with installation notes.
 
 ## Grammar configuration
 
@@ -83,8 +91,8 @@ the last matching query supersedes the ones before it. See
 
 - If a parser is segfaulting or you want to remove the parser, make sure to remove the compiled parser in `runtime/grammar/<name>.so`
 
-- The indents query is `indents.toml`, *not* `indents.scm`. See [this](https://github.com/helix-editor/helix/issues/114) issue for more information.
-
 [treesitter-language-injection]: https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection
 [languages.toml]: https://github.com/helix-editor/helix/blob/master/languages.toml
 [neovim-query-precedence]: https://github.com/helix-editor/helix/pull/1170#issuecomment-997294090
+[install-lsp-wiki]: https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers
+[lang-support]: ../lang-support.md
