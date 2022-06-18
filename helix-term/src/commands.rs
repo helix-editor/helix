@@ -395,6 +395,8 @@ impl MappableCommand {
         goto_prev_parameter, "Goto previous parameter",
         goto_next_comment, "Goto next comment",
         goto_prev_comment, "Goto previous comment",
+        goto_next_test, "Goto next test",
+        goto_prev_test, "Goto previous test",
         goto_next_paragraph, "Goto next paragraph",
         goto_prev_paragraph, "Goto previous paragraph",
         dap_launch, "Launch debug target",
@@ -4098,6 +4100,14 @@ fn goto_prev_comment(cx: &mut Context) {
     goto_ts_object_impl(cx, "comment", Direction::Backward)
 }
 
+fn goto_next_test(cx: &mut Context) {
+    goto_ts_object_impl(cx, "test", Direction::Forward)
+}
+
+fn goto_prev_test(cx: &mut Context) {
+    goto_ts_object_impl(cx, "test", Direction::Backward)
+}
+
 fn select_textobject_around(cx: &mut Context) {
     select_textobject(cx, textobject::TextObject::Around);
 }
@@ -4141,6 +4151,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'f' => textobject_treesitter("function", range),
                         'a' => textobject_treesitter("parameter", range),
                         'o' => textobject_treesitter("comment", range),
+                        't' => textobject_treesitter("test", range),
                         'p' => textobject::textobject_paragraph(text, range, objtype, count),
                         'm' => textobject::textobject_surround_closest(text, range, objtype, count),
                         // TODO: cancel new ranges if inconsistent surround matches across lines
@@ -4170,6 +4181,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
             ("f", "Function (tree-sitter)"),
             ("a", "Argument/parameter (tree-sitter)"),
             ("o", "Comment (tree-sitter)"),
+            ("t", "Test (tree-sitter)"),
             ("m", "Matching delimiter under cursor"),
             (" ", "... or any character acting as a pair"),
         ];
