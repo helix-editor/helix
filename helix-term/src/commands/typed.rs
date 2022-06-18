@@ -35,7 +35,7 @@ fn quit(
 fn force_quit(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _eventt: PromptEvent,
+    _event: PromptEvent,
 ) -> anyhow::Result<()> {
     ensure!(args.is_empty(), ":quit! takes no arguments");
 
