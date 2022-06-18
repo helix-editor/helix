@@ -4046,10 +4046,10 @@ fn scroll_down(cx: &mut Context) {
 
 fn goto_ts_object_impl(cx: &mut Context, object: &str, direction: Direction) {
     let count = cx.count();
+
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
     let range = doc.selection(view.id).primary();
-
     let new_range = match doc.language_config().zip(doc.syntax()) {
         Some((lang_config, syntax)) => movement::goto_treesitter_object(
             text,
@@ -4063,7 +4063,16 @@ fn goto_ts_object_impl(cx: &mut Context, object: &str, direction: Direction) {
         None => range,
     };
 
-    doc.set_selection(view.id, Selection::single(new_range.anchor, new_range.head));
+    if doc.mode == Mode::Select {
+        if range.direction() != direction {
+            doc.set_selection(view.id, Selection::single(range.anchor, new_range.head));
+        } else {
+            let merge = range.merge(new_range);
+            doc.set_selection(view.id, Selection::single(merge.anchor, merge.head));
+        }
+    } else {
+        doc.set_selection(view.id, Selection::single(new_range.anchor, new_range.head));
+    }
 }
 
 fn goto_next_function(cx: &mut Context) {
