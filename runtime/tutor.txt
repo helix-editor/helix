@@ -347,7 +347,7 @@ _________________________________________________________________
  --> 6) Sugar is sweet,
  --> 7) And so are you.
 
- NOTE: X works similarly to x although it does not extend to
+ NOTE: X works similarly to x although it doesn't extend to
        subsequent lines. X on an empty line does nothing.
 
 =================================================================
@@ -556,7 +556,7 @@ _________________________________________________________________
 
  1. Move the cursor to the first line below marked -->.
  2. Type C four times or 4C.
- 3. Type W until the cursors are between the numbers and the words.
+ 3. Type W to select the numbers and brackets.
  4. Type & to align the words.
 
  --> 97) lorem
