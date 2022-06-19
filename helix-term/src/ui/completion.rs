@@ -15,19 +15,28 @@ use helix_lsp::{lsp, util};
 use lsp::CompletionItem;
 
 impl menu::Item for CompletionItem {
-    fn sort_text(&self) -> &str {
-        self.filter_text.as_ref().unwrap_or(&self.label).as_str()
+    type EditorData = ();
+    fn sort_text(&self, _data: &Self::EditorData) -> Cow<str> {
+        self.filter_text
+            .as_ref()
+            .unwrap_or(&self.label)
+            .as_str()
+            .into()
     }
 
-    fn filter_text(&self) -> &str {
-        self.filter_text.as_ref().unwrap_or(&self.label).as_str()
+    fn filter_text(&self, _data: &Self::EditorData) -> Cow<str> {
+        self.filter_text
+            .as_ref()
+            .unwrap_or(&self.label)
+            .as_str()
+            .into()
     }
 
-    fn label(&self) -> &str {
-        self.label.as_str()
+    fn label(&self, _data: &Self::EditorData) -> Cow<str> {
+        self.label.as_str().into()
     }
 
-    fn row(&self) -> menu::Row {
+    fn row(&self, _data: &Self::EditorData) -> menu::Row {
         menu::Row::new(vec![
             menu::Cell::from(self.label.as_str()),
             menu::Cell::from(match self.kind {
@@ -85,7 +94,7 @@ impl Completion {
         start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
-        let menu = Menu::new(items, move |editor: &mut Editor, item, event| {
+        let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
             fn item_to_transaction(
                 doc: &Document,
                 item: &CompletionItem,

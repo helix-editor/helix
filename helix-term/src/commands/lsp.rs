@@ -209,10 +209,11 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
 }
 
 impl ui::menu::Item for lsp::CodeActionOrCommand {
-    fn label(&self) -> &str {
+    type EditorData = ();
+    fn label(&self, _data: &Self::EditorData) -> Cow<str> {
         match self {
-            lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str(),
-            lsp::CodeActionOrCommand::Command(command) => command.title.as_str(),
+            lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str().into(),
+            lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
         }
     }
 }
@@ -257,7 +258,7 @@ pub fn code_action(cx: &mut Context) {
                 return;
             }
 
-            let mut picker = ui::Menu::new(actions, move |editor, code_action, event| {
+            let mut picker = ui::Menu::new(actions, (), move |editor, code_action, event| {
                 if event != PromptEvent::Validate {
                     return;
                 }

@@ -1,3 +1,5 @@
+use std::{borrow::Cow, path::PathBuf};
+
 use crate::{
     compositor::{Callback, Component, Compositor, Context, EventResult},
     ctrl, key, shift,
@@ -14,22 +16,38 @@ use helix_view::{graphics::Rect, Editor};
 use tui::layout::Constraint;
 
 pub trait Item {
-    fn label(&self) -> &str;
+    /// Additional editor state that is used for label calculation.
+    type EditorData;
 
-    fn sort_text(&self) -> &str {
-        self.label()
-    }
-    fn filter_text(&self) -> &str {
-        self.label()
+    fn label(&self, data: &Self::EditorData) -> Cow<str>;
+
+    fn sort_text(&self, data: &Self::EditorData) -> Cow<str> {
+        self.label(data)
     }
 
-    fn row(&self) -> Row {
-        Row::new(vec![Cell::from(self.label())])
+    fn filter_text(&self, data: &Self::EditorData) -> Cow<str> {
+        self.label(data)
+    }
+
+    fn row(&self, data: &Self::EditorData) -> Row {
+        Row::new(vec![Cell::from(self.label(data))])
+    }
+}
+
+impl Item for PathBuf {
+    /// Root prefix to strip.
+    type EditorData = PathBuf;
+
+    fn label(&self, root_path: &Self::EditorData) -> Cow<str> {
+        self.strip_prefix(&root_path)
+            .unwrap_or(self)
+            .to_string_lossy()
     }
 }
 
 pub struct Menu<T: Item> {
     options: Vec<T>,
+    editor_data: T::EditorData,
 
     cursor: Option<usize>,
 
@@ -52,10 +70,12 @@ impl<T: Item> Menu<T> {
     // rendering)
     pub fn new(
         options: Vec<T>,
+        editor_data: <T as Item>::EditorData,
         callback_fn: impl Fn(&mut Editor, Option<&T>, MenuEvent) + 'static,
     ) -> Self {
         let mut menu = Self {
             options,
+            editor_data,
             matcher: Box::new(Matcher::default()),
             matches: Vec::new(),
             cursor: None,
@@ -81,16 +101,16 @@ impl<T: Item> Menu<T> {
                 .iter()
                 .enumerate()
                 .filter_map(|(index, option)| {
-                    let text = option.filter_text();
+                    let text = option.filter_text(&self.editor_data);
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
                     self.matcher
-                        .fuzzy_match(text, pattern)
+                        .fuzzy_match(&text, pattern)
                         .map(|score| (index, score))
                 }),
         );
         // matches.sort_unstable_by_key(|(_, score)| -score);
         self.matches
-            .sort_unstable_by_key(|(index, _score)| self.options[*index].sort_text());
+            .sort_unstable_by_key(|(index, _score)| self.options[*index].sort_text(&self.editor_data));
 
         // reset cursor position
         self.cursor = None;
@@ -125,10 +145,10 @@ impl<T: Item> Menu<T> {
         let n = self
             .options
             .first()
-            .map(|option| option.row().cells.len())
+            .map(|option| option.row(&self.editor_data).cells.len())
             .unwrap_or_default();
         let max_lens = self.options.iter().fold(vec![0; n], |mut acc, option| {
-            let row = option.row();
+            let row = option.row(&self.editor_data);
             // maintain max for each column
             for (acc, cell) in acc.iter_mut().zip(row.cells.iter()) {
                 let width = cell.content.width();
@@ -296,7 +316,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         let scroll_line = (win_height - scroll_height) * scroll
             / std::cmp::max(1, len.saturating_sub(win_height));
 
-        let rows = options.iter().map(|option| option.row());
+        let rows = options.iter().map(|option| option.row(&self.editor_data));
         let table = Table::new(rows)
             .style(style)
             .highlight_style(selected)
