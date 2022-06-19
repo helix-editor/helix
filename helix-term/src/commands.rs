@@ -356,8 +356,9 @@ impl MappableCommand {
         select_prev_sibling, "Select the previous sibling in the syntax tree",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
-        save_selection, "Save the current selection to the jumplist",
+        copy_cursor_forward, "Place a new cursor on forward selection of the jumplist",
         copy_cursor_backward, "Place a new cursor on backward selection of the jumplist",
+        save_selection, "Save the current selection to the jumplist",
         jump_view_right, "Jump to the split to the right",
         jump_view_left, "Jump to the split to the left",
         jump_view_up, "Jump to the split above",
@@ -3859,53 +3860,23 @@ fn match_brackets(cx: &mut Context) {
 
 //
 
-fn jump_forward(cx: &mut Context) {
-    let count = cx.count();
-    let view = view_mut!(cx.editor);
-
-    if let Some((id, selection)) = view.jumps.forward(count) {
-        view.doc = *id;
-        let selection = selection.clone();
-        let (view, doc) = current!(cx.editor); // refetch doc
-        doc.set_selection(view.id, selection);
-
-        align_view(doc, view, Align::Center);
-    };
-}
-
-fn jump_backward(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-
-    if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
-        view.doc = *id;
-        let selection = selection.clone();
-        let (view, doc) = current!(cx.editor); // refetch doc
-        doc.set_selection(view.id, selection);
-
-        align_view(doc, view, Align::Center);
-    };
-}
-
-fn save_selection(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-    push_jump(view, doc);
-    cx.editor.set_status("Selection saved to jumplist");
-}
-
-fn copy_cursor_backward(cx: &mut Context) {
+fn jump_impl(cx: &mut Context, copy_cursor: bool, direction: Direction) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let mut this_selection = doc.selection(view.id).clone();
+    let jump_option = match direction {
+        Direction::Forward => view.jumps.forward(count),
+        Direction::Backward => view.jumps.backward(view.id, doc, count),
+    };
 
-    if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
+    if let Some((id, selection)) = jump_option {
         view.doc = *id;
-        if cx.editor.documents.get(&view.doc).is_some() {
+        if cx.editor.documents.get(&view.doc).is_some() & copy_cursor {
             for range in selection.ranges() {
                 this_selection = this_selection.push(*range);
             }
         } else {
-            // if jumplist is in other buffer, just jump
+            // if jumplist is in another buffer, just jump
             this_selection = selection.clone();
         }
         let (view, doc) = current!(cx.editor); // refetch doc
@@ -3913,6 +3884,28 @@ fn copy_cursor_backward(cx: &mut Context) {
 
         align_view(doc, view, Align::Center);
     };
+}
+
+fn jump_forward(cx: &mut Context) {
+    jump_impl(cx, false, Direction::Forward)
+}
+
+fn jump_backward(cx: &mut Context) {
+    jump_impl(cx, false, Direction::Backward)
+}
+
+fn copy_cursor_forward(cx: &mut Context) {
+    jump_impl(cx, true, Direction::Forward)
+}
+
+fn copy_cursor_backward(cx: &mut Context) {
+    jump_impl(cx, true, Direction::Backward)
+}
+
+fn save_selection(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    push_jump(view, doc);
+    cx.editor.set_status("Selection saved to jumplist");
 }
 
 fn rotate_view(cx: &mut Context) {
