@@ -85,15 +85,14 @@ impl Application {
         ));
 
         let true_color = config.editor.true_color || crate::true_color();
-
         let theme = config
             .theme
             .as_ref()
-            .and_then(|theme_name| {
+            .and_then(|theme| {
                 theme_loader
-                    .load(theme_name)
+                    .load(theme)
                     .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme_name, e);
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
                         e
                     })
                     .ok()
