@@ -357,6 +357,7 @@ impl MappableCommand {
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
         save_selection, "Save the current selection to the jumplist",
+        copy_cursor_backward, "Place a new cursor on backward selection of the jumplist",
         jump_view_right, "Jump to the split to the right",
         jump_view_left, "Jump to the split to the left",
         jump_view_up, "Jump to the split above",
@@ -3890,6 +3891,23 @@ fn save_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     push_jump(view, doc);
     cx.editor.set_status("Selection saved to jumplist");
+}
+
+fn copy_cursor_backward(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let mut this_selection = doc.selection(view.id).clone();
+
+    if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
+        view.doc = *id;
+        for range in selection.ranges() {
+            this_selection = this_selection.push(*range);
+        }
+        let (view, doc) = current!(cx.editor); // refetch doc
+        doc.set_selection(view.id, this_selection);
+
+        align_view(doc, view, Align::Center);
+    };
 }
 
 fn rotate_view(cx: &mut Context) {
