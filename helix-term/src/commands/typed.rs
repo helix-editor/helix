@@ -1,3 +1,5 @@
+use std::ops::BitAnd;
+
 use super::*;
 
 use helix_view::editor::{Action, ConfigEvent};
@@ -12,7 +14,7 @@ pub struct TypableCommand {
     pub fun: fn(&mut compositor::Context, &[Cow<str>], PromptEvent) -> anyhow::Result<()>,
     pub completer: Option<Completer>,
     /// Use `prompt_events` to declare which events this command will respond to.
-    pub prompt_events: &'static [PromptEvent],
+    pub prompt_events: u8,
 }
 
 fn quit(
@@ -1269,7 +1271,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Close the current view.",
             fun: quit,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "quit!",
@@ -1277,7 +1279,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Close the current view forcefully (ignoring unsaved changes).",
             fun: force_quit,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "open",
@@ -1285,7 +1287,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Open a file from disk into the current view.",
             fun: open,
             completer: Some(completers::filename),
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "buffer-close",
@@ -1293,7 +1295,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Close the current buffer.",
             fun: buffer_close,
           completer: Some(completers::buffer),
-          prompt_events: &[PromptEvent::Validate],
+          prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "buffer-close!",
@@ -1301,7 +1303,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Close the current buffer forcefully (ignoring unsaved changes).",
             fun: force_buffer_close,
           completer: Some(completers::buffer),
-          prompt_events: &[PromptEvent::Validate],
+          prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "buffer-close-others",
@@ -1309,7 +1311,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Close all buffers but the currently focused one.",
             fun: buffer_close_others,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "buffer-close-others!",
@@ -1317,7 +1319,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Close all buffers but the currently focused one.",
             fun: force_buffer_close_others,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "buffer-close-all",
@@ -1325,7 +1327,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Close all buffers, without quitting.",
             fun: buffer_close_all,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "buffer-close-all!",
@@ -1333,7 +1335,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Close all buffers forcefully (ignoring unsaved changes), without quitting.",
             fun: force_buffer_close_all,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "buffer-next",
@@ -1341,7 +1343,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Go to next buffer.",
             fun: buffer_next,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "buffer-previous",
@@ -1349,7 +1351,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Go to previous buffer.",
             fun: buffer_previous,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "write",
@@ -1357,7 +1359,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
             fun: write,
             completer: Some(completers::filename),
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "write!",
@@ -1365,7 +1367,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Write changes to disk forcefully (creating necessary subdirectories). Accepts an optional path (:write some/path.txt)",
             fun: force_write,
             completer: Some(completers::filename),
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "new",
@@ -1373,7 +1375,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Create a new scratch buffer.",
             fun: new_file,
             completer: Some(completers::filename),
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "format",
@@ -1381,7 +1383,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Format the file using the LSP formatter.",
             fun: format,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "indent-style",
@@ -1389,7 +1391,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.)",
             fun: set_indent_style,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "line-ending",
@@ -1400,7 +1402,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Set the document's default line ending. Options: crlf, lf, cr, ff, nel.",
             fun: set_line_ending,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "earlier",
@@ -1408,7 +1410,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Jump back to an earlier point in edit history. Accepts a number of steps or a time span.",
             fun: earlier,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "later",
@@ -1416,14 +1418,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.",
             fun: later,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "write-quit",
             aliases: &["wq", "x"],
             doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
             fun: write_quit,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
             completer: Some(completers::filename),
         },
         TypableCommand {
@@ -1432,7 +1434,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
             fun: force_write_quit,
             completer: Some(completers::filename),
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "write-all",
@@ -1440,7 +1442,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Write changes from all buffers to disk.",
             fun: write_all,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "write-quit-all",
@@ -1448,7 +1450,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Write changes from all buffers to disk and close all views.",
             fun: write_all_quit,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "write-quit-all!",
@@ -1456,7 +1458,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes).",
             fun: force_write_all_quit,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "quit-all",
@@ -1464,14 +1466,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Close all views.",
             fun: quit_all,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "quit-all!",
             aliases: &["qa!"],
             doc: "Close all views forcefully (ignoring unsaved changes).",
             fun: force_quit_all,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
             completer: None,
         },
         TypableCommand {
@@ -1480,7 +1482,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).",
             fun: cquit,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "cquit!",
@@ -1488,7 +1490,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Quit with exit code (default 1) forcefully (ignoring unsaved changes). Accepts an optional integer exit code (:cq! 2).",
             fun: force_cquit,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "theme",
@@ -1496,7 +1498,9 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Change the editor theme.",
             fun: theme,
             completer: Some(completers::theme),
-            prompt_events: &[PromptEvent::Update, PromptEvent::Validate, PromptEvent::Abort],
+            prompt_events: PromptEvent::Update as u8
+                | PromptEvent::Validate as u8
+                | PromptEvent::Abort as u8,
         },
         TypableCommand {
             name: "clipboard-yank",
@@ -1504,7 +1508,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Yank main selection into system clipboard.",
             fun: yank_main_selection_to_clipboard,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "clipboard-yank-join",
@@ -1512,7 +1516,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
             fun: yank_joined_to_clipboard,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "primary-clipboard-yank",
@@ -1520,7 +1524,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Yank main selection into system primary clipboard.",
             fun: yank_main_selection_to_primary_clipboard,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "primary-clipboard-yank-join",
@@ -1528,7 +1532,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
             fun: yank_joined_to_primary_clipboard,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "clipboard-paste-after",
@@ -1536,7 +1540,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Paste system clipboard after selections.",
             fun: paste_clipboard_after,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "clipboard-paste-before",
@@ -1544,7 +1548,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Paste system clipboard before selections.",
             fun: paste_clipboard_before,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "clipboard-paste-replace",
@@ -1552,7 +1556,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Replace selections with content of system clipboard.",
             fun: replace_selections_with_clipboard,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "primary-clipboard-paste-after",
@@ -1560,7 +1564,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Paste primary clipboard after selections.",
             fun: paste_primary_clipboard_after,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "primary-clipboard-paste-before",
@@ -1568,7 +1572,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Paste primary clipboard before selections.",
             fun: paste_primary_clipboard_before,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "primary-clipboard-paste-replace",
@@ -1576,7 +1580,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Replace selections with content of system primary clipboard.",
             fun: replace_selections_with_primary_clipboard,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "show-clipboard-provider",
@@ -1584,7 +1588,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Show clipboard provider name in status bar.",
             fun: show_clipboard_provider,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "change-current-directory",
@@ -1592,7 +1596,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Change the current working directory.",
             fun: change_current_directory,
             completer: Some(completers::directory),
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "show-directory",
@@ -1600,7 +1604,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Show the current working directory.",
             fun: show_current_directory,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "encoding",
@@ -1608,7 +1612,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Set encoding based on `https://encoding.spec.whatwg.org`",
             fun: set_encoding,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "reload",
@@ -1616,7 +1620,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Discard changes and reload from the source file.",
             fun: reload,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "tree-sitter-scopes",
@@ -1624,7 +1628,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Display tree sitter scopes, primarily for theming and development.",
             fun: tree_sitter_scopes,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
        },
         TypableCommand {
             name: "debug-start",
@@ -1632,7 +1636,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Start a debug session from a given template with given parameters.",
             fun: debug_start,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "debug-remote",
@@ -1640,7 +1644,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.",
             fun: debug_remote,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "debug-eval",
@@ -1648,7 +1652,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Evaluate expression in current debug context.",
             fun: debug_eval,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "vsplit",
@@ -1656,7 +1660,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Open the file in a vertical split.",
             fun: vsplit,
             completer: Some(completers::filename),
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "vsplit-new",
@@ -1664,7 +1668,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Open a scratch buffer in a vertical split.",
             fun: vsplit_new,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "hsplit",
@@ -1672,7 +1676,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Open the file in a horizontal split.",
             fun: hsplit,
             completer: Some(completers::filename),
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "hsplit-new",
@@ -1680,7 +1684,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Open a scratch buffer in a horizontal split.",
             fun: hsplit_new,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "tutor",
@@ -1688,7 +1692,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Open the tutorial.",
             fun: tutor,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "goto",
@@ -1696,7 +1700,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Go to line number.",
             fun: goto_line_number,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "set-language",
@@ -1704,7 +1708,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Set the language of current buffer.",
             fun: language,
             completer: Some(completers::language),
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "set-option",
@@ -1712,7 +1716,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
             fun: set_option,
             completer: Some(completers::setting),
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "get-option",
@@ -1720,7 +1724,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Get the current value of a config option.",
             fun: get_option,
             completer: Some(completers::setting),
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "sort",
@@ -1728,7 +1732,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Sort ranges in selection.",
             fun: sort,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "rsort",
@@ -1736,7 +1740,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Sort ranges in selection in reverse order.",
             fun: sort_reverse,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "reflow",
@@ -1744,7 +1748,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Hard-wrap the current selection of lines to a given width.",
             fun: reflow,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "tree-sitter-subtree",
@@ -1752,7 +1756,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
             fun: tree_sitter_subtree,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "config-reload",
@@ -1760,7 +1764,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Refreshes helix's config.",
             fun: refresh_config,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "config-open",
@@ -1768,7 +1772,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Open the helix config.toml file.",
             fun: open_config,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "log-open",
@@ -1776,7 +1780,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Open the helix log file.",
             fun: open_log,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "insert-output",
@@ -1784,7 +1788,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run shell command, inserting output after each selection.",
             fun: insert_output,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "append-output",
@@ -1792,7 +1796,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run shell command, appending output after each selection.",
             fun: append_output,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "pipe",
@@ -1800,7 +1804,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Pipe each selection to the shell command.",
             fun: pipe,
             completer: None,
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
         TypableCommand {
             name: "run-shell-command",
@@ -1808,7 +1812,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run a shell command",
             fun: run_shell_command,
             completer: Some(completers::directory),
-            prompt_events: &[PromptEvent::Validate],
+            prompt_events: PromptEvent::Validate as u8,
         },
     ];
 
@@ -1889,7 +1893,7 @@ pub fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                if !cmd.prompt_events.contains(&event) {
+                if cmd.prompt_events.bitand(event as u8) == 0 {
                     return;
                 }
 
