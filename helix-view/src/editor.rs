@@ -438,7 +438,6 @@ pub struct Editor {
     pub registers: Registers,
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub macro_replaying: Vec<char>,
-    pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
 
     pub debugger: Option<dap::Client>,
@@ -449,8 +448,13 @@ pub struct Editor {
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
-    // last_theme is currently just used for theme previews
-    pub last_theme: Option<String>,
+    /// last_theme is used for theme previews. We store the current theme here,
+    /// and if previewing is cancelled, we can return to it.
+    pub last_theme: Option<Box<Theme>>,
+    /// The currently applied editor theme. While previewing a theme, the previewed theme
+    /// is set here.
+    pub theme: Theme,
+
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
@@ -494,7 +498,6 @@ impl Editor {
         theme_loader: Arc<theme::Loader>,
         syn_loader: Arc<syntax::Loader>,
         config: Box<dyn DynAccess<Config>>,
-        current_theme: String,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
         let conf = config.load();
@@ -518,7 +521,7 @@ impl Editor {
             breakpoints: HashMap::new(),
             syn_loader,
             theme_loader,
-            last_theme: Some(current_theme),
+            last_theme: None,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
@@ -575,13 +578,14 @@ impl Editor {
     }
 
     pub fn unset_theme_preview(&mut self) {
-        if let Some(last_theme) = &self.last_theme.clone() {
-            match self.theme_loader.load(last_theme) {
+        if let Some(last_theme) = self.last_theme.take() {
+            let theme_name = &(*last_theme).name;
+            match self.theme_loader.load(theme_name) {
                 Ok(theme) => {
                     self.set_theme(theme);
                 }
                 Err(_e) => {
-                    self.set_error(format!("Failed to set theme: '{}'", last_theme));
+                    self.set_error(format!("Failed to set theme: '{}'", theme_name));
                 }
             };
         }
@@ -592,7 +596,7 @@ impl Editor {
     }
 
     pub fn set_theme(&mut self, theme: Theme) {
-        self.last_theme = Some(theme.name.clone());
+        self.last_theme = Some(Box::new(theme.clone()));
         self.set_theme_impl(theme);
     }
 

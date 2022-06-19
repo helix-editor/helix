@@ -119,7 +119,6 @@ impl Application {
             Box::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
-            theme.name.clone(),
         );
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {

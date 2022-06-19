@@ -600,6 +600,9 @@ fn theme(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if cx.editor.last_theme.is_none() {
+        cx.editor.last_theme = Some(Box::new(cx.editor.theme.clone()));
+    }
     let true_color = cx.editor.config.load().true_color || crate::true_color();
     match event {
         PromptEvent::Abort => {
@@ -1903,13 +1906,10 @@ pub fn command_mode(cx: &mut Context) {
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));
                 }
-            } else {
-                if event != PromptEvent::Validate {
-                    return;
-                }
+            } else if event == PromptEvent::Validate {
                 cx.editor
                     .set_error(format!("no such command: '{}'", parts[0]));
-            };
+            }
         },
     );
     prompt.doc_fn = Box::new(|input: &str| {
