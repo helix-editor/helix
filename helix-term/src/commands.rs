@@ -3900,8 +3900,13 @@ fn copy_cursor_backward(cx: &mut Context) {
 
     if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
         view.doc = *id;
-        for range in selection.ranges() {
-            this_selection = this_selection.push(*range);
+        if cx.editor.documents.get(&view.doc).is_some() {
+            for range in selection.ranges() {
+                this_selection = this_selection.push(*range);
+            }
+        } else {
+            // if jumplist is in other buffer, just jump
+            this_selection = selection.clone();
         }
         let (view, doc) = current!(cx.editor); // refetch doc
         doc.set_selection(view.id, this_selection);
