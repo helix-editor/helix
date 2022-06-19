@@ -14,7 +14,7 @@ use crate::{
     ui::{self, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent},
 };
 
-use std::borrow::Cow;
+use std::{borrow::Cow, path::PathBuf};
 
 /// Gets the language server that is attached to a document, and
 /// if it's not active displays a status message. Using this macro
@@ -32,6 +32,52 @@ macro_rules! language_server {
             }
         }
     };
+}
+
+impl ui::menu::Item for lsp::Location {
+    /// Current working directory.
+    type EditorData = PathBuf;
+
+    fn label(&self, cwdir: &Self::EditorData) -> Cow<str> {
+        let file: Cow<'_, str> = (self.uri.scheme() == "file")
+            .then(|| {
+                self.uri
+                    .to_file_path()
+                    .map(|path| {
+                        // strip root prefix
+                        path.strip_prefix(&cwdir)
+                            .map(|path| path.to_path_buf())
+                            .unwrap_or(path)
+                    })
+                    .map(|path| Cow::from(path.to_string_lossy().into_owned()))
+                    .ok()
+            })
+            .flatten()
+            .unwrap_or_else(|| self.uri.as_str().into());
+        let line = self.range.start.line;
+        format!("{}:{}", file, line).into()
+    }
+}
+
+impl ui::menu::Item for lsp::SymbolInformation {
+    /// Path to currently focussed document
+    type EditorData = Option<lsp::Url>;
+
+    fn label(&self, current_doc_path: &Self::EditorData) -> Cow<str> {
+        if current_doc_path.as_ref() == Some(&self.location.uri) {
+            self.name.as_str().into()
+        } else {
+            match self.location.uri.to_file_path() {
+                Ok(path) => {
+                    let relative_path = helix_core::path::get_relative_path(path.as_path())
+                        .to_string_lossy()
+                        .into_owned();
+                    format!("{} ({})", &self.name, relative_path).into()
+                }
+                Err(_) => format!("{} ({})", &self.name, &self.location.uri).into(),
+            }
+        }
+    }
 }
 
 fn location_to_file_location(location: &lsp::Location) -> FileLocation {
@@ -81,29 +127,14 @@ fn sym_picker(
     offset_encoding: OffsetEncoding,
 ) -> FilePicker<lsp::SymbolInformation> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
-    let current_path2 = current_path.clone();
     FilePicker::new(
         symbols,
-        move |symbol| {
-            if current_path.as_ref() == Some(&symbol.location.uri) {
-                symbol.name.as_str().into()
-            } else {
-                match symbol.location.uri.to_file_path() {
-                    Ok(path) => {
-                        let relative_path = helix_core::path::get_relative_path(path.as_path())
-                            .to_string_lossy()
-                            .into_owned();
-                        format!("{} ({})", &symbol.name, relative_path).into()
-                    }
-                    Err(_) => format!("{} ({})", &symbol.name, &symbol.location.uri).into(),
-                }
-            }
-        },
+        current_path.clone(),
         move |cx, symbol, action| {
             let (view, doc) = current!(cx.editor);
             push_jump(view, doc);
 
-            if current_path2.as_ref() != Some(&symbol.location.uri) {
+            if current_path.as_ref() != Some(&symbol.location.uri) {
                 let uri = &symbol.location.uri;
                 let path = match uri.to_file_path() {
                     Ok(path) => path,
@@ -488,6 +519,7 @@ pub fn apply_workspace_edit(
         }
     }
 }
+
 fn goto_impl(
     editor: &mut Editor,
     compositor: &mut Compositor,
@@ -506,26 +538,7 @@ fn goto_impl(
         _locations => {
             let picker = FilePicker::new(
                 locations,
-                move |location| {
-                    let file: Cow<'_, str> = (location.uri.scheme() == "file")
-                        .then(|| {
-                            location
-                                .uri
-                                .to_file_path()
-                                .map(|path| {
-                                    // strip root prefix
-                                    path.strip_prefix(&cwdir)
-                                        .map(|path| path.to_path_buf())
-                                        .unwrap_or(path)
-                                })
-                                .map(|path| Cow::from(path.to_string_lossy().into_owned()))
-                                .ok()
-                        })
-                        .flatten()
-                        .unwrap_or_else(|| location.uri.as_str().into());
-                    let line = location.range.start.line;
-                    format!("{}:{}", file, line).into()
-                },
+                cwdir,
                 move |cx, location, action| {
                     jump_to_location(cx.editor, location, offset_encoding, action)
                 },

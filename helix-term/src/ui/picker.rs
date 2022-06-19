@@ -15,7 +15,6 @@ use tui::widgets::Widget;
 
 use std::time::Instant;
 use std::{
-    borrow::Cow,
     cmp::Reverse,
     collections::HashMap,
     io::Read,
@@ -30,6 +29,8 @@ use helix_view::{
     Document, Editor,
 };
 
+use super::menu::Item;
+
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
@@ -37,7 +38,7 @@ pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 /// File path and range of lines (used to align and highlight lines)
 pub type FileLocation = (PathBuf, Option<(usize, usize)>);
 
-pub struct FilePicker<T> {
+pub struct FilePicker<T: Item> {
     picker: Picker<T>,
     pub truncate_start: bool,
     /// Caches paths to documents
@@ -84,15 +85,15 @@ impl Preview<'_, '_> {
     }
 }
 
-impl<T> FilePicker<T> {
+impl<T: Item> FilePicker<T> {
     pub fn new(
         options: Vec<T>,
-        format_fn: impl Fn(&T) -> Cow<str> + 'static,
+        editor_data: T::EditorData,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
         let truncate_start = true;
-        let mut picker = Picker::new(options, format_fn, callback_fn);
+        let mut picker = Picker::new(options, editor_data, callback_fn);
         picker.truncate_start = truncate_start;
 
         Self {
@@ -163,7 +164,7 @@ impl<T> FilePicker<T> {
     }
 }
 
-impl<T: 'static> Component for FilePicker<T> {
+impl<T: Item + 'static> Component for FilePicker<T> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // +---------+ +---------+
         // |prompt   | |preview  |
@@ -283,8 +284,9 @@ impl<T: 'static> Component for FilePicker<T> {
     }
 }
 
-pub struct Picker<T> {
+pub struct Picker<T: Item> {
     options: Vec<T>,
+    editor_data: T::EditorData,
     // filter: String,
     matcher: Box<Matcher>,
     /// (index, score)
@@ -302,14 +304,13 @@ pub struct Picker<T> {
     /// Whether to truncate the start (default true)
     pub truncate_start: bool,
 
-    format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
 }
 
-impl<T> Picker<T> {
+impl<T: Item> Picker<T> {
     pub fn new(
         options: Vec<T>,
-        format_fn: impl Fn(&T) -> Cow<str> + 'static,
+        editor_data: T::EditorData,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
@@ -321,6 +322,7 @@ impl<T> Picker<T> {
 
         let mut picker = Self {
             options,
+            editor_data,
             matcher: Box::new(Matcher::default()),
             matches: Vec::new(),
             filters: Vec::new(),
@@ -328,7 +330,6 @@ impl<T> Picker<T> {
             prompt,
             previous_pattern: String::new(),
             truncate_start: true,
-            format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
             completion_height: 0,
         };
@@ -375,7 +376,7 @@ impl<T> Picker<T> {
             self.matches.retain_mut(|(index, score)| {
                 let option = &self.options[*index];
                 // TODO: maybe using format_fn isn't the best idea here
-                let text = (self.format_fn)(option);
+                let text = option.label(&self.editor_data);
 
                 match self.matcher.fuzzy_match(&text, pattern) {
                     Some(s) => {
@@ -403,8 +404,7 @@ impl<T> Picker<T> {
                             self.filters.binary_search(&index).ok()?;
                         }
 
-                        // TODO: maybe using format_fn isn't the best idea here
-                        let text = (self.format_fn)(option);
+                        let text = option.filter_text(&self.editor_data);
 
                         self.matcher
                             .fuzzy_match(&text, pattern)
@@ -481,7 +481,7 @@ impl<T> Picker<T> {
 // - on input change:
 //  - score all the names in relation to input
 
-impl<T: 'static> Component for Picker<T> {
+impl<T: Item + 'static> Component for Picker<T> {
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         self.completion_height = viewport.1.saturating_sub(4);
         Some(viewport)
@@ -614,7 +614,7 @@ impl<T: 'static> Component for Picker<T> {
                 surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
             }
 
-            let formatted = (self.format_fn)(option);
+            let formatted = option.label(&self.editor_data);
 
             let (_score, highlights) = self
                 .matcher

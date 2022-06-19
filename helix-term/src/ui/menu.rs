@@ -109,8 +109,9 @@ impl<T: Item> Menu<T> {
                 }),
         );
         // matches.sort_unstable_by_key(|(_, score)| -score);
-        self.matches
-            .sort_unstable_by_key(|(index, _score)| self.options[*index].sort_text(&self.editor_data));
+        self.matches.sort_unstable_by_key(|(index, _score)| {
+            self.options[*index].sort_text(&self.editor_data)
+        });
 
         // reset cursor position
         self.cursor = None;

@@ -44,6 +44,7 @@ use movement::Movement;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
+    keymap::ReverseKeymap,
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 
@@ -1737,8 +1738,42 @@ fn search_selection(cx: &mut Context) {
 }
 
 fn global_search(cx: &mut Context) {
-    let (all_matches_sx, all_matches_rx) =
-        tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
+    #[derive(Debug)]
+    struct FileResult {
+        path: PathBuf,
+        /// 0 indexed lines
+        line_num: usize,
+    }
+
+    impl FileResult {
+        fn new(path: &Path, line_num: usize) -> Self {
+            Self {
+                path: path.to_path_buf(),
+                line_num,
+            }
+        }
+    }
+
+    impl ui::menu::Item for FileResult {
+        type EditorData = Option<PathBuf>;
+
+        fn label(&self, current_path: &Self::EditorData) -> Cow<str> {
+            let relative_path = helix_core::path::get_relative_path(&self.path)
+                .to_string_lossy()
+                .into_owned();
+            if current_path
+                .as_ref()
+                .map(|p| p == &self.path)
+                .unwrap_or(false)
+            {
+                format!("{} (*)", relative_path).into()
+            } else {
+                relative_path.into()
+            }
+        }
+    }
+
+    let (all_matches_sx, all_matches_rx) = tokio::sync::mpsc::unbounded_channel::<FileResult>();
     let config = cx.editor.config();
     let smart_case = config.search.smart_case;
     let file_picker_config = config.file_picker.clone();
@@ -1800,7 +1835,7 @@ fn global_search(cx: &mut Context) {
                                 entry.path(),
                                 sinks::UTF8(|line_num, _| {
                                     all_matches_sx
-                                        .send((line_num as usize - 1, entry.path().to_path_buf()))
+                                        .send(FileResult::new(entry.path(), line_num as usize - 1))
                                         .unwrap();
 
                                     Ok(true)
@@ -1827,7 +1862,7 @@ fn global_search(cx: &mut Context) {
     let current_path = doc_mut!(cx.editor).path().cloned();
 
     let show_picker = async move {
-        let all_matches: Vec<(usize, PathBuf)> =
+        let all_matches: Vec<FileResult> =
             UnboundedReceiverStream::new(all_matches_rx).collect().await;
         let call: job::Callback =
             Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
@@ -1838,17 +1873,8 @@ fn global_search(cx: &mut Context) {
 
                 let picker = FilePicker::new(
                     all_matches,
-                    move |(_line_num, path)| {
-                        let relative_path = helix_core::path::get_relative_path(path)
-                            .to_string_lossy()
-                            .into_owned();
-                        if current_path.as_ref().map(|p| p == path).unwrap_or(false) {
-                            format!("{} (*)", relative_path).into()
-                        } else {
-                            relative_path.into()
-                        }
-                    },
-                    move |cx, (line_num, path), action| {
+                    current_path,
+                    move |cx, FileResult { path, line_num }, action| {
                         match cx.editor.open(path.into(), action) {
                             Ok(_) => {}
                             Err(e) => {
@@ -1870,7 +1896,9 @@ fn global_search(cx: &mut Context) {
                         doc.set_selection(view.id, Selection::single(start, end));
                         align_view(doc, view, Align::Center);
                     },
-                    |_editor, (line_num, path)| Some((path.clone(), Some((*line_num, *line_num)))),
+                    |_editor, FileResult { path, line_num }| {
+                        Some((path.clone(), Some((*line_num, *line_num))))
+                    },
                 );
                 compositor.push(Box::new(overlayed(picker)));
             });
@@ -2152,8 +2180,10 @@ fn buffer_picker(cx: &mut Context) {
         is_current: bool,
     }
 
-    impl BufferMeta {
-        fn format(&self) -> Cow<str> {
+    impl ui::menu::Item for BufferMeta {
+        type EditorData = ();
+
+        fn label(&self, _data: &Self::EditorData) -> Cow<str> {
             let path = self
                 .path
                 .as_deref()
@@ -2193,7 +2223,7 @@ fn buffer_picker(cx: &mut Context) {
             .iter()
             .map(|(_, doc)| new_meta(doc))
             .collect(),
-        BufferMeta::format,
+        (),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
         },
@@ -2208,6 +2238,38 @@ fn buffer_picker(cx: &mut Context) {
         },
     );
     cx.push_layer(Box::new(overlayed(picker)));
+}
+
+impl ui::menu::Item for MappableCommand {
+    type EditorData = ReverseKeymap;
+
+    fn label(&self, keymap: &Self::EditorData) -> Cow<str> {
+        // formats key bindings, multiple bindings are comma separated,
+        // individual key presses are joined with `+`
+        let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
+            bindings
+                .iter()
+                .map(|bind| {
+                    bind.iter()
+                        .map(|key| key.to_string())
+                        .collect::<Vec<String>>()
+                        .join("+")
+                })
+                .collect::<Vec<String>>()
+                .join(", ")
+        };
+
+        match self {
+            MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String) {
+                Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
+                None => doc.into(),
+            },
+            MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
+                Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
+                None => (*doc).into(),
+            },
+        }
+    }
 }
 
 pub fn command_palette(cx: &mut Context) {
@@ -2226,46 +2288,17 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            // formats key bindings, multiple bindings are comma separated,
-            // individual key presses are joined with `+`
-            let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
-                bindings
-                    .iter()
-                    .map(|bind| {
-                        bind.iter()
-                            .map(|key| key.to_string())
-                            .collect::<Vec<String>>()
-                            .join("+")
-                    })
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            };
-
-            let picker = Picker::new(
-                commands,
-                move |command| match command {
-                    MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String)
-                    {
-                        Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
-                        None => doc.into(),
-                    },
-                    MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
-                        Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
-                        None => (*doc).into(),
-                    },
-                },
-                move |cx, command, _action| {
-                    let mut ctx = Context {
-                        register: None,
-                        count: std::num::NonZeroUsize::new(1),
-                        editor: cx.editor,
-                        callback: None,
-                        on_next_key_callback: None,
-                        jobs: cx.jobs,
-                    };
-                    command.execute(&mut ctx);
-                },
-            );
+            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
+                let mut ctx = Context {
+                    register: None,
+                    count: std::num::NonZeroUsize::new(1),
+                    editor: cx.editor,
+                    callback: None,
+                    on_next_key_callback: None,
+                    jobs: cx.jobs,
+                };
+                command.execute(&mut ctx);
+            });
             compositor.push(Box::new(overlayed(picker)));
         },
     ));

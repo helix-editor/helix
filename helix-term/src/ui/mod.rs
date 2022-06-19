@@ -170,10 +170,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     FilePicker::new(
         files,
-        move |path: &PathBuf| {
-            // format_fn
-            path.strip_prefix(&root).unwrap_or(path).to_string_lossy()
-        },
+        root,
         move |cx, path: &PathBuf, action| {
             if let Err(e) = cx.editor.open(path.into(), action) {
                 let err = if let Some(err) = e.source() {
