@@ -61,7 +61,7 @@ impl<'a> NumberIncrementor<'a> {
         let chars_removed = full_word.chars().count() - word.chars().count();
         let range = Range::new(range.from(), range.to() - chars_removed);
 
-        let number = if prefixed { &word[2..] } else { &word };
+        let number = if prefixed { &word[2..] } else { word };
 
         let value = i128::from_str_radix(number, radix).ok()?;
         if (value.is_positive() && value.leading_zeros() < 64)
