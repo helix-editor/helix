@@ -44,6 +44,8 @@ use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer}
 
 use arc_swap::access::{DynAccess, DynGuard};
 
+pub const DEFAULT_FILE_MODIFICATION_INDICATOR: &str = "[+]";
+
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -156,6 +158,8 @@ pub struct Config {
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
+    /// string for file modification indicator
+    pub file_modification_indicator: String,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -391,6 +395,7 @@ impl Default for Config {
             lsp: LspConfig::default(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
+            file_modification_indicator: DEFAULT_FILE_MODIFICATION_INDICATOR.to_string(),
         }
     }
 }

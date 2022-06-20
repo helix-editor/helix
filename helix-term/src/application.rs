@@ -130,7 +130,7 @@ impl Application {
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
         }));
-        let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
+        let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys), Arc::clone(&config)));
         compositor.push(editor_view);
 
         if args.load_tutor {

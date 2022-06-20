@@ -1,11 +1,13 @@
 use crate::{
     commands,
     compositor::{Component, Context, EventResult},
+    config::Config,
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
 
+use arc_swap::ArcSwap;
 use helix_core::{
     coords_at_pos, encoding,
     graphemes::{
@@ -25,7 +27,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
@@ -36,6 +38,7 @@ pub struct EditorView {
     last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
+    editor_config: Arc<arc_swap::ArcSwapAny<std::sync::Arc<Config>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -47,18 +50,25 @@ pub enum InsertEvent {
 
 impl Default for EditorView {
     fn default() -> Self {
-        Self::new(Keymaps::default())
+        Self::new(
+            Keymaps::default(),
+            Arc::new(ArcSwap::from_pointee(Config::default())),
+        )
     }
 }
 
 impl EditorView {
-    pub fn new(keymaps: Keymaps) -> Self {
+    pub fn new(
+        keymaps: Keymaps,
+        editor_config: Arc<arc_swap::ArcSwapAny<std::sync::Arc<Config>>>,
+    ) -> Self {
         Self {
             keymaps,
             on_next_key: None,
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
+            editor_config,
         }
     }
 
@@ -774,12 +784,22 @@ impl EditorView {
         // Middle / File path / Title
         //-------------------------------
         let title = {
+            let file_modification_indicator =
+                &self.editor_config.load().editor.file_modification_indicator;
             let rel_path = doc.relative_path();
             let path = rel_path
                 .as_ref()
                 .map(|p| p.to_string_lossy())
                 .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-            format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" })
+            format!(
+                "{}{}",
+                path,
+                if doc.is_modified() {
+                    file_modification_indicator
+                } else {
+                    ""
+                }
+            )
         };
 
         surface.set_string_truncated(
