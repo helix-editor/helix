@@ -41,20 +41,25 @@ impl<'a> NumberIncrementor<'a> {
             range
         };
 
-        let word: String = text
+        let full_word: String = text
             .slice(range.from()..range.to())
             .chars()
             .filter(|&c| c != '_')
             .collect();
-        let (radix, prefixed) = if word.starts_with("0x") {
+        let (radix, prefixed) = if full_word.starts_with("0x") {
             (16, true)
-        } else if word.starts_with("0o") {
+        } else if full_word.starts_with("0o") {
             (8, true)
-        } else if word.starts_with("0b") {
+        } else if full_word.starts_with("0b") {
             (2, true)
         } else {
             (10, false)
         };
+
+        // Ignore non-number suffix at end of word, for example '1px'
+        let word = full_word.trim_end_matches(|c: char| !c.is_digit(radix));
+        let chars_removed = full_word.chars().count() - word.chars().count();
+        let range = Range::new(range.from(), range.to() - chars_removed);
 
         let number = if prefixed { &word[2..] } else { &word };
 
