@@ -197,7 +197,6 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "tab" => jump_forward, // tab == <C-i>
         "C-o" => jump_backward,
-        "C-q" => copy_cursor_backward,
         "C-s" => save_selection,
 
         "space" => { "Space"
