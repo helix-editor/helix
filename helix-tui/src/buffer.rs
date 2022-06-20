@@ -585,9 +585,9 @@ impl Buffer {
 
     /// Apply shade to all cells in area.
     ///
-    /// shade = 0 -> set text modifier DIM
-    /// shade < 0 -> darken rgb color
-    /// shade > 0 -> lighten rgb color
+    /// - `shade = 0`: set text modifier `DIM`
+    /// - `shade < 0`: darken rgb color
+    /// - `shade > 0`: lighten rgb color
     pub fn dim(&mut self, area: Rect, shade: i8) {
         let alpha = i32::from(shade).unsigned_abs() << 1;
         let (src_factor, dst_factor) = (alpha, 256 - alpha);
