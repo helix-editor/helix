@@ -1,6 +1,7 @@
 use crossterm::style::{Color, Print, Stylize};
 use helix_core::config::{default_syntax_loader, user_syntax_loader};
 use helix_loader::grammar::load_runtime_file;
+use is_terminal::IsTerminal;
 use std::io::Write;
 
 #[derive(Copy, Clone)]
@@ -106,17 +107,19 @@ pub fn languages_all() -> std::io::Result<()> {
 
     let terminal_cols = crossterm::terminal::size().map(|(c, _)| c).unwrap_or(80);
     let column_width = terminal_cols as usize / headings.len();
+    let is_terminal = std::io::stdout().is_terminal();
 
     let column = |item: &str, color: Color| {
-        let data = format!(
+        let mut data = format!(
             "{:width$}",
             item.get(..column_width - 2)
                 .map(|s| format!("{}…", s))
                 .unwrap_or_else(|| item.to_string()),
             width = column_width,
-        )
-        .stylize()
-        .with(color);
+        );
+        if is_terminal {
+            data = data.stylize().with(color).to_string();
+        }
 
         // We can't directly use println!() because of
         // https://github.com/crossterm-rs/crossterm/issues/589
