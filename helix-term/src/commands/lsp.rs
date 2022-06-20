@@ -61,7 +61,14 @@ fn jump_to_location(
             return;
         }
     };
-    let _id = editor.open(&path, action).expect("editor.open failed");
+    match editor.open(&path, action) {
+        Ok(_) => (),
+        Err(err) => {
+            let err = format!("failed to open path: {:?}: {:?}", location.uri, err);
+            editor.set_error(err);
+            return;
+        }
+    }
     let (view, doc) = current!(editor);
     let definition_pos = location.range.start;
     // TODO: convert inside server
@@ -491,7 +498,7 @@ fn goto_impl(
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
 ) {
-    let cwdir = std::env::current_dir().expect("couldn't determine current directory");
+    let cwdir = std::env::current_dir().unwrap_or_default();
 
     match locations.as_slice() {
         [location] => {

@@ -1683,8 +1683,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
     let scrolloff = config.scrolloff;
     let (view, doc) = current!(cx.editor);
     let registers = &cx.editor.registers;
-    if let Some(query) = registers.read('/') {
-        let query = query.last().unwrap();
+    if let Some(query) = registers.read('/').and_then(|query| query.last()) {
         let contents = doc.text().slice(..).to_string();
         let search_config = &config.search;
         let case_insensitive = if search_config.smart_case {
@@ -2124,7 +2123,11 @@ fn append_mode(cx: &mut Context) {
     // Make sure there's room at the end of the document if the last
     // selection butts up against it.
     let end = text.len_chars();
-    let last_range = doc.selection(view.id).iter().last().unwrap();
+    let last_range = doc
+        .selection(view.id)
+        .iter()
+        .last()
+        .expect("selection should always have at least one range");
     if !last_range.is_empty() && last_range.head == end {
         let transaction = Transaction::change(
             doc.text(),

@@ -263,8 +263,7 @@ pub mod completers {
 
     pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
-            serde_json::to_value(Config::default())
-                .unwrap()
+            serde_json::json!(Config::default())
                 .as_object()
                 .unwrap()
                 .keys()

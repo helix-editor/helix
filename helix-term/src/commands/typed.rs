@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use super::*;
 
 use helix_view::editor::{Action, ConfigEvent};
@@ -961,7 +963,7 @@ fn get_option(
     let key = &args[0].to_lowercase();
     let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
 
-    let config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
+    let config = serde_json::json!(cx.editor.config().deref());
     let pointer = format!("/{}", key.replace('.', "/"));
     let value = config.pointer(&pointer).ok_or_else(key_error)?;
 
@@ -984,7 +986,7 @@ fn set_option(
     let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
     let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
 
-    let mut config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
+    let mut config = serde_json::json!(&cx.editor.config().deref());
     let pointer = format!("/{}", key.replace('.', "/"));
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 

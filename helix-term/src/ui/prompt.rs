@@ -443,7 +443,7 @@ impl Prompt {
         let input: Cow<str> = if self.line.is_empty() {
             // latest value in the register list
             self.history_register
-                .and_then(|reg| cx.editor.registers.first(reg).cloned()) // TODO: can we avoid cloning?
+                .and_then(|reg| cx.editor.registers.first(reg))
                 .map(|entry| entry.into())
                 .unwrap_or_else(|| Cow::from(""))
         } else {
