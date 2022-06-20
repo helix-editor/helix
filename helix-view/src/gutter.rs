@@ -1,4 +1,6 @@
-use std::fmt::Write;
+use std::{cmp::Reverse, fmt::Write};
+
+use helix_core::Diagnostic;
 
 use crate::{
     graphics::{Color, Modifier, Style},
@@ -25,18 +27,54 @@ pub fn diagnostic<'doc>(
 
     Box::new(move |line: usize, _selected: bool, out: &mut String| {
         use helix_core::diagnostic::Severity;
-        if let Ok(index) = diagnostics.binary_search_by_key(&line, |d| d.line) {
-            let diagnostic = &diagnostics[index];
-            write!(out, "●").unwrap();
-            return Some(match diagnostic.severity {
-                Some(Severity::Error) => error,
-                Some(Severity::Warning) | None => warning,
-                Some(Severity::Info) => info,
-                Some(Severity::Hint) => hint,
-            });
-        }
-        None
+
+        let diagnostic = highest_priority_diagnostic(diagnostics, line)?;
+        write!(out, "●").unwrap();
+
+        Some(match diagnostic.severity {
+            Some(Severity::Error) => error,
+            Some(Severity::Warning) | None => warning,
+            Some(Severity::Info) => info,
+            Some(Severity::Hint) => hint,
+        })
     })
+}
+
+fn highest_priority_diagnostic(diagnostics: &[Diagnostic], line: usize) -> Option<&Diagnostic> {
+    let index = diagnostics.binary_search_by_key(&line, |d| d.line).ok()?;
+    let mut offset = 1;
+    let mut line_diagnostics = vec![&diagnostics[index]];
+    loop {
+        let before = index as isize - offset;
+        let after = index + offset as usize;
+
+        let before = if before > 0 {
+            Some(&diagnostics[before as usize])
+        } else {
+            None
+        };
+
+        let after = if after < diagnostics.len() {
+            Some(&diagnostics[after])
+        } else {
+            None
+        };
+        let mut same_line = before
+            .iter()
+            .chain(after.iter())
+            .filter(|d| d.line == line)
+            .peekable();
+
+        if same_line.peek().is_none() {
+            break;
+        } else {
+            line_diagnostics.extend(same_line);
+            offset += 1;
+        }
+    }
+    line_diagnostics.sort_by_key(|d| Reverse(d.severity.unwrap_or_default()));
+
+    Some(line_diagnostics[0])
 }
 
 pub fn line_numbers<'doc>(
