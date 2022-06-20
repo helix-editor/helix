@@ -7,7 +7,7 @@ use crate::{
     ui::{Completion, ProgressSpinners},
 };
 
-use arc_swap::ArcSwap;
+use arc_swap::{ArcSwap, ArcSwapAny};
 use helix_core::{
     coords_at_pos, encoding,
     graphemes::{
@@ -38,7 +38,7 @@ pub struct EditorView {
     last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
-    editor_config: Arc<arc_swap::ArcSwapAny<std::sync::Arc<Config>>>,
+    editor_config: Arc<ArcSwapAny<Arc<Config>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -58,10 +58,7 @@ impl Default for EditorView {
 }
 
 impl EditorView {
-    pub fn new(
-        keymaps: Keymaps,
-        editor_config: Arc<arc_swap::ArcSwapAny<std::sync::Arc<Config>>>,
-    ) -> Self {
+    pub fn new(keymaps: Keymaps, editor_config: Arc<ArcSwapAny<Arc<Config>>>) -> Self {
         Self {
             keymaps,
             on_next_key: None,
