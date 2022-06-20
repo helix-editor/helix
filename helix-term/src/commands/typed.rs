@@ -602,9 +602,6 @@ fn theme(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    if cx.editor.last_theme.is_none() {
-        cx.editor.last_theme = Some(Box::new(cx.editor.theme.clone()));
-    }
     let true_color = cx.editor.config.load().true_color || crate::true_color();
     match event {
         PromptEvent::Abort => {

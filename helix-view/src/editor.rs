@@ -450,7 +450,7 @@ pub struct Editor {
     pub theme_loader: Arc<theme::Loader>,
     /// last_theme is used for theme previews. We store the current theme here,
     /// and if previewing is cancelled, we can return to it.
-    pub last_theme: Option<Box<Theme>>,
+    pub last_theme: Option<Theme>,
     /// The currently applied editor theme. While previewing a theme, the previewed theme
     /// is set here.
     pub theme: Theme,
@@ -579,24 +579,19 @@ impl Editor {
 
     pub fn unset_theme_preview(&mut self) {
         if let Some(last_theme) = self.last_theme.take() {
-            let theme_name = &(*last_theme).name;
-            match self.theme_loader.load(theme_name) {
-                Ok(theme) => {
-                    self.set_theme(theme);
-                }
-                Err(_e) => {
-                    self.set_error(format!("Failed to set theme: '{}'", theme_name));
-                }
-            };
+            self.set_theme(last_theme);
         }
     }
 
     pub fn set_theme_preview(&mut self, theme: Theme) {
+        if self.last_theme.is_none() {
+            self.last_theme = Some(self.theme.clone());
+        }
         self.set_theme_impl(theme);
     }
 
     pub fn set_theme(&mut self, theme: Theme) {
-        self.last_theme = Some(Box::new(theme.clone()));
+        self.last_theme = None;
         self.set_theme_impl(theme);
     }
 
