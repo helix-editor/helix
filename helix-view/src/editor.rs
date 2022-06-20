@@ -581,21 +581,18 @@ impl Editor {
         if let Some(last_theme) = self.last_theme.take() {
             self.set_theme(last_theme);
         }
+        // None likely occurs when the user types ":theme" and then exits before previewing
     }
 
     pub fn set_theme_preview(&mut self, theme: Theme) {
-        if self.last_theme.is_none() {
-            self.last_theme = Some(self.theme.clone());
-        }
-        self.set_theme_impl(theme);
+        self.set_theme_impl(theme, true);
     }
 
     pub fn set_theme(&mut self, theme: Theme) {
-        self.last_theme = None;
-        self.set_theme_impl(theme);
+        self.set_theme_impl(theme, false);
     }
 
-    fn set_theme_impl(&mut self, theme: Theme) {
+    fn set_theme_impl(&mut self, theme: Theme, preview: bool) {
         // `ui.selection` is the only scope required to be able to render a theme.
         if theme.find_scope_index("ui.selection").is_none() {
             self.set_error("Invalid theme: `ui.selection` required");
@@ -604,7 +601,14 @@ impl Editor {
 
         let scopes = theme.scopes();
         self.syn_loader.set_scopes(scopes.to_vec());
-        self.theme = theme;
+        if preview {
+            if self.last_theme.is_none() {
+                self.last_theme = Some(std::mem::replace(&mut self.theme, theme));
+            }
+        } else {
+            self.last_theme = None;
+            self.theme = theme;
+        }
         self._refresh();
     }
 
