@@ -26,7 +26,20 @@ pub fn diagnostic<'doc>(
     Box::new(move |line: usize, _selected: bool, out: &mut String| {
         use helix_core::diagnostic::Severity;
         if let Ok(index) = diagnostics.binary_search_by_key(&line, |d| d.line) {
-            let diagnostic = &diagnostics[index];
+            let count_after = diagnostics[index + 1..]
+                .iter()
+                .take_while(|d| d.line == line)
+                .count();
+
+            let count_before = diagnostics[..index]
+                .iter()
+                .rev()
+                .take_while(|d| d.line == line)
+                .count();
+
+            let line_diagnostics = &diagnostics[index - count_before..index + count_after + 1];
+            let diagnostic = line_diagnostics.iter().max_by_key(|d| d.severity).unwrap();
+
             write!(out, "●").unwrap();
             return Some(match diagnostic.severity {
                 Some(Severity::Error) => error,
