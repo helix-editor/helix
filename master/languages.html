@@ -138,36 +138,93 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="languages"><a class="header" href="#languages">Languages</a></h1>
-<p>Language-specific settings and settings for particular language servers can be configured in a <code>languages.toml</code> file placed in your <a href="./configuration.html">configuration directory</a>. Helix actually uses two <code>languages.toml</code> files, the <a href="https://github.com/helix-editor/helix/blob/master/languages.toml">first one</a> is in the main helix repository; it contains the default settings for each language and is included in the helix binary at compile time. Users who want to see the available settings and options can either reference the helix repo's <code>languages.toml</code> file, or consult the table in the <a href="./guides/adding_languages.html">adding languages</a> section.</p>
-<p>A local <code>languages.toml</code> can be created within a <code>.helix</code> directory. Its settings will be merged with both the global and default configs.</p>
-<p>Changes made to the <code>languages.toml</code> file in a user's <a href="./configuration.html">configuration directory</a> are merged with helix's defaults on start-up, such that a user's settings will take precedence over defaults in the event of a collision. For example, the default <code>languages.toml</code> sets rust's <code>auto-format</code> to <code>true</code>. If a user wants to disable auto-format, they can change the <code>languages.toml</code> in their <a href="./configuration.html">configuration directory</a> to make the rust entry read like the example below; the new key/value pair <code>auto-format = false</code> will override the default when the two sets of settings are merged on start-up:</p>
+<p>Language-specific settings and settings for language servers are configured
+in <code>languages.toml</code> files.</p>
+<h2 id="languagestoml-files"><a class="header" href="#languagestoml-files"><code>languages.toml</code> files</a></h2>
+<p>There are three possible <code>languages.toml</code> files. The first is compiled into
+Helix and lives in the <a href="https://github.com/helix-editor/helix/blob/master/languages.toml">Helix repository</a>.
+This provides the default configurations for languages and language servers.</p>
+<p>You may define a <code>languages.toml</code> in your <a href="./configuration.html">configuration directory</a>
+which overrides values from the built-in language configuration. For example
+to disable auto-LSP-formatting in Rust:</p>
 <pre><code class="language-toml"># in &lt;config_dir&gt;/helix/languages.toml
 
 [[language]]
 name = &quot;rust&quot;
 auto-format = false
 </code></pre>
-<h2 id="lsp-formatting-options"><a class="header" href="#lsp-formatting-options">LSP formatting options</a></h2>
-<p>Use <code>format</code> field to pass extra formatting options to <a href="https://github.com/microsoft/language-server-protocol/blob/gh-pages/_specifications/specification-3-16.md#document-formatting-request--leftwards_arrow_with_hook">Document Formatting Requests</a>.</p>
+<p>Language configuration may also be overridden local to a project by creating
+a <code>languages.toml</code> file under a <code>.helix</code> directory. Its settings will be merged
+with the language configuration in the configuration directory and the built-in
+configuration.</p>
+<h2 id="language-configuration"><a class="header" href="#language-configuration">Language configuration</a></h2>
+<p>Each language is configured by adding a <code>[[language]]</code> section to a
+<code>languages.toml</code> file. For example:</p>
+<pre><code class="language-toml">[[language]]
+name = &quot;mylang&quot;
+scope = &quot;source.mylang&quot;
+injection-regex = &quot;^mylang$&quot;
+file-types = [&quot;mylang&quot;, &quot;myl&quot;]
+comment-token = &quot;#&quot;
+indent = { tab-width = 2, unit = &quot;  &quot; }
+language-server = { command = &quot;mylang-lsp&quot;, args = [&quot;--stdio&quot;] }
+</code></pre>
+<p>These configuration keys are available:</p>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td>The name of the language</td></tr>
+<tr><td><code>scope</code></td><td>A string like <code>source.js</code> that identifies the language. Currently, we strive to match the scope names used by popular TextMate grammars and by the Linguist library. Usually <code>source.&lt;name&gt;</code> or <code>text.&lt;name&gt;</code> in case of markup languages</td></tr>
+<tr><td><code>injection-regex</code></td><td>regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection">language injection</a> site.</td></tr>
+<tr><td><code>file-types</code></td><td>The filetypes of the language, for example <code>[&quot;yml&quot;, &quot;yaml&quot;]</code>. Extensions and full file names are supported.</td></tr>
+<tr><td><code>shebangs</code></td><td>The interpreters from the shebang line, for example <code>[&quot;sh&quot;, &quot;bash&quot;]</code></td></tr>
+<tr><td><code>roots</code></td><td>A set of marker files to look for when trying to find the workspace root. For example <code>Cargo.lock</code>, <code>yarn.lock</code></td></tr>
+<tr><td><code>auto-format</code></td><td>Whether to autoformat this language when saving</td></tr>
+<tr><td><code>diagnostic-severity</code></td><td>Minimal severity of diagnostic for it to be displayed. (Allowed values: <code>Error</code>, <code>Warning</code>, <code>Info</code>, <code>Hint</code>)</td></tr>
+<tr><td><code>comment-token</code></td><td>The token to use as a comment-token</td></tr>
+<tr><td><code>indent</code></td><td>The indent to use. Has sub keys <code>tab-width</code> and <code>unit</code></td></tr>
+<tr><td><code>language-server</code></td><td>The Language Server to run. See the Language Server configuration section below.</td></tr>
+<tr><td><code>config</code></td><td>Language Server configuration</td></tr>
+<tr><td><code>grammar</code></td><td>The tree-sitter grammar to use (defaults to the value of <code>name</code>)</td></tr>
+</tbody></table>
+<h3 id="language-server-configuration"><a class="header" href="#language-server-configuration">Language Server configuration</a></h3>
+<p>The <code>language-server</code> field takes the following keys:</p>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>command</code></td><td>The name of the language server binary to execute. Binaries must be in <code>$PATH</code></td></tr>
+<tr><td><code>args</code></td><td>A list of arguments to pass to the language server binary</td></tr>
+<tr><td><code>timeout</code></td><td>The maximum time a request to the language server may take, in seconds. Defaults to <code>20</code></td></tr>
+<tr><td><code>language-id</code></td><td>The language name to pass to the language server. Some language servers support multiple languages and use this field to determine which one is being served in a buffer</td></tr>
+</tbody></table>
+<p>The top-level <code>config</code> field is used to configure the LSP initialization options. A <code>format</code>
+sub-table within <code>config</code> can be used to pass extra formatting options to
+<a href="https://github.com/microsoft/language-server-protocol/blob/gh-pages/_specifications/specification-3-16.md#document-formatting-request--leftwards_arrow_with_hook">Document Formatting Requests</a>.
+For example with typescript:</p>
 <pre><code class="language-toml">[[language]]
 name = &quot;typescript&quot;
 auto-format = true
 # pass format options according to https://github.com/typescript-language-server/typescript-language-server#workspacedidchangeconfiguration omitting the &quot;[language].format.&quot; prefix.
 config = { format = { &quot;semicolons&quot; = &quot;insert&quot;, &quot;insertSpaceBeforeFunctionParenthesis&quot; = true } }
 </code></pre>
-<h2 id="tree-sitter-grammars"><a class="header" href="#tree-sitter-grammars">Tree-sitter grammars</a></h2>
-<p>Tree-sitter grammars can also be configured in <code>languages.toml</code>:</p>
-<pre><code class="language-toml"># in &lt;config_dir&gt;/helix/languages.toml
-
-[[grammar]]
-name = &quot;rust&quot;
-source = { git = &quot;https://github.com/tree-sitter/tree-sitter-rust&quot;, rev = &quot;a250c4582510ff34767ec3b7dcdd3c24e8c8aa68&quot; }
-
-[[grammar]]
-name = &quot;c&quot;
-source = { path = &quot;/path/to/tree-sitter-c&quot; }
+<h2 id="tree-sitter-grammar-configuration"><a class="header" href="#tree-sitter-grammar-configuration">Tree-sitter grammar configuration</a></h2>
+<p>The source for a language's tree-sitter grammar is specified in a <code>[[grammar]]</code>
+section in <code>languages.toml</code>. For example:</p>
+<pre><code class="language-toml">[[grammar]]
+name = &quot;mylang&quot;
+source = { git = &quot;https://github.com/example/mylang&quot;, rev = &quot;a250c4582510ff34767ec3b7dcdd3c24e8c8aa68&quot; }
 </code></pre>
-<p>You may use a top-level <code>use-grammars</code> key to control which grammars are fetched and built.</p>
+<p>Grammar configuration takes these keys:</p>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td>The name of the tree-sitter grammar</td></tr>
+<tr><td><code>source</code></td><td>The method of fetching the grammar - a table with a schema defined below</td></tr>
+</tbody></table>
+<p>Where <code>source</code> is a table with either these keys when using a grammar from a
+git repository:</p>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>git</code></td><td>A git remote URL from which the grammar should be cloned</td></tr>
+<tr><td><code>rev</code></td><td>The revision (commit hash or tag) which should be fetched</td></tr>
+<tr><td><code>subpath</code></td><td>A path within the grammar directory which should be built. Some grammar repositories host multiple grammars (for example <code>tree-sitter-typescript</code> and <code>tree-sitter-ocaml</code>) in subdirectories. This key is used to point <code>hx --grammar build</code> to the correct path for compilation. When omitted, the root of repository is used</td></tr>
+</tbody></table>
+<h3 id="choosing-grammars"><a class="header" href="#choosing-grammars">Choosing grammars</a></h3>
+<p>You may use a top-level <code>use-grammars</code> key to control which grammars are
+fetched and built when using <code>hx --grammar fetch</code> and <code>hx --grammar build</code>.</p>
 <pre><code class="language-toml"># Note: this key must come **before** the [[language]] and [[grammar]] sections
 use-grammars = { only = [ &quot;rust&quot;, &quot;c&quot;, &quot;cpp&quot; ] }
 # or

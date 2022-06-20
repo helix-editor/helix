@@ -139,61 +139,19 @@
                     <main>
                         <h1 id="adding-languages"><a class="header" href="#adding-languages">Adding languages</a></h1>
 <h2 id="language-configuration"><a class="header" href="#language-configuration">Language configuration</a></h2>
-<p>To add a new language, you need to add a <code>language</code> entry to the
-<a href="https://github.com/helix-editor/helix/blob/master/languages.toml"><code>languages.toml</code></a> found in the root of the repository;
-this <code>languages.toml</code> file is included at compilation time, and is
-distinct from the <code>languages.toml</code> file in the user's <a href="../configuration.html">configuration
-directory</a>.</p>
-<pre><code class="language-toml">[[language]]
-name = &quot;mylang&quot;
-scope = &quot;scope.mylang&quot;
-injection-regex = &quot;^mylang$&quot;
-file-types = [&quot;mylang&quot;, &quot;myl&quot;]
-comment-token = &quot;#&quot;
-indent = { tab-width = 2, unit = &quot;  &quot; }
-language-server = { command = &quot;mylang-lsp&quot;, args = [&quot;--stdio&quot;] }
-</code></pre>
-<p>These are the available keys and descriptions for the file.</p>
-<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>name</code></td><td>The name of the language</td></tr>
-<tr><td><code>scope</code></td><td>A string like <code>source.js</code> that identifies the language. Currently, we strive to match the scope names used by popular TextMate grammars and by the Linguist library. Usually <code>source.&lt;name&gt;</code> or <code>text.&lt;name&gt;</code> in case of markup languages</td></tr>
-<tr><td><code>injection-regex</code></td><td>regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection">language injection</a> site.</td></tr>
-<tr><td><code>file-types</code></td><td>The filetypes of the language, for example <code>[&quot;yml&quot;, &quot;yaml&quot;]</code>. Extensions and full file names are supported.</td></tr>
-<tr><td><code>shebangs</code></td><td>The interpreters from the shebang line, for example <code>[&quot;sh&quot;, &quot;bash&quot;]</code></td></tr>
-<tr><td><code>roots</code></td><td>A set of marker files to look for when trying to find the workspace root. For example <code>Cargo.lock</code>, <code>yarn.lock</code></td></tr>
-<tr><td><code>auto-format</code></td><td>Whether to autoformat this language when saving</td></tr>
-<tr><td><code>diagnostic-severity</code></td><td>Minimal severity of diagnostic for it to be displayed. (Allowed values: <code>Error</code>, <code>Warning</code>, <code>Info</code>, <code>Hint</code>)</td></tr>
-<tr><td><code>comment-token</code></td><td>The token to use as a comment-token</td></tr>
-<tr><td><code>indent</code></td><td>The indent to use. Has sub keys <code>tab-width</code> and <code>unit</code></td></tr>
-<tr><td><code>language-server</code></td><td>The Language Server to run. Has sub keys <code>command</code> and <code>args</code></td></tr>
-<tr><td><code>config</code></td><td>Language Server configuration</td></tr>
-<tr><td><code>grammar</code></td><td>The tree-sitter grammar to use (defaults to the value of <code>name</code>)</td></tr>
-</tbody></table>
+<p>To add a new language, you need to add a <code>[[language]]</code> entry to the
+<code>languages.toml</code> (see the <a href="../languages.html">language configuration section</a>).</p>
 <p>When adding a new language or Language Server configuration for an existing
 language, run <code>cargo xtask docgen</code> to add the new configuration to the
 <a href="../lang-support.html">Language Support</a> docs before creating a pull request.
 When adding a Language Server configuration, be sure to update the
 <a href="https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers">Language Server Wiki</a> with installation notes.</p>
 <h2 id="grammar-configuration"><a class="header" href="#grammar-configuration">Grammar configuration</a></h2>
-<p>If a tree-sitter grammar is available for the language, add a new <code>grammar</code>
+<p>If a tree-sitter grammar is available for the language, add a new <code>[[grammar]]</code>
 entry to <code>languages.toml</code>.</p>
-<pre><code class="language-toml">[[grammar]]
-name = &quot;mylang&quot;
-source = { git = &quot;https://github.com/example/mylang&quot;, rev = &quot;a250c4582510ff34767ec3b7dcdd3c24e8c8aa68&quot; }
-</code></pre>
-<p>Grammar configuration takes these keys:</p>
-<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>name</code></td><td>The name of the tree-sitter grammar</td></tr>
-<tr><td><code>source</code></td><td>The method of fetching the grammar - a table with a schema defined below</td></tr>
-</tbody></table>
-<p>Where <code>source</code> is a table with either these keys when using a grammar from a
-git repository:</p>
-<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>git</code></td><td>A git remote URL from which the grammar should be cloned</td></tr>
-<tr><td><code>rev</code></td><td>The revision (commit hash or tag) which should be fetched</td></tr>
-<tr><td><code>subpath</code></td><td>A path within the grammar directory which should be built. Some grammar repositories host multiple grammars (for example <code>tree-sitter-typescript</code> and <code>tree-sitter-ocaml</code>) in subdirectories. This key is used to point <code>hx --grammar build</code> to the correct path for compilation. When omitted, the root of repository is used</td></tr>
-</tbody></table>
-<p>Or a <code>path</code> key with an absolute path to a locally available grammar directory.</p>
+<p>You may use the <code>source.path</code> key rather than <code>source.git</code> with an absolute path
+to a locally available grammar for testing, but switch to <code>source.git</code> before
+submitting a pull request.</p>
 <h2 id="queries"><a class="header" href="#queries">Queries</a></h2>
 <p>For a language to have syntax-highlighting and indentation among
 other things, you have to add queries. Add a directory for your
