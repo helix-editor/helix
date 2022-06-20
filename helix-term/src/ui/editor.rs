@@ -158,7 +158,7 @@ impl EditorView {
             .area
             .clip_top(view.area.height.saturating_sub(1))
             .clip_bottom(1); // -1 from bottom to remove commandline
-        self.render_statusline(doc, view, statusline_area, surface, theme, is_focused);
+        self.render_statusline(editor, doc, view, statusline_area, surface, is_focused);
     }
 
     pub fn render_rulers(
@@ -653,11 +653,11 @@ impl EditorView {
 
     pub fn render_statusline(
         &self,
+        editor: &Editor,
         doc: &Document,
         view: &View,
         viewport: Rect,
         surface: &mut Surface,
-        theme: &Theme,
         is_focused: bool,
     ) {
         use tui::text::{Span, Spans};
@@ -666,6 +666,7 @@ impl EditorView {
         // Left side of the status line.
         //-------------------------------
 
+        let theme = &editor.theme;
         let mode = match doc.mode() {
             Mode::Insert => "INS",
             Mode::Select => "SEL",
@@ -773,13 +774,22 @@ impl EditorView {
         //-------------------------------
         // Middle / File path / Title
         //-------------------------------
+        let file_modification_indicator = &editor.config().file_modification_indicator;
         let title = {
             let rel_path = doc.relative_path();
             let path = rel_path
                 .as_ref()
                 .map(|p| p.to_string_lossy())
                 .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-            format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" })
+            format!(
+                "{}{}",
+                path,
+                if doc.is_modified() {
+                    file_modification_indicator
+                } else {
+                    ""
+                }
+            )
         };
 
         surface.set_string_truncated(
