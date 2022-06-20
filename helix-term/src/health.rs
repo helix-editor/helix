@@ -1,7 +1,9 @@
-use crossterm::style::{Color, Print, Stylize};
+use crossterm::{
+    style::{Color, Print, Stylize},
+    tty::IsTty,
+};
 use helix_core::config::{default_syntax_loader, user_syntax_loader};
 use helix_loader::grammar::load_runtime_file;
-use is_terminal::IsTerminal;
 use std::io::Write;
 
 #[derive(Copy, Clone)]
@@ -107,7 +109,7 @@ pub fn languages_all() -> std::io::Result<()> {
 
     let terminal_cols = crossterm::terminal::size().map(|(c, _)| c).unwrap_or(80);
     let column_width = terminal_cols as usize / headings.len();
-    let is_terminal = std::io::stdout().is_terminal();
+    let is_terminal = std::io::stdout().is_tty();
 
     let column = |item: &str, color: Color| {
         let mut data = format!(

@@ -65,8 +65,6 @@ serde = { version = "1.0", features = ["derive"] }
 grep-regex = "0.1.9"
 grep-searcher = "0.1.8"
 
-is-terminal = "0.3.0"
-
 # Remove once retain_mut lands in stable rust
 retain_mut = "0.1.7"
 
