@@ -34,6 +34,8 @@ pub fn diagnostic<'doc>(
                 .take_while(|d| d.line == line);
 
             let diagnostics_on_line = after.chain(before);
+
+            // This unwrap is safe because the iterator cannot be empty as it contains at least the item found by the binary search.
             let diagnostic = diagnostics_on_line.max_by_key(|d| d.severity).unwrap();
 
             write!(out, "●").unwrap();
