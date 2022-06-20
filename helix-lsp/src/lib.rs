@@ -239,13 +239,7 @@ pub mod util {
                                 },
                         },
                     new_text,
-                }] => {
-                    if *last_line as usize >= old.len_lines() - 1 {
-                        Some(new_text)
-                    } else {
-                        None
-                    }
-                }
+                }] if *last_line as usize >= old.len_lines() - 1 => Some(new_text),
                 _ => None,
             }
         }
