@@ -601,14 +601,20 @@ impl Editor {
 
         let scopes = theme.scopes();
         self.syn_loader.set_scopes(scopes.to_vec());
+
         if preview {
             if self.last_theme.is_none() {
+                // On the first preview
                 self.last_theme = Some(std::mem::replace(&mut self.theme, theme));
+            } else {
+                // Subsequent previews
+                self.theme = theme;
             }
         } else {
             self.last_theme = None;
             self.theme = theme;
         }
+
         self._refresh();
     }
 
