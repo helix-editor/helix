@@ -167,3 +167,20 @@ nbsp = "⍽"
 tab = "→"
 newline = "⏎"
 ```
+
+### `[editor.indent-guides]` Section
+
+Options for rendering vertical indent guides.
+
+| Key         | Description                                             | Default |
+| ---         | ---                                                     | ---     |
+| `render`    | Whether to render indent guides.                        | `false` |
+| `character` | Literal character to use for rendering the indent guide | `│`     |
+
+Example:
+
+```toml
+[editor.indent-guides]
+render = true
+character = "╎"
+```
