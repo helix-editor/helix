@@ -1,5 +1,6 @@
 use anyhow::{anyhow, bail, Context, Error};
 use helix_core::auto_pairs::AutoPairs;
+use helix_core::Range;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::cell::Cell;
@@ -83,7 +84,7 @@ impl Serialize for Mode {
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
-    pub(crate) selections: HashMap<ViewId, Selection>,
+    selections: HashMap<ViewId, Selection>,
 
     path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
@@ -635,6 +636,37 @@ impl Document {
         // TODO: use a transaction?
         self.selections
             .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
+    }
+
+    /// Find the origin selection of the text in a document, i.e. where
+    /// a single cursor would go if it were on the first grapheme. If
+    /// the text is empty, returns (0, 0).
+    pub fn origin(&self) -> Range {
+        if self.text().len_chars() == 0 {
+            return Range::new(0, 0);
+        }
+
+        Range::new(0, 1).grapheme_aligned(self.text().slice(..))
+    }
+
+    /// Reset the view's selection on this document to the
+    /// [origin](Document::origin) cursor.
+    pub fn reset_selection(&mut self, view_id: ViewId) {
+        let origin = self.origin();
+        self.set_selection(view_id, Selection::single(origin.anchor, origin.head));
+    }
+
+    /// Initializes a new selection for the given view if it does not
+    /// already have one.
+    pub fn ensure_view_init(&mut self, view_id: ViewId) {
+        if self.selections.get(&view_id).is_none() {
+            self.reset_selection(view_id);
+        }
+    }
+
+    /// Remove a view's selection from this document.
+    pub fn remove_view(&mut self, view_id: ViewId) {
+        self.selections.remove(&view_id);
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.

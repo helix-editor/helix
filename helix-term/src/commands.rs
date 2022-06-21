@@ -1026,7 +1026,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     for sel in paths {
         let p = sel.trim();
         if !p.is_empty() {
-            if let Err(e) = cx.editor.open(PathBuf::from(p), action) {
+            if let Err(e) = cx.editor.open(&PathBuf::from(p), action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
             }
         }
@@ -1855,7 +1855,7 @@ fn global_search(cx: &mut Context) {
                         }
                     },
                     move |cx, (line_num, path), action| {
-                        match cx.editor.open(path.into(), action) {
+                        match cx.editor.open(path, action) {
                             Ok(_) => {}
                             Err(e) => {
                                 cx.editor.set_error(format!(
@@ -2100,10 +2100,17 @@ fn insert_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     enter_insert_mode(doc);
 
+    log::trace!(
+        "entering insert mode with sel: {:?}, text: {:?}",
+        doc.selection(view.id),
+        doc.text().to_string()
+    );
+
     let selection = doc
         .selection(view.id)
         .clone()
         .transform(|range| Range::new(range.to(), range.from()));
+
     doc.set_selection(view.id, selection);
 }
 
@@ -2449,8 +2456,8 @@ fn normal_mode(cx: &mut Context) {
                 graphemes::prev_grapheme_boundary(text, range.to()),
             )
         });
-        doc.set_selection(view.id, selection);
 
+        doc.set_selection(view.id, selection);
         doc.restore_cursor = false;
     }
 }
