@@ -37,7 +37,7 @@ impl std::fmt::Display for Error {
                 "Attempted to bind {} to symbols ({}) when already bound to ({})",
                 seq, current, existing
             )),
-            Error::Custom(s) => f.write_str(&s),
+            Error::Custom(s) => f.write_str(s),
         }
     }
 }
@@ -95,9 +95,8 @@ impl<'de> Deserialize<'de> for DigraphStore {
                 ),
                 EntryDef::Full(entry) => (k, entry),
             })
-            .map(|(k, v)| store.insert(&k, v))
-            .collect::<Result<_, Error>>()
-            .map_err(|e| serde::de::Error::custom(e))?;
+            .try_for_each(|(k, v)| store.insert(&k, v))
+            .map_err(serde::de::Error::custom)?;
 
         Ok(store)
     }
@@ -110,17 +109,15 @@ impl Serialize for DigraphStore {
     {
         let mut m = serializer.serialize_map(None)?;
 
-        self.search("")
-            .map(|entry| {
-                m.serialize_entry(
-                    &entry.sequence,
-                    &DigraphEntry {
-                        symbols: entry.symbols.clone(),
-                        description: entry.description.clone(),
-                    },
-                )
-            })
-            .collect::<Result<_, S::Error>>()?;
+        self.search("").try_for_each(|entry| {
+            m.serialize_entry(
+                &entry.sequence,
+                &DigraphEntry {
+                    symbols: entry.symbols.clone(),
+                    description: entry.description.clone(),
+                },
+            )
+        })?;
         m.end()
     }
 }
@@ -130,12 +127,12 @@ impl Serialize for DigraphStore {
 impl DigraphStore {
     /// Inserts a new unicode string into the store
     pub fn insert(&mut self, input_seq: &str, entry: DigraphEntry) -> Result<(), Error> {
-        if input_seq.len() <= 0 {
+        if input_seq.is_empty() {
             return Err(Error::EmptyInput(input_seq.to_string()));
         }
 
         self.head.insert(
-            &input_seq,
+            input_seq,
             FullDigraphEntry {
                 sequence: input_seq.to_string(),
                 symbols: entry.symbols,
@@ -146,26 +143,19 @@ impl DigraphStore {
 
     /// Attempts to retrieve a stored unicode string if it exists
     pub fn get(&self, exact_seq: &str) -> Option<&FullDigraphEntry> {
-        self.head
-            .get(exact_seq)
-            .map(|n| n.output.as_ref())
-            .flatten()
+        self.head.get(exact_seq).and_then(|n| n.output.as_ref())
     }
 
     /// Returns an iterator of closest matches to the input string
     pub fn search(&self, input_seq: &str) -> impl Iterator<Item = &FullDigraphEntry> {
-        self.head
-            .get(input_seq)
-            .into_iter()
-            .map(|x| x.iter())
-            .flatten()
+        self.head.get(input_seq).into_iter().flat_map(|x| x.iter())
     }
 }
 
 impl DigraphNode {
     fn insert(&mut self, input_seq: &str, entry: FullDigraphEntry) -> Result<(), Error> {
         // see if we found the spot to insert our unicode
-        if input_seq.len() == 0 {
+        if input_seq.is_empty() {
             if let Some(existing) = &self.output {
                 return Err(Error::DuplicateEntry {
                     seq: entry.sequence,
@@ -189,8 +179,8 @@ impl DigraphNode {
     }
 
     fn get(&self, exact_seq: &str) -> Option<&Self> {
-        if exact_seq.len() == 0 {
-            return Some(&self);
+        if exact_seq.is_empty() {
+            return Some(self);
         }
 
         self.children
@@ -200,7 +190,7 @@ impl DigraphNode {
     }
 
     fn iter<'a>(&'a self) -> impl Iterator<Item = &FullDigraphEntry> + 'a {
-        DigraphIter::new(&self)
+        DigraphIter::new(self)
     }
 }
 
@@ -221,8 +211,8 @@ where
         // elements to produce, and the next 'rung' of nodes to refill the element
         // iterator when empty
         Self {
-            element_iter: Box::new(node.output.iter().chain(Self::get_child_elements(&node))),
-            node_iter: Box::new(Self::get_child_nodes(&node)),
+            element_iter: Box::new(node.output.iter().chain(Self::get_child_elements(node))),
+            node_iter: Box::new(Self::get_child_nodes(node)),
         }
     }
 
@@ -232,15 +222,13 @@ where
         node.children
             .iter()
             .flat_map(|hm| hm.iter())
-            .map(|(_, node)| node.output.as_ref())
-            .filter_map(|b| b)
+            .flat_map(|(_, node)| node.output.as_ref())
     }
 
     fn get_child_nodes(node: &'a DigraphNode) -> impl Iterator<Item = &'a DigraphNode> + 'b {
         node.children
             .iter()
-            .map(|x| x.iter().map(|(_, node)| node))
-            .flatten()
+            .flat_map(|x| x.iter().map(|(_, node)| node))
     }
 }
 impl<'a, 'b> Iterator for DigraphIter<'a, 'b>
@@ -263,10 +251,10 @@ where
                         Box::new(std::iter::empty());
                     std::mem::swap(&mut new_nodes, &mut self.node_iter);
                     let mut new_nodes: Box<dyn Iterator<Item = &DigraphNode>> =
-                        Box::new(new_nodes.chain(Self::get_child_nodes(&node)));
+                        Box::new(new_nodes.chain(Self::get_child_nodes(node)));
                     std::mem::swap(&mut new_nodes, &mut self.node_iter);
 
-                    self.element_iter = Box::new(Self::get_child_elements(&node));
+                    self.element_iter = Box::new(Self::get_child_elements(node));
                 }
                 None => return None,
             }

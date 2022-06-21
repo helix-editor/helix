@@ -4696,6 +4696,7 @@ fn insert_digraphs(cx: &mut Context) {
                     // todo: Prompt does not currently allow additional text as part
                     // of it's suggestions. Show the user the symbol and description
                     // once prompt has been made more robust
+                    #[allow(clippy::useless_format)]
                     ((0..), Cow::from(format!("{}", entry.sequence)))
                 })
                 .collect()
