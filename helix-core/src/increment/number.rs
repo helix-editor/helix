@@ -35,35 +35,42 @@ impl<'a> NumberIncrementor<'a> {
         let range = textobject_word(text, range, TextObject::Inside, 1, false);
 
         // If there is a minus sign to the left of the word object, we want to include it in the range.
-        let range = if range.from() > 0 && text.char(range.from() - 1) == '-' {
+        let mut range = if range.from() > 0 && text.char(range.from() - 1) == '-' {
             range.extend(range.from() - 1, range.from())
         } else {
             range
         };
 
-        let full_word: String = text
-            .slice(range.from()..range.to())
-            .chars()
-            .filter(|&c| c != '_')
-            .collect();
-        let (radix, prefixed) = if full_word.starts_with("0x") {
+        let word: String = text.slice(range.from()..range.to()).chars().collect();
+        let (radix, prefixed) = if word.starts_with("0x") {
             (16, true)
-        } else if full_word.starts_with("0o") {
+        } else if word.starts_with("0o") {
             (8, true)
-        } else if full_word.starts_with("0b") {
+        } else if word.starts_with("0b") {
             (2, true)
         } else {
             (10, false)
         };
 
-        // Ignore non-number suffix at end of word, for example '1px'
-        let word = full_word.trim_end_matches(|c: char| !c.is_digit(radix));
-        let chars_removed = full_word.chars().count() - word.chars().count();
-        let range = Range::new(range.from(), range.to() - chars_removed);
+        let number = if prefixed {
+            word[2..].replace('_', "")
+        } else {
+            // remove prefix such as num in "num1"
+            let trimmed_start =
+                word.trim_start_matches(|c: char| !(c.is_ascii_digit() || c == '-'));
 
-        let number = if prefixed { &word[2..] } else { word };
+            // remove suffix such as px in "1px"
+            let trimmed = trimmed_start.trim_end_matches(|c: char| !c.is_ascii_digit());
+            let chars_removed_start = word.len() - trimmed_start.len();
+            let chars_removed_end = trimmed_start.len() - trimmed.len();
+            range = Range::new(
+                range.from() + chars_removed_start,
+                range.to() - chars_removed_end,
+            );
+            trimmed.replace('_', "")
+        };
 
-        let value = i128::from_str_radix(number, radix).ok()?;
+        let value = i128::from_str_radix(&number, radix).ok()?;
         if (value.is_positive() && value.leading_zeros() < 64)
             || (value.is_negative() && value.leading_ones() < 64)
         {
