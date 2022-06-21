@@ -1,10 +1,10 @@
 mod client;
+pub mod jsonrpc;
 mod transport;
 
 pub use client::Client;
 pub use futures_executor::block_on;
 pub use jsonrpc::Call;
-pub use jsonrpc_core as jsonrpc;
 pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
