@@ -274,6 +274,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             .try_get("ui.menu")
             .unwrap_or_else(|| theme.get("ui.text"));
         let selected = theme.get("ui.menu.selected");
+        surface.clear_with(area, style);
 
         let scroll = self.scroll;
 
