@@ -78,7 +78,7 @@
 "ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "white" }
 
-"ui.virtual" = { fg = "dark_gray" }
+"ui.virtual.whitespace" = { fg = "dark_gray" }
 "ui.virtual.ruler" = { bg = "borders" }
 
 "warning" = { fg = "gold2" }

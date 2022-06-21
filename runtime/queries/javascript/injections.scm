@@ -22,7 +22,15 @@
 ((regex_pattern) @injection.content
  (#set! injection.language "regex"))
 
- ; Parse JSDoc annotations in comments
+; Parse JSDoc annotations in multiline comments
 
 ((comment) @injection.content
- (#set! injection.language "jsdoc"))
+ (#set! injection.language "jsdoc")
+ (#match? @injection.content "^/\\*+"))
+
+; Parse general tags in single line comments
+
+((comment) @injection.content
+ (#set! injection.language "comment")
+ (#match? @injection.content "^//"))
+

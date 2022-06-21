@@ -40,7 +40,7 @@
 # background
 "ui.background" = { bg = "base03" }
 
-"ui.virtual" = { fg = "base01" }
+"ui.virtual.whitespace" = { fg = "base01" }
 
 # 行号栏
 # line number column
