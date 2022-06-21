@@ -64,6 +64,32 @@ where
     )
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum StatusLineRenderValue {
+    // Do not render status line at all.
+    Never,
+    // Render status line for every window.
+    Always,
+    // Render single status line at the bottom instead of one for each window.
+    Single,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct StatusLineConfig {
+    // When/how should the status line be rendered.
+    pub render: StatusLineRenderValue,
+}
+
+impl Default for StatusLineConfig {
+    fn default() -> Self {
+        Self {
+            render: StatusLineRenderValue::Always,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
@@ -146,6 +172,8 @@ pub struct Config {
     pub file_picker: FilePickerConfig,
     /// Shape for cursor in each mode
     pub cursor_shape: CursorShapeConfig,
+    /// Status line configuration
+    pub status_line: StatusLineConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
     pub true_color: bool,
     /// Search configuration.
@@ -385,6 +413,7 @@ impl Default for Config {
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            status_line: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             search: SearchConfig::default(),
