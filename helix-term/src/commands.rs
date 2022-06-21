@@ -1747,11 +1747,13 @@ fn global_search(cx: &mut Context) {
     let smart_case = config.search.smart_case;
     let file_picker_config = config.file_picker.clone();
 
-    let completions = search_completions(cx, None);
+    let reg = cx.register.unwrap_or('/');
+
+    let completions = search_completions(cx, Some(reg));
     ui::regex_prompt(
         cx,
         "global-search:".into(),
-        None,
+        Some(reg),
         move |_editor: &Editor, input: &str| {
             completions
                 .iter()
