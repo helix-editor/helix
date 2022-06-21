@@ -163,12 +163,15 @@ impl StatusLine {
             context,
             format!(
                 " {} ",
-                match context.doc.mode() {
-                    Mode::Insert if visible => "INS",
-                    Mode::Select if visible => "SEL",
-                    Mode::Normal if visible => "NOR",
+                if visible {
+                    match context.doc.mode() {
+                        Mode::Insert => "INS",
+                        Mode::Select => "SEL",
+                        Mode::Normal => "NOR",
+                    }
+                } else {
                     // If not focused, explicitly leave an empty space instead of returning None.
-                    _ => "   ",
+                    "   "
                 }
             ),
             None,
