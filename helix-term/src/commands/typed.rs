@@ -1802,15 +1802,7 @@ pub fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                let args = if cfg!(unix) {
-                    shellwords::shellwords(input)
-                } else {
-                    // Windows doesn't support POSIX, so fallback for now
-                    parts
-                        .into_iter()
-                        .map(|part| part.into())
-                        .collect::<Vec<_>>()
-                };
+                let args = shellwords::shellwords(input);
 
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));
