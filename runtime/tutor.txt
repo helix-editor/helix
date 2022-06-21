@@ -346,9 +346,10 @@ _________________________________________________________________
  --> 5) Clocks tell time,
  --> 6) Sugar is sweet,
  --> 7) And so are you.
+ Note : X works similarly to x although it doesn't extend to
+      subsequent lines. X on an empty line does nothing.
 
- NOTE: X works similarly to x although it doesn't extend to
-       subsequent lines. X on an empty line does nothing.
+
 
 =================================================================
 =                   3.7 COLLAPSING SELECTIONS                   =
@@ -365,8 +366,8 @@ _________________________________________________________________
     by the motions.
 
  --> This is an error-free line with words to move around in.
-
- NOTE: This works the same in select mode.
+ Note: This works the same in select mode.
+ Note: Another related command is A-; which flips selections.
 
 
 
@@ -453,9 +454,9 @@ _________________________________________________________________
  Like the select command, searching also uses regex.
 
  Note: To search backwards, type ? (shift-/).
-
  Note: Unlike Vim, N doesn't change the search direction.
        N always goes backwards and n always goes forwards.
+
 
 
 
@@ -654,28 +655,6 @@ _________________________________________________________________
  | Feb   | 28   |
  | Mar   | 31   |
  | ...   | ...  |
-
-
-
-
-=================================================================
-=                    6.3 REVERSING SELECTION                    =
-=================================================================
-
- Type A-; (Alt-;) to reverse the selection(s).
-
- TODO
-
-
-
-
-
-
-
-
-
-
-
 
 
 
