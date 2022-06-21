@@ -12,7 +12,7 @@
 "ui.statusline" = { fg = "base04", bg = "base01" }
 "ui.cursor" = { fg = "base04", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "base05", modifiers = ["reversed"] }
-"ui.virtual" = "base03"
+"ui.virtual.whitespace" = "base03"
 "ui.text" = "base05"
 "operator" = "base05"
 "ui.text.focus" = "base05"

@@ -17,6 +17,7 @@ app = true
 
 [features]
 unicode-lines = ["helix-core/unicode-lines"]
+integration = []
 
 [[bin]]
 name = "hx"
@@ -73,3 +74,8 @@ signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
 
 [build-dependencies]
 helix-loader = { version = "0.6", path = "../helix-loader" }
+
+[dev-dependencies]
+smallvec = "1.8"
+indoc = "1.0.3"
+tempfile = "3.3.0"
