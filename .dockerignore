@@ -1,0 +1,15 @@
+target
+.direnv
+helix-term/rustfmt.toml
+helix-syntax/languages/
+result
+runtime/grammars/**
+.github
+.vscode
+*.png
+*.md
+flake.*
+docs
+book
+.git
+Dockerfile
