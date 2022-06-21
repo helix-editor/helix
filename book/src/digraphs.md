@@ -6,7 +6,7 @@ By default, special characters can be input using the `insert_digraphs` (or `C-K
 [editor.digraphs]
 ka = "か"
 ku = { symbols = "く", description = "The japanese character Ku" }
-shrug = "¯\_(ツ)_/¯"
+shrug = "¯\\_(ツ)_/¯"
 ```
 
 ## Defaults
