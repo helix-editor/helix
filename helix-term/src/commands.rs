@@ -426,7 +426,7 @@ impl MappableCommand {
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
-        insert_digraphs, "Insert unicode character with prompt",
+        insert_digraphs, "Insert unicode characters with prompt",
     );
 }
 
@@ -4682,5 +4682,47 @@ fn replay_macro(cx: &mut Context) {
 }
 
 fn insert_digraphs(cx: &mut Context) {
-    todo!() //cx.
+    ui::prompt(
+        cx,
+        "digraph:".into(),
+        Some('K'), //todo: decide on register to use
+        move |editor, input| {
+            editor
+                .config()
+                .digraphs
+                .search(input)
+                .take(10)
+                .map(|entry| {
+                    // todo: Prompt does not currently allow additional text as part
+                    // of it's suggestions. Show the user the symbol and description
+                    // once prompt has been made more robust
+                    ((0..), Cow::from(format!("{}", entry.sequence)))
+                })
+                .collect()
+        },
+        move |cx, input, event| {
+            match event {
+                PromptEvent::Validate => (),
+                _ => return,
+            }
+            let config = cx.editor.config();
+            let symbols = if let Some(entry) = config.digraphs.get(input) {
+                &entry.symbols
+            } else {
+                cx.editor.set_error("Digraph not found");
+                return;
+            };
+
+            let (view, doc) = current!(cx.editor);
+            let selection = doc.selection(view.id);
+            let mut changes = Vec::with_capacity(selection.len());
+
+            for range in selection.ranges() {
+                changes.push((range.from(), range.from(), Some(symbols.clone().into())));
+            }
+            let trans = Transaction::change(doc.text(), changes.into_iter());
+            doc.apply(&trans, view.id);
+            doc.append_changes_to_history(view.id);
+        },
+    )
 }

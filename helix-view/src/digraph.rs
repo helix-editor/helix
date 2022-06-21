@@ -1,6 +1,48 @@
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeMap, Deserialize, Serialize};
 use std::collections::HashMap;
+
+// Errors
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub enum Error {
+    EmptyInput(String),
+    DuplicateEntry {
+        seq: String,
+        current: String,
+        existing: String,
+    },
+    Custom(String),
+}
+
+impl serde::de::Error for Error {
+    fn custom<T>(msg: T) -> Self
+    where
+        T: std::fmt::Display,
+    {
+        Error::Custom(msg.to_string())
+    }
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Error::EmptyInput(s) => {
+                f.write_str(&format!("No symbols were given for key sequence {}", s))
+            }
+            Error::DuplicateEntry {
+                seq,
+                current,
+                existing,
+            } => f.write_str(&format!(
+                "Attempted to bind {} to symbols ({}) when already bound to ({})",
+                seq, current, existing
+            )),
+            Error::Custom(s) => f.write_str(&s),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 /// Trie implementation for storing and searching input
 /// strings -> unicode characters defined by the user.
@@ -9,36 +51,101 @@ pub struct DigraphStore {
     head: DigraphNode,
 }
 
-#[derive(PartialEq, Eq, Debug, Clone)]
-pub enum Error {
-    EmptyInput,
-    DuplicateEntry { current: String, existing: String },
-}
-
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 struct DigraphNode {
-    output: Option<UnicodeOutput>,
+    output: Option<FullDigraphEntry>,
     children: Option<HashMap<char, DigraphNode>>,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct UnicodeOutput {
-    pub output: String,
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DigraphEntry {
+    pub symbols: String,
     pub description: Option<String>,
 }
 
-impl DigraphStore {
-    /// Inserts a new unicode string into the store
-    pub fn insert(&mut self, input_seq: &str, unicode: UnicodeOutput) -> Result<(), Error> {
-        if input_seq.len() <= 0 {
-            return Err(Error::EmptyInput);
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub struct FullDigraphEntry {
+    pub sequence: String,
+    pub symbols: String,
+    pub description: Option<String>,
+}
+
+impl<'de> Deserialize<'de> for DigraphStore {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum EntryDef {
+            Full(DigraphEntry),
+            Symbols(String),
         }
 
-        self.head.insert(&input_seq, unicode)
+        let mut store = Self::default();
+        HashMap::<String, EntryDef>::deserialize(deserializer)?
+            .into_iter()
+            .map(|(k, d)| match d {
+                EntryDef::Symbols(symbols) => (
+                    k,
+                    DigraphEntry {
+                        symbols,
+                        description: None,
+                    },
+                ),
+                EntryDef::Full(entry) => (k, entry),
+            })
+            .map(|(k, v)| store.insert(&k, v))
+            .collect::<Result<_, Error>>()
+            .map_err(|e| serde::de::Error::custom(e))?;
+
+        Ok(store)
+    }
+}
+
+impl Serialize for DigraphStore {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut m = serializer.serialize_map(None)?;
+
+        self.search("")
+            .map(|entry| {
+                m.serialize_entry(
+                    &entry.sequence,
+                    &DigraphEntry {
+                        symbols: entry.symbols.clone(),
+                        description: entry.description.clone(),
+                    },
+                )
+            })
+            .collect::<Result<_, S::Error>>()?;
+        m.end()
+    }
+}
+
+/// A Store of input -> unicode strings that can be quickly looked up and
+/// searched.
+impl DigraphStore {
+    /// Inserts a new unicode string into the store
+    pub fn insert(&mut self, input_seq: &str, entry: DigraphEntry) -> Result<(), Error> {
+        if input_seq.len() <= 0 {
+            return Err(Error::EmptyInput(input_seq.to_string()));
+        }
+
+        self.head.insert(
+            &input_seq,
+            FullDigraphEntry {
+                sequence: input_seq.to_string(),
+                symbols: entry.symbols,
+                description: entry.description,
+            },
+        )
     }
 
     /// Attempts to retrieve a stored unicode string if it exists
-    pub fn get(&self, exact_seq: &str) -> Option<&UnicodeOutput> {
+    pub fn get(&self, exact_seq: &str) -> Option<&FullDigraphEntry> {
         self.head
             .get(exact_seq)
             .map(|n| n.output.as_ref())
@@ -46,7 +153,7 @@ impl DigraphStore {
     }
 
     /// Returns an iterator of closest matches to the input string
-    pub fn search(&self, input_seq: &str) -> impl Iterator<Item = &UnicodeOutput> {
+    pub fn search(&self, input_seq: &str) -> impl Iterator<Item = &FullDigraphEntry> {
         self.head
             .get(input_seq)
             .into_iter()
@@ -56,16 +163,17 @@ impl DigraphStore {
 }
 
 impl DigraphNode {
-    fn insert(&mut self, input_seq: &str, unicode: UnicodeOutput) -> Result<(), Error> {
+    fn insert(&mut self, input_seq: &str, entry: FullDigraphEntry) -> Result<(), Error> {
         // see if we found the spot to insert our unicode
         if input_seq.len() == 0 {
             if let Some(existing) = &self.output {
                 return Err(Error::DuplicateEntry {
-                    existing: existing.output.clone(),
-                    current: unicode.output.clone(),
+                    seq: entry.sequence,
+                    existing: existing.symbols.clone(),
+                    current: entry.symbols,
                 });
             } else {
-                self.output = Some(unicode);
+                self.output = Some(entry);
                 return Ok(());
             }
         }
@@ -77,7 +185,7 @@ impl DigraphNode {
             .entry(input_seq.chars().next().unwrap())
             .or_default();
 
-        node.insert(&input_seq[1..], unicode)
+        node.insert(&input_seq[1..], entry)
     }
 
     fn get(&self, exact_seq: &str) -> Option<&Self> {
@@ -91,7 +199,7 @@ impl DigraphNode {
             .and_then(|node| node.get(&exact_seq[1..]))
     }
 
-    fn iter<'a>(&'a self) -> impl Iterator<Item = &UnicodeOutput> + 'a {
+    fn iter<'a>(&'a self) -> impl Iterator<Item = &FullDigraphEntry> + 'a {
         DigraphIter::new(&self)
     }
 }
@@ -100,7 +208,7 @@ pub struct DigraphIter<'a, 'b>
 where
     'a: 'b,
 {
-    element_iter: Box<dyn Iterator<Item = &'a UnicodeOutput> + 'b>,
+    element_iter: Box<dyn Iterator<Item = &'a FullDigraphEntry> + 'b>,
     node_iter: Box<dyn Iterator<Item = &'a DigraphNode> + 'b>,
 }
 
@@ -118,7 +226,9 @@ where
         }
     }
 
-    fn get_child_elements(node: &'a DigraphNode) -> impl Iterator<Item = &'a UnicodeOutput> + 'b {
+    fn get_child_elements(
+        node: &'a DigraphNode,
+    ) -> impl Iterator<Item = &'a FullDigraphEntry> + 'b {
         node.children
             .iter()
             .flat_map(|hm| hm.iter())
@@ -137,7 +247,7 @@ impl<'a, 'b> Iterator for DigraphIter<'a, 'b>
 where
     'a: 'b,
 {
-    type Item = &'a UnicodeOutput;
+    type Item = &'a FullDigraphEntry;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -173,8 +283,8 @@ mod tests {
         let mut dg = DigraphStore::default();
         dg.insert(
             "abc",
-            UnicodeOutput {
-                output: "testbug".into(),
+            DigraphEntry {
+                symbols: "testbug".into(),
                 ..Default::default()
             },
         )
@@ -182,8 +292,8 @@ mod tests {
 
         dg.insert(
             "abd",
-            UnicodeOutput {
-                output: "deadbeef".into(),
+            DigraphEntry {
+                symbols: "deadbeef".into(),
                 ..Default::default()
             },
         )
@@ -209,7 +319,7 @@ mod tests {
                 .output
                 .clone()
                 .unwrap()
-                .output
+                .symbols
                 .clone(),
             "testbug".to_string()
         );
@@ -220,8 +330,8 @@ mod tests {
         let mut dg = DigraphStore::default();
         dg.insert(
             "abc",
-            UnicodeOutput {
-                output: "testbug".into(),
+            DigraphEntry {
+                symbols: "testbug".into(),
                 ..Default::default()
             },
         )
@@ -229,22 +339,22 @@ mod tests {
 
         dg.insert(
             "abd",
-            UnicodeOutput {
-                output: "deadbeef".into(),
+            DigraphEntry {
+                symbols: "deadbeef".into(),
                 ..Default::default()
             },
         )
         .unwrap();
 
         assert_eq!(
-            dg.get("abc").map(|x| x.output.clone()),
+            dg.get("abc").map(|x| x.symbols.clone()),
             Some("testbug".to_string())
         );
         assert_eq!(
-            dg.get("abd").map(|x| x.output.clone()),
+            dg.get("abd").map(|x| x.symbols.clone()),
             Some("deadbeef".to_string())
         );
-        assert_eq!(dg.get("abe").map(|x| x.output.clone()), None);
+        assert_eq!(dg.get("abe").map(|x| x.symbols.clone()), None);
     }
 
     #[test]
@@ -252,8 +362,8 @@ mod tests {
         let mut dg = DigraphStore::default();
         dg.insert(
             "abc",
-            UnicodeOutput {
-                output: "testbug".into(),
+            DigraphEntry {
+                symbols: "testbug".into(),
                 ..Default::default()
             },
         )
@@ -261,8 +371,8 @@ mod tests {
 
         dg.insert(
             "abd",
-            UnicodeOutput {
-                output: "deadbeef".into(),
+            DigraphEntry {
+                symbols: "deadbeef".into(),
                 ..Default::default()
             },
         )
@@ -276,8 +386,8 @@ mod tests {
         let mut dg = DigraphStore::default();
         dg.insert(
             "abc",
-            UnicodeOutput {
-                output: "testbug".into(),
+            DigraphEntry {
+                symbols: "testbug".into(),
                 ..Default::default()
             },
         )
@@ -285,23 +395,23 @@ mod tests {
 
         dg.insert(
             "abd",
-            UnicodeOutput {
-                output: "deadbeef".into(),
+            DigraphEntry {
+                symbols: "deadbeef".into(),
                 ..Default::default()
             },
         )
         .unwrap();
         dg.insert(
             "azz",
-            UnicodeOutput {
-                output: "qwerty".into(),
+            DigraphEntry {
+                symbols: "qwerty".into(),
                 ..Default::default()
             },
         )
         .unwrap();
 
         assert_eq!(dg.search("ab").count(), 2);
-        assert_eq!(dg.search("az").next().unwrap().output, "qwerty");
+        assert_eq!(dg.search("az").next().unwrap().symbols, "qwerty");
     }
 
     #[test]
@@ -309,8 +419,8 @@ mod tests {
         let mut dg = DigraphStore::default();
         dg.insert(
             "abccccc",
-            UnicodeOutput {
-                output: "testbug".into(),
+            DigraphEntry {
+                symbols: "testbug".into(),
                 ..Default::default()
             },
         )
@@ -318,22 +428,22 @@ mod tests {
 
         dg.insert(
             "abd",
-            UnicodeOutput {
-                output: "deadbeef".into(),
+            DigraphEntry {
+                symbols: "deadbeef".into(),
                 ..Default::default()
             },
         )
         .unwrap();
         dg.insert(
             "abee",
-            UnicodeOutput {
-                output: "qwerty".into(),
+            DigraphEntry {
+                symbols: "qwerty".into(),
                 ..Default::default()
             },
         )
         .unwrap();
 
         assert_eq!(dg.search("ab").count(), 3);
-        assert_eq!(dg.search("ab").next().unwrap().output, "deadbeef");
+        assert_eq!(dg.search("ab").next().unwrap().symbols, "deadbeef");
     }
 }
