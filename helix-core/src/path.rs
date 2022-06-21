@@ -94,7 +94,7 @@ pub fn get_relative_path(path: &Path) -> PathBuf {
 /// Returns a truncated filepath where the basepart of the path is reduced to the first
 /// char of the folder and the whole filename appended.
 ///
-/// Note that this function does not check if the truncated path if unambiguous.
+/// Note that this function does not check if the truncated path is unambiguous.
 pub fn get_truncated_path<P: AsRef<Path>>(path: P) -> PathBuf {
     let file = path.as_ref().file_name().unwrap_or_default();
     let base = path.as_ref().parent().unwrap_or_else(|| Path::new(""));
