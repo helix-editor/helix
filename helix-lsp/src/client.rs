@@ -1,11 +1,11 @@
 use crate::{
+    jsonrpc,
     transport::{Payload, Transport},
     Call, Error, OffsetEncoding, Result,
 };
 
 use anyhow::anyhow;
 use helix_core::{find_root, ChangeSet, Rope};
-use jsonrpc_core as jsonrpc;
 use lsp_types as lsp;
 use serde::Deserialize;
 use serde_json::Value;
