@@ -96,6 +96,30 @@ pub fn get_relative_path(path: &Path) -> PathBuf {
 ///
 /// Also strip the current working directory from the beginning of the path.
 /// Note that this function does not check if the truncated path is unambiguous.
+///
+/// ```   
+///    use helix_core::path::get_truncated_path;
+///    use std::path::Path;
+///
+///    assert_eq!(
+///         get_truncated_path("/home/cnorris/documents/jokes.txt").as_path(),
+///         Path::new("/h/c/d/jokes.txt")
+///     );
+///     assert_eq!(
+///         get_truncated_path("jokes.txt").as_path(),
+///         Path::new("jokes.txt")
+///     );
+///     assert_eq!(
+///         get_truncated_path("/jokes.txt").as_path(),
+///         Path::new("/jokes.txt")
+///     );
+///     assert_eq!(
+///         get_truncated_path("/h/c/d/jokes.txt").as_path(),
+///         Path::new("/h/c/d/jokes.txt")
+///     );
+///     assert_eq!(get_truncated_path("").as_path(), Path::new(""));
+/// ```
+///
 pub fn get_truncated_path<P: AsRef<Path>>(path: P) -> PathBuf {
     let cwd = std::env::current_dir().unwrap_or_default();
     let path = path
@@ -116,25 +140,4 @@ pub fn get_truncated_path<P: AsRef<Path>>(path: P) -> PathBuf {
     }
     ret.push(file);
     ret
-}
-
-#[test]
-fn get_truncated_path_test() {
-    assert_eq!(
-        get_truncated_path("/home/cnorris/documents/jokes.txt").as_path(),
-        Path::new("/h/c/d/jokes.txt")
-    );
-    assert_eq!(
-        get_truncated_path("jokes.txt").as_path(),
-        Path::new("jokes.txt")
-    );
-    assert_eq!(
-        get_truncated_path("/jokes.txt").as_path(),
-        Path::new("/jokes.txt")
-    );
-    assert_eq!(
-        get_truncated_path("/h/c/d/jokes.txt").as_path(),
-        Path::new("/h/c/d/jokes.txt")
-    );
-    assert_eq!(get_truncated_path("").as_path(), Path::new(""));
 }
