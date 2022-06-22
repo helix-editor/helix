@@ -686,7 +686,7 @@ impl EditorView {
             );
             if primary_line == line {
                 surface.set_style(area, primary_style);
-            } else if secondary_lines.contains(&line) {
+            } else if secondary_lines.binary_search(&line).is_ok() {
                 surface.set_style(area, secondary_style);
             }
         }
