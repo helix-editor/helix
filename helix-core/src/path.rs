@@ -90,3 +90,45 @@ pub fn get_relative_path(path: &Path) -> PathBuf {
     };
     fold_home_dir(path)
 }
+
+/// Returns a truncated filepath where the basepart of the path is reduced to the first
+/// char of the folder and the whole filename appended.
+///
+/// Note that this function does not check if the truncated path is unambiguous.
+pub fn get_truncated_path<P: AsRef<Path>>(path: P) -> PathBuf {
+    let file = path.as_ref().file_name().unwrap_or_default();
+    let base = path.as_ref().parent().unwrap_or_else(|| Path::new(""));
+    let mut ret = PathBuf::new();
+    for d in base {
+        ret.push(
+            d.to_string_lossy()
+                .chars()
+                .next()
+                .unwrap_or_default()
+                .to_string(),
+        );
+    }
+    ret.push(file);
+    ret
+}
+
+#[test]
+fn get_truncated_path_test() {
+    assert_eq!(
+        get_truncated_path("/home/cnorris/documents/jokes.txt").as_path(),
+        Path::new("/h/c/d/jokes.txt")
+    );
+    assert_eq!(
+        get_truncated_path("jokes.txt").as_path(),
+        Path::new("jokes.txt")
+    );
+    assert_eq!(
+        get_truncated_path("/jokes.txt").as_path(),
+        Path::new("/jokes.txt")
+    );
+    assert_eq!(
+        get_truncated_path("/h/c/d/jokes.txt").as_path(),
+        Path::new("/h/c/d/jokes.txt")
+    );
+    assert_eq!(get_truncated_path("").as_path(), Path::new(""));
+}

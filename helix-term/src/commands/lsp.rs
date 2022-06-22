@@ -8,7 +8,7 @@ use tui::text::{Span, Spans};
 
 use super::{align_view, push_jump, Align, Context, Editor};
 
-use helix_core::Selection;
+use helix_core::{path, Selection};
 use helix_view::{
     editor::Action,
     theme::{Modifier, Style},
@@ -174,7 +174,7 @@ fn diag_picker(
 
     FilePicker::new(
         flat_diag,
-        move |(_, diag)| {
+        move |(url, diag)| {
             let mut style = diag
                 .severity
                 .map(|s| match s {
@@ -198,14 +198,20 @@ fn diag_picker(
                 })
                 .unwrap_or_default();
 
+            let truncated_path = path::get_truncated_path(url.as_str())
+                .to_string_lossy()
+                .into_owned();
+
             Spans::from(vec![
                 Span::styled(
                     diag.source.clone().unwrap_or_default(),
                     style.add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(": "),
-                Span::styled(code, style),
+                Span::styled(truncated_path, style),
                 Span::raw(" - "),
+                Span::styled(code, style.add_modifier(Modifier::BOLD)),
+                Span::raw(": "),
                 Span::styled(&diag.message, style),
             ])
         },
