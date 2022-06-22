@@ -14,18 +14,10 @@ pub use crate::graphics::{Color, Modifier, Style};
 
 pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
     toml::from_slice::<Theme>(include_bytes!("../../theme.toml"))
-        .map(|mut theme| {
-            theme.name = "default".to_string();
-            theme
-        })
         .expect("Failed to parse default theme")
 });
 pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
     toml::from_slice::<Theme>(include_bytes!("../../base16_theme.toml"))
-        .map(|mut theme| {
-            theme.name = "base16_default".to_string();
-            theme
-        })
         .expect("Failed to parse base 16 default theme")
 });
 
@@ -61,14 +53,7 @@ impl Loader {
         };
 
         let data = std::fs::read(&path)?;
-        let theme = toml::from_slice::<Theme>(data.as_slice());
-        match theme {
-            Ok(mut theme) => {
-                theme.name = name.to_string();
-                Ok(theme)
-            }
-            Result::Err(e) => Err(e).context("Failed to deserialize theme"),
-        }
+        toml::from_slice::<Theme>(data.as_slice()).context("Failed to deserialize theme")
     }
 
     pub fn read_names(path: &Path) -> Vec<String> {
@@ -114,8 +99,6 @@ impl Loader {
 
 #[derive(Clone, Debug)]
 pub struct Theme {
-    /// The name of the theme, taken from the filename that it came from.
-    pub name: String,
     // UI styles are stored in a HashMap
     styles: HashMap<String, Style>,
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
@@ -162,7 +145,6 @@ impl<'de> Deserialize<'de> for Theme {
         }
 
         Ok(Self {
-            name: String::new(),
             scopes,
             styles,
             highlights,

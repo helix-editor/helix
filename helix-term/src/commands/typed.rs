@@ -1,5 +1,3 @@
-use std::ops::BitAnd;
-
 use super::*;
 
 use helix_view::editor::{Action, ConfigEvent};
@@ -1890,7 +1888,7 @@ pub fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                if cmd.prompt_events.bitand(event as u8) == 0 {
+                if cmd.prompt_events & (event as u8) == 0 {
                     return;
                 }
 
