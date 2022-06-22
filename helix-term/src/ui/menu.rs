@@ -288,7 +288,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         let win_height = area.height as usize;
 
         const fn div_ceil(a: usize, b: usize) -> usize {
-            (a + b - 1) / a
+            (a + b - 1) / b
         }
 
         let scroll_height = std::cmp::min(div_ceil(win_height.pow(2), len), win_height as usize);
