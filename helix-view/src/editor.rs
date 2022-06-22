@@ -44,6 +44,8 @@ use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer}
 
 use arc_swap::access::{DynAccess, DynGuard};
 
+const DEFAULT_READ_ONLY_INDICATOR: &str = "[RO]";
+
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -158,6 +160,7 @@ pub struct Config {
     pub whitespace: WhitespaceConfig,
     /// Vertical indent width guides.
     pub indent_guides: IndentGuidesConfig,
+    pub read_only_indicator: String,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -410,6 +413,7 @@ impl Default for Config {
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
             indent_guides: IndentGuidesConfig::default(),
+            read_only_indicator: DEFAULT_READ_ONLY_INDICATOR.to_string(),
         }
     }
 }

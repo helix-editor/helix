@@ -45,6 +45,7 @@ hidden = false
 | `auto-info` | Whether to display infoboxes | `true` |
 | `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. | `false` |
 | `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file. | `[]` |
+| `read-only-indicator` | String to display next to filename in statusbar if file is read-only. | `[RO]` |
 
 ### `[editor.lsp]` Section
 

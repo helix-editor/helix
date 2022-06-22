@@ -17,7 +17,7 @@ use helix_core::{
     LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::{FileStat, Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::KeyEvent,
@@ -157,7 +157,7 @@ impl EditorView {
             .area
             .clip_top(view.area.height.saturating_sub(1))
             .clip_bottom(1); // -1 from bottom to remove commandline
-        self.render_statusline(doc, view, statusline_area, surface, theme, is_focused);
+        self.render_statusline(editor, doc, view, statusline_area, surface, is_focused);
     }
 
     pub fn render_rulers(
@@ -688,15 +688,16 @@ impl EditorView {
 
     pub fn render_statusline(
         &self,
+        editor: &Editor,
         doc: &Document,
         view: &View,
         viewport: Rect,
         surface: &mut Surface,
-        theme: &Theme,
         is_focused: bool,
     ) {
         use tui::text::{Span, Spans};
 
+        let theme = &editor.theme;
         //-------------------------------
         // Left side of the status line.
         //-------------------------------
@@ -808,13 +809,19 @@ impl EditorView {
         //-------------------------------
         // Middle / File path / Title
         //-------------------------------
+        let modified = if doc.is_modified() { "[+]" } else { "" };
+        let readonly = if doc.file_stat == FileStat::ReadOnly {
+            editor.config().read_only_indicator.to_string()
+        } else {
+            String::new()
+        };
         let title = {
             let rel_path = doc.relative_path();
             let path = rel_path
                 .as_ref()
                 .map(|p| p.to_string_lossy())
                 .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-            format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" })
+            format!("{}{}{}", readonly, path, modified)
         };
 
         surface.set_string_truncated(
