@@ -200,10 +200,7 @@ impl<T: 'static> Component for FilePicker<T> {
         // calculate the inner area inside the box
         let inner = block.inner(preview_area);
         // 1 column gap on either side
-        let margin = Margin {
-            vertical: 0,
-            horizontal: 1,
-        };
+        let margin = Margin::horizontal(1);
         let inner = inner.inner(&margin);
         block.render(preview_area, surface);
 
@@ -240,7 +237,7 @@ impl<T: 'static> Component for FilePicker<T> {
                 surface,
                 &cx.editor.theme,
                 highlights,
-                &cx.editor.config().whitespace,
+                &cx.editor.config(),
             );
 
             // highlight the line
