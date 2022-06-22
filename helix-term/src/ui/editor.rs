@@ -665,15 +665,13 @@ impl EditorView {
 
         let mut lines = Vec::new();
         for diagnostic in diagnostics {
-            let text = Text::styled(
-                &diagnostic.message,
-                match diagnostic.severity {
-                    Some(Severity::Error) => error,
-                    Some(Severity::Warning) | None => warning,
-                    Some(Severity::Info) => info,
-                    Some(Severity::Hint) => hint,
-                },
-            );
+            let style = Style::reset().patch(match diagnostic.severity {
+                Some(Severity::Error) => error,
+                Some(Severity::Warning) | None => warning,
+                Some(Severity::Info) => info,
+                Some(Severity::Hint) => hint,
+            });
+            let text = Text::styled(&diagnostic.message, style);
             lines.extend(text.lines);
         }
 
