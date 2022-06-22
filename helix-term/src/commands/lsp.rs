@@ -198,7 +198,7 @@ fn diag_picker(
                 })
                 .unwrap_or_default();
 
-            let truncated_path = path::get_truncated_path(url.as_str())
+            let truncated_path = path::get_truncated_path(url.path())
                 .to_string_lossy()
                 .into_owned();
 
@@ -221,7 +221,7 @@ fn diag_picker(
                 push_jump(view, doc);
             } else {
                 let path = url.to_file_path().unwrap();
-                cx.editor.open(path, action).expect("editor.open failed");
+                cx.editor.open(&path, action).expect("editor.open failed");
             }
 
             let (view, doc) = current!(cx.editor);
