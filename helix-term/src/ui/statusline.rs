@@ -119,7 +119,7 @@ impl StatusLine {
         let spacing = 1u16;
 
         let edge_width = context.parts.left.width().max(context.parts.right.width()) as u16;
-        let center_max_width = viewport.width - (2 * edge_width + 2 * spacing);
+        let center_max_width = viewport.width.saturating_sub(2 * edge_width + 2 * spacing);
         let center_width = center_max_width.min(context.parts.center.width() as u16);
 
         surface.set_spans(
