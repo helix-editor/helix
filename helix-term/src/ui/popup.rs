@@ -27,10 +27,7 @@ impl<T: Component> Popup<T> {
         Self {
             contents,
             position: None,
-            margin: Margin {
-                vertical: 0,
-                horizontal: 0,
-            },
+            margin: Margin::none(),
             size: (0, 0),
             child_size: (0, 0),
             scroll: 0,
@@ -163,8 +160,8 @@ impl<T: Component> Component for Popup<T> {
 
         self.child_size = (width, height);
         self.size = (
-            (width + self.margin.horizontal * 2).min(max_width),
-            (height + self.margin.vertical * 2).min(max_height),
+            (width + self.margin.width()).min(max_width),
+            (height + self.margin.height()).min(max_height),
         );
 
         // re-clamp scroll offset
