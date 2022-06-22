@@ -615,7 +615,7 @@ impl Editor {
             self.set_theme(last_theme);
         }
         // None likely occurs when the user types ":theme" and then exits before previewing
-    } 
+    }
 
     pub fn set_theme_preview(&mut self, theme: Theme) {
         self.set_theme_impl(theme, true);
