@@ -318,6 +318,7 @@ fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> 
     for (key, value) in compiler.env() {
         command.env(key, value);
     }
+    command.args(compiler.args());
 
     if cfg!(all(windows, target_env = "msvc")) {
         command
