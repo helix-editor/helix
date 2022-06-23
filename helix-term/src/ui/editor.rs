@@ -604,11 +604,8 @@ impl EditorView {
                     .unwrap_or_else(|| editor.theme.get("ui.statusline"))
             };
 
-            let (text, offset) = if doc.is_modified() {
-                (format!(" {}[+] ", fname), fname.len() + 5)
-            } else {
-                (format!(" {} ", fname), fname.len() + 2)
-            };
+            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
+            let offset = text.len();
 
             surface.set_string(1 + viewport.x + len as u16, viewport.y, text, style);
             len += offset;
