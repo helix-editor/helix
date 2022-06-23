@@ -221,29 +221,6 @@ pub mod util {
             generate_transaction_from_edits(&fmt.doc, fmt.edits, fmt.offset_encoding)
         }
     }
-
-    impl LspFormatting {
-        pub fn replaces_document(&self, old: &Rope) -> Option<&String> {
-            match &self.edits[..] {
-                [lsp::TextEdit {
-                    range:
-                        lsp::Range {
-                            start:
-                                lsp::Position {
-                                    line: 0,
-                                    character: 0,
-                                },
-                            end:
-                                lsp::Position {
-                                    line: last_line, ..
-                                },
-                        },
-                    new_text,
-                }] if *last_line as usize >= old.len_lines() - 1 => Some(new_text),
-                _ => None,
-            }
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]

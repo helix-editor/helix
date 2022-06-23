@@ -550,15 +550,10 @@ impl Document {
         let mut file = std::fs::File::open(path.unwrap())?;
         let (rope, ..) = from_reader(&mut file, Some(encoding))?;
 
-        self.replace_content(view_id, &rope)
-    }
-
-    /// Replace the whole text.
-    pub fn replace_content(&mut self, view_id: ViewId, rope: &Rope) -> Result<(), Error> {
         // Calculate the difference between the buffer and source text, and apply it.
         // This is not considered a modification of the contents of the file regardless
         // of the encoding.
-        let transaction = helix_core::diff::compare_ropes(self.text(), rope);
+        let transaction = helix_core::diff::compare_ropes(self.text(), &rope);
         self.apply(&transaction, view_id);
         self.append_changes_to_history(view_id);
         self.reset_modified();

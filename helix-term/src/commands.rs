@@ -2341,17 +2341,11 @@ async fn make_format_callback(
         let view_id = view!(editor).id;
         if let Some(doc) = editor.document_mut(doc_id) {
             if doc.version() == doc_version {
-                if let Some(text) = format.replaces_document(doc.text()) {
-                    // the language server wants to replace the whole document. perform same behaviour as if reloading document from disk.
-                    log::info!("formatting changes replace the whole document");
-                    let rope = Rope::from_str(text);
-                    doc.replace_content(view_id, &rope).unwrap();
-                } else {
-                    doc.apply(&Transaction::from(format), view_id);
-                    doc.append_changes_to_history(view_id);
-                    if let Modified::SetUnmodified = modified {
-                        doc.reset_modified();
-                    }
+                doc.apply(&Transaction::from(format), view_id);
+                doc.append_changes_to_history(view_id);
+                doc.detect_indent_and_line_ending();
+                if let Modified::SetUnmodified = modified {
+                    doc.reset_modified();
                 }
             } else {
                 log::info!("discarded formatting changes because the document changed");
