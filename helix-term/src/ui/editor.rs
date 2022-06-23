@@ -821,7 +821,7 @@ impl EditorView {
                 .as_ref()
                 .map(|p| p.to_string_lossy())
                 .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-            format!("{}{}{}", readonly, path, modified)
+            format!("{}{}{}", path, readonly, modified)
         };
 
         surface.set_string_truncated(
