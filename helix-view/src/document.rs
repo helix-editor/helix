@@ -404,16 +404,13 @@ impl Document {
         doc.detect_indent_and_line_ending();
         // this seems overly complex but should make it easier
         // to extend doc.file_stat with more information in the future.
-        doc.file_stat = fs::metadata(path).map_or_else(
-            |_| FileStat::Unknown,
-            |f| {
-                if f.permissions().readonly() {
-                    FileStat::ReadOnly
-                } else {
-                    FileStat::Writable
-                }
-            },
-        );
+        doc.file_stat = fs::metadata(path).map_or(FileStat::Unknown, |f| {
+            if f.permissions().readonly() {
+                FileStat::ReadOnly
+            } else {
+                FileStat::Writable
+            }
+        });
 
         Ok(doc)
     }
