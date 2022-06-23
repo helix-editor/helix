@@ -556,13 +556,11 @@ impl EditorView {
                 .unwrap();
 
             let style = if view!(editor).doc == doc.id() {
-                // editor.theme.get("ui.background")
                 editor
                     .theme
                     .try_get("ui.bufferline.active")
                     .unwrap_or_else(|| editor.theme.get("ui.background"))
             } else {
-                // editor.theme.get("ui.statusline")
                 editor
                     .theme
                     .try_get("ui.bufferline")
