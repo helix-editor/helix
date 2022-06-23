@@ -128,7 +128,7 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
-    /// Mode of file - read-only or normal. If none, unknown or unavailable.
+    /// Mode of file - currently read-only, writable, or unknown.
     pub file_stat: FileStat,
 }
 
