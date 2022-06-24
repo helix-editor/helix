@@ -98,6 +98,6 @@
 | vala | ✓ |  |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |
 | vue | ✓ |  |  | `vls` |
-| wgsl | ✓ |  |  |  |
+| wgsl | ✓ |  |  | `wgsl_analyzer` |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |
 | zig | ✓ |  | ✓ | `zls` |

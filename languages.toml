@@ -787,6 +787,7 @@ scope = "source.wgsl"
 file-types = ["wgsl"]
 roots = []
 comment-token = "//"
+language-server = { command = "wgsl_analyzer" }
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
