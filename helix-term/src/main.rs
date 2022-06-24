@@ -1,6 +1,8 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Error, Result};
+use crossterm::event::EventStream;
 use helix_term::application::Application;
 use helix_term::args::Args;
+use helix_term::config::Config;
 use std::path::PathBuf;
 
 fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
@@ -110,10 +112,30 @@ FLAGS:
 
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 
-    // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app = Application::new(args).context("unable to create new application")?;
+    let config_dir = helix_loader::config_dir();
+    if !config_dir.exists() {
+        std::fs::create_dir_all(&config_dir).ok();
+    }
 
-    let exit_code = app.run().await?;
+    let config = match std::fs::read_to_string(config_dir.join("config.toml")) {
+        Ok(config) => toml::from_str(&config)
+            .map(helix_term::keymap::merge_keys)
+            .unwrap_or_else(|err| {
+                eprintln!("Bad config: {}", err);
+                eprintln!("Press <ENTER> to continue with default config");
+                use std::io::Read;
+                // This waits for an enter press.
+                let _ = std::io::stdin().read(&mut []);
+                Config::default()
+            }),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
+        Err(err) => return Err(Error::new(err)),
+    };
+
+    // TODO: use the thread local executor to spawn the application task separately from the work pool
+    let mut app = Application::new(args, config).context("unable to create new application")?;
+
+    let exit_code = app.run(&mut EventStream::new()).await?;
 
     Ok(exit_code)
 }

@@ -24,9 +24,13 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
         state = match state {
             Normal => match c {
                 '\\' => {
-                    escaped.push_str(&input[start..i]);
-                    start = i + 1;
-                    NormalEscaped
+                    if cfg!(unix) {
+                        escaped.push_str(&input[start..i]);
+                        start = i + 1;
+                        NormalEscaped
+                    } else {
+                        Normal
+                    }
                 }
                 '"' => {
                     end = i;
@@ -45,9 +49,13 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
             NormalEscaped => Normal,
             Quoted => match c {
                 '\\' => {
-                    escaped.push_str(&input[start..i]);
-                    start = i + 1;
-                    QuoteEscaped
+                    if cfg!(unix) {
+                        escaped.push_str(&input[start..i]);
+                        start = i + 1;
+                        QuoteEscaped
+                    } else {
+                        Quoted
+                    }
                 }
                 '\'' => {
                     end = i;
@@ -58,9 +66,13 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
             QuoteEscaped => Quoted,
             Dquoted => match c {
                 '\\' => {
-                    escaped.push_str(&input[start..i]);
-                    start = i + 1;
-                    DquoteEscaped
+                    if cfg!(unix) {
+                        escaped.push_str(&input[start..i]);
+                        start = i + 1;
+                        DquoteEscaped
+                    } else {
+                        Dquoted
+                    }
                 }
                 '"' => {
                     end = i;
@@ -99,6 +111,25 @@ mod test {
     use super::*;
 
     #[test]
+    #[cfg(windows)]
+    fn test_normal() {
+        let input = r#":o single_word twó wörds \three\ \"with\ escaping\\"#;
+        let result = shellwords(input);
+        let expected = vec![
+            Cow::from(":o"),
+            Cow::from("single_word"),
+            Cow::from("twó"),
+            Cow::from("wörds"),
+            Cow::from("\\three\\"),
+            Cow::from("\\"),
+            Cow::from("with\\ escaping\\\\"),
+        ];
+        // TODO test is_owned and is_borrowed, once they get stabilized.
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    #[cfg(unix)]
     fn test_normal() {
         let input = r#":o single_word twó wörds \three\ \"with\ escaping\\"#;
         let result = shellwords(input);
@@ -114,6 +145,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_quoted() {
         let quoted =
             r#":o 'single_word' 'twó wörds' '' ' ''\three\' \"with\ escaping\\' 'quote incomplete"#;
@@ -129,6 +161,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_dquoted() {
         let dquoted = r#":o "single_word" "twó wörds" "" "  ""\three\' \"with\ escaping\\" "dquote incomplete"#;
         let result = shellwords(dquoted);
@@ -143,6 +176,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_mixed() {
         let dquoted = r#":o single_word 'twó wörds' "\three\' \"with\ escaping\\""no space before"'and after' $#%^@ "%^&(%^" ')(*&^%''a\\\\\b' '"#;
         let result = shellwords(dquoted);
