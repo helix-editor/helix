@@ -372,10 +372,8 @@ Keys to use within prompt, Remapping currently not supported.
 | `backspace`, `Ctrl-h`   | Delete previous char                                                    |
 | `delete`, `Ctrl-d`      | Delete next char                                                        |
 | `Ctrl-s`                | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
-| `Ctrl-p`, `Up`          | Select previous history                                                 |
-| `Ctrl-n`, `Down`        | Select next history                                                     |
-| `Alt-p`                 | Select previous history based on current input                          |
-| `Alt-n`                 | Select next history based on current input                              |
+| `Ctrl-p`, `Up`          | Select previous history containing current input                        |
+| `Ctrl-n`, `Down`        | Select next history containing current input                            |
 | `Ctrl-r`                | Insert the content of the register selected by following input char     |
 | `Tab`                   | Select next completion item                                             |
 | `BackTab`               | Select previous completion item                                         |
