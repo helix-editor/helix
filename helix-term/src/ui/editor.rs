@@ -1127,9 +1127,14 @@ impl EditorView {
                 }
 
                 let (view, doc) = current!(cxt.editor);
-                let range = doc.selection(view.id).primary();
 
-                if range.to() - range.from() <= 1 {
+                if doc
+                    .selection(view.id)
+                    .primary()
+                    .fragment(doc.text().slice(..))
+                    .width()
+                    <= 1
+                {
                     return EventResult::Ignored(None);
                 }
 
