@@ -636,13 +636,9 @@ impl Editor {
         self.syn_loader.set_scopes(scopes.to_vec());
 
         if preview {
-            if self.last_theme.is_none() {
-                // On the first preview
-                self.last_theme = Some(std::mem::replace(&mut self.theme, theme));
-            } else {
-                // Subsequent previews
-                self.theme = theme;
-            }
+            let last_theme = std::mem::replace(&mut self.theme, theme);
+            // only insert on first preview: this will be the last theme the user has saved
+            self.last_theme.get_or_insert(last_theme);
         } else {
             self.last_theme = None;
             self.theme = theme;
