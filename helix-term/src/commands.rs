@@ -2343,6 +2343,7 @@ async fn make_format_callback(
             if doc.version() == doc_version {
                 doc.apply(&Transaction::from(format), view_id);
                 doc.append_changes_to_history(view_id);
+                doc.detect_indent_and_line_ending();
                 if let Modified::SetUnmodified = modified {
                     doc.reset_modified();
                 }
