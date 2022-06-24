@@ -443,7 +443,7 @@ impl Prompt {
         let input: Cow<str> = if self.line.is_empty() {
             // latest value in the register list
             self.history_register
-                .and_then(|reg| cx.editor.registers.first(reg))
+                .and_then(|reg| cx.editor.registers.last(reg))
                 .map(|entry| entry.into())
                 .unwrap_or_else(|| Cow::from(""))
         } else {
@@ -522,7 +522,7 @@ impl Component for Prompt {
                     let input: Cow<str> = if self.line.is_empty() {
                         // latest value in the register list
                         self.history_register
-                            .and_then(|reg| cx.editor.registers.first(reg).cloned())
+                            .and_then(|reg| cx.editor.registers.last(reg).cloned())
                             .map(|entry| entry.into())
                             .unwrap_or_else(|| Cow::from(""))
                     } else {
