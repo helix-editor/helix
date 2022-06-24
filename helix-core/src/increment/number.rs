@@ -19,7 +19,7 @@ pub struct NumberIncrementor<'a> {
 }
 
 impl<'a> NumberIncrementor<'a> {
-    /// Return information about number under rang if there is one.
+    /// Return information about number under range if there is one.
     pub fn from_range(text: RopeSlice, range: Range) -> Option<NumberIncrementor> {
         // If the cursor is on the minus sign of a number we want to get the word textobject to the
         // right of it.
@@ -32,16 +32,19 @@ impl<'a> NumberIncrementor<'a> {
             range
         };
 
-        let range = textobject_word(text, range, TextObject::Inside, 1, false);
+        let word_range = textobject_word(text, range, TextObject::Inside, 1, false);
 
         // If there is a minus sign to the left of the word object, we want to include it in the range.
-        let mut range = if range.from() > 0 && text.char(range.from() - 1) == '-' {
-            range.extend(range.from() - 1, range.from())
+        let mut word_range = if word_range.from() > 0 && text.char(word_range.from() - 1) == '-' {
+            word_range.extend(word_range.from() - 1, word_range.from())
         } else {
-            range
+            word_range
         };
 
-        let word: String = text.slice(range.from()..range.to()).chars().collect();
+        let word: String = text
+            .slice(word_range.from()..word_range.to())
+            .chars()
+            .collect();
         let (radix, prefixed) = if word.starts_with("0x") {
             (16, true)
         } else if word.starts_with("0o") {
@@ -55,19 +58,48 @@ impl<'a> NumberIncrementor<'a> {
         let number = if prefixed {
             word[2..].replace('_', "")
         } else {
-            // remove prefix such as num in "num1"
-            let trimmed_start =
-                word.trim_start_matches(|c: char| !(c.is_ascii_digit() || c == '-'));
+            if !word_range.contains_range(&range) {
+                return None;
+            }
 
-            // remove suffix such as px in "1px"
-            let trimmed = trimmed_start.trim_end_matches(|c: char| !c.is_ascii_digit());
-            let chars_removed_start = word.len() - trimmed_start.len();
-            let chars_removed_end = trimmed_start.len() - trimmed.len();
-            range = Range::new(
-                range.from() + chars_removed_start,
-                range.to() - chars_removed_end,
-            );
-            trimmed.replace('_', "")
+            let len = word_range.len();
+
+            // Offsets of selection within word
+            let start_offset = range.from() - word_range.from();
+            let end_offset = range.to() - word_range.from();
+
+            // Find end of number
+            let end = word
+                .chars()
+                .enumerate()
+                .skip(end_offset)
+                .find(|(_, c)| !(c.is_ascii_digit() || *c == '_'))
+                .map(|(i, _)| i)
+                .unwrap_or(len);
+
+            let (start_byte, _) = word.char_indices().nth(start_offset).unwrap();
+            // Find start of nubmer
+            let start = word[..start_byte]
+                .chars()
+                .rev()
+                .enumerate()
+                .find(|(_, c)| !(c.is_ascii_digit() || *c == '-' || *c == '_'))
+                .map(|(i, _)| start_offset - i)
+                .unwrap_or(0);
+
+            if end < start {
+                return None;
+            }
+
+            let word = word
+                .chars()
+                .skip(start)
+                .take(end - start)
+                .filter(|c| *c != '_')
+                .collect();
+
+            word_range = Range::new(word_range.from() + start, word_range.from() + end);
+            word
         };
 
         let value = i128::from_str_radix(&number, radix).ok()?;
@@ -79,7 +111,7 @@ impl<'a> NumberIncrementor<'a> {
 
         let value = value as i64;
         Some(NumberIncrementor {
-            range,
+            range: word_range,
             value,
             radix,
             text,
