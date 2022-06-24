@@ -273,12 +273,7 @@ fn write_impl(
     let fmt = if auto_format {
         doc.auto_format().map(|fmt| {
             let shared = fmt.shared();
-            let callback = make_format_callback(
-                doc.id(),
-                doc.version(),
-                Modified::SetUnmodified,
-                shared.clone(),
-            );
+            let callback = make_format_callback(doc.id(), doc.version(), shared.clone());
             jobs.callback(callback);
             shared
         })
@@ -346,8 +341,7 @@ fn format(
 
     let doc = doc!(cx.editor);
     if let Some(format) = doc.format() {
-        let callback =
-            make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
+        let callback = make_format_callback(doc.id(), doc.version(), format);
         cx.jobs.callback(callback);
     }
 
@@ -593,12 +587,7 @@ fn write_all_impl(
         let fmt = if auto_format {
             doc.auto_format().map(|fmt| {
                 let shared = fmt.shared();
-                let callback = make_format_callback(
-                    doc.id(),
-                    doc.version(),
-                    Modified::SetUnmodified,
-                    shared.clone(),
-                );
+                let callback = make_format_callback(doc.id(), doc.version(), shared.clone());
                 jobs.callback(callback);
                 shared
             })

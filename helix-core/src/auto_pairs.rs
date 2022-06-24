@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use smallvec::SmallVec;
 
 // Heavily based on https://github.com/codemirror/closebrackets/
-
 pub const DEFAULT_PAIRS: &[(char, char)] = &[
     ('(', ')'),
     ('{', '}'),

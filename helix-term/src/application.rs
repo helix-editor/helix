@@ -253,6 +253,10 @@ impl Application {
         Ok(app)
     }
 
+    #[cfg(feature = "integration")]
+    fn render(&mut self) {}
+
+    #[cfg(not(feature = "integration"))]
     fn render(&mut self) {
         let compositor = &mut self.compositor;
 

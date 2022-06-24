@@ -2504,13 +2504,6 @@ fn insert_at_line_end(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-/// Sometimes when applying formatting changes we want to mark the buffer as unmodified, for
-/// example because we just applied the same changes while saving.
-enum Modified {
-    SetUnmodified,
-    LeaveModified,
-}
-
 // Creates an LspCallback that waits for formatting changes to be computed. When they're done,
 // it applies them, but only if the doc hasn't changed.
 //
@@ -2519,7 +2512,6 @@ enum Modified {
 async fn make_format_callback(
     doc_id: DocumentId,
     doc_version: i32,
-    modified: Modified,
     format: impl Future<Output = Result<Transaction, FormatterError>> + Send + 'static,
 ) -> anyhow::Result<job::Callback> {
     let format = format.await?;
@@ -2536,17 +2528,15 @@ async fn make_format_callback(
             doc.append_changes_to_history(view.id);
             doc.detect_indent_and_line_ending();
             view.ensure_cursor_in_view(doc, scrolloff);
-            if let Modified::SetUnmodified = modified {
-                doc.reset_modified();
-            }
         } else {
             log::info!("discarded formatting changes because the document changed");
         }
     });
+
     Ok(call)
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum Open {
     Below,
     Above,
