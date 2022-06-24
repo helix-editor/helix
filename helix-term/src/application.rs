@@ -5,7 +5,7 @@ use helix_core::{
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{align_view, editor::ConfigEvent, theme, Align, Editor};
+use helix_view::{align_view, editor::ConfigEvent, theme, tree::Layout, Align, Editor};
 use serde_json::json;
 
 use crate::{
@@ -171,19 +171,16 @@ impl Application {
                         // files will be opened according to the selected
                         // option. If neither of those two arguments are passed
                         // in, just load the files normally.
-                        let action = if args.vsplit {
-                            Action::VerticalSplit
-                        } else if args.hsplit {
-                            Action::HorizontalSplit
-                        } else {
-                            // neither vsplit nor hsplit were passed in, so just open files normally
-                            Action::Load
+                        let action = match args.split {
+                            Some(Layout::Vertical) => Action::VerticalSplit,
+                            Some(Layout::Horizontal) => Action::HorizontalSplit,
+                            None => Action::Load,
                         };
                         let doc_id = editor
                             .open(&file, action)
                             .context(format!("open '{}'", file.to_string_lossy()))?;
                         // with Action::Load all documents have the same view
-                        // NOTE: this isn't necessarily true anymore, if
+                        // NOTE: this isn't necessarily true anymore. If
                         // `--vsplit` or `--hsplit` are used, the file which is
                         // opened last is focused on.
                         let view_id = editor.tree.focus;
