@@ -39,7 +39,7 @@ pub enum Mode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize)]
-pub enum FileStat {
+pub enum WritePermission {
     Writable,
     ReadOnly,
     Unknown,
@@ -129,7 +129,7 @@ pub struct Document {
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
     /// Mode of file - currently read-only, writable, or unknown.
-    pub file_stat: FileStat,
+    pub write_permission: WritePermission,
 }
 
 use std::{fmt, fs, mem};
@@ -152,7 +152,7 @@ impl fmt::Debug for Document {
             .field("version", &self.version)
             .field("modified_since_accessed", &self.modified_since_accessed)
             .field("diagnostics", &self.diagnostics)
-            .field("file mode", &self.file_stat)
+            .field("file mode", &self.write_permission)
             // .field("language_server", &self.language_server)
             .finish()
     }
@@ -371,7 +371,7 @@ impl Document {
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_server: None,
-            file_stat: FileStat::Unknown,
+            write_permission: WritePermission::Unknown,
         }
     }
 
@@ -404,11 +404,11 @@ impl Document {
         doc.detect_indent_and_line_ending();
         // this seems overly complex but should make it easier
         // to extend doc.file_stat with more information in the future.
-        doc.file_stat = fs::metadata(path).map_or(FileStat::Unknown, |f| {
+        doc.write_permission = fs::metadata(path).map_or(WritePermission::Unknown, |f| {
             if f.permissions().readonly() {
-                FileStat::ReadOnly
+                WritePermission::ReadOnly
             } else {
-                FileStat::Writable
+                WritePermission::Writable
             }
         });
 

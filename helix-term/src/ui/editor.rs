@@ -17,7 +17,7 @@ use helix_core::{
     LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
-    document::{FileStat, Mode, SCRATCH_BUFFER_NAME},
+    document::{Mode, WritePermission, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::KeyEvent,
@@ -810,7 +810,7 @@ impl EditorView {
         // Middle / File path / Title
         //-------------------------------
         let modified = if doc.is_modified() { "[+]" } else { "" };
-        let readonly = if doc.file_stat == FileStat::ReadOnly {
+        let readonly = if doc.write_permission == WritePermission::ReadOnly {
             editor.config().read_only_indicator.to_string()
         } else {
             String::new()
