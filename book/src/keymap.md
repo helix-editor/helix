@@ -52,7 +52,7 @@
 | `A`         | Insert at the end of the line                                        | `append_to_line`          |
 | `o`         | Open new line below selection                                        | `open_below`              |
 | `O`         | Open new line above selection                                        | `open_above`              |
-| `.`         | Repeat last change                                                   | N/A                       |
+| `.`         | Repeat last insert                                                   | N/A                       |
 | `u`         | Undo change                                                          | `undo`                    |
 | `U`         | Redo change                                                          | `redo`                    |
 | `Alt-u`     | Move backward in history                                             | `earlier`                 |
