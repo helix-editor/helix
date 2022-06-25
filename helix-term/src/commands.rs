@@ -4065,15 +4065,11 @@ fn goto_ts_object_impl(cx: &mut Context, object: &str, direction: Direction) {
     };
 
     let selection = if doc.mode == Mode::Select {
-        // this works for all selection types EXCEPT moving backwards and selecting forwards to deselect
-        // also, sitting at the head of a fn and selecting forwards jumps through the next fn
-        // -- this seems to replicate on regular selects too though, so out of our scope
-        use Direction::*;
-        match (range.direction(), direction) {
-            (Forward, Forward) => Selection::single(range.anchor, new_range.anchor),
-            (Backward, Forward) => Selection::single(range.head, new_range.anchor),
-            (Forward, Backward) => Selection::single(range.anchor, new_range.head),
-            (Backward, Backward) => Selection::single(range.anchor, new_range.head),
+        if direction == range.direction() {
+            let merge = range.merge(new_range);
+            Selection::single(merge.anchor, merge.head)
+        } else {
+            Selection::single(range.anchor, new_range.head)
         }
     } else {
         Selection::single(new_range.anchor, new_range.head)

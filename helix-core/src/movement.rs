@@ -419,7 +419,7 @@ pub fn goto_treesitter_object(
 
         let node = match dir {
             Direction::Forward => nodes
-                .filter(|n| n.start_byte() > byte_pos)
+                .filter(|n| n.end_byte() > (byte_pos + 1))
                 .min_by_key(|n| n.start_byte())?,
             Direction::Backward => nodes
                 .filter(|n| n.start_byte() < byte_pos)
@@ -436,8 +436,11 @@ pub fn goto_treesitter_object(
         let start_char = slice.byte_to_char(start_byte);
         let end_char = slice.byte_to_char(end_byte);
 
-        // head of range should be at beginning
-        Some(Range::new(end_char, start_char))
+        if dir == Direction::Backward {
+            Some(Range::new(end_char, start_char))
+        } else {
+            Some(Range::new(start_char, end_char))
+        }
     };
     get_range().unwrap_or(range)
 }
