@@ -620,7 +620,7 @@ _________________________________________________________________
 
  Type f<ch> to select up to and including (find) a character.
  Type t<ch> to do the same, but not including (till) a character.
- Type uppercase F/T to do the same backwards.
+ Type uppercase F / T to do the same backwards.
 
  1. Move the cursor to the line below marked -->. Place the
     cursor on the first dash.
@@ -663,7 +663,7 @@ _________________________________________________________________
 =================================================================
 
  Type . to repeat the last insert command.
- Type A-. to repeat the f/t selection.
+ Type A-. to repeat the last f / t selection.
 
  1. Move the cursor to the line below marked -->.
  2. Make a change, insertion or appendage and repeat it with . .
@@ -685,12 +685,12 @@ _________________________________________________________________
 =================================================================
 
  * Type f / F to extend selection up to & including a character.
-  * Type t / T to extend selection until a character.
+   * Type t / T to extend selection until a character.
 
  * Type r to replace selected characters.
 
  * Type . to repeat the last insertion.
-  * Type A-. to repeat the last f / t selection.
+   * Type A-. to repeat the last f / t selection.
 
 
 
@@ -703,63 +703,19 @@ _________________________________________________________________
 
 
 =================================================================
-=                     7.1 CHANGING CASE                         =
+=                  7.1 REPLACE WITH YANKED TEXT                 =
 =================================================================
 
- Type ~ to switch the case of all selected letters.
- Type ` to set all selected letters to lowercase.
- Type Alt-` to set all selected letters to uppercase.
+ Type R to replace the selection with previously yanked text.
 
- 1. Move the cursor to the first line below marked -->.
- 2. Select each wrongly capitalised or lowercase letter
-    and type ~ over them.
- 3. Move to the second line marked -->.
- 4. Type x to select the line.
- 5. Type ` to change the line to lowercase.
- 6. Move to the third line marked -->.
- 7. Type x to select the line.
- 8. Type Alt-` to change the line to uppercase.
-
- --> thIs sENtencE hAs MIS-cApitalIsed leTTerS.
- --> this SENTENCE SHOULD all be in LOWERCASE.
- --> THIS sentence should ALL BE IN uppercase!
-
-=================================================================
-=                          7.2 MACROS                           =
-=================================================================
-
- Macros are a way to record a set of actions you want to repeat.
-
- Type Q to start recording a macro, you should see a popup at
- the bottom of your screen. Type Q again to stop recording.
- Type q to repeat your recorded macro.
-
- 1. Move the cursor to the first line below marked -->.
-    Ensure your cursor is on the > of the arrow.
- 2. Type Q to start recording.
- 3. Edit the line to look like the bottom one.
- 4. Exit insert and Type Q again to stop recording.
- 5. Move to the line below and put your cursor on the > again.
- 6. Type q to repeat the macro.
-
- --> ... sentence doesn't have it's first and last ... .
- --> ... sentence doesn't have it's first and last ... .
-     This sentence doesn't have it's first and last word.
-
-=================================================================
-=                        CHAPTER 7 RECAP                        =
-=================================================================
-
- * Type ~ to alternate case of selected letters.
-   * Use ` and alt-` to set the case of selected layers to
-     upper and lower respectively.
-
- * Type Q to record and stop recording a macro.
-   * Type q to repeat the recorded macro.
+ 1. Move the cursor to the line below marked -->.
+ 2. Type w to select "watermelons" and then y to yank it.
+ 3. Select "oranges" with w.
+ 4. Type R to replace "oranges" with "watermelons"
 
 
-
-
+ --> I like watermelons because oranges are refreshing.
+     I like watermelons because watermelons are refreshing.
 
 
 
@@ -769,51 +725,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                    8.1 USING THE JUMPLIST                     =
-=================================================================
-
- Helix can keep track of "jumps" which are big movements, like
- jumping to the definition of a function in code. It stores
- these in what's called the jumplist.
-
- Type C-s (ctrl-s) to manually save your current position to
- the jumplist.
-
- Type C-i and C-o to move forward and backwards in the jumplist
- respectively.
-
- 1. Type C-s somewhere.
- 2. Move far away in the file.
- 3. Type C-o (just once!) to come back to where you saved.
-
-
-
-
-
-=================================================================
-=                        CHAPTER 8 RECAP                        =
-=================================================================
-
- * Type C-s to save position to the jumplist.
-   * Type C-i and C-o to go forward and backward in the jumplist.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-=================================================================
-=                       9.1 JOINING LINES                       =
+=                       7.2 JOINING LINES                       =
 =================================================================
 
  Type J to join together lines in selection.
@@ -826,16 +738,16 @@ _________________________________________________________________
 is spilling over
 onto other
 lines.
+
      This sentence is spilling over onto other lines.
 
- Note: J works on all lines in selection, so typing xxx or 3x to
-       select the lines and then a single J will work the same.
+
 
 
 
 
 =================================================================
-=                      9.2 INDENTING LINES                      =
+=                      7.3 INDENTING LINES                      =
 =================================================================
 
  Type > to indent a line and < to outdent it.
@@ -857,12 +769,144 @@ lines.
 
 
 =================================================================
+=               7.4 INCREMENTING AND DECREMENTING               =
+=================================================================
+
+ Type C-a to increment the number under selection.
+ Type C-x to decrement the number under selection.
+
+ 1. Move the cursor to the third line below marked -->.
+ 2. Type C-a to increment the second point marked 2.
+ 3. Repeat for the point marked 3.
+ 4. Move to the last point and type C-x to decrement the 6.
+
+ --> 1) First point.
+ --> 2) Added point.
+ --> 2) Next point.
+ --> 3) Another point.
+ --> 6) Last point.
+
+ Note: If there isn't a number under the selection the cursor
+       will jump to the next number in the line and act on it.
+
+
+=================================================================
+=                        CHAPTER 7 RECAP                        =
+=================================================================
+
+ * Type R to replace the selection with yanked text.
+
+ * Type J to join lines in selection.
+
+ * Type < and > to indent / outdent lines.
+
+ * Type C-a to increment the selected number.
+   * Type C-x to decrement the selected number.
+
+
+
+
+
+
+
+
+
+
+=================================================================
+=                     8.1 CHANGING CASE                         =
+=================================================================
+
+ Type ~ to switch the case of all selected letters.
+ Type ` to set all selected letters to lowercase.
+ Type Alt-` to set all selected letters to uppercase.
+
+ 1. Move the cursor to the first line below marked -->.
+ 2. Select each wrongly capitalised or lowercase letter
+    and type ~ over them.
+ 3. Move to the second line marked -->.
+ 4. Type x to select the line.
+ 5. Type ` to change the line to lowercase.
+ 6. Move to the third line marked -->.
+ 7. Type x to select the line.
+ 8. Type Alt-` to change the line to uppercase.
+
+ --> thIs sENtencE hAs MIS-cApitalIsed leTTerS.
+ --> this SENTENCE SHOULD all be in LOWERCASE.
+ --> THIS sentence should ALL BE IN uppercase!
+
+=================================================================
+=                          8.2 MACROS                           =
+=================================================================
+
+ Macros are a way to record a set of actions you want to repeat.
+
+ Type Q to start recording a macro, you should see a popup at
+ the bottom of your screen. Type Q again to stop recording.
+ Type q to repeat your recorded macro.
+
+ 1. Move the cursor to the first line below marked -->.
+    Ensure your cursor is on the > of the arrow.
+ 2. Type Q to start recording.
+ 3. Edit the line to look like the bottom one.
+ 4. Exit insert and Type Q again to stop recording.
+ 5. Move to the line below and put your cursor on the > again.
+ 6. Type q to repeat the macro.
+
+ --> ... sentence doesn't have it's first and last ... .
+ --> ... sentence doesn't have it's first and last ... .
+     This sentence doesn't have it's first and last word.
+
+=================================================================
+=                        CHAPTER 8 RECAP                        =
+=================================================================
+
+ * Type ~ to alternate case of selected letters.
+   * Use ` and alt-` to set the case of selected layers to
+     upper and lower respectively.
+
+ * Type Q to record and stop recording a macro.
+   * Type q to repeat the recorded macro.
+
+
+
+
+
+
+
+
+
+
+
+
+=================================================================
+=                    9.1 USING THE JUMPLIST                     =
+=================================================================
+
+ Helix can keep track of "jumps" which are big movements, like
+ jumping to the definition of a function in code. It stores
+ these in what's called the jumplist.
+
+ Type C-s (ctrl-s) to manually save your current position to
+ the jumplist.
+
+ Type C-i and C-o to move forward and backwards in the jumplist
+ respectively.
+
+ 1. Type C-s somewhere.
+ 2. Move far away in the file.
+ 3. Type C-o (just once!) to come back to where you saved.
+
+
+
+
+
+=================================================================
 =                        CHAPTER 9 RECAP                        =
 =================================================================
 
- * Type J to join lines within selection.
+ * Type C-s to save position to the jumplist.
+   * Type C-i and C-o to go forward and backward in the jumplist.
 
- * Type > and < to indent and outdent selected lines.
 
 
 
