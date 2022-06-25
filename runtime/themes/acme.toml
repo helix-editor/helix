@@ -5,6 +5,7 @@
 "ui.selection" = {bg="selected"}
 "ui.statusline" = {bg="acme_bar_bg"}
 "ui.statusline.inactive" = {bg="acme_bar_inactive"}
+"ui.virtual" = "indent"
 "ui.cursor.match" = {bg="acme_bar_bg"}
 "ui.cursor" = {bg="cursor", fg="white"}
 "string" = "red"
@@ -24,3 +25,4 @@ acme_bar_inactive = "#eaffff"
 cursor = "#444444"
 red = "#a0342f"
 green = "#065905"
+indent = "#aaaaaa"
