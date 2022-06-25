@@ -879,7 +879,29 @@ lines.
 
 
 =================================================================
-=                     9.1 CHANGING CASE                         =
+=                  9.1 SEARCHING FOR SELECTIONS                 =
+=================================================================
+
+ The most recent search with / is stored in register /.
+ n and N both refer to register /, this means we can set that
+ register without having to type in a search.
+
+ Type * to copy the primary selection into register /, setting
+ the search term to the selection.
+
+ 1. Move the cursor to the line below marked -->.
+ 2. Select "horse" with e and type *.
+ 3. Use n and N to jump between the instances of "horse".
+
+ --> A horse is a horse, of course, of course,
+ --> And no one can talk to a horse of course.
+
+ Note: * is like a shorthand for "/ y as all it really does is
+       copy the selection into the / register.
+
+
+=================================================================
+=                     10.1 CHANGING CASE                        =
 =================================================================
 
  Type ~ to switch the case of all selected letters.
@@ -901,7 +923,7 @@ lines.
  --> THIS sentence should ALL BE IN uppercase!
 
 =================================================================
-=                        CHAPTER 9 RECAP                        =
+=                        CHAPTER 10 RECAP                       =
 =================================================================
 
  * Type ~ to alternate case of selected letters.
@@ -923,7 +945,7 @@ lines.
 
 
 =================================================================
-=                    10.1 USING THE JUMPLIST                    =
+=                    11.1 USING THE JUMPLIST                    =
 =================================================================
 
  Helix can keep track of "jumps" which are big movements, like
@@ -945,7 +967,7 @@ lines.
 
 
 =================================================================
-=                        CHAPTER 10 RECAP                       =
+=                        CHAPTER 11 RECAP                       =
 =================================================================
 
  * Type C-s to save position to the jumplist.
