@@ -96,6 +96,9 @@ pub struct Document {
     /// Current indent style.
     pub indent_style: IndentStyle,
 
+    /// An override of the language-specified tab width.
+    pub tab_width_override: Option<usize>,
+
     /// The document's default line ending.
     pub line_ending: LineEnding,
 
@@ -347,6 +350,7 @@ impl Document {
             text,
             selections: HashMap::default(),
             indent_style: DEFAULT_INDENT,
+            tab_width_override: None,
             line_ending: DEFAULT_LINE_ENDING,
             mode: Mode::Normal,
             restore_cursor: false,
@@ -420,6 +424,9 @@ impl Document {
         } else {
             doc.detect_line_ending_impl();
         }
+
+        // Set the tab width.
+        doc.tab_width_override = config.tab_width;
 
         Ok(doc)
     }
@@ -955,9 +962,13 @@ impl Document {
 
     /// Tab size in columns.
     pub fn tab_width(&self) -> usize {
-        self.language_config()
-            .and_then(|config| config.indent.as_ref())
-            .map_or(4, |config| config.tab_width) // fallback to 4 columns
+        if let Some(width) = self.tab_width_override {
+            width
+        } else {
+            self.language_config()
+                .and_then(|config| config.indent.as_ref())
+                .map_or(4, |config| config.tab_width) // fallback to 4 columns
+        }
     }
 
     /// Returns a string containing a single level of indentation.
@@ -1076,6 +1087,7 @@ pub struct Config {
     pub encoding: Option<&'static encoding::Encoding>,
     pub line_ending: Option<LineEnding>,
     pub indent_style: Option<IndentStyle>,
+    pub tab_width: Option<usize>,
 }
 
 impl Config {
@@ -1087,6 +1099,7 @@ impl Config {
             encoding: self.encoding.or(other.encoding),
             line_ending: self.line_ending.or(other.line_ending),
             indent_style: self.indent_style.or(other.indent_style),
+            tab_width: self.tab_width.or(other.tab_width),
         }
     }
 
@@ -1103,7 +1116,9 @@ impl Config {
         let mut ecfg = ec4rs::properties_of(for_file_at)?;
         ecfg.use_fallbacks();
 
-        use ec4rs::property::{Charset, EndOfLine, IndentSize, IndentStyle as EcIndentStyle};
+        use ec4rs::property::{
+            Charset, EndOfLine, IndentSize, IndentStyle as EcIndentStyle, TabWidth,
+        };
         Ok(Config {
             encoding: ecfg
                 .get_raw::<Charset>()
@@ -1123,6 +1138,10 @@ impl Config {
                 Ok(EndOfLine::Cr) => Some(LineEnding::CR),
                 Ok(EndOfLine::Lf) => Some(LineEnding::LF),
                 Ok(EndOfLine::CrLf) => Some(LineEnding::Crlf),
+                _ => None,
+            },
+            tab_width: match ecfg.get::<TabWidth>() {
+                Ok(TabWidth::Value(v)) => Some(v),
                 _ => None,
             },
         })
