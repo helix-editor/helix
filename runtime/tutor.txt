@@ -346,10 +346,9 @@ _________________________________________________________________
  --> 5) Clocks tell time,
  --> 6) Sugar is sweet,
  --> 7) And so are you.
+
  Note : X works similarly to x although it doesn't extend to
       subsequent lines. X on an empty line does nothing.
-
-
 
 =================================================================
 =                   3.7 COLLAPSING SELECTIONS                   =
@@ -555,7 +554,8 @@ _________________________________________________________________
 
  Type & to align the contents of the selections.
 
- 1. Move the cursor to the first line below marked -->.
+ 1. Move the cursor to the first line below marked -->. Place
+    the cursor on the whitespace just after the arrow.
  2. Type C four times or 4C.
  3. Type W to select the numbers and brackets.
  4. Type & to align the words.
@@ -566,10 +566,9 @@ _________________________________________________________________
  --> 100) sit
  --> 101) amet
 
-
-
-
-
+ Note: & only cares about the alignment of the "head" of the
+       selections - the end that moves. The other end is called
+       the "anchor".
 
 =================================================================
 =                 5.5 SPLIT SELECTION INTO LINES                =
