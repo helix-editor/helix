@@ -2343,7 +2343,8 @@ async fn make_format_callback(
     Ok(call)
 }
 
-enum Open {
+#[derive(PartialEq)]
+pub enum Open {
     Below,
     Above,
 }

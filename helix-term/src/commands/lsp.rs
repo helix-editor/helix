@@ -4,7 +4,7 @@ use helix_lsp::{
     OffsetEncoding,
 };
 
-use super::{align_view, push_jump, Align, Context, Editor};
+use super::{align_view, push_jump, Align, Context, Editor, Open};
 
 use helix_core::Selection;
 use helix_view::editor::Action;
@@ -12,8 +12,7 @@ use helix_view::editor::Action;
 use crate::{
     compositor::{self, Compositor},
     ui::{
-        self, lsp::SignatureHelp, overlay::overlayed, popup, FileLocation, FilePicker, Popup,
-        PromptEvent,
+        self, lsp::SignatureHelp, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent,
     },
 };
 
@@ -725,7 +724,7 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
             let old_popup = compositor.find_id::<Popup<SignatureHelp>>(SignatureHelp::ID);
             let popup = Popup::new(SignatureHelp::ID, contents)
                 .position(old_popup.and_then(|p| p.get_position()))
-                .position_bias(popup::PositionBias::Above);
+                .position_bias(Open::Above);
             compositor.replace_or_push(SignatureHelp::ID, popup);
         },
     );

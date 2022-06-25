@@ -1,4 +1,5 @@
 use crate::{
+    commands::Open,
     compositor::{Callback, Component, Context, EventResult},
     ctrl, key,
 };
@@ -11,19 +12,13 @@ use helix_view::graphics::{Margin, Rect};
 // TODO: share logic with Menu, it's essentially Popup(render_fn), but render fn needs to return
 // a width/height hint. maybe Popup(Box<Component>)
 
-#[derive(PartialEq)]
-pub enum PositionBias {
-    Above,
-    Below,
-}
-
 pub struct Popup<T: Component> {
     contents: T,
     position: Option<Position>,
     margin: Margin,
     size: (u16, u16),
     child_size: (u16, u16),
-    position_bias: PositionBias,
+    position_bias: Open,
     scroll: usize,
     auto_close: bool,
     id: &'static str,
@@ -39,7 +34,7 @@ impl<T: Component> Popup<T> {
                 horizontal: 0,
             },
             size: (0, 0),
-            position_bias: PositionBias::Below,
+            position_bias: Open::Below,
             child_size: (0, 0),
             scroll: 0,
             auto_close: false,
@@ -56,7 +51,7 @@ impl<T: Component> Popup<T> {
         self.position
     }
 
-    pub fn position_bias(mut self, bias: PositionBias) -> Self {
+    pub fn position_bias(mut self, bias: Open) -> Self {
         self.position_bias = bias;
         self
     }
@@ -92,19 +87,19 @@ impl<T: Component> Popup<T> {
         let can_put_below = viewport.height > rel_y + height;
         let can_put_above = rel_y.checked_sub(height).is_some();
         let final_pos = match self.position_bias {
-            PositionBias::Below => match can_put_below {
-                true => PositionBias::Below,
-                false => PositionBias::Above,
+            Open::Below => match can_put_below {
+                true => Open::Below,
+                false => Open::Above,
             },
-            PositionBias::Above => match can_put_above {
-                true => PositionBias::Above,
-                false => PositionBias::Below,
+            Open::Above => match can_put_above {
+                true => Open::Above,
+                false => Open::Below,
             },
         };
 
         rel_y = match final_pos {
-            PositionBias::Above => rel_y.saturating_sub(height),
-            PositionBias::Below => rel_y + 1,
+            Open::Above => rel_y.saturating_sub(height),
+            Open::Below => rel_y + 1,
         };
 
         (rel_x, rel_y)

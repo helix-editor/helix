@@ -658,10 +658,8 @@ impl Client {
     ) -> Option<impl Future<Output = Result<Value>>> {
         let capabilities = self.capabilities.get().unwrap();
 
-        #[allow(clippy::question_mark)]
-        if capabilities.signature_help_provider.is_none() {
-            return None;
-        }
+        // Return early if signature help is not supported
+        capabilities.signature_help_provider.as_ref()?;
 
         let params = lsp::SignatureHelpParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
