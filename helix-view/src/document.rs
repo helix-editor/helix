@@ -97,7 +97,7 @@ pub struct Document {
     pub indent_style: IndentStyle,
 
     /// An override of the language-specified tab width.
-    pub tab_width_override: Option<usize>,
+    tab_width_override: Option<usize>,
 
     /// The document's default line ending.
     pub line_ending: LineEnding,
@@ -969,6 +969,15 @@ impl Document {
                 .and_then(|config| config.indent.as_ref())
                 .map_or(4, |config| config.tab_width) // fallback to 4 columns
         }
+    }
+
+    /// Sets the tab size in columns.
+    ///
+    /// If `None` is passed, then [Document::tab_width]
+    /// will return the value specified by the language configuration
+    /// for this document.
+    pub fn set_tab_width(&mut self, tab_width_override: Option<usize>) {
+        self.tab_width_override = tab_width_override;
     }
 
     /// Returns a string containing a single level of indentation.
