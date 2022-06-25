@@ -658,17 +658,39 @@ _________________________________________________________________
 
 
 
-================================================================
+=================================================================
+=                         6.3 REPITITION                        =
+=================================================================
+
+ Type . to repeat the last insert command.
+ Type A-. to repeat the f/t selection.
+
+ 1. Move the cursor to the line below marked -->.
+ 2. Make a change, insertion or appendage and repeat it with . .
+ 3. Try using A-. with f and t, to select multiple sentences for
+    instance.
+
+ This is some text for you to repeat things. You can repeat
+ insertions like changing words, or repeat selections like f/t.
+
+
+
+
+
+
+
+
+=================================================================
 =                        CHAPTER 6 RECAP                        =
 =================================================================
 
  * Type f / F to extend selection up to & including a character.
-
- * Type t / T to extend selection until a character.
+  * Type t / T to extend selection until a character.
 
  * Type r to replace selected characters.
 
-
+ * Type . to repeat the last insertion.
+  * Type A-. to repeat the last f / t selection.
 
 
 
