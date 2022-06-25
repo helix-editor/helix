@@ -417,10 +417,12 @@ pub fn goto_treesitter_object(
             &mut cursor,
         )?;
 
+        // dbg!(nodes);
+
         let node = match dir {
             Direction::Forward => nodes
                 .filter(|n| n.end_byte() > (byte_pos + 1))
-                .min_by_key(|n| n.start_byte())?,
+                .min_by_key(|n| n.end_byte())?,
             Direction::Backward => nodes
                 .filter(|n| n.start_byte() < byte_pos)
                 .max_by_key(|n| n.start_byte())?,
