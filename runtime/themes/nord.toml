@@ -4,7 +4,7 @@
 "ui.text.focus" = { fg = "nord8", modifiers= ["bold"] }
 "ui.menu" = { fg = "nord6", bg = "#232d38" }
 "ui.menu.selected" = { fg = "nord8", bg = "nord2" }
-"ui.virtual" = "gray"
+"ui.virtual.whitespace" = "gray"
 
 "info" = "nord8"
 "hint" = "nord8"

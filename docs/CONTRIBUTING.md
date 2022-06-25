@@ -35,3 +35,10 @@ to `cargo install` anything either).
 [architecture.md]: ./architecture.md
 [docs]: https://docs.helix-editor.com/
 [xtask]: https://github.com/matklad/cargo-xtask
+
+# Integration tests
+
+Integration tests for helix-term can be run with `cargo integration-test`. Code
+contributors are strongly encouraged to write integration tests for their code.
+Existing tests can be used as examples. Helpers can be found in
+[helpers.rs][../helix-term/tests/test/helpers.rs].
