@@ -1,0 +1,28 @@
+# Author: Two-Six<twopsix@duck.com>
+
+"ui.background" = {bg="acme_bg"}
+"ui.text" = "black"
+"ui.selection" = {bg="selected"}
+"ui.statusline" = {bg="acme_bar_bg"}
+"ui.statusline.inactive" = {bg="acme_bar_inactive"}
+"ui.virtual" = "indent"
+"ui.cursor.match" = {bg="acme_bar_bg"}
+"ui.cursor" = {bg="cursor", fg="white"}
+"string" = "red"
+"comment" = "green"
+"ui.menu.selected" = {bg="selected"}
+"diagnostic.error" = {bg="white", modifiers=["bold"]}
+"diagnostic.warning" = {bg="white", modifiers=["bold"]}
+"diagnostic.hint" = {bg="white", modifiers=["bold"]}
+
+[palette]
+white = "#ffffff"
+acme_bg = "#ffffea"
+black = "#000000"
+selected = "#eeee9e"
+acme_bar_bg = "#aeeeee"
+acme_bar_inactive = "#eaffff"
+cursor = "#444444"
+red = "#a0342f"
+green = "#065905"
+indent = "#aaaaaa"
