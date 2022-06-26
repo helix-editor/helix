@@ -425,7 +425,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "nickel"
-source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "c4dd1420b6cfeb6103d38eb1ce5195eb81197edc" }
+source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "9a502ea2e774df3d743a48310bb40e1cc097c86e" }
 
 [[language]]
 name = "nix"
@@ -787,6 +787,7 @@ scope = "source.wgsl"
 file-types = ["wgsl"]
 roots = []
 comment-token = "//"
+language-server = { command = "wgsl_analyzer" }
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]

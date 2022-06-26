@@ -665,15 +665,13 @@ impl EditorView {
 
         let mut lines = Vec::new();
         for diagnostic in diagnostics {
-            let text = Text::styled(
-                &diagnostic.message,
-                match diagnostic.severity {
-                    Some(Severity::Error) => error,
-                    Some(Severity::Warning) | None => warning,
-                    Some(Severity::Info) => info,
-                    Some(Severity::Hint) => hint,
-                },
-            );
+            let style = Style::reset().patch(match diagnostic.severity {
+                Some(Severity::Error) => error,
+                Some(Severity::Warning) | None => warning,
+                Some(Severity::Info) => info,
+                Some(Severity::Hint) => hint,
+            });
+            let text = Text::styled(&diagnostic.message, style);
             lines.extend(text.lines);
         }
 
@@ -1129,9 +1127,14 @@ impl EditorView {
                 }
 
                 let (view, doc) = current!(cxt.editor);
-                let range = doc.selection(view.id).primary();
 
-                if range.to() - range.from() <= 1 {
+                if doc
+                    .selection(view.id)
+                    .primary()
+                    .fragment(doc.text().slice(..))
+                    .width()
+                    <= 1
+                {
                     return EventResult::Ignored(None);
                 }
 
