@@ -219,6 +219,9 @@ These scopes are used for theming the editor interface.
 | `ui.linenr.selected`      | Line number for the line the cursor is on      |
 | `ui.statusline`           | Statusline                                     |
 | `ui.statusline.inactive`  | Statusline (unfocused document)                |
+| `ui.statusline.normal`    | Statusline mode during normal mode ([only if `editor.color-modes` is enabled][editor-section]) |
+| `ui.statusline.insert`    | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
+| `ui.statusline.select`    | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.popup`                | Documentation popups (e.g space-k)             |
 | `ui.popup.info`           | Prompt for multiple key options                |
 | `ui.window`               | Border lines separating splits                 |
@@ -226,7 +229,7 @@ These scopes are used for theming the editor interface.
 | `ui.text`                 | Command prompts, popup text, etc.              |
 | `ui.text.focus`           |                                                |
 | `ui.text.info`            | The key: command text in `ui.popup.info` boxes |
-| `ui.virtual.ruler`        | Ruler columns (see the [`editor.rulers` config][rulers-config])|
+| `ui.virtual.ruler`        | Ruler columns (see the [`editor.rulers` config][editor-section])|
 | `ui.virtual.whitespace`   | Visible white-space characters                 |
 | `ui.virtual.indent-guide` | Vertical indent width guides                   |
 | `ui.menu`                 | Code and command completion menus              |
@@ -243,4 +246,4 @@ These scopes are used for theming the editor interface.
 | `diagnostic.warning`      | Diagnostics warning (editing area)             |
 | `diagnostic.error`        | Diagnostics error (editing area)               |
 
-[rulers-config]: ./configuration.md#editor-section
+[editor-section]: ./configuration.md#editor-section
