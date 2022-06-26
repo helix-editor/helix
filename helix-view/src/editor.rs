@@ -642,13 +642,9 @@ impl Editor {
 
         match preview {
             ThemeAction::Preview => {
-                if self.last_theme.is_none() {
-                    // On the first preview
-                    self.last_theme = Some(std::mem::replace(&mut self.theme, theme));
-                } else {
-                    // Subsequent previews
-                    self.theme = theme;
-                }
+                let last_theme = std::mem::replace(&mut self.theme, theme);
+                // only insert on first preview: this will be the last theme the user has saved
+                self.last_theme.get_or_insert(last_theme);
             }
             ThemeAction::Set => {
                 self.last_theme = None;
