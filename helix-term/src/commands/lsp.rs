@@ -158,12 +158,12 @@ fn diag_picker(
 ) -> FilePicker<(lsp::Url, lsp::Diagnostic)> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
 
-    // flatten the map to a vec of (uri, diag) pairs
+    // flatten the map to a vec of (url, diag) pairs
     let mut flat_diag = Vec::new();
-    for (u, diags) in diagnostics {
+    for (url, diags) in diagnostics {
         flat_diag.reserve(diags.len());
-        for d in diags {
-            flat_diag.push((u.clone(), d));
+        for diag in diags {
+            flat_diag.push((url.clone(), diag));
         }
     }
 
