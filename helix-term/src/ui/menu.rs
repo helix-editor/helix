@@ -48,6 +48,8 @@ pub struct Menu<T: Item> {
 }
 
 impl<T: Item> Menu<T> {
+    const LEFT_PADDING: usize = 1;
+
     // TODO: it's like a slimmed down picker, share code? (picker = menu + prompt with different
     // rendering)
     pub fn new(
@@ -150,6 +152,7 @@ impl<T: Item> Menu<T> {
             len += 1; // +1: reserve some space for scrollbar
         }
 
+        len += Self::LEFT_PADDING;
         let width = len.min(viewport.0 as usize);
 
         self.widths = max_lens
@@ -271,6 +274,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             .try_get("ui.menu")
             .unwrap_or_else(|| theme.get("ui.text"));
         let selected = theme.get("ui.menu.selected");
+        surface.clear_with(area, style);
 
         let scroll = self.scroll;
 
@@ -306,13 +310,19 @@ impl<T: Item + 'static> Component for Menu<T> {
         use tui::widgets::TableState;
 
         table.render_table(
-            area,
+            area.clip_left(Self::LEFT_PADDING as u16),
             surface,
             &mut TableState {
                 offset: scroll,
                 selected: self.cursor,
             },
         );
+
+        if let Some(cursor) = self.cursor {
+            let offset_from_top = cursor - scroll;
+            let cell = &mut surface[(area.x, area.y + offset_from_top as u16)];
+            cell.set_style(selected);
+        }
 
         let fits = len <= win_height;
 
