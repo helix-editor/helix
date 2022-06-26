@@ -417,8 +417,6 @@ pub fn goto_treesitter_object(
             &mut cursor,
         )?;
 
-        // dbg!(nodes);
-
         let node = match dir {
             Direction::Forward => nodes
                 .filter(|n| n.end_byte() > (byte_pos + 1))
@@ -438,10 +436,11 @@ pub fn goto_treesitter_object(
         let start_char = slice.byte_to_char(start_byte);
         let end_char = slice.byte_to_char(end_byte);
 
-        if dir == Direction::Backward {
-            Some(Range::new(end_char, start_char))
-        } else {
-            Some(Range::new(start_char, end_char))
+        let new_range = Range::new(start_char, end_char);
+
+        match dir {
+            Direction::Forward => Some(new_range),
+            Direction::Backward => Some(new_range.flip()),
         }
     };
     get_range().unwrap_or(range)
