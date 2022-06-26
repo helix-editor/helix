@@ -497,6 +497,11 @@ pub enum ConfigEvent {
     Update(Box<Config>),
 }
 
+enum ThemeAction {
+    Set,
+    Preview,
+}
+
 #[derive(Debug, Clone)]
 pub struct CompleteAction {
     pub trigger_offset: usize,
@@ -618,14 +623,14 @@ impl Editor {
     }
 
     pub fn set_theme_preview(&mut self, theme: Theme) {
-        self.set_theme_impl(theme, true);
+        self.set_theme_impl(theme, ThemeAction::Preview);
     }
 
     pub fn set_theme(&mut self, theme: Theme) {
-        self.set_theme_impl(theme, false);
+        self.set_theme_impl(theme, ThemeAction::Set);
     }
 
-    fn set_theme_impl(&mut self, theme: Theme, preview: bool) {
+    fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) {
         // `ui.selection` is the only scope required to be able to render a theme.
         if theme.find_scope_index("ui.selection").is_none() {
             self.set_error("Invalid theme: `ui.selection` required");
@@ -635,17 +640,20 @@ impl Editor {
         let scopes = theme.scopes();
         self.syn_loader.set_scopes(scopes.to_vec());
 
-        if preview {
-            if self.last_theme.is_none() {
-                // On the first preview
-                self.last_theme = Some(std::mem::replace(&mut self.theme, theme));
-            } else {
-                // Subsequent previews
+        match preview {
+            ThemeAction::Preview => {
+                if self.last_theme.is_none() {
+                    // On the first preview
+                    self.last_theme = Some(std::mem::replace(&mut self.theme, theme));
+                } else {
+                    // Subsequent previews
+                    self.theme = theme;
+                }
+            }
+            ThemeAction::Set => {
+                self.last_theme = None;
                 self.theme = theme;
             }
-        } else {
-            self.last_theme = None;
-            self.theme = theme;
         }
 
         self._refresh();
