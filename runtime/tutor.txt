@@ -901,6 +901,28 @@ lines.
 
 
 =================================================================
+=           9.2 ADDING SELECTION ON NEXT SEARCH MATCH           =
+=================================================================
+
+ A property of select mode (v) when using n and N is that instead
+ of moving the selection to the next match, it adds a new
+ selection on each match.
+
+ 1. Move the cursor to the line below marked -->.
+ 2. Select the first "bat" and type * to set it to search.
+ 3. Type v to enter select mode.
+ 4. Type n twice to select the next two "bat"s.
+ 5. Use c or r to change every "bat" to "cat".
+
+ --> Everybody wants to be a bat,
+ --> because a bat's the only bat
+ --> who knows where it's at.
+
+
+
+
+
+=================================================================
 =                     10.1 CHANGING CASE                        =
 =================================================================
 
