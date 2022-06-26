@@ -158,6 +158,8 @@ pub struct Config {
     pub whitespace: WhitespaceConfig,
     /// Vertical indent width guides.
     pub indent_guides: IndentGuidesConfig,
+    /// Whether to color modes with different colors. Defaults to `false`.
+    pub color_modes: bool,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -410,6 +412,7 @@ impl Default for Config {
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
             indent_guides: IndentGuidesConfig::default(),
+            color_modes: false,
         }
     }
 }
