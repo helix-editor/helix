@@ -165,6 +165,8 @@ pub struct LspConfig {
     pub display_messages: bool,
     /// Enable automatic pop up of signature help (parameter hints)
     pub auto_signature_help: bool,
+    /// Display docs under signature help popup
+    pub display_signature_help_docs: bool,
 }
 
 impl Default for LspConfig {
@@ -172,6 +174,7 @@ impl Default for LspConfig {
         Self {
             display_messages: false,
             auto_signature_help: true,
+            display_signature_help_docs: true,
         }
     }
 }

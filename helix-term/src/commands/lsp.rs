@@ -662,7 +662,9 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
     cx.callback(
         future,
         move |editor, compositor, response: Option<lsp::SignatureHelp>| {
-            if !(editor.config().lsp.auto_signature_help
+            let config = &editor.config();
+
+            if !(config.lsp.auto_signature_help
                 || SignatureHelp::visible_popup(compositor).is_some()
                 || was_manually_invoked)
             {
@@ -697,10 +699,15 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
                 Arc::clone(&editor.syn_loader),
             );
 
-            let signature_doc = signature.documentation.as_ref().map(|doc| match doc {
-                lsp::Documentation::String(s) => s.clone(),
-                lsp::Documentation::MarkupContent(markup) => markup.value.clone(),
-            });
+            let signature_doc = if config.lsp.display_signature_help_docs {
+                signature.documentation.as_ref().map(|doc| match doc {
+                    lsp::Documentation::String(s) => s.clone(),
+                    lsp::Documentation::MarkupContent(markup) => markup.value.clone(),
+                })
+            } else {
+                None
+            };
+
             contents.set_signature_doc(signature_doc);
 
             let active_param_range = || -> Option<(usize, usize)> {

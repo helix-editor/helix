@@ -51,7 +51,8 @@ hidden = false
 | Key                   | Description                                                 | Default |
 | ---                   | -----------                                                 | ------- |
 | `display-messages`    | Display LSP progress messages below statusline[^1]          | `false` |
-| `auto-signature-help` | Enable automatic pop up of signature help (parameter hints) | `true`  |
+| `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
+| `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
 
 [^1]: A progress spinner is always shown in the statusline beside the file path.
 

@@ -153,7 +153,7 @@ impl<T: Component> Component for Popup<T> {
         };
 
         if key!(Esc) == key.into() && self.ignore_escape_key {
-            return EventResult::Ignored(None)
+            return EventResult::Ignored(None);
         }
 
         let close_fn: Callback = Box::new(|compositor, _| {
