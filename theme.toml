@@ -65,6 +65,7 @@ label = "honey"
 "ui.cursor.insert" = { bg = "white" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
 "ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursorline.primary" = { bg = "bossanova" }
 "ui.highlight" = { bg = "bossanova" }
 
 "ui.menu" = { fg = "lavender", bg = "revolver" }
