@@ -47,6 +47,8 @@ diagnostic = { modifiers = ["underlined"] }
 "error" = { fg = "red", modifiers = ["bold"] }
 
 "ui.background" = { bg = "black" }
+"ui.virtual" = { fg = "faint-gray" }
+"ui.virtual.indent-guide" = { fg = "faint-gray" }
 "ui.virtual.whitespace" = { fg = "light-gray" }
 "ui.virtual.ruler" = { bg = "gray" }
 
@@ -71,6 +73,7 @@ diagnostic = { modifiers = ["underlined"] }
 "ui.window" = { bg = "gray" }
 "ui.menu" = { fg = "white", bg = "gray" }
 "ui.menu.selected" = { fg = "black", bg = "blue" }
+"ui.menu.scroll" = { fg = "white", bg = "light-gray" }
 
 [palette]
 
@@ -85,5 +88,6 @@ white = "#ABB2BF"
 black = "#282C34"
 light-black = "#2C323C"
 gray = "#3E4452"
+faint-gray = "#3B4048"
 light-gray = "#5C6370"
 linenr = "#4B5263"

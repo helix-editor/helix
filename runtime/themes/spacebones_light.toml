@@ -64,7 +64,7 @@
 "ui.cursor.match" = { bg = "bg3" }
 "ui.menu" = { fg = "fg1", bg = "bg2" }
 "ui.menu.selected" = { fg = "#655370", bg = "#d1dcdf", modifiers = ["bold"] }
-"ui.virtual" = "bg2"
+"ui.virtual.whitespace" = "bg2"
 
 "diagnostic" = { modifiers = ["underlined"] }
 

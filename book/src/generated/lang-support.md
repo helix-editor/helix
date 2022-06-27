@@ -4,6 +4,7 @@
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ |  |  | `OmniSharp` |
 | cairo | ✓ |  |  |  |
+| clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
 | cpon | ✓ |  | ✓ |  |
@@ -97,6 +98,6 @@
 | vala | ✓ |  |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |
 | vue | ✓ |  |  | `vls` |
-| wgsl | ✓ |  |  |  |
+| wgsl | ✓ |  |  | `wgsl_analyzer` |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |
 | zig | ✓ |  | ✓ | `zls` |

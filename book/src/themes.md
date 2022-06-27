@@ -228,8 +228,10 @@ These scopes are used for theming the editor interface.
 | `ui.text.info`            | The key: command text in `ui.popup.info` boxes |
 | `ui.virtual.ruler`        | Ruler columns (see the [`editor.rulers` config][rulers-config])|
 | `ui.virtual.whitespace`   | Visible white-space characters                 |
+| `ui.virtual.indent-guide` | Vertical indent width guides                   |
 | `ui.menu`                 | Code and command completion menus              |
 | `ui.menu.selected`        | Selected autocomplete item                     |
+| `ui.menu.scroll`          | `fg` sets thumb color, `bg` sets track color of scrollbar |
 | `ui.selection`            | For selections in the editing area             |
 | `ui.selection.primary`    |                                                |
 | `warning`                 | Diagnostics warning (gutter)                   |

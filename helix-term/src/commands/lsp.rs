@@ -63,7 +63,14 @@ fn jump_to_location(
             return;
         }
     };
-    let _id = editor.open(path, action).expect("editor.open failed");
+    match editor.open(&path, action) {
+        Ok(_) => (),
+        Err(err) => {
+            let err = format!("failed to open path: {:?}: {:?}", location.uri, err);
+            editor.set_error(err);
+            return;
+        }
+    }
     let (view, doc) = current!(editor);
     let definition_pos = location.range.start;
     // TODO: convert inside server
@@ -116,7 +123,7 @@ fn sym_picker(
                         return;
                     }
                 };
-                if let Err(err) = cx.editor.open(path, action) {
+                if let Err(err) = cx.editor.open(&path, action) {
                     let err = format!("failed to open document: {}: {}", uri, err);
                     log::error!("{}", err);
                     cx.editor.set_error(err);
@@ -289,10 +296,8 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup = Popup::new("code-action", picker).margin(helix_view::graphics::Margin {
-                vertical: 1,
-                horizontal: 1,
-            });
+            let popup =
+                Popup::new("code-action", picker).margin(helix_view::graphics::Margin::all(1));
             compositor.replace_or_push("code-action", popup);
         },
     )
@@ -387,7 +392,7 @@ pub fn apply_workspace_edit(
         };
 
         let current_view_id = view!(editor).id;
-        let doc_id = match editor.open(path, Action::Load) {
+        let doc_id = match editor.open(&path, Action::Load) {
             Ok(doc_id) => doc_id,
             Err(err) => {
                 let err = format!("failed to open document: {}: {}", uri, err);
@@ -495,7 +500,7 @@ fn goto_impl(
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
 ) {
-    let cwdir = std::env::current_dir().expect("couldn't determine current directory");
+    let cwdir = std::env::current_dir().unwrap_or_default();
 
     match locations.as_slice() {
         [location] => {
@@ -737,6 +742,7 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
         },
     );
 }
+
 pub fn hover(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
@@ -786,6 +792,7 @@ pub fn hover(cx: &mut Context) {
         },
     );
 }
+
 pub fn rename_symbol(cx: &mut Context) {
     ui::prompt(
         cx,
@@ -808,6 +815,47 @@ pub fn rename_symbol(cx: &mut Context) {
                 Ok(edits) => apply_workspace_edit(cx.editor, offset_encoding, &edits),
                 Err(err) => cx.editor.set_error(err.to_string()),
             }
+        },
+    );
+}
+
+pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = doc.position(view.id, offset_encoding);
+
+    let future = language_server.text_document_document_highlight(doc.identifier(), pos, None);
+
+    cx.callback(
+        future,
+        move |editor, _compositor, response: Option<Vec<lsp::DocumentHighlight>>| {
+            let document_highlights = match response {
+                Some(highlights) if !highlights.is_empty() => highlights,
+                _ => return,
+            };
+            let (view, doc) = current!(editor);
+            let language_server = language_server!(editor, doc);
+            let offset_encoding = language_server.offset_encoding();
+            let text = doc.text();
+            let pos = doc.selection(view.id).primary().head;
+
+            // We must find the range that contains our primary cursor to prevent our primary cursor to move
+            let mut primary_index = 0;
+            let ranges = document_highlights
+                .iter()
+                .filter_map(|highlight| lsp_range_to_range(text, highlight.range, offset_encoding))
+                .enumerate()
+                .map(|(i, range)| {
+                    if range.contains(pos) {
+                        primary_index = i;
+                    }
+                    range
+                })
+                .collect();
+            let selection = Selection::new(ranges, primary_index);
+            doc.set_selection(view.id, selection);
         },
     );
 }

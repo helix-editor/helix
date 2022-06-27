@@ -49,6 +49,9 @@
   (quoted_attribute_value)
 ] @string
 
+; HEEx special attributes are keywords
+(special_attribute_name) @keyword
+
 ; HEEx components are highlighted as Elixir modules and functions
 (component_name
   [

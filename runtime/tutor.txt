@@ -20,7 +20,6 @@ _________________________________________________________________
  the first lesson.
 
 
-
 =================================================================
 =                  1.1 BASIC CURSOR MOVEMENT                    =
 =================================================================
@@ -36,6 +35,10 @@ _________________________________________________________________
  to use the hjkl keys as they are closer to the other keys you
  will be using. Try moving around to get a feel for hjkl.
  Once you're ready, hold j to continue to the next lesson.
+
+
+
+
 
 
 
@@ -57,6 +60,10 @@ _________________________________________________________________
 
 
 
+
+
+
+
 =================================================================
 =                         1.3 DELETION                          =
 =================================================================
@@ -71,6 +78,10 @@ _________________________________________________________________
      This sentence has extra characters.
 
  Once the sentence is correct, move on to the next lesson.
+
+
+
+
 
 
 
@@ -97,8 +108,6 @@ _________________________________________________________________
  Note: The status bar will display your current mode.
        Notice that when you type i, 'NOR' changes to 'INS'.
 
-
-
 =================================================================
 =                   1.5 MORE ON INSERT MODE                     =
 =================================================================
@@ -120,8 +129,6 @@ _________________________________________________________________
 
  --> This sentence is miss
      This sentence is missing some text.
-
-
 
 =================================================================
 =                      1.6 SAVING A FILE                        =
@@ -162,12 +169,10 @@ _________________________________________________________________
 
  * Type i to enter Insert mode and type text. Type <ESC> to
    return to Normal mode.
-   * Use a to enter Insert mode after the current selection
-     instead of before.
+   * Use a to enter Insert mode after the current selection.
    * Use I to enter Insert mode at the first non-whitespace
      character at the start of a line.
    * Use A to enter Insert mode at the end of a line.
-
 
 =================================================================
 =                  2.1 MOTIONS AND SELECTIONS                   =
@@ -187,6 +192,8 @@ _________________________________________________________________
 
  --> This sentence pencil has vacuum extra words in the it.
      This sentence has extra words in it.
+
+
 
 
 =================================================================
@@ -232,6 +239,7 @@ _________________________________________________________________
 
 
 
+
 =================================================================
 =                   2.4 COUNTS WITH MOTIONS                     =
 =================================================================
@@ -245,6 +253,12 @@ _________________________________________________________________
  5. Try the above with different numbers.
 
  --> This is just a line with words you can move around in.
+
+
+
+
+
+
 
 
 
@@ -269,6 +283,7 @@ _________________________________________________________________
 
 
 
+
 =================================================================
 =                         2.6 UNDOING                           =
 =================================================================
@@ -283,6 +298,11 @@ _________________________________________________________________
  6. Type U (<SHIFT> + u) several times to redo your fixes.
 
  --> Fiix the errors on thhis line and reeplace them witth undo.
+
+
+
+
+
 
 
 
@@ -308,7 +328,6 @@ _________________________________________________________________
  * Type u to undo. Type U to redo.
 
 
-
 =================================================================
 =                     3.1 MULTIPLE CURSORS                      =
 =================================================================
@@ -330,10 +349,6 @@ _________________________________________________________________
      Fix these two lines at the same time.
 
  Note: Type alt-C to do the same above the cursor.
- Note: This also works for selections, but it will pick the first
-       line that fits the entire selection at the same column.
-
-
 
 =================================================================
 =                    3.2 THE SELECT COMMAND                     =
@@ -352,6 +367,9 @@ _________________________________________________________________
 
  --> I like to eat apples since my favorite fruit is apples.
      I like to eat oranges since my favourite fruit is oranges.
+
+
+
 
 
 =================================================================
@@ -394,6 +412,10 @@ _________________________________________________________________
 
 
 
+
+
+
+
 =================================================================
 =                 3.5 SELECTING TO A CHARACTER                  =
 =================================================================
@@ -416,8 +438,6 @@ _________________________________________________________________
  Note: Unlike Vim, Helix doesn't limit these commands to the 
        current line. It searches for the character in the file.
 
-
-
 =================================================================
 =                        CHAPTER 3 RECAP                        =
 =================================================================
@@ -433,6 +453,10 @@ _________________________________________________________________
  * Type f / F to extend selection up to & including a character.
 
  * Type t / T to extend selection until a character.
+
+
+
+
 
 
 
@@ -458,8 +482,6 @@ _________________________________________________________________
  Note: Helix doesn't share the system clipboard by default. Type
        space-y/p to yank/paste on your computer's main clipboard.
 
-
-
 =================================================================
 =                     4.2 CHANGING CASE                         =
 =================================================================
@@ -481,8 +503,6 @@ _________________________________________________________________
  --> thIs sENtencE hAs MIS-cApitalIsed leTTerS.
  --> this SENTENCE SHOULD all be in LOWERCASE.
  --> THIS sentence should ALL BE IN uppercase!
-
-
 
 =================================================================
 =                          4.3 MACROS                           =
@@ -506,8 +526,6 @@ _________________________________________________________________
  --> ... sentence doesn't have it's first and last ... .
      This sentence doesn't have it's first and last word.
 
-
-
 =================================================================
 =                        CHAPTER 4 RECAP                        =
 =================================================================
@@ -522,6 +540,11 @@ _________________________________________________________________
 
  * Type Q to record and stop recording a macro.
    * Type q to repeat the recorded macro.
+
+
+
+
+
 
 
 
@@ -542,6 +565,8 @@ _________________________________________________________________
  1. Type C-s somewhere.
  2. Move far away in the file.
  3. Type C-o (just once!) to come back to where you saved.
+
+
 
 
 
@@ -566,6 +591,7 @@ _________________________________________________________________
 
 
 
+
 =================================================================
 =                        CHAPTER 5 RECAP                        =
 =================================================================
@@ -575,6 +601,16 @@ _________________________________________________________________
 
  * Type / to search forward in file, and ? to search backwards.
    * Use n and N to cycle through search matches.
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -599,6 +635,7 @@ lines.
 
 
 
+
 =================================================================
 =                      6.2 INDENTING LINES                      =
 =================================================================
@@ -619,6 +656,8 @@ lines.
 
 
 
+
+
 =================================================================
 =                      6.3 OPENING LINES                        =
 =================================================================
@@ -633,6 +672,14 @@ lines.
 
 
 
+
+
+
+
+
+
+
+
 =================================================================
 =                        CHAPTER 6 RECAP                        =
 =================================================================
@@ -642,6 +689,13 @@ lines.
  * Type > and < to indent and outdent selected lines.
 
  * Use o and O to open lines.
+
+
+
+
+
+
+
 
 
 

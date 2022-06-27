@@ -13,14 +13,13 @@ use helix_core::{
     },
     movement::Direction,
     syntax::{self, HighlightEvent},
-    unicode::segmentation::UnicodeSegmentation,
     unicode::width::UnicodeWidthStr,
     LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
-    graphics::{CursorKind, Modifier, Rect, Style},
+    graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
@@ -115,6 +114,10 @@ impl EditorView {
             }
         }
 
+        if is_focused && editor.config().cursorline {
+            Self::highlight_cursorline(doc, view, surface, theme);
+        }
+
         let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
         let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
@@ -133,7 +136,7 @@ impl EditorView {
             surface,
             theme,
             highlights,
-            &editor.config().whitespace,
+            &editor.config(),
         );
         Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
         Self::render_rulers(editor, doc, view, inner, surface, theme);
@@ -172,7 +175,9 @@ impl EditorView {
         theme: &Theme,
     ) {
         let editor_rulers = &editor.config().rulers;
-        let ruler_theme = theme.get("ui.virtual.ruler");
+        let ruler_theme = theme
+            .try_get("ui.virtual.ruler")
+            .unwrap_or_else(|| Style::default().bg(Color::Red));
 
         let rulers = doc
             .language_config()
@@ -373,8 +378,9 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         highlights: H,
-        whitespace: &helix_view::editor::WhitespaceConfig,
+        config: &helix_view::editor::Config,
     ) {
+        let whitespace = &config.whitespace;
         use helix_view::editor::WhitespaceRenderValue;
 
         // It's slightly more efficient to produce a full RopeSlice from the Rope, then slice that a bunch
@@ -397,9 +403,29 @@ impl EditorView {
         } else {
             " ".to_string()
         };
+        let indent_guide_char = config.indent_guides.character.to_string();
 
         let text_style = theme.get("ui.text");
         let whitespace_style = theme.get("ui.virtual.whitespace");
+
+        let mut is_in_indent_area = true;
+        let mut last_line_indent_level = 0;
+        let indent_style = theme.get("ui.virtual.indent-guide");
+
+        let draw_indent_guides = |indent_level, line, surface: &mut Surface| {
+            if !config.indent_guides.render {
+                return;
+            }
+
+            for i in 0..(indent_level / tab_width as u16) {
+                surface.set_string(
+                    viewport.x + (i * tab_width as u16) - offset.col as u16,
+                    viewport.y + line,
+                    &indent_guide_char,
+                    indent_style,
+                );
+            }
+        };
 
         'outer: for event in highlights {
             match event {
@@ -453,8 +479,18 @@ impl EditorView {
                                 );
                             }
 
+                            // This is an empty line; draw indent guides at previous line's
+                            // indent level to avoid breaking the guides on blank lines.
+                            if visual_x == 0 {
+                                draw_indent_guides(last_line_indent_level, line, surface);
+                            } else if is_in_indent_area {
+                                // A line with whitespace only
+                                draw_indent_guides(visual_x, line, surface);
+                            }
+
                             visual_x = 0;
                             line += 1;
+                            is_in_indent_area = true;
 
                             // TODO: with proper iter this shouldn't be necessary
                             if line >= viewport.height {
@@ -464,7 +500,7 @@ impl EditorView {
                             let grapheme = Cow::from(grapheme);
                             let is_whitespace;
 
-                            let (grapheme, width) = if grapheme == "\t" {
+                            let (display_grapheme, width) = if grapheme == "\t" {
                                 is_whitespace = true;
                                 // make sure we display tab as appropriate amount of spaces
                                 let visual_tab_width = tab_width - (visual_x as usize % tab_width);
@@ -491,13 +527,18 @@ impl EditorView {
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
                                     viewport.y + line,
-                                    grapheme,
+                                    display_grapheme,
                                     if is_whitespace {
                                         style.patch(whitespace_style)
                                     } else {
                                         style
                                     },
                                 );
+                            }
+                            if is_in_indent_area && !(grapheme == " " || grapheme == "\t") {
+                                draw_indent_guides(visual_x, line, surface);
+                                is_in_indent_area = false;
+                                last_line_indent_level = visual_x;
                             }
 
                             visual_x = visual_x.saturating_add(width as u16);
@@ -630,15 +671,13 @@ impl EditorView {
 
         let mut lines = Vec::new();
         for diagnostic in diagnostics {
-            let text = Text::styled(
-                &diagnostic.message,
-                match diagnostic.severity {
-                    Some(Severity::Error) => error,
-                    Some(Severity::Warning) | None => warning,
-                    Some(Severity::Info) => info,
-                    Some(Severity::Hint) => hint,
-                },
-            );
+            let style = Style::reset().patch(match diagnostic.severity {
+                Some(Severity::Error) => error,
+                Some(Severity::Warning) | None => warning,
+                Some(Severity::Info) => info,
+                Some(Severity::Hint) => hint,
+            });
+            let text = Text::styled(&diagnostic.message, style);
             lines.extend(text.lines);
         }
 
@@ -651,6 +690,43 @@ impl EditorView {
             Rect::new(viewport.right() - width, viewport.y + 1, width, height),
             surface,
         );
+    }
+
+    /// Apply the highlighting on the lines where a cursor is active
+    pub fn highlight_cursorline(doc: &Document, view: &View, surface: &mut Surface, theme: &Theme) {
+        let text = doc.text().slice(..);
+        let last_line = view.last_line(doc);
+
+        let primary_line = doc.selection(view.id).primary().cursor_line(text);
+
+        // The secondary_lines do contain the primary_line, it doesn't matter
+        // as the else-if clause in the loop later won't test for the
+        // secondary_lines if primary_line == line.
+        // It's used inside a loop so the collect isn't needless:
+        // https://github.com/rust-lang/rust-clippy/issues/6164
+        #[allow(clippy::needless_collect)]
+        let secondary_lines: Vec<_> = doc
+            .selection(view.id)
+            .iter()
+            .map(|range| range.cursor_line(text))
+            .collect();
+
+        let primary_style = theme.get("ui.cursorline.primary");
+        let secondary_style = theme.get("ui.cursorline.secondary");
+
+        for line in view.offset.row..(last_line + 1) {
+            let area = Rect::new(
+                view.area.x,
+                view.area.y + (line - view.offset.row) as u16,
+                view.area.width,
+                1,
+            );
+            if primary_line == line {
+                surface.set_style(area, primary_style);
+            } else if secondary_lines.binary_search(&line).is_ok() {
+                surface.set_style(area, secondary_style);
+            }
+        }
     }
 
     pub fn render_statusline(
@@ -1048,7 +1124,7 @@ impl EditorView {
 
                 let mut selection = doc.selection(view.id).clone();
                 let primary = selection.primary_mut();
-                *primary = Range::new(primary.anchor, pos);
+                *primary = primary.put_cursor(doc.text().slice(..), pos, true);
                 doc.set_selection(view.id, selection);
                 EventResult::Consumed(None)
             }
@@ -1094,9 +1170,14 @@ impl EditorView {
                 }
 
                 let (view, doc) = current!(cxt.editor);
-                let range = doc.selection(view.id).primary();
 
-                if range.to() - range.from() <= 1 {
+                if doc
+                    .selection(view.id)
+                    .primary()
+                    .fragment(doc.text().slice(..))
+                    .width()
+                    <= 1
+                {
                     return EventResult::Ignored(None);
                 }
 
@@ -1362,12 +1443,7 @@ impl Component for EditorView {
                 disp.push_str(&count.to_string())
             }
             for key in self.keymaps.pending() {
-                let s = key.to_string();
-                if s.graphemes(true).count() > 1 {
-                    disp.push_str(&format!("<{}>", s));
-                } else {
-                    disp.push_str(&s);
-                }
+                disp.push_str(&key.key_sequence_format());
             }
             if let Some(pseudo_pending) = &cx.editor.pseudo_pending {
                 disp.push_str(pseudo_pending.as_str())
