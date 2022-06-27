@@ -259,6 +259,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "/" => global_search,
             "k" => hover,
             "r" => rename_symbol,
+            "h" => select_references_to_symbol_under_cursor,
             "?" => command_palette,
         },
         "z" => { "View"

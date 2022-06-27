@@ -655,6 +655,7 @@ pub fn signature_help(cx: &mut Context) {
         },
     );
 }
+
 pub fn hover(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
@@ -704,6 +705,7 @@ pub fn hover(cx: &mut Context) {
         },
     );
 }
+
 pub fn rename_symbol(cx: &mut Context) {
     ui::prompt(
         cx,
@@ -726,6 +728,47 @@ pub fn rename_symbol(cx: &mut Context) {
                 Ok(edits) => apply_workspace_edit(cx.editor, offset_encoding, &edits),
                 Err(err) => cx.editor.set_error(err.to_string()),
             }
+        },
+    );
+}
+
+pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = doc.position(view.id, offset_encoding);
+
+    let future = language_server.text_document_document_highlight(doc.identifier(), pos, None);
+
+    cx.callback(
+        future,
+        move |editor, _compositor, response: Option<Vec<lsp::DocumentHighlight>>| {
+            let document_highlights = match response {
+                Some(highlights) if !highlights.is_empty() => highlights,
+                _ => return,
+            };
+            let (view, doc) = current!(editor);
+            let language_server = language_server!(editor, doc);
+            let offset_encoding = language_server.offset_encoding();
+            let text = doc.text();
+            let pos = doc.selection(view.id).primary().head;
+
+            // We must find the range that contains our primary cursor to prevent our primary cursor to move
+            let mut primary_index = 0;
+            let ranges = document_highlights
+                .iter()
+                .filter_map(|highlight| lsp_range_to_range(text, highlight.range, offset_encoding))
+                .enumerate()
+                .map(|(i, range)| {
+                    if range.contains(pos) {
+                        primary_index = i;
+                    }
+                    range
+                })
+                .collect();
+            let selection = Selection::new(ranges, primary_index);
+            doc.set_selection(view.id, selection);
         },
     );
 }
