@@ -276,7 +276,7 @@ impl Default for StatusLineConfig {
         Self {
             left: vec![E::Mode, E::Spinner, E::FileName],
             center: vec![],
-            right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
+            right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding, E::WindowIdentifiers],
             separator: String::from("│"),
             mode: ModeConfig::default(),
         }
@@ -348,6 +348,9 @@ pub enum StatusLineElement {
 
     /// A single space
     Spacer,
+
+    /// An identifier of the window, for jumping directly to a window using a shortcut
+    WindowIdentifiers,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -699,6 +702,7 @@ pub struct Editor {
     pub last_line_number: Option<usize>,
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
+    pub show_window_ids: bool,
 
     pub config: Box<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
@@ -796,6 +800,7 @@ impl Editor {
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
             autoinfo: None,
+            show_window_ids: false,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
             last_motion: None,
             last_completion: None,

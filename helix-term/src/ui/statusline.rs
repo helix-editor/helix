@@ -19,6 +19,7 @@ pub struct RenderContext<'a> {
     pub view: &'a View,
     pub focused: bool,
     pub spinners: &'a ProgressSpinners,
+    pub view_identifier: Option<char>,
     pub parts: RenderBuffer<'a>,
 }
 
@@ -29,6 +30,7 @@ impl<'a> RenderContext<'a> {
         view: &'a View,
         focused: bool,
         spinners: &'a ProgressSpinners,
+        view_identifier: Option<char>,
     ) -> Self {
         RenderContext {
             editor,
@@ -36,6 +38,7 @@ impl<'a> RenderContext<'a> {
             view,
             focused,
             spinners,
+            view_identifier,
             parts: RenderBuffer::default(),
         }
     }
@@ -154,6 +157,7 @@ where
         helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
         helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
+        helix_view::editor::StatusLineElement::WindowIdentifiers => render_window_identifiers,
     }
 }
 
@@ -444,4 +448,15 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     write(context, String::from(" "), None);
+}
+
+fn render_window_identifiers<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    if context.editor.show_window_ids {
+        if let Some(view_identifier) = context.view_identifier {
+            write(context, format!(" W:{} ", view_identifier), None);
+        }
+    }
 }

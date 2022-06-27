@@ -24,6 +24,7 @@ use helix_view::{
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
+    view_index_to_identifier,
 };
 use std::{borrow::Cow, cmp::min, num::NonZeroUsize, path::PathBuf};
 
@@ -78,6 +79,7 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         is_focused: bool,
+        view_identifier: Option<char>,
     ) {
         let inner = view.inner_area(doc);
         let area = view.area;
@@ -176,8 +178,14 @@ impl EditorView {
             .clip_top(view.area.height.saturating_sub(1))
             .clip_bottom(1); // -1 from bottom to remove commandline
 
-        let mut context =
-            statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
+        let mut context = statusline::RenderContext::new(
+            editor,
+            doc,
+            view,
+            is_focused,
+            &self.spinners,
+            view_identifier,
+        );
 
         statusline::render(&mut context, statusline_area, surface);
     }
@@ -916,6 +924,9 @@ impl EditorView {
         self.pseudo_pending.extend(self.keymaps.pending());
         let key_result = self.keymaps.get(mode, event);
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
+        if cxt.editor.autoinfo.is_none() {
+            cxt.editor.show_window_ids = false;
+        }
 
         let mut execute_command = |command: &commands::MappableCommand| {
             command.execute(cxt);
@@ -953,8 +964,13 @@ impl EditorView {
         match &key_result {
             KeymapResult::Matched(command) => {
                 execute_command(command);
-            }
-            KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
+            },
+            KeymapResult::Pending(node) => {
+                cxt.editor.autoinfo = Some(node.infobox());
+                if node.show_window_ids {
+                    cxt.editor.show_window_ids = true;
+                }
+            },
             KeymapResult::MatchedSequence(commands) => {
                 for command in commands {
                     execute_command(command);
@@ -1485,9 +1501,17 @@ impl Component for EditorView {
             Self::render_bufferline(cx.editor, area.with_height(1), surface);
         }
 
-        for (view, is_focused) in cx.editor.tree.views() {
+        for (view_index, (view, is_focused)) in cx.editor.tree.views().enumerate() {
             let doc = cx.editor.document(view.doc).unwrap();
-            self.render_view(cx.editor, doc, view, area, surface, is_focused);
+            self.render_view(
+                cx.editor,
+                doc,
+                view,
+                area,
+                surface,
+                is_focused,
+                view_index_to_identifier(view_index),
+            );
         }
 
         if config.auto_info {

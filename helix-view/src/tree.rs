@@ -560,6 +560,18 @@ impl Tree {
         }
     }
 
+    pub fn focus_view_idx(&mut self, idx: usize) {
+        // If the view doesn't exist, do nothing
+
+        let mut views = self.views().skip(idx);
+
+        let focus_view_id = views.next().map(|view| view.0.id);
+        drop(views);
+        if let Some(focus_view_id) = focus_view_id {
+            self.focus = focus_view_id;
+        }
+    }
+
     pub fn transpose(&mut self) {
         let focus = self.focus;
         let parent = self.nodes[focus].parent;

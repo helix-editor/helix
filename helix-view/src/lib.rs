@@ -42,6 +42,32 @@ slotmap::new_key_type! {
     pub struct ViewId;
 }
 
+
+const UNICODE_LOWER_CASE_US_START: u32 = 97;
+const UNICODE_LOWER_CASE_US_END: u32 = 122;
+/// Returns a character 0-9 a-z based on the window index, or 0 if out of bounds
+pub fn view_index_to_identifier(view_index: usize) -> Option<char> {
+    match view_index {
+        0..=8 => Some(char::from_digit((view_index as u32) + 1, 10).unwrap()),
+        9..=35 => {
+            Some(char::from_u32(UNICODE_LOWER_CASE_US_START - 9 + (view_index as u32)).unwrap())
+        }
+        _ => None,
+    }
+}
+
+/// Returns a character 0-9 a-z based on the window index, or 0 if out of bounds
+pub fn view_identifier_to_index(view_index: char) -> Option<usize> {
+    let view_index_lowercase = view_index.to_ascii_lowercase();
+    match view_index_lowercase as u32 {
+        49..=57 => Some(char::to_digit(view_index_lowercase, 10).unwrap() as usize - 1),
+        UNICODE_LOWER_CASE_US_START..=UNICODE_LOWER_CASE_US_END => {
+            Some((view_index_lowercase as u32 + 9 - UNICODE_LOWER_CASE_US_START) as usize)
+        }
+        _ => None,
+    }
+}
+
 pub enum Align {
     Top,
     Center,
