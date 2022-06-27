@@ -26,30 +26,31 @@
 "ui.cursor.primary" = { bg = "secondary_white", fg = "black" }
 
 "ui.linenr" = { fg = "grey", bg = "dark_black"}
-"ui.linenr.selected" = { fg = "dark_white", bg = "dark_black"}
+"ui.linenr.selected" = { fg = "dark_white", bg = "dark_light_black"}
 "ui.gutter" = { bg = "dark_black" }
 
 "ui.background" = { fg = "light_grey", bg = "black" }
 "ui.background.separator" = { fg = "dark_grey" }
-"ui.help" = { fg = "white", bg = "light_black2" }
+"ui.help" = { fg = "white", bg = "light_black3" }
 "ui.menu" = { fg = "dark_white", bg = "light_black" }
 "ui.menu.selected" = { bg = "orange" , fg = "black" }
 "ui.popup" = { fg = "dark_white", bg = "light_black" }
-"ui.window" = { fg = "light_black2" }
+"ui.window" = { fg = "light_black3" }
 
-"ui.selection" = { bg = "light_black2" }
-"ui.selection.primary" = { bg = "light_black2" }
+"ui.selection" = { bg = "light_black3" }
+"ui.selection.primary" = { bg = "light_black3", modifiers = ["bold"] }
+"ui.cursorline.primary" = { bg = "light_black" }
 
-"ui.statusline" = { fg = "dark_white", bg = "light_black2" }
+"ui.statusline" = { fg = "dark_white", bg = "light_black3" }
 "ui.statusline.inactive" = { fg = "dark_white2", bg = "light_black" }
 
 "ui.text" = { fg = "white" }
 "ui.text.focus" = { fg = "orange" }
 
-"ui.virtual.ruler" = { bg = "light_black" }
-"ui.virtual.indent-guide" = { fg = "light_black" }
-"ui.virtual.whitespace" = { fg = "dark_grey" }
-
+"ui.virtual.ruler" = { bg = "light_black2" }
+"ui.virtual.indent-guide" = { fg = "dark_grey2" }
+"ui.virtual.whitespace" = { fg = "grey" }
+ 
 "diagnostic" = { modifiers = ["underlined"] }
 "error" = { fg = "red" }
 "warning" = { fg = "orange" }
@@ -75,16 +76,18 @@ magenta = "#b494af"
 
 comment = "#707035"
 
+light_black = "#252220"
+light_black2 = "#292725"
+light_black3 = "#302D2B"
 black = "#1c1917"
-light_black = "#292725"
-light_black2 = "#302D2B"
 dark_black = "#191514"
 dark_light_black = "#211d1c"
 
 white = "#dad7d5"
 dark_white = "#aaa7a6"
 dark_white2 = "#949290"
-dark_grey = "#4c4b49"
-grey = "#605e5d"
 light_grey = "#6a6867"
+grey = "#605e5d"
+dark_grey = "#4c4b49"
+dark_grey2 = "#383735"
 secondary_white = "#c2b4a8"
