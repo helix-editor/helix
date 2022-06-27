@@ -1051,22 +1051,33 @@ impl EditorView {
         cxt: &mut commands::Context,
     ) -> EventResult {
         let config = cxt.editor.config();
-        match event {
-            MouseEvent {
-                kind: MouseEventKind::Down(MouseButton::Left),
-                row,
-                column,
-                modifiers,
-                ..
-            } => {
+        let MouseEvent {
+            kind,
+            row,
+            column,
+            modifiers,
+            ..
+        } = event;
+
+        let pos_and_view = |editor: &Editor, row, column| {
+            editor.tree.views().find_map(|(view, _focus)| {
+                view.pos_at_screen_coords(&editor.documents[&view.doc], row, column)
+                    .map(|pos| (pos, view.id))
+            })
+        };
+
+        let gutter_coords_and_view = |editor: &Editor, row, column| {
+            editor.tree.views().find_map(|(view, _focus)| {
+                view.gutter_coords_at_screen_coords(row, column)
+                    .map(|coords| (coords, view.id))
+            })
+        };
+
+        match kind {
+            MouseEventKind::Down(MouseButton::Left) => {
                 let editor = &mut cxt.editor;
 
-                let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&editor.documents[&view.doc], row, column)
-                        .map(|pos| (pos, view.id))
-                });
-
-                if let Some((pos, view_id)) = result {
+                if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
                     let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
 
                     if modifiers == crossterm::event::KeyModifiers::ALT {
@@ -1081,12 +1092,7 @@ impl EditorView {
                     return EventResult::Consumed(None);
                 }
 
-                let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.gutter_coords_at_screen_coords(row, column)
-                        .map(|coords| (coords, view.id))
-                });
-
-                if let Some((coords, view_id)) = result {
+                if let Some((coords, view_id)) = gutter_coords_and_view(editor, row, column) {
                     editor.tree.focus = view_id;
 
                     let view = editor.tree.get(view_id);
@@ -1107,12 +1113,7 @@ impl EditorView {
                 EventResult::Ignored(None)
             }
 
-            MouseEvent {
-                kind: MouseEventKind::Drag(MouseButton::Left),
-                row,
-                column,
-                ..
-            } => {
+            MouseEventKind::Drag(MouseButton::Left) => {
                 let (view, doc) = current!(cxt.editor);
 
                 let pos = match view.pos_at_screen_coords(doc, row, column) {
@@ -1124,15 +1125,11 @@ impl EditorView {
                 let primary = selection.primary_mut();
                 *primary = primary.put_cursor(doc.text().slice(..), pos, true);
                 doc.set_selection(view.id, selection);
+
                 EventResult::Consumed(None)
             }
 
-            MouseEvent {
-                kind: MouseEventKind::ScrollUp | MouseEventKind::ScrollDown,
-                row,
-                column,
-                ..
-            } => {
+            MouseEventKind::ScrollUp | MouseEventKind::ScrollDown => {
                 let current_view = cxt.editor.tree.focus;
 
                 let direction = match event.kind {
@@ -1141,13 +1138,8 @@ impl EditorView {
                     _ => unreachable!(),
                 };
 
-                let result = cxt.editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&cxt.editor.documents[&view.doc], row, column)
-                        .map(|_| view.id)
-                });
-
-                match result {
-                    Some(view_id) => cxt.editor.tree.focus = view_id,
+                match pos_and_view(cxt.editor, row, column) {
+                    Some((_, view_id)) => cxt.editor.tree.focus = view_id,
                     None => return EventResult::Ignored(None),
                 }
 
@@ -1159,10 +1151,7 @@ impl EditorView {
                 EventResult::Consumed(None)
             }
 
-            MouseEvent {
-                kind: MouseEventKind::Up(MouseButton::Left),
-                ..
-            } => {
+            MouseEventKind::Up(MouseButton::Left) => {
                 if !config.middle_click_paste {
                     return EventResult::Ignored(None);
                 }
@@ -1184,19 +1173,8 @@ impl EditorView {
                 EventResult::Consumed(None)
             }
 
-            MouseEvent {
-                kind: MouseEventKind::Up(MouseButton::Right),
-                row,
-                column,
-                modifiers,
-                ..
-            } => {
-                let result = cxt.editor.tree.views().find_map(|(view, _focus)| {
-                    view.gutter_coords_at_screen_coords(row, column)
-                        .map(|coords| (coords, view.id))
-                });
-
-                if let Some((coords, view_id)) = result {
+            MouseEventKind::Up(MouseButton::Right) => {
+                if let Some((coords, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
                     cxt.editor.tree.focus = view_id;
 
                     let view = cxt.editor.tree.get(view_id);
@@ -1213,16 +1191,11 @@ impl EditorView {
                         return EventResult::Consumed(None);
                     }
                 }
+
                 EventResult::Ignored(None)
             }
 
-            MouseEvent {
-                kind: MouseEventKind::Up(MouseButton::Middle),
-                row,
-                column,
-                modifiers,
-                ..
-            } => {
+            MouseEventKind::Up(MouseButton::Middle) => {
                 let editor = &mut cxt.editor;
                 if !config.middle_click_paste {
                     return EventResult::Ignored(None);
@@ -1235,16 +1208,12 @@ impl EditorView {
                     return EventResult::Consumed(None);
                 }
 
-                let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&editor.documents[&view.doc], row, column)
-                        .map(|pos| (pos, view.id))
-                });
-
-                if let Some((pos, view_id)) = result {
+                if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
                     let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
                     doc.set_selection(view_id, Selection::point(pos));
                     editor.tree.focus = view_id;
                     commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
+
                     return EventResult::Consumed(None);
                 }
 
