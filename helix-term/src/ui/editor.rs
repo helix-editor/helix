@@ -112,7 +112,7 @@ impl EditorView {
             }
         }
 
-        if editor.config().cursorline {
+        if is_focused && editor.config().cursorline {
             Self::highlight_cursorline(doc, view, surface, theme);
         }
 
