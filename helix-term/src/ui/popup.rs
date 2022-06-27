@@ -21,6 +21,7 @@ pub struct Popup<T: Component> {
     position_bias: Open,
     scroll: usize,
     auto_close: bool,
+    ignore_escape_key: bool,
     id: &'static str,
 }
 
@@ -38,6 +39,7 @@ impl<T: Component> Popup<T> {
             child_size: (0, 0),
             scroll: 0,
             auto_close: false,
+            ignore_escape_key: false,
             id,
         }
     }
@@ -63,6 +65,18 @@ impl<T: Component> Popup<T> {
 
     pub fn auto_close(mut self, auto_close: bool) -> Self {
         self.auto_close = auto_close;
+        self
+    }
+
+    /// Ignores an escape keypress event, letting the outer layer
+    /// (usually the editor) handle it. This is useful for popups
+    /// in insert mode like completion and signature help where
+    /// the popup is closed on the mode change from insert to normal
+    /// which is done with the escape key. Otherwise the popup consumes
+    /// the escape key event and closes it, and an additional escape
+    /// would be required to exit insert mode.
+    pub fn ignore_escape_key(mut self, ignore: bool) -> Self {
+        self.ignore_escape_key = ignore;
         self
     }
 
@@ -137,6 +151,10 @@ impl<T: Component> Component for Popup<T> {
             }
             _ => return EventResult::Ignored(None),
         };
+
+        if key!(Esc) == key.into() && self.ignore_escape_key {
+            return EventResult::Ignored(None)
+        }
 
         let close_fn: Callback = Box::new(|compositor, _| {
             // remove the layer

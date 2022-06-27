@@ -724,7 +724,8 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
             let old_popup = compositor.find_id::<Popup<SignatureHelp>>(SignatureHelp::ID);
             let popup = Popup::new(SignatureHelp::ID, contents)
                 .position(old_popup.and_then(|p| p.get_position()))
-                .position_bias(Open::Above);
+                .position_bias(Open::Above)
+                .ignore_escape_key(true);
             compositor.replace_or_push(SignatureHelp::ID, popup);
         },
     );
