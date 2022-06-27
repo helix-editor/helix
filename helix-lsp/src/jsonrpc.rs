@@ -310,7 +310,7 @@ fn method_call_serialize() {
         id: Id::Num(1),
     };
 
-    let serialized = serde_json::to_string(&m).unwrap();
+    let serialized = serde_json::json!(&m);
     assert_eq!(
         serialized,
         r#"{"jsonrpc":"2.0","method":"update","params":[1,2],"id":1}"#
@@ -327,7 +327,7 @@ fn notification_serialize() {
         params: Params::Array(vec![Value::from(1), Value::from(2)]),
     };
 
-    let serialized = serde_json::to_string(&n).unwrap();
+    let serialized = serde_json::json!(&n);
     assert_eq!(
         serialized,
         r#"{"jsonrpc":"2.0","method":"update","params":[1,2]}"#

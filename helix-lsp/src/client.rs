@@ -271,8 +271,8 @@ impl Client {
     // -------------------------------------------------------------------------------------------
 
     pub(crate) async fn initialize(&self) -> Result<lsp::InitializeResult> {
-        if self.config.is_some() {
-            log::info!("Using custom LSP config: {}", self.config.as_ref().unwrap());
+        if let Some(config) = &self.config {
+            log::info!("Using custom LSP config: {}", config);
         }
 
         #[allow(deprecated)]
@@ -896,8 +896,8 @@ impl Client {
             Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_)) => (),
             // None | Some(false)
             _ => {
+                log::warn!("rename_symbol failed: The server does not support rename");
                 let err = "The server does not support rename";
-                log::warn!("rename_symbol failed: {}", err);
                 return Err(anyhow!(err));
             }
         };
