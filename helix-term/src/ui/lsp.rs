@@ -49,10 +49,7 @@ impl SignatureHelp {
 
 impl Component for SignatureHelp {
     fn render(&mut self, area: Rect, surface: &mut Buffer, cx: &mut Context) {
-        let margin = Margin {
-            vertical: 0,
-            horizontal: 1,
-        };
+        let margin = Margin::horizontal(1);
 
         let active_param_span = self.active_param_range.map(|(start, end)| {
             vec![(
