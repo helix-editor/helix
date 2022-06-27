@@ -37,6 +37,7 @@ hidden = false
 | `scroll-lines` | Number of lines to scroll per scroll wheel step. | `3` |
 | `shell` | Shell to use when running external commands. | Unix: `["sh", "-c"]`<br/>Windows: `["cmd", "/C"]` |
 | `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers. | `absolute` |
+| `cursorline` | Highlight all lines with a cursor. | `false` |
 | `gutters` | Gutters to display: Available are `diagnostics` and `line-numbers`, note that `diagnostics` also includes other features like breakpoints | `["diagnostics", "line-numbers"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
 | `auto-format` | Enable automatic formatting on save. | `true` |

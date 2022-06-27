@@ -121,6 +121,8 @@ pub struct Config {
     pub shell: Vec<String>,
     /// Line number mode.
     pub line_number: LineNumber,
+    /// Highlight the lines cursors are currently on. Defaults to false.
+    pub cursorline: bool,
     /// Gutters. Default ["diagnostics", "line-numbers"]
     pub gutters: Vec<GutterType>,
     /// Middle click paste support. Defaults to true.
@@ -394,6 +396,7 @@ impl Default for Config {
                 vec!["sh".to_owned(), "-c".to_owned()]
             },
             line_number: LineNumber::Absolute,
+            cursorline: false,
             gutters: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
