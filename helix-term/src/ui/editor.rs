@@ -668,7 +668,6 @@ impl EditorView {
         let hint = theme.get("hint");
 
         let mut lines = Vec::new();
-        // let no_modifiers = Style::default().remove_modifier(Modifier::all());
         let background_style = theme.get("ui.background");
         for diagnostic in diagnostics {
             let style = Style::reset()
