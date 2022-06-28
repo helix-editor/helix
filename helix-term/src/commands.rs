@@ -2981,7 +2981,7 @@ pub mod insert {
                         for _ in 0..drop {
                             // delete up to `drop` spaces
                             match chars.next() {
-                                Some(c) if c.is_ascii_whitespace() => start -= 1,
+                                Some(' ') => start -= 1,
                                 _ => break,
                             }
                         }
