@@ -234,6 +234,8 @@ These scopes are used for theming the editor interface.
 | `ui.menu.scroll`          | `fg` sets thumb color, `bg` sets track color of scrollbar |
 | `ui.selection`            | For selections in the editing area             |
 | `ui.selection.primary`    |                                                |
+| `ui.cursorline.primary`   | The line of the primary cursor                 |
+| `ui.cursorline.secondary` | The lines of any other cursors                 |
 | `warning`                 | Diagnostics warning (gutter)                   |
 | `error`                   | Diagnostics error (gutter)                     |
 | `info`                    | Diagnostics info (gutter)                      |
