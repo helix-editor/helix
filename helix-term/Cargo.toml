@@ -14,6 +14,7 @@ default-run = "hx"
 [package.metadata.nix]
 build = true
 app = true
+cCompiler = "clang"
 
 [features]
 unicode-lines = ["helix-core/unicode-lines"]
