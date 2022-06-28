@@ -1,0 +1,65 @@
+# Author: Two-Six<twopsix@duck.com>
+
+"ui.background" = {bg="bg"}
+"ui.text" = "black"
+"ui.selection" = {bg="bold_blue"}
+"ui.statusline" = {bg="bold_white"}
+"ui.statusline.inactive" = {bg="white"}
+"ui.virtual" = "bold_white"
+"ui.cursor.match" = {bg="bold_white"}
+"ui.cursor" = {bg="cursor_blue", fg="bg"}
+"ui.linenr" = {fg="gray"}
+"ui.linenr.selected" = {fg="black", bg="bold_white"}
+"ui.menu" = {bg="bold_white"}
+"ui.menu.selected" = {bg="bold_blue"}
+"ui.popup" = {bg="bold_white"}
+
+"diagnostic.error" = {fg="red", modifiers=["bold"]}
+"diagnostic.warning" = {bg="gray", modifiers=["bold"]}
+"diagnostic.hint" = {bg="white", modifiers=["bold"]}
+
+"constant.numeric" = {fg="red", modifiers=["bold"]}
+"constant.builtin" = {fg="const_built"}
+
+"keyword" = {fg="blue"}
+"keyword.control" = {fg="blue"}
+"keyword.function" = {fg="blue"}
+
+"function" = {fg="light_green"}
+"function.macro" = {fg="blue", modifiers=["bold"]}
+"function.method" = {fg="black"}
+"function.builtin" = {fg="red"}
+
+"variable.builtin" = {fg="blue"}
+"variable.other" = {fg="red"}
+"variable" = {fg="purple"}
+
+"string" = "green"
+"comment" = "bold_gray"
+"namespace" = {fg="red"}
+"attribute" = {fg="yellow"}
+"type" = {fg="yellow"}
+
+"markup.heading" = {fg="red", modifiers=["bold"]}
+"markup.raw" = {bg="bold_blue", fg="green"}
+"markup.link.url" = {fg="red"}
+"markup.link.text" = {fg="blue"}
+"markup.quote" = {fg="bold_gray", modifiers=["italic"]}
+
+
+[palette]
+white = "#ffffff"
+bold_white = "#d8dee9"
+bg = "#e5e9f0"
+gray = "#bec7d8"
+black = "#3b4252"
+bold_blue = "#b8c5db"
+green = "#065905"
+light_green = "#29838d"
+const_built = "#4b7aaf"
+blue = "#3b6ea8"
+cursor_blue = "#5d86b6"
+red = "#97365b"
+yellow = "#a18017"
+purple = "#842879"
+bold_gray = "#828b9b"
