@@ -22,25 +22,25 @@ use anyhow::{anyhow, bail};
 use helix_view::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select_thread_id};
 
 impl ui::menu::Item for StackFrame {
-    type EditorData = ();
+    type Data = ();
 
-    fn label(&self, _data: &Self::EditorData) -> std::borrow::Cow<str> {
+    fn label(&self, _data: &Self::Data) -> std::borrow::Cow<str> {
         self.name.as_str().into() // TODO: include thread_states in the label
     }
 }
 
 impl ui::menu::Item for DebugTemplate {
-    type EditorData = ();
+    type Data = ();
 
-    fn label(&self, _data: &Self::EditorData) -> std::borrow::Cow<str> {
+    fn label(&self, _data: &Self::Data) -> std::borrow::Cow<str> {
         self.name.as_str().into()
     }
 }
 
 impl ui::menu::Item for Thread {
-    type EditorData = ThreadStates;
+    type Data = ThreadStates;
 
-    fn label(&self, thread_states: &Self::EditorData) -> std::borrow::Cow<str> {
+    fn label(&self, thread_states: &Self::Data) -> std::borrow::Cow<str> {
         format!(
             "{} ({})",
             self.name,

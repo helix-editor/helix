@@ -1759,9 +1759,9 @@ fn global_search(cx: &mut Context) {
     }
 
     impl ui::menu::Item for FileResult {
-        type EditorData = Option<PathBuf>;
+        type Data = Option<PathBuf>;
 
-        fn label(&self, current_path: &Self::EditorData) -> Cow<str> {
+        fn label(&self, current_path: &Self::Data) -> Cow<str> {
             let relative_path = helix_core::path::get_relative_path(&self.path)
                 .to_string_lossy()
                 .into_owned();
@@ -2198,9 +2198,9 @@ fn buffer_picker(cx: &mut Context) {
     }
 
     impl ui::menu::Item for BufferMeta {
-        type EditorData = ();
+        type Data = ();
 
-        fn label(&self, _data: &Self::EditorData) -> Cow<str> {
+        fn label(&self, _data: &Self::Data) -> Cow<str> {
             let path = self
                 .path
                 .as_deref()
@@ -2258,9 +2258,9 @@ fn buffer_picker(cx: &mut Context) {
 }
 
 impl ui::menu::Item for MappableCommand {
-    type EditorData = ReverseKeymap;
+    type Data = ReverseKeymap;
 
-    fn label(&self, keymap: &Self::EditorData) -> Cow<str> {
+    fn label(&self, keymap: &Self::Data) -> Cow<str> {
         // formats key bindings, multiple bindings are comma separated,
         // individual key presses are joined with `+`
         let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {

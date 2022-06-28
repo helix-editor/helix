@@ -88,7 +88,7 @@ impl Preview<'_, '_> {
 impl<T: Item> FilePicker<T> {
     pub fn new(
         options: Vec<T>,
-        editor_data: T::EditorData,
+        editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
@@ -283,7 +283,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
 
 pub struct Picker<T: Item> {
     options: Vec<T>,
-    editor_data: T::EditorData,
+    editor_data: T::Data,
     // filter: String,
     matcher: Box<Matcher>,
     /// (index, score)
@@ -307,7 +307,7 @@ pub struct Picker<T: Item> {
 impl<T: Item> Picker<T> {
     pub fn new(
         options: Vec<T>,
-        editor_data: T::EditorData,
+        editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
         let prompt = Prompt::new(

@@ -17,28 +17,28 @@ use tui::layout::Constraint;
 
 pub trait Item {
     /// Additional editor state that is used for label calculation.
-    type EditorData;
+    type Data;
 
-    fn label(&self, data: &Self::EditorData) -> Cow<str>;
+    fn label(&self, data: &Self::Data) -> Cow<str>;
 
-    fn sort_text(&self, data: &Self::EditorData) -> Cow<str> {
+    fn sort_text(&self, data: &Self::Data) -> Cow<str> {
         self.label(data)
     }
 
-    fn filter_text(&self, data: &Self::EditorData) -> Cow<str> {
+    fn filter_text(&self, data: &Self::Data) -> Cow<str> {
         self.label(data)
     }
 
-    fn row(&self, data: &Self::EditorData) -> Row {
+    fn row(&self, data: &Self::Data) -> Row {
         Row::new(vec![Cell::from(self.label(data))])
     }
 }
 
 impl Item for PathBuf {
     /// Root prefix to strip.
-    type EditorData = PathBuf;
+    type Data = PathBuf;
 
-    fn label(&self, root_path: &Self::EditorData) -> Cow<str> {
+    fn label(&self, root_path: &Self::Data) -> Cow<str> {
         self.strip_prefix(&root_path)
             .unwrap_or(self)
             .to_string_lossy()
@@ -47,7 +47,7 @@ impl Item for PathBuf {
 
 pub struct Menu<T: Item> {
     options: Vec<T>,
-    editor_data: T::EditorData,
+    editor_data: T::Data,
 
     cursor: Option<usize>,
 
@@ -72,7 +72,7 @@ impl<T: Item> Menu<T> {
     // rendering)
     pub fn new(
         options: Vec<T>,
-        editor_data: <T as Item>::EditorData,
+        editor_data: <T as Item>::Data,
         callback_fn: impl Fn(&mut Editor, Option<&T>, MenuEvent) + 'static,
     ) -> Self {
         let mut menu = Self {

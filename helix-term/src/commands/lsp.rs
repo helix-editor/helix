@@ -36,9 +36,9 @@ macro_rules! language_server {
 
 impl ui::menu::Item for lsp::Location {
     /// Current working directory.
-    type EditorData = PathBuf;
+    type Data = PathBuf;
 
-    fn label(&self, cwdir: &Self::EditorData) -> Cow<str> {
+    fn label(&self, cwdir: &Self::Data) -> Cow<str> {
         let file: Cow<'_, str> = (self.uri.scheme() == "file")
             .then(|| {
                 self.uri
@@ -61,9 +61,9 @@ impl ui::menu::Item for lsp::Location {
 
 impl ui::menu::Item for lsp::SymbolInformation {
     /// Path to currently focussed document
-    type EditorData = Option<lsp::Url>;
+    type Data = Option<lsp::Url>;
 
-    fn label(&self, current_doc_path: &Self::EditorData) -> Cow<str> {
+    fn label(&self, current_doc_path: &Self::Data) -> Cow<str> {
         if current_doc_path.as_ref() == Some(&self.location.uri) {
             self.name.as_str().into()
         } else {
@@ -247,8 +247,8 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
 }
 
 impl ui::menu::Item for lsp::CodeActionOrCommand {
-    type EditorData = ();
-    fn label(&self, _data: &Self::EditorData) -> Cow<str> {
+    type Data = ();
+    fn label(&self, _data: &Self::Data) -> Cow<str> {
         match self {
             lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str().into(),
             lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),

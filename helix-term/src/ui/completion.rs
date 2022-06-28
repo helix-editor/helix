@@ -15,8 +15,8 @@ use helix_lsp::{lsp, util};
 use lsp::CompletionItem;
 
 impl menu::Item for CompletionItem {
-    type EditorData = ();
-    fn sort_text(&self, _data: &Self::EditorData) -> Cow<str> {
+    type Data = ();
+    fn sort_text(&self, _data: &Self::Data) -> Cow<str> {
         self.filter_text
             .as_ref()
             .unwrap_or(&self.label)
@@ -24,7 +24,7 @@ impl menu::Item for CompletionItem {
             .into()
     }
 
-    fn filter_text(&self, _data: &Self::EditorData) -> Cow<str> {
+    fn filter_text(&self, _data: &Self::Data) -> Cow<str> {
         self.filter_text
             .as_ref()
             .unwrap_or(&self.label)
@@ -32,11 +32,11 @@ impl menu::Item for CompletionItem {
             .into()
     }
 
-    fn label(&self, _data: &Self::EditorData) -> Cow<str> {
+    fn label(&self, _data: &Self::Data) -> Cow<str> {
         self.label.as_str().into()
     }
 
-    fn row(&self, _data: &Self::EditorData) -> menu::Row {
+    fn row(&self, _data: &Self::Data) -> menu::Row {
         menu::Row::new(vec![
             menu::Cell::from(self.label.as_str()),
             menu::Cell::from(match self.kind {
