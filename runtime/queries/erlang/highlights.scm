@@ -2,14 +2,14 @@
 ; module declaration
 (attribute
   name: (atom) @keyword
-  (arguments (atom) @module)
+  (arguments (atom) @namespace)
  (#eq? @keyword "module"))
 
 (attribute
   name: (atom) @keyword
   (arguments
     .
-    (atom) @module)
+    (atom) @namespace)
  (#eq? @keyword "import"))
 
 (attribute
@@ -54,15 +54,15 @@
 
 (attribute
   name: (atom) @keyword
-  module: (atom) @module
  (#eq? @keyword "(spec|callback)"))
+  module: (atom) @namespace
 
 ; Functions
 (function_clause name: (atom) @function)
-(call module: (atom) @module)
+(call module: (atom) @namespace)
 (call function: (atom) @function)
 (stab_clause name: (atom) @function)
-(function_capture module: (atom) @module)
+(function_capture module: (atom) @namespace)
 (function_capture function: (atom) @function)
 
 ; Records
