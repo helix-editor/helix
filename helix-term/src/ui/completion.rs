@@ -16,14 +16,11 @@ use lsp::CompletionItem;
 
 impl menu::Item for CompletionItem {
     type Data = ();
-    fn sort_text(&self, _data: &Self::Data) -> Cow<str> {
-        self.filter_text
-            .as_ref()
-            .unwrap_or(&self.label)
-            .as_str()
-            .into()
+    fn sort_text(&self, data: &Self::Data) -> Cow<str> {
+        self.filter_text(data)
     }
 
+    #[inline]
     fn filter_text(&self, _data: &Self::Data) -> Cow<str> {
         self.filter_text
             .as_ref()
