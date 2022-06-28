@@ -4049,8 +4049,7 @@ fn goto_ts_object_impl(cx: &mut Context, object: &str, direction: Direction) {
 
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
-    let selection = doc.selection(view.id);
-    let range = selection.primary();
+    let range = doc.selection(view.id).primary();
     let mut new_range = match doc.language_config().zip(doc.syntax()) {
         Some((lang_config, syntax)) => movement::goto_treesitter_object(
             text,
