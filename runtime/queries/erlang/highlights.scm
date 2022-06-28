@@ -54,8 +54,8 @@
 
 (attribute
   name: (atom) @keyword
- (#eq? @keyword "(spec|callback)"))
   module: (atom) @namespace
+ (#match? @keyword "(spec|callback)"))
 
 ; Functions
 (function_clause name: (atom) @function)
