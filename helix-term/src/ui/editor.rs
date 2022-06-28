@@ -581,7 +581,13 @@ impl EditorView {
     /// Render bufferline at the top
     pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
         let pb = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
-        surface.clear_with(viewport, editor.theme.get("ui.statusline"));
+        surface.clear_with(
+            viewport,
+            editor
+                .theme
+                .try_get("ui.bufferline.background")
+                .unwrap_or_else(|| editor.theme.get("ui.statusline")),
+        );
         let mut len = 0usize;
         for doc in editor.documents() {
             let fname = doc
