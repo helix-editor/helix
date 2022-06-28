@@ -668,14 +668,17 @@ impl EditorView {
         let hint = theme.get("hint");
 
         let mut lines = Vec::new();
-        let no_modifiers = Style::default().remove_modifier(Modifier::all());
+        // let no_modifiers = Style::default().remove_modifier(Modifier::all());
+        let background_style = theme.get("ui.background");
         for diagnostic in diagnostics {
-            let style = no_modifiers.patch(match diagnostic.severity {
-                Some(Severity::Error) => error,
-                Some(Severity::Warning) | None => warning,
-                Some(Severity::Info) => info,
-                Some(Severity::Hint) => hint,
-            });
+            let style = Style::reset()
+                .patch(background_style)
+                .patch(match diagnostic.severity {
+                    Some(Severity::Error) => error,
+                    Some(Severity::Warning) | None => warning,
+                    Some(Severity::Info) => info,
+                    Some(Severity::Hint) => hint,
+                });
             let text = Text::styled(&diagnostic.message, style);
             lines.extend(text.lines);
         }
