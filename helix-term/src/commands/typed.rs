@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use super::*;
 
 use helix_view::editor::{Action, ConfigEvent};
@@ -50,7 +52,7 @@ fn open(
     ensure!(!args.is_empty(), "wrong argument count");
     for arg in args {
         let (path, pos) = args::parse_file(arg);
-        let _ = cx.editor.open(path, Action::Replace)?;
+        let _ = cx.editor.open(&path, Action::Replace)?;
         let (view, doc) = current!(cx.editor);
         let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
         doc.set_selection(view.id, pos);
@@ -233,6 +235,7 @@ fn write_impl(
         doc.detect_language(cx.editor.syn_loader.clone());
         let _ = cx.editor.refresh_language_server(id);
     }
+
     Ok(())
 }
 
@@ -422,6 +425,7 @@ fn write_quit(
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     write_impl(cx, args.first(), false)?;
+    helix_lsp::block_on(cx.jobs.finish())?;
     quit(cx, &[], event)
 }
 
@@ -819,7 +823,7 @@ fn vsplit(
     } else {
         for arg in args {
             cx.editor
-                .open(PathBuf::from(arg.as_ref()), Action::VerticalSplit)?;
+                .open(&PathBuf::from(arg.as_ref()), Action::VerticalSplit)?;
         }
     }
 
@@ -838,7 +842,7 @@ fn hsplit(
     } else {
         for arg in args {
             cx.editor
-                .open(PathBuf::from(arg.as_ref()), Action::HorizontalSplit)?;
+                .open(&PathBuf::from(arg.as_ref()), Action::HorizontalSplit)?;
         }
     }
 
@@ -923,7 +927,7 @@ fn tutor(
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
     let path = helix_loader::runtime_dir().join("tutor.txt");
-    cx.editor.open(path, Action::Replace)?;
+    cx.editor.open(&path, Action::Replace)?;
     // Unset path to prevent accidentally saving to the original tutor file.
     doc_mut!(cx.editor).set_path(None)?;
     Ok(())
@@ -959,7 +963,7 @@ fn get_option(
     let key = &args[0].to_lowercase();
     let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
 
-    let config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
+    let config = serde_json::json!(cx.editor.config().deref());
     let pointer = format!("/{}", key.replace('.', "/"));
     let value = config.pointer(&pointer).ok_or_else(key_error)?;
 
@@ -982,7 +986,7 @@ fn set_option(
     let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
     let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
 
-    let mut config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
+    let mut config = serde_json::json!(&cx.editor.config().deref());
     let pointer = format!("/{}", key.replace('.', "/"));
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 
@@ -1150,7 +1154,7 @@ fn open_config(
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
     cx.editor
-        .open(helix_loader::config_file(), Action::Replace)?;
+        .open(&helix_loader::config_file(), Action::Replace)?;
     Ok(())
 }
 
@@ -1159,7 +1163,7 @@ fn open_log(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    cx.editor.open(helix_loader::log_file(), Action::Replace)?;
+    cx.editor.open(&helix_loader::log_file(), Action::Replace)?;
     Ok(())
 }
 
@@ -1802,15 +1806,7 @@ pub fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                let args = if cfg!(unix) {
-                    shellwords::shellwords(input)
-                } else {
-                    // Windows doesn't support POSIX, so fallback for now
-                    parts
-                        .into_iter()
-                        .map(|part| part.into())
-                        .collect::<Vec<_>>()
-                };
+                let args = shellwords::shellwords(input);
 
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));

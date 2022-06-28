@@ -425,7 +425,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "nickel"
-source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "c4dd1420b6cfeb6103d38eb1ce5195eb81197edc" }
+source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "9a502ea2e774df3d743a48310bb40e1cc097c86e" }
 
 [[language]]
 name = "nix"
@@ -446,7 +446,7 @@ source = { git = "https://github.com/cstrahan/tree-sitter-nix", rev = "6b71a810c
 name = "ruby"
 scope = "source.ruby"
 injection-regex = "ruby"
-file-types = ["rb", "rake", "rakefile", "irb", "gemfile", "gemspec"]
+file-types = ["rb", "rake", "rakefile", "irb", "gemfile", "gemspec", "Rakefile", "Gemfile"]
 shebangs = ["ruby"]
 roots = []
 comment-token = "#"
@@ -461,7 +461,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-ruby", rev = "dfff6
 name = "bash"
 scope = "source.bash"
 injection-regex = "bash"
-file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild"]
+file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc"]
 shebangs = ["sh", "bash", "dash"]
 roots = []
 comment-token = "#"
@@ -787,6 +787,7 @@ scope = "source.wgsl"
 file-types = ["wgsl"]
 roots = []
 comment-token = "//"
+language-server = { command = "wgsl_analyzer" }
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
@@ -1477,3 +1478,13 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "clojure"
 source = { git = "https://github.com/sogaiu/tree-sitter-clojure", rev = "e57c569ae332ca365da623712ae1f50f84daeae2" }
+
+[[language]]
+name = "starlark"
+scope = "source.starlark"
+injection-regex = "(starlark|bzl|bazel)"
+file-types = ["bzl", "bazel", "BUILD"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+grammar = "python"

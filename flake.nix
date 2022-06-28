@@ -10,7 +10,7 @@
     nixCargoIntegration = {
       url = "github:yusdacra/nix-cargo-integration";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.rustOverlay.follows = "rust-overlay";
+      inputs.rust-overlay.follows = "rust-overlay";
     };
   };
 

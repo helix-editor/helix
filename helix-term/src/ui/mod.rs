@@ -172,7 +172,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         files,
         root,
         move |cx, path: &PathBuf, action| {
-            if let Err(e) = cx.editor.open(path.into(), action) {
+            if let Err(e) = cx.editor.open(path, action) {
                 let err = if let Some(err) = e.source() {
                     format!("{}", err)
                 } else {
@@ -260,8 +260,7 @@ pub mod completers {
 
     pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
-            serde_json::to_value(Config::default())
-                .unwrap()
+            serde_json::json!(Config::default())
                 .as_object()
                 .unwrap()
                 .keys()
