@@ -47,3 +47,7 @@
   (hard_line_break)
 ] @constant.character.escape
 
+(thematic_break) @punctuation.delimiter
+
+(inline_link ["[" "]" "(" ")"] @punctuation.bracket)
+(image ["[" "]" "(" ")"] @punctuation.bracket)
