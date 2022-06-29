@@ -2,7 +2,7 @@
 
 "ui.background" = {bg="nord6"}
 "ui.text" = "nord0"
-"ui.selection" = {bg="bold_blue"}
+"ui.selection" = {bg="nord7", fg="nord6"}
 "ui.statusline" = {bg="nord4"}
 "ui.statusline.inactive" = {bg="nord8"}
 "ui.virtual" = "nord8"
