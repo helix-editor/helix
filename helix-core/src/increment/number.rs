@@ -58,33 +58,32 @@ impl<'a> NumberIncrementor<'a> {
         let number = if prefixed {
             word[2..].replace('_', "")
         } else {
-            if !word_range.contains_range(&range) {
+            if !word_range.contains(range.head) {
                 return None;
             }
 
             let len = word_range.len();
 
             // Offsets of selection within word
-            let start_offset = range.from() - word_range.from();
-            let end_offset = range.to() - word_range.from();
+            let offset = range.head - word_range.from();
 
             // Find end of number
             let end = word
                 .chars()
                 .enumerate()
-                .skip(end_offset)
+                .skip(offset)
                 .find(|(_, c)| !(c.is_ascii_digit() || *c == '_'))
                 .map(|(i, _)| i)
                 .unwrap_or(len);
 
-            let (start_byte, _) = word.char_indices().nth(start_offset)?;
+            let (start_byte, _) = word.char_indices().nth(offset)?;
             // Find start of nubmer
             let start = word[..start_byte]
                 .chars()
                 .rev()
                 .enumerate()
                 .find(|(_, c)| !(c.is_ascii_digit() || *c == '-' || *c == '_'))
-                .map(|(i, _)| start_offset - i)
+                .map(|(i, _)| offset - i)
                 .unwrap_or(0);
 
             if end < start {
