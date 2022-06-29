@@ -1400,11 +1400,11 @@ impl Component for EditorView {
         };
 
         // -1 for commandline and -1 for bufferline
-        let editor_area = if use_bufferline {
-            area.clip_bottom(1).clip_top(1)
-        } else {
-            area.clip_bottom(1)
-        };
+        let mut editor_area = area.clip_bottom(1);
+        if use_bufferline {
+            editor_area = editor_area.clip_top(1);
+        }
+
         // if the terminal size suddenly changed, we need to trigger a resize
         cx.editor.resize(editor_area);
 
