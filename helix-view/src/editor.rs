@@ -239,7 +239,7 @@ pub enum BufferLine {
 
 impl Default for BufferLine {
     fn default() -> Self {
-        BufferLine::Multiple
+        BufferLine::Never
     }
 }
 

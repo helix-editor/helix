@@ -543,17 +543,17 @@ impl EditorView {
 
     /// Render bufferline at the top
     pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
-        let pb = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
+        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
         surface.clear_with(viewport, editor.theme.get("ui.statusline"));
         let mut len = 0usize;
         for doc in editor.documents() {
             let fname = doc
                 .path()
-                .unwrap_or(&pb)
+                .unwrap_or(&scratch)
                 .file_name()
                 .unwrap_or_default()
                 .to_str()
-                .unwrap();
+                .unwrap_or_default();
 
             let style = if view!(editor).doc == doc.id() {
                 editor
@@ -575,6 +575,10 @@ impl EditorView {
 
             surface.set_string(1 + viewport.x + len as u16, viewport.y, text, style);
             len += offset;
+
+            if len > surface.area.width as usize {
+                break;
+            }
         }
     }
 
@@ -1353,7 +1357,7 @@ impl Component for EditorView {
         use helix_view::editor::BufferLine;
         let use_bufferline = match config.bufferline {
             BufferLine::Always => true,
-            BufferLine::Multiple if cx.editor.documents().count() > 1 => true,
+            BufferLine::Multiple if cx.editor.documents.len() > 1 => true,
             _ => false,
         };
 
