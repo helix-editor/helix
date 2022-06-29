@@ -4,9 +4,9 @@
 "ui.text" = "nord0"
 "ui.selection" = {bg="bold_blue"}
 "ui.statusline" = {bg="nord4"}
-"ui.statusline.inactive" = {bg="white"}
-"ui.virtual" = "bold_white"
-"ui.cursor.match" = {bg="bold_gray"}
+"ui.statusline.inactive" = {bg="nord8"}
+"ui.virtual" = "nord8"
+"ui.cursor.match" = {bg="nord8"}
 "ui.cursor" = {bg="nord10", fg="nord6"}
 "ui.cursorline.primary" = {bg="nord5"}
 "ui.linenr" = {fg="nord7"}
