@@ -2,6 +2,7 @@ use crate::text::{Span, Spans};
 use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::graphics::{Color, Modifier, Rect, Style};
 use std::cmp::min;
+use std::collections::VecDeque;
 use unicode_segmentation::UnicodeSegmentation;
 
 /// A buffer cell
@@ -108,6 +109,8 @@ pub struct Buffer {
     /// The content of the buffer. The length of this Vec should always be equal to area.width *
     /// area.height
     pub content: Vec<Cell>,
+    /// Stack of dimming operations that is applied to all set_style invocations
+    dim_operations: VecDeque<i8>,
 }
 
 impl Buffer {
@@ -124,7 +127,11 @@ impl Buffer {
         for _ in 0..size {
             content.push(cell.clone());
         }
-        Buffer { area, content }
+        Buffer {
+            area,
+            content,
+            dim_operations: VecDeque::new(),
+        }
     }
 
     /// Returns a Buffer containing the given lines
@@ -327,7 +334,8 @@ impl Buffer {
                 }
 
                 self.content[index].set_symbol(s);
-                self.content[index].set_style(style(byte_offset));
+                let style = self.applied_style(style(byte_offset));
+                self.content[index].set_style(style);
                 // Reset following cells if multi-width (they would be hidden by the grapheme),
                 for i in index + 1..index + width {
                     self.content[i].reset();
@@ -361,7 +369,8 @@ impl Buffer {
                     break;
                 }
                 self.content[start].set_symbol(s);
-                self.content[start].set_style(style(byte_offset));
+                let style = self.applied_style(style(byte_offset));
+                self.content[start].set_style(style);
                 for i in start + 1..index {
                     self.content[i].reset();
                 }
@@ -386,6 +395,7 @@ impl Buffer {
             return (x, y);
         }
 
+        let style = self.applied_style(style);
         let mut index = self.index_of(x, y);
         let mut x_offset = x as usize;
         let max_x_offset = min(self.area.right() as usize, width.saturating_add(x as usize));
@@ -451,7 +461,24 @@ impl Buffer {
         }
     }
 
+    /// Begin dimming. Apply shade to all set_style calls, until end_dimmed is called
+    pub fn begin_dimmed(&mut self, shade: i8) {
+        self.dim_operations.push_back(shade);
+    }
+
+    /// Remove last dimming operation
+    pub fn end_dimmed(&mut self) {
+        assert!(!self.dim_operations.is_empty());
+        self.dim_operations.pop_back();
+    }
+
+    #[inline]
+    fn applied_style(&self, style: Style) -> Style {
+        self.dim_operations.iter().fold(style, |a, s| a.dimmed(*s))
+    }
+
     pub fn set_style(&mut self, area: Rect, style: Style) {
+        let style = self.applied_style(style);
         for y in area.top()..area.bottom() {
             for x in area.left()..area.right() {
                 self[(x, y)].set_style(style);
@@ -581,35 +608,6 @@ impl Buffer {
             invalidated = std::cmp::max(affected_width, invalidated).saturating_sub(1);
         }
         updates
-    }
-
-    /// Apply shade to all cells in area.
-    ///
-    /// - `shade = 0`: set text modifier `DIM`
-    /// - `shade < 0`: darken rgb color
-    /// - `shade > 0`: lighten rgb color
-    pub fn dim(&mut self, area: Rect, shade: i8) {
-        let alpha = i32::from(shade).unsigned_abs() << 1;
-        let (src_factor, dst_factor) = (alpha, 256 - alpha);
-        let src = if shade > 0 { 255u32 } else { 0u32 } * src_factor;
-        let shaded = |dst_color: u8| ((u32::from(dst_color) * dst_factor + src) >> 8) as u8;
-
-        for y in area.top()..area.bottom() {
-            for x in area.left()..area.right() {
-                let cell = &mut self[(x, y)];
-
-                if shade == 0 {
-                    cell.modifier.insert(Modifier::DIM);
-                } else {
-                    if let Color::Rgb(r, g, b) = cell.fg {
-                        cell.fg = Color::Rgb(shaded(r), shaded(g), shaded(b))
-                    };
-                    if let Color::Rgb(r, g, b) = cell.bg {
-                        cell.bg = Color::Rgb(shaded(r), shaded(g), shaded(b))
-                    }
-                }
-            }
-        }
     }
 }
 
