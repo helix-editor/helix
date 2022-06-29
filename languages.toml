@@ -460,7 +460,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-ruby", rev = "dfff6
 [[language]]
 name = "bash"
 scope = "source.bash"
-injection-regex = "bash"
+injection-regex = "(shell|bash|zsh|sh)"
 file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc"]
 shebangs = ["sh", "bash", "dash"]
 roots = []
