@@ -707,7 +707,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "tsq"
-source = { git = "https://github.com/tree-sitter/tree-sitter-tsq", rev = "b665659d3238e6036e22ed0e24935e60efb39415" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-tsq", rev = "ea68fc2b571ca1c8f70936855130c380f518ff35" }
 
 [[language]]
 name = "cmake"
