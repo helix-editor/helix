@@ -580,7 +580,7 @@ impl EditorView {
 
     /// Render bufferline at the top
     pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
-        let editor = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
+        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
         surface.clear_with(
             viewport,
             editor
