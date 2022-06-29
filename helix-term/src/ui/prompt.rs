@@ -430,10 +430,7 @@ impl Prompt {
                 .borders(Borders::ALL)
                 .border_style(background);
 
-            let inner = block.inner(area).inner(&Margin {
-                vertical: 0,
-                horizontal: 1,
-            });
+            let inner = block.inner(area).inner(&Margin::horizontal(1));
 
             block.render(area, surface);
             text.render(inner, surface, cx);
@@ -446,7 +443,7 @@ impl Prompt {
         let input: Cow<str> = if self.line.is_empty() {
             // latest value in the register list
             self.history_register
-                .and_then(|reg| cx.editor.registers.first(reg).cloned()) // TODO: can we avoid cloning?
+                .and_then(|reg| cx.editor.registers.first(reg))
                 .map(|entry| entry.into())
                 .unwrap_or_else(|| Cow::from(""))
         } else {

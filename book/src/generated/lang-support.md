@@ -4,6 +4,7 @@
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ |  |  | `OmniSharp` |
 | cairo | ✓ |  |  |  |
+| clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
 | cpon | ✓ |  | ✓ |  |

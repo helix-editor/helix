@@ -1,6 +1,6 @@
 //! Input event handling, currently backed by crossterm.
 use anyhow::{anyhow, Error};
-use helix_core::unicode::width::UnicodeWidthStr;
+use helix_core::unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr};
 use serde::de::{self, Deserialize, Deserializer};
 use std::fmt;
 
@@ -20,6 +20,31 @@ impl KeyEvent {
         match self.code {
             KeyCode::Char(ch) => Some(ch),
             _ => None,
+        }
+    }
+
+    /// Format the key in such a way that a concatenated sequence
+    /// of keys can be read easily.
+    ///
+    /// ```
+    /// # use std::str::FromStr;
+    /// # use helix_view::input::KeyEvent;
+    ///
+    /// let k = KeyEvent::from_str("w").unwrap().key_sequence_format();
+    /// assert_eq!(k, "w");
+    ///
+    /// let k = KeyEvent::from_str("C-w").unwrap().key_sequence_format();
+    /// assert_eq!(k, "<C-w>");
+    ///
+    /// let k = KeyEvent::from_str(" ").unwrap().key_sequence_format();
+    /// assert_eq!(k, "<space>");
+    /// ```
+    pub fn key_sequence_format(&self) -> String {
+        let s = self.to_string();
+        if s.graphemes(true).count() > 1 {
+            format!("<{}>", s)
+        } else {
+            s
         }
     }
 }
@@ -323,7 +348,39 @@ mod test {
                 code: KeyCode::Char('%'),
                 modifiers: KeyModifiers::NONE
             }
-        )
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>(";").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char(';'),
+                modifiers: KeyModifiers::NONE
+            }
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>(">").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('>'),
+                modifiers: KeyModifiers::NONE
+            }
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("<").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('<'),
+                modifiers: KeyModifiers::NONE
+            }
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("+").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('+'),
+                modifiers: KeyModifiers::NONE
+            }
+        );
     }
 
     #[test]
@@ -349,6 +406,14 @@ mod test {
             KeyEvent {
                 code: KeyCode::Char('2'),
                 modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL
+            }
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("A-C-+").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('+'),
+                modifiers: KeyModifiers::ALT | KeyModifiers::CONTROL
             }
         );
     }
