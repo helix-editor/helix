@@ -834,7 +834,12 @@ impl EditorView {
                 .cursor(doc.text().slice(..)),
         );
         right_side_text.0.push(Span::styled(
-            format!(" {}:{} ", pos.row + 1, pos.col + 1), // Convert to 1-indexing.
+            format!(
+                " {}:{}:{} ",
+                pos.row + 1,
+                pos.col + 1,
+                doc.text().len_lines()
+            ), // Convert to 1-indexing.
             base_style,
         ));
 
