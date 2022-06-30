@@ -161,7 +161,7 @@ impl EditorView {
             .area
             .clip_top(view.area.height.saturating_sub(1))
             .clip_bottom(1); // -1 from bottom to remove commandline
-        self.render_statusline(doc, view, statusline_area, surface, theme, is_focused);
+        self.render_statusline(editor, doc, view, statusline_area, surface, is_focused);
     }
 
     pub fn render_rulers(
@@ -732,11 +732,11 @@ impl EditorView {
 
     pub fn render_statusline(
         &self,
+        editor: &Editor,
         doc: &Document,
         view: &View,
         viewport: Rect,
         surface: &mut Surface,
-        theme: &Theme,
         is_focused: bool,
     ) {
         use tui::text::{Span, Spans};
@@ -745,10 +745,11 @@ impl EditorView {
         // Left side of the status line.
         //-------------------------------
 
-        let mode = match doc.mode() {
-            Mode::Insert => "INS",
-            Mode::Select => "SEL",
-            Mode::Normal => "NOR",
+        let theme = &editor.theme;
+        let (mode, mode_style) = match doc.mode() {
+            Mode::Insert => (" INS ", theme.get("ui.statusline.insert")),
+            Mode::Select => (" SEL ", theme.get("ui.statusline.select")),
+            Mode::Normal => (" NOR ", theme.get("ui.statusline.normal")),
         };
         let progress = doc
             .language_server()
@@ -767,7 +768,13 @@ impl EditorView {
         // statusline
         surface.set_style(viewport.with_height(1), base_style);
         if is_focused {
-            surface.set_string(viewport.x + 1, viewport.y, mode, base_style);
+            let color_modes = editor.config().color_modes;
+            surface.set_string(
+                viewport.x,
+                viewport.y,
+                mode,
+                if color_modes { mode_style } else { base_style },
+            );
         }
         surface.set_string(viewport.x + 5, viewport.y, progress, base_style);
 
