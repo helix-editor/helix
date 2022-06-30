@@ -39,6 +39,7 @@ use helix_core::{
     Change,
 };
 use helix_dap as dap;
+use helix_lsp::lsp;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -462,6 +463,7 @@ pub struct Editor {
     pub macro_replaying: Vec<char>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
+    pub diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
 
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
@@ -533,6 +535,7 @@ impl Editor {
             macro_replaying: Vec::new(),
             theme: theme_loader.default(),
             language_servers,
+            diagnostics: BTreeMap::new(),
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),

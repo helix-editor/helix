@@ -4,6 +4,7 @@ pub(crate) mod typed;
 
 pub use dap::*;
 pub use lsp::*;
+use tui::text::Spans;
 pub use typed::*;
 
 use helix_core::{
@@ -265,6 +266,8 @@ impl MappableCommand {
         symbol_picker, "Open symbol picker",
         select_references_to_symbol_under_cursor, "Select symbol references",
         workspace_symbol_picker, "Open workspace symbol picker",
+        diagnostics_picker, "Open diagnostic picker",
+        workspace_diagnostics_picker, "Open workspace diagnostic picker",
         last_picker, "Open last picker",
         prepend_to_line, "Insert at start of line",
         append_to_line, "Insert at end of line",
@@ -2170,7 +2173,7 @@ fn buffer_picker(cx: &mut Context) {
     }
 
     impl BufferMeta {
-        fn format(&self) -> Cow<str> {
+        fn format(&self) -> Spans {
             let path = self
                 .path
                 .as_deref()
@@ -2193,7 +2196,7 @@ fn buffer_picker(cx: &mut Context) {
             } else {
                 format!(" ({})", flags.join(""))
             };
-            Cow::Owned(format!("{} {}{}", self.id, path, flag))
+            format!("{} {}{}", self.id, path, flag).into()
         }
     }
 
@@ -2260,10 +2263,9 @@ pub fn command_palette(cx: &mut Context) {
             let picker = Picker::new(
                 commands,
                 move |command| match command {
-                    MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String)
-                    {
+                    MappableCommand::Typable { doc, name, .. } => match keymap.get(name) {
                         Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
-                        None => doc.into(),
+                        None => doc.as_str().into(),
                     },
                     MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
                         Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
