@@ -855,7 +855,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "markdown"
-source = { git = "https://github.com/MDeiml/tree-sitter-markdown", rev = "ad8c32917a16dfbb387d1da567bf0c3fb6fffde2" }
+source = { git = "https://github.com/MDeiml/tree-sitter-markdown", rev = "ab15701d8f3f68aeb74e30573b7d669a6ef2a7ed" }
 
 [[language]]
 name = "dart"
