@@ -273,8 +273,13 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "j" | "down" => scroll_down,
             "C-b" | "pageup" => page_up,
             "C-f" | "pagedown" => page_down,
-            "C-u" => half_page_up,
-            "C-d" => half_page_down,
+            "C-u" | "backspace" => half_page_up,
+            "C-d" | "space" => half_page_down,
+
+            "/" => search,
+            "?" => rsearch,
+            "n" => search_next,
+            "N" => search_prev,
         },
         "Z" => { "View" sticky=true
             "z" | "c" => align_view_center,
@@ -285,8 +290,13 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "j" | "down" => scroll_down,
             "C-b" | "pageup" => page_up,
             "C-f" | "pagedown" => page_down,
-            "C-u" => half_page_up,
-            "C-d" => half_page_down,
+            "C-u" | "backspace" => half_page_up,
+            "C-d" | "space" => half_page_down,
+
+            "/" => search,
+            "?" => rsearch,
+            "n" => search_next,
+            "N" => search_prev,
         },
 
         "\"" => select_register,
