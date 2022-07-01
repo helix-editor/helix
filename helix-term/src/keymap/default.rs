@@ -104,6 +104,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "c" => goto_prev_class,
             "a" => goto_prev_parameter,
             "o" => goto_prev_comment,
+            "t" => goto_prev_test,
             "p" => goto_prev_paragraph,
             "space" => add_newline_above,
         },
@@ -114,6 +115,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "c" => goto_next_class,
             "a" => goto_next_parameter,
             "o" => goto_next_comment,
+            "t" => goto_next_test,
             "p" => goto_next_paragraph,
             "space" => add_newline_below,
         },
@@ -205,6 +207,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "b" => buffer_picker,
             "s" => symbol_picker,
             "S" => workspace_symbol_picker,
+            "g" => diagnostics_picker,
+            "G" => workspace_diagnostics_picker,
             "a" => code_action,
             "'" => last_picker,
             "d" => { "Debug (experimental)" sticky=true
@@ -257,6 +261,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "/" => global_search,
             "k" => hover,
             "r" => rename_symbol,
+            "h" => select_references_to_symbol_under_cursor,
             "?" => command_palette,
         },
         "z" => { "View"

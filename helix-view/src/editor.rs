@@ -32,13 +32,14 @@ use anyhow::{bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
+use helix_core::Position;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig},
     Change,
 };
-use helix_core::{Position, Selection};
 use helix_dap as dap;
+use helix_lsp::lsp;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -71,6 +72,9 @@ pub struct FilePickerConfig {
     /// Enables ignoring hidden files.
     /// Whether to hide hidden files in file picker and global search results. Defaults to true.
     pub hidden: bool,
+    /// Enables following symlinks.
+    /// Whether to follow symbolic links in file picker and file or directory completions. Defaults to true.
+    pub follow_symlinks: bool,
     /// Enables reading ignore files from parent directories. Defaults to true.
     pub parents: bool,
     /// Enables reading `.ignore` files.
@@ -94,6 +98,7 @@ impl Default for FilePickerConfig {
     fn default() -> Self {
         Self {
             hidden: true,
+            follow_symlinks: true,
             parents: true,
             ignore: true,
             git_ignore: true,
@@ -117,6 +122,8 @@ pub struct Config {
     pub shell: Vec<String>,
     /// Line number mode.
     pub line_number: LineNumber,
+    /// Highlight the lines cursors are currently on. Defaults to false.
+    pub cursorline: bool,
     /// Gutters. Default ["diagnostics", "line-numbers"]
     pub gutters: Vec<GutterType>,
     /// Middle click paste support. Defaults to true.
@@ -152,6 +159,10 @@ pub struct Config {
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
+    /// Vertical indent width guides.
+    pub indent_guides: IndentGuidesConfig,
+    /// Whether to color modes with different colors. Defaults to `false`.
+    pub color_modes: bool,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -360,6 +371,22 @@ impl Default for WhitespaceCharacters {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct IndentGuidesConfig {
+    pub render: bool,
+    pub character: char,
+}
+
+impl Default for IndentGuidesConfig {
+    fn default() -> Self {
+        Self {
+            render: false,
+            character: '│',
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -372,6 +399,7 @@ impl Default for Config {
                 vec!["sh".to_owned(), "-c".to_owned()]
             },
             line_number: LineNumber::Absolute,
+            cursorline: false,
             gutters: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
@@ -387,6 +415,8 @@ impl Default for Config {
             lsp: LspConfig::default(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
+            indent_guides: IndentGuidesConfig::default(),
+            color_modes: false,
         }
     }
 }
@@ -436,6 +466,7 @@ pub struct Editor {
     pub macro_replaying: Vec<char>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
+    pub diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
 
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
@@ -507,6 +538,7 @@ impl Editor {
             macro_replaying: Vec::new(),
             theme: theme_loader.default(),
             language_servers,
+            diagnostics: BTreeMap::new(),
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
@@ -529,6 +561,14 @@ impl Editor {
 
     pub fn config(&self) -> DynGuard<Config> {
         self.config.load()
+    }
+
+    /// Call if the config has changed to let the editor update all
+    /// relevant members.
+    pub fn refresh_config(&mut self) {
+        let config = self.config();
+        self.auto_pairs = (&config.auto_pairs).into();
+        self.reset_idle_timer();
     }
 
     pub fn clear_idle_timer(&mut self) {
@@ -557,6 +597,20 @@ impl Editor {
     #[inline]
     pub fn set_error<T: Into<Cow<'static, str>>>(&mut self, error: T) {
         self.status_msg = Some((error.into(), Severity::Error));
+    }
+
+    #[inline]
+    pub fn get_status(&self) -> Option<(&Cow<'static, str>, &Severity)> {
+        self.status_msg.as_ref().map(|(status, sev)| (status, sev))
+    }
+
+    /// Returns true if the current status is an error
+    #[inline]
+    pub fn is_err(&self) -> bool {
+        self.status_msg
+            .as_ref()
+            .map(|(_, sev)| *sev == Severity::Error)
+            .unwrap_or(false)
     }
 
     pub fn set_theme(&mut self, theme: Theme) {
@@ -633,11 +687,8 @@ impl Editor {
         view.offset = Position::default();
 
         let doc = self.documents.get_mut(&doc_id).unwrap();
+        doc.ensure_view_init(view.id);
 
-        // initialize selection for view
-        doc.selections
-            .entry(view.id)
-            .or_insert_with(|| Selection::point(0));
         // TODO: reuse align_view
         let pos = doc
             .selection(view.id)
@@ -707,9 +758,7 @@ impl Editor {
             Action::Load => {
                 let view_id = view!(self).id;
                 let doc = self.documents.get_mut(&id).unwrap();
-                if doc.selections().is_empty() {
-                    doc.set_selection(view_id, Selection::point(0));
-                }
+                doc.ensure_view_init(view_id);
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
@@ -724,7 +773,7 @@ impl Editor {
                 );
                 // initialize selection for view
                 let doc = self.documents.get_mut(&id).unwrap();
-                doc.set_selection(view_id, Selection::point(0));
+                doc.ensure_view_init(view_id);
             }
         }
 
@@ -757,8 +806,9 @@ impl Editor {
         Ok(self.new_file_from_document(action, Document::from(rope, Some(encoding))))
     }
 
-    pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
-        let path = helix_core::path::get_canonicalized_path(&path)?;
+    // ??? possible use for integration tests
+    pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, Error> {
+        let path = helix_core::path::get_canonicalized_path(path)?;
         let id = self.document_by_path(&path).map(|doc| doc.id);
 
         let id = if let Some(id) = id {
@@ -778,12 +828,7 @@ impl Editor {
     pub fn close(&mut self, id: ViewId) {
         let view = self.tree.get(self.tree.focus);
         // remove selection
-        self.documents
-            .get_mut(&view.doc)
-            .unwrap()
-            .selections
-            .remove(&id);
-
+        self.documents.get_mut(&view.doc).unwrap().remove_view(id);
         self.tree.remove(id);
         self._refresh();
     }
@@ -858,7 +903,7 @@ impl Editor {
             let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
             let doc = self.documents.get_mut(&doc_id).unwrap();
-            doc.set_selection(view_id, Selection::point(0));
+            doc.ensure_view_init(view_id);
         }
 
         self._refresh();

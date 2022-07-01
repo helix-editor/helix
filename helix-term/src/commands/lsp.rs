@@ -1,21 +1,31 @@
 use helix_lsp::{
-    block_on, lsp,
+    block_on,
+    lsp::{self, DiagnosticSeverity, NumberOrString},
     util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
+use tui::text::{Span, Spans};
 
 use super::{align_view, push_jump, Align, Context, Editor};
 
-use helix_core::Selection;
-use helix_view::editor::Action;
+use helix_core::{path, Selection};
+use helix_view::{
+    editor::Action,
+    theme::{Modifier, Style},
+};
 
 use crate::{
     compositor::{self, Compositor},
     ui::{self, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent},
 };
 
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::BTreeMap};
 
+/// Gets the language server that is attached to a document, and
+/// if it's not active displays a status message. Using this macro
+/// in a context where the editor automatically queries the LSP
+/// (instead of when the user explicitly does so via a keybind like
+/// `gd`) will spam the "LSP inactive" status message confusingly.
 #[macro_export]
 macro_rules! language_server {
     ($editor:expr, $doc:expr) => {
@@ -56,7 +66,14 @@ fn jump_to_location(
             return;
         }
     };
-    let _id = editor.open(path, action).expect("editor.open failed");
+    match editor.open(&path, action) {
+        Ok(_) => (),
+        Err(err) => {
+            let err = format!("failed to open path: {:?}: {:?}", location.uri, err);
+            editor.set_error(err);
+            return;
+        }
+    }
     let (view, doc) = current!(editor);
     let definition_pos = location.range.start;
     // TODO: convert inside server
@@ -109,7 +126,7 @@ fn sym_picker(
                         return;
                     }
                 };
-                if let Err(err) = cx.editor.open(path, action) {
+                if let Err(err) = cx.editor.open(&path, action) {
                     let err = format!("failed to open document: {}: {}", uri, err);
                     log::error!("{}", err);
                     cx.editor.set_error(err);
@@ -129,6 +146,97 @@ fn sym_picker(
             }
         },
         move |_editor, symbol| Some(location_to_file_location(&symbol.location)),
+    )
+    .truncate_start(false)
+}
+
+fn diag_picker(
+    cx: &Context,
+    diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
+    current_path: Option<lsp::Url>,
+    offset_encoding: OffsetEncoding,
+) -> FilePicker<(lsp::Url, lsp::Diagnostic)> {
+    // TODO: drop current_path comparison and instead use workspace: bool flag?
+
+    // flatten the map to a vec of (url, diag) pairs
+    let mut flat_diag = Vec::new();
+    for (url, diags) in diagnostics {
+        flat_diag.reserve(diags.len());
+        for diag in diags {
+            flat_diag.push((url.clone(), diag));
+        }
+    }
+
+    let hint = cx.editor.theme.get("hint");
+    let info = cx.editor.theme.get("info");
+    let warning = cx.editor.theme.get("warning");
+    let error = cx.editor.theme.get("error");
+
+    FilePicker::new(
+        flat_diag,
+        move |(url, diag)| {
+            let mut style = diag
+                .severity
+                .map(|s| match s {
+                    DiagnosticSeverity::HINT => hint,
+                    DiagnosticSeverity::INFORMATION => info,
+                    DiagnosticSeverity::WARNING => warning,
+                    DiagnosticSeverity::ERROR => error,
+                    _ => Style::default(),
+                })
+                .unwrap_or_default();
+
+            // remove background as it is distracting in the picker list
+            style.bg = None;
+
+            let code = diag
+                .code
+                .as_ref()
+                .map(|c| match c {
+                    NumberOrString::Number(n) => n.to_string(),
+                    NumberOrString::String(s) => s.to_string(),
+                })
+                .unwrap_or_default();
+
+            let truncated_path = path::get_truncated_path(url.path())
+                .to_string_lossy()
+                .into_owned();
+
+            Spans::from(vec![
+                Span::styled(
+                    diag.source.clone().unwrap_or_default(),
+                    style.add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(": "),
+                Span::styled(truncated_path, style),
+                Span::raw(" - "),
+                Span::styled(code, style.add_modifier(Modifier::BOLD)),
+                Span::raw(": "),
+                Span::styled(&diag.message, style),
+            ])
+        },
+        move |cx, (url, diag), action| {
+            if current_path.as_ref() == Some(url) {
+                let (view, doc) = current!(cx.editor);
+                push_jump(view, doc);
+            } else {
+                let path = url.to_file_path().unwrap();
+                cx.editor.open(&path, action).expect("editor.open failed");
+            }
+
+            let (view, doc) = current!(cx.editor);
+
+            if let Some(range) = lsp_range_to_range(doc.text(), diag.range, offset_encoding) {
+                // we flip the range so that the cursor sits on the start of the symbol
+                // (for example start of the function).
+                doc.set_selection(view.id, Selection::single(range.head, range.anchor));
+                align_view(doc, view, Align::Center);
+            }
+        },
+        move |_editor, (url, diag)| {
+            let location = lsp::Location::new(url.clone(), diag.range);
+            Some(location_to_file_location(&location))
+        },
     )
     .truncate_start(false)
 }
@@ -201,6 +309,37 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
             }
         },
     )
+}
+
+pub fn diagnostics_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    if let Some(current_url) = doc.url() {
+        let offset_encoding = language_server.offset_encoding();
+        let diagnostics = cx
+            .editor
+            .diagnostics
+            .get(&current_url)
+            .cloned()
+            .unwrap_or_default();
+        let picker = diag_picker(
+            cx,
+            [(current_url.clone(), diagnostics)].into(),
+            Some(current_url),
+            offset_encoding,
+        );
+        cx.push_layer(Box::new(overlayed(picker)));
+    }
+}
+
+pub fn workspace_diagnostics_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    let current_url = doc.url();
+    let offset_encoding = language_server.offset_encoding();
+    let diagnostics = cx.editor.diagnostics.clone();
+    let picker = diag_picker(cx, diagnostics, current_url, offset_encoding);
+    cx.push_layer(Box::new(overlayed(picker)));
 }
 
 impl ui::menu::Item for lsp::CodeActionOrCommand {
@@ -282,10 +421,8 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup = Popup::new("code-action", picker).margin(helix_view::graphics::Margin {
-                vertical: 1,
-                horizontal: 1,
-            });
+            let popup =
+                Popup::new("code-action", picker).margin(helix_view::graphics::Margin::all(1));
             compositor.replace_or_push("code-action", popup);
         },
     )
@@ -380,7 +517,7 @@ pub fn apply_workspace_edit(
         };
 
         let current_view_id = view!(editor).id;
-        let doc_id = match editor.open(path, Action::Load) {
+        let doc_id = match editor.open(&path, Action::Load) {
             Ok(doc_id) => doc_id,
             Err(err) => {
                 let err = format!("failed to open document: {}: {}", uri, err);
@@ -488,7 +625,7 @@ fn goto_impl(
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
 ) {
-    let cwdir = std::env::current_dir().expect("couldn't determine current directory");
+    let cwdir = std::env::current_dir().unwrap_or_default();
 
     match locations.as_slice() {
         [location] => {
@@ -645,6 +782,7 @@ pub fn signature_help(cx: &mut Context) {
         },
     );
 }
+
 pub fn hover(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
@@ -694,6 +832,7 @@ pub fn hover(cx: &mut Context) {
         },
     );
 }
+
 pub fn rename_symbol(cx: &mut Context) {
     ui::prompt(
         cx,
@@ -716,6 +855,47 @@ pub fn rename_symbol(cx: &mut Context) {
                 Ok(edits) => apply_workspace_edit(cx.editor, offset_encoding, &edits),
                 Err(err) => cx.editor.set_error(err.to_string()),
             }
+        },
+    );
+}
+
+pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = doc.position(view.id, offset_encoding);
+
+    let future = language_server.text_document_document_highlight(doc.identifier(), pos, None);
+
+    cx.callback(
+        future,
+        move |editor, _compositor, response: Option<Vec<lsp::DocumentHighlight>>| {
+            let document_highlights = match response {
+                Some(highlights) if !highlights.is_empty() => highlights,
+                _ => return,
+            };
+            let (view, doc) = current!(editor);
+            let language_server = language_server!(editor, doc);
+            let offset_encoding = language_server.offset_encoding();
+            let text = doc.text();
+            let pos = doc.selection(view.id).primary().head;
+
+            // We must find the range that contains our primary cursor to prevent our primary cursor to move
+            let mut primary_index = 0;
+            let ranges = document_highlights
+                .iter()
+                .filter_map(|highlight| lsp_range_to_range(text, highlight.range, offset_encoding))
+                .enumerate()
+                .map(|(i, range)| {
+                    if range.contains(pos) {
+                        primary_index = i;
+                    }
+                    range
+                })
+                .collect();
+            let selection = Selection::new(ranges, primary_index);
+            doc.set_selection(view.id, selection);
         },
     );
 }

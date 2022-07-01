@@ -156,16 +156,22 @@
   "macro_rules!"
 
   "let"
-  "ref"
-  "move"
 
-  "dyn"
-  "static"
-  "const"
   "async"
 ] @keyword
 
-(mutable_specifier) @keyword.mut
+(mutable_specifier) @keyword.storage.modifier.mut
+
+(reference_type "&" @keyword.storage.modifier.ref)
+(self_parameter "&" @keyword.storage.modifier.ref)
+
+[
+  "static"
+  "const"
+  "ref"
+  "move"
+  "dyn"
+] @keyword.storage.modifier
 
 ; TODO: variable.mut to highlight mutable identifiers via locals.scm
 
@@ -305,6 +311,7 @@
   ">>"
   "<<"
   ">>="
+  "<<="
   "@"
   ".."
   "..="

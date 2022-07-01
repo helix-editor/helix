@@ -48,6 +48,8 @@ pub struct Menu<T: Item> {
 }
 
 impl<T: Item> Menu<T> {
+    const LEFT_PADDING: usize = 1;
+
     // TODO: it's like a slimmed down picker, share code? (picker = menu + prompt with different
     // rendering)
     pub fn new(
@@ -150,6 +152,7 @@ impl<T: Item> Menu<T> {
             len += 1; // +1: reserve some space for scrollbar
         }
 
+        len += Self::LEFT_PADDING;
         let width = len.min(viewport.0 as usize);
 
         self.widths = max_lens
@@ -271,6 +274,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             .try_get("ui.menu")
             .unwrap_or_else(|| theme.get("ui.text"));
         let selected = theme.get("ui.menu.selected");
+        surface.clear_with(area, style);
 
         let scroll = self.scroll;
 
@@ -288,7 +292,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         let win_height = area.height as usize;
 
         const fn div_ceil(a: usize, b: usize) -> usize {
-            (a + b - 1) / a
+            (a + b - 1) / b
         }
 
         let scroll_height = std::cmp::min(div_ceil(win_height.pow(2), len), win_height as usize);
@@ -306,7 +310,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         use tui::widgets::TableState;
 
         table.render_table(
-            area,
+            area.clip_left(Self::LEFT_PADDING as u16).clip_right(1),
             surface,
             &mut TableState {
                 offset: scroll,
@@ -314,16 +318,34 @@ impl<T: Item + 'static> Component for Menu<T> {
             },
         );
 
+        if let Some(cursor) = self.cursor {
+            let offset_from_top = cursor - scroll;
+            let left = &mut surface[(area.left(), area.y + offset_from_top as u16)];
+            left.set_style(selected);
+            let right = &mut surface[(
+                area.right().saturating_sub(1),
+                area.y + offset_from_top as u16,
+            )];
+            right.set_style(selected);
+        }
+
         let fits = len <= win_height;
 
+        let scroll_style = theme.get("ui.menu.scroll");
         for (i, _) in (scroll..(scroll + win_height).min(len)).enumerate() {
+            let cell = &mut surface[(area.x + area.width - 1, area.y + i as u16)];
+
+            if !fits {
+                // Draw scroll track
+                cell.set_symbol("▐"); // right half block
+                cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
+            }
+
             let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
 
             if !fits && is_marked {
-                let cell = &mut surface[(area.x + area.width - 2, area.y + i as u16)];
-                cell.set_symbol("▐");
-                // cell.set_style(selected);
-                // cell.set_style(if is_marked { selected } else { style });
+                // Draw scroll thumb
+                cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
             }
         }
     }

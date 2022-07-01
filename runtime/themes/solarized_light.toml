@@ -40,7 +40,7 @@
 # background
 "ui.background" = { bg = "base03" }
 
-"ui.virtual" = { fg = "base01" }
+"ui.virtual.whitespace" = { fg = "base01" }
 
 # 行号栏
 # line number column
@@ -52,6 +52,10 @@
 # 状态栏
 # status bar
 "ui.statusline" = { fg = "base03", bg = "base0" }
+"ui.statusline.normal" = { bg = "blue" }
+"ui.statusline.insert" = { bg = "green" }
+"ui.statusline.select" = { bg = "yellow" }
+
 # 非活动状态栏
 # inactive status bar
 "ui.statusline.inactive" = { fg = "base1", bg = "base01" }

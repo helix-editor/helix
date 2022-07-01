@@ -38,6 +38,9 @@ jobs:
   test:
     name: Test Suite
     runs-on: ${{ matrix.os }}
+    env:
+      RUST_BACKTRACE: 1
+      HELIX_LOG_LEVEL: info
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
@@ -49,9 +52,6 @@ jobs:
           override: true
 
       - uses: Swatinem/rust-cache@v1
-
-      - name: Copy minimal languages config
-        run: cp .github/workflows/languages.toml ./languages.toml
 
       - name: Cache test tree-sitter grammar
         uses: actions/cache@v3
@@ -65,6 +65,11 @@ jobs:
         with:
           command: test
           args: --workspace
+
+      - name: Run cargo integration-test
+        uses: actions-rs/cargo@v1
+        with:
+          command: integration-test
 
     strategy:
       matrix:

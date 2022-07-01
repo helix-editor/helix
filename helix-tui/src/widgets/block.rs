@@ -77,7 +77,7 @@ impl<'a> Block<'a> {
     )]
     pub fn title_style(mut self, style: Style) -> Block<'a> {
         if let Some(t) = self.title {
-            let title = String::from(t);
+            let title = String::from(&t);
             self.title = Some(Spans::from(Span::styled(title, style)));
         }
         self

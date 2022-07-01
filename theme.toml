@@ -56,6 +56,8 @@ label = "honey"
 "ui.text.focus" = { fg = "white" }
 "ui.virtual" = { fg = "comet" }
 
+"ui.virtual.indent-guide" = { fg = "comet" }
+
 "ui.selection" = { bg = "#540099" }
 "ui.selection.primary" = { bg = "#540099" }
 # TODO: namespace ui.cursor as ui.selection.cursor?
@@ -63,10 +65,12 @@ label = "honey"
 "ui.cursor.insert" = { bg = "white" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
 "ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursorline.primary" = { bg = "bossanova" }
 "ui.highlight" = { bg = "bossanova" }
 
 "ui.menu" = { fg = "lavender", bg = "revolver" }
 "ui.menu.selected" = { fg = "revolver", bg = "white" }
+"ui.menu.scroll" = { fg = "lavender", bg = "comet" }
 
 diagnostic = { modifiers = ["underlined"] }
 # "diagnostic.hint" = { fg = "revolver", bg = "lilac" }
