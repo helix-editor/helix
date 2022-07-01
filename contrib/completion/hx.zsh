@@ -14,6 +14,8 @@ _hx() {
 		"--health[Checks for errors in editor setup]:language:->health" \
 		"-g[Fetches or builds tree-sitter grammars]:action:->grammar" \
 		"--grammar[Fetches or builds tree-sitter grammars]:action:->grammar" \
+		"--vsplit[Splits all given files vertically into different windows]" \
+		"--hsplit[Splits all given files horizontally into different windows]" \
 		"*:file:_files"
 
 	case "$state" in

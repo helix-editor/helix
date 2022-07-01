@@ -4,6 +4,7 @@ pub(crate) mod typed;
 
 pub use dap::*;
 pub use lsp::*;
+use tui::text::Spans;
 pub use typed::*;
 
 use helix_core::{
@@ -263,7 +264,10 @@ impl MappableCommand {
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         symbol_picker, "Open symbol picker",
+        select_references_to_symbol_under_cursor, "Select symbol references",
         workspace_symbol_picker, "Open workspace symbol picker",
+        diagnostics_picker, "Open diagnostic picker",
+        workspace_diagnostics_picker, "Open workspace diagnostic picker",
         last_picker, "Open last picker",
         prepend_to_line, "Insert at start of line",
         append_to_line, "Insert at end of line",
@@ -2170,7 +2174,7 @@ fn buffer_picker(cx: &mut Context) {
     }
 
     impl BufferMeta {
-        fn format(&self) -> Cow<str> {
+        fn format(&self) -> Spans {
             let path = self
                 .path
                 .as_deref()
@@ -2193,7 +2197,7 @@ fn buffer_picker(cx: &mut Context) {
             } else {
                 format!(" ({})", flags.join(""))
             };
-            Cow::Owned(format!("{} {}{}", self.id, path, flag))
+            format!("{} {}{}", self.id, path, flag).into()
         }
     }
 
@@ -2260,10 +2264,9 @@ pub fn command_palette(cx: &mut Context) {
             let picker = Picker::new(
                 commands,
                 move |command| match command {
-                    MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String)
-                    {
+                    MappableCommand::Typable { doc, name, .. } => match keymap.get(name) {
                         Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
-                        None => doc.into(),
+                        None => doc.as_str().into(),
                     },
                     MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
                         Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
@@ -2344,6 +2347,7 @@ async fn make_format_callback(
             if doc.version() == doc_version {
                 doc.apply(&Transaction::from(format), view_id);
                 doc.append_changes_to_history(view_id);
+                doc.detect_indent_and_line_ending();
                 if let Modified::SetUnmodified = modified {
                     doc.reset_modified();
                 }
@@ -2945,7 +2949,7 @@ pub mod insert {
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
                 // consider to delete by indent level if all characters before `pos` are indent units.
                 let fragment = Cow::from(text.slice(line_start_pos..pos));
-                if !fragment.is_empty() && fragment.chars().all(|ch| ch.is_whitespace()) {
+                if !fragment.is_empty() && fragment.chars().all(|ch| ch == ' ' || ch == '\t') {
                     if text.get_char(pos.saturating_sub(1)) == Some('\t') {
                         // fast path, delete one char
                         (
@@ -4654,8 +4658,6 @@ fn replay_macro(cx: &mut Context) {
         return;
     }
 
-    cx.editor.macro_replaying.push(reg);
-
     let keys: Vec<KeyEvent> = if let Some([keys_str]) = cx.editor.registers.read(reg) {
         match helix_view::input::parse_macro(keys_str) {
             Ok(keys) => keys,
@@ -4669,6 +4671,10 @@ fn replay_macro(cx: &mut Context) {
         return;
     };
 
+    // Once the macro has been fully validated, it's marked as being under replay
+    // to ensure we don't fall into infinite recursion.
+    cx.editor.macro_replaying.push(reg);
+
     let count = cx.count();
     cx.callback = Some(Box::new(move |compositor, cx| {
         for _ in 0..count {
@@ -4676,9 +4682,11 @@ fn replay_macro(cx: &mut Context) {
                 compositor.handle_event(crossterm::event::Event::Key(key.into()), cx);
             }
         }
+        // The macro under replay is cleared at the end of the callback, not in the
+        // macro replay context, or it will not correctly protect the user from
+        // replaying recursively.
+        cx.editor.macro_replaying.pop();
     }));
-
-    cx.editor.macro_replaying.pop();
 }
 
 fn insert_digraph(cx: &mut Context) {

@@ -48,6 +48,10 @@
 
 # 状态栏
 "ui.statusline" = { fg = "base03", bg = "base0" }
+"ui.statusline.normal" = { bg = "blue" }
+"ui.statusline.insert" = { bg = "green" }
+"ui.statusline.select" = { bg = "yellow" }
+
 # 非活动状态栏
 "ui.statusline.inactive" = { fg = "base1", bg = "base01" }
 
@@ -55,7 +59,7 @@
 "ui.popup" = { bg = "base02" }
 # 影响 补全选中 cmd弹出信息选中
 "ui.menu.selected" = { fg = "base02", bg = "base2"}
-"ui.menu" = { fg = "base1" }
+"ui.menu" = { fg = "base0", bg = "base02" }
 # ??
 "ui.window" = { fg = "base3" }
 # 命令行 补全的帮助信息

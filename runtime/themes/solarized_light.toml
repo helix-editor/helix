@@ -52,6 +52,10 @@
 # 状态栏
 # status bar
 "ui.statusline" = { fg = "base03", bg = "base0" }
+"ui.statusline.normal" = { bg = "blue" }
+"ui.statusline.insert" = { bg = "green" }
+"ui.statusline.select" = { bg = "yellow" }
+
 # 非活动状态栏
 # inactive status bar
 "ui.statusline.inactive" = { fg = "base1", bg = "base01" }

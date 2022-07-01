@@ -40,6 +40,7 @@ use helix_core::{
     Change,
 };
 use helix_dap as dap;
+use helix_lsp::lsp;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -122,6 +123,8 @@ pub struct Config {
     pub shell: Vec<String>,
     /// Line number mode.
     pub line_number: LineNumber,
+    /// Highlight the lines cursors are currently on. Defaults to false.
+    pub cursorline: bool,
     /// Gutters. Default ["diagnostics", "line-numbers"]
     pub gutters: Vec<GutterType>,
     /// Middle click paste support. Defaults to true.
@@ -161,6 +164,8 @@ pub struct Config {
     pub indent_guides: IndentGuidesConfig,
     /// User supplied digraphs for use with the `insert_diagraphs` command
     pub digraphs: DigraphStore,
+    /// Whether to color modes with different colors. Defaults to `false`.
+    pub color_modes: bool,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -397,6 +402,7 @@ impl Default for Config {
                 vec!["sh".to_owned(), "-c".to_owned()]
             },
             line_number: LineNumber::Absolute,
+            cursorline: false,
             gutters: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
@@ -414,6 +420,7 @@ impl Default for Config {
             whitespace: WhitespaceConfig::default(),
             indent_guides: IndentGuidesConfig::default(),
             digraphs: Default::default(),
+            color_modes: false,
         }
     }
 }
@@ -463,6 +470,7 @@ pub struct Editor {
     pub macro_replaying: Vec<char>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
+    pub diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
 
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
@@ -534,6 +542,7 @@ impl Editor {
             macro_replaying: Vec::new(),
             theme: theme_loader.default(),
             language_servers,
+            diagnostics: BTreeMap::new(),
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
