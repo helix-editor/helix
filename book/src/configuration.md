@@ -48,13 +48,43 @@ hidden = false
 | `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file. | `[]` |
 | `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
 
+### `[editor.statusline]` Section
+
+Allows configuring the statusline at the bottom of the editor.
+
+The configuration distinguishes between three areas of the status line:
+
+`[ ... ... LEFT ... ... | ... ... ... ... CENTER ... ... ... ... | ... ... RIGHT ... ... ]`
+
+Statusline elements can be defined as follows:
+
+```toml
+[editor.status-line]
+left = ["mode", "spinner"]
+center = ["file-name"]
+right = ["diagnostics", "selections", "position", "file-encoding", "file-type"]
+```
+
+The following elements can be configured:
+
+| Key    | Description |
+| ------ | ----------- |
+| `mode` | The current editor mode (`NOR`/`INS`/`SEL`) |
+| `spinner` | A progress spinner indicating LSP activity |
+| `file-name` | The path/name of the opened file |
+| `file-encoding` | The encoding of the opened file |
+| `file-type` | The type of the opened file |
+| `diagnostics` | The number of warnings and/or errors |
+| `selections` | The number of active selections |
+| `position` | The cursor position |
+
 ### `[editor.lsp]` Section
 
 | Key                | Description                                 | Default |
 | ---                | -----------                                 | ------- |
 | `display-messages` | Display LSP progress messages below statusline[^1] | `false` |
 
-[^1]: A progress spinner is always shown in the statusline beside the file path.
+[^1]: By default, a progress spinner is shown in the statusline beside the file path.
 
 ### `[editor.cursor-shape]` Section
 
