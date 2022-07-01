@@ -5,7 +5,7 @@ use helix_core::{
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{align_view, editor::ConfigEvent, theme, Align, Editor};
+use helix_view::{align_view, editor::ConfigEvent, theme, tree::Layout, Align, Editor};
 use serde_json::json;
 
 use crate::{
@@ -158,16 +158,31 @@ impl Application {
             } else {
                 let nr_of_files = args.files.len();
                 editor.open(first, Action::VerticalSplit)?;
-                for (file, pos) in args.files {
+                // Because the line above already opens the first file, we can
+                // simply skip opening it a second time by using .skip(1) here.
+                for (file, pos) in args.files.into_iter().skip(1) {
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
                             "expected a path to file, found a directory. (to open a directory pass it as first argument)"
                         ));
                     } else {
+                        // If the user passes in either `--vsplit` or
+                        // `--hsplit` as a command line argument, all the given
+                        // files will be opened according to the selected
+                        // option. If neither of those two arguments are passed
+                        // in, just load the files normally.
+                        let action = match args.split {
+                            Some(Layout::Vertical) => Action::VerticalSplit,
+                            Some(Layout::Horizontal) => Action::HorizontalSplit,
+                            None => Action::Load,
+                        };
                         let doc_id = editor
-                            .open(&file, Action::Load)
+                            .open(&file, action)
                             .context(format!("open '{}'", file.to_string_lossy()))?;
                         // with Action::Load all documents have the same view
+                        // NOTE: this isn't necessarily true anymore. If
+                        // `--vsplit` or `--hsplit` are used, the file which is
+                        // opened last is focused on.
                         let view_id = editor.tree.focus;
                         let doc = editor.document_mut(doc_id).unwrap();
                         let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
