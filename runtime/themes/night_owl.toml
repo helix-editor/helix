@@ -29,6 +29,7 @@
 'ui.help' = { fg = 'gold', bg = 'background2'}
 'ui.virtual.ruler' = { bg = 'grey4' }
 'ui.virtual.whitespace' = { fg = 'slate' }
+'ui.cursorline.primary' = { bg = 'background2' }
 
 # SYNTAX
 'type' = { fg = 'green' }
