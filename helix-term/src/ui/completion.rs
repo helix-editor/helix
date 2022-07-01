@@ -1,7 +1,10 @@
 use crate::compositor::{Component, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use helix_view::editor::CompleteAction;
+use helix_view::theme::{Modifier, Style};
+use helix_view::Theme;
 use tui::buffer::Buffer as Surface;
+use tui::text::{Span, Spans};
 
 use std::borrow::Cow;
 
@@ -27,38 +30,94 @@ impl menu::Item for CompletionItem {
         self.label.as_str()
     }
 
-    fn row(&self) -> menu::Row {
+    fn row(&self, data: Option<(&Theme, &Vec<usize>)>) -> menu::Row {
+        let (lsp_type_label, style) = match self.kind {
+            Some(lsp::CompletionItemKind::TEXT) => ("text", Some("ui.text")),
+            Some(lsp::CompletionItemKind::METHOD) => ("method", Some("function.method")),
+            Some(lsp::CompletionItemKind::FUNCTION) => ("function", Some("function")),
+            Some(lsp::CompletionItemKind::CONSTRUCTOR) => ("constructor", Some("constructor")),
+            Some(lsp::CompletionItemKind::FIELD) => ("field", Some("variable.other.member")),
+            Some(lsp::CompletionItemKind::VARIABLE) => ("variable", Some("variable")),
+            Some(lsp::CompletionItemKind::CLASS) => ("class", Some("type")),
+            Some(lsp::CompletionItemKind::INTERFACE) => ("interface", Some("type")),
+            Some(lsp::CompletionItemKind::MODULE) => ("module", Some("module")),
+            Some(lsp::CompletionItemKind::PROPERTY) => ("property", Some("attributes")),
+            Some(lsp::CompletionItemKind::UNIT) => ("unit", Some("constant")),
+            Some(lsp::CompletionItemKind::VALUE) => ("value", Some("string")),
+            Some(lsp::CompletionItemKind::ENUM) => ("enum", Some("type")),
+            Some(lsp::CompletionItemKind::KEYWORD) => ("keyword", Some("keyword")),
+            Some(lsp::CompletionItemKind::SNIPPET) => ("snippet", None),
+            Some(lsp::CompletionItemKind::COLOR) => ("color", None),
+            Some(lsp::CompletionItemKind::FILE) => ("file", None),
+            Some(lsp::CompletionItemKind::REFERENCE) => ("reference", None),
+            Some(lsp::CompletionItemKind::FOLDER) => ("folder", None),
+            Some(lsp::CompletionItemKind::ENUM_MEMBER) => {
+                ("enum_member", Some("type.enum.variant"))
+            }
+            Some(lsp::CompletionItemKind::CONSTANT) => ("constant", Some("constant")),
+            Some(lsp::CompletionItemKind::STRUCT) => ("struct", Some("type")),
+            Some(lsp::CompletionItemKind::EVENT) => ("event", None),
+            Some(lsp::CompletionItemKind::OPERATOR) => ("operator", Some("operator")),
+            Some(lsp::CompletionItemKind::TYPE_PARAMETER) => {
+                ("type_param", Some("function.parameter"))
+            }
+            Some(kind) => unimplemented!("{:?}", kind),
+            None => ("", None),
+        };
+
+        // fuzzy_indices is a vector of indices, which can be
+        // not consecutives. These are two valid fuzzy_indices vectors
+        // [0,1]
+        // [1,2,3,7,8,10]
+        let spans = if let Some((theme, fuzzy_indices)) = data {
+            let mut fuzzy_start: usize = fuzzy_indices
+                .first()
+                .map_or(fuzzy_indices.len(), |first| *first);
+            let mut fuzzy_end = 0;
+            // In most cases we have three spans, start_match_end
+            let mut results = Vec::with_capacity(3);
+            for i in 1..fuzzy_indices.len() {
+                // We hit the end of a group of consecutive indices
+                if fuzzy_indices[i - 1] + 1 != fuzzy_indices[i] {
+                    results.push(Span::styled(
+                        &self.label[fuzzy_end..fuzzy_start],
+                        Style::default(),
+                    ));
+                    fuzzy_end = fuzzy_indices[i - 1] + 1;
+                    results.push(Span::styled(
+                        &self.label[fuzzy_start..fuzzy_end],
+                        theme.get("special").add_modifier(Modifier::BOLD),
+                    ));
+                    fuzzy_start = fuzzy_indices[i];
+                }
+            }
+            // Always add these three spans: start_match_end
+            results.push(Span::styled(
+                &self.label[fuzzy_end..fuzzy_start],
+                Style::default(),
+            ));
+            fuzzy_end = fuzzy_indices.last().map_or(0, |last| *last + 1);
+            results.push(Span::styled(
+                &self.label[fuzzy_start..fuzzy_end],
+                theme.get("special").add_modifier(Modifier::BOLD),
+            ));
+            results.push(Span::styled(&self.label[fuzzy_end..], Style::default()));
+            results
+        } else {
+            vec![Span::styled(self.label.as_str(), Style::default())]
+        };
+
         menu::Row::new(vec![
-            menu::Cell::from(self.label.as_str()),
-            menu::Cell::from(match self.kind {
-                Some(lsp::CompletionItemKind::TEXT) => "text",
-                Some(lsp::CompletionItemKind::METHOD) => "method",
-                Some(lsp::CompletionItemKind::FUNCTION) => "function",
-                Some(lsp::CompletionItemKind::CONSTRUCTOR) => "constructor",
-                Some(lsp::CompletionItemKind::FIELD) => "field",
-                Some(lsp::CompletionItemKind::VARIABLE) => "variable",
-                Some(lsp::CompletionItemKind::CLASS) => "class",
-                Some(lsp::CompletionItemKind::INTERFACE) => "interface",
-                Some(lsp::CompletionItemKind::MODULE) => "module",
-                Some(lsp::CompletionItemKind::PROPERTY) => "property",
-                Some(lsp::CompletionItemKind::UNIT) => "unit",
-                Some(lsp::CompletionItemKind::VALUE) => "value",
-                Some(lsp::CompletionItemKind::ENUM) => "enum",
-                Some(lsp::CompletionItemKind::KEYWORD) => "keyword",
-                Some(lsp::CompletionItemKind::SNIPPET) => "snippet",
-                Some(lsp::CompletionItemKind::COLOR) => "color",
-                Some(lsp::CompletionItemKind::FILE) => "file",
-                Some(lsp::CompletionItemKind::REFERENCE) => "reference",
-                Some(lsp::CompletionItemKind::FOLDER) => "folder",
-                Some(lsp::CompletionItemKind::ENUM_MEMBER) => "enum_member",
-                Some(lsp::CompletionItemKind::CONSTANT) => "constant",
-                Some(lsp::CompletionItemKind::STRUCT) => "struct",
-                Some(lsp::CompletionItemKind::EVENT) => "event",
-                Some(lsp::CompletionItemKind::OPERATOR) => "operator",
-                Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param",
-                Some(kind) => unimplemented!("{:?}", kind),
-                None => "",
-            }),
+            menu::Cell::from(Spans::from(spans)),
+            menu::Cell::from(lsp_type_label).style(
+                data.and_then(|(theme, _)| style.and_then(|style| theme.try_get(style)))
+                    .map_or(Style::default(), |mut style| {
+                        style.bg = None;
+                        style
+                            .remove_modifier(Modifier::BOLD)
+                            .add_modifier(Modifier::ITALIC)
+                    }),
+            ),
             // self.detail.as_deref().unwrap_or("")
             // self.label_details
             //     .as_ref()
