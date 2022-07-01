@@ -62,7 +62,7 @@ impl StatusLine {
             context.theme.get("ui.statusline.inactive")
         };
 
-        surface.set_style(viewport, base_style);
+        surface.set_style(viewport.with_height(1), base_style);
 
         let write_left = |context: &mut RenderContext, text, style| {
             Self::append(&mut context.parts.left, text, &base_style, style)
