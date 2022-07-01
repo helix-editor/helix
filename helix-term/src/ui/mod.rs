@@ -257,7 +257,9 @@ pub mod completers {
             })
             .collect();
 
-        matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+        matches.sort_unstable_by(|(name1, score1), (name2, score2)| {
+            (Reverse(*score1), name1).cmp(&(Reverse(*score2), name2))
+        });
         names = matches.into_iter().map(|(name, _)| ((0..), name)).collect();
 
         names
@@ -312,7 +314,9 @@ pub mod completers {
             })
             .collect();
 
-        matches.sort_unstable_by_key(|(_language, score)| Reverse(*score));
+        matches.sort_unstable_by(|(language1, score1), (language2, score2)| {
+            (Reverse(*score1), language1).cmp(&(Reverse(*score2), language2))
+        });
 
         matches
             .into_iter()
@@ -428,13 +432,18 @@ pub mod completers {
 
             let range = (input.len().saturating_sub(file_name.len()))..;
 
-            matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+            matches.sort_unstable_by(|(file1, score1), (file2, score2)| {
+                (Reverse(*score1), file1).cmp(&(Reverse(*score2), file2))
+            });
+
             files = matches
                 .into_iter()
                 .map(|(file, _)| (range.clone(), file))
                 .collect();
 
             // TODO: complete to longest common match
+        } else {
+            files.sort_unstable_by(|(_, path1), (_, path2)| path1.cmp(path2));
         }
 
         files
