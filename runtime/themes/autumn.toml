@@ -18,6 +18,9 @@
 "comment" = { fg = "my_gray4", modifiers = ["italic"] }
 "ui.statusline" = { fg = "my_gray6", bg = "my_gray2" }
 "ui.statusline.inactive" = { fg = 'my_gray4', bg = 'my_gray2' }
+"ui.statusline.insert" = {fg = "my_black", bg = "my_gray5", modifiers = ["bold"]}
+"ui.statusline.normal" = {fg = "my_gray6", bg = "my_gray2"}
+"ui.statusline.select" = {fg = "my_gray6", bg = "my_black", modifiers = ["bold"]}
 "ui.cursor" = { fg = "my_gray5", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "my_white", modifiers = ["reversed"] }
 "ui.cursorline.primary" = { bg = "my_black" }
