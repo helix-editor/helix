@@ -715,11 +715,12 @@ impl EditorView {
         let primary_style = theme.get("ui.cursorline.primary");
         let secondary_style = theme.get("ui.cursorline.secondary");
 
+        let inner_area = view.inner_area();
         for line in view.offset.row..(last_line + 1) {
             let area = Rect::new(
-                view.inner_area().x,
-                view.inner_area().y + (line - view.offset.row) as u16,
-                view.inner_area().width,
+                inner_area.x,
+                inner_area.y + (line - view.offset.row) as u16,
+                inner_area.width,
                 1,
             );
             if primary_line == line {
