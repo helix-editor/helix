@@ -62,7 +62,7 @@ impl StatusLine {
             context.theme.get("ui.statusline.inactive")
         };
 
-        surface.set_style(viewport.with_height(1), base_style);
+        surface.set_style(viewport, base_style);
 
         let write_left = |context: &mut RenderContext, text, style| {
             Self::append(&mut context.parts.left, text, &base_style, style)
@@ -76,7 +76,7 @@ impl StatusLine {
 
         // Left side of the status line.
 
-        let element_ids = &editor.config().status_line.left;
+        let element_ids = &editor.config().statusline.left;
         element_ids
             .iter()
             .map(|element_id| Self::get_render_function(*element_id))
@@ -91,7 +91,7 @@ impl StatusLine {
 
         // Right side of the status line.
 
-        let element_ids = &editor.config().status_line.right;
+        let element_ids = &editor.config().statusline.right;
         element_ids
             .iter()
             .map(|element_id| Self::get_render_function(*element_id))
@@ -109,7 +109,7 @@ impl StatusLine {
 
         // Center of the status line.
 
-        let element_ids = &editor.config().status_line.center;
+        let element_ids = &editor.config().statusline.center;
         element_ids
             .iter()
             .map(|element_id| Self::get_render_function(*element_id))
@@ -220,45 +220,14 @@ impl StatusLine {
                 });
 
         if warnings > 0 {
-            Self::render_diagnostics_warning_state(context, write);
-            Self::render_diagnostics_warning_count(context, warnings, write);
+            write(context, "●".to_string(), Some(context.theme.get("warning")));
+            write(context, format!(" {} ", warnings), None);
         }
 
         if errors > 0 {
-            Self::render_diagnostics_error_state(context, write);
-            Self::render_diagnostics_error_count(context, errors, write);
+            write(context, "●".to_string(), Some(context.theme.get("error")));
+            write(context, format!(" {} ", errors), None);
         }
-    }
-
-    fn render_diagnostics_warning_state<F>(context: &mut RenderContext, write: F)
-    where
-        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-    {
-        write(context, "●".to_string(), Some(context.theme.get("warning")));
-    }
-
-    fn render_diagnostics_warning_count<F>(
-        context: &mut RenderContext,
-        warning_count: usize,
-        write: F,
-    ) where
-        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-    {
-        write(context, format!(" {} ", warning_count), None);
-    }
-
-    fn render_diagnostics_error_state<F>(context: &mut RenderContext, write: F)
-    where
-        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-    {
-        write(context, "●".to_string(), Some(context.theme.get("error")));
-    }
-
-    fn render_diagnostics_error_count<F>(context: &mut RenderContext, error_count: usize, write: F)
-    where
-        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-    {
-        write(context, format!(" {} ", error_count), None);
     }
 
     fn render_selections<F>(context: &mut RenderContext, write: F)
