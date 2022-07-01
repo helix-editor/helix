@@ -717,9 +717,9 @@ impl EditorView {
 
         for line in view.offset.row..(last_line + 1) {
             let area = Rect::new(
-                view.area.x,
-                view.area.y + (line - view.offset.row) as u16,
-                view.area.width,
+                view.inner_area().x,
+                view.inner_area().y + (line - view.offset.row) as u16,
+                view.inner_area().width,
                 1,
             );
             if primary_line == line {
