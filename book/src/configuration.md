@@ -59,7 +59,7 @@ The configuration distinguishes between three areas of the status line:
 Statusline elements can be defined as follows:
 
 ```toml
-[editor.status-line]
+[editor.statusline]
 left = ["mode", "spinner"]
 center = ["file-name"]
 right = ["diagnostics", "selections", "position", "file-encoding", "file-type"]
