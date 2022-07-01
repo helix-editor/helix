@@ -570,7 +570,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "ledger"
-source = { git = "https://github.com/cbarrete/tree-sitter-ledger", rev = "0cdeb0e51411a3ba5493662952c3039de08939ca" }
+source = { git = "https://github.com/cbarrete/tree-sitter-ledger", rev = "1f864fb2bf6a87fe1b48545cc6adc6d23090adf7" }
 
 [[language]]
 name = "ocaml"
