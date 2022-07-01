@@ -85,9 +85,9 @@ macro_rules! keymap {
     };
 
     (@trie
-        { $label:literal $(sticky=$sticky:literal)? $(show_window_ids=$show_window_ids:literal)? $($($key:literal)|+ => $value:tt,)+ }
+        { $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }
     ) => {
-        keymap!({ $label $(sticky=$sticky)? $(show_window_ids=$show_window_ids)? $($($key)|+ => $value,)+ })
+        keymap!({ $label $(sticky=$sticky)? $($($key)|+ => $value,)+ })
     };
 
     (@trie [$($cmd:ident),* $(,)?]) => {
@@ -95,7 +95,7 @@ macro_rules! keymap {
     };
 
     (
-        { $label:literal $(sticky=$sticky:literal)? $(show_window_ids=$show_window_ids:literal)? $($($key:literal)|+ => $value:tt,)+ }
+        { $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }
     ) => {
         // modified from the hashmap! macro
         {
@@ -115,7 +115,6 @@ macro_rules! keymap {
             )*
             let mut _node = $crate::keymap::KeyTrieNode::new($label, _map, _order);
             $( _node.is_sticky = $sticky; )?
-            $( _node.show_window_ids = $show_window_ids; )?
             $crate::keymap::KeyTrie::Node(_node)
         }
     };

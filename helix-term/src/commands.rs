@@ -37,6 +37,7 @@ use helix_view::{
     tree,
     view::View,
     Document, DocumentId, Editor, ViewId,
+    view_identifier_to_index,
 };
 
 use anyhow::{anyhow, bail, ensure, Context as _};
@@ -380,16 +381,7 @@ impl MappableCommand {
         swap_view_down, "Swap with split below",
         transpose_view, "Transpose splits",
         rotate_view, "Goto next window",
-        goto_window_idx_0, "Goto window with index 0",
-        goto_window_idx_1, "Goto window with index 1",
-        goto_window_idx_2, "Goto window with index 2",
-        goto_window_idx_3, "Goto window with index 3",
-        goto_window_idx_4, "Goto window with index 4",
-        goto_window_idx_5, "Goto window with index 5",
-        goto_window_idx_6, "Goto window with index 6",
-        goto_window_idx_7, "Goto window with index 7",
-        goto_window_idx_8, "Goto window with index 8",
-        goto_window_idx_9, "Goto window with index 9",
+        goto_window_idx, "Goto window with index 0",
         hsplit, "Horizontal bottom split",
         hsplit_new, "Horizontal bottom split scratch buffer",
         vsplit, "Vertical right split",
@@ -4297,35 +4289,22 @@ fn transpose_view(cx: &mut Context) {
     cx.editor.transpose_view()
 }
 
-fn goto_window_idx_0(cx: &mut Context) {
-    cx.editor.focus_view_idx(0)
-}
-fn goto_window_idx_1(cx: &mut Context) {
-    cx.editor.focus_view_idx(1)
-}
-fn goto_window_idx_2(cx: &mut Context) {
-    cx.editor.focus_view_idx(2)
-}
-fn goto_window_idx_3(cx: &mut Context) {
-    cx.editor.focus_view_idx(3)
-}
-fn goto_window_idx_4(cx: &mut Context) {
-    cx.editor.focus_view_idx(4)
-}
-fn goto_window_idx_5(cx: &mut Context) {
-    cx.editor.focus_view_idx(5)
-}
-fn goto_window_idx_6(cx: &mut Context) {
-    cx.editor.focus_view_idx(6)
-}
-fn goto_window_idx_7(cx: &mut Context) {
-    cx.editor.focus_view_idx(7)
-}
-fn goto_window_idx_8(cx: &mut Context) {
-    cx.editor.focus_view_idx(8)
-}
-fn goto_window_idx_9(cx: &mut Context) {
-    cx.editor.focus_view_idx(9)
+fn goto_window_idx(cx: &mut Context) {
+    cx.editor.show_window_ids = true;
+
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            if let Some(view_index) =  view_identifier_to_index(ch)
+            {
+                cx.editor.focus_view_idx(view_index);
+            }
+        }
+        cx.editor.show_window_ids = false;
+    });
 }
 
 // split helper, clear it later
