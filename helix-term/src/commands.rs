@@ -2937,10 +2937,11 @@ pub mod insert {
 
     pub fn delete_char_backward(cx: &mut Context) {
         let count = cx.count();
-        let (view, doc) = current!(cx.editor);
+        let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
         let indent_unit = doc.indent_unit();
         let tab_size = doc.tab_width();
+        let auto_pairs = doc.auto_pairs(cx.editor);
 
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
@@ -2992,9 +2993,14 @@ pub mod insert {
                         (start, pos, None) // delete!
                     }
                 } else {
-                    match (text.get_char(pos.saturating_sub(1)), text.get_char(pos)) {
-                        (Some(_x), Some(_y)) if auto_pairs::DEFAULT_PAIRS.contains(&(_x, _y)) =>
-                        // delete both
+                    match (
+                        text.get_char(pos.saturating_sub(1)),
+                        text.get_char(pos),
+                        auto_pairs,
+                    ) {
+                        (Some(_x), Some(_y), Some(ap))
+                            if ap.get(_x).is_some() && (ap.get(_x).unwrap().close == _y) =>
+                        // delete both autopaired characters
                         {
                             (
                                 graphemes::nth_prev_grapheme_boundary(text, pos, count),
@@ -3014,6 +3020,7 @@ pub mod insert {
                     }
                 }
             });
+        let (view, doc) = current!(cx.editor);
         doc.apply(&transaction, view.id);
     }
 
