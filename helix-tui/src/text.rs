@@ -402,6 +402,12 @@ impl<'a> From<&'a str> for Text<'a> {
     }
 }
 
+impl<'a> From<Cow<'a, str>> for Text<'a> {
+    fn from(s: Cow<'a, str>) -> Text<'a> {
+        Text::raw(s)
+    }
+}
+
 impl<'a> From<Span<'a>> for Text<'a> {
     fn from(span: Span<'a>) -> Text<'a> {
         Text {

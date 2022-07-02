@@ -14,6 +14,8 @@ impl std::fmt::Display for ThreadId {
     }
 }
 
+pub type ThreadStates = HashMap<ThreadId, String>;
+
 pub trait Request {
     type Arguments: serde::de::DeserializeOwned + serde::Serialize;
     type Result: serde::de::DeserializeOwned + serde::Serialize;
