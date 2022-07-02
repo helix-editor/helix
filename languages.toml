@@ -1489,3 +1489,17 @@ roots = []
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 grammar = "python"
+
+[[language]]
+name = "elvish"
+scope = "source.elvish"
+file-types = ["elv"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "elvish", args = ["-lsp"] }
+grammar = "elvish"
+
+[[grammar]]
+name = "elvish"
+source = { git = "https://github.com/ckafi/tree-sitter-elvish", rev = "e50787cadd3bc54f6d9c0704493a79078bb8a4e5" }
