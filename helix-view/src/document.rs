@@ -449,7 +449,7 @@ impl Document {
                             .map_err(|_| anyhow!("Process did not output valid UTF-8"))
                             .ok()?;
                         self.apply(
-                            &helix_core::diff::compare_ropes(&self.text(), &Rope::from_str(str)),
+                            &helix_core::diff::compare_ropes(self.text(), &Rope::from_str(str)),
                             view_id,
                         );
                     }
@@ -479,10 +479,8 @@ impl Document {
                                     "Formatter {}",
                                     String::from_utf8_lossy(&output.stderr)
                                 );
-                            } else {
-                                if let Err(e) = self.reload(view_id) {
-                                    log::error!("Error reloading after formatting {}", e);
-                                }
+                            } else if let Err(e) = self.reload(view_id) {
+                                log::error!("Error reloading after formatting {}", e);
                             }
                         } else {
                             log::error!("Cannot format file without filepath");
