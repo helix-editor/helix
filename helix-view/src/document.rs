@@ -435,10 +435,15 @@ impl Document {
                             }
                         };
 
-                        let mut stdin = process.stdin.take().unwrap();
-                        stdin
-                            .write_all(&self.text().bytes().collect::<Vec<u8>>())
-                            .unwrap();
+                        {
+                            let mut stdin = process.stdin.take().unwrap();
+                            // let mut text = self.text().bytes().collect::<Vec<u8>>();
+                            // text.push(0);
+                            stdin
+                                .write_all(&self.text().bytes().collect::<Vec<u8>>())
+                                .unwrap();
+                        }
+
                         let output = process.wait_with_output().ok()?;
 
                         if !output.stderr.is_empty() {
