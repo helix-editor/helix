@@ -13,11 +13,11 @@ use toml::Value;
 pub use crate::graphics::{Color, Modifier, Style};
 
 pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
-    toml::from_slice::<Theme>(include_bytes!("../../theme.toml"))
+    toml::from_slice(include_bytes!("../../theme.toml"))
         .expect("Failed to parse default theme")
 });
 pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
-    toml::from_slice::<Theme>(include_bytes!("../../base16_theme.toml"))
+    toml::from_slice(include_bytes!("../../base16_theme.toml"))
         .expect("Failed to parse base 16 default theme")
 });
 
