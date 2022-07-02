@@ -32,15 +32,14 @@ pub struct Prompt {
     next_char_handler: Option<PromptCharHandler>,
 }
 
-#[repr(u8)]
 #[derive(Clone, Copy, PartialEq)]
 pub enum PromptEvent {
     /// The prompt input has been updated.
-    Update = 1 << 0,
+    Update,
     /// Validate and finalize the change.
-    Validate = 1 << 1,
+    Validate,
     /// Abort the change, reverting to the initial state.
-    Abort = 1 << 2,
+    Abort,
 }
 
 pub enum CompletionDirection {
