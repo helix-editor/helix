@@ -15,11 +15,7 @@ pub struct TypableCommand {
     pub completer: Option<Completer>,
 }
 
-fn quit(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
+fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
@@ -52,11 +48,7 @@ fn force_quit(
     Ok(())
 }
 
-fn open(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
+fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
@@ -79,7 +71,6 @@ fn buffer_close_by_ids_impl(
     doc_ids: &[DocumentId],
     force: bool,
 ) -> anyhow::Result<()> {
-
     for &doc_id in doc_ids {
         editor.close_document(doc_id, force)?;
     }
@@ -1270,11 +1261,7 @@ fn language(
     Ok(())
 }
 
-fn sort(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
+fn sort(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
@@ -1479,11 +1466,7 @@ fn insert_output(
     Ok(())
 }
 
-fn pipe(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
+fn pipe(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
