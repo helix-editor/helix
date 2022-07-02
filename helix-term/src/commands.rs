@@ -2992,12 +2992,26 @@ pub mod insert {
                         (start, pos, None) // delete!
                     }
                 } else {
-                    // delete char
-                    (
-                        graphemes::nth_prev_grapheme_boundary(text, pos, count),
-                        pos,
-                        None,
-                    )
+                    match (text.get_char(pos.saturating_sub(1)), text.get_char(pos)) {
+                        (Some(_x), Some(_y)) if auto_pairs::DEFAULT_PAIRS.contains(&(_x, _y)) =>
+                        // delete both
+                        {
+                            (
+                                graphemes::nth_prev_grapheme_boundary(text, pos, count),
+                                graphemes::nth_next_grapheme_boundary(text, pos, count),
+                                None,
+                            )
+                        }
+                        _ =>
+                        // delete 1 char
+                        {
+                            (
+                                graphemes::nth_prev_grapheme_boundary(text, pos, count),
+                                pos,
+                                None,
+                            )
+                        }
+                    }
                 }
             });
         doc.apply(&transaction, view.id);
