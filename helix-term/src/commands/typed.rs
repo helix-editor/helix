@@ -203,7 +203,7 @@ fn write_impl(
 ) -> anyhow::Result<()> {
     let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
-    let doc = doc_mut!(cx.editor);
+    let (view, doc) = current!(cx.editor);
 
     if let Some(ref path) = path {
         doc.set_path(Some(path.as_ref().as_ref()))
@@ -213,7 +213,7 @@ fn write_impl(
         bail!("cannot write a buffer without a filename");
     }
     let fmt = if auto_format {
-        doc.auto_format().map(|fmt| {
+        doc.auto_format(view.id).map(|fmt| {
             let shared = fmt.shared();
             let callback = make_format_callback(
                 doc.id(),
@@ -270,8 +270,8 @@ fn format(
     _args: &[Cow<str>],
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
-    let doc = doc!(cx.editor);
-    if let Some(format) = doc.format() {
+    let (view, doc) = current!(cx.editor);
+    if let Some(format) = doc.format(view.id) {
         let callback =
             make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
         cx.jobs.callback(callback);
@@ -471,7 +471,11 @@ fn write_all_impl(
     let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
     // save all documents
-    for doc in &mut cx.editor.documents.values_mut() {
+    // Saves only visible buffers? How do we reload the not visible ones?
+    for (view, _) in cx.editor.tree.views() {
+        let id = view.doc;
+        let doc = cx.editor.documents.get_mut(&id).unwrap();
+
         if doc.path().is_none() {
             errors.push_str("cannot write a buffer without a filename\n");
             continue;
@@ -482,7 +486,7 @@ fn write_all_impl(
         }
 
         let fmt = if auto_format {
-            doc.auto_format().map(|fmt| {
+            doc.auto_format(view.id).map(|fmt| {
                 let shared = fmt.shared();
                 let callback = make_format_callback(
                     doc.id(),

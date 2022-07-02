@@ -1,5 +1,6 @@
 use anyhow::{anyhow, bail, Context, Error};
 use helix_core::auto_pairs::AutoPairs;
+use helix_core::syntax::FormatterType;
 use helix_core::Range;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
@@ -397,9 +398,12 @@ impl Document {
 
     /// The same as [`format`], but only returns formatting changes if auto-formatting
     /// is configured.
-    pub fn auto_format(&self) -> Option<impl Future<Output = LspFormatting> + 'static> {
+    pub fn auto_format(
+        &mut self,
+        view_id: ViewId,
+    ) -> Option<impl Future<Output = LspFormatting> + 'static> {
         if self.language_config()?.auto_format {
-            self.format()
+            self.format(view_id)
         } else {
             None
         }
@@ -407,7 +411,87 @@ impl Document {
 
     /// If supported, returns the changes that should be applied to this document in order
     /// to format it nicely.
-    pub fn format(&self) -> Option<impl Future<Output = LspFormatting> + 'static> {
+    pub fn format(
+        &mut self,
+        view_id: ViewId,
+    ) -> Option<impl Future<Output = LspFormatting> + 'static> {
+        if let Some(language_config) = self.language_config() {
+            if let Some(formatter) = &language_config.formatter {
+                use std::process::{Command, Stdio};
+                match formatter.formatter_type {
+                    FormatterType::Stdio => {
+                        use std::io::Write;
+                        let mut process = match Command::new(&formatter.command)
+                            .args(&formatter.args)
+                            .stdin(Stdio::piped())
+                            .stdout(Stdio::piped())
+                            .stderr(Stdio::piped())
+                            .spawn()
+                        {
+                            Ok(process) => process,
+                            Err(e) => {
+                                log::error!("Failed to format with {}. {}", formatter.command, e);
+                                return None;
+                            }
+                        };
+
+                        let mut stdin = process.stdin.take().unwrap();
+                        stdin
+                            .write_all(&self.text().bytes().collect::<Vec<u8>>())
+                            .unwrap();
+                        let output = process.wait_with_output().ok()?;
+
+                        if !output.stderr.is_empty() {
+                            log::error!("Formatter {}", String::from_utf8_lossy(&output.stderr));
+                        }
+
+                        let str = std::str::from_utf8(&output.stdout)
+                            .map_err(|_| anyhow!("Process did not output valid UTF-8"))
+                            .ok()?;
+                        self.apply(
+                            &helix_core::diff::compare_ropes(&self.text(), &Rope::from_str(str)),
+                            view_id,
+                        );
+                    }
+                    FormatterType::File => {
+                        if let Some(path) = self.path() {
+                            let process = match Command::new(&formatter.command)
+                                .args(&formatter.args)
+                                .arg(path.to_str().unwrap_or(""))
+                                .stderr(Stdio::piped())
+                                .spawn()
+                            {
+                                Ok(process) => process,
+                                Err(e) => {
+                                    log::error!(
+                                        "Failed to format with {}. {}",
+                                        formatter.command,
+                                        e
+                                    );
+                                    return None;
+                                }
+                            };
+
+                            let output = process.wait_with_output().ok()?;
+
+                            if !output.stderr.is_empty() {
+                                log::error!(
+                                    "Formatter {}",
+                                    String::from_utf8_lossy(&output.stderr)
+                                );
+                            } else {
+                                if let Err(e) = self.reload(view_id) {
+                                    log::error!("Error reloading after formatting {}", e);
+                                }
+                            }
+                        } else {
+                            log::error!("Cannot format file without filepath");
+                        }
+                    }
+                }
+                return None;
+            }
+        }
         let language_server = self.language_server()?;
         let text = self.text.clone();
         let offset_encoding = language_server.offset_encoding();
