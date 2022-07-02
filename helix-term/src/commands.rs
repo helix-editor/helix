@@ -2999,7 +2999,9 @@ pub mod insert {
                         auto_pairs,
                     ) {
                         (Some(_x), Some(_y), Some(ap))
-                            if ap.get(_x).is_some() && (ap.get(_x).unwrap().close == _y) =>
+                            if range.len() == 1
+                                && ap.get(_x).is_some()
+                                && ap.get(_x).unwrap().close == _y =>
                         // delete both autopaired characters
                         {
                             (
