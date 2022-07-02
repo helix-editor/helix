@@ -1354,6 +1354,10 @@ impl Component for EditorView {
                             _ => unimplemented!(),
                         };
                         self.last_insert.1.clear();
+                        commands::signature_help_impl(
+                            &mut cx,
+                            commands::SignatureHelpInvoked::Automatic,
+                        );
                     }
                     (Mode::Insert, Mode::Normal) => {
                         // if exiting insert mode, remove completion
