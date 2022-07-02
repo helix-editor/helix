@@ -415,86 +415,76 @@ impl Document {
         &mut self,
         view_id: ViewId,
     ) -> Option<impl Future<Output = LspFormatting> + 'static> {
-        if let Some(language_config) = self.language_config() {
-            if let Some(formatter) = &language_config.formatter {
-                use std::process::{Command, Stdio};
-                match formatter.formatter_type {
-                    FormatterType::Stdio => {
-                        use std::io::Write;
-                        let mut process = match Command::new(&formatter.command)
-                            .args(&formatter.args)
-                            .stdin(Stdio::piped())
-                            .stdout(Stdio::piped())
-                            .stderr(Stdio::piped())
-                            .spawn()
-                        {
-                            Ok(process) => process,
-                            Err(e) => {
-                                log::error!("Failed to format with {}. {}", formatter.command, e);
-                                return None;
-                            }
-                        };
+        if let Some(formatter) = self.language_config().and_then(|c| c.formatter.as_ref()) {
+            use std::process::{Command, Stdio};
+            match formatter.r#type {
+                FormatterType::Stdio => {
+                    use std::io::Write;
+                    let mut process = Command::new(&formatter.command)
+                        .args(&formatter.args)
+                        .stdin(Stdio::piped())
+                        .stdout(Stdio::piped())
+                        .stderr(Stdio::piped())
+                        .spawn()
+                        .map_err(|e| {
+                            log::error!("Failed to format with {}. {}", formatter.command, e);
+                            e
+                        })
+                        .ok()?;
 
-                        {
-                            let mut stdin = process.stdin.take().unwrap();
-                            // let mut text = self.text().bytes().collect::<Vec<u8>>();
-                            // text.push(0);
-                            stdin
-                                .write_all(&self.text().bytes().collect::<Vec<u8>>())
-                                .unwrap();
-                        }
-
-                        let output = process.wait_with_output().ok()?;
-
-                        if !output.stderr.is_empty() {
-                            log::error!("Formatter {}", String::from_utf8_lossy(&output.stderr));
-                        }
-
-                        let str = std::str::from_utf8(&output.stdout)
-                            .map_err(|_| anyhow!("Process did not output valid UTF-8"))
-                            .ok()?;
-                        self.apply(
-                            &helix_core::diff::compare_ropes(self.text(), &Rope::from_str(str)),
-                            view_id,
-                        );
+                    {
+                        let mut stdin = process.stdin.take().unwrap();
+                        stdin
+                            .write_all(&self.text().bytes().collect::<Vec<u8>>())
+                            .unwrap();
                     }
-                    FormatterType::File => {
-                        if let Some(path) = self.path() {
-                            let process = match Command::new(&formatter.command)
-                                .args(&formatter.args)
-                                .arg(path.to_str().unwrap_or(""))
-                                .stderr(Stdio::piped())
-                                .spawn()
-                            {
-                                Ok(process) => process,
-                                Err(e) => {
-                                    log::error!(
-                                        "Failed to format with {}. {}",
-                                        formatter.command,
-                                        e
-                                    );
-                                    return None;
-                                }
-                            };
 
-                            let output = process.wait_with_output().ok()?;
+                    let output = process.wait_with_output().ok()?;
 
-                            if !output.stderr.is_empty() {
-                                log::error!(
-                                    "Formatter {}",
-                                    String::from_utf8_lossy(&output.stderr)
-                                );
-                            } else if let Err(e) = self.reload(view_id) {
-                                log::error!("Error reloading after formatting {}", e);
-                            }
-                        } else {
+                    if !output.stderr.is_empty() {
+                        log::error!("Formatter {}", String::from_utf8_lossy(&output.stderr));
+                    }
+
+                    let str = std::str::from_utf8(&output.stdout)
+                        .map_err(|_| log::error!("Process did not output valid UTF-8"))
+                        .ok()?;
+
+                    self.apply(
+                        &helix_core::diff::compare_ropes(self.text(), &Rope::from_str(str)),
+                        view_id,
+                    );
+                }
+                FormatterType::File => {
+                    let path = match self.path() {
+                        Some(path) => path,
+                        None => {
                             log::error!("Cannot format file without filepath");
+                            return None;
                         }
+                    };
+                    let process = Command::new(&formatter.command)
+                        .args(&formatter.args)
+                        .arg(path.to_str().unwrap_or(""))
+                        .stderr(Stdio::piped())
+                        .spawn()
+                        .map_err(|e| {
+                            log::error!("Failed to format with {}. {}", formatter.command, e);
+                            e
+                        })
+                        .ok()?;
+
+                    let output = process.wait_with_output().ok()?;
+
+                    if !output.stderr.is_empty() {
+                        log::error!("Formatter {}", String::from_utf8_lossy(&output.stderr));
+                    } else if let Err(e) = self.reload(view_id) {
+                        log::error!("Error reloading after formatting {}", e);
                     }
                 }
-                return None;
             }
+            return None;
         }
+
         let language_server = self.language_server()?;
         let text = self.text.clone();
         let offset_encoding = language_server.offset_encoding();
