@@ -93,23 +93,23 @@ struct DiagnosticStyles {
     error: Style,
 }
 
-struct Diagnostic {
+struct PickerDiagnostic {
     url: lsp::Url,
-    info: lsp::Diagnostic,
+    diag: lsp::Diagnostic,
 }
 
-impl ui::menu::Item for Diagnostic {
+impl ui::menu::Item for PickerDiagnostic {
     type Data = DiagnosticStyles;
 
-    fn label(&self, data: &Self::Data) -> Spans {
+    fn label(&self, styles: &Self::Data) -> Spans {
         let mut style = self
-            .info
+            .diag
             .severity
             .map(|s| match s {
-                DiagnosticSeverity::HINT => data.hint,
-                DiagnosticSeverity::INFORMATION => data.info,
-                DiagnosticSeverity::WARNING => data.warning,
-                DiagnosticSeverity::ERROR => data.error,
+                DiagnosticSeverity::HINT => styles.hint,
+                DiagnosticSeverity::INFORMATION => styles.info,
+                DiagnosticSeverity::WARNING => styles.warning,
+                DiagnosticSeverity::ERROR => styles.error,
                 _ => Style::default(),
             })
             .unwrap_or_default();
@@ -118,7 +118,7 @@ impl ui::menu::Item for Diagnostic {
         style.bg = None;
 
         let code = self
-            .info
+            .diag
             .code
             .as_ref()
             .map(|c| match c {
@@ -133,7 +133,7 @@ impl ui::menu::Item for Diagnostic {
 
         Spans::from(vec![
             Span::styled(
-                self.info.source.clone().unwrap_or_default(),
+                self.diag.source.clone().unwrap_or_default(),
                 style.add_modifier(Modifier::BOLD),
             ),
             Span::raw(": "),
@@ -141,7 +141,7 @@ impl ui::menu::Item for Diagnostic {
             Span::raw(" - "),
             Span::styled(code, style.add_modifier(Modifier::BOLD)),
             Span::raw(": "),
-            Span::styled(&self.info.message, style),
+            Span::styled(&self.diag.message, style),
         ])
     }
 }
@@ -247,7 +247,7 @@ fn diag_picker(
     diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
     current_path: Option<lsp::Url>,
     offset_encoding: OffsetEncoding,
-) -> FilePicker<Diagnostic> {
+) -> FilePicker<PickerDiagnostic> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
 
     // flatten the map to a vec of (url, diag) pairs
@@ -255,9 +255,9 @@ fn diag_picker(
     for (url, diags) in diagnostics {
         flat_diag.reserve(diags.len());
         for diag in diags {
-            flat_diag.push(Diagnostic {
+            flat_diag.push(PickerDiagnostic {
                 url: url.clone(),
-                info: diag,
+                diag,
             });
         }
     }
@@ -272,7 +272,7 @@ fn diag_picker(
     FilePicker::new(
         flat_diag,
         styles,
-        move |cx, Diagnostic { url, info: diag }, action| {
+        move |cx, PickerDiagnostic { url, diag }, action| {
             if current_path.as_ref() == Some(url) {
                 let (view, doc) = current!(cx.editor);
                 push_jump(view, doc);
@@ -290,7 +290,7 @@ fn diag_picker(
                 align_view(doc, view, Align::Center);
             }
         },
-        move |_editor, Diagnostic { url, info: diag }| {
+        move |_editor, PickerDiagnostic { url, diag }| {
             let location = lsp::Location::new(url.clone(), diag.range);
             Some(location_to_file_location(&location))
         },
