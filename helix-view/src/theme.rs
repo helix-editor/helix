@@ -13,8 +13,7 @@ use toml::Value;
 pub use crate::graphics::{Color, Modifier, Style};
 
 pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
-    toml::from_slice(include_bytes!("../../theme.toml"))
-        .expect("Failed to parse default theme")
+    toml::from_slice(include_bytes!("../../theme.toml")).expect("Failed to parse default theme")
 });
 pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
     toml::from_slice(include_bytes!("../../base16_theme.toml"))
@@ -53,7 +52,7 @@ impl Loader {
         };
 
         let data = std::fs::read(&path)?;
-        toml::from_slice::<Theme>(data.as_slice()).context("Failed to deserialize theme")
+        toml::from_slice(data.as_slice()).context("Failed to deserialize theme")
     }
 
     pub fn read_names(path: &Path) -> Vec<String> {
