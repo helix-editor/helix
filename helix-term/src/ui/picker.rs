@@ -607,7 +607,16 @@ impl<T: Item + 'static> Component for Picker<T> {
         for (i, (_index, option)) in files.take(rows as usize).enumerate() {
             let is_active = i == (self.cursor - offset);
             if is_active {
-                surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
+                surface.set_string(
+                    inner.x.saturating_sub(3),
+                    inner.y + i as u16,
+                    " > ",
+                    selected,
+                );
+                surface.set_style(
+                    Rect::new(inner.x, inner.y + i as u16, inner.width, 1),
+                    selected,
+                );
             }
 
             let spans = option.label(&self.editor_data);
