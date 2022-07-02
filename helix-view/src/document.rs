@@ -436,10 +436,11 @@ impl Document {
                         })?;
 
                     {
-                        let mut stdin = process.stdin.take().unwrap();
-                        stdin
-                            .write_all(&self.text().bytes().collect::<Vec<u8>>())
-                            .unwrap();
+                        let mut stdin = process
+                            .stdin
+                            .take()
+                            .ok_or(anyhow!("Failed to take stdin"))?;
+                        stdin.write_all(&self.text().bytes().collect::<Vec<u8>>())?;
                     }
 
                     let output = process.wait_with_output()?;
