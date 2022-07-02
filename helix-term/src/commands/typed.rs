@@ -213,7 +213,7 @@ fn write_impl(
         bail!("cannot write a buffer without a filename");
     }
     let fmt = if auto_format {
-        doc.auto_format(view.id).map(|fmt| {
+        doc.auto_format(view.id)?.map(|fmt| {
             let shared = fmt.shared();
             let callback = make_format_callback(
                 doc.id(),
@@ -271,7 +271,7 @@ fn format(
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
     let (view, doc) = current!(cx.editor);
-    if let Some(format) = doc.format(view.id) {
+    if let Some(format) = doc.format(view.id)? {
         let callback =
             make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
         cx.jobs.callback(callback);
@@ -486,7 +486,7 @@ fn write_all_impl(
         }
 
         let fmt = if auto_format {
-            doc.auto_format(view.id).map(|fmt| {
+            doc.auto_format(view.id)?.map(|fmt| {
                 let shared = fmt.shared();
                 let callback = make_format_callback(
                     doc.id(),

@@ -401,11 +401,16 @@ impl Document {
     pub fn auto_format(
         &mut self,
         view_id: ViewId,
-    ) -> Option<impl Future<Output = LspFormatting> + 'static> {
-        if self.language_config()?.auto_format {
+    ) -> anyhow::Result<Option<impl Future<Output = LspFormatting> + 'static>> {
+        let config = match self.language_config() {
+            Some(config) => config,
+            None => return Ok(None),
+        };
+
+        if config.auto_format {
             self.format(view_id)
         } else {
-            None
+            Ok(None)
         }
     }
 
@@ -414,10 +419,10 @@ impl Document {
     pub fn format(
         &mut self,
         view_id: ViewId,
-    ) -> Option<impl Future<Output = LspFormatting> + 'static> {
+    ) -> anyhow::Result<Option<impl Future<Output = LspFormatting> + 'static>> {
         if let Some(formatter) = self.language_config().and_then(|c| c.formatter.as_ref()) {
             use std::process::{Command, Stdio};
-            match formatter.r#type {
+            match formatter.type_ {
                 FormatterType::Stdio => {
                     use std::io::Write;
                     let mut process = Command::new(&formatter.command)
@@ -427,10 +432,8 @@ impl Document {
                         .stderr(Stdio::piped())
                         .spawn()
                         .map_err(|e| {
-                            log::error!("Failed to format with {}. {}", formatter.command, e);
-                            e
-                        })
-                        .ok()?;
+                            anyhow!("Failed to format with {}. {}", formatter.command, e)
+                        })?;
 
                     {
                         let mut stdin = process.stdin.take().unwrap();
@@ -439,15 +442,14 @@ impl Document {
                             .unwrap();
                     }
 
-                    let output = process.wait_with_output().ok()?;
+                    let output = process.wait_with_output()?;
 
                     if !output.stderr.is_empty() {
-                        log::error!("Formatter {}", String::from_utf8_lossy(&output.stderr));
+                        bail!("Formatter {}", String::from_utf8_lossy(&output.stderr));
                     }
 
                     let str = std::str::from_utf8(&output.stdout)
-                        .map_err(|_| log::error!("Process did not output valid UTF-8"))
-                        .ok()?;
+                        .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
 
                     self.apply(
                         &helix_core::diff::compare_ropes(self.text(), &Rope::from_str(str)),
@@ -458,8 +460,7 @@ impl Document {
                     let path = match self.path() {
                         Some(path) => path,
                         None => {
-                            log::error!("Cannot format file without filepath");
-                            return None;
+                            bail!("Cannot format file without filepath");
                         }
                     };
                     let process = Command::new(&formatter.command)
@@ -468,28 +469,29 @@ impl Document {
                         .stderr(Stdio::piped())
                         .spawn()
                         .map_err(|e| {
-                            log::error!("Failed to format with {}. {}", formatter.command, e);
-                            e
-                        })
-                        .ok()?;
+                            anyhow!("Failed to format with {}. {}", formatter.command, e)
+                        })?;
 
-                    let output = process.wait_with_output().ok()?;
+                    let output = process.wait_with_output()?;
 
                     if !output.stderr.is_empty() {
-                        log::error!("Formatter {}", String::from_utf8_lossy(&output.stderr));
+                        bail!("Formatter {}", String::from_utf8_lossy(&output.stderr));
                     } else if let Err(e) = self.reload(view_id) {
-                        log::error!("Error reloading after formatting {}", e);
+                        bail!("Error reloading after formatting {}", e);
                     }
                 }
             }
-            return None;
+            return Ok(None);
         }
 
-        let language_server = self.language_server()?;
+        let language_server = match self.language_server() {
+            Some(server) => server,
+            None => return Ok(None),
+        };
         let text = self.text.clone();
         let offset_encoding = language_server.offset_encoding();
 
-        let request = language_server.text_document_formatting(
+        let request = match language_server.text_document_formatting(
             self.identifier(),
             lsp::FormattingOptions {
                 tab_size: self.tab_width() as u32,
@@ -497,7 +499,10 @@ impl Document {
                 ..Default::default()
             },
             None,
-        )?;
+        ) {
+            Some(request) => request,
+            None => return Ok(None),
+        };
 
         let fut = async move {
             let edits = request.await.unwrap_or_else(|e| {
@@ -510,7 +515,7 @@ impl Document {
                 offset_encoding,
             }
         };
-        Some(fut)
+        Ok(Some(fut))
     }
 
     pub fn save(&mut self, force: bool) -> impl Future<Output = Result<(), anyhow::Error>> {

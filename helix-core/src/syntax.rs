@@ -136,7 +136,8 @@ pub struct FormatterConfiguration {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
-    pub r#type: FormatterType,
+    #[serde(rename = "type")]
+    pub type_: FormatterType,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Deserialize, Serialize)]
