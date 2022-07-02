@@ -71,7 +71,7 @@
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ |  | ✓ |  |
-| python | ✓ | ✓ | ✓ | `pylsp` |
+| python | ✓ | ✓ |  | `pylsp` |
 | r | ✓ |  |  | `R` |
 | racket |  |  |  | `racket` |
 | regex | ✓ |  |  |  |
@@ -85,6 +85,7 @@
 | solidity | ✓ |  |  | `solc` |
 | sql | ✓ |  |  |  |
 | sshclientconfig | ✓ |  |  |  |
+| starlark | ✓ | ✓ |  |  |
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |

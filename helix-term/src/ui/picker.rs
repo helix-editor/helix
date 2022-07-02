@@ -6,6 +6,7 @@ use crate::{
 use crossterm::event::Event;
 use tui::{
     buffer::Buffer as Surface,
+    text::Spans,
     widgets::{Block, BorderType, Borders},
 };
 
@@ -15,7 +16,6 @@ use tui::widgets::Widget;
 
 use std::time::Instant;
 use std::{
-    borrow::Cow,
     cmp::Reverse,
     collections::HashMap,
     io::Read,
@@ -87,7 +87,7 @@ impl Preview<'_, '_> {
 impl<T> FilePicker<T> {
     pub fn new(
         options: Vec<T>,
-        format_fn: impl Fn(&T) -> Cow<str> + 'static,
+        format_fn: impl Fn(&T) -> Spans + 'static,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
@@ -299,14 +299,14 @@ pub struct Picker<T> {
     /// Whether to truncate the start (default true)
     pub truncate_start: bool,
 
-    format_fn: Box<dyn Fn(&T) -> Cow<str>>,
+    format_fn: Box<dyn Fn(&T) -> Spans>,
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
 }
 
 impl<T> Picker<T> {
     pub fn new(
         options: Vec<T>,
-        format_fn: impl Fn(&T) -> Cow<str> + 'static,
+        format_fn: impl Fn(&T) -> Spans + 'static,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
@@ -372,9 +372,8 @@ impl<T> Picker<T> {
             self.matches.retain_mut(|(index, score)| {
                 let option = &self.options[*index];
                 // TODO: maybe using format_fn isn't the best idea here
-                let text = (self.format_fn)(option);
-
-                match self.matcher.fuzzy_match(&text, pattern) {
+                let line: String = (self.format_fn)(option).into();
+                match self.matcher.fuzzy_match(&line, pattern) {
                     Some(s) => {
                         // Update the score
                         *score = s;
@@ -401,10 +400,10 @@ impl<T> Picker<T> {
                         }
 
                         // TODO: maybe using format_fn isn't the best idea here
-                        let text = (self.format_fn)(option);
+                        let line: String = (self.format_fn)(option).into();
 
                         self.matcher
-                            .fuzzy_match(&text, pattern)
+                            .fuzzy_match(&line, pattern)
                             .map(|score| (index, score))
                     }),
             );
@@ -611,30 +610,34 @@ impl<T: 'static> Component for Picker<T> {
                 surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
             }
 
-            let formatted = (self.format_fn)(option);
-
+            let spans = (self.format_fn)(option);
             let (_score, highlights) = self
                 .matcher
-                .fuzzy_indices(&formatted, self.prompt.line())
+                .fuzzy_indices(&String::from(&spans), self.prompt.line())
                 .unwrap_or_default();
 
-            surface.set_string_truncated(
-                inner.x,
-                inner.y + i as u16,
-                &formatted,
-                inner.width as usize,
-                |idx| {
-                    if highlights.contains(&idx) {
-                        highlighted
-                    } else if is_active {
-                        selected
-                    } else {
-                        text_style
-                    }
-                },
-                true,
-                self.truncate_start,
-            );
+            spans.0.into_iter().fold(inner, |pos, span| {
+                let new_x = surface
+                    .set_string_truncated(
+                        pos.x,
+                        pos.y + i as u16,
+                        &span.content,
+                        pos.width as usize,
+                        |idx| {
+                            if highlights.contains(&idx) {
+                                highlighted.patch(span.style)
+                            } else if is_active {
+                                selected.patch(span.style)
+                            } else {
+                                text_style.patch(span.style)
+                            }
+                        },
+                        true,
+                        self.truncate_start,
+                    )
+                    .0;
+                pos.clip_left(new_x - pos.x)
+            });
         }
     }
 
