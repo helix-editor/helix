@@ -67,6 +67,8 @@ FLAGS:
     -v                             Increases logging verbosity each use for up to 3 times
                                    (default file: {})
     -V, --version                  Prints version information
+    --vsplit                       Splits all given files vertically into different windows
+    --hsplit                       Splits all given files horizontally into different windows
 ",
         env!("CARGO_PKG_NAME"),
         env!("VERSION_AND_GIT_HASH"),

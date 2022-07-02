@@ -372,8 +372,7 @@ impl<T: Item> Picker<T> {
             #[allow(unstable_name_collisions)]
             self.matches.retain_mut(|(index, score)| {
                 let option = &self.options[*index];
-                // TODO: maybe using format_fn isn't the best idea here
-                let text = option.label(&self.editor_data);
+                let text = option.sort_text(&self.editor_data);
 
                 match self.matcher.fuzzy_match(&text, pattern) {
                     Some(s) => {
@@ -611,30 +610,34 @@ impl<T: Item + 'static> Component for Picker<T> {
                 surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
             }
 
-            let formatted = option.label(&self.editor_data);
-
+            let spans = option.label(&self.editor_data);
             let (_score, highlights) = self
                 .matcher
-                .fuzzy_indices(&formatted, self.prompt.line())
+                .fuzzy_indices(&String::from(&spans), self.prompt.line())
                 .unwrap_or_default();
 
-            surface.set_string_truncated(
-                inner.x,
-                inner.y + i as u16,
-                &formatted,
-                inner.width as usize,
-                |idx| {
-                    if highlights.contains(&idx) {
-                        highlighted
-                    } else if is_active {
-                        selected
-                    } else {
-                        text_style
-                    }
-                },
-                true,
-                self.truncate_start,
-            );
+            spans.0.into_iter().fold(inner, |pos, span| {
+                let new_x = surface
+                    .set_string_truncated(
+                        pos.x,
+                        pos.y + i as u16,
+                        &span.content,
+                        pos.width as usize,
+                        |idx| {
+                            if highlights.contains(&idx) {
+                                highlighted.patch(span.style)
+                            } else if is_active {
+                                selected.patch(span.style)
+                            } else {
+                                text_style.patch(span.style)
+                            }
+                        },
+                        true,
+                        self.truncate_start,
+                    )
+                    .0;
+                pos.clip_left(new_x - pos.x)
+            });
         }
     }
 

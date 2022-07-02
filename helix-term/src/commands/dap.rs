@@ -12,6 +12,7 @@ use helix_view::editor::Breakpoint;
 
 use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
+use tui::text::Spans;
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -24,7 +25,7 @@ use helix_view::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select
 impl ui::menu::Item for StackFrame {
     type Data = ();
 
-    fn label(&self, _data: &Self::Data) -> std::borrow::Cow<str> {
+    fn label(&self, _data: &Self::Data) -> Spans {
         self.name.as_str().into() // TODO: include thread_states in the label
     }
 }
@@ -32,7 +33,7 @@ impl ui::menu::Item for StackFrame {
 impl ui::menu::Item for DebugTemplate {
     type Data = ();
 
-    fn label(&self, _data: &Self::Data) -> std::borrow::Cow<str> {
+    fn label(&self, _data: &Self::Data) -> Spans {
         self.name.as_str().into()
     }
 }
@@ -40,7 +41,7 @@ impl ui::menu::Item for DebugTemplate {
 impl ui::menu::Item for Thread {
     type Data = ThreadStates;
 
-    fn label(&self, thread_states: &Self::Data) -> std::borrow::Cow<str> {
+    fn label(&self, thread_states: &Self::Data) -> Spans {
         format!(
             "{} ({})",
             self.name,
@@ -498,7 +499,7 @@ pub fn dap_variables(cx: &mut Context) {
 
     for scope in scopes.iter() {
         // use helix_view::graphics::Style;
-        use tui::text::{Span, Spans};
+        use tui::text::Span;
         let response = block_on(debugger.variables(scope.variables_reference));
 
         variables.push(Spans::from(Span::styled(

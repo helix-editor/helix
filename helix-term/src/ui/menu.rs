@@ -5,7 +5,7 @@ use crate::{
     ctrl, key, shift,
 };
 use crossterm::event::Event;
-use tui::{buffer::Buffer as Surface, widgets::Table};
+use tui::{buffer::Buffer as Surface, text::Spans, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
 
@@ -19,14 +19,16 @@ pub trait Item {
     /// Additional editor state that is used for label calculation.
     type Data;
 
-    fn label(&self, data: &Self::Data) -> Cow<str>;
+    fn label(&self, data: &Self::Data) -> Spans;
 
     fn sort_text(&self, data: &Self::Data) -> Cow<str> {
-        self.label(data)
+        let label: String = self.label(data).into();
+        label.into()
     }
 
     fn filter_text(&self, data: &Self::Data) -> Cow<str> {
-        self.label(data)
+        let label: String = self.label(data).into();
+        label.into()
     }
 
     fn row(&self, data: &Self::Data) -> Row {
@@ -38,10 +40,11 @@ impl Item for PathBuf {
     /// Root prefix to strip.
     type Data = PathBuf;
 
-    fn label(&self, root_path: &Self::Data) -> Cow<str> {
+    fn label(&self, root_path: &Self::Data) -> Spans {
         self.strip_prefix(&root_path)
             .unwrap_or(self)
             .to_string_lossy()
+            .into()
     }
 }
 
@@ -103,7 +106,7 @@ impl<T: Item> Menu<T> {
                 .iter()
                 .enumerate()
                 .filter_map(|(index, option)| {
-                    let text = option.filter_text(&self.editor_data);
+                    let text: String = option.filter_text(&self.editor_data).into();
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
                     self.matcher
                         .fuzzy_match(&text, pattern)

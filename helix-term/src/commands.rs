@@ -4,6 +4,7 @@ pub(crate) mod typed;
 
 pub use dap::*;
 pub use lsp::*;
+use tui::text::Spans;
 pub use typed::*;
 
 use helix_core::{
@@ -266,6 +267,8 @@ impl MappableCommand {
         symbol_picker, "Open symbol picker",
         select_references_to_symbol_under_cursor, "Select symbol references",
         workspace_symbol_picker, "Open workspace symbol picker",
+        diagnostics_picker, "Open diagnostic picker",
+        workspace_diagnostics_picker, "Open workspace diagnostic picker",
         last_picker, "Open last picker",
         prepend_to_line, "Insert at start of line",
         append_to_line, "Insert at end of line",
@@ -1761,7 +1764,7 @@ fn global_search(cx: &mut Context) {
     impl ui::menu::Item for FileResult {
         type Data = Option<PathBuf>;
 
-        fn label(&self, current_path: &Self::Data) -> Cow<str> {
+        fn label(&self, current_path: &Self::Data) -> Spans {
             let relative_path = helix_core::path::get_relative_path(&self.path)
                 .to_string_lossy()
                 .into_owned();
@@ -2200,7 +2203,7 @@ fn buffer_picker(cx: &mut Context) {
     impl ui::menu::Item for BufferMeta {
         type Data = ();
 
-        fn label(&self, _data: &Self::Data) -> Cow<str> {
+        fn label(&self, _data: &Self::Data) -> Spans {
             let path = self
                 .path
                 .as_deref()
@@ -2223,7 +2226,7 @@ fn buffer_picker(cx: &mut Context) {
             } else {
                 format!(" ({})", flags.join(""))
             };
-            Cow::Owned(format!("{} {}{}", self.id, path, flag))
+            format!("{} {}{}", self.id, path, flag).into()
         }
     }
 
@@ -2260,7 +2263,7 @@ fn buffer_picker(cx: &mut Context) {
 impl ui::menu::Item for MappableCommand {
     type Data = ReverseKeymap;
 
-    fn label(&self, keymap: &Self::Data) -> Cow<str> {
+    fn label(&self, keymap: &Self::Data) -> Spans {
         // formats key bindings, multiple bindings are comma separated,
         // individual key presses are joined with `+`
         let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
@@ -2279,7 +2282,7 @@ impl ui::menu::Item for MappableCommand {
         match self {
             MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String) {
                 Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
-                None => doc.into(),
+                None => doc.as_str().into(),
             },
             MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
                 Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
@@ -2980,7 +2983,7 @@ pub mod insert {
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
                 // consider to delete by indent level if all characters before `pos` are indent units.
                 let fragment = Cow::from(text.slice(line_start_pos..pos));
-                if !fragment.is_empty() && fragment.chars().all(|ch| ch.is_whitespace()) {
+                if !fragment.is_empty() && fragment.chars().all(|ch| ch == ' ' || ch == '\t') {
                     if text.get_char(pos.saturating_sub(1)) == Some('\t') {
                         // fast path, delete one char
                         (

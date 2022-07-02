@@ -2,6 +2,7 @@ use crate::compositor::{Component, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use helix_view::editor::CompleteAction;
 use tui::buffer::Buffer as Surface;
+use tui::text::Spans;
 
 use std::borrow::Cow;
 
@@ -29,7 +30,7 @@ impl menu::Item for CompletionItem {
             .into()
     }
 
-    fn label(&self, _data: &Self::Data) -> Cow<str> {
+    fn label(&self, _data: &Self::Data) -> Spans {
         self.label.as_str().into()
     }
 
