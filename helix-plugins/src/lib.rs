@@ -1,3 +1,4 @@
+#[rustfmt::skip]
 mod generated;
 
 use anyhow::{anyhow, Error, Result};
