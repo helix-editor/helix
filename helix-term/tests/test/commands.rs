@@ -96,16 +96,37 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
 async fn test_selection_duplication() -> anyhow::Result<()> {
     // Forward
     test((
-        "#[\n|]#",
-        "ilorem<ret>ipsum<ret>dolor<esc>ggvlCC",
-        "#(lo|)#rem\n#(ip|)#sum\n#[do|]#lor\n",
+        platform_line(indoc! {"\
+            #[lo|]#rem
+            ipsum
+            dolor
+            "})
+        .as_str(),
+        "CC",
+        platform_line(indoc! {"\
+            #(lo|)#rem
+            #(ip|)#sum
+            #[do|]#lor
+            "})
+        .as_str(),
     ))
     .await?;
+
     // Backward
     test((
-        "#[\n|]#",
-        "ilorem<ret>ipsum<ret>dolor<esc>gglbCC",
-        "#(|lo)#rem\n#(|ip)#sum\n#[|do]#lor\n",
+        platform_line(indoc! {"\
+            #[|lo]#rem
+            ipsum
+            dolor
+            "})
+        .as_str(),
+        "CC",
+        platform_line(indoc! {"\
+            #(|lo)#rem
+            #(|ip)#sum
+            #[|do]#lor
+            "})
+        .as_str(),
     ))
     .await?;
     Ok(())
