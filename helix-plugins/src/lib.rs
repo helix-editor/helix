@@ -1,4 +1,5 @@
 #[rustfmt::skip]
+#[allow(clippy::all)]
 mod generated;
 
 use anyhow::{anyhow, Error, Result};
