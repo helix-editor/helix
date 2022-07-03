@@ -401,16 +401,16 @@ impl Document {
     pub fn auto_format(
         &mut self,
         view_id: ViewId,
-    ) -> anyhow::Result<Option<impl Future<Output = LspFormatting> + 'static>> {
+    ) -> anyhow::Result<impl Future<Output = LspFormatting> + 'static> {
         let config = match self.language_config() {
             Some(config) => config,
-            None => return Ok(None),
+            None => bail!(FormatterError::NoFormattingNeeded),
         };
 
         if config.auto_format {
             self.format(view_id)
         } else {
-            Ok(None)
+            bail!(FormatterError::NoFormattingNeeded)
         }
     }
 
@@ -419,7 +419,7 @@ impl Document {
     pub fn format(
         &mut self,
         view_id: ViewId,
-    ) -> anyhow::Result<Option<impl Future<Output = LspFormatting> + 'static>> {
+    ) -> anyhow::Result<impl Future<Output = LspFormatting> + 'static> {
         if let Some(formatter) = self.language_config().and_then(|c| c.formatter.as_ref()) {
             use std::process::{Command, Stdio};
             match formatter.type_ {
@@ -439,7 +439,7 @@ impl Document {
                         let mut stdin = process
                             .stdin
                             .take()
-                            .ok_or(anyhow!("Failed to take stdin"))?;
+                            .ok_or_else(|| anyhow!("Failed to take stdin"))?;
                         stdin.write_all(&self.text().bytes().collect::<Vec<u8>>())?;
                     }
 
@@ -482,12 +482,12 @@ impl Document {
                     }
                 }
             }
-            return Ok(None);
+            bail!(FormatterError::CustomFormatterDefined);
         }
 
         let language_server = match self.language_server() {
             Some(server) => server,
-            None => return Ok(None),
+            None => bail!(FormatterError::NoFormatterDefined),
         };
         let text = self.text.clone();
         let offset_encoding = language_server.offset_encoding();
@@ -502,7 +502,7 @@ impl Document {
             None,
         ) {
             Some(request) => request,
-            None => return Ok(None),
+            None => bail!(FormatterError::NoFormattingNeeded),
         };
 
         let fut = async move {
@@ -516,7 +516,7 @@ impl Document {
                 offset_encoding,
             }
         };
-        Ok(Some(fut))
+        Ok(fut)
     }
 
     pub fn save(&mut self, force: bool) -> impl Future<Output = Result<(), anyhow::Error>> {
@@ -1114,6 +1114,23 @@ impl Default for Document {
     fn default() -> Self {
         let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
         Self::from(text, None)
+    }
+}
+
+#[derive(Debug)]
+pub enum FormatterError {
+    CustomFormatterDefined,
+    NoFormatterDefined,
+    NoFormattingNeeded,
+}
+
+impl Display for FormatterError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match *self {
+            FormatterError::CustomFormatterDefined => "Custom formatter defined",
+            FormatterError::NoFormatterDefined => "No lsp or custom formatter defined",
+            FormatterError::NoFormattingNeeded => "No formatting needed",
+        })
     }
 }
 
