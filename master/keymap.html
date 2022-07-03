@@ -147,7 +147,7 @@
 <blockquote>
 <p>NOTE: Unlike vim, <code>f</code>, <code>F</code>, <code>t</code> and <code>T</code> are not confined to the current line.</p>
 </blockquote>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>h</code>, <code>Left</code></td><td>Move left</td><td><code>move_char_left</code></td></tr>
 <tr><td><code>j</code>, <code>Down</code></td><td>Move down</td><td><code>move_line_down</code></td></tr>
 <tr><td><code>k</code>, <code>Up</code></td><td>Move up</td><td><code>move_line_up</code></td></tr>
@@ -174,8 +174,9 @@
 <tr><td><code>Ctrl-o</code></td><td>Jump backward on the jumplist</td><td><code>jump_backward</code></td></tr>
 <tr><td><code>Ctrl-s</code></td><td>Save the current selection to the jumplist</td><td><code>save_selection</code></td></tr>
 </tbody></table>
+</div>
 <h3 id="changes"><a class="header" href="#changes">Changes</a></h3>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>r</code></td><td>Replace with a character</td><td><code>replace</code></td></tr>
 <tr><td><code>R</code></td><td>Replace with yanked text</td><td><code>replace_with_yanked</code></td></tr>
 <tr><td><code>~</code></td><td>Switch case of the selected text</td><td><code>switch_case</code></td></tr>
@@ -208,16 +209,18 @@
 <tr><td><code>Q</code></td><td>Start/stop macro recording to the selected register (experimental)</td><td><code>record_macro</code></td></tr>
 <tr><td><code>q</code></td><td>Play back a recorded macro from the selected register (experimental)</td><td><code>replay_macro</code></td></tr>
 </tbody></table>
+</div>
 <h4 id="shell"><a class="header" href="#shell">Shell</a></h4>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>|</code></td><td>Pipe each selection through shell command, replacing with output</td><td><code>shell_pipe</code></td></tr>
 <tr><td><code>Alt-|</code></td><td>Pipe each selection into shell command, ignoring output</td><td><code>shell_pipe_to</code></td></tr>
 <tr><td><code>!</code></td><td>Run shell command, inserting output before each selection</td><td><code>shell_insert_output</code></td></tr>
 <tr><td><code>Alt-!</code></td><td>Run shell command, appending output after each selection</td><td><code>shell_append_output</code></td></tr>
 <tr><td><code>$</code></td><td>Pipe each selection into shell command, keep selections where command returned 0</td><td><code>shell_keep_pipe</code></td></tr>
 </tbody></table>
+</div>
 <h3 id="selection-manipulation"><a class="header" href="#selection-manipulation">Selection manipulation</a></h3>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>s</code></td><td>Select all regex matches inside selections</td><td><code>select_regex</code></td></tr>
 <tr><td><code>S</code></td><td>Split selection into subselections on regex matches</td><td><code>split_selection</code></td></tr>
 <tr><td><code>Alt-s</code></td><td>Split selection on newlines</td><td><code>split_selection_on_newline</code></td></tr>
@@ -247,18 +250,20 @@
 <tr><td><code>Alt-p</code>, <code>Alt-left</code></td><td>Select previous sibling node in syntax tree (<strong>TS</strong>)</td><td><code>select_prev_sibling</code></td></tr>
 <tr><td><code>Alt-n</code>, <code>Alt-right</code></td><td>Select next sibling node in syntax tree (<strong>TS</strong>)</td><td><code>select_next_sibling</code></td></tr>
 </tbody></table>
+</div>
 <h3 id="search"><a class="header" href="#search">Search</a></h3>
 <p>Search commands all operate on the <code>/</code> register by default. Use <code>&quot;&lt;char&gt;</code> to operate on a different one.</p>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>/</code></td><td>Search for regex pattern</td><td><code>search</code></td></tr>
 <tr><td><code>?</code></td><td>Search for previous pattern</td><td><code>rsearch</code></td></tr>
 <tr><td><code>n</code></td><td>Select next search match</td><td><code>search_next</code></td></tr>
 <tr><td><code>N</code></td><td>Select previous search match</td><td><code>search_prev</code></td></tr>
 <tr><td><code>*</code></td><td>Use current selection as the search pattern</td><td><code>search_selection</code></td></tr>
 </tbody></table>
+</div>
 <h3 id="minor-modes"><a class="header" href="#minor-modes">Minor modes</a></h3>
 <p>These sub-modes are accessible from normal mode and typically switch back to normal mode after a command.</p>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>v</code></td><td>Enter <a href="#select--extend-mode">select (extend) mode</a></td><td><code>select_mode</code></td></tr>
 <tr><td><code>g</code></td><td>Enter <a href="#goto-mode">goto mode</a></td><td>N/A</td></tr>
 <tr><td><code>m</code></td><td>Enter <a href="#match-mode">match mode</a></td><td>N/A</td></tr>
@@ -268,12 +273,13 @@
 <tr><td><code>Ctrl-w</code></td><td>Enter <a href="#window-mode">window mode</a></td><td>N/A</td></tr>
 <tr><td><code>Space</code></td><td>Enter <a href="#space-mode">space mode</a></td><td>N/A</td></tr>
 </tbody></table>
+</div>
 <h4 id="view-mode"><a class="header" href="#view-mode">View mode</a></h4>
 <p>View mode is intended for scrolling and manipulating the view without changing
 the selection. The &quot;sticky&quot; variant of this mode is persistent; use the Escape
 key to return to normal mode after usage (useful when you're simply looking
 over text and not actively editing it).</p>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>z</code>, <code>c</code></td><td>Vertically center the line</td><td><code>align_view_center</code></td></tr>
 <tr><td><code>t</code></td><td>Align the line to the top of the screen</td><td><code>align_view_top</code></td></tr>
 <tr><td><code>b</code></td><td>Align the line to the bottom of the screen</td><td><code>align_view_bottom</code></td></tr>
@@ -285,9 +291,10 @@ over text and not actively editing it).</p>
 <tr><td><code>Ctrl-d</code></td><td>Move half page down</td><td><code>half_page_down</code></td></tr>
 <tr><td><code>Ctrl-u</code></td><td>Move half page up</td><td><code>half_page_up</code></td></tr>
 </tbody></table>
+</div>
 <h4 id="goto-mode"><a class="header" href="#goto-mode">Goto mode</a></h4>
 <p>Jumps to various locations.</p>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>g</code></td><td>Go to line number <code>&lt;n&gt;</code> else start of file</td><td><code>goto_file_start</code></td></tr>
 <tr><td><code>e</code></td><td>Go to the end of the file</td><td><code>goto_last_line</code></td></tr>
 <tr><td><code>f</code></td><td>Go to files in the selection</td><td><code>goto_file</code></td></tr>
@@ -307,11 +314,12 @@ over text and not actively editing it).</p>
 <tr><td><code>p</code></td><td>Go to previous buffer</td><td><code>goto_previous_buffer</code></td></tr>
 <tr><td><code>.</code></td><td>Go to last modification in current file</td><td><code>goto_last_modification</code></td></tr>
 </tbody></table>
+</div>
 <h4 id="match-mode"><a class="header" href="#match-mode">Match mode</a></h4>
 <p>Enter this mode using <code>m</code> from normal mode. See the relevant section
 in <a href="./usage.html">Usage</a> for an explanation about <a href="./usage.html#surround">surround</a>
 and <a href="./usage.html#textobject">textobject</a> usage.</p>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>m</code></td><td>Goto matching bracket (<strong>TS</strong>)</td><td><code>match_brackets</code></td></tr>
 <tr><td><code>s</code> <code>&lt;char&gt;</code></td><td>Surround current selection with <code>&lt;char&gt;</code></td><td><code>surround_add</code></td></tr>
 <tr><td><code>r</code> <code>&lt;from&gt;&lt;to&gt;</code></td><td>Replace surround character <code>&lt;from&gt;</code> with <code>&lt;to&gt;</code></td><td><code>surround_replace</code></td></tr>
@@ -319,10 +327,11 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>a</code> <code>&lt;object&gt;</code></td><td>Select around textobject</td><td><code>select_textobject_around</code></td></tr>
 <tr><td><code>i</code> <code>&lt;object&gt;</code></td><td>Select inside textobject</td><td><code>select_textobject_inner</code></td></tr>
 </tbody></table>
+</div>
 <p>TODO: Mappings for selecting syntax nodes (a superset of <code>[</code>).</p>
 <h4 id="window-mode"><a class="header" href="#window-mode">Window mode</a></h4>
 <p>This layer is similar to vim keybindings as kakoune does not support window.</p>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>w</code>, <code>Ctrl-w</code></td><td>Switch to next window</td><td><code>rotate_view</code></td></tr>
 <tr><td><code>v</code>, <code>Ctrl-v</code></td><td>Vertical right split</td><td><code>vsplit</code></td></tr>
 <tr><td><code>s</code>, <code>Ctrl-s</code></td><td>Horizontal bottom split</td><td><code>hsplit</code></td></tr>
@@ -339,9 +348,10 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>K</code></td><td>Swap window upwards</td><td><code>swap_view_up</code></td></tr>
 <tr><td><code>L</code></td><td>Swap window to the right</td><td><code>swap_view_right</code></td></tr>
 </tbody></table>
+</div>
 <h4 id="space-mode"><a class="header" href="#space-mode">Space mode</a></h4>
 <p>This layer is a kludge of mappings, mostly pickers.</p>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>f</code></td><td>Open file picker</td><td><code>file_picker</code></td></tr>
 <tr><td><code>b</code></td><td>Open buffer picker</td><td><code>buffer_picker</code></td></tr>
 <tr><td><code>k</code></td><td>Show documentation for item under cursor in a <a href="#popup">popup</a> (<strong>LSP</strong>)</td><td><code>hover</code></td></tr>
@@ -361,18 +371,20 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>/</code></td><td>Global search in workspace folder</td><td><code>global_search</code></td></tr>
 <tr><td><code>?</code></td><td>Open command palette</td><td><code>command_palette</code></td></tr>
 </tbody></table>
+</div>
 <blockquote>
 <p>TIP: Global search displays results in a fuzzy picker, use <code>space + '</code> to bring it back up after opening a file.</p>
 </blockquote>
 <h5 id="popup"><a class="header" href="#popup">Popup</a></h5>
 <p>Displays documentation for item under cursor.</p>
-<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>Ctrl-u</code></td><td>Scroll up</td></tr>
 <tr><td><code>Ctrl-d</code></td><td>Scroll down</td></tr>
 </tbody></table>
+</div>
 <h4 id="unimpaired"><a class="header" href="#unimpaired">Unimpaired</a></h4>
 <p>Mappings in the style of <a href="https://github.com/tpope/vim-unimpaired">vim-unimpaired</a>.</p>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>[d</code></td><td>Go to previous diagnostic (<strong>LSP</strong>)</td><td><code>goto_prev_diag</code></td></tr>
 <tr><td><code>]d</code></td><td>Go to next diagnostic (<strong>LSP</strong>)</td><td><code>goto_next_diag</code></td></tr>
 <tr><td><code>[D</code></td><td>Go to first diagnostic in document (<strong>LSP</strong>)</td><td><code>goto_first_diag</code></td></tr>
@@ -392,12 +404,13 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>[space</code></td><td>Add newline above</td><td><code>add_newline_above</code></td></tr>
 <tr><td><code>]space</code></td><td>Add newline below</td><td><code>add_newline_below</code></td></tr>
 </tbody></table>
+</div>
 <h2 id="insert-mode"><a class="header" href="#insert-mode">Insert Mode</a></h2>
 <p>We support many readline/emacs style bindings in insert mode for
 convenience. These can be helpful for making simple modifications
 without escaping to normal mode, but beware that you will not have an
 undo-able &quot;save point&quot; until you return to normal mode.</p>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>Escape</code></td><td>Switch to normal mode</td><td><code>normal_mode</code></td></tr>
 <tr><td><code>Ctrl-x</code></td><td>Autocomplete</td><td><code>completion</code></td></tr>
 <tr><td><code>Ctrl-r</code></td><td>Insert a register content</td><td><code>insert_register</code></td></tr>
@@ -421,6 +434,7 @@ undo-able &quot;save point&quot; until you return to normal mode.</p>
 <tr><td><code>Alt-&gt;</code></td><td>Go to end of buffer</td><td><code>goto_file_end</code></td></tr>
 <tr><td><code>Alt-&lt;</code></td><td>Go to start of buffer</td><td><code>goto_file_start</code></td></tr>
 </tbody></table>
+</div>
 <h2 id="select--extend-mode"><a class="header" href="#select--extend-mode">Select / extend mode</a></h2>
 <p>This mode echoes Normal mode, but changes any movements to extend
 selections rather than replace them. Goto motions are also changed to
@@ -433,7 +447,7 @@ selection. Toggling it on and off during your iterative searching allows
 you to selectively add search terms to your selections.</p>
 <h1 id="picker"><a class="header" href="#picker">Picker</a></h1>
 <p>Keys to use within picker. Remapping currently not supported.</p>
-<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>Up</code>, <code>Ctrl-p</code></td><td>Previous entry</td></tr>
 <tr><td><code>PageUp</code>, <code>Ctrl-u</code></td><td>Page up</td></tr>
 <tr><td><code>Down</code>, <code>Ctrl-n</code></td><td>Next entry</td></tr>
@@ -446,9 +460,10 @@ you to selectively add search terms to your selections.</p>
 <tr><td><code>Ctrl-v</code></td><td>Open vertically</td></tr>
 <tr><td><code>Escape</code>, <code>Ctrl-c</code></td><td>Close picker</td></tr>
 </tbody></table>
+</div>
 <h1 id="prompt"><a class="header" href="#prompt">Prompt</a></h1>
 <p>Keys to use within prompt, Remapping currently not supported.</p>
-<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>Escape</code>, <code>Ctrl-c</code></td><td>Close prompt</td></tr>
 <tr><td><code>Alt-b</code>, <code>Alt-Left</code></td><td>Backward a word</td></tr>
 <tr><td><code>Ctrl-b</code>, <code>Left</code></td><td>Backward a char</td></tr>
@@ -470,7 +485,7 @@ you to selectively add search terms to your selections.</p>
 <tr><td><code>BackTab</code></td><td>Select previous completion item</td></tr>
 <tr><td><code>Enter</code></td><td>Open selected</td></tr>
 </tbody></table>
-
+</div>
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">

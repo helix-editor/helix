@@ -170,7 +170,7 @@ indent = { tab-width = 2, unit = &quot;  &quot; }
 language-server = { command = &quot;mylang-lsp&quot;, args = [&quot;--stdio&quot;] }
 </code></pre>
 <p>These configuration keys are available:</p>
-<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>name</code></td><td>The name of the language</td></tr>
 <tr><td><code>scope</code></td><td>A string like <code>source.js</code> that identifies the language. Currently, we strive to match the scope names used by popular TextMate grammars and by the Linguist library. Usually <code>source.&lt;name&gt;</code> or <code>text.&lt;name&gt;</code> in case of markup languages</td></tr>
 <tr><td><code>injection-regex</code></td><td>regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection">language injection</a> site.</td></tr>
@@ -185,14 +185,16 @@ language-server = { command = &quot;mylang-lsp&quot;, args = [&quot;--stdio&quot
 <tr><td><code>config</code></td><td>Language Server configuration</td></tr>
 <tr><td><code>grammar</code></td><td>The tree-sitter grammar to use (defaults to the value of <code>name</code>)</td></tr>
 </tbody></table>
+</div>
 <h3 id="language-server-configuration"><a class="header" href="#language-server-configuration">Language Server configuration</a></h3>
 <p>The <code>language-server</code> field takes the following keys:</p>
-<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>command</code></td><td>The name of the language server binary to execute. Binaries must be in <code>$PATH</code></td></tr>
 <tr><td><code>args</code></td><td>A list of arguments to pass to the language server binary</td></tr>
 <tr><td><code>timeout</code></td><td>The maximum time a request to the language server may take, in seconds. Defaults to <code>20</code></td></tr>
 <tr><td><code>language-id</code></td><td>The language name to pass to the language server. Some language servers support multiple languages and use this field to determine which one is being served in a buffer</td></tr>
 </tbody></table>
+</div>
 <p>The top-level <code>config</code> field is used to configure the LSP initialization options. A <code>format</code>
 sub-table within <code>config</code> can be used to pass extra formatting options to
 <a href="https://github.com/microsoft/language-server-protocol/blob/gh-pages/_specifications/specification-3-16.md#document-formatting-request--leftwards_arrow_with_hook">Document Formatting Requests</a>.
@@ -211,17 +213,19 @@ name = &quot;mylang&quot;
 source = { git = &quot;https://github.com/example/mylang&quot;, rev = &quot;a250c4582510ff34767ec3b7dcdd3c24e8c8aa68&quot; }
 </code></pre>
 <p>Grammar configuration takes these keys:</p>
-<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>name</code></td><td>The name of the tree-sitter grammar</td></tr>
 <tr><td><code>source</code></td><td>The method of fetching the grammar - a table with a schema defined below</td></tr>
 </tbody></table>
+</div>
 <p>Where <code>source</code> is a table with either these keys when using a grammar from a
 git repository:</p>
-<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>git</code></td><td>A git remote URL from which the grammar should be cloned</td></tr>
 <tr><td><code>rev</code></td><td>The revision (commit hash or tag) which should be fetched</td></tr>
 <tr><td><code>subpath</code></td><td>A path within the grammar directory which should be built. Some grammar repositories host multiple grammars (for example <code>tree-sitter-typescript</code> and <code>tree-sitter-ocaml</code>) in subdirectories. This key is used to point <code>hx --grammar build</code> to the correct path for compilation. When omitted, the root of repository is used</td></tr>
 </tbody></table>
+</div>
 <h3 id="choosing-grammars"><a class="header" href="#choosing-grammars">Choosing grammars</a></h3>
 <p>You may use a top-level <code>use-grammars</code> key to control which grammars are
 fetched and built when using <code>hx --grammar fetch</code> and <code>hx --grammar build</code>.</p>
