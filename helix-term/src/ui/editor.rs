@@ -613,7 +613,14 @@ impl EditorView {
             let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
             let offset = text.len();
 
-            surface.set_string(1 + viewport.x + len as u16, viewport.y, text, style);
+            surface.set_stringn(
+                1 + viewport.x + len as u16,
+                viewport.y,
+                text,
+                surface.area.width as usize,
+                style,
+            );
+
             len += offset;
 
             if len > surface.area.width as usize {
