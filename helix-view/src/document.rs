@@ -1,4 +1,6 @@
 use anyhow::{anyhow, bail, Context, Error};
+use futures_util::future::BoxFuture;
+use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::syntax::FormatterType;
 use helix_core::Range;
@@ -400,7 +402,7 @@ impl Document {
     pub fn auto_format(
         &mut self,
         view_id: ViewId,
-    ) -> anyhow::Result<impl Future<Output = Transaction> + 'static> {
+    ) -> anyhow::Result<BoxFuture<'static, Transaction>> {
         let config = match self.language_config() {
             Some(config) => config,
             None => bail!(FormatterError::NoFormattingNeeded),
@@ -415,10 +417,7 @@ impl Document {
 
     /// If supported, returns the changes that should be applied to this document in order
     /// to format it nicely.
-    pub fn format(
-        &mut self,
-        view_id: ViewId,
-    ) -> anyhow::Result<impl Future<Output = Transaction> + 'static> {
+    pub fn format(&mut self, view_id: ViewId) -> anyhow::Result<BoxFuture<'static, Transaction>> {
         if let Some(formatter) = self.language_config().and_then(|c| c.formatter.as_ref()) {
             use std::process::{Command, Stdio};
             match formatter.type_ {
@@ -448,18 +447,13 @@ impl Document {
                         bail!("Formatter {}", String::from_utf8_lossy(&output.stderr));
                     }
 
-                    let str = std::str::from_utf8(&output.stdout)
+                    let str = String::from_utf8(output.stdout)
                         .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
 
-                    // Doesn't work, how to fix?
-                    // let fut = async move {
-                    //     helix_core::diff::compare_ropes(self.text(), &Rope::from_str(str))
-                    // }
-                    // return Ok(fut);
-                    self.apply(
-                        &helix_core::diff::compare_ropes(self.text(), &Rope::from_str(str)),
-                        view_id,
-                    );
+                    let text = self.text().clone();
+                    let fut =
+                        async move { helix_core::diff::compare_ropes(&text, &Rope::from(str)) };
+                    return Ok(fut.boxed());
                 }
                 FormatterType::File => {
                     let path = match self.path() {
@@ -484,9 +478,11 @@ impl Document {
                     } else if let Err(e) = self.reload(view_id) {
                         bail!("Error reloading after formatting {}", e);
                     }
+
+                    let text = self.text().clone();
+                    return Ok(async move { Transaction::new(&text) }.boxed());
                 }
             }
-            bail!(FormatterError::CustomFormatterDefined);
         }
 
         let language_server = match self.language_server() {
@@ -516,7 +512,7 @@ impl Document {
             });
             helix_lsp::util::generate_transaction_from_edits(&text, edits, offset_encoding)
         };
-        Ok(fut)
+        Ok(fut.boxed())
     }
 
     pub fn save(&mut self, force: bool) -> impl Future<Output = Result<(), anyhow::Error>> {
