@@ -21,7 +21,6 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, State, Syntax, Transaction,
     DEFAULT_LINE_ENDING,
 };
-use helix_lsp::util::LspFormatting;
 
 use crate::{DocumentId, Editor, ViewId};
 
@@ -401,7 +400,7 @@ impl Document {
     pub fn auto_format(
         &mut self,
         view_id: ViewId,
-    ) -> anyhow::Result<impl Future<Output = LspFormatting> + 'static> {
+    ) -> anyhow::Result<impl Future<Output = Transaction> + 'static> {
         let config = match self.language_config() {
             Some(config) => config,
             None => bail!(FormatterError::NoFormattingNeeded),
@@ -419,7 +418,7 @@ impl Document {
     pub fn format(
         &mut self,
         view_id: ViewId,
-    ) -> anyhow::Result<impl Future<Output = LspFormatting> + 'static> {
+    ) -> anyhow::Result<impl Future<Output = Transaction> + 'static> {
         if let Some(formatter) = self.language_config().and_then(|c| c.formatter.as_ref()) {
             use std::process::{Command, Stdio};
             match formatter.type_ {
@@ -452,6 +451,11 @@ impl Document {
                     let str = std::str::from_utf8(&output.stdout)
                         .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
 
+                    // Doesn't work, how to fix?
+                    // let fut = async move {
+                    //     helix_core::diff::compare_ropes(self.text(), &Rope::from_str(str))
+                    // }
+                    // return Ok(fut);
                     self.apply(
                         &helix_core::diff::compare_ropes(self.text(), &Rope::from_str(str)),
                         view_id,
@@ -510,11 +514,7 @@ impl Document {
                 log::warn!("LSP formatting failed: {}", e);
                 Default::default()
             });
-            LspFormatting {
-                doc: text,
-                edits,
-                offset_encoding,
-            }
+            helix_lsp::util::generate_transaction_from_edits(&text, edits, offset_encoding)
         };
         Ok(fut)
     }
@@ -525,7 +525,7 @@ impl Document {
 
     pub fn format_and_save(
         &mut self,
-        formatting: Option<impl Future<Output = LspFormatting>>,
+        formatting: Option<impl Future<Output = Transaction>>,
         force: bool,
     ) -> impl Future<Output = anyhow::Result<()>> {
         self.save_impl(formatting, force)
@@ -537,7 +537,7 @@ impl Document {
     /// at its `path()`.
     ///
     /// If `formatting` is present, it supplies some changes that we apply to the text before saving.
-    fn save_impl<F: Future<Output = LspFormatting>>(
+    fn save_impl<F: Future<Output = Transaction>>(
         &mut self,
         formatting: Option<F>,
         force: bool,
@@ -571,7 +571,8 @@ impl Document {
             }
 
             if let Some(fmt) = formatting {
-                let success = Transaction::from(fmt.await).changes().apply(&mut text);
+                let transaction = fmt.await;
+                let success = transaction.changes().apply(&mut text);
                 if !success {
                     // This shouldn't happen, because the transaction changes were generated
                     // from the same text we're saving.
