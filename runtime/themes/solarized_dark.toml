@@ -80,8 +80,14 @@
 # 主光标/selectio
 "ui.cursor.primary" = { fg = "base03", bg = "base1" }
 "ui.cursor.select" = { fg = "base02", bg = "cyan" }
+"ui.cursorline.primary" = { bg = "base02" }
+"ui.cursorline.secondary" = { bg = "base025" }
+
 "ui.selection" = { bg = "base0175" }
 "ui.selection.primary" = { bg = "base015" }
+
+"ui.virtual.indent-guide" = { fg = "base02" }
+"ui.virtual.ruler" = { fg = "red" }
 
 # normal模式的光标
 "ui.cursor" = {fg = "base02", bg = "cyan"}
@@ -98,6 +104,7 @@
 [palette]
 # 深色 越来越深
 base03   = "#002b36"
+base025  = "#03303b"
 base02   = "#073642"
 base0175 = "#16404b"
 base015  = "#2c4f59"
