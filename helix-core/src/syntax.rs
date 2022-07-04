@@ -129,7 +129,7 @@ pub struct LanguageServerConfiguration {
     pub language_id: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct FormatterConfiguration {
     pub command: String,

@@ -2,10 +2,7 @@ use std::ops::Deref;
 
 use super::*;
 
-use helix_view::{
-    document::FormatterError,
-    editor::{Action, ConfigEvent},
-};
+use helix_view::editor::{Action, ConfigEvent};
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -216,23 +213,17 @@ fn write_impl(
         bail!("cannot write a buffer without a filename");
     }
     let fmt = if auto_format {
-        match doc.auto_format(view.id) {
-            Ok(fmt) => {
-                let shared = fmt.shared();
-                let callback = make_format_callback(
-                    doc.id(),
-                    doc.version(),
-                    Modified::SetUnmodified,
-                    shared.clone(),
-                );
-                jobs.callback(callback);
-                Some(shared)
-            }
-            Err(error) => match error.downcast_ref::<FormatterError>() {
-                Some(_) => None,
-                None => return Err(error),
-            },
-        }
+        doc.auto_format(view.id).map(|fmt| {
+            let shared = fmt.shared();
+            let callback = make_format_callback(
+                doc.id(),
+                doc.version(),
+                Modified::SetUnmodified,
+                shared.clone(),
+            );
+            jobs.callback(callback);
+            shared
+        })
     } else {
         None
     };
@@ -280,16 +271,10 @@ fn format(
     _event: PromptEvent,
 ) -> anyhow::Result<()> {
     let (view, doc) = current!(cx.editor);
-    match doc.format(view.id) {
-        Ok(format) => {
-            let callback =
-                make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
-            cx.jobs.callback(callback);
-        }
-        Err(error) => match error.downcast_ref::<FormatterError>() {
-            Some(_) => {}
-            None => return Err(error),
-        },
+    if let Some(format) = doc.format(view.id) {
+        let callback =
+            make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
+        cx.jobs.callback(callback);
     }
 
     Ok(())
@@ -501,23 +486,17 @@ fn write_all_impl(
         }
 
         let fmt = if auto_format {
-            match doc.auto_format(view.id) {
-                Ok(fmt) => {
-                    let shared = fmt.shared();
-                    let callback = make_format_callback(
-                        doc.id(),
-                        doc.version(),
-                        Modified::SetUnmodified,
-                        shared.clone(),
-                    );
-                    jobs.callback(callback);
-                    Some(shared)
-                }
-                Err(error) => match error.downcast_ref::<FormatterError>() {
-                    Some(_) => None,
-                    None => return Err(error),
-                },
-            }
+            doc.auto_format(view.id).map(|fmt| {
+                let shared = fmt.shared();
+                let callback = make_format_callback(
+                    doc.id(),
+                    doc.version(),
+                    Modified::SetUnmodified,
+                    shared.clone(),
+                );
+                jobs.callback(callback);
+                shared
+            })
         } else {
             None
         };

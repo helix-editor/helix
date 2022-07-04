@@ -28,7 +28,7 @@ use helix_core::{
 };
 use helix_view::{
     clipboard::ClipboardType,
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
     info::Info,
     input::KeyEvent,
@@ -2372,9 +2372,9 @@ async fn make_format_callback(
     doc_id: DocumentId,
     doc_version: i32,
     modified: Modified,
-    format: impl Future<Output = Transaction> + Send + 'static,
+    format: impl Future<Output = Result<Transaction, FormatterError>> + Send + 'static,
 ) -> anyhow::Result<job::Callback> {
-    let format = format.await;
+    let format = format.await?;
     let call: job::Callback = Box::new(move |editor, _compositor| {
         let view_id = view!(editor).id;
         if let Some(doc) = editor.document_mut(doc_id) {

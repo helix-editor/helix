@@ -13,6 +13,7 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
+use tokio::io::AsyncWriteExt;
 
 use helix_core::{
     encoding,
@@ -402,97 +403,115 @@ impl Document {
     pub fn auto_format(
         &mut self,
         view_id: ViewId,
-    ) -> anyhow::Result<BoxFuture<'static, Transaction>> {
-        let config = match self.language_config() {
-            Some(config) => config,
-            None => bail!(FormatterError::NoFormattingNeeded),
-        };
-
-        if config.auto_format {
+    ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+        if self.language_config()?.auto_format {
             self.format(view_id)
         } else {
-            bail!(FormatterError::NoFormattingNeeded)
+            None
         }
     }
 
     /// If supported, returns the changes that should be applied to this document in order
     /// to format it nicely.
-    pub fn format(&mut self, view_id: ViewId) -> anyhow::Result<BoxFuture<'static, Transaction>> {
-        if let Some(formatter) = self.language_config().and_then(|c| c.formatter.as_ref()) {
-            use std::process::{Command, Stdio};
+    // We can't use anyhow::Result here since the output of the future has to be
+    // clonable to be used as shared future. So use a custom error type.
+    pub fn format(
+        &mut self,
+        view_id: ViewId,
+    ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+        if let Some(formatter) = self.language_config().and_then(|c| c.formatter.clone()) {
+            use std::process::Stdio;
             match formatter.type_ {
                 FormatterType::Stdio => {
-                    use std::io::Write;
-                    let mut process = Command::new(&formatter.command)
+                    let text = self.text().clone();
+                    let mut process = tokio::process::Command::new(&formatter.command);
+                    process
                         .args(&formatter.args)
                         .stdin(Stdio::piped())
                         .stdout(Stdio::piped())
-                        .stderr(Stdio::piped())
-                        .spawn()
-                        .map_err(|e| {
-                            anyhow!("Failed to format with {}. {}", formatter.command, e)
-                        })?;
+                        .stderr(Stdio::piped());
 
-                    {
-                        let mut stdin = process
-                            .stdin
-                            .take()
-                            .ok_or_else(|| anyhow!("Failed to take stdin"))?;
-                        stdin.write_all(&self.text().bytes().collect::<Vec<u8>>())?;
-                    }
+                    let formatting_future = async move {
+                        let mut process =
+                            process
+                                .spawn()
+                                .map_err(|e| FormatterError::SpawningFailed {
+                                    command: formatter.command.clone(),
+                                    error: e.kind(),
+                                })?;
+                        {
+                            let mut stdin =
+                                process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
+                            stdin
+                                .write_all(&text.bytes().collect::<Vec<u8>>())
+                                .await
+                                .map_err(|_| FormatterError::BrokenStdin)?;
+                        }
 
-                    let output = process.wait_with_output()?;
+                        let output = process
+                            .wait_with_output()
+                            .await
+                            .map_err(|_| FormatterError::WaitForOutputFailed)?;
 
-                    if !output.stderr.is_empty() {
-                        bail!("Formatter {}", String::from_utf8_lossy(&output.stderr));
-                    }
+                        if !output.stderr.is_empty() {
+                            return Err(FormatterError::Stderr(
+                                String::from_utf8_lossy(&output.stderr).to_string(),
+                            ));
+                        }
 
-                    let str = String::from_utf8(output.stdout)
-                        .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
+                        let str = String::from_utf8(output.stdout)
+                            .map_err(|_| FormatterError::InvalidUtf8Output)?;
 
-                    let text = self.text().clone();
-                    let fut =
-                        async move { helix_core::diff::compare_ropes(&text, &Rope::from(str)) };
-                    return Ok(fut.boxed());
+                        Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
+                    };
+                    return Some(formatting_future.boxed());
                 }
                 FormatterType::File => {
-                    let path = match self.path() {
-                        Some(path) => path,
-                        None => {
-                            bail!("Cannot format file without filepath");
-                        }
-                    };
-                    let process = Command::new(&formatter.command)
+                    let path = self.path()?.clone();
+                    let process = std::process::Command::new(&formatter.command)
                         .args(&formatter.args)
                         .arg(path.to_str().unwrap_or(""))
                         .stderr(Stdio::piped())
-                        .spawn()
-                        .map_err(|e| {
-                            anyhow!("Failed to format with {}. {}", formatter.command, e)
+                        .spawn();
+
+                    // File type formatters are run synchronously since the doc
+                    // has to be reloaded from disk rather than being resolved
+                    // through a transaction.
+                    let format_and_reload = || -> Result<(), FormatterError> {
+                        let process = process.map_err(|e| FormatterError::SpawningFailed {
+                            command: formatter.command.clone(),
+                            error: e.kind(),
                         })?;
+                        let output = process
+                            .wait_with_output()
+                            .map_err(|_| FormatterError::WaitForOutputFailed)?;
 
-                    let output = process.wait_with_output()?;
+                        if !output.stderr.is_empty() {
+                            return Err(FormatterError::Stderr(
+                                String::from_utf8_lossy(&output.stderr).to_string(),
+                            ));
+                        } else if let Err(e) = self.reload(view_id) {
+                            return Err(FormatterError::DiskReloadError(e.to_string()));
+                        }
 
-                    if !output.stderr.is_empty() {
-                        bail!("Formatter {}", String::from_utf8_lossy(&output.stderr));
-                    } else if let Err(e) = self.reload(view_id) {
-                        bail!("Error reloading after formatting {}", e);
-                    }
+                        Ok(())
+                    };
 
+                    let format_result = format_and_reload();
                     let text = self.text().clone();
-                    return Ok(async move { Transaction::new(&text) }.boxed());
+
+                    // Generate an empty transaction as a placeholder
+                    let future = async move { format_result.map(|_| Transaction::new(&text)) };
+                    return Some(future.boxed());
                 }
-            }
+            };
         }
 
-        let language_server = match self.language_server() {
-            Some(server) => server,
-            None => bail!(FormatterError::NoFormatterDefined),
-        };
+        let language_server = self.language_server()?;
         let text = self.text.clone();
         let offset_encoding = language_server.offset_encoding();
 
-        let request = match language_server.text_document_formatting(
+        let request = language_server.text_document_formatting(
             self.identifier(),
             lsp::FormattingOptions {
                 tab_size: self.tab_width() as u32,
@@ -500,19 +519,20 @@ impl Document {
                 ..Default::default()
             },
             None,
-        ) {
-            Some(request) => request,
-            None => bail!(FormatterError::NoFormattingNeeded),
-        };
+        )?;
 
         let fut = async move {
             let edits = request.await.unwrap_or_else(|e| {
                 log::warn!("LSP formatting failed: {}", e);
                 Default::default()
             });
-            helix_lsp::util::generate_transaction_from_edits(&text, edits, offset_encoding)
+            Ok(helix_lsp::util::generate_transaction_from_edits(
+                &text,
+                edits,
+                offset_encoding,
+            ))
         };
-        Ok(fut.boxed())
+        Some(fut.boxed())
     }
 
     pub fn save(&mut self, force: bool) -> impl Future<Output = Result<(), anyhow::Error>> {
@@ -521,7 +541,7 @@ impl Document {
 
     pub fn format_and_save(
         &mut self,
-        formatting: Option<impl Future<Output = Transaction>>,
+        formatting: Option<impl Future<Output = Result<Transaction, FormatterError>>>,
         force: bool,
     ) -> impl Future<Output = anyhow::Result<()>> {
         self.save_impl(formatting, force)
@@ -533,7 +553,7 @@ impl Document {
     /// at its `path()`.
     ///
     /// If `formatting` is present, it supplies some changes that we apply to the text before saving.
-    fn save_impl<F: Future<Output = Transaction>>(
+    fn save_impl<F: Future<Output = Result<Transaction, FormatterError>>>(
         &mut self,
         formatting: Option<F>,
         force: bool,
@@ -567,7 +587,7 @@ impl Document {
             }
 
             if let Some(fmt) = formatting {
-                let transaction = fmt.await;
+                let transaction = fmt.await?;
                 let success = transaction.changes().apply(&mut text);
                 if !success {
                     // This shouldn't happen, because the transaction changes were generated
@@ -1114,20 +1134,34 @@ impl Default for Document {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum FormatterError {
-    CustomFormatterDefined,
-    NoFormatterDefined,
-    NoFormattingNeeded,
+    SpawningFailed {
+        command: String,
+        error: std::io::ErrorKind,
+    },
+    BrokenStdin,
+    WaitForOutputFailed,
+    Stderr(String),
+    InvalidUtf8Output,
+    DiskReloadError(String),
 }
+
+impl std::error::Error for FormatterError {}
 
 impl Display for FormatterError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match *self {
-            FormatterError::CustomFormatterDefined => "Custom formatter defined",
-            FormatterError::NoFormatterDefined => "No lsp or custom formatter defined",
-            FormatterError::NoFormattingNeeded => "No formatting needed",
-        })
+        let s = match self {
+            Self::SpawningFailed { command, error } => {
+                format!("Failed to spawn formatter {}: {}", command, error)
+            }
+            Self::BrokenStdin => "Could not write to formatter stdin".to_string(),
+            Self::WaitForOutputFailed => "Waiting for formatter output failed".to_string(),
+            Self::Stderr(output) => format!("Formatter error: {}", output),
+            Self::InvalidUtf8Output => "Invalid UTF-8 formatter output".to_string(),
+            Self::DiskReloadError(error) => format!("Error reloading file from disk: {}", error),
+        };
+        f.write_str(&s)
     }
 }
 
