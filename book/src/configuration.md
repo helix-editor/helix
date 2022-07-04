@@ -72,7 +72,7 @@ The following elements can be configured:
 | `mode` | The current editor mode (`NOR`/`INS`/`SEL`) |
 | `spinner` | A progress spinner indicating LSP activity |
 | `file-name` | The path/name of the opened file |
-| `file-encoding` | The encoding of the opened file |
+| `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
 | `file-type` | The type of the opened file |
 | `diagnostics` | The number of warnings and/or errors |
 | `selections` | The number of active selections |
