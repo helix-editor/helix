@@ -1153,7 +1153,7 @@ impl Display for FormatterError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
             Self::SpawningFailed { command, error } => {
-                format!("Failed to spawn formatter {}: {}", command, error)
+                format!("Failed to spawn formatter {}: {:?}", command, error)
             }
             Self::BrokenStdin => "Could not write to formatter stdin".to_string(),
             Self::WaitForOutputFailed => "Waiting for formatter output failed".to_string(),
