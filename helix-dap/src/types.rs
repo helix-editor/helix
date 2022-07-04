@@ -700,8 +700,7 @@ pub mod requests {
         pub kind: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub title: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub cwd: Option<String>,
+        pub cwd: String,
         pub args: Vec<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub env: Option<HashMap<String, Option<String>>>,
