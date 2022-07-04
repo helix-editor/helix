@@ -504,6 +504,29 @@ _________________________________________________________________
      This sentence doesn't have it's first and last word.
 
 
+=================================================================
+=                     4.4 Repeating Actions                     =
+=================================================================
+
+If you want to quickly repeat the last set of actions you entered,
+you can do this without recording a macro. 
+
+Simply type . while in normal mode. This will repeat the last
+series of actions you entered. 
+
+1. Move the Cursor to the first line below marked -->.
+2. Select the word 'dog' and change it to 'fox'. 
+3. Go to the next line and select the word 'dog' again.
+4. Type .
+5. Move to the next line and repeat
+
+--> The quick brown dog jumped over the lazy dog. 
+--> The quick brown dog jumped over the lazy dog. 
+--> The quick brown dog jumped over the lazy dog. 
+
+Note: You can also use this to add/modify/delete text. Try
+combining the repeat action command with multiple cursors to 
+make changes across multiple lines.
 
 =================================================================
 =                        CHAPTER 4 RECAP                        =
@@ -520,6 +543,7 @@ _________________________________________________________________
  * Type Q to record and stop recording a macro.
    * Type q to repeat the recorded macro.
 
+* Type . to repeat the last set of actions entered.
 
 
 =================================================================
