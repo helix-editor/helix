@@ -125,6 +125,7 @@ impl ui::menu::Item for PickerDiagnostic {
                 NumberOrString::Number(n) => n.to_string(),
                 NumberOrString::String(s) => s.to_string(),
             })
+            .map(|code| format!(" ({})", code))
             .unwrap_or_default();
 
         let truncated_path = path::get_truncated_path(self.url.path())
@@ -135,9 +136,7 @@ impl ui::menu::Item for PickerDiagnostic {
             Span::raw(truncated_path),
             Span::raw(": "),
             Span::styled(&self.diag.message, style),
-            Span::raw(" ("),
-            Span::styled(code, style.add_modifier(Modifier::BOLD)),
-            Span::raw(")"),
+            Span::styled(code, style),
         ])
     }
 }
