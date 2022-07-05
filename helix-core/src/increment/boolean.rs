@@ -13,7 +13,7 @@ pub struct BooleanIncrementor<'a> {
 }
 
 impl<'a> BooleanIncrementor<'a> {
-    /// Return information about number under range if there is one.
+    /// Return information about boolean under range if there is one.
     pub fn from_range(text: RopeSlice, range: Range) -> Option<BooleanIncrementor> {
         let range = textobject_word(text, range, TextObject::Inside, 1, false);
         let word: String = text.slice(range.from()..range.to()).chars().collect();
