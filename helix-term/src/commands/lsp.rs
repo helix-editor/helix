@@ -132,11 +132,6 @@ impl ui::menu::Item for PickerDiagnostic {
             .into_owned();
 
         Spans::from(vec![
-            Span::styled(
-                self.diag.source.clone().unwrap_or_default(),
-                style.add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(": "),
             Span::styled(truncated_path, style),
             Span::raw(" - "),
             Span::styled(code, style.add_modifier(Modifier::BOLD)),
