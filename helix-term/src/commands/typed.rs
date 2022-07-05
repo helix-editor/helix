@@ -267,30 +267,32 @@ fn write_impl(
     path: Option<&Cow<str>>,
     force: bool,
 ) -> anyhow::Result<()> {
-    let auto_format = cx.editor.config().auto_format;
+    let editor_auto_fmt = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
     let doc = doc_mut!(cx.editor);
+    let path = path.map(AsRef::as_ref);
 
     if doc.path().is_none() {
         bail!("cannot write a buffer without a filename");
     }
-    let fmt = if auto_format {
+
+    let fmt = if editor_auto_fmt {
         doc.auto_format().map(|fmt| {
-            let shared = fmt.shared();
-            let callback = make_format_callback(doc.id(), doc.version(), shared.clone());
+            let callback = make_format_callback(
+                doc.id(),
+                doc.version(),
+                fmt,
+                Some((path.map(Into::into), force)),
+            );
+
             jobs.add(Job::with_callback(callback).wait_before_exiting());
-            shared
         })
     } else {
         None
     };
 
-    doc.format_and_save(fmt, path.map(AsRef::as_ref), force)?;
-
-    if path.is_some() {
-        let id = doc.id();
-        doc.detect_language(cx.editor.syn_loader.clone());
-        let _ = cx.editor.refresh_language_server(id);
+    if fmt.is_none() {
+        doc.save(path, force)?;
     }
 
     Ok(())
@@ -345,7 +347,7 @@ fn format(
 
     let doc = doc!(cx.editor);
     if let Some(format) = doc.format() {
-        let callback = make_format_callback(doc.id(), doc.version(), format);
+        let callback = make_format_callback(doc.id(), doc.version(), format, None);
         cx.jobs.callback(callback);
     }
 
@@ -592,16 +594,17 @@ fn write_all_impl(
 
         let fmt = if auto_format {
             doc.auto_format().map(|fmt| {
-                let shared = fmt.shared();
-                let callback = make_format_callback(doc.id(), doc.version(), shared.clone());
+                let callback =
+                    make_format_callback(doc.id(), doc.version(), fmt, Some((None, force)));
                 jobs.callback(callback);
-                shared
             })
         } else {
             None
         };
 
-        doc.format_and_save::<_, PathBuf>(fmt, None, force)?;
+        if fmt.is_none() {
+            doc.save::<PathBuf>(None, force)?;
+        }
     }
 
     if quit {

@@ -52,7 +52,7 @@ use crate::{
 };
 
 use crate::job::{self, Jobs};
-use futures_util::{FutureExt, StreamExt};
+use futures_util::StreamExt;
 use std::{collections::HashMap, fmt, future::Future};
 use std::{collections::HashSet, num::NonZeroUsize};
 
@@ -2513,6 +2513,7 @@ async fn make_format_callback(
     doc_id: DocumentId,
     doc_version: i32,
     format: impl Future<Output = Result<Transaction, FormatterError>> + Send + 'static,
+    write: Option<(Option<PathBuf>, bool)>,
 ) -> anyhow::Result<job::Callback> {
     let format = format.await?;
     let call: job::Callback = Box::new(move |editor, _compositor| {
@@ -2523,11 +2524,25 @@ async fn make_format_callback(
         let scrolloff = editor.config().scrolloff;
         let doc = doc_mut!(editor, &doc_id);
         let view = view_mut!(editor);
+        let loader = editor.syn_loader.clone();
+
         if doc.version() == doc_version {
             apply_transaction(&format, doc, view);
             doc.append_changes_to_history(view.id);
             doc.detect_indent_and_line_ending();
             view.ensure_cursor_in_view(doc, scrolloff);
+
+            if let Some((path, force)) = write {
+                let refresh_lang = path.is_some();
+
+                if let Err(err) = doc.save(path, force) {
+                    editor.set_error(format!("Error saving: {}", err));
+                } else if refresh_lang {
+                    let id = doc.id();
+                    doc.detect_language(loader);
+                    let _ = editor.refresh_language_server(id);
+                }
+            }
         } else {
             log::info!("discarded formatting changes because the document changed");
         }
