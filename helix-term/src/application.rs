@@ -316,10 +316,6 @@ impl Application {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
                 }
-                Some(request) = self.plugin_manager.next_plugin_request() => {
-                    // TODO: Map into something useful
-                    log::info!("received request from plugin: {}", request);
-                }
                 _ = &mut self.editor.idle_timer => {
                     // idle timeout
                     self.editor.clear_idle_timer();

@@ -6,11 +6,10 @@ use anyhow::{anyhow, Error, Result};
 use crossterm::event::Event;
 use helix_loader::plugin_dir;
 use std::ffi::OsStr;
-use std::io::Write;
+use std::fs::DirEntry;
 use std::path::PathBuf;
-use std::{fs::DirEntry, io::Read};
-use wasmer::{Instance, Module, Store, Value};
-use wasmer_wasi::{Pipe, WasiEnv, WasiState};
+use wasmtime::{Engine, Instance, Linker, Module, Store};
+use wasmtime_wasi::{add_to_linker, WasiCtx, WasiCtxBuilder};
 
 use generated::messages::KeyEvent;
 use protobuf::Message;
@@ -18,9 +17,8 @@ use protobuf::Message;
 /// References
 /// - https://zellij.dev/documentation/plugin-rust.html
 /// - https://github.com/zellij-org/zellij/blob/main/zellij-server/src/wasm_vm.rs
-/// - https://github.com/wasmerio/wasmer/blob/master/examples/wasi_pipes.rs
+/// - https://docs.wasmtime.dev/examples-rust-wasi.html
 
-#[derive(Debug)]
 pub struct PluginManager {
     plugins: Vec<Plugin>,
 }
@@ -100,29 +98,12 @@ impl PluginManager {
             }
         }
     }
-
-    pub async fn next_plugin_request(&mut self) -> Option<String> {
-        for plugin in &mut self.plugins {
-            if let Ok(message) = plugin.read_string() {
-                if !message.is_empty() {
-                    log::info!(
-                        "Received message from plugin '{}': {}",
-                        plugin.name,
-                        message
-                    );
-                    return Some(message);
-                }
-            }
-        }
-        None
-    }
 }
 
-#[derive(Debug)]
 pub struct Plugin {
     name: String,
-    wasi_env: WasiEnv,
     instance: Instance,
+    store: Store<WasiCtx>,
 }
 
 impl TryFrom<Result<DirEntry, std::io::Error>> for Plugin {
@@ -131,24 +112,21 @@ impl TryFrom<Result<DirEntry, std::io::Error>> for Plugin {
     fn try_from(value: Result<DirEntry, std::io::Error>) -> Result<Self, Self::Error> {
         let (name, wasm_bytes) = Plugin::get_plugin_name_and_bytes(value)?;
 
-        let store = Store::default();
+        let engine = Engine::default();
+        let mut linker = Linker::new(&engine);
 
-        let module = Module::new(&store, wasm_bytes)?;
+        add_to_linker(&mut linker, |s| s)?;
 
-        let mut wasi_env = WasiState::new(name.clone())
-            .stdout(Box::new(Pipe::new()))
-            .stderr(Box::new(Pipe::new()))
-            .stdin(Box::new(Pipe::new()))
-            .finalize()?;
-
-        let import_object = wasi_env.import_object(&module)?;
-
-        let instance = Instance::new(&module, &import_object)?;
+        let wasi = WasiCtxBuilder::new().build();
+        let mut store = Store::new(&engine, wasi);
+        let module = Module::new(&engine, wasm_bytes)?;
+        linker.module(&mut store, "", &module)?;
+        let instance = linker.instantiate(&mut store, &module)?;
 
         Ok(Plugin {
             name,
-            wasi_env,
             instance,
+            store,
         })
     }
 }
@@ -200,81 +178,43 @@ impl Plugin {
     }
 
     fn deallocate_memory(&mut self, addr: u32, bytes: Vec<u8>) -> Result<(), Error> {
-        let dealloc_func = self.instance.exports.get_function("deallocate")?;
-        dealloc_func.call(&[Value::I32(addr as i32), Value::I32(bytes.len() as i32)])?;
+        let dealloc_func = self
+            .instance
+            .get_typed_func::<(u32, u32), (), _>(&mut self.store, "deallocate")?;
+        let params = (addr, bytes.len() as u32);
+        dealloc_func.call(&mut self.store, params)?;
         Ok(())
     }
 
     fn call_handle_event_func(&mut self, addr: u32, len: usize) -> Result<(), Error> {
-        let func = self.instance.exports.get_function("handle_event")?;
-        func.call(&[Value::I32(addr as i32), Value::I32(len as i32)])?;
+        let func = self
+            .instance
+            .get_typed_func::<(u32, u32), (), _>(&mut self.store, "handle_event")?;
+        let params = (addr as u32, len as u32);
+        func.call(&mut self.store, params)?;
         Ok(())
     }
 
     fn copy_data_to_memory(&mut self, bytes: &Vec<u8>, addr: u32) -> Result<(), Error> {
-        let memory = self.instance.exports.get_memory("memory")?;
+        let memory = self
+            .instance
+            .get_memory(&mut self.store, "memory")
+            .ok_or_else(|| anyhow!("Failed to get memory"))?;
 
-        Ok(unsafe {
-            let dst_slice: &mut [u8] = memory.data_unchecked_mut();
-            for (idx, val) in bytes.iter().enumerate() {
-                dst_slice[(addr as usize + idx) as usize] = *val;
-            }
-        })
+        let dst_slice: &mut [u8] = memory.data_mut(&mut self.store);
+        for (idx, val) in bytes.iter().enumerate() {
+            dst_slice[(addr as usize + idx) as usize] = *val;
+        }
+
+        Ok(())
     }
 
     fn allocate_memory(&mut self, bytes: &Vec<u8>) -> Result<u32, Error> {
-        let alloc_func = self.instance.exports.get_function("allocate")?;
-        let values: Vec<wasmer::Val> = alloc_func.call(&[Value::I32(bytes.len() as i32)])?.to_vec();
-        let addr: u32 = match values[0] {
-            Value::I32(val) => val as u32,
-            _ => return Err(anyhow!("Invalid return from 'allocate' function")),
-        };
+        let alloc_func = self
+            .instance
+            .get_typed_func::<u32, u32, _>(&mut self.store, "allocate")?;
+        let addr: u32 = alloc_func.call(&mut self.store, bytes.len() as u32)?;
 
         Ok(addr)
-    }
-
-    fn read_string(&mut self) -> Result<String> {
-        let mut buf = String::new();
-        self.read_to_string(&mut buf)?;
-
-        Ok(buf)
-    }
-}
-
-impl Read for Plugin {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let mut state = self.wasi_env.state();
-        let stdout = state
-            .fs
-            .stdout_mut()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
-
-        let wasi_stdout = stdout.as_mut().ok_or(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "Failed to call stdout.as_mut",
-        ))?;
-
-        wasi_stdout.read(buf)
-    }
-}
-
-impl Write for Plugin {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let mut state = self.wasi_env.state();
-        let stdin = state
-            .fs
-            .stdin_mut()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
-
-        let wasi_stdin = stdin.as_mut().ok_or(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "Failed to call stdin.as_mut",
-        ))?;
-
-        wasi_stdin.write(buf)
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
     }
 }
