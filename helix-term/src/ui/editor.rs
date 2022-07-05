@@ -164,7 +164,7 @@ impl EditorView {
             .clip_bottom(1); // -1 from bottom to remove commandline
 
         let mut context =
-            statusline::RenderContext::new(doc, view, theme, is_focused, &self.spinners);
+            statusline::RenderContext::new(doc, view, &editor.theme, is_focused, &self.spinners);
 
         StatusLine::render(editor, &mut context, statusline_area, surface);
     }
@@ -733,26 +733,6 @@ impl EditorView {
                 surface.set_style(area, secondary_style);
             }
         }
-    }
-
-    pub fn render_statusline(
-        &self,
-        editor: &Editor,
-        doc: &Document,
-        view: &View,
-        viewport: Rect,
-        surface: &mut Surface,
-        is_focused: bool,
-    ) {
-        let context = statusline::RenderContext {
-            doc,
-            view,
-            theme: &editor.theme,
-            focused: is_focused,
-            spinners: &self.spinners,
-        };
-
-        StatusLine::render(editor, &context, viewport, surface);
     }
 
     /// Handle events by looking them up in `self.keymaps`. Returns None

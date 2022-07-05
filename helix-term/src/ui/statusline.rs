@@ -174,7 +174,15 @@ impl StatusLine {
                     "   "
                 }
             ),
-            None,
+            if visible {
+                match context.doc.mode() {
+                    Mode::Insert => Some(context.theme.get("ui.statusline.insert")),
+                    Mode::Select => Some(context.theme.get("ui.statusline.select")),
+                    Mode::Normal => Some(context.theme.get("ui.statusline.normal")),
+                }
+            } else {
+                None
+            },
         );
     }
 
