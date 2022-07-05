@@ -40,6 +40,7 @@
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
+| idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  | `jdtls` |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |

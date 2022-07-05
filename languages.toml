@@ -1503,3 +1503,14 @@ grammar = "elvish"
 [[grammar]]
 name = "elvish"
 source = { git = "https://github.com/ckafi/tree-sitter-elvish", rev = "e50787cadd3bc54f6d9c0704493a79078bb8a4e5" }
+
+[[language]]
+name = "idris"
+scope = "source.idr"
+injection-regex = "idr"
+file-types = ["idr"]
+shebangs = []
+roots = []
+comment-token = "--"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "idris2-lsp" }
