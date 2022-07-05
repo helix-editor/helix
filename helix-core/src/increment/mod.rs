@@ -1,3 +1,4 @@
+pub mod boolean;
 pub mod date_time;
 pub mod number;
 

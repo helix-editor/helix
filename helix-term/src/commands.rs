@@ -10,8 +10,10 @@ pub use typed::*;
 use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
-    increment::date_time::DateTimeIncrementor,
-    increment::{number::NumberIncrementor, Increment},
+    increment::{
+        boolean::BooleanIncrementor, date_time::DateTimeIncrementor, number::NumberIncrementor,
+        Increment,
+    },
     indent,
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
@@ -4616,6 +4618,8 @@ fn increment_impl(cx: &mut Context, amount: i64) {
                 if let Some(incrementor) = DateTimeIncrementor::from_range(text, *range) {
                     Box::new(incrementor)
                 } else if let Some(incrementor) = NumberIncrementor::from_range(text, *range) {
+                    Box::new(incrementor)
+                } else if let Some(incrementor) = BooleanIncrementor::from_range(text, *range) {
                     Box::new(incrementor)
                 } else {
                     return None;
