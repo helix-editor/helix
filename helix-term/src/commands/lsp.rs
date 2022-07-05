@@ -1,20 +1,26 @@
 use helix_lsp::{
-    block_on, lsp,
+    block_on,
+    lsp::{self, DiagnosticSeverity, NumberOrString},
     util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
+use tui::text::{Span, Spans};
 
 use super::{align_view, push_jump, Align, Context, Editor};
 
-use helix_core::Selection;
-use helix_view::editor::Action;
+use helix_core::{path, Selection};
+use helix_view::{
+    editor::Action,
+    theme::{Modifier, Style},
+};
 
 use crate::{
     compositor::{self, Compositor},
     ui::{self, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent},
 };
 
-use std::borrow::Cow;
+use std::collections::BTreeMap;
+use std::{borrow::Cow, path::PathBuf};
 
 /// Gets the language server that is attached to a document, and
 /// if it's not active displays a status message. Using this macro
@@ -32,6 +38,112 @@ macro_rules! language_server {
             }
         }
     };
+}
+
+impl ui::menu::Item for lsp::Location {
+    /// Current working directory.
+    type Data = PathBuf;
+
+    fn label(&self, cwdir: &Self::Data) -> Spans {
+        let file: Cow<'_, str> = (self.uri.scheme() == "file")
+            .then(|| {
+                self.uri
+                    .to_file_path()
+                    .map(|path| {
+                        // strip root prefix
+                        path.strip_prefix(&cwdir)
+                            .map(|path| path.to_path_buf())
+                            .unwrap_or(path)
+                    })
+                    .map(|path| Cow::from(path.to_string_lossy().into_owned()))
+                    .ok()
+            })
+            .flatten()
+            .unwrap_or_else(|| self.uri.as_str().into());
+        let line = self.range.start.line;
+        format!("{}:{}", file, line).into()
+    }
+}
+
+impl ui::menu::Item for lsp::SymbolInformation {
+    /// Path to currently focussed document
+    type Data = Option<lsp::Url>;
+
+    fn label(&self, current_doc_path: &Self::Data) -> Spans {
+        if current_doc_path.as_ref() == Some(&self.location.uri) {
+            self.name.as_str().into()
+        } else {
+            match self.location.uri.to_file_path() {
+                Ok(path) => {
+                    let relative_path = helix_core::path::get_relative_path(path.as_path())
+                        .to_string_lossy()
+                        .into_owned();
+                    format!("{} ({})", &self.name, relative_path).into()
+                }
+                Err(_) => format!("{} ({})", &self.name, &self.location.uri).into(),
+            }
+        }
+    }
+}
+
+struct DiagnosticStyles {
+    hint: Style,
+    info: Style,
+    warning: Style,
+    error: Style,
+}
+
+struct PickerDiagnostic {
+    url: lsp::Url,
+    diag: lsp::Diagnostic,
+}
+
+impl ui::menu::Item for PickerDiagnostic {
+    type Data = DiagnosticStyles;
+
+    fn label(&self, styles: &Self::Data) -> Spans {
+        let mut style = self
+            .diag
+            .severity
+            .map(|s| match s {
+                DiagnosticSeverity::HINT => styles.hint,
+                DiagnosticSeverity::INFORMATION => styles.info,
+                DiagnosticSeverity::WARNING => styles.warning,
+                DiagnosticSeverity::ERROR => styles.error,
+                _ => Style::default(),
+            })
+            .unwrap_or_default();
+
+        // remove background as it is distracting in the picker list
+        style.bg = None;
+
+        let code = self
+            .diag
+            .code
+            .as_ref()
+            .map(|c| match c {
+                NumberOrString::Number(n) => n.to_string(),
+                NumberOrString::String(s) => s.to_string(),
+            })
+            .unwrap_or_default();
+
+        let truncated_path = path::get_truncated_path(self.url.path())
+            .to_string_lossy()
+            .into_owned();
+
+        Spans::from(vec![
+            Span::styled(
+                self.diag.source.clone().unwrap_or_default(),
+                style.add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(": "),
+            Span::styled(truncated_path, style),
+            Span::raw(" - "),
+            Span::styled(code, style.add_modifier(Modifier::BOLD)),
+            Span::raw(": "),
+            Span::styled(&self.diag.message, style),
+        ])
+    }
 }
 
 fn location_to_file_location(location: &lsp::Location) -> FileLocation {
@@ -61,7 +173,14 @@ fn jump_to_location(
             return;
         }
     };
-    let _id = editor.open(path, action).expect("editor.open failed");
+    match editor.open(&path, action) {
+        Ok(_) => (),
+        Err(err) => {
+            let err = format!("failed to open path: {:?}: {:?}", location.uri, err);
+            editor.set_error(err);
+            return;
+        }
+    }
     let (view, doc) = current!(editor);
     let definition_pos = location.range.start;
     // TODO: convert inside server
@@ -81,29 +200,14 @@ fn sym_picker(
     offset_encoding: OffsetEncoding,
 ) -> FilePicker<lsp::SymbolInformation> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
-    let current_path2 = current_path.clone();
     FilePicker::new(
         symbols,
-        move |symbol| {
-            if current_path.as_ref() == Some(&symbol.location.uri) {
-                symbol.name.as_str().into()
-            } else {
-                match symbol.location.uri.to_file_path() {
-                    Ok(path) => {
-                        let relative_path = helix_core::path::get_relative_path(path.as_path())
-                            .to_string_lossy()
-                            .into_owned();
-                        format!("{} ({})", &symbol.name, relative_path).into()
-                    }
-                    Err(_) => format!("{} ({})", &symbol.name, &symbol.location.uri).into(),
-                }
-            }
-        },
+        current_path.clone(),
         move |cx, symbol, action| {
             let (view, doc) = current!(cx.editor);
             push_jump(view, doc);
 
-            if current_path2.as_ref() != Some(&symbol.location.uri) {
+            if current_path.as_ref() != Some(&symbol.location.uri) {
                 let uri = &symbol.location.uri;
                 let path = match uri.to_file_path() {
                     Ok(path) => path,
@@ -114,7 +218,7 @@ fn sym_picker(
                         return;
                     }
                 };
-                if let Err(err) = cx.editor.open(path, action) {
+                if let Err(err) = cx.editor.open(&path, action) {
                     let err = format!("failed to open document: {}: {}", uri, err);
                     log::error!("{}", err);
                     cx.editor.set_error(err);
@@ -134,6 +238,62 @@ fn sym_picker(
             }
         },
         move |_editor, symbol| Some(location_to_file_location(&symbol.location)),
+    )
+    .truncate_start(false)
+}
+
+fn diag_picker(
+    cx: &Context,
+    diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
+    current_path: Option<lsp::Url>,
+    offset_encoding: OffsetEncoding,
+) -> FilePicker<PickerDiagnostic> {
+    // TODO: drop current_path comparison and instead use workspace: bool flag?
+
+    // flatten the map to a vec of (url, diag) pairs
+    let mut flat_diag = Vec::new();
+    for (url, diags) in diagnostics {
+        flat_diag.reserve(diags.len());
+        for diag in diags {
+            flat_diag.push(PickerDiagnostic {
+                url: url.clone(),
+                diag,
+            });
+        }
+    }
+
+    let styles = DiagnosticStyles {
+        hint: cx.editor.theme.get("hint"),
+        info: cx.editor.theme.get("info"),
+        warning: cx.editor.theme.get("warning"),
+        error: cx.editor.theme.get("error"),
+    };
+
+    FilePicker::new(
+        flat_diag,
+        styles,
+        move |cx, PickerDiagnostic { url, diag }, action| {
+            if current_path.as_ref() == Some(url) {
+                let (view, doc) = current!(cx.editor);
+                push_jump(view, doc);
+            } else {
+                let path = url.to_file_path().unwrap();
+                cx.editor.open(&path, action).expect("editor.open failed");
+            }
+
+            let (view, doc) = current!(cx.editor);
+
+            if let Some(range) = lsp_range_to_range(doc.text(), diag.range, offset_encoding) {
+                // we flip the range so that the cursor sits on the start of the symbol
+                // (for example start of the function).
+                doc.set_selection(view.id, Selection::single(range.head, range.anchor));
+                align_view(doc, view, Align::Center);
+            }
+        },
+        move |_editor, PickerDiagnostic { url, diag }| {
+            let location = lsp::Location::new(url.clone(), diag.range);
+            Some(location_to_file_location(&location))
+        },
     )
     .truncate_start(false)
 }
@@ -208,11 +368,43 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     )
 }
 
+pub fn diagnostics_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    if let Some(current_url) = doc.url() {
+        let offset_encoding = language_server.offset_encoding();
+        let diagnostics = cx
+            .editor
+            .diagnostics
+            .get(&current_url)
+            .cloned()
+            .unwrap_or_default();
+        let picker = diag_picker(
+            cx,
+            [(current_url.clone(), diagnostics)].into(),
+            Some(current_url),
+            offset_encoding,
+        );
+        cx.push_layer(Box::new(overlayed(picker)));
+    }
+}
+
+pub fn workspace_diagnostics_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    let current_url = doc.url();
+    let offset_encoding = language_server.offset_encoding();
+    let diagnostics = cx.editor.diagnostics.clone();
+    let picker = diag_picker(cx, diagnostics, current_url, offset_encoding);
+    cx.push_layer(Box::new(overlayed(picker)));
+}
+
 impl ui::menu::Item for lsp::CodeActionOrCommand {
-    fn label(&self) -> &str {
+    type Data = ();
+    fn label(&self, _data: &Self::Data) -> Spans {
         match self {
-            lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str(),
-            lsp::CodeActionOrCommand::Command(command) => command.title.as_str(),
+            lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str().into(),
+            lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
         }
     }
 }
@@ -257,7 +449,7 @@ pub fn code_action(cx: &mut Context) {
                 return;
             }
 
-            let mut picker = ui::Menu::new(actions, move |editor, code_action, event| {
+            let mut picker = ui::Menu::new(actions, (), move |editor, code_action, event| {
                 if event != PromptEvent::Validate {
                     return;
                 }
@@ -287,10 +479,8 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup = Popup::new("code-action", picker).margin(helix_view::graphics::Margin {
-                vertical: 1,
-                horizontal: 1,
-            });
+            let popup =
+                Popup::new("code-action", picker).margin(helix_view::graphics::Margin::all(1));
             compositor.replace_or_push("code-action", popup);
         },
     )
@@ -385,7 +575,7 @@ pub fn apply_workspace_edit(
         };
 
         let current_view_id = view!(editor).id;
-        let doc_id = match editor.open(path, Action::Load) {
+        let doc_id = match editor.open(&path, Action::Load) {
             Ok(doc_id) => doc_id,
             Err(err) => {
                 let err = format!("failed to open document: {}: {}", uri, err);
@@ -487,13 +677,14 @@ pub fn apply_workspace_edit(
         }
     }
 }
+
 fn goto_impl(
     editor: &mut Editor,
     compositor: &mut Compositor,
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
 ) {
-    let cwdir = std::env::current_dir().expect("couldn't determine current directory");
+    let cwdir = std::env::current_dir().unwrap_or_default();
 
     match locations.as_slice() {
         [location] => {
@@ -505,26 +696,7 @@ fn goto_impl(
         _locations => {
             let picker = FilePicker::new(
                 locations,
-                move |location| {
-                    let file: Cow<'_, str> = (location.uri.scheme() == "file")
-                        .then(|| {
-                            location
-                                .uri
-                                .to_file_path()
-                                .map(|path| {
-                                    // strip root prefix
-                                    path.strip_prefix(&cwdir)
-                                        .map(|path| path.to_path_buf())
-                                        .unwrap_or(path)
-                                })
-                                .map(|path| Cow::from(path.to_string_lossy().into_owned()))
-                                .ok()
-                        })
-                        .flatten()
-                        .unwrap_or_else(|| location.uri.as_str().into());
-                    let line = location.range.start.line;
-                    format!("{}:{}", file, line).into()
-                },
+                cwdir,
                 move |cx, location, action| {
                     jump_to_location(cx.editor, location, offset_encoding, action)
                 },
@@ -650,6 +822,7 @@ pub fn signature_help(cx: &mut Context) {
         },
     );
 }
+
 pub fn hover(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
@@ -699,6 +872,7 @@ pub fn hover(cx: &mut Context) {
         },
     );
 }
+
 pub fn rename_symbol(cx: &mut Context) {
     ui::prompt(
         cx,
@@ -721,6 +895,47 @@ pub fn rename_symbol(cx: &mut Context) {
                 Ok(edits) => apply_workspace_edit(cx.editor, offset_encoding, &edits),
                 Err(err) => cx.editor.set_error(err.to_string()),
             }
+        },
+    );
+}
+
+pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = doc.position(view.id, offset_encoding);
+
+    let future = language_server.text_document_document_highlight(doc.identifier(), pos, None);
+
+    cx.callback(
+        future,
+        move |editor, _compositor, response: Option<Vec<lsp::DocumentHighlight>>| {
+            let document_highlights = match response {
+                Some(highlights) if !highlights.is_empty() => highlights,
+                _ => return,
+            };
+            let (view, doc) = current!(editor);
+            let language_server = language_server!(editor, doc);
+            let offset_encoding = language_server.offset_encoding();
+            let text = doc.text();
+            let pos = doc.selection(view.id).primary().head;
+
+            // We must find the range that contains our primary cursor to prevent our primary cursor to move
+            let mut primary_index = 0;
+            let ranges = document_highlights
+                .iter()
+                .filter_map(|highlight| lsp_range_to_range(text, highlight.range, offset_encoding))
+                .enumerate()
+                .map(|(i, range)| {
+                    if range.contains(pos) {
+                        primary_index = i;
+                    }
+                    range
+                })
+                .collect();
+            let selection = Selection::new(ranges, primary_index);
+            doc.set_selection(view.id, selection);
         },
     );
 }

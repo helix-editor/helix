@@ -5,6 +5,9 @@ use helix_core::Position;
 use helix_view::graphics::{CursorKind, Rect};
 
 use crossterm::event::Event;
+
+#[cfg(feature = "integration")]
+use tui::backend::TestBackend;
 use tui::buffer::Buffer as Surface;
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
@@ -63,10 +66,20 @@ pub trait Component: Any + AnyComponent {
     }
 }
 
-use anyhow::Error;
+use anyhow::Context as AnyhowContext;
+use tui::backend::Backend;
+
+#[cfg(not(feature = "integration"))]
+use tui::backend::CrosstermBackend;
+
+#[cfg(not(feature = "integration"))]
 use std::io::stdout;
-use tui::backend::{Backend, CrosstermBackend};
+
+#[cfg(not(feature = "integration"))]
 type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
+
+#[cfg(feature = "integration")]
+type Terminal = tui::terminal::Terminal<TestBackend>;
 
 pub struct Compositor {
     layers: Vec<Box<dyn Component>>,
@@ -76,9 +89,14 @@ pub struct Compositor {
 }
 
 impl Compositor {
-    pub fn new() -> Result<Self, Error> {
+    pub fn new() -> anyhow::Result<Self> {
+        #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout());
-        let terminal = Terminal::new(backend)?;
+
+        #[cfg(feature = "integration")]
+        let backend = TestBackend::new(120, 150);
+
+        let terminal = Terminal::new(backend).context("build terminal")?;
         Ok(Self {
             layers: Vec::new(),
             terminal,

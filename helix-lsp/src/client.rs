@@ -271,8 +271,8 @@ impl Client {
     // -------------------------------------------------------------------------------------------
 
     pub(crate) async fn initialize(&self) -> Result<lsp::InitializeResult> {
-        if self.config.is_some() {
-            log::info!("Using custom LSP config: {}", self.config.as_ref().unwrap());
+        if let Some(config) = &self.config {
+            log::info!("Using custom LSP config: {}", config);
         }
 
         #[allow(deprecated)]
@@ -759,6 +759,26 @@ impl Client {
         Ok(response.unwrap_or_default())
     }
 
+    pub fn text_document_document_highlight(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> impl Future<Output = Result<Value>> {
+        let params = lsp::DocumentHighlightParams {
+            text_document_position_params: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
+            partial_result_params: lsp::PartialResultParams {
+                partial_result_token: None,
+            },
+        };
+
+        self.call::<lsp::request::DocumentHighlightRequest>(params)
+    }
+
     fn goto_request<
         T: lsp::request::Request<
             Params = lsp::GotoDefinitionParams,
@@ -896,8 +916,8 @@ impl Client {
             Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_)) => (),
             // None | Some(false)
             _ => {
+                log::warn!("rename_symbol failed: The server does not support rename");
                 let err = "The server does not support rename";
-                log::warn!("rename_symbol failed: {}", err);
                 return Err(anyhow!(err));
             }
         };

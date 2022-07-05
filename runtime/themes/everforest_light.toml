@@ -70,7 +70,7 @@
 "ui.menu" = { fg = "fg", bg = "bg2" }
 "ui.menu.selected" = { fg = "bg0", bg = "green" }
 "ui.selection" = { bg = "bg3" }
-"ui.virtual" = "grey0"
+"ui.virtual.whitespace" = "grey0"
 
 "hint" = "blue"
 "info" = "aqua"

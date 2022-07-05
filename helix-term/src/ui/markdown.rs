@@ -323,10 +323,7 @@ impl Component for Markdown {
             .wrap(Wrap { trim: false })
             .scroll((cx.scroll.unwrap_or_default() as u16, 0));
 
-        let margin = Margin {
-            vertical: 1,
-            horizontal: 1,
-        };
+        let margin = Margin::all(1);
         par.render(area.inner(&margin), surface);
     }
 

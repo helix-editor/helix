@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use super::*;
 
 use helix_view::editor::{Action, ConfigEvent};
@@ -13,11 +15,11 @@ pub struct TypableCommand {
     pub completer: Option<Completer>,
 }
 
-fn quit(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    _event: PromptEvent,
-) -> anyhow::Result<()> {
+fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     ensure!(args.is_empty(), ":quit takes no arguments");
 
     // last view and we have unsaved changes
@@ -33,8 +35,12 @@ fn quit(
 fn force_quit(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     ensure!(args.is_empty(), ":quit! takes no arguments");
 
     cx.editor.close(view!(cx.editor).id);
@@ -42,15 +48,15 @@ fn force_quit(
     Ok(())
 }
 
-fn open(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    _event: PromptEvent,
-) -> anyhow::Result<()> {
+fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     ensure!(!args.is_empty(), "wrong argument count");
     for arg in args {
         let (path, pos) = args::parse_file(arg);
-        let _ = cx.editor.open(path, Action::Replace)?;
+        let _ = cx.editor.open(&path, Action::Replace)?;
         let (view, doc) = current!(cx.editor);
         let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
         doc.set_selection(view.id, pos);
@@ -112,8 +118,12 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -> Vec<Docum
 fn buffer_close(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx.editor, &document_ids, false)
 }
@@ -121,8 +131,12 @@ fn buffer_close(
 fn force_buffer_close(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx.editor, &document_ids, true)
 }
@@ -139,8 +153,12 @@ fn buffer_gather_others_impl(editor: &mut Editor) -> Vec<DocumentId> {
 fn buffer_close_others(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let document_ids = buffer_gather_others_impl(cx.editor);
     buffer_close_by_ids_impl(cx.editor, &document_ids, false)
 }
@@ -148,8 +166,12 @@ fn buffer_close_others(
 fn force_buffer_close_others(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let document_ids = buffer_gather_others_impl(cx.editor);
     buffer_close_by_ids_impl(cx.editor, &document_ids, true)
 }
@@ -161,8 +183,12 @@ fn buffer_gather_all_impl(editor: &mut Editor) -> Vec<DocumentId> {
 fn buffer_close_all(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let document_ids = buffer_gather_all_impl(cx.editor);
     buffer_close_by_ids_impl(cx.editor, &document_ids, false)
 }
@@ -170,8 +196,12 @@ fn buffer_close_all(
 fn force_buffer_close_all(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let document_ids = buffer_gather_all_impl(cx.editor);
     buffer_close_by_ids_impl(cx.editor, &document_ids, true)
 }
@@ -179,8 +209,12 @@ fn force_buffer_close_all(
 fn buffer_next(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     goto_buffer(cx.editor, Direction::Forward);
     Ok(())
 }
@@ -188,8 +222,12 @@ fn buffer_next(
 fn buffer_previous(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     goto_buffer(cx.editor, Direction::Backward);
     Ok(())
 }
@@ -233,30 +271,43 @@ fn write_impl(
         doc.detect_language(cx.editor.syn_loader.clone());
         let _ = cx.editor.refresh_language_server(id);
     }
+
     Ok(())
 }
 
 fn write(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     write_impl(cx, args.first(), false)
 }
 
 fn force_write(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     write_impl(cx, args.first(), true)
 }
 
 fn new_file(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     cx.editor.new_file(Action::Replace);
 
     Ok(())
@@ -265,8 +316,12 @@ fn new_file(
 fn format(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let doc = doc!(cx.editor);
     if let Some(format) = doc.format() {
         let callback =
@@ -279,8 +334,12 @@ fn format(
 fn set_indent_style(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     use IndentStyle::*;
 
     // If no argument, report current indent style.
@@ -318,8 +377,12 @@ fn set_indent_style(
 fn set_line_ending(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     use LineEnding::*;
 
     // If no argument, report current line ending setting.
@@ -388,8 +451,12 @@ fn set_line_ending(
 fn earlier(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
 
     let (view, doc) = current!(cx.editor);
@@ -404,8 +471,12 @@ fn earlier(
 fn later(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
     let (view, doc) = current!(cx.editor);
     let success = doc.later(view.id, uk);
@@ -421,7 +492,12 @@ fn write_quit(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     write_impl(cx, args.first(), false)?;
+    helix_lsp::block_on(cx.jobs.finish())?;
     quit(cx, &[], event)
 }
 
@@ -430,6 +506,10 @@ fn force_write_quit(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     write_impl(cx, args.first(), true)?;
     force_quit(cx, &[], event)
 }
@@ -459,10 +539,14 @@ pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> 
 fn write_all_impl(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
     quit: bool,
     force: bool,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let mut errors = String::new();
     let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
@@ -516,6 +600,10 @@ fn write_all(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     write_all_impl(cx, args, event, false, false)
 }
 
@@ -524,6 +612,10 @@ fn write_all_quit(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     write_all_impl(cx, args, event, true, false)
 }
 
@@ -532,6 +624,10 @@ fn force_write_all_quit(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     write_all_impl(cx, args, event, true, true)
 }
 
@@ -552,24 +648,36 @@ fn quit_all_impl(editor: &mut Editor, force: bool) -> anyhow::Result<()> {
 fn quit_all(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     quit_all_impl(cx.editor, false)
 }
 
 fn force_quit_all(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     quit_all_impl(cx.editor, true)
 }
 
 fn cquit(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let exit_code = args
         .first()
         .and_then(|code| code.parse::<i32>().ok())
@@ -582,8 +690,12 @@ fn cquit(
 fn force_cquit(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let exit_code = args
         .first()
         .and_then(|code| code.parse::<i32>().ok())
@@ -596,35 +708,61 @@ fn force_cquit(
 fn theme(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
-    let theme = args.first().context("Theme not provided")?;
-    let theme = cx
-        .editor
-        .theme_loader
-        .load(theme)
-        .with_context(|| format!("Failed setting theme {}", theme))?;
-    let true_color = cx.editor.config().true_color || crate::true_color();
-    if !(true_color || theme.is_16_color()) {
-        bail!("Unsupported theme: theme requires true color support");
-    }
-    cx.editor.set_theme(theme);
+    let true_color = cx.editor.config.load().true_color || crate::true_color();
+    match event {
+        PromptEvent::Abort => {
+            cx.editor.unset_theme_preview();
+        }
+        PromptEvent::Update => {
+            if let Some(theme_name) = args.first() {
+                if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
+                    if !(true_color || theme.is_16_color()) {
+                        bail!("Unsupported theme: theme requires true color support");
+                    }
+                    cx.editor.set_theme_preview(theme);
+                };
+            };
+        }
+        PromptEvent::Validate => {
+            let theme_name = args.first().with_context(|| "Theme name not provided")?;
+            let theme = cx
+                .editor
+                .theme_loader
+                .load(theme_name)
+                .with_context(|| "Theme does not exist")?;
+            if !(true_color || theme.is_16_color()) {
+                bail!("Unsupported theme: theme requires true color support");
+            }
+            cx.editor.set_theme(theme);
+        }
+    };
+
     Ok(())
 }
 
 fn yank_main_selection_to_clipboard(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Clipboard)
 }
 
 fn yank_joined_to_clipboard(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let doc = doc!(cx.editor);
     let default_sep = Cow::Borrowed(doc.line_ending.as_str());
     let separator = args.first().unwrap_or(&default_sep);
@@ -634,16 +772,24 @@ fn yank_joined_to_clipboard(
 fn yank_main_selection_to_primary_clipboard(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Selection)
 }
 
 fn yank_joined_to_primary_clipboard(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let doc = doc!(cx.editor);
     let default_sep = Cow::Borrowed(doc.line_ending.as_str());
     let separator = args.first().unwrap_or(&default_sep);
@@ -653,32 +799,48 @@ fn yank_joined_to_primary_clipboard(
 fn paste_clipboard_after(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Clipboard, 1)
 }
 
 fn paste_clipboard_before(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Clipboard, 1)
 }
 
 fn paste_primary_clipboard_after(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Selection, 1)
 }
 
 fn paste_primary_clipboard_before(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Selection, 1)
 }
 
@@ -706,24 +868,36 @@ fn replace_selections_with_clipboard_impl(
 fn replace_selections_with_clipboard(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     replace_selections_with_clipboard_impl(cx, ClipboardType::Clipboard)
 }
 
 fn replace_selections_with_primary_clipboard(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     replace_selections_with_clipboard_impl(cx, ClipboardType::Selection)
 }
 
 fn show_clipboard_provider(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     cx.editor
         .set_status(cx.editor.clipboard_provider.name().to_string());
     Ok(())
@@ -732,8 +906,12 @@ fn show_clipboard_provider(
 fn change_current_directory(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let dir = helix_core::path::expand_tilde(
         args.first()
             .context("target directory not provided")?
@@ -756,8 +934,12 @@ fn change_current_directory(
 fn show_current_directory(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let cwd = std::env::current_dir().context("Couldn't get the new working directory")?;
     cx.editor
         .set_status(format!("Current working directory is {}", cwd.display()));
@@ -768,8 +950,12 @@ fn show_current_directory(
 fn set_encoding(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let doc = doc_mut!(cx.editor);
     if let Some(label) = args.first() {
         doc.set_encoding(label)
@@ -784,8 +970,12 @@ fn set_encoding(
 fn reload(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
     doc.reload(view.id).map(|_| {
@@ -796,8 +986,12 @@ fn reload(
 fn tree_sitter_scopes(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
@@ -810,8 +1004,12 @@ fn tree_sitter_scopes(
 fn vsplit(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let id = view!(cx.editor).doc;
 
     if args.is_empty() {
@@ -819,7 +1017,7 @@ fn vsplit(
     } else {
         for arg in args {
             cx.editor
-                .open(PathBuf::from(arg.as_ref()), Action::VerticalSplit)?;
+                .open(&PathBuf::from(arg.as_ref()), Action::VerticalSplit)?;
         }
     }
 
@@ -829,8 +1027,12 @@ fn vsplit(
 fn hsplit(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let id = view!(cx.editor).doc;
 
     if args.is_empty() {
@@ -838,7 +1040,7 @@ fn hsplit(
     } else {
         for arg in args {
             cx.editor
-                .open(PathBuf::from(arg.as_ref()), Action::HorizontalSplit)?;
+                .open(&PathBuf::from(arg.as_ref()), Action::HorizontalSplit)?;
         }
     }
 
@@ -848,8 +1050,12 @@ fn hsplit(
 fn vsplit_new(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     cx.editor.new_file(Action::VerticalSplit);
 
     Ok(())
@@ -858,8 +1064,12 @@ fn vsplit_new(
 fn hsplit_new(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     cx.editor.new_file(Action::HorizontalSplit);
 
     Ok(())
@@ -868,8 +1078,12 @@ fn hsplit_new(
 fn debug_eval(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     if let Some(debugger) = cx.editor.debugger.as_mut() {
         let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
             (Some(frame), Some(thread_id)) => (frame, thread_id),
@@ -890,8 +1104,12 @@ fn debug_eval(
 fn debug_start(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let mut args = args.to_owned();
     let name = match args.len() {
         0 => None,
@@ -903,8 +1121,12 @@ fn debug_start(
 fn debug_remote(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let mut args = args.to_owned();
     let address = match args.len() {
         0 => None,
@@ -920,10 +1142,14 @@ fn debug_remote(
 fn tutor(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let path = helix_loader::runtime_dir().join("tutor.txt");
-    cx.editor.open(path, Action::Replace)?;
+    cx.editor.open(&path, Action::Replace)?;
     // Unset path to prevent accidentally saving to the original tutor file.
     doc_mut!(cx.editor).set_path(None)?;
     Ok(())
@@ -932,8 +1158,12 @@ fn tutor(
 pub(super) fn goto_line_number(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     ensure!(!args.is_empty(), "Line number required");
 
     let line = args[0].parse::<usize>()?;
@@ -950,8 +1180,12 @@ pub(super) fn goto_line_number(
 fn get_option(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     if args.len() != 1 {
         anyhow::bail!("Bad arguments. Usage: `:get key`");
     }
@@ -959,7 +1193,7 @@ fn get_option(
     let key = &args[0].to_lowercase();
     let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
 
-    let config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
+    let config = serde_json::json!(cx.editor.config().deref());
     let pointer = format!("/{}", key.replace('.', "/"));
     let value = config.pointer(&pointer).ok_or_else(key_error)?;
 
@@ -972,8 +1206,12 @@ fn get_option(
 fn set_option(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     if args.len() != 2 {
         anyhow::bail!("Bad arguments. Usage: `:set key field`");
     }
@@ -982,7 +1220,7 @@ fn set_option(
     let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
     let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
 
-    let mut config = serde_json::to_value(&cx.editor.config().clone()).unwrap();
+    let mut config = serde_json::json!(&cx.editor.config().deref());
     let pointer = format!("/{}", key.replace('.', "/"));
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 
@@ -1005,8 +1243,12 @@ fn set_option(
 fn language(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     if args.len() != 1 {
         anyhow::bail!("Bad arguments. Usage: `:set-language language`");
     }
@@ -1019,19 +1261,23 @@ fn language(
     Ok(())
 }
 
-fn sort(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    _event: PromptEvent,
-) -> anyhow::Result<()> {
+fn sort(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     sort_impl(cx, args, false)
 }
 
 fn sort_reverse(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     sort_impl(cx, args, true)
 }
 
@@ -1072,8 +1318,12 @@ fn sort_impl(
 fn reflow(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let (view, doc) = current!(cx.editor);
 
     const DEFAULT_MAX_LEN: usize = 79;
@@ -1111,8 +1361,12 @@ fn reflow(
 fn tree_sitter_subtree(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let (view, doc) = current!(cx.editor);
 
     if let Some(syntax) = doc.syntax() {
@@ -1147,27 +1401,39 @@ fn tree_sitter_subtree(
 fn open_config(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     cx.editor
-        .open(helix_loader::config_file(), Action::Replace)?;
+        .open(&helix_loader::config_file(), Action::Replace)?;
     Ok(())
 }
 
 fn open_log(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
-    cx.editor.open(helix_loader::log_file(), Action::Replace)?;
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    cx.editor.open(&helix_loader::log_file(), Action::Replace)?;
     Ok(())
 }
 
 fn refresh_config(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
     Ok(())
 }
@@ -1175,8 +1441,12 @@ fn refresh_config(
 fn append_output(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     ensure!(!args.is_empty(), "Shell command required");
     shell(cx, &args.join(" "), &ShellBehavior::Append);
     Ok(())
@@ -1185,18 +1455,22 @@ fn append_output(
 fn insert_output(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     ensure!(!args.is_empty(), "Shell command required");
     shell(cx, &args.join(" "), &ShellBehavior::Insert);
     Ok(())
 }
 
-fn pipe(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    _event: PromptEvent,
-) -> anyhow::Result<()> {
+fn pipe(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     ensure!(!args.is_empty(), "Shell command required");
     shell(cx, &args.join(" "), &ShellBehavior::Replace);
     Ok(())
@@ -1205,8 +1479,12 @@ fn pipe(
 fn run_shell_command(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
     let shell = &cx.editor.config().shell;
     let (output, success) = shell_impl(shell, &args.join(" "), None)?;
     if success {
@@ -1266,14 +1544,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["bc", "bclose"],
             doc: "Close the current buffer.",
             fun: buffer_close,
-          completer: Some(completers::buffer),
+            completer: Some(completers::buffer),
         },
         TypableCommand {
             name: "buffer-close!",
             aliases: &["bc!", "bclose!"],
             doc: "Close the current buffer forcefully (ignoring unsaved changes).",
             fun: force_buffer_close,
-          completer: Some(completers::buffer),
+            completer: Some(completers::buffer),
         },
         TypableCommand {
             name: "buffer-close-others",
@@ -1557,7 +1835,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Display tree sitter scopes, primarily for theming and development.",
             fun: tree_sitter_scopes,
             completer: None,
-        },
+       },
         TypableCommand {
             name: "debug-start",
             aliases: &["dbg"],
@@ -1783,10 +2061,6 @@ pub fn command_mode(cx: &mut Context) {
             }
         }, // completion
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            if event != PromptEvent::Validate {
-                return;
-            }
-
             let parts = input.split_whitespace().collect::<Vec<&str>>();
             if parts.is_empty() {
                 return;
@@ -1802,23 +2076,15 @@ pub fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                let args = if cfg!(unix) {
-                    shellwords::shellwords(input)
-                } else {
-                    // Windows doesn't support POSIX, so fallback for now
-                    parts
-                        .into_iter()
-                        .map(|part| part.into())
-                        .collect::<Vec<_>>()
-                };
+                let args = shellwords::shellwords(input);
 
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));
                 }
-            } else {
+            } else if event == PromptEvent::Validate {
                 cx.editor
                     .set_error(format!("no such command: '{}'", parts[0]));
-            };
+            }
         },
     );
     prompt.doc_fn = Box::new(|input: &str| {

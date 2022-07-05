@@ -1,7 +1,6 @@
 target
 .direnv
 helix-term/rustfmt.toml
-helix-syntax/languages/
 result
 runtime/grammars
 .vale.ini

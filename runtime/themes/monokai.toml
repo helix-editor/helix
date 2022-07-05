@@ -32,7 +32,7 @@
 "attribute" = { fg = "fn_declaration" }
 
 "comment" = { fg = "#88846F" }
-"ui.virtual" = "#88846F"
+"ui.virtual.whitespace" = "#88846F"
 
 "string" = { fg = "#e6db74" }
 "constant.character" = { fg = "#e6db74" }

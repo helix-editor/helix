@@ -6,7 +6,7 @@
 
 ; highlight inheritance comments
 ((query . (comment) @keyword.directive)
- (#match? @keyword.directive "^;\ +inherits *:"))
+ (#match? @keyword.directive "^; +inherits *:"))
 
 [
   "("
@@ -40,8 +40,11 @@
 
 (capture) @label
 
-(predicate_name) @function
+((predicate_name) @function
+ (#match? @function "^#(eq\\?|match\\?|is\\?|is-not\\?|not-same-line\\?|not-kind-eq\\?|set!|select-adjacent!|strip!)$"))
+(predicate_name) @error
 
 (escape_sequence) @constant.character.escape
 
-(node_name) @variable
+(node_name) @tag
+(variable) @variable

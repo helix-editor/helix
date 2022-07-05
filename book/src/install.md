@@ -61,10 +61,11 @@ Helix also needs it's runtime files so make sure to copy/symlink the `runtime/` 
 config directory (for example `~/.config/helix/runtime` on Linux/macOS). This location can be overridden
 via the `HELIX_RUNTIME` environment variable.
 
-| OS        | command   |
-|-----------|-----------|
-|windows    |`xcopy runtime %AppData%/helix/runtime`|
-|linux/macos|`ln -s $PWD/runtime ~/.config/helix/runtime`
+| OS                | command   |
+|-------------------|-----------|
+|windows(cmd.exe)   |`xcopy runtime %AppData%/helix/runtime`     |
+|windows(powershell)|`xcopy runtime $Env:AppData\helix\runtime`  |
+|linux/macos        |`ln -s $PWD/runtime ~/.config/helix/runtime`|
 
 ## Finishing up the installation 
 
