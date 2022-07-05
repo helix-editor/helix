@@ -268,8 +268,11 @@ fn new_file(
 fn format(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
-    _event: PromptEvent,
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
     let (view, doc) = current!(cx.editor);
     if let Some(format) = doc.format(view.id) {
         let callback =
