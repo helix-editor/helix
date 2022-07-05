@@ -464,7 +464,6 @@ pub struct Editor {
     pub registers: Registers,
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub macro_replaying: Vec<char>,
-    pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
 
@@ -476,6 +475,12 @@ pub struct Editor {
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
+    /// last_theme is used for theme previews. We store the current theme here,
+    /// and if previewing is cancelled, we can return to it.
+    pub last_theme: Option<Theme>,
+    /// The currently applied editor theme. While previewing a theme, the previewed theme
+    /// is set here.
+    pub theme: Theme,
 
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
@@ -498,6 +503,11 @@ pub struct Editor {
 pub enum ConfigEvent {
     Refresh,
     Update(Box<Config>),
+}
+
+enum ThemeAction {
+    Set,
+    Preview,
 }
 
 #[derive(Debug, Clone)]
@@ -544,6 +554,7 @@ impl Editor {
             breakpoints: HashMap::new(),
             syn_loader,
             theme_loader,
+            last_theme: None,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
@@ -613,7 +624,22 @@ impl Editor {
             .unwrap_or(false)
     }
 
+    pub fn unset_theme_preview(&mut self) {
+        if let Some(last_theme) = self.last_theme.take() {
+            self.set_theme(last_theme);
+        }
+        // None likely occurs when the user types ":theme" and then exits before previewing
+    }
+
+    pub fn set_theme_preview(&mut self, theme: Theme) {
+        self.set_theme_impl(theme, ThemeAction::Preview);
+    }
+
     pub fn set_theme(&mut self, theme: Theme) {
+        self.set_theme_impl(theme, ThemeAction::Set);
+    }
+
+    fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) {
         // `ui.selection` is the only scope required to be able to render a theme.
         if theme.find_scope_index("ui.selection").is_none() {
             self.set_error("Invalid theme: `ui.selection` required");
@@ -623,7 +649,18 @@ impl Editor {
         let scopes = theme.scopes();
         self.syn_loader.set_scopes(scopes.to_vec());
 
-        self.theme = theme;
+        match preview {
+            ThemeAction::Preview => {
+                let last_theme = std::mem::replace(&mut self.theme, theme);
+                // only insert on first preview: this will be the last theme the user has saved
+                self.last_theme.get_or_insert(last_theme);
+            }
+            ThemeAction::Set => {
+                self.last_theme = None;
+                self.theme = theme;
+            }
+        }
+
         self._refresh();
     }
 
