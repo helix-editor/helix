@@ -71,7 +71,7 @@ namespace = { fg = 'orangeL' }
 'variable.other.member' = { fg = 'orangeH' }
 'variable.function' = { fg = 'blueL' }
 'punctuation' = { fg = 'blueL' }
-'punctuation.delimeter' = { fg = 'blueH' }
+'punctuation.delimiter' = { fg = 'blueH' }
 'punctuation.bracket' = { fg = 'orangeN' }
 'keyword' = { fg = 'blueH' }
 'keyword.control' = { fg = 'blueL' }
