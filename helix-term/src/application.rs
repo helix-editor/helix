@@ -572,15 +572,11 @@ impl Application {
                             doc.set_diagnostics(diagnostics);
                         }
 
-                        // Sort diagnostics first by URL and then by severity.
+                        // Sort diagnostics first by severity and then by line numbers.
                         // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
-                        params.diagnostics.sort_unstable_by(|a, b| {
-                            if let (Some(a), Some(b)) = (a.severity, b.severity) {
-                                a.partial_cmp(&b).unwrap()
-                            } else {
-                                std::cmp::Ordering::Equal
-                            }
-                        });
+                        params
+                            .diagnostics
+                            .sort_unstable_by_key(|d| (d.severity, d.range.start));
 
                         // Insert the original lsp::Diagnostics here because we may have no open document
                         // for diagnosic message and so we can't calculate the exact position.
