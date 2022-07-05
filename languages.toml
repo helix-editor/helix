@@ -446,7 +446,7 @@ source = { git = "https://github.com/cstrahan/tree-sitter-nix", rev = "6b71a810c
 name = "ruby"
 scope = "source.ruby"
 injection-regex = "ruby"
-file-types = ["rb", "rake", "rakefile", "irb", "gemfile", "gemspec"]
+file-types = ["rb", "rake", "rakefile", "irb", "gemfile", "gemspec", "Rakefile", "Gemfile"]
 shebangs = ["ruby"]
 roots = []
 comment-token = "#"
@@ -460,8 +460,8 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-ruby", rev = "dfff6
 [[language]]
 name = "bash"
 scope = "source.bash"
-injection-regex = "bash"
-file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild"]
+injection-regex = "(shell|bash|zsh|sh)"
+file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc"]
 shebangs = ["sh", "bash", "dash"]
 roots = []
 comment-token = "#"
@@ -660,7 +660,7 @@ name = "haskell"
 scope = "source.haskell"
 injection-regex = "haskell"
 file-types = ["hs"]
-roots = []
+roots = ["Setup.hs", "stack.yaml", "*.cabal"]
 comment-token = "--"
 language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
 indent = { tab-width = 2, unit = "  " }
@@ -707,7 +707,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "tsq"
-source = { git = "https://github.com/tree-sitter/tree-sitter-tsq", rev = "b665659d3238e6036e22ed0e24935e60efb39415" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-tsq", rev = "ea68fc2b571ca1c8f70936855130c380f518ff35" }
 
 [[language]]
 name = "cmake"
@@ -727,7 +727,8 @@ source = { git = "https://github.com/uyha/tree-sitter-cmake", rev = "f6616f1e417
 name = "make"
 scope = "source.make"
 file-types = ["Makefile", "makefile", "mk", "justfile", ".justfile"]
-roots =[]
+injection-regex = "(make|makefile|Makefile|mk|just)"
+roots = []
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
 
@@ -787,6 +788,7 @@ scope = "source.wgsl"
 file-types = ["wgsl"]
 roots = []
 comment-token = "//"
+language-server = { command = "wgsl_analyzer" }
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
@@ -853,7 +855,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "markdown"
-source = { git = "https://github.com/MDeiml/tree-sitter-markdown", rev = "ad8c32917a16dfbb387d1da567bf0c3fb6fffde2" }
+source = { git = "https://github.com/MDeiml/tree-sitter-markdown", rev = "ab15701d8f3f68aeb74e30573b7d669a6ef2a7ed" }
 
 [[language]]
 name = "dart"
@@ -906,7 +908,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "git-commit"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "7ae23de633de41f8f5b802f6f05b6596df6d00c1" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "318dd72abfaa7b8044c1d1fbeabcd06deaaf038f" }
 
 [[language]]
 name = "git-diff"
@@ -1050,7 +1052,7 @@ language-server = { command = "erlang_ls" }
 
 [[grammar]]
 name = "erlang"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "c0ebc82600caaf4339f2b00691f958e9df97c065" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "0e7d677d11a7379686c53c616825714ccb728059" }
 
 [[language]]
 name = "kotlin"
@@ -1477,3 +1479,27 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "clojure"
 source = { git = "https://github.com/sogaiu/tree-sitter-clojure", rev = "e57c569ae332ca365da623712ae1f50f84daeae2" }
+
+[[language]]
+name = "starlark"
+scope = "source.starlark"
+injection-regex = "(starlark|bzl|bazel)"
+file-types = ["bzl", "bazel", "BUILD"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+grammar = "python"
+
+[[language]]
+name = "elvish"
+scope = "source.elvish"
+file-types = ["elv"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "elvish", args = ["-lsp"] }
+grammar = "elvish"
+
+[[grammar]]
+name = "elvish"
+source = { git = "https://github.com/ckafi/tree-sitter-elvish", rev = "e50787cadd3bc54f6d9c0704493a79078bb8a4e5" }

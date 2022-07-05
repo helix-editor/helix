@@ -16,7 +16,7 @@ _hx() {
 		COMPREPLY=($(compgen -W "$languages" -- $2))
 		;;
 	*)
-		COMPREPLY=($(compgen -fd -W "-h --help --tutor -V --version -v -vv -vvv --health -g --grammar" -- $2))
+		COMPREPLY=($(compgen -fd -W "-h --help --tutor -V --version -v -vv -vvv --health -g --grammar --vsplit --hsplit" -- $2))
 		;;
 	esac
 } && complete -F _hx hx
