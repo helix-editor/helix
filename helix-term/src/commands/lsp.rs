@@ -9,10 +9,7 @@ use tui::text::{Span, Spans};
 use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{path, Selection};
-use helix_view::{
-    editor::Action,
-    theme::{Modifier, Style},
-};
+use helix_view::{editor::Action, theme::Style};
 
 use crate::{
     compositor::{self, Compositor},
@@ -99,9 +96,9 @@ struct PickerDiagnostic {
 }
 
 impl ui::menu::Item for PickerDiagnostic {
-    type Data = DiagnosticStyles;
+    type Data = (DiagnosticStyles, DiagnosticsFormat);
 
-    fn label(&self, styles: &Self::Data) -> Spans {
+    fn label(&self, (styles, format): &Self::Data) -> Spans {
         let mut style = self
             .diag
             .severity
@@ -128,13 +125,18 @@ impl ui::menu::Item for PickerDiagnostic {
             .map(|code| format!(" ({})", code))
             .unwrap_or_default();
 
-        let truncated_path = path::get_truncated_path(self.url.path())
-            .to_string_lossy()
-            .into_owned();
+        let path = match format {
+            DiagnosticsFormat::HideSourcePath => String::new(),
+            DiagnosticsFormat::ShowSourcePath => {
+                let path = path::get_truncated_path(self.url.path())
+                    .to_string_lossy()
+                    .into_owned();
+                format!("{}: ", path)
+            }
+        };
 
         Spans::from(vec![
-            Span::raw(truncated_path),
-            Span::raw(": "),
+            Span::raw(path),
             Span::styled(&self.diag.message, style),
             Span::styled(code, style),
         ])
@@ -237,10 +239,17 @@ fn sym_picker(
     .truncate_start(false)
 }
 
+#[derive(Copy, Clone, PartialEq)]
+enum DiagnosticsFormat {
+    ShowSourcePath,
+    HideSourcePath,
+}
+
 fn diag_picker(
     cx: &Context,
     diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
     current_path: Option<lsp::Url>,
+    format: DiagnosticsFormat,
     offset_encoding: OffsetEncoding,
 ) -> FilePicker<PickerDiagnostic> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
@@ -266,7 +275,7 @@ fn diag_picker(
 
     FilePicker::new(
         flat_diag,
-        styles,
+        (styles, format),
         move |cx, PickerDiagnostic { url, diag }, action| {
             if current_path.as_ref() == Some(url) {
                 let (view, doc) = current!(cx.editor);
@@ -378,6 +387,7 @@ pub fn diagnostics_picker(cx: &mut Context) {
             cx,
             [(current_url.clone(), diagnostics)].into(),
             Some(current_url),
+            DiagnosticsFormat::HideSourcePath,
             offset_encoding,
         );
         cx.push_layer(Box::new(overlayed(picker)));
@@ -390,7 +400,13 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
     let current_url = doc.url();
     let offset_encoding = language_server.offset_encoding();
     let diagnostics = cx.editor.diagnostics.clone();
-    let picker = diag_picker(cx, diagnostics, current_url, offset_encoding);
+    let picker = diag_picker(
+        cx,
+        diagnostics,
+        current_url,
+        DiagnosticsFormat::ShowSourcePath,
+        offset_encoding,
+    );
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
