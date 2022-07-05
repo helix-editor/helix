@@ -2473,6 +2473,7 @@ fn buffer_picker(cx: &mut Context) {
         path: Option<PathBuf>,
         is_modified: bool,
         is_current: bool,
+        used_at: std::time::Instant,
     }
 
     impl ui::menu::Item for BufferMeta {
@@ -2505,14 +2506,21 @@ fn buffer_picker(cx: &mut Context) {
         path: doc.path().cloned(),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
+        used_at: doc.used_at,
     };
 
+    let mut items = cx
+        .editor
+        .documents
+        .values()
+        .map(|doc| new_meta(doc))
+        .collect();
+
+    // mru
+    items.sort_by(|a, b| b.used_at.cmp(&a.used_at));
+
     let picker = FilePicker::new(
-        cx.editor
-            .documents
-            .values()
-            .map(|doc| new_meta(doc))
-            .collect(),
+        items,
         (),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);

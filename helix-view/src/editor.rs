@@ -1176,6 +1176,7 @@ impl Editor {
         let doc = doc_mut!(self, &doc_id);
         doc.ensure_view_init(view.id);
         view.sync_changes(doc);
+        doc.mark_as_used();
 
         align_view(doc, view, Align::Center);
     }
@@ -1246,6 +1247,7 @@ impl Editor {
                 let view_id = view!(self).id;
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
+                doc.mark_as_used();
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
@@ -1267,6 +1269,7 @@ impl Editor {
                 // initialize selection for view
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
+                doc.mark_as_used();
             }
         }
 
