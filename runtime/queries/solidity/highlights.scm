@@ -64,7 +64,7 @@
 (call_expression . (identifier) @function)
 
 ; Function parameters
-(event_parameter name: (identifier) @variable.parameter)
+(event_paramater name: (identifier) @variable.parameter) ; TODO fix spelling once fixed upstream
 (function_definition
   function_name:  (identifier) @variable.parameter)
 
@@ -131,7 +131,7 @@
 
 (import_directive "as" @keyword)
 (import_directive "from" @keyword)
-(event_parameter "indexed" @keyword)
+(event_paramater "indexed" @keyword) ; TODO fix spelling once fixed upstream
 
 ; Punctuation
 
