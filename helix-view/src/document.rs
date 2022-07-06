@@ -1,6 +1,7 @@
 use anyhow::{anyhow, bail, Context, Error};
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
+use helix_core::abbreviations::Abbreviations;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::Range;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
@@ -138,6 +139,8 @@ pub struct Document {
     language_server: Option<Arc<helix_lsp::Client>>,
 
     diff_handle: Option<DiffHandle>,
+
+    pub abbreviations: Abbreviations,
 }
 
 use std::{fmt, mem};
@@ -377,6 +380,7 @@ impl Document {
             modified_since_accessed: false,
             language_server: None,
             diff_handle: None,
+            abbreviations: Abbreviations::default(),
         }
     }
 

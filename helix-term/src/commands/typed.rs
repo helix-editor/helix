@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::ops::Deref;
 
 use crate::job::Job;
@@ -1808,6 +1809,103 @@ fn run_shell_command(
     Ok(())
 }
 
+fn insert_abbreviation(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if args.len() < 2 {
+        anyhow::bail!(
+            "Bad arguments. Usage: `:insert-abbreviation abbreviation abbreviated_expression`"
+        );
+    }
+    let abbreviated_expression = args[1..].join(" ");
+    let doc = doc_mut!(cx.editor);
+    doc.abbreviations.insert(&args[0], &abbreviated_expression);
+
+    Ok(())
+}
+
+fn delete_abbreviation(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:delete-abbreviation abbreviation`");
+    }
+
+    let doc = doc_mut!(cx.editor);
+    doc.abbreviations.remove(&args[0]);
+    Ok(())
+}
+
+fn load_abbreviations_from_file(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:load-abbreviations-from-file filename`");
+    }
+
+    let doc = doc_mut!(cx.editor);
+    let abbrs = doc.abbreviations.map_mut();
+    let file_path = PathBuf::from(&args[0].to_string());
+    if let Ok(abbr_file_content) = std::fs::read_to_string(file_path) {
+        // Each line should insert an abbr
+        for line in abbr_file_content.lines() {
+            if let Some(split) = line.split_once(' ') {
+                abbrs.insert(split.0.to_string(), split.1.to_string());
+            }
+        }
+    } else {
+        anyhow::bail!("Unable to read file {}", &args[0]);
+    }
+
+    Ok(())
+}
+
+fn write_abbreviations_to_file(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:write-abbreviations-to-file filename`");
+    }
+
+    let doc = doc_mut!(cx.editor);
+    let abbrs = doc.abbreviations.map_mut();
+    let file_path = PathBuf::from(&args[0].to_string());
+    if let Ok(mut abbr_file) = std::fs::File::create(file_path) {
+        for (abbreviation, abbreviated) in abbrs {
+            if let Err(e) = writeln!(abbr_file, "{} {}", abbreviation, abbreviated) {
+                anyhow::bail!("Unable to write {}: {}", &args[0], e)
+            };
+        }
+    } else {
+        anyhow::bail!("Unable to write to file {}", &args[0]);
+    }
+
+    Ok(())
+}
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2322,6 +2420,34 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run a shell command",
             fun: run_shell_command,
             completer: Some(completers::directory),
+        },
+        TypableCommand {
+            name: "insert-abbreviation",
+            aliases: &["abbr"],
+            doc: "Insert a new abbreviation",
+            fun: insert_abbreviation,
+            completer: Some(completers::abbreviations),
+        },
+        TypableCommand {
+            name: "delete-abbreviation",
+            aliases: &["rabbr"],
+            doc: "Delete an abbreviation",
+            fun: delete_abbreviation,
+            completer: Some(completers::abbreviations),
+        },
+        TypableCommand {
+            name: "load-abbreviation-from-file",
+            aliases: &["labbr"],
+            doc: "Load abbreviations from a file that contains abbreviations such as:\n\nnvm nevermind\nbrb be right back\n...",
+            fun: load_abbreviations_from_file,
+            completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "write-abbreviation-to-file",
+            aliases: &["wabbr"],
+            doc: "Write abbreviations to a file using the following format:\n\nnvm nevermind\nbrb be right back\n...",
+            fun: write_abbreviations_to_file,
+            completer: Some(completers::filename),
         },
     ];
 

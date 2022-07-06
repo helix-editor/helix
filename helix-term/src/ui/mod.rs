@@ -429,6 +429,32 @@ pub mod completers {
             .collect()
     }
 
+    pub fn abbreviations(editor: &Editor, input: &str) -> Vec<Completion> {
+        let (_, doc) = current_ref!(editor);
+        let matcher = Matcher::default();
+
+        let mut matches: Vec<_> = doc
+            .abbreviations
+            .map()
+            .clone()
+            .into_iter()
+            .filter_map(|abbr| {
+                matcher
+                    .fuzzy_match(&abbr.0, input)
+                    .map(move |score| (abbr.0, score))
+            })
+            .collect();
+
+        matches.sort_unstable_by(|(abbr1, score1), (abbr2, score2)| {
+            (Reverse(*score1), abbr1).cmp(&(Reverse(*score2), abbr2))
+        });
+
+        matches
+            .into_iter()
+            .map(|(abbr, _score)| ((0..), abbr.into()))
+            .collect()
+    }
+
     pub fn directory(editor: &Editor, input: &str) -> Vec<Completion> {
         filename_impl(editor, input, |entry| {
             let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());

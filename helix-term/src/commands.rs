@@ -3078,12 +3078,19 @@ pub mod insert {
         let text = doc.text();
         let selection = doc.selection(view.id);
         let auto_pairs = doc.auto_pairs(cx.editor);
+        let abbreviations = &doc.abbreviations;
 
+        // Autopairs and abbreviations
         let transaction = auto_pairs
             .as_ref()
             .and_then(|ap| auto_pairs::hook(text, selection, c, ap))
-            .or_else(|| insert(text, selection, c));
-
+            .or_else(|| {
+                if !c.is_alphanumeric() {
+                    abbreviations.expand_or_insert(text, selection, c)
+                } else {
+                    insert(text, selection, c)
+                }
+            });
         let (view, doc) = current!(cx.editor);
         if let Some(t) = transaction {
             apply_transaction(&t, doc, view);
