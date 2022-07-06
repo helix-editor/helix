@@ -1411,16 +1411,16 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
         let is_primary = *range == selection.primary();
 
         // The range is always head exclusive
-        let head = if range.anchor < range.head {
-            range.head - 1
+        let (head, anchor) = if range.anchor < range.head {
+            (range.head - 1, range.anchor)
         } else {
-            range.head
+            (range.head, range.anchor - 1)
         };
 
         let tab_width = doc.tab_width();
 
         let head_pos = visual_coords_at_pos(text, head, tab_width);
-        let anchor_pos = visual_coords_at_pos(text, range.anchor, tab_width);
+        let anchor_pos = visual_coords_at_pos(text, anchor, tab_width);
 
         let height = std::cmp::max(head_pos.row, anchor_pos.row)
             - std::cmp::min(head_pos.row, anchor_pos.row)

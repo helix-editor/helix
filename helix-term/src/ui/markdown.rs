@@ -204,7 +204,7 @@ impl Markdown {
 
                     tags.push(Tag::Item);
 
-                    // get the approriate bullet for the current list
+                    // get the appropriate bullet for the current list
                     let bullet = list_stack
                         .last()
                         .unwrap_or(&None) // use the '- ' bullet in case the list stack would be empty
