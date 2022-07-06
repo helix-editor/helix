@@ -8,7 +8,7 @@ use helix_loader::plugin_dir;
 use std::ffi::OsStr;
 use std::fs::DirEntry;
 use std::path::PathBuf;
-use wasmtime::{Engine, Instance, Linker, Module, Store};
+use wasmtime::{AsContextMut, Caller, Engine, Extern, Instance, Linker, Module, Store};
 use wasmtime_wasi::{add_to_linker, WasiCtx, WasiCtxBuilder};
 
 use generated::messages::KeyEvent;
@@ -85,16 +85,13 @@ impl PluginManager {
 
     pub fn handle_event(&mut self, event: generated::messages::Event) {
         for plugin in &mut self.plugins {
-            match plugin.handle_event(event.clone()) {
-                Ok(_) => {
-                    log::info!("Plugin '{}' handled event '{}'", plugin.name, event)
-                }
-                Err(e) => log::error!(
+            if let Err(e) = plugin.handle_event(event.clone()) {
+                log::error!(
                     "Plugin '{}' failed to handle event '{}': {}",
                     plugin.name,
                     event,
                     e
-                ),
+                )
             }
         }
     }
@@ -120,7 +117,46 @@ impl TryFrom<Result<DirEntry, std::io::Error>> for Plugin {
         let wasi = WasiCtxBuilder::new().build();
         let mut store = Store::new(&engine, wasi);
         let module = Module::new(&engine, wasm_bytes)?;
+
+        linker.func_wrap(
+            "helix",
+            "log",
+            |mut caller: Caller<_>, ptr: u32, len: u32| {
+                let memory_export = match caller.get_export("memory") {
+                    Some(memory_export) => memory_export,
+                    None => {
+                        log::warn!("Failed to get memory for plugin");
+                        return;
+                    }
+                };
+
+                let memory = match memory_export {
+                    Extern::Memory(memory) => memory,
+                    _ => {
+                        log::warn!("Plugin memory export was wrong type");
+                        return;
+                    }
+                };
+
+                let store = caller.as_context_mut();
+                let data = memory.data_mut(store);
+                let start = ptr as usize;
+                let end = (ptr + len) as usize;
+                let bytes = &mut data[start..end];
+
+                let text = unsafe {
+                    String::from_raw_parts(bytes.as_mut_ptr(), len as usize, len as usize)
+                };
+
+                log::info!("(Plugin) info: {}", text);
+
+                // String memory is free'd by the plugin
+                std::mem::forget(text);
+            },
+        )?;
+
         linker.module(&mut store, "", &module)?;
+
         let instance = linker.instantiate(&mut store, &module)?;
 
         Ok(Plugin {
