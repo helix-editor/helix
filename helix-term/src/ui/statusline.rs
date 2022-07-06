@@ -3,7 +3,7 @@ use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
     theme::Style,
-    Document, Editor, Theme, View,
+    Document, Editor, View,
 };
 
 use crate::ui::ProgressSpinners;
@@ -13,9 +13,9 @@ use tui::buffer::Buffer as Surface;
 use tui::text::{Span, Spans};
 
 pub struct RenderContext<'a> {
+    pub editor: &'a Editor,
     pub doc: &'a Document,
     pub view: &'a View,
-    pub theme: &'a Theme,
     pub focused: bool,
     pub spinners: &'a ProgressSpinners,
     pub parts: RenderBuffer<'a>,
@@ -23,16 +23,16 @@ pub struct RenderContext<'a> {
 
 impl<'a> RenderContext<'a> {
     pub fn new(
+        editor: &'a Editor,
         doc: &'a Document,
         view: &'a View,
-        theme: &'a Theme,
         focused: bool,
         spinners: &'a ProgressSpinners,
     ) -> Self {
         RenderContext {
+            editor,
             doc,
             view,
-            theme,
             focused,
             spinners,
             parts: RenderBuffer::default(),
@@ -47,11 +47,11 @@ pub struct RenderBuffer<'a> {
     pub right: Spans<'a>,
 }
 
-pub fn render(editor: &Editor, context: &mut RenderContext, viewport: Rect, surface: &mut Surface) {
+pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface) {
     let base_style = if context.focused {
-        context.theme.get("ui.statusline")
+        context.editor.theme.get("ui.statusline")
     } else {
-        context.theme.get("ui.statusline.inactive")
+        context.editor.theme.get("ui.statusline.inactive")
     };
 
     surface.set_style(viewport.with_height(1), base_style);
@@ -68,7 +68,7 @@ pub fn render(editor: &Editor, context: &mut RenderContext, viewport: Rect, surf
 
     // Left side of the status line.
 
-    let element_ids = &editor.config().statusline.left;
+    let element_ids = &context.editor.config().statusline.left;
     element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
@@ -83,7 +83,7 @@ pub fn render(editor: &Editor, context: &mut RenderContext, viewport: Rect, surf
 
     // Right side of the status line.
 
-    let element_ids = &editor.config().statusline.right;
+    let element_ids = &context.editor.config().statusline.right;
     element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
@@ -101,7 +101,7 @@ pub fn render(editor: &Editor, context: &mut RenderContext, viewport: Rect, surf
 
     // Center of the status line.
 
-    let element_ids = &editor.config().statusline.center;
+    let element_ids = &context.editor.config().statusline.center;
     element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
@@ -166,11 +166,11 @@ where
                 "   "
             }
         ),
-        if visible {
+        if visible && context.editor.config().color_modes {
             match context.doc.mode() {
-                Mode::Insert => Some(context.theme.get("ui.statusline.insert")),
-                Mode::Select => Some(context.theme.get("ui.statusline.select")),
-                Mode::Normal => Some(context.theme.get("ui.statusline.normal")),
+                Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
+                Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
+                Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
             }
         } else {
             None
@@ -219,12 +219,20 @@ where
         });
 
     if warnings > 0 {
-        write(context, "●".to_string(), Some(context.theme.get("warning")));
+        write(
+            context,
+            "●".to_string(),
+            Some(context.editor.theme.get("warning")),
+        );
         write(context, format!(" {} ", warnings), None);
     }
 
     if errors > 0 {
-        write(context, "●".to_string(), Some(context.theme.get("error")));
+        write(
+            context,
+            "●".to_string(),
+            Some(context.editor.theme.get("error")),
+        );
         write(context, format!(" {} ", errors), None);
     }
 }
