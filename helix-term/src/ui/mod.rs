@@ -19,7 +19,6 @@ pub use picker::{FileLocation, FilePicker, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
-pub use statusline::StatusLine;
 pub use text::Text;
 
 use helix_core::regex::Regex;

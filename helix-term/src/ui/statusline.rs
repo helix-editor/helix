@@ -47,266 +47,256 @@ pub struct RenderBuffer<'a> {
     pub right: Spans<'a>,
 }
 
-pub struct StatusLine;
+pub fn render(editor: &Editor, context: &mut RenderContext, viewport: Rect, surface: &mut Surface) {
+    let base_style = if context.focused {
+        context.theme.get("ui.statusline")
+    } else {
+        context.theme.get("ui.statusline.inactive")
+    };
 
-impl StatusLine {
-    pub fn render(
-        editor: &Editor,
-        context: &mut RenderContext,
-        viewport: Rect,
-        surface: &mut Surface,
-    ) {
-        let base_style = if context.focused {
-            context.theme.get("ui.statusline")
-        } else {
-            context.theme.get("ui.statusline.inactive")
-        };
+    surface.set_style(viewport.with_height(1), base_style);
 
-        surface.set_style(viewport.with_height(1), base_style);
+    let write_left = |context: &mut RenderContext, text, style| {
+        append(&mut context.parts.left, text, &base_style, style)
+    };
+    let write_center = |context: &mut RenderContext, text, style| {
+        append(&mut context.parts.center, text, &base_style, style)
+    };
+    let write_right = |context: &mut RenderContext, text, style| {
+        append(&mut context.parts.right, text, &base_style, style)
+    };
 
-        let write_left = |context: &mut RenderContext, text, style| {
-            Self::append(&mut context.parts.left, text, &base_style, style)
-        };
-        let write_center = |context: &mut RenderContext, text, style| {
-            Self::append(&mut context.parts.center, text, &base_style, style)
-        };
-        let write_right = |context: &mut RenderContext, text, style| {
-            Self::append(&mut context.parts.right, text, &base_style, style)
-        };
+    // Left side of the status line.
 
-        // Left side of the status line.
+    let element_ids = &editor.config().statusline.left;
+    element_ids
+        .iter()
+        .map(|element_id| get_render_function(*element_id))
+        .for_each(|render| render(context, write_left));
 
-        let element_ids = &editor.config().statusline.left;
-        element_ids
-            .iter()
-            .map(|element_id| Self::get_render_function(*element_id))
-            .for_each(|render| render(context, write_left));
+    surface.set_spans(
+        viewport.x,
+        viewport.y,
+        &context.parts.left,
+        context.parts.left.width() as u16,
+    );
 
-        surface.set_spans(
-            viewport.x,
-            viewport.y,
-            &context.parts.left,
-            context.parts.left.width() as u16,
-        );
+    // Right side of the status line.
 
-        // Right side of the status line.
+    let element_ids = &editor.config().statusline.right;
+    element_ids
+        .iter()
+        .map(|element_id| get_render_function(*element_id))
+        .for_each(|render| render(context, write_right));
 
-        let element_ids = &editor.config().statusline.right;
-        element_ids
-            .iter()
-            .map(|element_id| Self::get_render_function(*element_id))
-            .for_each(|render| render(context, write_right));
+    surface.set_spans(
+        viewport.x
+            + viewport
+                .width
+                .saturating_sub(context.parts.right.width() as u16),
+        viewport.y,
+        &context.parts.right,
+        context.parts.right.width() as u16,
+    );
 
-        surface.set_spans(
-            viewport.x
-                + viewport
-                    .width
-                    .saturating_sub(context.parts.right.width() as u16),
-            viewport.y,
-            &context.parts.right,
-            context.parts.right.width() as u16,
-        );
+    // Center of the status line.
 
-        // Center of the status line.
+    let element_ids = &editor.config().statusline.center;
+    element_ids
+        .iter()
+        .map(|element_id| get_render_function(*element_id))
+        .for_each(|render| render(context, write_center));
 
-        let element_ids = &editor.config().statusline.center;
-        element_ids
-            .iter()
-            .map(|element_id| Self::get_render_function(*element_id))
-            .for_each(|render| render(context, write_center));
+    // Width of the empty space between the left and center area and between the center and right area.
+    let spacing = 1u16;
 
-        // Width of the empty space between the left and center area and between the center and right area.
-        let spacing = 1u16;
+    let edge_width = context.parts.left.width().max(context.parts.right.width()) as u16;
+    let center_max_width = viewport.width.saturating_sub(2 * edge_width + 2 * spacing);
+    let center_width = center_max_width.min(context.parts.center.width() as u16);
 
-        let edge_width = context.parts.left.width().max(context.parts.right.width()) as u16;
-        let center_max_width = viewport.width.saturating_sub(2 * edge_width + 2 * spacing);
-        let center_width = center_max_width.min(context.parts.center.width() as u16);
+    surface.set_spans(
+        viewport.x + viewport.width / 2 - center_width / 2,
+        viewport.y,
+        &context.parts.center,
+        center_width,
+    );
+}
 
-        surface.set_spans(
-            viewport.x + viewport.width / 2 - center_width / 2,
-            viewport.y,
-            &context.parts.center,
-            center_width,
-        );
+fn append(buffer: &mut Spans, text: String, base_style: &Style, style: Option<Style>) {
+    buffer.0.push(Span::styled(
+        text,
+        style.map_or(*base_style, |s| (*base_style).patch(s)),
+    ));
+}
+
+fn get_render_function<F>(element_id: StatusLineElementID) -> impl Fn(&mut RenderContext, F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    match element_id {
+        helix_view::editor::StatusLineElement::Mode => render_mode,
+        helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
+        helix_view::editor::StatusLineElement::FileName => render_file_name,
+        helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
+        helix_view::editor::StatusLineElement::FileType => render_file_type,
+        helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
+        helix_view::editor::StatusLineElement::Selections => render_selections,
+        helix_view::editor::StatusLineElement::Position => render_position,
     }
+}
 
-    fn append(buffer: &mut Spans, text: String, base_style: &Style, style: Option<Style>) {
-        buffer.0.push(Span::styled(
-            text,
-            style.map_or(*base_style, |s| (*base_style).patch(s)),
-        ));
-    }
+fn render_mode<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let visible = context.focused;
 
-    fn get_render_function<F>(element_id: StatusLineElementID) -> impl Fn(&mut RenderContext, F)
-    where
-        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-    {
-        match element_id {
-            helix_view::editor::StatusLineElement::Mode => Self::render_mode,
-            helix_view::editor::StatusLineElement::Spinner => Self::render_lsp_spinner,
-            helix_view::editor::StatusLineElement::FileName => Self::render_file_name,
-            helix_view::editor::StatusLineElement::FileEncoding => Self::render_file_encoding,
-            helix_view::editor::StatusLineElement::FileType => Self::render_file_type,
-            helix_view::editor::StatusLineElement::Diagnostics => Self::render_diagnostics,
-            helix_view::editor::StatusLineElement::Selections => Self::render_selections,
-            helix_view::editor::StatusLineElement::Position => Self::render_position,
-        }
-    }
-
-    fn render_mode<F>(context: &mut RenderContext, write: F)
-    where
-        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-    {
-        let visible = context.focused;
-
-        write(
-            context,
-            format!(
-                " {} ",
-                if visible {
-                    match context.doc.mode() {
-                        Mode::Insert => "INS",
-                        Mode::Select => "SEL",
-                        Mode::Normal => "NOR",
-                    }
-                } else {
-                    // If not focused, explicitly leave an empty space instead of returning None.
-                    "   "
-                }
-            ),
+    write(
+        context,
+        format!(
+            " {} ",
             if visible {
                 match context.doc.mode() {
-                    Mode::Insert => Some(context.theme.get("ui.statusline.insert")),
-                    Mode::Select => Some(context.theme.get("ui.statusline.select")),
-                    Mode::Normal => Some(context.theme.get("ui.statusline.normal")),
+                    Mode::Insert => "INS",
+                    Mode::Select => "SEL",
+                    Mode::Normal => "NOR",
                 }
             } else {
-                None
-            },
-        );
-    }
+                // If not focused, explicitly leave an empty space instead of returning None.
+                "   "
+            }
+        ),
+        if visible {
+            match context.doc.mode() {
+                Mode::Insert => Some(context.theme.get("ui.statusline.insert")),
+                Mode::Select => Some(context.theme.get("ui.statusline.select")),
+                Mode::Normal => Some(context.theme.get("ui.statusline.normal")),
+            }
+        } else {
+            None
+        },
+    );
+}
 
-    fn render_lsp_spinner<F>(context: &mut RenderContext, write: F)
-    where
-        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-    {
-        write(
-            context,
-            format!(
-                " {} ",
-                context
-                    .doc
-                    .language_server()
-                    .and_then(|srv| context
-                        .spinners
-                        .get(srv.id())
-                        .and_then(|spinner| spinner.frame()))
-                    // Even if there's no spinner; reserve its space to avoid elements frequently shifting.
-                    .unwrap_or(" ")
-            ),
-            None,
-        );
-    }
-
-    fn render_diagnostics<F>(context: &mut RenderContext, write: F)
-    where
-        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-    {
-        let (warnings, errors) =
+fn render_lsp_spinner<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    write(
+        context,
+        format!(
+            " {} ",
             context
                 .doc
-                .diagnostics()
-                .iter()
-                .fold((0, 0), |mut counts, diag| {
-                    use helix_core::diagnostic::Severity;
-                    match diag.severity {
-                        Some(Severity::Warning) => counts.0 += 1,
-                        Some(Severity::Error) | None => counts.1 += 1,
-                        _ => {}
-                    }
-                    counts
-                });
+                .language_server()
+                .and_then(|srv| context
+                    .spinners
+                    .get(srv.id())
+                    .and_then(|spinner| spinner.frame()))
+                // Even if there's no spinner; reserve its space to avoid elements frequently shifting.
+                .unwrap_or(" ")
+        ),
+        None,
+    );
+}
 
-        if warnings > 0 {
-            write(context, "●".to_string(), Some(context.theme.get("warning")));
-            write(context, format!(" {} ", warnings), None);
-        }
+fn render_diagnostics<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let (warnings, errors) = context
+        .doc
+        .diagnostics()
+        .iter()
+        .fold((0, 0), |mut counts, diag| {
+            use helix_core::diagnostic::Severity;
+            match diag.severity {
+                Some(Severity::Warning) => counts.0 += 1,
+                Some(Severity::Error) | None => counts.1 += 1,
+                _ => {}
+            }
+            counts
+        });
 
-        if errors > 0 {
-            write(context, "●".to_string(), Some(context.theme.get("error")));
-            write(context, format!(" {} ", errors), None);
-        }
+    if warnings > 0 {
+        write(context, "●".to_string(), Some(context.theme.get("warning")));
+        write(context, format!(" {} ", warnings), None);
     }
 
-    fn render_selections<F>(context: &mut RenderContext, write: F)
-    where
-        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-    {
-        let count = context.doc.selection(context.view.id).len();
-        write(
-            context,
-            format!(" {} sel{} ", count, if count == 1 { "" } else { "s" }),
-            None,
-        );
+    if errors > 0 {
+        write(context, "●".to_string(), Some(context.theme.get("error")));
+        write(context, format!(" {} ", errors), None);
     }
+}
 
-    fn render_position<F>(context: &mut RenderContext, write: F)
-    where
-        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-    {
-        let position = coords_at_pos(
-            context.doc.text().slice(..),
-            context
-                .doc
-                .selection(context.view.id)
-                .primary()
-                .cursor(context.doc.text().slice(..)),
-        );
+fn render_selections<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let count = context.doc.selection(context.view.id).len();
+    write(
+        context,
+        format!(" {} sel{} ", count, if count == 1 { "" } else { "s" }),
+        None,
+    );
+}
 
-        write(
-            context,
-            format!(" {}:{} ", position.row + 1, position.col + 1),
-            None,
-        );
+fn render_position<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let position = coords_at_pos(
+        context.doc.text().slice(..),
+        context
+            .doc
+            .selection(context.view.id)
+            .primary()
+            .cursor(context.doc.text().slice(..)),
+    );
+
+    write(
+        context,
+        format!(" {}:{} ", position.row + 1, position.col + 1),
+        None,
+    );
+}
+
+fn render_file_encoding<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let enc = context.doc.encoding();
+
+    if enc != encoding::UTF_8 {
+        write(context, format!(" {} ", enc.name()), None);
     }
+}
 
-    fn render_file_encoding<F>(context: &mut RenderContext, write: F)
-    where
-        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-    {
-        let enc = context.doc.encoding();
+fn render_file_type<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let file_type = context.doc.language_id().unwrap_or("text");
 
-        if enc != encoding::UTF_8 {
-            write(context, format!(" {} ", enc.name()), None);
-        }
-    }
+    write(context, format!(" {} ", file_type), None);
+}
 
-    fn render_file_type<F>(context: &mut RenderContext, write: F)
-    where
-        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-    {
-        let file_type = context.doc.language_id().unwrap_or("text");
+fn render_file_name<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let title = {
+        let rel_path = context.doc.relative_path();
+        let path = rel_path
+            .as_ref()
+            .map(|p| p.to_string_lossy())
+            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
+        format!(
+            " {}{} ",
+            path,
+            if context.doc.is_modified() { "[+]" } else { "" }
+        )
+    };
 
-        write(context, format!(" {} ", file_type), None);
-    }
-
-    fn render_file_name<F>(context: &mut RenderContext, write: F)
-    where
-        F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-    {
-        let title = {
-            let rel_path = context.doc.relative_path();
-            let path = rel_path
-                .as_ref()
-                .map(|p| p.to_string_lossy())
-                .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-            format!(
-                " {}{} ",
-                path,
-                if context.doc.is_modified() { "[+]" } else { "" }
-            )
-        };
-
-        write(context, title, None);
-    }
+    write(context, title, None);
 }

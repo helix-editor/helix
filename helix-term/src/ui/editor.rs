@@ -3,7 +3,7 @@ use crate::{
     compositor::{Component, Context, EventResult},
     key,
     keymap::{KeymapResult, Keymaps},
-    ui::{Completion, ProgressSpinners, StatusLine},
+    ui::{Completion, ProgressSpinners},
 };
 
 use helix_core::{
@@ -166,7 +166,7 @@ impl EditorView {
         let mut context =
             statusline::RenderContext::new(doc, view, &editor.theme, is_focused, &self.spinners);
 
-        StatusLine::render(editor, &mut context, statusline_area, surface);
+        statusline::render(editor, &mut context, statusline_area, surface);
     }
 
     pub fn render_rulers(
