@@ -194,6 +194,12 @@ impl<'a> From<&'a str> for Span<'a> {
     }
 }
 
+impl<'a> From<Cow<'a, str>> for Span<'a> {
+    fn from(s: Cow<'a, str>) -> Span<'a> {
+        Span::raw(s)
+    }
+}
+
 /// A string composed of clusters of graphemes, each with their own style.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Spans<'a>(pub Vec<Span<'a>>);
@@ -229,6 +235,12 @@ impl<'a> From<&'a str> for Spans<'a> {
     }
 }
 
+impl<'a> From<Cow<'a, str>> for Spans<'a> {
+    fn from(s: Cow<'a, str>) -> Spans<'a> {
+        Spans(vec![Span::raw(s)])
+    }
+}
+
 impl<'a> From<Vec<Span<'a>>> for Spans<'a> {
     fn from(spans: Vec<Span<'a>>) -> Spans<'a> {
         Spans(spans)
@@ -243,10 +255,13 @@ impl<'a> From<Span<'a>> for Spans<'a> {
 
 impl<'a> From<Spans<'a>> for String {
     fn from(line: Spans<'a>) -> String {
-        line.0.iter().fold(String::new(), |mut acc, s| {
-            acc.push_str(s.content.as_ref());
-            acc
-        })
+        line.0.iter().map(|s| &*s.content).collect()
+    }
+}
+
+impl<'a> From<&Spans<'a>> for String {
+    fn from(line: &Spans<'a>) -> String {
+        line.0.iter().map(|s| &*s.content).collect()
     }
 }
 
@@ -383,6 +398,12 @@ impl<'a> From<String> for Text<'a> {
 
 impl<'a> From<&'a str> for Text<'a> {
     fn from(s: &'a str) -> Text<'a> {
+        Text::raw(s)
+    }
+}
+
+impl<'a> From<Cow<'a, str>> for Text<'a> {
+    fn from(s: Cow<'a, str>) -> Text<'a> {
         Text::raw(s)
     }
 }

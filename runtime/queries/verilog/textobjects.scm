@@ -3,4 +3,4 @@
  (function_body_declaration
   (function_identifier
      (function_identifier
-        (simple_identifier) @function.inside)))) @funtions.around
+        (simple_identifier) @function.inside)))) @function.around

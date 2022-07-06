@@ -4,6 +4,7 @@ pub(crate) mod typed;
 
 pub use dap::*;
 pub use lsp::*;
+use tui::text::Spans;
 pub use typed::*;
 
 use helix_core::{
@@ -16,14 +17,14 @@ use helix_core::{
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
     movement::{self, Direction},
-    object, pos_at_coords,
+    object, pos_at_coords, pos_at_visual_coords,
     regex::{self, Regex, RegexBuilder},
     search::{self, CharMatcher},
     selection, shellwords, surround, textobject,
     tree_sitter::Node,
     unicode::width::UnicodeWidthChar,
-    LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril,
-    Transaction,
+    visual_coords_at_pos, LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection,
+    SmallVec, Tendril, Transaction,
 };
 use helix_view::{
     clipboard::ClipboardType,
@@ -44,6 +45,7 @@ use movement::Movement;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
+    keymap::ReverseKeymap,
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 
@@ -263,7 +265,10 @@ impl MappableCommand {
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         symbol_picker, "Open symbol picker",
+        select_references_to_symbol_under_cursor, "Select symbol references",
         workspace_symbol_picker, "Open workspace symbol picker",
+        diagnostics_picker, "Open diagnostic picker",
+        workspace_diagnostics_picker, "Open workspace diagnostic picker",
         last_picker, "Open last picker",
         prepend_to_line, "Insert at start of line",
         append_to_line, "Insert at end of line",
@@ -395,6 +400,8 @@ impl MappableCommand {
         goto_prev_parameter, "Goto previous parameter",
         goto_next_comment, "Goto next comment",
         goto_prev_comment, "Goto previous comment",
+        goto_next_test, "Goto next test",
+        goto_prev_test, "Goto previous test",
         goto_next_paragraph, "Goto next paragraph",
         goto_prev_paragraph, "Goto previous paragraph",
         dap_launch, "Launch debug target",
@@ -509,7 +516,7 @@ fn no_op(_cx: &mut Context) {}
 
 fn move_impl<F>(cx: &mut Context, move_fn: F, dir: Direction, behaviour: Movement)
 where
-    F: Fn(RopeSlice, Range, Direction, usize, Movement) -> Range,
+    F: Fn(RopeSlice, Range, Direction, usize, Movement, usize) -> Range,
 {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
@@ -518,7 +525,7 @@ where
     let selection = doc
         .selection(view.id)
         .clone()
-        .transform(|range| move_fn(text, range, dir, count, behaviour));
+        .transform(|range| move_fn(text, range, dir, count, behaviour, doc.tab_width()));
     doc.set_selection(view.id, selection);
 }
 
@@ -1024,7 +1031,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     for sel in paths {
         let p = sel.trim();
         if !p.is_empty() {
-            if let Err(e) = cx.editor.open(PathBuf::from(p), action) {
+            if let Err(e) = cx.editor.open(&PathBuf::from(p), action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
             }
         }
@@ -1404,15 +1411,16 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
         let is_primary = *range == selection.primary();
 
         // The range is always head exclusive
-        let head = if range.anchor < range.head {
-            range.head - 1
+        let (head, anchor) = if range.anchor < range.head {
+            (range.head - 1, range.anchor)
         } else {
-            range.head
+            (range.head, range.anchor - 1)
         };
 
-        // TODO: this should use visual offsets / pos_at_screen_coords
-        let head_pos = coords_at_pos(text, head);
-        let anchor_pos = coords_at_pos(text, range.anchor);
+        let tab_width = doc.tab_width();
+
+        let head_pos = visual_coords_at_pos(text, head, tab_width);
+        let anchor_pos = visual_coords_at_pos(text, anchor, tab_width);
 
         let height = std::cmp::max(head_pos.row, anchor_pos.row)
             - std::cmp::min(head_pos.row, anchor_pos.row)
@@ -1442,12 +1450,13 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
                 break;
             }
 
-            let anchor = pos_at_coords(text, Position::new(anchor_row, anchor_pos.col), true);
-            let head = pos_at_coords(text, Position::new(head_row, head_pos.col), true);
+            let anchor =
+                pos_at_visual_coords(text, Position::new(anchor_row, anchor_pos.col), tab_width);
+            let head = pos_at_visual_coords(text, Position::new(head_row, head_pos.col), tab_width);
 
             // skip lines that are too short
-            if coords_at_pos(text, anchor).col == anchor_pos.col
-                && coords_at_pos(text, head).col == head_pos.col
+            if visual_coords_at_pos(text, anchor, tab_width).col == anchor_pos.col
+                && visual_coords_at_pos(text, head, tab_width).col == head_pos.col
             {
                 if is_primary {
                     primary_index = ranges.len();
@@ -1679,8 +1688,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
     let scrolloff = config.scrolloff;
     let (view, doc) = current!(cx.editor);
     let registers = &cx.editor.registers;
-    if let Some(query) = registers.read('/') {
-        let query = query.last().unwrap();
+    if let Some(query) = registers.read('/').and_then(|query| query.last()) {
         let contents = doc.text().slice(..).to_string();
         let search_config = &config.search;
         let case_insensitive = if search_config.smart_case {
@@ -1737,17 +1745,53 @@ fn search_selection(cx: &mut Context) {
 }
 
 fn global_search(cx: &mut Context) {
-    let (all_matches_sx, all_matches_rx) =
-        tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
+    #[derive(Debug)]
+    struct FileResult {
+        path: PathBuf,
+        /// 0 indexed lines
+        line_num: usize,
+    }
+
+    impl FileResult {
+        fn new(path: &Path, line_num: usize) -> Self {
+            Self {
+                path: path.to_path_buf(),
+                line_num,
+            }
+        }
+    }
+
+    impl ui::menu::Item for FileResult {
+        type Data = Option<PathBuf>;
+
+        fn label(&self, current_path: &Self::Data) -> Spans {
+            let relative_path = helix_core::path::get_relative_path(&self.path)
+                .to_string_lossy()
+                .into_owned();
+            if current_path
+                .as_ref()
+                .map(|p| p == &self.path)
+                .unwrap_or(false)
+            {
+                format!("{} (*)", relative_path).into()
+            } else {
+                relative_path.into()
+            }
+        }
+    }
+
+    let (all_matches_sx, all_matches_rx) = tokio::sync::mpsc::unbounded_channel::<FileResult>();
     let config = cx.editor.config();
     let smart_case = config.search.smart_case;
     let file_picker_config = config.file_picker.clone();
 
-    let completions = search_completions(cx, None);
+    let reg = cx.register.unwrap_or('/');
+
+    let completions = search_completions(cx, Some(reg));
     ui::regex_prompt(
         cx,
         "global-search:".into(),
-        None,
+        Some(reg),
         move |_editor: &Editor, input: &str| {
             completions
                 .iter()
@@ -1800,7 +1844,7 @@ fn global_search(cx: &mut Context) {
                                 entry.path(),
                                 sinks::UTF8(|line_num, _| {
                                     all_matches_sx
-                                        .send((line_num as usize - 1, entry.path().to_path_buf()))
+                                        .send(FileResult::new(entry.path(), line_num as usize - 1))
                                         .unwrap();
 
                                     Ok(true)
@@ -1827,7 +1871,7 @@ fn global_search(cx: &mut Context) {
     let current_path = doc_mut!(cx.editor).path().cloned();
 
     let show_picker = async move {
-        let all_matches: Vec<(usize, PathBuf)> =
+        let all_matches: Vec<FileResult> =
             UnboundedReceiverStream::new(all_matches_rx).collect().await;
         let call: job::Callback =
             Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
@@ -1838,18 +1882,9 @@ fn global_search(cx: &mut Context) {
 
                 let picker = FilePicker::new(
                     all_matches,
-                    move |(_line_num, path)| {
-                        let relative_path = helix_core::path::get_relative_path(path)
-                            .to_string_lossy()
-                            .into_owned();
-                        if current_path.as_ref().map(|p| p == path).unwrap_or(false) {
-                            format!("{} (*)", relative_path).into()
-                        } else {
-                            relative_path.into()
-                        }
-                    },
-                    move |cx, (line_num, path), action| {
-                        match cx.editor.open(path.into(), action) {
+                    current_path,
+                    move |cx, FileResult { path, line_num }, action| {
+                        match cx.editor.open(path, action) {
                             Ok(_) => {}
                             Err(e) => {
                                 cx.editor.set_error(format!(
@@ -1870,7 +1905,9 @@ fn global_search(cx: &mut Context) {
                         doc.set_selection(view.id, Selection::single(start, end));
                         align_view(doc, view, Align::Center);
                     },
-                    |_editor, (line_num, path)| Some((path.clone(), Some((*line_num, *line_num)))),
+                    |_editor, FileResult { path, line_num }| {
+                        Some((path.clone(), Some((*line_num, *line_num))))
+                    },
                 );
                 compositor.push(Box::new(overlayed(picker)));
             });
@@ -2094,10 +2131,17 @@ fn insert_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     enter_insert_mode(doc);
 
+    log::trace!(
+        "entering insert mode with sel: {:?}, text: {:?}",
+        doc.selection(view.id),
+        doc.text().to_string()
+    );
+
     let selection = doc
         .selection(view.id)
         .clone()
         .transform(|range| Range::new(range.to(), range.from()));
+
     doc.set_selection(view.id, selection);
 }
 
@@ -2111,7 +2155,11 @@ fn append_mode(cx: &mut Context) {
     // Make sure there's room at the end of the document if the last
     // selection butts up against it.
     let end = text.len_chars();
-    let last_range = doc.selection(view.id).iter().last().unwrap();
+    let last_range = doc
+        .selection(view.id)
+        .iter()
+        .last()
+        .expect("selection should always have at least one range");
     if !last_range.is_empty() && last_range.head == end {
         let transaction = Transaction::change(
             doc.text(),
@@ -2152,8 +2200,10 @@ fn buffer_picker(cx: &mut Context) {
         is_current: bool,
     }
 
-    impl BufferMeta {
-        fn format(&self) -> Cow<str> {
+    impl ui::menu::Item for BufferMeta {
+        type Data = ();
+
+        fn label(&self, _data: &Self::Data) -> Spans {
             let path = self
                 .path
                 .as_deref()
@@ -2176,7 +2226,7 @@ fn buffer_picker(cx: &mut Context) {
             } else {
                 format!(" ({})", flags.join(""))
             };
-            Cow::Owned(format!("{} {}{}", self.id, path, flag))
+            format!("{} {}{}", self.id, path, flag).into()
         }
     }
 
@@ -2193,7 +2243,7 @@ fn buffer_picker(cx: &mut Context) {
             .iter()
             .map(|(_, doc)| new_meta(doc))
             .collect(),
-        BufferMeta::format,
+        (),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
         },
@@ -2208,6 +2258,38 @@ fn buffer_picker(cx: &mut Context) {
         },
     );
     cx.push_layer(Box::new(overlayed(picker)));
+}
+
+impl ui::menu::Item for MappableCommand {
+    type Data = ReverseKeymap;
+
+    fn label(&self, keymap: &Self::Data) -> Spans {
+        // formats key bindings, multiple bindings are comma separated,
+        // individual key presses are joined with `+`
+        let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
+            bindings
+                .iter()
+                .map(|bind| {
+                    bind.iter()
+                        .map(|key| key.to_string())
+                        .collect::<Vec<String>>()
+                        .join("+")
+                })
+                .collect::<Vec<String>>()
+                .join(", ")
+        };
+
+        match self {
+            MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String) {
+                Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
+                None => doc.as_str().into(),
+            },
+            MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
+                Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
+                None => (*doc).into(),
+            },
+        }
+    }
 }
 
 pub fn command_palette(cx: &mut Context) {
@@ -2226,46 +2308,17 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            // formats key bindings, multiple bindings are comma separated,
-            // individual key presses are joined with `+`
-            let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
-                bindings
-                    .iter()
-                    .map(|bind| {
-                        bind.iter()
-                            .map(|key| key.to_string())
-                            .collect::<Vec<String>>()
-                            .join("+")
-                    })
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            };
-
-            let picker = Picker::new(
-                commands,
-                move |command| match command {
-                    MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String)
-                    {
-                        Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
-                        None => doc.into(),
-                    },
-                    MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
-                        Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
-                        None => (*doc).into(),
-                    },
-                },
-                move |cx, command, _action| {
-                    let mut ctx = Context {
-                        register: None,
-                        count: std::num::NonZeroUsize::new(1),
-                        editor: cx.editor,
-                        callback: None,
-                        on_next_key_callback: None,
-                        jobs: cx.jobs,
-                    };
-                    command.execute(&mut ctx);
-                },
-            );
+            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
+                let mut ctx = Context {
+                    register: None,
+                    count: std::num::NonZeroUsize::new(1),
+                    editor: cx.editor,
+                    callback: None,
+                    on_next_key_callback: None,
+                    jobs: cx.jobs,
+                };
+                command.execute(&mut ctx);
+            });
             compositor.push(Box::new(overlayed(picker)));
         },
     ));
@@ -2328,6 +2381,7 @@ async fn make_format_callback(
             if doc.version() == doc_version {
                 doc.apply(&Transaction::from(format), view_id);
                 doc.append_changes_to_history(view_id);
+                doc.detect_indent_and_line_ending();
                 if let Modified::SetUnmodified = modified {
                     doc.reset_modified();
                 }
@@ -2444,8 +2498,8 @@ fn normal_mode(cx: &mut Context) {
                 graphemes::prev_grapheme_boundary(text, range.to()),
             )
         });
-        doc.set_selection(view.id, selection);
 
+        doc.set_selection(view.id, selection);
         doc.restore_cursor = false;
     }
 }
@@ -2929,7 +2983,7 @@ pub mod insert {
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
                 // consider to delete by indent level if all characters before `pos` are indent units.
                 let fragment = Cow::from(text.slice(line_start_pos..pos));
-                if !fragment.is_empty() && fragment.chars().all(|ch| ch.is_whitespace()) {
+                if !fragment.is_empty() && fragment.chars().all(|ch| ch == ' ' || ch == '\t') {
                     if text.get_char(pos.saturating_sub(1)) == Some('\t') {
                         // fast path, delete one char
                         (
@@ -4119,6 +4173,14 @@ fn goto_prev_comment(cx: &mut Context) {
     goto_ts_object_impl(cx, "comment", Direction::Backward)
 }
 
+fn goto_next_test(cx: &mut Context) {
+    goto_ts_object_impl(cx, "test", Direction::Forward)
+}
+
+fn goto_prev_test(cx: &mut Context) {
+    goto_ts_object_impl(cx, "test", Direction::Backward)
+}
+
 fn select_textobject_around(cx: &mut Context) {
     select_textobject(cx, textobject::TextObject::Around);
 }
@@ -4162,6 +4224,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'f' => textobject_treesitter("function", range),
                         'a' => textobject_treesitter("parameter", range),
                         'o' => textobject_treesitter("comment", range),
+                        't' => textobject_treesitter("test", range),
                         'p' => textobject::textobject_paragraph(text, range, objtype, count),
                         'm' => textobject::textobject_surround_closest(text, range, objtype, count),
                         // TODO: cancel new ranges if inconsistent surround matches across lines
@@ -4191,6 +4254,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
             ("f", "Function (tree-sitter)"),
             ("a", "Argument/parameter (tree-sitter)"),
             ("o", "Comment (tree-sitter)"),
+            ("t", "Test (tree-sitter)"),
             ("m", "Matching delimiter under cursor"),
             (" ", "... or any character acting as a pair"),
         ];
@@ -4649,8 +4713,6 @@ fn replay_macro(cx: &mut Context) {
         return;
     }
 
-    cx.editor.macro_replaying.push(reg);
-
     let keys: Vec<KeyEvent> = if let Some([keys_str]) = cx.editor.registers.read(reg) {
         match helix_view::input::parse_macro(keys_str) {
             Ok(keys) => keys,
@@ -4664,6 +4726,10 @@ fn replay_macro(cx: &mut Context) {
         return;
     };
 
+    // Once the macro has been fully validated, it's marked as being under replay
+    // to ensure we don't fall into infinite recursion.
+    cx.editor.macro_replaying.push(reg);
+
     let count = cx.count();
     cx.callback = Some(Box::new(move |compositor, cx| {
         for _ in 0..count {
@@ -4671,7 +4737,9 @@ fn replay_macro(cx: &mut Context) {
                 compositor.handle_event(crossterm::event::Event::Key(key.into()), cx);
             }
         }
+        // The macro under replay is cleared at the end of the callback, not in the
+        // macro replay context, or it will not correctly protect the user from
+        // replaying recursively.
+        cx.editor.macro_replaying.pop();
     }));
-
-    cx.editor.macro_replaying.pop();
 }

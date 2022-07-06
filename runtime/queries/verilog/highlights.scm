@@ -1,7 +1,7 @@
 ; Keywords
 
 [
-  ; block delimeters
+  ; block delimiters
   (module_keyword)
   "endmodule"
   "program"

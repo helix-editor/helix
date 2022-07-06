@@ -48,7 +48,7 @@ label = "peach"
 
 "ui.text" = { fg = "pink" }
 "ui.text.focus" = { fg = "white" }
-"ui.virtual" = { fg = "gray_0" }
+"ui.virtual.whitespace" = { fg = "gray_0" }
 
 "ui.selection" = { bg = "#540099" }
 "ui.selection.primary" = { bg = "#540099" }
