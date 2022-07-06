@@ -63,23 +63,37 @@ impl PluginManager {
     }
 
     pub fn handle_term_event(&mut self, term_event: Event) {
-        if let Event::Key(key) = term_event {
-            let mut key_event = KeyEvent::new();
-            key_event.code = format!("{:?}", key.code);
-            key_event.mod_shift = key
-                .modifiers
-                .contains(crossterm::event::KeyModifiers::SHIFT);
-            key_event.mod_ctrl = key
-                .modifiers
-                .contains(crossterm::event::KeyModifiers::CONTROL);
-            key_event.mod_alt = key.modifiers.contains(crossterm::event::KeyModifiers::ALT);
-            let bytes = key_event.write_to_bytes().unwrap();
+        match term_event {
+            Event::Key(key) => {
+                let mut key_event = KeyEvent::new();
+                key_event.code = format!("{:?}", key.code);
+                key_event.mod_shift = key
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::SHIFT);
+                key_event.mod_ctrl = key
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::CONTROL);
+                key_event.mod_alt = key.modifiers.contains(crossterm::event::KeyModifiers::ALT);
+                let bytes = key_event.write_to_bytes().unwrap();
 
-            let mut event = generated::messages::Event::new();
-            event.event_type = generated::messages::event::EventType::KEY_EVENT.into();
-            event.payload = bytes;
+                let mut event = generated::messages::Event::new();
+                event.event_type = generated::messages::event::EventType::KEY_EVENT.into();
+                event.payload = bytes;
 
-            self.handle_event(event);
+                self.handle_event(event);
+            }
+            Event::Mouse(_) => {
+                // TODO
+            }
+            Event::Resize(cols, rows) => self.on_resize(cols, rows),
+        }
+    }
+
+    pub fn on_resize(&mut self, cols: u16, rows: u16) {
+        for plugin in &mut self.plugins {
+            if let Err(e) = plugin.on_resize(cols, rows) {
+                log::error!("Plugin '{}' failed to handle resize: {}", plugin.name, e)
+            }
         }
     }
 
@@ -210,6 +224,15 @@ impl Plugin {
         self.call_handle_event_func(addr, bytes.len())?;
         self.deallocate_memory(addr, bytes)?;
 
+        Ok(())
+    }
+
+    fn on_resize(&mut self, cols: u16, rows: u16) -> Result<()> {
+        let on_resize_fn = self
+            .instance
+            .get_typed_func::<(u32, u32), (), _>(&mut self.store, "on_resize")?;
+        let params = (cols as u32, rows as u32);
+        on_resize_fn.call(&mut self.store, params)?;
         Ok(())
     }
 
