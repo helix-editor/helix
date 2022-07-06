@@ -151,8 +151,13 @@ impl Application {
                 compositor.push(Box::new(overlayed(picker)));
             } else {
                 let nr_of_files = args.files.len();
-                editor.open(first, Action::VerticalSplit)?;
-                // Because the line above already opens the first file, we can
+                let doc_id = editor.open(first, Action::VerticalSplit)?;
+                let view_id = editor.tree.focus;
+                let doc = editor.document_mut(doc_id).unwrap();
+                let pos =
+                    Selection::point(pos_at_coords(doc.text().slice(..), args.files[0].1, true));
+                doc.set_selection(view_id, pos);
+                // Because the lines above already open the first file, we can
                 // simply skip opening it a second time by using .skip(1) here.
                 for (file, pos) in args.files.into_iter().skip(1) {
                     if file.is_dir() {
