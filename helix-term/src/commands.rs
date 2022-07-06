@@ -4068,11 +4068,16 @@ fn goto_ts_object_impl(cx: &mut Context, object: &str, direction: Direction) {
             let merge = range.merge(new_range);
             Selection::single(merge.anchor, merge.head)
         } else {
-            if direction == Direction::Backward {
-                new_range.head =
+            new_range.head = match direction {
+                Direction::Forward => {
+                    movement::skip_while(text, new_range.head + 1, |x| x.is_whitespace())
+                        .unwrap_or(new_range.head)
+                }
+                Direction::Backward => {
                     movement::backwards_skip_while(text, new_range.head - 1, |x| x.is_whitespace())
-                        .unwrap_or(new_range.head);
-            }
+                        .unwrap_or(new_range.head)
+                }
+            };
             Selection::single(range.anchor, new_range.head)
         }
     } else {
