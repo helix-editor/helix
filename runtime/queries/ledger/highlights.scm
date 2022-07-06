@@ -11,7 +11,6 @@
 
 ((account) @variable.other.member)
 ((commodity) @text.literal)
-((tag) @tag)
 
 "include" @keyword.local.import
 
