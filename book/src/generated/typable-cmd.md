@@ -21,9 +21,9 @@
 | `:later`, `:lat` | Jump to a later point in edit history. Accepts a number of steps or a time span. |
 | `:write-quit`, `:wq`, `:x` | Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt) |
 | `:write-quit!`, `:wq!`, `:x!` | Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt) |
-| `:write-all`, `:wa` | Write changes from all views to disk. |
-| `:write-quit-all`, `:wqa`, `:xa` | Write changes from all views to disk and close all views. |
-| `:write-quit-all!`, `:wqa!`, `:xa!` | Write changes from all views to disk and close all views forcefully (ignoring unsaved changes). |
+| `:write-all`, `:wa` | Write changes from all buffers to disk. |
+| `:write-quit-all`, `:wqa`, `:xa` | Write changes from all buffers to disk and close all views. |
+| `:write-quit-all!`, `:wqa!`, `:xa!` | Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes). |
 | `:quit-all`, `:qa` | Close all views. |
 | `:quit-all!`, `:qa!` | Close all views forcefully (ignoring unsaved changes). |
 | `:cquit`, `:cq` | Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2). |
@@ -64,5 +64,7 @@
 | `:config-reload` | Refreshes helix's config. |
 | `:config-open` | Open the helix config.toml file. |
 | `:log-open` | Open the helix log file. |
+| `:insert-output` | Run shell command, inserting output after each selection. |
+| `:append-output` | Run shell command, appending output after each selection. |
 | `:pipe` | Pipe each selection to the shell command. |
 | `:run-shell-command`, `:sh` | Run a shell command |

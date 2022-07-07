@@ -53,10 +53,11 @@
 
 "ui.text" = { fg = "#7B91B3" }
 "ui.text.focus" = { fg = "#250E07", modifiers= ["bold"] }
-"ui.virtual" = "#A6B6CE"
+"ui.virtual.whitespace" = "#A6B6CE"
 
 "ui.selection" = { bg = "#540099" }
 # "ui.cursor.match"  # TODO might want to override this because dimmed is not widely supported
+"ui.menu" = { fg = "#7B91B3", bg = "#F3EAE9" }
 "ui.menu.selected" = { fg = "#D74E50", bg = "#F3EAE9" }
 
 "warning" = "#D4A520"

@@ -8,7 +8,7 @@ use crate::{
         prev_grapheme_boundary,
     },
     movement::Direction,
-    Assoc, ChangeSet, RopeSlice,
+    Assoc, ChangeSet, RopeGraphemes, RopeSlice,
 };
 use smallvec::{smallvec, SmallVec};
 use std::borrow::Cow;
@@ -338,6 +338,14 @@ impl Range {
     #[must_use]
     pub fn cursor_line(&self, text: RopeSlice) -> usize {
         text.char_to_line(self.cursor(text))
+    }
+
+    /// Returns true if this Range covers a single grapheme in the given text
+    pub fn is_single_grapheme(&self, doc: RopeSlice) -> bool {
+        let mut graphemes = RopeGraphemes::new(doc.slice(self.from()..self.to()));
+        let first = graphemes.next();
+        let second = graphemes.next();
+        first.is_some() && second.is_none()
     }
 }
 
@@ -830,7 +838,7 @@ mod test {
     }
 
     #[test]
-    fn test_graphem_aligned() {
+    fn test_grapheme_aligned() {
         let r = Rope::from_str("\r\nHi\r\n");
         let s = r.slice(..);
 

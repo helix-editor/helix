@@ -61,10 +61,11 @@ Helix also needs it's runtime files so make sure to copy/symlink the `runtime/` 
 config directory (for example `~/.config/helix/runtime` on Linux/macOS). This location can be overridden
 via the `HELIX_RUNTIME` environment variable.
 
-| OS        | command   |
-|-----------|-----------|
-|windows    |`xcopy runtime %AppData%/helix/runtime`|
-|linux/macos|`ln -s $PWD/runtime ~/.config/helix/runtime`
+| OS                | command   |
+|-------------------|-----------|
+|windows(cmd.exe)   |`xcopy runtime %AppData%/helix/runtime`     |
+|windows(powershell)|`xcopy runtime $Env:AppData\helix\runtime`  |
+|linux/macos        |`ln -s $PWD/runtime ~/.config/helix/runtime`|
 
 ## Finishing up the installation 
 
@@ -79,4 +80,4 @@ For more information on the information displayed in the healthcheck results ref
 
 Tree-sitter grammars must be fetched and compiled if not pre-packaged.
 Fetch grammars with `hx --grammar fetch` (requires `git`) and compile them
-with `hx --grammar build` (requires a C compiler).
+with `hx --grammar build` (requires a C++ compiler).

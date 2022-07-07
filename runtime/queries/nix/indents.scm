@@ -1,18 +1,25 @@
+
 [
-  ; "function",
-  (bind)
-  (assert)
-  (with)
+  ; Bracket like
   (let)
-  (if)
-
   (attrset)
-  (list)
-  (indented_string)
+  (rec_attrset)
+  (let_attrset)
   (parenthesized)
-] @indent
+  (list)
 
-[
-  "}"
-  "]"
-] @outdent
+  ; Binding
+  (bind)
+  (inherit)
+  (inherit_from)
+  (formal)
+
+  ; Binary operations
+  (binary)
+  (has_attr)
+  (select)
+  (app)
+
+  ; Conditional
+  (if)
+] @indent

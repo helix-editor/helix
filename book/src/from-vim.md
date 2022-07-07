@@ -7,6 +7,6 @@ going to act on (a word, a paragraph, a line, etc) is selected first and the
 action itself (delete, change, yank, etc) comes second. A cursor is simply a
 single width selection.
 
-See also Kakoune's [Migrating from Vim](https://github.com/mawww/kakoune/wiki/Migrating-from-Vim).
+See also Kakoune's [Migrating from Vim](https://github.com/mawww/kakoune/wiki/Migrating-from-Vim) and Helix's [Migrating from Vim](https://github.com/helix-editor/helix/wiki/Migrating-from-Vim).
 
-> TODO: Mention texobjects, surround, registers
+> TODO: Mention textobjects, surround, registers

@@ -6,7 +6,7 @@
 "type" = { fg = "type" }
 "type.builtin" = { fg = "type" }
 "type.enum.variant" = { fg = "constant" }
-"constructor" = { fg = "constant" }
+"constructor" = { fg = "type" }
 "variable.other.member" = { fg = "variable" }
 
 "keyword" = { fg = "blue2" }
@@ -78,7 +78,7 @@
 "ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "white" }
 
-"ui.virtual" = { fg = "dark_gray" }
+"ui.virtual.whitespace" = { fg = "dark_gray" }
 "ui.virtual.ruler" = { bg = "borders" }
 
 "warning" = { fg = "gold2" }

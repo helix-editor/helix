@@ -27,8 +27,61 @@ impl Default for CursorKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Margin {
-    pub vertical: u16,
-    pub horizontal: u16,
+    pub left: u16,
+    pub right: u16,
+    pub top: u16,
+    pub bottom: u16,
+}
+
+impl Margin {
+    pub fn none() -> Self {
+        Self {
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+        }
+    }
+
+    /// Set uniform margin for all sides.
+    pub fn all(value: u16) -> Self {
+        Self {
+            left: value,
+            right: value,
+            top: value,
+            bottom: value,
+        }
+    }
+
+    /// Set the margin of left and right sides to specified value.
+    pub fn horizontal(value: u16) -> Self {
+        Self {
+            left: value,
+            right: value,
+            top: 0,
+            bottom: 0,
+        }
+    }
+
+    /// Set the margin of top and bottom sides to specified value.
+    pub fn vertical(value: u16) -> Self {
+        Self {
+            left: 0,
+            right: 0,
+            top: value,
+            bottom: value,
+        }
+    }
+
+    /// Get the total width of the margin (left + right)
+    pub fn width(&self) -> u16 {
+        self.left + self.right
+    }
+
+    /// Get the total height of the margin (top + bottom)
+    pub fn height(&self) -> u16 {
+        self.top + self.bottom
+    }
 }
 
 /// A simple rectangle used in the computation of the layout and to give widgets an hint about the
@@ -141,14 +194,14 @@ impl Rect {
     }
 
     pub fn inner(self, margin: &Margin) -> Rect {
-        if self.width < 2 * margin.horizontal || self.height < 2 * margin.vertical {
+        if self.width < margin.width() || self.height < margin.height() {
             Rect::default()
         } else {
             Rect {
-                x: self.x + margin.horizontal,
-                y: self.y + margin.vertical,
-                width: self.width - 2 * margin.horizontal,
-                height: self.height - 2 * margin.vertical,
+                x: self.x + margin.left,
+                y: self.y + margin.top,
+                width: self.width - margin.width(),
+                height: self.height - margin.height(),
             }
         }
     }

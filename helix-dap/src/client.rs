@@ -34,7 +34,7 @@ pub struct Client {
     pub caps: Option<DebuggerCapabilities>,
     // thread_id -> frames
     pub stack_frames: HashMap<ThreadId, Vec<StackFrame>>,
-    pub thread_states: HashMap<ThreadId, String>,
+    pub thread_states: ThreadStates,
     pub thread_id: Option<ThreadId>,
     /// Currently active frame for the current thread.
     pub active_frame: Option<usize>,

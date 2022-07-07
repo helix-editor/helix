@@ -17,12 +17,11 @@ helix-core = { version = "0.6", path = "../helix-core" }
 anyhow = "1.0"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
-jsonrpc-core = { version = "18.0", default-features = false } # don't pull in all of futures
 log = "0.4"
 lsp-types = { version = "0.93", features = ["proposed"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-tokio = { version = "1.18", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "sync"] }
-tokio-stream = "0.1.8"
+tokio = { version = "1.19", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "sync"] }
+tokio-stream = "0.1.9"
 which = "4.2"
