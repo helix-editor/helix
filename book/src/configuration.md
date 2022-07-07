@@ -38,7 +38,7 @@ hidden = false
 | `shell` | Shell to use when running external commands. | Unix: `["sh", "-c"]`<br/>Windows: `["cmd", "/C"]` |
 | `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers. | `absolute` |
 | `cursorline` | Highlight all lines with a cursor. | `false` |
-| `gutters` | Gutters to display: Available are `diagnostics` and `line-numbers`, note that `diagnostics` also includes other features like breakpoints | `["diagnostics", "line-numbers"]` |
+| `gutters` | Gutters to display: Available are `diagnostics` and `line-numbers` and `padding`, note that `diagnostics` also includes other features like breakpoints | `["diagnostics", "line-numbers", "padding"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
 | `auto-format` | Enable automatic formatting on save. | `true` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |

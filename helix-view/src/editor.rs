@@ -264,6 +264,8 @@ pub enum GutterType {
     Diagnostics,
     /// Show line numbers
     LineNumbers,
+    /// Show one blank space
+    Padding,
 }
 
 impl std::str::FromStr for GutterType {
@@ -400,7 +402,11 @@ impl Default for Config {
             },
             line_number: LineNumber::Absolute,
             cursorline: false,
-            gutters: vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            gutters: vec![
+                GutterType::Diagnostics,
+                GutterType::LineNumbers,
+                GutterType::Padding,
+            ],
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
