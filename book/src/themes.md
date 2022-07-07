@@ -91,7 +91,7 @@ Less common modifiers might not be supported by your terminal emulator.
 
 ### Scopes
 
-The following is a list of scopes available to use for styling.
+The following is a list of scopes available to use for styling. It's also available as toml template [below](#template), so you don't have to type in all the scopes yourself.
 
 #### Syntax highlighting
 
@@ -250,5 +250,158 @@ These scopes are used for theming the editor interface.
 | `diagnostic.info`         | Diagnostics info (editing area)                |
 | `diagnostic.warning`      | Diagnostics warning (editing area)             |
 | `diagnostic.error`        | Diagnostics error (editing area)               |
+
+#### Template
+```toml
+# Author :
+
+# Syntax Highlighting
+constructor =
+label =
+tag =
+operator =
+namespace =
+
+type = 
+"type.builtin" = 
+
+constant = 
+"constant.builtin" = 
+"constant.builtin.boolean" =
+"constant.character" =
+"constant.character.escape" =
+"constant.numeric" =
+"constant.numeric.integer" =
+"constant.numeric.float" =
+
+string =
+"string.regexp" =
+"string.special" =
+"string.special.path" =
+"string.special.url" =
+"string.special.symbol" =
+
+comment =
+"comment.line" =
+"comment.block" =
+"comment.block.documentation" =
+
+variable =
+"variable.builtin" =
+"variable.parameter" =
+"variable.other" =
+"variable.other.member" =
+"variable.function" =
+
+punctuation =
+"punctuation.delimiter" =
+"punctuation.bracket" =
+
+keyword =
+"keyword.control" =
+"keyword.control.conditional" =
+"keyword.control.repeat" =
+"keyword.control.import" =
+"keyword.control.return" =
+"keyword.control.exception" =
+"keyword.operator" =
+"keyword.directive" =
+"keyword.function" =
+"keyword.storage" =
+"keyword.storage.type" =
+"keyword.storage.modifier" =
+
+function =
+"function.builtin" =
+"function.method" =
+"function.macro" =
+"function.special" =
+
+markup =
+"markup.heading" =
+"markup.heading.marker" =
+"markup.heading.1" =
+"markup.heading.2" =
+"markup.heading.3" =
+"markup.heading.4" =
+"markup.heading.5" =
+"markup.heading.6" =
+"markup.list" =
+"markup.list.unnumbered" =
+"markup.list.numbered" =
+"markup.bold" =
+"markup.italic" =
+"markup.link" =
+"markup.link.url" =
+"markup.link.label" =
+"markup.link.text" =
+"markup.quote" =
+"markup.raw" =
+"markup.raw.inline" =
+"markup.raw.block" =
+
+diff =
+"diff.plus" =
+"diff.minus" =
+"diff.delta" =
+"diff.delta.moved" =
+
+# Interface
+markup =
+"markup.normal" =
+"markup.normal.completion" =
+"markup.normal.hover" =
+"markup.heading" =
+"markup.heading.completion" =
+"markup.heading.hover" =
+"markup.raw" =
+"markup.raw.inline" =
+"markup.raw.inline.completion" =
+"markup.raw.inline.completion.hover" =
+
+"ui.background" =
+"ui.background.separator" =
+"ui.cursor" =
+"ui.cursor.insert" =
+"ui.cursor.select" =
+"ui.cursor.match" =
+"ui.cursor.primary" =
+"ui.linenr" =
+"ui.linenr.selected" =
+"ui.statusline" =
+"ui.statusline.inactive" =
+"ui.statusline.normal" =
+"ui.statusline.insert" =
+"ui.statusline.select" =
+"ui.popup" =
+"ui.popup.info" =
+"ui.window" =
+"ui.help" =
+"ui.text" =
+"ui.text.focus" =
+"ui.text.info" =
+"ui.virtual.ruler" =
+"ui.virtual.whitespace" =
+"ui.virtual.indent-guide" =
+"ui.menu" =
+"ui.menu.selected" =
+"ui.menu.scroll" =
+"ui.selection" =
+"ui.selection.primary" =
+"ui.cursorline.primary" =
+"ui.cursorline.secondary" =
+"warning" =
+"error" =
+"info" =
+"hint" =
+"diagnostic" =
+"diagnostic.hint" =
+"diagnostic.info" =
+"diagnostic.warning" =
+"diagnostic.error" =
+
+
+[palette]
+```
 
 [editor-section]: ./configuration.md#editor-section
