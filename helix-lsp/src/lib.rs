@@ -99,7 +99,7 @@ pub mod util {
         offset_encoding: OffsetEncoding,
     ) -> Option<usize> {
         let pos_line = pos.line as usize;
-        if pos_line > doc.len_lines() - 1 {
+        if pos_line > doc.len_lines() {
             return None;
         }
 
