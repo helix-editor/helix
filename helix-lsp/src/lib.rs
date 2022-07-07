@@ -484,12 +484,12 @@ mod tests {
 
         test_case!("", (0, 0) => Some(0));
         test_case!("", (0, 1) => None);
-        test_case!("", (1, 0) => None);
+        test_case!("", (1, 0) => Some(0));
         test_case!("\n\n", (0, 0) => Some(0));
         test_case!("\n\n", (1, 0) => Some(1));
         test_case!("\n\n", (1, 1) => Some(2));
         test_case!("\n\n", (2, 0) => Some(2));
-        test_case!("\n\n", (3, 0) => None);
+        test_case!("\n\n", (3, 0) => Some(2));
         test_case!("test\n\n\n\ncase", (4, 3) => Some(11));
         test_case!("test\n\n\n\ncase", (4, 4) => Some(12));
         test_case!("test\n\n\n\ncase", (4, 5) => None);
