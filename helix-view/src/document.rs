@@ -99,7 +99,7 @@ pub struct Document {
     pub line_ending: LineEnding,
 
     syntax: Option<Syntax>,
-    /// Corresponding language scope name. Usually `source.<lang>`.
+    /// Corresponding language configuration as deserialized from languages.toml
     pub(crate) language: Option<Arc<LanguageConfiguration>>,
 
     /// Pending changes since last history commit.
