@@ -854,12 +854,12 @@ impl Document {
     /// `language-server` configuration, or the document language if no
     /// `language-id` has been specified.
     pub fn language_id(&self) -> Option<&str> {
-        self.language_config()?
+        let config = self.language_config()?;
+        config
             .language_server
-            .as_ref()?
-            .language_id
-            .as_deref()
-            .or_else(|| Some(self.language()?.rsplit_once('.')?.1))
+            .as_ref()
+            .and_then(|server| server.language_id.as_deref())
+            .or(Some(&config.language_id))
     }
 
     /// Corresponding [`LanguageConfiguration`].
