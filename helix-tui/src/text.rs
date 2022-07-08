@@ -436,6 +436,19 @@ impl<'a> From<Vec<Spans<'a>>> for Text<'a> {
     }
 }
 
+impl<'a> From<Text<'a>> for String {
+    fn from(text: Text<'a>) -> String {
+        let lines: Vec<String> = text.lines.iter().map(String::from).collect();
+        lines.join("\n")
+    }
+}
+
+impl<'a> From<&Text<'a>> for String {
+    fn from(text: &Text<'a>) -> String {
+        let lines: Vec<String> = text.lines.iter().map(String::from).collect();
+        lines.join("\n")
+    }
+}
 impl<'a> IntoIterator for Text<'a> {
     type Item = Spans<'a>;
     type IntoIter = std::vec::IntoIter<Self::Item>;

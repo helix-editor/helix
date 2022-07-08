@@ -126,6 +126,14 @@ impl<'a> Row<'a> {
     fn total_height(&self) -> u16 {
         self.height.saturating_add(self.bottom_margin)
     }
+
+    /// Returns the contents of cells as plain text, without styles and colors.
+    pub fn cell_text(&self) -> Vec<String> {
+        self.cells
+            .iter()
+            .map(|cell| String::from(&cell.content))
+            .collect()
+    }
 }
 
 /// A widget to display data in formatted columns.
@@ -477,6 +485,9 @@ impl<'a> Table<'a> {
             };
             let mut col = table_row_start_col;
             for (width, cell) in columns_widths.iter().zip(table_row.cells.iter()) {
+                if is_selected {
+                    buf.set_style(table_row_area, self.highlight_style);
+                }
                 render_cell(
                     buf,
                     cell,
@@ -488,9 +499,6 @@ impl<'a> Table<'a> {
                     },
                 );
                 col += *width + self.column_spacing;
-            }
-            if is_selected {
-                buf.set_style(table_row_area, self.highlight_style);
             }
         }
     }
