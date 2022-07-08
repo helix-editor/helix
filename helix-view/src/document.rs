@@ -2,7 +2,6 @@ use anyhow::{anyhow, bail, Context, Error};
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
-use helix_core::syntax::FormatterType;
 use helix_core::Range;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
@@ -400,12 +399,9 @@ impl Document {
 
     /// The same as [`format`], but only returns formatting changes if auto-formatting
     /// is configured.
-    pub fn auto_format(
-        &mut self,
-        view_id: ViewId,
-    ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+    pub fn auto_format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         if self.language_config()?.auto_format {
-            self.format(view_id)
+            self.format()
         } else {
             None
         }
@@ -415,97 +411,50 @@ impl Document {
     /// to format it nicely.
     // We can't use anyhow::Result here since the output of the future has to be
     // clonable to be used as shared future. So use a custom error type.
-    pub fn format(
-        &mut self,
-        view_id: ViewId,
-    ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+    pub fn format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         if let Some(formatter) = self.language_config().and_then(|c| c.formatter.clone()) {
             use std::process::Stdio;
-            match formatter.type_ {
-                FormatterType::Stdio => {
-                    let text = self.text().clone();
-                    let mut process = tokio::process::Command::new(&formatter.command);
-                    process
-                        .args(&formatter.args)
-                        .stdin(Stdio::piped())
-                        .stdout(Stdio::piped())
-                        .stderr(Stdio::piped());
+            let text = self.text().clone();
+            let mut process = tokio::process::Command::new(&formatter.command);
+            process
+                .args(&formatter.args)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped());
 
-                    let formatting_future = async move {
-                        let mut process =
-                            process
-                                .spawn()
-                                .map_err(|e| FormatterError::SpawningFailed {
-                                    command: formatter.command.clone(),
-                                    error: e.kind(),
-                                })?;
-                        {
-                            let mut stdin =
-                                process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
-                            stdin
-                                .write_all(&text.bytes().collect::<Vec<u8>>())
-                                .await
-                                .map_err(|_| FormatterError::BrokenStdin)?;
-                        }
-
-                        let output = process
-                            .wait_with_output()
-                            .await
-                            .map_err(|_| FormatterError::WaitForOutputFailed)?;
-
-                        if !output.stderr.is_empty() {
-                            return Err(FormatterError::Stderr(
-                                String::from_utf8_lossy(&output.stderr).to_string(),
-                            ));
-                        }
-
-                        let str = String::from_utf8(output.stdout)
-                            .map_err(|_| FormatterError::InvalidUtf8Output)?;
-
-                        Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
-                    };
-                    return Some(formatting_future.boxed());
+            let formatting_future = async move {
+                let mut process = process
+                    .spawn()
+                    .map_err(|e| FormatterError::SpawningFailed {
+                        command: formatter.command.clone(),
+                        error: e.kind(),
+                    })?;
+                {
+                    let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
+                    stdin
+                        .write_all(&text.bytes().collect::<Vec<u8>>())
+                        .await
+                        .map_err(|_| FormatterError::BrokenStdin)?;
                 }
-                FormatterType::File => {
-                    let path = self.path()?.clone();
-                    let process = std::process::Command::new(&formatter.command)
-                        .args(&formatter.args)
-                        .arg(path.to_str().unwrap_or(""))
-                        .stderr(Stdio::piped())
-                        .spawn();
 
-                    // File type formatters are run synchronously since the doc
-                    // has to be reloaded from disk rather than being resolved
-                    // through a transaction.
-                    let format_and_reload = || -> Result<(), FormatterError> {
-                        let process = process.map_err(|e| FormatterError::SpawningFailed {
-                            command: formatter.command.clone(),
-                            error: e.kind(),
-                        })?;
-                        let output = process
-                            .wait_with_output()
-                            .map_err(|_| FormatterError::WaitForOutputFailed)?;
+                let output = process
+                    .wait_with_output()
+                    .await
+                    .map_err(|_| FormatterError::WaitForOutputFailed)?;
 
-                        if !output.stderr.is_empty() {
-                            return Err(FormatterError::Stderr(
-                                String::from_utf8_lossy(&output.stderr).to_string(),
-                            ));
-                        } else if let Err(e) = self.reload(view_id) {
-                            return Err(FormatterError::DiskReloadError(e.to_string()));
-                        }
-
-                        Ok(())
-                    };
-
-                    let format_result = format_and_reload();
-                    let text = self.text().clone();
-
-                    // Generate an empty transaction as a placeholder
-                    let future = async move { format_result.map(|_| Transaction::new(&text)) };
-                    return Some(future.boxed());
+                if !output.stderr.is_empty() {
+                    return Err(FormatterError::Stderr(
+                        String::from_utf8_lossy(&output.stderr).to_string(),
+                    ));
                 }
+
+                let str = String::from_utf8(output.stdout)
+                    .map_err(|_| FormatterError::InvalidUtf8Output)?;
+
+                Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
             };
-        }
+            return Some(formatting_future.boxed());
+        };
 
         let language_server = self.language_server()?;
         let text = self.text.clone();
