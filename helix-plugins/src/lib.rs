@@ -1,7 +1,3 @@
-#[rustfmt::skip]
-#[allow(clippy::all)]
-mod generated;
-
 use anyhow::{anyhow, Error, Result};
 use crossterm::event::Event;
 use helix_loader::plugin_dir;
@@ -10,9 +6,6 @@ use std::fs::DirEntry;
 use std::path::PathBuf;
 use wasmtime::{AsContextMut, Caller, Engine, Extern, Instance, Linker, Module, Store};
 use wasmtime_wasi::{add_to_linker, WasiCtx, WasiCtxBuilder};
-
-use generated::messages::KeyEvent;
-use protobuf::Message;
 
 /// References
 /// - https://zellij.dev/documentation/plugin-rust.html
@@ -63,47 +56,23 @@ impl PluginManager {
     }
 
     pub fn handle_term_event(&mut self, term_event: Event) {
-        match term_event {
-            Event::Key(key) => {
-                let mut key_event = KeyEvent::new();
-                key_event.code = format!("{:?}", key.code);
-                key_event.mod_shift = key
-                    .modifiers
-                    .contains(crossterm::event::KeyModifiers::SHIFT);
-                key_event.mod_ctrl = key
-                    .modifiers
-                    .contains(crossterm::event::KeyModifiers::CONTROL);
-                key_event.mod_alt = key.modifiers.contains(crossterm::event::KeyModifiers::ALT);
-                let bytes = key_event.write_to_bytes().unwrap();
-
-                let mut event = generated::messages::Event::new();
-                event.event_type = generated::messages::event::EventType::KEY_EVENT.into();
-                event.payload = bytes;
-
-                self.handle_event(event);
-            }
-            Event::Mouse(_) => {
-                // TODO
-            }
-            Event::Resize(cols, rows) => self.on_resize(cols, rows),
-        }
-    }
-
-    pub fn on_resize(&mut self, cols: u16, rows: u16) {
         for plugin in &mut self.plugins {
-            if let Err(e) = plugin.on_resize(cols, rows) {
-                log::error!("Plugin '{}' failed to handle resize: {}", plugin.name, e)
-            }
-        }
-    }
+            let result = match term_event {
+                Event::Key(event) => {
+                    let event_json = serde_json::to_string(&event).unwrap();
+                    plugin.on_key_press(event_json)
+                }
+                Event::Mouse(event) => {
+                    let event_json = serde_json::to_string(&event).unwrap();
+                    plugin.on_mouse_event(event_json)
+                }
+                Event::Resize(cols, rows) => plugin.on_resize(cols, rows),
+            };
 
-    pub fn handle_event(&mut self, event: generated::messages::Event) {
-        for plugin in &mut self.plugins {
-            if let Err(e) = plugin.handle_event(event.clone()) {
+            if let Err(e) = result {
                 log::error!(
-                    "Plugin '{}' failed to handle event '{}': {}",
+                    "Plugin '{}' failed to handle term event: {}",
                     plugin.name,
-                    event,
                     e
                 )
             }
@@ -183,11 +152,7 @@ impl TryFrom<Result<DirEntry, std::io::Error>> for Plugin {
 
 impl Plugin {
     fn start(&mut self) -> Result<()> {
-        let mut event = generated::messages::Event::new();
-        event.event_type = generated::messages::event::EventType::PLUGIN_STARTED.into();
-        event.payload = Vec::new();
-
-        self.handle_event(event)?;
+        self.on_start()?;
 
         Ok(())
     }
@@ -216,13 +181,49 @@ impl Plugin {
         Ok((name, wasm_bytes))
     }
 
-    fn handle_event(&mut self, event: generated::messages::Event) -> Result<()> {
-        let bytes = event.write_to_bytes()?;
-
+    fn on_key_press(&mut self, key_press_event: String) -> Result<()> {
+        let bytes = key_press_event.into_bytes();
+        let len = bytes.len();
         let addr = self.allocate_memory(&bytes)?;
+
         self.copy_data_to_memory(&bytes, addr)?;
-        self.call_handle_event_func(addr, bytes.len())?;
+
+        let on_key_press = self
+            .instance
+            .get_typed_func::<(u32, u32), (), _>(&mut self.store, "on_key_press")?;
+
+        let params = (addr as u32, len as u32);
+        on_key_press.call(&mut self.store, params)?;
+
         self.deallocate_memory(addr, bytes)?;
+
+        Ok(())
+    }
+
+    fn on_mouse_event(&mut self, mouse_event: String) -> Result<()> {
+        let bytes = mouse_event.into_bytes();
+        let len = bytes.len();
+        let addr = self.allocate_memory(&bytes)?;
+
+        self.copy_data_to_memory(&bytes, addr)?;
+
+        let on_key_press = self
+            .instance
+            .get_typed_func::<(u32, u32), (), _>(&mut self.store, "on_mouse_event")?;
+
+        let params = (addr as u32, len as u32);
+        on_key_press.call(&mut self.store, params)?;
+
+        self.deallocate_memory(addr, bytes)?;
+
+        Ok(())
+    }
+
+    fn on_start(&mut self) -> Result<()> {
+        let on_start = self
+            .instance
+            .get_typed_func::<(), (), _>(&mut self.store, "on_start")?;
+        on_start.call(&mut self.store, ())?;
 
         Ok(())
     }
@@ -242,15 +243,6 @@ impl Plugin {
             .get_typed_func::<(u32, u32), (), _>(&mut self.store, "deallocate")?;
         let params = (addr, bytes.len() as u32);
         dealloc_func.call(&mut self.store, params)?;
-        Ok(())
-    }
-
-    fn call_handle_event_func(&mut self, addr: u32, len: usize) -> Result<(), Error> {
-        let func = self
-            .instance
-            .get_typed_func::<(u32, u32), (), _>(&mut self.store, "handle_event")?;
-        let params = (addr as u32, len as u32);
-        func.call(&mut self.store, params)?;
         Ok(())
     }
 
