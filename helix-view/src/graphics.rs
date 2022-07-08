@@ -327,17 +327,27 @@ bitflags! {
     ///
     /// let m = Modifier::BOLD | Modifier::ITALIC;
     /// ```
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "kebab-case"))]
     pub struct Modifier: u16 {
-        const BOLD              = 0b0000_0000_0001;
-        const DIM               = 0b0000_0000_0010;
-        const ITALIC            = 0b0000_0000_0100;
-        const UNDERLINED        = 0b0000_0000_1000;
-        const SLOW_BLINK        = 0b0000_0001_0000;
-        const RAPID_BLINK       = 0b0000_0010_0000;
-        const REVERSED          = 0b0000_0100_0000;
-        const HIDDEN            = 0b0000_1000_0000;
-        const CROSSED_OUT       = 0b0001_0000_0000;
+        const BOLD              = 0b0000_0000_0000_0001;
+        const DIM               = 0b0000_0000_0000_0010;
+        const ITALIC            = 0b0000_0000_0000_0100;
+        const UNDERLINED        = 0b0000_0000_0000_1000;
+        const SLOW_BLINK        = 0b0000_0000_0001_0000;
+        const RAPID_BLINK       = 0b0000_0000_0010_0000;
+        const REVERSED          = 0b0000_0000_0100_0000;
+        const HIDDEN            = 0b0000_0000_1000_0000;
+        const CROSSED_OUT       = 0b0000_0001_0000_0000;
+        const UNDERCURLED       = 0b0000_0010_0000_0000;
+        const UNDERDOTTED       = 0b0000_0100_0000_0000;
+        const UNDERDASHED       = 0b0000_1000_0000_0000;
+        const DOUBLE_UNDERLINED = 0b0001_0000_0000_0000;
+
+        const ANY_UNDERLINE     = Self::UNDERLINED.bits
+                                    | Self::UNDERCURLED.bits
+                                    | Self::UNDERDOTTED.bits
+                                    | Self::UNDERDASHED.bits
+                                    | Self::DOUBLE_UNDERLINED.bits;
     }
 }
 
@@ -355,6 +365,10 @@ impl FromStr for Modifier {
             "reversed" => Ok(Self::REVERSED),
             "hidden" => Ok(Self::HIDDEN),
             "crossed_out" => Ok(Self::CROSSED_OUT),
+            "undercurled" => Ok(Self::UNDERCURLED),
+            "underdotted" => Ok(Self::UNDERDOTTED),
+            "underdashed" => Ok(Self::UNDERDASHED),
+            "double_underlined" => Ok(Self::DOUBLE_UNDERLINED),
             _ => Err("Invalid modifier"),
         }
     }

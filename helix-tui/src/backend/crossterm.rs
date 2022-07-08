@@ -153,7 +153,7 @@ impl ModifierDiff {
         if removed.contains(Modifier::ITALIC) {
             map_error(queue!(w, SetAttribute(CAttribute::NoItalic)))?;
         }
-        if removed.contains(Modifier::UNDERLINED) {
+        if removed.intersects(Modifier::ANY_UNDERLINE) {
             map_error(queue!(w, SetAttribute(CAttribute::NoUnderline)))?;
         }
         if removed.contains(Modifier::DIM) {
@@ -178,6 +178,18 @@ impl ModifierDiff {
         }
         if added.contains(Modifier::UNDERLINED) {
             map_error(queue!(w, SetAttribute(CAttribute::Underlined)))?;
+        }
+        if added.contains(Modifier::UNDERCURLED) {
+            map_error(queue!(w, SetAttribute(CAttribute::Undercurled)))?;
+        }
+        if added.contains(Modifier::UNDERDOTTED) {
+            map_error(queue!(w, SetAttribute(CAttribute::Underdotted)))?;
+        }
+        if added.contains(Modifier::UNDERDASHED) {
+            map_error(queue!(w, SetAttribute(CAttribute::Underdashed)))?;
+        }
+        if added.contains(Modifier::DOUBLE_UNDERLINED) {
+            map_error(queue!(w, SetAttribute(CAttribute::DoubleUnderlined)))?;
         }
         if added.contains(Modifier::DIM) {
             map_error(queue!(w, SetAttribute(CAttribute::Dim)))?;
