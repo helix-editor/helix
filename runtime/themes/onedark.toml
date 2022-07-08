@@ -39,7 +39,7 @@
 "diff.delta" = "gold"
 "diff.minus" = "red"
 
-diagnostic = { modifiers = ["underlined"] }
+diagnostic = { modifiers = ["undercurled"] }
 "info" = { fg = "blue", modifiers = ["bold"] }
 "hint" = { fg = "green", modifiers = ["bold"] }
 "warning" = { fg = "yellow", modifiers = ["bold"] }
