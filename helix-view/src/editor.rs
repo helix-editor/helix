@@ -789,6 +789,7 @@ impl Editor {
                 }
 
                 self.replace_document_in_view(view_id, id);
+                self.refresh_file_name_register();
 
                 return;
             }
@@ -796,6 +797,7 @@ impl Editor {
                 let view_id = view!(self).id;
                 let doc = self.documents.get_mut(&id).unwrap();
                 doc.ensure_view_init(view_id);
+                self.refresh_file_name_register();
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
@@ -815,6 +817,17 @@ impl Editor {
         }
 
         self._refresh();
+        self.refresh_file_name_register();
+    }
+
+    fn refresh_file_name_register(&mut self) {
+        self.registers.write(
+            '%',
+            vec![current_ref!(self)
+                .1
+                .path()
+                .map_or("".into(), |p| p.as_os_str().to_string_lossy().into())],
+        );
     }
 
     /// Generate an id for a new document and register it.
@@ -956,38 +969,47 @@ impl Editor {
 
     pub fn focus_next(&mut self) {
         self.tree.focus_next();
+        self.refresh_file_name_register();
     }
 
     pub fn focus_right(&mut self) {
         self.tree.focus_direction(tree::Direction::Right);
+        self.refresh_file_name_register();
     }
 
     pub fn focus_left(&mut self) {
         self.tree.focus_direction(tree::Direction::Left);
+        self.refresh_file_name_register();
     }
 
     pub fn focus_up(&mut self) {
         self.tree.focus_direction(tree::Direction::Up);
+        self.refresh_file_name_register();
     }
 
     pub fn focus_down(&mut self) {
         self.tree.focus_direction(tree::Direction::Down);
+        self.refresh_file_name_register();
     }
 
     pub fn swap_right(&mut self) {
         self.tree.swap_split_in_direction(tree::Direction::Right);
+        self.refresh_file_name_register();
     }
 
     pub fn swap_left(&mut self) {
         self.tree.swap_split_in_direction(tree::Direction::Left);
+        self.refresh_file_name_register();
     }
 
     pub fn swap_up(&mut self) {
         self.tree.swap_split_in_direction(tree::Direction::Up);
+        self.refresh_file_name_register();
     }
 
     pub fn swap_down(&mut self) {
         self.tree.swap_split_in_direction(tree::Direction::Down);
+        self.refresh_file_name_register();
     }
 
     pub fn transpose_view(&mut self) {
