@@ -125,7 +125,7 @@ impl Application {
 
         let mut compositor = Compositor::new().context("build compositor")?;
 
-        let mut plugin_manager = PluginManager::new();
+        let mut plugin_manager = PluginManager::default();
         match plugin_manager.load_plugins() {
             Ok(_) => plugin_manager.start_plugins(),
             Err(e) => log::error!("Failed to load plugins: {}", e),

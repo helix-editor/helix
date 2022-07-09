@@ -16,6 +16,12 @@ pub struct PluginManager {
     plugins: Vec<Plugin>,
 }
 
+impl Default for PluginManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PluginManager {
     pub fn new() -> Self {
         PluginManager {
@@ -163,15 +169,17 @@ impl Plugin {
         let entry: DirEntry = entry?;
 
         let path: PathBuf = entry.path();
-        let extension: &OsStr = path.extension().ok_or(Error::msg(format!(
-            "Plugin at path '{}' did not have an extension",
-            path.to_string_lossy().to_string()
-        )))?;
+        let extension: &OsStr = path.extension().ok_or_else(|| {
+            Error::msg(format!(
+                "Plugin at path '{}' did not have an extension",
+                path.to_string_lossy()
+            ))
+        })?;
 
         if extension != "wasm" {
             return Err(Error::msg(format!(
                 "Plugin at path '{}' did not have 'wasm' extension",
-                path.to_string_lossy().to_string()
+                path.to_string_lossy()
             )));
         }
 
@@ -246,7 +254,7 @@ impl Plugin {
         Ok(())
     }
 
-    fn copy_data_to_memory(&mut self, bytes: &Vec<u8>, addr: u32) -> Result<(), Error> {
+    fn copy_data_to_memory(&mut self, bytes: &[u8], addr: u32) -> Result<(), Error> {
         let memory = self
             .instance
             .get_memory(&mut self.store, "memory")
