@@ -143,7 +143,8 @@
 <a href="https://docs.helix-editor.com/master">https://docs.helix-editor.com/master</a>.</p>
 <p>See the <a href="./usage.html">usage</a> section for a quick overview of the editor, <a href="./keymap.html">keymap</a>
 section for all available keybindings and the <a href="./configuration.html">configuration</a> section
-for defining custom keybindings, setting themes, etc.</p>
+for defining custom keybindings, setting themes, etc.
+For everything else (e.g., how to install supported language servers), see the <a href="https://github.com/helix-editor/helix/wiki">Helix Wiki</a>.</p>
 <p>Refer the <a href="https://github.com/helix-editor/helix/wiki/FAQ">FAQ</a> for common questions.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
 <p>We provide pre-built binaries on the <a href="https://github.com/helix-editor/helix/releases">GitHub Releases page</a>.</p>
@@ -193,10 +194,13 @@ via the <code>HELIX_RUNTIME</code> environment variable.</p>
 <pre><code>hx --health
 </code></pre>
 <p>For more information on the information displayed in the healthcheck results refer to <a href="https://github.com/helix-editor/helix/wiki/Healthcheck">Healthcheck</a>.</p>
-<h2 id="building-tree-sitter-grammars"><a class="header" href="#building-tree-sitter-grammars">Building tree-sitter grammars</a></h2>
+<h3 id="building-tree-sitter-grammars"><a class="header" href="#building-tree-sitter-grammars">Building tree-sitter grammars</a></h3>
 <p>Tree-sitter grammars must be fetched and compiled if not pre-packaged.
 Fetch grammars with <code>hx --grammar fetch</code> (requires <code>git</code>) and compile them
 with <code>hx --grammar build</code> (requires a C++ compiler).</p>
+<h3 id="installing-language-servers"><a class="header" href="#installing-language-servers">Installing language servers</a></h3>
+<p>Language servers can optionally be installed if you want their features (auto-complete, diagnostics etc.).
+Follow the <a href="https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers">instructions on the wiki page</a> to add your language servers of choice.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="usage"><a class="header" href="#usage">Usage</a></h1>
 <p>(Currently not fully documented, see the <a href="./keymap.html">keymappings</a> list for more.)</p>
 <p>See <a href="https://github.com/helix-editor/helix/blob/master/runtime/tutor.txt">tutor.txt</a> (accessible via <code>hx --tutor</code> or <code>:tutor</code>) for a vimtutor-like introduction.</p>
