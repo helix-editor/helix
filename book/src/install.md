@@ -76,8 +76,13 @@ hx --health
 For more information on the information displayed in the healthcheck results refer to [Healthcheck](https://github.com/helix-editor/helix/wiki/Healthcheck).
 
 
-## Building tree-sitter grammars
+### Building tree-sitter grammars
 
 Tree-sitter grammars must be fetched and compiled if not pre-packaged.
 Fetch grammars with `hx --grammar fetch` (requires `git`) and compile them
 with `hx --grammar build` (requires a C++ compiler).
+
+### Installing language servers
+
+Language servers can optionally be installed if you want their features (auto-complete, diagnostics etc.).
+Follow the [instructions on the wiki page](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers) to add your language servers of choice.
