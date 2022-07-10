@@ -1,9 +1,3 @@
-(identifier) @variable
-(string_literal) @string
-(number_literal) @number
-(boolean_literal) @boolean
-(comment) @comment
-
 [
   (intrinsic_type)
   "dimension"
@@ -82,14 +76,14 @@
   "endif"
   "where"
   "endwhere"
-] @conditional
+] @keyword.control.conditional
 
 [
   "do"
   "enddo"
   "while"
   "forall"
-] @repeat
+] @keyword.control.repeat
 
 [
   "*"
@@ -167,4 +161,11 @@
   name: (identifier) @keyword)
 
 (derived_type_member_expression
-  (type_member) @property)
+  (type_member) @variable.other.member)
+
+(identifier) @variable
+(string_literal) @string
+(number_literal) @constant.numeric
+(boolean_literal) @constant.builtin.boolean
+(comment) @comment
+
