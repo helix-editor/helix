@@ -71,6 +71,7 @@ impl EditorView {
         &mut self.spinners
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn render_view(
         &self,
         editor: &Editor,
