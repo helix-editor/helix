@@ -1414,7 +1414,7 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
         let (head, anchor) = if range.anchor < range.head {
             (range.head - 1, range.anchor)
         } else {
-            (range.head, range.anchor - 1)
+            (range.head, range.anchor.checked_sub(1).unwrap_or_default())
         };
 
         let tab_width = doc.tab_width();
