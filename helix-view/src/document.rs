@@ -354,7 +354,11 @@ use helix_lsp::lsp;
 use url::Url;
 
 impl Document {
-    pub fn from(text: Rope, encoding: Option<&'static encoding::Encoding>) -> Self {
+    pub fn from(
+        text: Rope,
+        encoding: Option<&'static encoding::Encoding>,
+        abbreviations: Option<Abbreviations>,
+    ) -> Self {
         let encoding = encoding.unwrap_or(encoding::UTF_8);
         let changes = ChangeSet::new(&text);
         let old_state = None;
@@ -380,7 +384,10 @@ impl Document {
             modified_since_accessed: false,
             language_server: None,
             diff_handle: None,
-            abbreviations: Abbreviations::default(),
+            abbreviations: match abbreviations {
+                Some(a) => a,
+                None => Abbreviations::default(),
+            },
         }
     }
 
@@ -391,6 +398,7 @@ impl Document {
         path: &Path,
         encoding: Option<&'static encoding::Encoding>,
         config_loader: Option<Arc<syntax::Loader>>,
+        abbreviations: Option<Abbreviations>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding) = if path.exists() {
@@ -402,7 +410,7 @@ impl Document {
             (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding)
         };
 
-        let mut doc = Self::from(rope, Some(encoding));
+        let mut doc = Self::from(rope, Some(encoding), abbreviations);
 
         // set the path and try detecting the language
         doc.set_path(Some(path))?;
@@ -1204,7 +1212,7 @@ impl Document {
 impl Default for Document {
     fn default() -> Self {
         let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
-        Self::from(text, None)
+        Self::from(text, None, None)
     }
 }
 
@@ -1249,7 +1257,7 @@ mod test {
     fn changeset_to_changes_ignore_line_endings() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello\r\nworld");
-        let mut doc = Document::from(text, None);
+        let mut doc = Document::from(text, None, None);
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(0, 0));
 
@@ -1283,7 +1291,7 @@ mod test {
     fn changeset_to_changes() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello");
-        let mut doc = Document::from(text, None);
+        let mut doc = Document::from(text, None, None);
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(5, 5));
 

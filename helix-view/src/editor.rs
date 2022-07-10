@@ -38,7 +38,7 @@ use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::Position;
+use helix_core::{abbreviations::Abbreviations, Position};
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig},
@@ -178,6 +178,8 @@ pub struct Config {
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
+    /// Editor-wide abbreviations
+    pub abbreviations: Abbreviations,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -630,6 +632,7 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
+            abbreviations: Abbreviations::default(),
         }
     }
 }
@@ -726,6 +729,8 @@ pub struct Editor {
     /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be aquired
     pub redraw_handle: RedrawHandle,
     pub needs_redraw: bool,
+
+    pub abbreviations: Abbreviations,
 }
 
 pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
@@ -823,6 +828,7 @@ impl Editor {
             config_events: unbounded_channel(),
             redraw_handle: Default::default(),
             needs_redraw: false,
+            abbreviations: conf.abbreviations.clone(),
         }
     }
 
@@ -1120,7 +1126,10 @@ impl Editor {
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
         let (rope, encoding) = crate::document::from_reader(&mut stdin(), None)?;
-        Ok(self.new_file_from_document(action, Document::from(rope, Some(encoding))))
+        Ok(self.new_file_from_document(
+            action,
+            Document::from(rope, Some(encoding), Some(self.abbreviations.clone())),
+        ))
     }
 
     // ??? possible use for integration tests
@@ -1131,7 +1140,13 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::open(&path, None, Some(self.syn_loader.clone()))?;
+            log::error!("abbrs: {:?}", self.abbreviations);
+            let mut doc = Document::open(
+                &path,
+                None,
+                Some(self.syn_loader.clone()),
+                Some(self.abbreviations.clone()),
+            )?;
 
             let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {

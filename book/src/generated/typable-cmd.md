@@ -73,3 +73,7 @@
 | `:pipe` | Pipe each selection to the shell command. |
 | `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
 | `:run-shell-command`, `:sh` | Run a shell command |
+| `:insert-abbreviation`, `:abbr` | Insert a new abbreviation |
+| `:delete-abbreviation`, `:rabbr` | Delete an abbreviation |
+| `:load-abbreviation-from-file`, `:labbr` | Load abbreviations from a file that contains abbreviations such as:<br><br>nvm nevermind<br>brb be right back<br>... |
+| `:write-abbreviation-to-file`, `:wabbr` | Write abbreviations to a file using the following format:<br><br>nvm nevermind<br>brb be right back<br>... |

@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use ropey::Rope;
 
 use crate::{movement, Change, Range, Selection, Tendril, Transaction};
+use serde::{Deserialize, Serialize};
 
 /// The type that represents the collection of abbreviations,
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Abbreviations(HashMap<String, String>);
 
 impl Abbreviations {
