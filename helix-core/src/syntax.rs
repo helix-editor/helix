@@ -967,6 +967,18 @@ impl Syntax {
     // TODO: Folding
 }
 
+/// Gets the child of `node` that includes the given range
+pub fn child_for_byte_range(node: Node, start: usize, end: usize) -> Option<Node> {
+    for child in node.children(&mut node.walk()) {
+        let child_range = child.byte_range();
+        if start >= child_range.start && end <= child_range.end {
+            return Some(child);
+        }
+    }
+
+    None
+}
+
 #[derive(Debug)]
 pub struct LanguageLayer {
     // mode

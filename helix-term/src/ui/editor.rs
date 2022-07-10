@@ -208,39 +208,55 @@ impl EditorView {
             doc.text().len_lines().saturating_sub(1),
         );
 
-        let range = {
-            // calculate viewport byte ranges
-            let start = text.line_to_byte(offset.row);
-            let end = text.line_to_byte(last_line + 1);
-
-            start..end
-        };
+        // calculate viewport byte ranges
+        let visible_start = text.line_to_byte(offset.row);
+        let visible_end = text.line_to_byte(last_line + 1);
+        let visible_range = visible_start..visible_end;
 
         match doc.syntax() {
             Some(syntax) => {
+                // The view may start in the middle of a non-root node. Start the
+                // highlight iterator at start of the containing non-root node in
+                // order to improve rainbow and locals tracking. Later in the
+                // `filter_map`, discard highlights that are not within view.
+                let calculable_start = helix_core::syntax::child_for_byte_range(
+                    syntax.tree().root_node(),
+                    visible_start,
+                    visible_start,
+                )
+                .map_or(visible_start, |node| node.byte_range().start);
+                let calculable_range = calculable_start..visible_end;
+
                 let iter = syntax
                     // TODO: range doesn't actually restrict source, just highlight range
-                    .highlight_iter(text.slice(..), Some(range), None)
+                    .highlight_iter(text.slice(..), Some(calculable_range), None)
                     .map(|event| event.unwrap())
-                    .map(move |event| match event {
+                    .filter_map(move |event| match event {
                         // TODO: use byte slices directly
-                        // convert byte offsets to char offset
+                        // convert byte offsets to char offset and skip forward in the iterator
+                        // to the visible highlights
                         HighlightEvent::Source { start, end } => {
-                            let start =
-                                text.byte_to_char(ensure_grapheme_boundary_next_byte(text, start));
+                            if end <= visible_start {
+                                return None;
+                            }
+
+                            let start = text.byte_to_char(ensure_grapheme_boundary_next_byte(
+                                text,
+                                std::cmp::max(start, visible_start),
+                            ));
                             let end =
                                 text.byte_to_char(ensure_grapheme_boundary_next_byte(text, end));
-                            HighlightEvent::Source { start, end }
+                            Some(HighlightEvent::Source { start, end })
                         }
-                        event => event,
+                        event => Some(event),
                     });
 
                 Box::new(iter)
             }
             None => Box::new(
                 [HighlightEvent::Source {
-                    start: text.byte_to_char(range.start),
-                    end: text.byte_to_char(range.end),
+                    start: text.byte_to_char(visible_range.start),
+                    end: text.byte_to_char(visible_range.end),
                 }]
                 .into_iter(),
             ),
