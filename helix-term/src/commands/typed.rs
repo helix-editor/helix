@@ -1,5 +1,7 @@
 use std::ops::Deref;
 
+use crate::job::Job;
+
 use super::*;
 
 use helix_view::{
@@ -19,6 +21,8 @@ pub struct TypableCommand {
 }
 
 fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    log::info!("quitting...");
+
     if event != PromptEvent::Validate {
         return Ok(());
     }
@@ -274,7 +278,7 @@ fn write_impl(
         doc.auto_format().map(|fmt| {
             let shared = fmt.shared();
             let callback = make_format_callback(doc.id(), doc.version(), shared.clone());
-            jobs.callback(callback);
+            jobs.add(Job::with_callback(callback).wait_before_exiting());
             shared
         })
     } else {
@@ -512,8 +516,10 @@ fn write_quit(
     }
 
     write_impl(cx, args.first(), false)?;
+
     let doc = doc_mut!(cx.editor);
 
+    tokio::task::block_in_place(|| helix_lsp::block_on(cx.jobs.finish()))?;
     tokio::task::block_in_place(|| helix_lsp::block_on(doc.try_flush_saves()))
         .map(|result| result.map(|_| ()))
         .unwrap_or(Ok(()))?;

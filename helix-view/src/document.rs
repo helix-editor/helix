@@ -551,6 +551,11 @@ impl Document {
             bail!("saves are closed for this document!");
         }
 
+        log::debug!(
+            "submitting save of doc '{:?}'",
+            self.path().map(|path| path.to_string_lossy())
+        );
+
         // we clone and move text + path into the future so that we asynchronously save the current
         // state without blocking any further edits.
         let mut text = self.text().clone();
@@ -695,7 +700,14 @@ impl Document {
                     self.set_last_saved_revision(event.revision);
                     false
                 }
-                Err(_) => true,
+                Err(err) => {
+                    log::error!(
+                        "error saving document {:?}: {}",
+                        self.path().map(|path| path.to_string_lossy()),
+                        err
+                    );
+                    true
+                }
             };
 
             final_result = Some(save_event);
@@ -1072,7 +1084,8 @@ impl Document {
         let current_revision = history.current_revision();
         self.history.set(history);
         log::debug!(
-            "modified - last saved: {}, current: {}",
+            "id {} modified - last saved: {}, current: {}",
+            self.id,
             self.last_saved_revision,
             current_revision
         );

@@ -816,12 +816,16 @@ impl Editor {
 
     #[inline]
     pub fn set_status<T: Into<Cow<'static, str>>>(&mut self, status: T) {
-        self.status_msg = Some((status.into(), Severity::Info));
+        let status = status.into();
+        log::debug!("editor status: {}", status);
+        self.status_msg = Some((status, Severity::Info));
     }
 
     #[inline]
     pub fn set_error<T: Into<Cow<'static, str>>>(&mut self, error: T) {
-        self.status_msg = Some((error.into(), Severity::Error));
+        let error = error.into();
+        log::error!("editor error: {}", error);
+        self.status_msg = Some((error, Severity::Error));
     }
 
     #[inline]
