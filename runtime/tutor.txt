@@ -311,7 +311,7 @@ _________________________________________________________________
 =================================================================
 
  Type v to enter Select mode.
- Type v again or <ESC> to return to normal mode
+ Type v again or <ESC> to return to Normal mode
  In Select mode every movement will extend the selection, as
  oppposed to replacing it.
 
@@ -659,7 +659,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                         6.3 REPITITION                        =
+=                         6.3 REPETITION                        =
 =================================================================
 
  Type . to repeat the last insert command.
@@ -825,9 +825,9 @@ lines.
 
  1. Move the cursor to the line below marked -->.
  2. Type w to select "watermelons" and yank with y.
- 3. Type w to select "bananas"
+ 3. Type w to select "bananas".
  4. Change to register b with "b and yank with y.
- 5. Select "mangoes" and type R to replace it with "watermelons"
+ 5. Select "mangoes" and type R to replace it with "watermelons".
  6. Select "pineapples" then type "b R to replace with "bananas".
 
  --> I like watermelons and bananas because my favorite fruits
@@ -1015,7 +1015,7 @@ lines.
 =================================================================
 
  * Type ~ to alternate case of selected letters.
-   * Use ` and alt-` to set the case of selected layers to
+   * Use ` and alt-` to set the case of selected letters to
      upper and lower respectively.
 
 
