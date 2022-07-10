@@ -2999,7 +2999,7 @@ pub mod insert {
                         auto_pairs,
                     ) {
                         (Some(_x), Some(_y), Some(ap))
-                            if range.len() == 1
+                            if range.is_single_grapheme(text)
                                 && ap.get(_x).is_some()
                                 && ap.get(_x).unwrap().close == _y =>
                         // delete both autopaired characters
