@@ -1138,7 +1138,7 @@ fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
         // graphemes, whereas this function doesn't yet.  So we're doing the same logic
         // here, but just in terms of chars instead.
         let search_start_pos = if range.anchor < range.head {
-            range.head - 1
+            range.head.saturating_sub(1)
         } else {
             range.head
         };
@@ -1327,7 +1327,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     let text = doc.text().slice(..);
 
     let cursor = coords_at_pos(text, range.cursor(text));
-    let doc_last_line = doc.text().len_lines().saturating_sub(1);
+    let doc_last_line = doc.text().len_lines() - 1;
 
     let last_line = view.last_line(doc);
 
@@ -1412,7 +1412,7 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
 
         // The range is always head exclusive
         let (head, anchor) = if range.anchor < range.head {
-            (range.head - 1, range.anchor)
+            (range.head.saturating_sub(1), range.anchor)
         } else {
             (range.head, range.anchor.saturating_sub(1))
         };
@@ -1844,7 +1844,10 @@ fn global_search(cx: &mut Context) {
                                 entry.path(),
                                 sinks::UTF8(|line_num, _| {
                                     all_matches_sx
-                                        .send(FileResult::new(entry.path(), line_num as usize - 1))
+                                        .send(FileResult::new(
+                                            entry.path(),
+                                            (line_num as usize).saturating_sub(1),
+                                        ))
                                         .unwrap();
 
                                     Ok(true)
