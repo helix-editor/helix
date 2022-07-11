@@ -4455,6 +4455,48 @@ fn shell_impl(
     Ok((tendril, output.status.success()))
 }
 
+async fn async_shell_impl(
+    shell: &[String],
+    cmd: &str,
+    input: Option<&[u8]>,
+) -> anyhow::Result<(Tendril, bool)> {
+    use std::process::Stdio;
+    use tokio::io::AsyncWriteExt;
+    use tokio::process::Command;
+
+    ensure!(!shell.is_empty(), "No shell set");
+
+    let mut process = match Command::new(&shell[0])
+        .args(&shell[1..])
+        .arg(cmd)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+    {
+        Ok(process) => process,
+        Err(e) => {
+            log::error!("Failed to start shell: {}", e);
+            return Err(e.into());
+        }
+    };
+    if let Some(input) = input {
+        let mut stdin = process.stdin.take().unwrap();
+        stdin.write_all(input).await?;
+        drop(stdin);
+    }
+    let output = process.wait_with_output().await?;
+
+    if !output.stderr.is_empty() {
+        log::error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    let str = std::str::from_utf8(&output.stdout)
+        .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
+    let tendril = Tendril::from(str);
+    Ok((tendril, output.status.success()))
+}
+
 fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let pipe = match behavior {
         ShellBehavior::Replace | ShellBehavior::Ignore => true,

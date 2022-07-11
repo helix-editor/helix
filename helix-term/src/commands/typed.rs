@@ -1517,6 +1517,47 @@ fn run_shell_command(
     Ok(())
 }
 
+fn async_run_shell_command(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let shell = cx.editor.config().shell.clone();
+    let cmd = args.join(" ");
+    let callback = async move {
+        let (output, success) = async_shell_impl(&shell, &cmd, None).await?;
+
+        let call: job::Callback =
+            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                if success {
+                    editor.set_status("Command succeed");
+                } else {
+                    editor.set_error("Command failed");
+                }
+                if !output.is_empty() {
+                    let contents = ui::Markdown::new(
+                        format!("```sh\n{}\n```", output),
+                        editor.syn_loader.clone(),
+                    );
+                    let mut popup = Popup::new("shell", contents);
+                    popup.set_position(Some(helix_core::Position::new(
+                        editor.cursor().0.unwrap_or_default().row,
+                        2,
+                    )));
+                    compositor.replace_or_push("shell", popup);
+                }
+            });
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -1995,6 +2036,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["sh"],
             doc: "Run a shell command",
             fun: run_shell_command,
+            completer: Some(completers::directory),
+        },
+        TypableCommand {
+            name: "async-run-shell-command",
+            aliases: &["async"],
+            doc: "Run a async shell command",
+            fun: async_run_shell_command,
             completer: Some(completers::directory),
         },
     ];
