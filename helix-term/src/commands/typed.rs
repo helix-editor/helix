@@ -1534,13 +1534,13 @@ fn async_run_shell_command(
         let call: job::Callback =
             Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
                 if success {
-                    editor.set_status("Command succeed");
+                    editor.set_status(format!("Command {} succeed", &cmd));
                 } else {
-                    editor.set_error("Command failed");
+                    editor.set_error(format!("Command {} failed", &cmd));
                 }
                 if !output.is_empty() {
                     let contents = ui::Markdown::new(
-                        format!("```sh\n{}\n```", output),
+                        format!("```sh {}\n{}\n```", &cmd, output),
                         editor.syn_loader.clone(),
                     );
                     let mut popup = Popup::new("shell", contents);
