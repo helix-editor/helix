@@ -421,6 +421,7 @@ impl MappableCommand {
         dap_disable_exceptions, "Disable exception breakpoints",
         shell_pipe, "Pipe selections through shell command",
         shell_pipe_to, "Pipe selections into shell command, ignoring command output",
+        async_shell_pipe_to, "Pipe selections into async shell command, ignoring command output",
         shell_insert_output, "Insert output of shell command before each selection",
         shell_append_output, "Append output of shell command after each selection",
         shell_keep_pipe, "Filter selections with shell predicate",
@@ -4354,6 +4355,40 @@ fn shell_pipe(cx: &mut Context) {
 
 fn shell_pipe_to(cx: &mut Context) {
     shell_prompt(cx, "pipe-to:".into(), ShellBehavior::Ignore);
+}
+
+fn async_shell_pipe_to(cx: &mut Context) {
+    ui::prompt(
+        cx,
+        "pipe-to-async:".into(),
+        Some('|'),
+        ui::completers::none,
+        move |cx, input: &str, event: PromptEvent| {
+            if event != PromptEvent::Validate {
+                return;
+            }
+            if input.is_empty() {
+                return;
+            }
+
+            let (view, doc) = current!(cx.editor);
+            let selection = doc.selection(view.id);
+
+            let mut changes = Vec::with_capacity(selection.len());
+            let text = doc.text().slice(..);
+
+            for range in selection.ranges() {
+                let fragment = range.fragment(text);
+                changes.extend_from_slice(fragment.as_bytes());
+            }
+            let shell = cx.editor.config().shell.clone();
+            let cmd = input.to_string();
+            cx.jobs.spawn(async move {
+                async_shell_impl(&shell, &cmd, Some(&changes)).await?;
+                Ok(())
+            });
+        },
+    )
 }
 
 fn shell_insert_output(cx: &mut Context) {

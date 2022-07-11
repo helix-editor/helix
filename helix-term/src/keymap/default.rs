@@ -302,6 +302,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "\"" => select_register,
         "|" => shell_pipe,
         "A-|" => shell_pipe_to,
+        "A->" => async_shell_pipe_to,
         "!" => shell_insert_output,
         "A-!" => shell_append_output,
         "$" => shell_keep_pipe,
