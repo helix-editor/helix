@@ -138,13 +138,6 @@ pub struct FormatterConfiguration {
     pub args: Vec<String>,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Deserialize, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum FormatterType {
-    Stdio,
-    File,
-}
-
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AdvancedCompletion {
