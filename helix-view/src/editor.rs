@@ -6,7 +6,7 @@ use crate::{
     input::KeyEvent,
     register::Registers,
     theme::{self, Theme},
-    tree::{self, Tree},
+    tree::{self, Dimension, Resize, Tree},
     view::ViewPosition,
     Align, Document, DocumentId, View, ViewId,
 };
@@ -1646,19 +1646,19 @@ impl Editor {
     }
 
     pub fn grow_buffer_width(&mut self) {
-        self.tree.grow_buffer_width();
+        self.tree.resize_buffer(Resize::Grow, Dimension::Width);
     }
 
     pub fn shrink_buffer_width(&mut self) {
-        self.tree.shrink_buffer_width();
+        self.tree.resize_buffer(Resize::Shrink, Dimension::Width);
     }
 
     pub fn grow_buffer_height(&mut self) {
-        self.tree.grow_buffer_height();
+        self.tree.resize_buffer(Resize::Grow, Dimension::Height);
     }
 
     pub fn shrink_buffer_height(&mut self) {
-        self.tree.shrink_buffer_height();
+        self.tree.resize_buffer(Resize::Shrink, Dimension::Height);
     }
 
     pub fn buffer_focus_mode(&mut self) {
