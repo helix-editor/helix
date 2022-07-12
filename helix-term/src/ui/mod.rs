@@ -117,7 +117,15 @@ pub fn regex_prompt(
 
                             view.ensure_cursor_in_view(doc, config.scrolloff);
                         }
-                        Err(_err) => (), // TODO: mark command line as error
+                        Err(_err) => {
+                            if event == PromptEvent::Validate {
+                                let error = format!("Invalid regex: {}", input);
+                                cx.editor.set_error(error);
+                            } else {
+                                // Update
+                                // TODO: mark command line as error
+                            }
+                        }
                     }
                 }
             }
