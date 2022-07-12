@@ -2120,20 +2120,8 @@ impl Editor {
         self.tree.transpose();
     }
 
-    pub fn grow_buffer_width(&mut self) {
-        self.tree.resize_buffer(Resize::Grow, Dimension::Width);
-    }
-
-    pub fn shrink_buffer_width(&mut self) {
-        self.tree.resize_buffer(Resize::Shrink, Dimension::Width);
-    }
-
-    pub fn grow_buffer_height(&mut self) {
-        self.tree.resize_buffer(Resize::Grow, Dimension::Height);
-    }
-
-    pub fn shrink_buffer_height(&mut self) {
-        self.tree.resize_buffer(Resize::Shrink, Dimension::Height);
+    pub fn resize_buffer(&mut self, resize_type: Resize, dimension: Dimension) {
+        self.tree.resize_buffer(resize_type, dimension);
     }
 
     pub fn buffer_expand_mode(&mut self) {
