@@ -52,7 +52,7 @@
 | `A`         | Insert at the end of the line                                        | `append_to_line`          |
 | `o`         | Open new line below selection                                        | `open_below`              |
 | `O`         | Open new line above selection                                        | `open_above`              |
-| `.`         | Repeat last change                                                   | N/A                       |
+| `.`         | Repeat last insert                                                   | N/A                       |
 | `u`         | Undo change                                                          | `undo`                    |
 | `U`         | Redo change                                                          | `redo`                    |
 | `Alt-u`     | Move backward in history                                             | `earlier`                 |
@@ -224,6 +224,10 @@ This layer is similar to vim keybindings as kakoune does not support window.
 | `l`, `Ctrl-l`, `Right` | Move to right split                                  | `jump_view_right` |
 | `q`, `Ctrl-q`          | Close current window                                 | `wclose`          |
 | `o`, `Ctrl-o`          | Only keep the current window, closing all the others | `wonly`           |
+| `H`                    | Swap window to the left                              | `swap_view_left`  |
+| `J`                    | Swap window downwards                                | `swap_view_down`  |
+| `K`                    | Swap window upwards                                  | `swap_view_up`    |
+| `L`                    | Swap window to the right                             | `swap_view_right` |
 
 #### Space mode
 
@@ -237,6 +241,8 @@ This layer is a kludge of mappings, mostly pickers.
 | `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                             |
 | `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                     |
 | `S`     | Open workspace symbol picker (**LSP**)                                  | `workspace_symbol_picker`           |
+| `g`     | Open document diagnostics picker (**LSP**)                              | `diagnostics_picker`                |
+| `G`     | Open workspace diagnostics picker (**LSP**)                             | `workspace_diagnostics_picker`
 | `r`     | Rename symbol (**LSP**)                                                 | `rename_symbol`                     |
 | `a`     | Apply code action  (**LSP**)                                            | `code_action`                       |
 | `'`     | Open last fuzzy picker                                                  | `last_picker`                       |
@@ -278,6 +284,8 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `[a`     | Go to previous argument/parameter (**TS**)   | `goto_prev_parameter` |
 | `]o`     | Go to next comment (**TS**)                  | `goto_next_comment`   |
 | `[o`     | Go to previous comment (**TS**)              | `goto_prev_comment`   |
+| `]t`     | Go to next test (**TS**)                     | `goto_next_test`      |
+| `]t`     | Go to previous test (**TS**)                 | `goto_prev_test`      |
 | `]p`     | Go to next paragraph                         | `goto_next_paragraph` |
 | `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
 | `[space` | Add newline above                            | `add_newline_above`   |

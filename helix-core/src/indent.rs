@@ -453,7 +453,7 @@ fn query_indents(
 ///
 /// ```ignore
 /// some_function(
-///     parm1,
+///     param1,
 ///     || {
 ///         // Here we get 2 indent levels because the 'parameters' and the 'block' node begin on different lines
 ///     },

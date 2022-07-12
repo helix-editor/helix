@@ -9,14 +9,17 @@ categories = ["editor"]
 repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 
+[[bin]]
+name = "hx-loader"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.5"
 etcetera = "0.4"
 tree-sitter = "0.20"
-once_cell = "1.12"
-
+once_cell = "1.13"
 log = "0.4"
 
 # TODO: these two should be on !wasm32 only
@@ -27,4 +30,3 @@ threadpool = { version = "1.0" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 libloading = "0.7"
-

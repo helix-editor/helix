@@ -7,6 +7,8 @@
   (function_item
     body: (_) @function.inside)) @function.around
 
+(closure_expression body: (_) @function.inside) @function.around
+
 (
   [
     (attribute_item)+
@@ -75,3 +77,17 @@
 (line_comment)+ @comment.around
 
 (block_comment) @comment.around
+
+(; #[test]
+ (attribute_item
+   (meta_item
+     (identifier) @_test_attribute))
+ ; allow other attributes like #[should_panic] and comments
+ [
+   (attribute_item)
+   (line_comment)
+ ]*
+ ; the test function
+ (function_item
+   body: (_) @test.inside) @test.around
+ (#eq? @_test_attribute "test"))

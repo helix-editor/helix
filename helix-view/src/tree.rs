@@ -312,7 +312,7 @@ impl Tree {
             } = &mut self.nodes[parent_id]
             {
                 if let Some(pos) = container.children.iter().position(|&child| child == index) {
-                    container.remove_child(pos);
+                    container.children.remove(pos);
 
                     // TODO: if container now only has one child, remove it and place child in parent
                     if container.children.is_empty() && parent_id != self.root {

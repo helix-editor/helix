@@ -42,13 +42,13 @@ label = "peach"
 "ui.linenr.selected" = { fg = "mauve" }
 "ui.statusline" = { fg = "black_2", bg = "blue" }
 "ui.statusline.inactive" = { fg = "pink", bg = "gray_1" }
-"ui.popup" = { bg = "black_2" }
+"ui.popup" = { bg = "black_1" }
 "ui.window" = { fg = "maroon" }
 "ui.help" = { bg = "#7958DC", fg = "#171452" }
 
 "ui.text" = { fg = "pink" }
 "ui.text.focus" = { fg = "white" }
-"ui.virtual" = { fg = "gray_0" }
+"ui.virtual.whitespace" = { fg = "gray_0" }
 
 "ui.selection" = { bg = "#540099" }
 "ui.selection.primary" = { bg = "#540099" }

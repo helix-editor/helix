@@ -1,10 +1,10 @@
 mod client;
+pub mod jsonrpc;
 mod transport;
 
 pub use client::Client;
 pub use futures_executor::block_on;
 pub use jsonrpc::Call;
-pub use jsonrpc_core as jsonrpc;
 pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
@@ -173,9 +173,13 @@ pub mod util {
 
     pub fn generate_transaction_from_edits(
         doc: &Rope,
-        edits: Vec<lsp::TextEdit>,
+        mut edits: Vec<lsp::TextEdit>,
         offset_encoding: OffsetEncoding,
     ) -> Transaction {
+        // Sort edits by start range, since some LSPs (Omnisharp) send them
+        // in reverse order.
+        edits.sort_unstable_by_key(|edit| edit.range.start);
+
         Transaction::change(
             doc,
             edits.into_iter().map(|edit| {

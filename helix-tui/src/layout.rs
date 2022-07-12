@@ -68,10 +68,7 @@ impl Default for Layout {
     fn default() -> Layout {
         Layout {
             direction: Direction::Vertical,
-            margin: Margin {
-                horizontal: 0,
-                vertical: 0,
-            },
+            margin: Margin::none(),
             constraints: Vec::new(),
         }
     }
@@ -87,20 +84,19 @@ impl Layout {
     }
 
     pub fn margin(mut self, margin: u16) -> Layout {
-        self.margin = Margin {
-            horizontal: margin,
-            vertical: margin,
-        };
+        self.margin = Margin::all(margin);
         self
     }
 
     pub fn horizontal_margin(mut self, horizontal: u16) -> Layout {
-        self.margin.horizontal = horizontal;
+        self.margin.left = horizontal;
+        self.margin.right = horizontal;
         self
     }
 
     pub fn vertical_margin(mut self, vertical: u16) -> Layout {
-        self.margin.vertical = vertical;
+        self.margin.top = vertical;
+        self.margin.bottom = vertical;
         self
     }
 

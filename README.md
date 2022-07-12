@@ -40,19 +40,20 @@ If you would like to build from source:
 git clone https://github.com/helix-editor/helix
 cd helix
 cargo install --path helix-term
-hx --grammar fetch
-hx --grammar build
 ```
 
 This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars.
+If you want to customize your `languages.toml` config,
+tree-sitter grammars may be manually fetched and built with `hx --grammar fetch` and `hx --grammar build`.
 
 Helix also needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
 config directory (for example `~/.config/helix/runtime` on Linux/macOS, or `%AppData%/helix/runtime` on Windows).
 
-| OS        | command   |
-|-----------|-----------|
-|windows    |`xcopy runtime %AppData%/helix/runtime`|
-|linux/macos|`ln -s $PWD/runtime ~/.config/helix/runtime`
+| OS                | command   |
+|-------------------|-----------|
+|windows(cmd.exe)   |`xcopy runtime %AppData%/helix/runtime`     |
+|windows(powershell)|`xcopy runtime $Env:AppData\helix\runtime`  |
+|linux/macos        |`ln -s $PWD/runtime ~/.config/helix/runtime`|
 
 This location can be overridden via the `HELIX_RUNTIME` environment variable.
 

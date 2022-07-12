@@ -78,6 +78,7 @@ pub struct LanguageConfiguration {
 
     #[serde(default)]
     pub auto_format: bool,
+
     #[serde(default)]
     pub diagnostic_severity: Severity,
 
@@ -307,13 +308,7 @@ impl TextObjectQuery {
                 let nodes: Vec<_> = mat
                     .captures
                     .iter()
-                    .filter_map(|x| {
-                        if x.index == capture_idx {
-                            Some(x.node)
-                        } else {
-                            None
-                        }
-                    })
+                    .filter_map(|cap| (cap.index == capture_idx).then(|| cap.node))
                     .collect();
 
                 if nodes.len() > 1 {

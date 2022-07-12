@@ -3,11 +3,11 @@
     "crane": {
       "flake": false,
       "locked": {
-        "lastModified": 1644785799,
-        "narHash": "sha256-VpAJO1L0XeBvtCuNGK4IDKp6ENHIpTrlaZT7yfBCvwo=",
+        "lastModified": 1654444508,
+        "narHash": "sha256-4OBvQ4V7jyt7afs6iKUvRzJ1u/9eYnKzVQbeQdiamuY=",
         "owner": "ipetkov",
         "repo": "crane",
-        "rev": "fc7a94f841347c88f2cb44217b2a3faa93e2a0b2",
+        "rev": "db5482bf225acc3160899124a1df5a617cfa27b5",
         "type": "github"
       },
       "original": {
@@ -17,19 +17,13 @@
       }
     },
     "devshell": {
-      "inputs": {
-        "flake-utils": "flake-utils",
-        "nixpkgs": [
-          "nixCargoIntegration",
-          "nixpkgs"
-        ]
-      },
+      "flake": false,
       "locked": {
-        "lastModified": 1652959711,
-        "narHash": "sha256-wpQhlE/NocxlU3jLiMoF1KYHOEFD5MEFJZkyXXVVef8=",
+        "lastModified": 1655976588,
+        "narHash": "sha256-VreHyH6ITkf/1EX/8h15UqhddJnUleb0HgbC3gMkAEQ=",
         "owner": "numtide",
         "repo": "devshell",
-        "rev": "a5327cd01e58d2848c73062f2661278ad615748f",
+        "rev": "899ca4629020592a13a46783587f6e674179d1db",
         "type": "github"
       },
       "original": {
@@ -45,6 +39,10 @@
           "nixpkgs"
         ],
         "crane": "crane",
+        "devshell": [
+          "nixCargoIntegration",
+          "devshell"
+        ],
         "flake-utils-pre-commit": [
           "nixCargoIntegration",
           "nixpkgs"
@@ -75,11 +73,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1653135531,
-        "narHash": "sha256-pYwJrEQrG8BgeVcI+lveK3KbOBDx9MT28HxV09v+jgI=",
+        "lastModified": 1655975833,
+        "narHash": "sha256-g8sdfuglIZ24oWVbntVzniNTJW+Z3n9DNL9w9Tt+UCE=",
         "owner": "nix-community",
         "repo": "dream2nix",
-        "rev": "4b3dfb101fd2fdbe25bd128072f138276aa4bc82",
+        "rev": "4e75e665ec3a1cddae5266bed0dd72fce0b74a23",
         "type": "github"
       },
       "original": {
@@ -89,21 +87,6 @@
       }
     },
     "flake-utils": {
-      "locked": {
-        "lastModified": 1642700792,
-        "narHash": "sha256-XqHrk7hFb+zBvRg6Ghl+AZDq03ov6OshJLiSWOoX5es=",
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "rev": "846b2ae0fc4cc943637d3d1def4454213e203cba",
-        "type": "github"
-      },
-      "original": {
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "type": "github"
-      }
-    },
-    "flake-utils_2": {
       "locked": {
         "lastModified": 1637014545,
         "narHash": "sha256-26IZAc5yzlD9FlDT54io1oqG/bBoyka+FJk5guaX4x4=",
@@ -125,16 +108,16 @@
         "nixpkgs": [
           "nixpkgs"
         ],
-        "rustOverlay": [
+        "rust-overlay": [
           "rust-overlay"
         ]
       },
       "locked": {
-        "lastModified": 1653286465,
-        "narHash": "sha256-CEI2prA74sy9SgAJKdDpyAMv1nnp91c8e5Fw9QbtR/Q=",
+        "lastModified": 1656453541,
+        "narHash": "sha256-ZCPVnS6zJOZJvIlwU3rKR8MBVm6A3F4/0mA7G1lQ3D0=",
         "owner": "yusdacra",
         "repo": "nix-cargo-integration",
-        "rev": "95efd76ab68b20aba45b7d647460319b88c2a4c0",
+        "rev": "9eb74345b30cd2e536d9dac9d4435d3c475605c7",
         "type": "github"
       },
       "original": {
@@ -145,11 +128,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1653060744,
-        "narHash": "sha256-kfRusllRumpt33J1hPV+CeCCylCXEU7e0gn2/cIM7cY=",
+        "lastModified": 1655624069,
+        "narHash": "sha256-7g1zwTdp35GMTERnSzZMWJ7PG3QdDE8VOX3WsnOkAtM=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "dfd82985c273aac6eced03625f454b334daae2e8",
+        "rev": "0d68d7c857fe301d49cdcd56130e0beea4ecd5aa",
         "type": "github"
       },
       "original": {
@@ -168,17 +151,17 @@
     },
     "rust-overlay": {
       "inputs": {
-        "flake-utils": "flake-utils_2",
+        "flake-utils": "flake-utils",
         "nixpkgs": [
           "nixpkgs"
         ]
       },
       "locked": {
-        "lastModified": 1653273659,
-        "narHash": "sha256-dHXYaNL1axhZZyiZXxt1WKhvZrYXq7bjCs3y5VjgyGI=",
+        "lastModified": 1655779671,
+        "narHash": "sha256-6feeiGa6fb7ZPVHR71uswkmN1701TAJpwYQA8QffmRk=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "0fa3e01da1ce98e3b40063b8e2678095943402b1",
+        "rev": "8159585609a772b041cce6019d5c21d240709244",
         "type": "github"
       },
       "original": {

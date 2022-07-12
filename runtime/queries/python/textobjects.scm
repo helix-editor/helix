@@ -16,3 +16,8 @@
 (comment) @comment.inside
 
 (comment)+ @comment.around
+
+((function_definition
+   name: (identifier) @_name
+   body: (block)? @test.inside) @test.around
+ (#match? @_name "^test_"))

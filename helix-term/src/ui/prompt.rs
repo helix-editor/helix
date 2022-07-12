@@ -430,10 +430,7 @@ impl Prompt {
                 .borders(Borders::ALL)
                 .border_style(background);
 
-            let inner = block.inner(area).inner(&Margin {
-                vertical: 0,
-                horizontal: 1,
-            });
+            let inner = block.inner(area).inner(&Margin::horizontal(1));
 
             block.render(area, surface);
             text.render(inner, surface, cx);
@@ -442,10 +439,21 @@ impl Prompt {
         let line = area.height - 1;
         // render buffer text
         surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
+
+        let input: Cow<str> = if self.line.is_empty() {
+            // latest value in the register list
+            self.history_register
+                .and_then(|reg| cx.editor.registers.last(reg))
+                .map(|entry| entry.into())
+                .unwrap_or_else(|| Cow::from(""))
+        } else {
+            self.line.as_str().into()
+        };
+
         surface.set_string(
             area.x + self.prompt.len() as u16,
             area.y + line,
-            &self.line,
+            &input,
             prompt_color,
         );
     }
@@ -510,7 +518,18 @@ impl Component for Prompt {
                     self.recalculate_completion(cx.editor);
                     self.exit_selection();
                 } else {
-                    (self.callback_fn)(cx, &self.line, PromptEvent::Validate);
+                    // handle executing with last command in history if nothing entered
+                    let input: Cow<str> = if self.line.is_empty() {
+                        // latest value in the register list
+                        self.history_register
+                            .and_then(|reg| cx.editor.registers.last(reg).cloned())
+                            .map(|entry| entry.into())
+                            .unwrap_or_else(|| Cow::from(""))
+                    } else {
+                        self.line.as_str().into()
+                    };
+
+                    (self.callback_fn)(cx, &input, PromptEvent::Validate);
 
                     if let Some(register) = self.history_register {
                         // store in history

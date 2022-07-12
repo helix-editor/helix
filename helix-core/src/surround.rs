@@ -66,7 +66,7 @@ pub fn find_nth_closest_pairs_pos(
     for ch in text.chars_at(pos) {
         if is_open_pair(ch) {
             // Track open pairs encountered so that we can step over
-            // the correspoding close pairs that will come up further
+            // the corresponding close pairs that will come up further
             // down the loop. We want to find a lone close pair whose
             // open pair is before the cursor position.
             stack.push(ch);

@@ -4,6 +4,7 @@
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ |  |  | `OmniSharp` |
 | cairo | ✓ |  |  |  |
+| clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
 | cpon | ✓ |  | ✓ |  |
@@ -12,13 +13,16 @@
 | dart | ✓ |  | ✓ | `dart` |
 | devicetree | ✓ |  | ✓ |  |
 | dockerfile | ✓ |  |  | `docker-langserver` |
+| edoc | ✓ |  |  |  |
 | eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |
-| elixir | ✓ |  |  | `elixir-ls` |
+| elixir | ✓ | ✓ |  | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
+| elvish | ✓ |  |  | `elvish` |
 | erb | ✓ |  |  |  |
-| erlang | ✓ |  |  | `erlang_ls` |
+| erlang | ✓ | ✓ |  | `erlang_ls` |
 | fish | ✓ | ✓ | ✓ |  |
+| fortran | ✓ |  | ✓ | `fortls` |
 | gdscript | ✓ |  | ✓ |  |
 | git-attributes | ✓ |  |  |  |
 | git-commit | ✓ |  |  |  |
@@ -26,8 +30,8 @@
 | git-diff | ✓ |  |  |  |
 | git-ignore | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |
-| gleam | ✓ |  |  |  |
-| glsl | ✓ |  | ✓ |  |
+| gleam | ✓ | ✓ |  |  |
+| glsl | ✓ | ✓ | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | gomod | ✓ |  |  | `gopls` |
 | gowork | ✓ |  |  | `gopls` |
@@ -37,9 +41,11 @@
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
+| idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  | `jdtls` |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
+| jsdoc | ✓ |  |  |  |
 | json | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsx | ✓ |  | ✓ | `typescript-language-server` |
 | julia | ✓ |  |  | `julia` |
@@ -61,12 +67,14 @@
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |
 | odin | ✓ |  |  |  |
+| openscad | ✓ |  |  | `openscad-language-server` |
 | org | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |
 | php | ✓ | ✓ | ✓ | `intelephense` |
+| prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ |  | ✓ |  |
-| python | ✓ | ✓ | ✓ | `pylsp` |
+| python | ✓ | ✓ |  | `pylsp` |
 | r | ✓ |  |  | `R` |
 | racket |  |  |  | `racket` |
 | regex | ✓ |  |  |  |
@@ -80,6 +88,7 @@
 | solidity | ✓ |  |  | `solc` |
 | sql | ✓ |  |  |  |
 | sshclientconfig | ✓ |  |  |  |
+| starlark | ✓ | ✓ |  |  |
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
@@ -89,9 +98,11 @@
 | tsx | ✓ |  |  | `typescript-language-server` |
 | twig | ✓ |  |  |  |
 | typescript | ✓ |  | ✓ | `typescript-language-server` |
+| ungrammar | ✓ |  |  |  |
+| v | ✓ |  |  | `vls` |
 | vala | ✓ |  |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |
 | vue | ✓ |  |  | `vls` |
-| wgsl | ✓ |  |  |  |
+| wgsl | ✓ |  |  | `wgsl_analyzer` |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |
 | zig | ✓ |  | ✓ | `zls` |
