@@ -462,7 +462,7 @@ impl MappableCommand {
         shrink_buffer_width, "Shrink focused container width",
         grow_buffer_height, "Grow focused container height",
         shrink_buffer_height, "Shrink focused container height",
-        buffer_focus_mode, "Enable focus mode on buffer",
+        buffer_expand_mode, "Enable expand mode on buffer",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
         goto_column, "Goto column",
@@ -927,8 +927,8 @@ fn shrink_buffer_height(cx: &mut Context) {
     cx.editor.shrink_buffer_height();
 }
 
-fn buffer_focus_mode(cx: &mut Context) {
-    cx.editor.buffer_focus_mode();
+fn buffer_expand_mode(cx: &mut Context) {
+    cx.editor.buffer_expand_mode();
 }
 
 fn goto_next_buffer(cx: &mut Context) {

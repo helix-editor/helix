@@ -82,7 +82,7 @@ pub struct Container {
 pub struct ContainerBounds {
     width: usize,
     height: usize,
-    focus: bool,
+    expand: bool,
 }
 
 impl Container {
@@ -124,7 +124,7 @@ impl Container {
         self.node_bounds.push(ContainerBounds {
             width: 10,
             height: 10,
-            focus: false,
+            expand: false,
         });
         self
     }
@@ -135,7 +135,7 @@ impl Container {
             ContainerBounds {
                 width: 10,
                 height: 10,
-                focus: false,
+                expand: false,
             },
         );
         self
@@ -149,7 +149,7 @@ impl Container {
     fn calculate_slots_width(&self) -> usize {
         self.node_bounds
             .iter()
-            .map(|bounds| match bounds.focus {
+            .map(|bounds| match bounds.expand {
                 true => 40,
                 false => bounds.width,
             })
@@ -159,7 +159,7 @@ impl Container {
     fn calculate_slots_height(&self) -> usize {
         self.node_bounds
             .iter()
-            .map(|bounds| match bounds.focus {
+            .map(|bounds| match bounds.expand {
                 true => 40,
                 false => bounds.height,
             })
@@ -480,7 +480,7 @@ impl Tree {
 
                             for (i, child) in container.children.iter().enumerate() {
                                 let bounds = container.node_bounds[i];
-                                let height = match bounds.focus {
+                                let height = match bounds.expand {
                                     true => (40.0 * slot_height) as u16,
                                     false => (slot_height * bounds.height as f32).floor() as u16,
                                 };
@@ -518,7 +518,7 @@ impl Tree {
 
                             for (i, child) in container.children.iter().enumerate() {
                                 let bounds = container.node_bounds[i];
-                                let width = match bounds.focus {
+                                let width = match bounds.expand {
                                     true => (40.0 * slot_width) as u16,
                                     false => (slot_width * bounds.width as f32).floor() as u16,
                                 };
@@ -766,13 +766,13 @@ impl Tree {
         }
     }
 
-    pub fn buffer_focus_mode(&mut self) {
+    pub fn buffer_expand_mode(&mut self) {
         if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Horizontal) {
-            bounds.focus = !bounds.focus;
+            bounds.expand = !bounds.expand;
         }
 
         if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Vertical) {
-            bounds.focus = !bounds.focus;
+            bounds.expand = !bounds.expand;
         }
 
         self.recalculate();
