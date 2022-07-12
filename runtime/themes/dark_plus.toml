@@ -72,6 +72,7 @@
 "ui.linenr" = { fg = "dark_gray" }
 "ui.linenr.selected" = { fg = "light_gray2" }
 
+"ui.cursorline.primary" = { bg = "dark_gray3" }
 "ui.statusline" = { fg = "white", bg = "blue" }
 "ui.statusline.inactive" = { fg = "white", bg = "blue" }
 
@@ -100,6 +101,7 @@ light_gray2 = "#c6c6c6"
 light_gray3 = "#eeeeee"
 dark_gray = "#858585"
 dark_gray2 = "#1e1e1e"
+dark_gray3= "#282828"
 blue = "#007acc"
 blue2 = "#569CD6"
 blue3 = "#6796E6"
