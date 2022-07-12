@@ -33,6 +33,7 @@ use helix_view::{
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
+    tree::{Dimension, Resize},
     view::View,
     Document, DocumentId, Editor, ViewId,
 };
@@ -658,18 +659,18 @@ fn goto_line_start(cx: &mut Context) {
 }
 
 fn grow_buffer_width(cx: &mut Context) {
-    cx.editor.grow_buffer_width();
+    cx.editor.resize_buffer(Resize::Grow, Dimension::Width);
 }
 
 fn shrink_buffer_width(cx: &mut Context) {
-    cx.editor.shrink_buffer_width();
+    cx.editor.resize_buffer(Resize::Shrink, Dimension::Width);
 }
 fn grow_buffer_height(cx: &mut Context) {
-    cx.editor.grow_buffer_height();
+    cx.editor.resize_buffer(Resize::Grow, Dimension::Height);
 }
 
 fn shrink_buffer_height(cx: &mut Context) {
-    cx.editor.shrink_buffer_height();
+    cx.editor.resize_buffer(Resize::Shrink, Dimension::Height);
 }
 
 fn buffer_expand_mode(cx: &mut Context) {
