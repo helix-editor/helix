@@ -31,7 +31,7 @@
 | git-ignore | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |
 | gleam | ✓ | ✓ |  |  |
-| glsl | ✓ |  | ✓ |  |
+| glsl | ✓ | ✓ | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | gomod | ✓ |  |  | `gopls` |
 | gowork | ✓ |  |  | `gopls` |
@@ -98,6 +98,7 @@
 | tsx | ✓ |  |  | `typescript-language-server` |
 | twig | ✓ |  |  |  |
 | typescript | ✓ |  | ✓ | `typescript-language-server` |
+| ungrammar | ✓ |  |  |  |
 | v | ✓ |  |  | `vls` |
 | vala | ✓ |  |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |
