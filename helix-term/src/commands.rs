@@ -246,7 +246,8 @@ impl MappableCommand {
         extend_search_prev, "Add previous search match to selection",
         search_selection, "Use current selection as search pattern",
         global_search, "Global Search in workspace folder",
-        extend_line, "Select current line, if already selected, extend to next line",
+        extend_line, "Select current line, if already selected, extend to another line based on the anchor",
+        extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
         extend_to_line_bounds, "Extend selection to line bounds (line-wise selection)",
         shrink_to_line_bounds, "Shrink selection to line bounds (line-wise selection)",
@@ -1928,6 +1929,10 @@ fn extend_line(cx: &mut Context) {
         Direction::Backward => Extend::Above,
     };
     extend_line_impl(cx, extend);
+}
+
+fn extend_line_below(cx: &mut Context) {
+    extend_line_impl(cx, Extend::Below);
 }
 
 fn extend_line_above(cx: &mut Context) {

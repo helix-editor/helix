@@ -85,7 +85,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "A-n" | "A-right" => select_next_sibling,
 
         "%" => select_all,
-        "x" => extend_line,
+        "x" => extend_line_below,
         "X" => extend_to_line_bounds,
         "A-x" => shrink_to_line_bounds,
 
