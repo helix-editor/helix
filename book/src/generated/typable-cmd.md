@@ -55,6 +55,7 @@
 | `:tutor` | Open the tutorial. |
 | `:goto`, `:g` | Go to line number. |
 | `:set-language`, `:lang` | Set the language of current buffer. |
+| `:show-language` | Show the language of current buffer. |
 | `:set-option`, `:set` | Set a config option at runtime.<br>For example to disable smart case search, use `:set search.smart-case false`. |
 | `:get-option`, `:get` | Get the current value of a config option. |
 | `:sort` | Sort ranges in selection. |

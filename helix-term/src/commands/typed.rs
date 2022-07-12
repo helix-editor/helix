@@ -1261,6 +1261,25 @@ fn language(
     Ok(())
 }
 
+fn show_current_language(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let doc = doc_mut!(cx.editor);
+    let lang = if let Some(lang) = doc.language_id() {
+        Cow::Owned(format!("Current language of buffer: {}", lang))
+    } else {
+        Cow::Borrowed("No language for current buffer")
+    };
+    cx.editor.set_status(lang);
+    Ok(())
+}
+
 fn sort(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -1905,6 +1924,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Set the language of current buffer.",
             fun: language,
             completer: Some(completers::language),
+        },
+        TypableCommand {
+            name: "show-language",
+            aliases: &[],
+            doc: "Show the language of current buffer.",
+            fun: show_current_language,
+            completer: None,
         },
         TypableCommand {
             name: "set-option",
