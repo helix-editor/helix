@@ -3991,24 +3991,11 @@ fn split(cx: &mut Context, action: Action) {
     let (view, doc) = current!(cx.editor);
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
-    let offset = view.offset;
-    let jumps = view.jumps.clone();
-    let docs_access_history = view.docs_access_history.clone();
-    let last_modified_docs = view.last_modified_docs;
-    let object_selections = view.object_selections.clone();
-    let gutters = view.gutters.clone();
 
     cx.editor.switch(id, action);
 
     // match the selection in the previous view
     let (view, doc) = current!(cx.editor);
-    view.offset = offset;
-    view.jumps = jumps;
-    view.docs_access_history = docs_access_history;
-    view.last_modified_docs = last_modified_docs;
-    view.object_selections = object_selections;
-    view.gutters = gutters;
-
     doc.set_selection(view.id, selection);
 }
 
