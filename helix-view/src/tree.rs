@@ -29,6 +29,16 @@ pub enum Content {
     Container(Box<Container>),
 }
 
+pub enum Resize {
+    Shrink,
+    Grow,
+}
+
+pub enum Dimension {
+    Width,
+    Height,
+}
+
 impl Node {
     pub fn container(layout: Layout) -> Self {
         Self {
@@ -312,7 +322,7 @@ impl Tree {
             } = &mut self.nodes[parent_id]
             {
                 if let Some(pos) = container.children.iter().position(|&child| child == index) {
-                    container.children.remove(pos);
+                    container.remove_child(pos);
 
                     // TODO: if container now only has one child, remove it and place child in parent
                     if container.children.is_empty() && parent_id != self.root {
@@ -654,38 +664,41 @@ impl Tree {
         None
     }
 
-    pub fn grow_buffer_width(&mut self) {
-        if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Vertical) {
-            if bounds.width < 20 {
-                bounds.width += 1;
-                self.recalculate();
+    pub fn resize_buffer(&mut self, resize_type: Resize, dimension: Dimension) {
+        match dimension {
+            Dimension::Width => {
+                if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Vertical) {
+                    match resize_type {
+                        Resize::Shrink => {
+                            if bounds.width > 1 {
+                                bounds.width -= 1;
+                            }
+                        }
+                        Resize::Grow => {
+                            if bounds.width < 20 {
+                                bounds.width += 1;
+                            }
+                        }
+                    };
+                    self.recalculate();
+                }
             }
-        }
-    }
-
-    pub fn shrink_buffer_width(&mut self) {
-        if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Vertical) {
-            if bounds.width > 1 {
-                bounds.width -= 1;
-                self.recalculate();
-            }
-        }
-    }
-
-    pub fn grow_buffer_height(&mut self) {
-        if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Horizontal) {
-            if bounds.height < 20 {
-                bounds.height += 1;
-                self.recalculate();
-            }
-        }
-    }
-
-    pub fn shrink_buffer_height(&mut self) {
-        if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Horizontal) {
-            if bounds.height > 1 {
-                bounds.height -= 1;
-                self.recalculate();
+            Dimension::Height => {
+                if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Horizontal) {
+                    match resize_type {
+                        Resize::Shrink => {
+                            if bounds.height > 1 {
+                                bounds.height -= 1;
+                            }
+                        }
+                        Resize::Grow => {
+                            if bounds.height < 20 {
+                                bounds.height += 1;
+                            }
+                        }
+                    };
+                    self.recalculate();
+                }
             }
         }
     }
