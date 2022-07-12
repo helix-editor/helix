@@ -1528,3 +1528,16 @@ language-server = { command = "fortls", args = ["--lowercase_intrinsics"] }
 [[grammar]]
 name = "fortran"
 source = { git = "https://github.com/stadelmanma/tree-sitter-fortran", rev = "f0f2f100952a353e64e26b0fa710b4c296d7af13" }
+
+[[language]]
+name = "ungrammar"
+scope = "source.ungrammar"
+injection-regex = "ungrammar"
+file-types = ["ungram", "ungrammar"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "ungrammar"
+source = { git = "https://github.com/Philipp-M/tree-sitter-ungrammar", rev = "0113de880a58ea14f2a75802e9b99fcc25003d9c" }
