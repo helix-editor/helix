@@ -39,12 +39,11 @@
 
 'ui.virtual' = { fg = "mid-green" } # Namespace for additions to the editing area.
 'ui.virtual.ruler' = { bg = "mid-green" } # Vertical rulers (colored columns in editing area).
-'ui.virtual.whitespace' = { fg = "light-gray"} # Whitespace markers in editing area.
-# NOTE: Indent guides aren't yet added at the time of writing, but will be soon.
-'ui.virtual.indent-guide' = { fg = "light-gray" } # Indentation guides.
+'ui.virtual.whitespace' = { fg = "gray"} # Whitespace markers in editing area.
+'ui.virtual.indent-guide' = { fg = "gray" } # Indentation guides.
 
-'ui.statusline' = { fg = "white", bg = "mid-green" } # Status line.
-'ui.statusline.inactive' = { fg = "white", bg = "dark-green" } # Status line in unfocused windows.
+'ui.statusline' = { fg = "white", bg = "autocomp-green"} # Status line.
+'ui.statusline.inactive' = { fg = "white", bg = "mid-green"} # Status line in unfocused windows.
 
 'ui.help' = { bg = "mid-green", fg = "white"} # `:command` descriptions above the command line.
 
@@ -61,7 +60,6 @@
 
 'property' = { fg = "red" } # Regex group names.
 'special' = { fg = "mid-blue"} # Special symbols e.g `?` in Rust, `...` in Hare.
-'module' = { } # Unclear, used for Heex module.
 'attribute' = { fg = "yellow" } # Class attributes, html tag attributes.
 
 'type' = { fg = "orange"} # Variable type, like integer or string, including program defined classes, structs etc..
