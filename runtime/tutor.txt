@@ -630,7 +630,7 @@ onto other
 lines.
      This sentence is spilling over onto other lines.
 
- Note: J works on all lines in selection, so typing xxx or 3x to
+ Note: J works on all lines in selection, so typing xxxx or 4x to
        select the lines and then a single J will work the same.
 
 
