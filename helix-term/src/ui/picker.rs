@@ -261,9 +261,38 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         }
     }
 
-    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+        let key_event = match event {
+            Event::Key(event) => event,
+            _ => return self.picker.handle_event(event, cx),
+        };
+
+        let mut filter = |d| {
+            self.picker.options.retain(|item| {
+                (self.file_fn)(cx.editor, item)
+                    .map(|fl| fl.0.starts_with(d))
+                    .unwrap_or(false)
+            });
+            self.picker.filters.clear();
+            self.picker.score();
+        };
+
+        match key_event.into() {
+            ctrl!('a') => {
+                if let Ok(cwd) = std::env::current_dir() {
+                    filter(cwd.as_path());
+                }
+                EventResult::Consumed(None)
+            }
+            ctrl!('l') => {
+                if let Some(cwd) = doc!(cx.editor).path().and_then(|p| p.parent()) {
+                    filter(cwd);
+                }
+                EventResult::Consumed(None)
+            }
+            _ => self.picker.handle_event(event, cx),
+        }
         // TODO: keybinds for scrolling preview
-        self.picker.handle_event(event, ctx)
     }
 
     fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
