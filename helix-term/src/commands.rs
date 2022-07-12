@@ -1922,7 +1922,12 @@ enum Extend {
 }
 
 fn extend_line(cx: &mut Context) {
-    extend_line_impl(cx, Extend::Below);
+    let (view, doc) = current_ref!(cx.editor);
+    let extend = match doc.selection(view.id).primary().direction() {
+        Direction::Forward => Extend::Below,
+        Direction::Backward => Extend::Above,
+    };
+    extend_line_impl(cx, extend);
 }
 
 fn extend_line_above(cx: &mut Context) {
