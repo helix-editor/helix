@@ -31,7 +31,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "A-l"|"A-right" => grow_buffer_width,
             "A-j"|"A-down" => shrink_buffer_height,
             "A-k"|"A-up" => grow_buffer_height,
-            "A-f" => buffer_focus_mode,
+            "A-f" => buffer_expand_mode,
         },
 
         "w" => move_next_word_start,
