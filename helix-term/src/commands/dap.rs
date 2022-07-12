@@ -118,11 +118,14 @@ fn dap_callback<T, F>(
     let callback = Box::pin(async move {
         let json = call.await?;
         let response = serde_json::from_value(json)?;
-        let call: Callback = Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
-            callback(editor, compositor, response)
-        });
+        let call: Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                callback(editor, compositor, response)
+            },
+        ));
         Ok(call)
     });
+
     jobs.callback(callback);
 }
 
@@ -274,10 +277,10 @@ pub fn dap_launch(cx: &mut Context) {
             let completions = template.completion.clone();
             let name = template.name.clone();
             let callback = Box::pin(async move {
-                let call: Callback = Box::new(move |_editor, compositor| {
+                let call: Callback = Callback::Compositor(Box::new(move |compositor| {
                     let prompt = debug_parameter_prompt(completions, name, Vec::new());
                     compositor.push(Box::new(prompt));
-                });
+                }));
                 Ok(call)
             });
             cx.jobs.callback(callback);
@@ -332,10 +335,10 @@ fn debug_parameter_prompt(
                 let config_name = config_name.clone();
                 let params = params.clone();
                 let callback = Box::pin(async move {
-                    let call: Callback = Box::new(move |_editor, compositor| {
+                    let call: Callback = Callback::Compositor(Box::new(move |compositor| {
                         let prompt = debug_parameter_prompt(completions, config_name, params);
                         compositor.push(Box::new(prompt));
-                    });
+                    }));
                     Ok(call)
                 });
                 cx.jobs.callback(callback);
@@ -582,7 +585,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
             None => return,
         };
         let callback = Box::pin(async move {
-            let call: Callback = Box::new(move |editor, compositor| {
+            let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
                 let mut prompt = Prompt::new(
                     "condition:".into(),
                     None,
@@ -610,7 +613,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
                     prompt.insert_str(&condition, editor)
                 }
                 compositor.push(Box::new(prompt));
-            });
+            }));
             Ok(call)
         });
         cx.jobs.callback(callback);
@@ -624,7 +627,7 @@ pub fn dap_edit_log(cx: &mut Context) {
             None => return,
         };
         let callback = Box::pin(async move {
-            let call: Callback = Box::new(move |editor, compositor| {
+            let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
                 let mut prompt = Prompt::new(
                     "log-message:".into(),
                     None,
@@ -651,7 +654,7 @@ pub fn dap_edit_log(cx: &mut Context) {
                     prompt.insert_str(&log_message, editor);
                 }
                 compositor.push(Box::new(prompt));
-            });
+            }));
             Ok(call)
         });
         cx.jobs.callback(callback);

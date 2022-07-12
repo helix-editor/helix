@@ -47,6 +47,7 @@ use movement::Movement;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
+    job::Callback,
     keymap::ReverseKeymap,
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
@@ -107,10 +108,11 @@ impl<'a> Context<'a> {
         let callback = Box::pin(async move {
             let json = call.await?;
             let response = serde_json::from_value(json)?;
-            let call: job::Callback =
-                Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                move |editor: &mut Editor, compositor: &mut Compositor| {
                     callback(editor, compositor, response)
-                });
+                },
+            ));
             Ok(call)
         });
         self.jobs.callback(callback);
@@ -1925,8 +1927,8 @@ fn global_search(cx: &mut Context) {
     let show_picker = async move {
         let all_matches: Vec<FileResult> =
             UnboundedReceiverStream::new(all_matches_rx).collect().await;
-        let call: job::Callback =
-            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
                 if all_matches.is_empty() {
                     editor.set_status("No matches found");
                     return;
@@ -1962,7 +1964,8 @@ fn global_search(cx: &mut Context) {
                     },
                 );
                 compositor.push(Box::new(overlayed(picker)));
-            });
+            },
+        ));
         Ok(call)
     };
     cx.jobs.callback(show_picker);
@@ -2516,7 +2519,7 @@ async fn make_format_callback(
     write: Option<(Option<PathBuf>, bool)>,
 ) -> anyhow::Result<job::Callback> {
     let format = format.await?;
-    let call: job::Callback = Box::new(move |editor, _compositor| {
+    let call: job::Callback = Callback::EditorCompositor(Box::new(move |editor, _compositor| {
         if !editor.documents.contains_key(&doc_id) {
             return;
         }
@@ -2546,7 +2549,7 @@ async fn make_format_callback(
         } else {
             log::info!("discarded formatting changes because the document changed");
         }
-    });
+    }));
 
     Ok(call)
 }

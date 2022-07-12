@@ -971,7 +971,11 @@ impl Application {
         //        want to try to run as much cleanup as we can, regardless of
         //        errors along the way
 
-        let mut result = match self.jobs.finish().await {
+        let mut result = match self
+            .jobs
+            .finish(Some(&mut self.editor), Some(&mut self.compositor))
+            .await
+        {
             Ok(_) => Ok(()),
             Err(err) => {
                 log::error!("Error executing job: {}", err);

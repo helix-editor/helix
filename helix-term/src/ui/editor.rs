@@ -1,7 +1,8 @@
 use crate::{
     commands,
     compositor::{Component, Context, Event, EventResult},
-    job, key,
+    job::{self, Callback},
+    key,
     keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
@@ -944,9 +945,9 @@ impl EditorView {
 
                     // TODO: Use an on_mode_change hook to remove signature help
                     cxt.jobs.callback(async {
-                        let call: job::Callback = Box::new(|_editor, compositor| {
+                        let call: job::Callback = Callback::Compositor(Box::new(|compositor| {
                             compositor.remove(SignatureHelp::ID);
-                        });
+                        }));
                         Ok(call)
                     });
                 }
