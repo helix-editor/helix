@@ -42,17 +42,21 @@ impl Loader {
         if name == "base16_default" {
             return Ok(self.base16_default());
         }
-        let filename = format!("{}.toml", name);
 
-        let user_path = self.user_dir.join(&filename);
-        let path = if user_path.exists() {
-            user_path
-        } else {
-            self.default_dir.join(filename)
-        };
 
+        // let mut raw_theme: RawTheme = self.load_raw(name)?;
+
+        // if let Some(parent_theme_name) = &raw_theme.inherits_from {
+        //     //let parent_theme_name = "bogster";
+        //     let parent_raw_theme = self.load_raw(parent_theme_name)?;
+
+        //     raw_theme.inherit(parent_raw_theme);
+        // }
+
+        let path = self.path(name);
         let data = std::fs::read(&path)?;
-        toml::from_slice(data.as_slice()).context("Failed to deserialize theme")
+
+        toml::from_slice(data.as_slice()).context("Faled to deserialize theme")
     }
 
     pub fn read_names(path: &Path) -> Vec<String> {
@@ -68,6 +72,28 @@ impl Loader {
                     .collect()
             })
             .unwrap_or_default()
+    }
+
+    // Loads the raw theme data first from the user_dir then in default_dir
+    fn load_raw(&self, name: &str) -> Result<RawTheme, anyhow::Error> {
+        let path = self.path(name);
+        let data = std::fs::read(&path)?;
+
+        toml::from_slice(data.as_slice()).context("Faled to deserialize theme")
+    }
+
+    // Returns the path to the theme name
+    fn path(&self, name: &str) -> PathBuf {
+        let filename = format!("{}.toml", name);
+
+        let user_path = self.user_dir.join(&filename);
+        let path = if user_path.exists() {
+            user_path
+        } else {
+            self.default_dir.join(filename)
+        };
+
+        path
     }
 
     /// Lists all theme names available in default and user directory
@@ -93,6 +119,63 @@ impl Loader {
     /// Returns the alternative 16-color default theme
     pub fn base16_default(&self) -> Theme {
         BASE16_DEFAULT_THEME.clone()
+    }
+}
+
+struct RawTheme {
+    // Raw toml values
+    values: HashMap<String, Value>,
+    palette: ThemePalette,
+    inherits_from: Option<String>,
+}
+
+impl RawTheme {
+    fn inherit(&mut self, parent_theme: RawTheme) {
+        let palette = ThemePalette::new(
+            parent_theme
+                .palette
+                .palette
+                .into_iter()
+                .chain(self.palette.palette.clone())
+                .collect(),
+        );
+        self.palette = palette;
+
+        let values = parent_theme
+            .values
+            .into_iter()
+            .chain(self.values.clone())
+            .collect();
+        self.values = values;
+    }
+}
+
+impl<'de> Deserialize<'de> for RawTheme {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let mut values = HashMap::<String, Value>::deserialize(deserializer)?;
+
+        let palette = values
+            .remove("palette")
+            .map(|value| {
+                ThemePalette::try_from(value).unwrap_or_else(|err| {
+                    warn!("{}", err);
+                    ThemePalette::default()
+                })
+            })
+            .unwrap_or_default();
+
+        let inherits_from = values
+            .remove("inherits_from")
+            .map(|value| value.to_string().replace("\"", ""));
+
+        Ok(Self {
+            values,
+            palette,
+            inherits_from,
+        })
     }
 }
 
