@@ -43,20 +43,21 @@ impl Loader {
             return Ok(self.base16_default());
         }
 
+        let mut raw_theme: RawTheme = self.load_raw(name)?;
 
-        // let mut raw_theme: RawTheme = self.load_raw(name)?;
+        if let Some(parent_theme_name) = &raw_theme.inherits_from {
+            //let parent_theme_name = "bogster";
+            let parent_raw_theme = self.load_raw(parent_theme_name)?;
 
-        // if let Some(parent_theme_name) = &raw_theme.inherits_from {
-        //     //let parent_theme_name = "bogster";
-        //     let parent_raw_theme = self.load_raw(parent_theme_name)?;
+            raw_theme.inherit(parent_raw_theme);
+        }
 
-        //     raw_theme.inherit(parent_raw_theme);
-        // }
+        Ok(Theme::from(raw_theme))
 
-        let path = self.path(name);
-        let data = std::fs::read(&path)?;
+        // let path = self.path(name);
+        // let data = std::fs::read(&path)?;
 
-        toml::from_slice(data.as_slice()).context("Faled to deserialize theme")
+        // toml::from_slice(data.as_slice()).context("Faled to deserialize theme")
     }
 
     pub fn read_names(path: &Path) -> Vec<String> {
@@ -157,6 +158,7 @@ impl<'de> Deserialize<'de> for RawTheme {
     {
         let mut values = HashMap::<String, Value>::deserialize(deserializer)?;
 
+        // TODO: alert user of parsing failures in editor
         let palette = values
             .remove("palette")
             .map(|value| {
@@ -186,6 +188,32 @@ pub struct Theme {
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
     scopes: Vec<String>,
     highlights: Vec<Style>,
+}
+
+impl From<RawTheme> for Theme {
+    fn from(raw_theme: RawTheme) -> Self {
+        let mut styles = HashMap::new();
+        let mut scopes = Vec::new();
+        let mut highlights = Vec::new();
+
+        for (name, style_value) in raw_theme.values {
+            let mut style = Style::default();
+            if let Err(err) = raw_theme.palette.parse_style(&mut style, style_value) {
+                warn!("{}", err);
+            }
+
+            // these are used both as UI and as highlights
+            styles.insert(name.clone(), style);
+            scopes.push(name);
+            highlights.push(style);
+        }
+
+        Self {
+            styles,
+            scopes,
+            highlights,
+        }
+    }
 }
 
 impl<'de> Deserialize<'de> for Theme {
