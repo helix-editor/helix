@@ -35,7 +35,7 @@ label = "peach"
 
 "diff.plus" = "#35bf86"
 "diff.minus" = "#f22c86"
-"diff.delta" = "#6f44f0"
+"diff.delta" = "delta"
 
 "ui.background" = { bg = "black_2" }
 "ui.linenr" = { fg = "gray_0" }
@@ -91,3 +91,8 @@ gray_2 = "#C3BAC6"
 white = "#D9E0EE"
 lavender = "#C9CBFF"
 rosewater = "#F5E0DC"
+
+silver = "#c0c0c0"
+apricot = "#f47868"
+lightning = "#ffcd1c"
+delta = "#6f44f0"
