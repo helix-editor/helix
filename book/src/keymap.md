@@ -322,6 +322,7 @@ undo-able "save point" until you return to normal mode.
 | `PageDown`                | Move one page down          | `page_down`             |
 | `Alt->`                   | Go to end of buffer         | `goto_file_end`         |
 | `Alt-<`                   | Go to start of buffer       | `goto_file_start`       |
+| `Ctrl-K`                  | Insert digraph              | `insert_digraph`        |
 
 ## Select / extend mode
 

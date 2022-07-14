@@ -10,6 +10,7 @@ pub mod handlers {
     pub mod dap;
     pub mod lsp;
 }
+pub mod digraph;
 pub mod info;
 pub mod input;
 pub mod keyboard;

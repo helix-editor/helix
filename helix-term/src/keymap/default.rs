@@ -379,6 +379,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "C-x" => completion,
         "C-r" => insert_register,
+
+        "C-K" => insert_digraph,
     });
     hashmap!(
         Mode::Normal => Keymap::new(normal),

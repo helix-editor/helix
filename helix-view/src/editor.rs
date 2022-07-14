@@ -1,5 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
+    digraph::DigraphStore,
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::{CursorKind, Rect},
     info::Info,
@@ -161,6 +162,8 @@ pub struct Config {
     pub whitespace: WhitespaceConfig,
     /// Vertical indent width guides.
     pub indent_guides: IndentGuidesConfig,
+    /// User supplied digraphs for use with the `insert_diagraphs` command
+    pub digraphs: DigraphStore,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
 }
@@ -416,6 +419,7 @@ impl Default for Config {
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
             indent_guides: IndentGuidesConfig::default(),
+            digraphs: Default::default(),
             color_modes: false,
         }
     }
