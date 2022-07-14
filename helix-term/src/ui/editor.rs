@@ -112,6 +112,10 @@ impl EditorView {
             }
         }
 
+        if is_focused && editor.config().cursorline {
+            Self::highlight_cursorline(doc, view, surface, theme);
+        }
+
         let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
         let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
@@ -157,7 +161,7 @@ impl EditorView {
             .area
             .clip_top(view.area.height.saturating_sub(1))
             .clip_bottom(1); // -1 from bottom to remove commandline
-        self.render_statusline(doc, view, statusline_area, surface, theme, is_focused);
+        self.render_statusline(editor, doc, view, statusline_area, surface, is_focused);
     }
 
     pub fn render_rulers(
@@ -664,13 +668,16 @@ impl EditorView {
         let hint = theme.get("hint");
 
         let mut lines = Vec::new();
+        let background_style = theme.get("ui.background");
         for diagnostic in diagnostics {
-            let style = Style::reset().patch(match diagnostic.severity {
-                Some(Severity::Error) => error,
-                Some(Severity::Warning) | None => warning,
-                Some(Severity::Info) => info,
-                Some(Severity::Hint) => hint,
-            });
+            let style = Style::reset()
+                .patch(background_style)
+                .patch(match diagnostic.severity {
+                    Some(Severity::Error) => error,
+                    Some(Severity::Warning) | None => warning,
+                    Some(Severity::Info) => info,
+                    Some(Severity::Hint) => hint,
+                });
             let text = Text::styled(&diagnostic.message, style);
             lines.extend(text.lines);
         }
@@ -686,13 +693,50 @@ impl EditorView {
         );
     }
 
+    /// Apply the highlighting on the lines where a cursor is active
+    pub fn highlight_cursorline(doc: &Document, view: &View, surface: &mut Surface, theme: &Theme) {
+        let text = doc.text().slice(..);
+        let last_line = view.last_line(doc);
+
+        let primary_line = doc.selection(view.id).primary().cursor_line(text);
+
+        // The secondary_lines do contain the primary_line, it doesn't matter
+        // as the else-if clause in the loop later won't test for the
+        // secondary_lines if primary_line == line.
+        // It's used inside a loop so the collect isn't needless:
+        // https://github.com/rust-lang/rust-clippy/issues/6164
+        #[allow(clippy::needless_collect)]
+        let secondary_lines: Vec<_> = doc
+            .selection(view.id)
+            .iter()
+            .map(|range| range.cursor_line(text))
+            .collect();
+
+        let primary_style = theme.get("ui.cursorline.primary");
+        let secondary_style = theme.get("ui.cursorline.secondary");
+
+        for line in view.offset.row..(last_line + 1) {
+            let area = Rect::new(
+                view.area.x,
+                view.area.y + (line - view.offset.row) as u16,
+                view.area.width,
+                1,
+            );
+            if primary_line == line {
+                surface.set_style(area, primary_style);
+            } else if secondary_lines.binary_search(&line).is_ok() {
+                surface.set_style(area, secondary_style);
+            }
+        }
+    }
+
     pub fn render_statusline(
         &self,
+        editor: &Editor,
         doc: &Document,
         view: &View,
         viewport: Rect,
         surface: &mut Surface,
-        theme: &Theme,
         is_focused: bool,
     ) {
         use tui::text::{Span, Spans};
@@ -701,10 +745,11 @@ impl EditorView {
         // Left side of the status line.
         //-------------------------------
 
-        let mode = match doc.mode() {
-            Mode::Insert => "INS",
-            Mode::Select => "SEL",
-            Mode::Normal => "NOR",
+        let theme = &editor.theme;
+        let (mode, mode_style) = match doc.mode() {
+            Mode::Insert => (" INS ", theme.get("ui.statusline.insert")),
+            Mode::Select => (" SEL ", theme.get("ui.statusline.select")),
+            Mode::Normal => (" NOR ", theme.get("ui.statusline.normal")),
         };
         let progress = doc
             .language_server()
@@ -723,7 +768,13 @@ impl EditorView {
         // statusline
         surface.set_style(viewport.with_height(1), base_style);
         if is_focused {
-            surface.set_string(viewport.x + 1, viewport.y, mode, base_style);
+            let color_modes = editor.config().color_modes;
+            surface.set_string(
+                viewport.x,
+                viewport.y,
+                mode,
+                if color_modes { mode_style } else { base_style },
+            );
         }
         surface.set_string(viewport.x + 5, viewport.y, progress, base_style);
 
@@ -1010,22 +1061,33 @@ impl EditorView {
         cxt: &mut commands::Context,
     ) -> EventResult {
         let config = cxt.editor.config();
-        match event {
-            MouseEvent {
-                kind: MouseEventKind::Down(MouseButton::Left),
-                row,
-                column,
-                modifiers,
-                ..
-            } => {
+        let MouseEvent {
+            kind,
+            row,
+            column,
+            modifiers,
+            ..
+        } = event;
+
+        let pos_and_view = |editor: &Editor, row, column| {
+            editor.tree.views().find_map(|(view, _focus)| {
+                view.pos_at_screen_coords(&editor.documents[&view.doc], row, column)
+                    .map(|pos| (pos, view.id))
+            })
+        };
+
+        let gutter_coords_and_view = |editor: &Editor, row, column| {
+            editor.tree.views().find_map(|(view, _focus)| {
+                view.gutter_coords_at_screen_coords(row, column)
+                    .map(|coords| (coords, view.id))
+            })
+        };
+
+        match kind {
+            MouseEventKind::Down(MouseButton::Left) => {
                 let editor = &mut cxt.editor;
 
-                let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&editor.documents[&view.doc], row, column)
-                        .map(|pos| (pos, view.id))
-                });
-
-                if let Some((pos, view_id)) = result {
+                if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
                     let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
 
                     if modifiers == crossterm::event::KeyModifiers::ALT {
@@ -1040,12 +1102,7 @@ impl EditorView {
                     return EventResult::Consumed(None);
                 }
 
-                let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.gutter_coords_at_screen_coords(row, column)
-                        .map(|coords| (coords, view.id))
-                });
-
-                if let Some((coords, view_id)) = result {
+                if let Some((coords, view_id)) = gutter_coords_and_view(editor, row, column) {
                     editor.tree.focus = view_id;
 
                     let view = editor.tree.get(view_id);
@@ -1066,12 +1123,7 @@ impl EditorView {
                 EventResult::Ignored(None)
             }
 
-            MouseEvent {
-                kind: MouseEventKind::Drag(MouseButton::Left),
-                row,
-                column,
-                ..
-            } => {
+            MouseEventKind::Drag(MouseButton::Left) => {
                 let (view, doc) = current!(cxt.editor);
 
                 let pos = match view.pos_at_screen_coords(doc, row, column) {
@@ -1083,15 +1135,11 @@ impl EditorView {
                 let primary = selection.primary_mut();
                 *primary = primary.put_cursor(doc.text().slice(..), pos, true);
                 doc.set_selection(view.id, selection);
+
                 EventResult::Consumed(None)
             }
 
-            MouseEvent {
-                kind: MouseEventKind::ScrollUp | MouseEventKind::ScrollDown,
-                row,
-                column,
-                ..
-            } => {
+            MouseEventKind::ScrollUp | MouseEventKind::ScrollDown => {
                 let current_view = cxt.editor.tree.focus;
 
                 let direction = match event.kind {
@@ -1100,13 +1148,8 @@ impl EditorView {
                     _ => unreachable!(),
                 };
 
-                let result = cxt.editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&cxt.editor.documents[&view.doc], row, column)
-                        .map(|_| view.id)
-                });
-
-                match result {
-                    Some(view_id) => cxt.editor.tree.focus = view_id,
+                match pos_and_view(cxt.editor, row, column) {
+                    Some((_, view_id)) => cxt.editor.tree.focus = view_id,
                     None => return EventResult::Ignored(None),
                 }
 
@@ -1118,10 +1161,7 @@ impl EditorView {
                 EventResult::Consumed(None)
             }
 
-            MouseEvent {
-                kind: MouseEventKind::Up(MouseButton::Left),
-                ..
-            } => {
+            MouseEventKind::Up(MouseButton::Left) => {
                 if !config.middle_click_paste {
                     return EventResult::Ignored(None);
                 }
@@ -1143,19 +1183,8 @@ impl EditorView {
                 EventResult::Consumed(None)
             }
 
-            MouseEvent {
-                kind: MouseEventKind::Up(MouseButton::Right),
-                row,
-                column,
-                modifiers,
-                ..
-            } => {
-                let result = cxt.editor.tree.views().find_map(|(view, _focus)| {
-                    view.gutter_coords_at_screen_coords(row, column)
-                        .map(|coords| (coords, view.id))
-                });
-
-                if let Some((coords, view_id)) = result {
+            MouseEventKind::Up(MouseButton::Right) => {
+                if let Some((coords, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
                     cxt.editor.tree.focus = view_id;
 
                     let view = cxt.editor.tree.get(view_id);
@@ -1172,16 +1201,11 @@ impl EditorView {
                         return EventResult::Consumed(None);
                     }
                 }
+
                 EventResult::Ignored(None)
             }
 
-            MouseEvent {
-                kind: MouseEventKind::Up(MouseButton::Middle),
-                row,
-                column,
-                modifiers,
-                ..
-            } => {
+            MouseEventKind::Up(MouseButton::Middle) => {
                 let editor = &mut cxt.editor;
                 if !config.middle_click_paste {
                     return EventResult::Ignored(None);
@@ -1194,16 +1218,12 @@ impl EditorView {
                     return EventResult::Consumed(None);
                 }
 
-                let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&editor.documents[&view.doc], row, column)
-                        .map(|pos| (pos, view.id))
-                });
-
-                if let Some((pos, view_id)) = result {
+                if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
                     let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
                     doc.set_selection(view_id, Selection::point(pos));
                     editor.tree.focus = view_id;
                     commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
+
                     return EventResult::Consumed(None);
                 }
 

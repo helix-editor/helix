@@ -58,6 +58,7 @@ diagnostic = { modifiers = ["underlined"] }
 
 "ui.selection" = { bg = "light-gray" }
 "ui.selection.primary" = { bg = "gray" }
+"ui.cursorline.primary" = { bg = "light-black" }
 
 "ui.linenr" = { fg = "linenr" }
 "ui.linenr.selected" = { fg = "white" }
@@ -70,9 +71,10 @@ diagnostic = { modifiers = ["underlined"] }
 
 "ui.help" = { bg = "gray" }
 "ui.popup" = { bg = "gray" }
-"ui.window" = { bg = "gray" }
+"ui.window" = { fg = "gray" }
 "ui.menu" = { fg = "white", bg = "gray" }
 "ui.menu.selected" = { fg = "black", bg = "blue" }
+"ui.menu.scroll" = { fg = "white", bg = "light-gray" }
 
 [palette]
 

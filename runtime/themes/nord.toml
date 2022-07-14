@@ -1,6 +1,7 @@
 # Author : RayGervais<raygervais@hotmail.ca>
 
 "ui.linenr.selected" = { fg = "nord4" }
+"ui.cursorline.primary" = { bg = "nord1" }
 "ui.text.focus" = { fg = "nord8", modifiers= ["bold"] }
 "ui.menu" = { fg = "nord6", bg = "#232d38" }
 "ui.menu.selected" = { fg = "nord8", bg = "nord2" }
@@ -40,7 +41,7 @@
 "constant.builtin" = "nord4"
 "namespace" = "nord4"
 
-# nord5 - suble UI text
+# nord5 - subtle UI text
 
 # nord6 - base text, punctuation
 "ui.text" = { fg = "nord6" }

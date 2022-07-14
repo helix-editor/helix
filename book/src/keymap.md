@@ -52,7 +52,7 @@
 | `A`         | Insert at the end of the line                                        | `append_to_line`          |
 | `o`         | Open new line below selection                                        | `open_below`              |
 | `O`         | Open new line above selection                                        | `open_above`              |
-| `.`         | Repeat last change                                                   | N/A                       |
+| `.`         | Repeat last insert                                                   | N/A                       |
 | `u`         | Undo change                                                          | `undo`                    |
 | `U`         | Redo change                                                          | `redo`                    |
 | `Alt-u`     | Move backward in history                                             | `earlier`                 |
@@ -241,6 +241,8 @@ This layer is a kludge of mappings, mostly pickers.
 | `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                             |
 | `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                     |
 | `S`     | Open workspace symbol picker (**LSP**)                                  | `workspace_symbol_picker`           |
+| `g`     | Open document diagnostics picker (**LSP**)                              | `diagnostics_picker`                |
+| `G`     | Open workspace diagnostics picker (**LSP**)                             | `workspace_diagnostics_picker`
 | `r`     | Rename symbol (**LSP**)                                                 | `rename_symbol`                     |
 | `a`     | Apply code action  (**LSP**)                                            | `code_action`                       |
 | `'`     | Open last fuzzy picker                                                  | `last_picker`                       |

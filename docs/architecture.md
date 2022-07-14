@@ -32,7 +32,7 @@ represented by a `Selection`. Each `Range` in the selection consists of a moving
 a selection with a single range, with the head and the anchor in the same
 position.
 
-Ropes are modified by constructing an OT-like `Transaction`. It's represents
+Ropes are modified by constructing an OT-like `Transaction`. It represents
 a single coherent change to the document and can be applied to the rope.
 A transaction can be inverted to produce an undo. Selections and marks can be
 mapped over a transaction to translate to a position in the new text state after

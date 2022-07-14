@@ -22,8 +22,12 @@ the project root. The flake can also be used to spin up a reproducible developme
 shell for working on Helix with `nix develop`.
 
 Flake outputs are cached for each push to master using
-[Cachix](https://www.cachix.org/). With Cachix
-[installed](https://docs.cachix.org/installation), `cachix use helix` will
+[Cachix](https://www.cachix.org/). The flake is configured to
+automatically make use of this cache assuming the user accepts
+the new settings on first use.
+
+If you are using a version of Nix without flakes enabled you can
+[install Cachix cli](https://docs.cachix.org/installation); `cachix use helix` will
 configure Nix to use cached outputs when possible.
 
 ### Arch Linux
@@ -61,10 +65,11 @@ Helix also needs it's runtime files so make sure to copy/symlink the `runtime/` 
 config directory (for example `~/.config/helix/runtime` on Linux/macOS). This location can be overridden
 via the `HELIX_RUNTIME` environment variable.
 
-| OS        | command   |
-|-----------|-----------|
-|windows    |`xcopy runtime %AppData%/helix/runtime`|
-|linux/macos|`ln -s $PWD/runtime ~/.config/helix/runtime`
+| OS                | command   |
+|-------------------|-----------|
+|windows(cmd.exe)   |`xcopy runtime %AppData%/helix/runtime`     |
+|windows(powershell)|`xcopy runtime $Env:AppData\helix\runtime`  |
+|linux/macos        |`ln -s $PWD/runtime ~/.config/helix/runtime`|
 
 ## Finishing up the installation 
 
@@ -75,8 +80,13 @@ hx --health
 For more information on the information displayed in the healthcheck results refer to [Healthcheck](https://github.com/helix-editor/helix/wiki/Healthcheck).
 
 
-## Building tree-sitter grammars
+### Building tree-sitter grammars
 
 Tree-sitter grammars must be fetched and compiled if not pre-packaged.
 Fetch grammars with `hx --grammar fetch` (requires `git`) and compile them
 with `hx --grammar build` (requires a C++ compiler).
+
+### Installing language servers
+
+Language servers can optionally be installed if you want their features (auto-complete, diagnostics etc.).
+Follow the [instructions on the wiki page](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers) to add your language servers of choice.

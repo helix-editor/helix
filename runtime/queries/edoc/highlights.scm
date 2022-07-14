@@ -39,9 +39,9 @@
 ; could be @constant.numeric.integer but this looks similar to a capture
 (arity) @operator
 
-[":" "/"] @operator
-["(" ")"] @punctuation.delimiter
-["{" "}"] @function.macro
+(expression [":" "/"] @operator)
+(expression ["(" ")"] @punctuation.delimiter)
+(macro ["{" "}"] @function.macro)
 
 [
   (quote_marker)

@@ -22,15 +22,21 @@
 [
   "abstract"
   "declare"
-  "enum"
   "export"
   "implements"
-  "interface"
   "keyof"
   "namespace"
+] @keyword
+
+[
+  "type"
+  "interface"
+  "enum"
+] @keyword.storage.type
+
+[
+  "public"
   "private"
   "protected"
-  "public"
-  "type"
   "readonly"
-] @keyword
+] @keyword.storage.modifier

@@ -2,12 +2,11 @@ use crate::{Range, RopeSlice, Selection, Syntax};
 use tree_sitter::Node;
 
 pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
-    select_node_impl(syntax, text, selection, |descendant, from, to| {
-        if descendant.start_byte() == from && descendant.end_byte() == to {
-            descendant.parent()
-        } else {
-            Some(descendant)
+    select_node_impl(syntax, text, selection, |mut node, from, to| {
+        while node.start_byte() == from && node.end_byte() == to {
+            node = node.parent()?;
         }
+        Some(node)
     })
 }
 
