@@ -262,6 +262,9 @@ impl MappableCommand {
         command_mode, "Enter command mode",
         file_picker, "Open file picker",
         file_picker_in_current_directory, "Open file picker at current working directory",
+        file_picker_in_buffer_directory, "Open file picker at buffer's directory",
+        config_open, "Open the helix config.toml file.",
+        log_open, "Open the helix log file.",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         symbol_picker, "Open symbol picker",
@@ -2194,6 +2197,26 @@ fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
     let picker = ui::file_picker(cwd, &cx.editor.config());
     cx.push_layer(Box::new(overlayed(picker)));
+}
+
+fn file_picker_in_buffer_directory(cx: &mut Context) {
+    let (_, doc) = current_ref!(cx.editor);
+    let cwd = doc.path().and_then(|f| f.parent()).map_or_else(
+        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./")),
+        |path| path.into(),
+    );
+    let picker = ui::file_picker(cwd, &cx.editor.config());
+    cx.push_layer(Box::new(overlayed(picker)));
+}
+
+fn config_open(cx: &mut Context) {
+    let _ = cx
+        .editor
+        .open(&helix_loader::config_file(), Action::Replace);
+}
+
+fn log_open(cx: &mut Context) {
+    let _ = cx.editor.open(&helix_loader::log_file(), Action::Replace);
 }
 
 fn buffer_picker(cx: &mut Context) {

@@ -237,6 +237,7 @@ This layer is a kludge of mappings, mostly pickers.
 | Key     | Description                                                             | Command                             |
 | -----   | -----------                                                             | -------                             |
 | `f`     | Open file picker                                                        | `file_picker`                       |
+| `F`     | Enter [File mode](#file-mode)                                           | N/A                                 |
 | `b`     | Open buffer picker                                                      | `buffer_picker`                     |
 | `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                             |
 | `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                     |
@@ -256,6 +257,19 @@ This layer is a kludge of mappings, mostly pickers.
 | `?`     | Open command palette                                                    | `command_palette`                   |
 
 > TIP: Global search displays results in a fuzzy picker, use `space + '` to bring it back up after opening a file.
+
+#### File mode
+
+This layer is a kludge of mappings, mostly pickers.
+
+
+| Key     | Description                                                             | Command                             |
+| -----   | -----------                                                             | -------                             |
+| `f`     | Open file picker                                                        | `file_picker`                       |
+| `F`     | Open file picker at current working directory                           | `file_picker_in_current_directory`  |
+| `d`     | Open file picker at current buffer's directory                          | `file_picker_in_buffer_directory`   |
+| `c`     | Open the helix config.toml file                                         | `config_open`                       |
+| `l`     | Open the helix log file                                                 | `log_open`                          |
 
 ##### Popup
 
