@@ -46,11 +46,12 @@ impl Loader {
             return Ok(self.base16_default());
         }
 
-        let mut raw_theme: RawTheme = self.load_raw(name)?;
+        let path = self.path(name, false);
+        let mut raw_theme: RawTheme = self.load_raw(path)?;
 
         if let Some(parent_theme_name) = &raw_theme.inherits_from {
-            //let parent_theme_name = "bogster";
-            let parent_raw_theme = self.load_raw(parent_theme_name)?;
+            let path = self.path(parent_theme_name, parent_theme_name == name);
+            let parent_raw_theme = self.load_raw(path)?;
 
             raw_theme.inherit(parent_raw_theme);
         }
@@ -74,19 +75,18 @@ impl Loader {
     }
 
     // Loads the raw theme data first from the user_dir then in default_dir
-    fn load_raw(&self, name: &str) -> Result<RawTheme, anyhow::Error> {
-        let path = self.path(name);
+    fn load_raw(&self, path: PathBuf) -> Result<RawTheme, anyhow::Error> {
         let data = std::fs::read(&path)?;
 
         toml::from_slice(data.as_slice()).context("Faled to deserialize theme")
     }
 
     // Returns the path to the theme name
-    fn path(&self, name: &str) -> PathBuf {
+    fn path(&self, name: &str, only_default_dir: bool) -> PathBuf {
         let filename = format!("{}.toml", name);
 
         let user_path = self.user_dir.join(&filename);
-        if user_path.exists() {
+        if !only_default_dir && user_path.exists() {
             user_path
         } else {
             self.default_dir.join(filename)
