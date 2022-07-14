@@ -1100,18 +1100,6 @@ pub struct Config {
 }
 
 impl Config {
-    /// Create a version of this config with any `None` fields
-    /// filled in with values from the config passed to `other`.
-    pub fn merged(self, other: Config) -> Config {
-        // Crate `merge` isn't used here, so this will do.
-        Config {
-            encoding: self.encoding.or(other.encoding),
-            line_ending: self.line_ending.or(other.line_ending),
-            indent_style: self.indent_style.or(other.indent_style),
-            tab_width: self.tab_width.or(other.tab_width),
-        }
-    }
-
     /// Wraps an optional encoding in a `Config`, using default values for everything else.
     pub fn from_encoding(encoding: Option<&'static encoding::Encoding>) -> Config {
         Config {
