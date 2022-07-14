@@ -209,6 +209,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
                 "d" => file_picker_in_buffer_directory,
                 "c" => config_open,
                 "l" => log_open,
+                "y" => yank_file_name_to_clipboard,
             },
             "b" => buffer_picker,
             "s" => symbol_picker,

@@ -265,6 +265,7 @@ impl MappableCommand {
         file_picker_in_buffer_directory, "Open file picker at buffer's directory",
         config_open, "Open the helix config.toml file.",
         log_open, "Open the helix log file.",
+        yank_file_name_to_clipboard, "Yank current buffer's file name to clipboard",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         symbol_picker, "Open symbol picker",
@@ -2217,6 +2218,20 @@ fn config_open(cx: &mut Context) {
 
 fn log_open(cx: &mut Context) {
     let _ = cx.editor.open(&helix_loader::log_file(), Action::Replace);
+}
+
+fn yank_file_name_to_clipboard(cx: &mut Context) {
+    let editor = &mut cx.editor;
+    let (_, doc) = current_ref!(editor);
+    if let Some(path) = doc.path().map(|p| p.to_string_lossy()) {
+        let _ = editor
+            .clipboard_provider
+            .set_contents(path.into_owned(), ClipboardType::Clipboard);
+
+        editor.set_status("yanked file name to system clipboard");
+    } else {
+        editor.set_status("no file associated with current buffer");
+    }
 }
 
 fn buffer_picker(cx: &mut Context) {

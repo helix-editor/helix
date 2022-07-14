@@ -270,6 +270,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `d`     | Open file picker at current buffer's directory                          | `file_picker_in_buffer_directory`   |
 | `c`     | Open the helix config.toml file                                         | `config_open`                       |
 | `l`     | Open the helix log file                                                 | `log_open`                          |
+| `y`     | Yank current buffer's file name to clipboard                            | `yank_file_name_to_clipboard`       |
 
 ##### Popup
 
