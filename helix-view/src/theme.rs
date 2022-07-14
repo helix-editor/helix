@@ -13,11 +13,14 @@ use toml::Value;
 pub use crate::graphics::{Color, Modifier, Style};
 
 pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
-    toml::from_slice(include_bytes!("../../theme.toml")).expect("Failed to parse default theme")
+    let raw_theme: RawTheme = toml::from_slice(include_bytes!("../../theme.toml"))
+        .expect("Failed to parse default theme");
+    Theme::from(raw_theme)
 });
 pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
-    toml::from_slice(include_bytes!("../../base16_theme.toml"))
-        .expect("Failed to parse base 16 default theme")
+    let raw_theme: RawTheme = toml::from_slice(include_bytes!("../../base16_theme.toml"))
+        .expect("Failed to parse base 16 default theme");
+    Theme::from(raw_theme)
 });
 
 #[derive(Clone, Debug)]
@@ -53,11 +56,6 @@ impl Loader {
         }
 
         Ok(Theme::from(raw_theme))
-
-        // let path = self.path(name);
-        // let data = std::fs::read(&path)?;
-
-        // toml::from_slice(data.as_slice()).context("Faled to deserialize theme")
     }
 
     pub fn read_names(path: &Path) -> Vec<String> {
@@ -88,13 +86,11 @@ impl Loader {
         let filename = format!("{}.toml", name);
 
         let user_path = self.user_dir.join(&filename);
-        let path = if user_path.exists() {
+        if user_path.exists() {
             user_path
         } else {
             self.default_dir.join(filename)
-        };
-
-        path
+        }
     }
 
     /// Lists all theme names available in default and user directory
@@ -171,7 +167,7 @@ impl<'de> Deserialize<'de> for RawTheme {
 
         let inherits_from = values
             .remove("inherits_from")
-            .map(|value| value.to_string().replace("\"", ""));
+            .map(|value| value.to_string().replace('\"', ""));
 
         Ok(Self {
             values,
@@ -213,52 +209,6 @@ impl From<RawTheme> for Theme {
             scopes,
             highlights,
         }
-    }
-}
-
-impl<'de> Deserialize<'de> for Theme {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let mut styles = HashMap::new();
-        let mut scopes = Vec::new();
-        let mut highlights = Vec::new();
-
-        if let Ok(mut colors) = HashMap::<String, Value>::deserialize(deserializer) {
-            // TODO: alert user of parsing failures in editor
-            let palette = colors
-                .remove("palette")
-                .map(|value| {
-                    ThemePalette::try_from(value).unwrap_or_else(|err| {
-                        warn!("{}", err);
-                        ThemePalette::default()
-                    })
-                })
-                .unwrap_or_default();
-
-            styles.reserve(colors.len());
-            scopes.reserve(colors.len());
-            highlights.reserve(colors.len());
-
-            for (name, style_value) in colors {
-                let mut style = Style::default();
-                if let Err(err) = palette.parse_style(&mut style, style_value) {
-                    warn!("{}", err);
-                }
-
-                // these are used both as UI and as highlights
-                styles.insert(name.clone(), style);
-                scopes.push(name);
-                highlights.push(style);
-            }
-        }
-
-        Ok(Self {
-            scopes,
-            styles,
-            highlights,
-        })
     }
 }
 
