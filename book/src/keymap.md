@@ -236,8 +236,7 @@ This layer is a kludge of mappings, mostly pickers.
 
 | Key     | Description                                                             | Command                             |
 | -----   | -----------                                                             | -------                             |
-| `f`     | Open file picker                                                        | `file_picker`                       |
-| `F`     | Enter [File mode](#file-mode)                                           | N/A                                 |
+| `f`     | Enter [File mode](#file-mode)                                           | N/A                                 |
 | `b`     | Open buffer picker                                                      | `buffer_picker`                     |
 | `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                             |
 | `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                     |
@@ -260,7 +259,7 @@ This layer is a kludge of mappings, mostly pickers.
 
 #### File mode
 
-This layer is a kludge of mappings, mostly pickers.
+This layer is a collection of file-opening commands.
 
 
 | Key     | Description                                                             | Command                             |

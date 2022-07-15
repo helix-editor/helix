@@ -202,8 +202,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "C-s" => save_selection,
 
         "space" => { "Space"
-            "f" => file_picker,
-            "F" => { "File"
+            "f" => { "File"
                 "f" => file_picker,
                 "F" => file_picker_in_current_directory,
                 "d" => file_picker_in_buffer_directory,
