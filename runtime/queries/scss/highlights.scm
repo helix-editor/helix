@@ -27,11 +27,17 @@
 (pseudo_element_selector (tag_name) @attribute)
 (pseudo_class_selector (class_name) @attribute)
 
+(identifier) @variable
 (class_name) @variable
 (id_name) @variable
 (namespace_name) @variable
 (property_name) @variable.other.member
 (feature_name) @variable
+(variable) @variable
+(variable_name) @variable.other.member
+(variable_value) @variable.other.member
+(argument_name) @variable.parameter
+(selectors) @variable.other.member
 
 (attribute_name) @attribute
 
@@ -42,11 +48,7 @@
 ((plain_value) @variable
  (match? @variable "^--"))
 
-(variable) @variable
-(variable_name) @variable.other.member
-(variable_value) @variable.other.member
-(argument_name) @variable.parameter
-(selectors) @variable.other.member
+
 
 (to) @keyword
 (from) @keyword
