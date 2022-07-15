@@ -546,6 +546,31 @@ impl Style {
 
         self
     }
+
+    /// Return new Style with applied shade.
+    ///
+    /// - `shade = 0`: set text modifier `DIM`
+    /// - `shade < 0`: darken rgb color
+    /// - `shade > 0`: lighten rgb color
+    pub fn dimmed(self, shade: i8) -> Style {
+        let alpha = i32::from(shade).unsigned_abs() << 1;
+        let (src_factor, dst_factor) = (alpha, 256 - alpha);
+        let src = if shade > 0 { 255u32 } else { 0u32 } * src_factor;
+        let shaded = |dst_color: u8| ((u32::from(dst_color) * dst_factor + src) >> 8) as u8;
+        let mut res = self;
+        if shade == 0 {
+            res.add_modifier.insert(Modifier::DIM);
+            res.sub_modifier.remove(Modifier::DIM);
+        } else {
+            if let Some(Color::Rgb(r, g, b)) = res.fg {
+                res.fg = Some(Color::Rgb(shaded(r), shaded(g), shaded(b)))
+            };
+            if let Some(Color::Rgb(r, g, b)) = res.bg {
+                res.bg = Some(Color::Rgb(shaded(r), shaded(g), shaded(b)))
+            }
+        }
+        res
+    }
 }
 
 #[cfg(test)]

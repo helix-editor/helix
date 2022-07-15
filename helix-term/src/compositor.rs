@@ -64,6 +64,10 @@ pub trait Component: Any + AnyComponent {
     fn id(&self) -> Option<&'static str> {
         None
     }
+
+    fn is_opaque(&self) -> bool {
+        true
+    }
 }
 
 use anyhow::Context as AnyhowContext;
@@ -197,8 +201,18 @@ impl Compositor {
 
         let area = *surface.area();
 
-        for layer in &mut self.layers {
+        let dim_backdrops = cx.editor.config().dim.overlay_backdrops;
+        let mut layers = self.layers.iter_mut();
+        while let Some(layer) = layers.next() {
+            // begin dimming if enabled and any overlay layers follow
+            let dimmed = dim_backdrops.filter(|_| layers.as_slice().iter().any(|l| !l.is_opaque()));
+            if let Some(shade) = dimmed {
+                surface.begin_dimmed(shade);
+            }
             layer.render(area, surface, cx);
+            if dimmed.is_some() {
+                surface.end_dimmed();
+            }
         }
 
         let (pos, kind) = self.cursor(area, cx.editor);

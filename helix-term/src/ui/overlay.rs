@@ -70,4 +70,8 @@ impl<T: Component + 'static> Component for Overlay<T> {
         let dimensions = (self.calc_child_size)(area);
         self.content.cursor(dimensions, ctx)
     }
+
+    fn is_opaque(&self) -> bool {
+        false
+    }
 }

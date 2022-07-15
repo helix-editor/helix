@@ -78,6 +78,11 @@ impl EditorView {
         let area = view.area;
         let theme = &editor.theme;
 
+        let dimmed = editor.config().dim.unfocused_views.filter(|_| !is_focused);
+        if let Some(shade) = dimmed {
+            surface.begin_dimmed(shade);
+        }
+
         // DAP: Highlight current stack frame position
         let stack_frame = editor.debugger.as_ref().and_then(|debugger| {
             if let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id) {
@@ -162,6 +167,10 @@ impl EditorView {
             .clip_top(view.area.height.saturating_sub(1))
             .clip_bottom(1); // -1 from bottom to remove commandline
         self.render_statusline(editor, doc, view, statusline_area, surface, is_focused);
+
+        if dimmed.is_some() {
+            surface.end_dimmed();
+        }
     }
 
     pub fn render_rulers(
