@@ -36,14 +36,14 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "v" => select_mode,
         "G" => goto_line,
-        "g" => { "Goto"
+       "g" => { "Goto"
             "g" => goto_file_start,
             "e" => goto_last_line,
             "f" => goto_file,
             "h" => goto_line_start,
             "l" => goto_line_end,
             "s" => goto_first_nonwhitespace,
-            "d" => goto_definition,
+            "d" => goto_definition_replace,
             "y" => goto_type_definition,
             "r" => goto_reference,
             "i" => goto_implementation,
