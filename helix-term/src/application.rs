@@ -151,10 +151,7 @@ impl Application {
                 compositor.push(Box::new(overlayed(picker)));
             } else {
                 let nr_of_files = args.files.len();
-                editor.open(first, Action::VerticalSplit)?;
-                // Because the line above already opens the first file, we can
-                // simply skip opening it a second time by using .skip(1) here.
-                for (file, pos) in args.files.into_iter().skip(1) {
+                for (i, (file, pos)) in args.files.into_iter().enumerate() {
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
                             "expected a path to file, found a directory. (to open a directory pass it as first argument)"
@@ -166,6 +163,7 @@ impl Application {
                         // option. If neither of those two arguments are passed
                         // in, just load the files normally.
                         let action = match args.split {
+                            _ if i == 0 => Action::VerticalSplit,
                             Some(Layout::Vertical) => Action::VerticalSplit,
                             Some(Layout::Horizontal) => Action::HorizontalSplit,
                             None => Action::Load,
