@@ -350,7 +350,7 @@ impl Application {
     }
 
     fn refresh_config(&mut self) {
-        let config = Config::load(helix_loader::config_file()).unwrap_or_else(|err| {
+        let config = Config::load_default().unwrap_or_else(|err| {
             self.editor.set_error(err.to_string());
             Config::default()
         });
