@@ -381,10 +381,6 @@ indent = { tab-width = 2, unit = "  " }
 name = "css"
 source = { git = "https://github.com/tree-sitter/tree-sitter-css", rev = "94e10230939e702b4fa3fa2cb5c3bc7173b95d07" }
 
-[[grammar]]
-name = "scss"
-source = { git = "https://github.com/serenadeai/tree-sitter-scss.git", rev = "c478c6868648eff49eb04a4df90d703dc45b312a" }
-
 [[language]]
 name = "scss"
 scope = "source.scss"
@@ -393,6 +389,10 @@ file-types = ["scss"]
 roots = []
 language-server = { command = "vscode-css-language-server", args = ["--stdio"] }
 indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "scss"
+source = { git = "https://github.com/serenadeai/tree-sitter-scss.git", rev = "c478c6868648eff49eb04a4df90d703dc45b312a" }
 
 [[language]]
 name = "html"

@@ -1,9 +1,5 @@
 (comment) @comment
 
-(tag_name) @tag
-(nesting_selector) @tag
-(universal_selector) @tag
-
 "~" @operator
 ">" @operator
 "+" @operator
@@ -23,9 +19,12 @@
 "not" @operator
 "only" @operator
 
+(tag_name) @tag
+(universal_selector) @tag
 (attribute_selector (plain_value) @string)
-(pseudo_element_selector (tag_name) @attribute)
-(pseudo_class_selector (class_name) @attribute)
+(nesting_selector) @variable.other.member
+(pseudo_element_selector) @attribute
+(pseudo_class_selector) @attribute
 
 (identifier) @variable
 (class_name) @variable
@@ -47,8 +46,6 @@
  (match? @variable "^--"))
 ((plain_value) @variable
  (match? @variable "^--"))
-
-
 
 (to) @keyword
 (from) @keyword
