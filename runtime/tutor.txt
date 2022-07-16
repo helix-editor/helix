@@ -550,7 +550,8 @@ make changes across multiple lines.
  * Type Q to record and stop recording a macro.
    * Type q to repeat the recorded macro.
 
-* Type . to repeat the last set of actions entered.
+* Type . to repeat the last insert.
+* Type A-. to repeat the last motion.
 
 
 =================================================================
