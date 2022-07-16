@@ -118,6 +118,10 @@ pub fn regex_prompt(
                             view.ensure_cursor_in_view(doc, config.scrolloff);
                         }
                         Err(_err) => {
+                            let (view, doc) = current!(cx.editor);
+                            doc.set_selection(view.id, snapshot.clone());
+                            view.offset = offset_snapshot;
+
                             if event == PromptEvent::Validate {
                                 let error = format!("Invalid regex: {}", input);
                                 cx.editor.set_error(error);
