@@ -1748,10 +1748,16 @@ fn extend_search_prev(cx: &mut Context) {
 fn search_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let contents = doc.text().slice(..);
-    let query = doc.selection(view.id).primary().fragment(contents);
-    let regex = regex::escape(&query);
+
+    let regex = doc
+        .selection(view.id)
+        .iter()
+        .map(|selection| regex::escape(&selection.fragment(contents)))
+        .collect::<Vec<_>>()
+        .join("|");
+
+    let msg = format!("register '{}' set to '{}'", '/', &regex);
     cx.editor.registers.get_mut('/').push(regex);
-    let msg = format!("register '{}' set to '{}'", '/', query);
     cx.editor.set_status(msg);
 }
 
