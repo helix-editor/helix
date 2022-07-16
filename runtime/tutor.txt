@@ -508,21 +508,28 @@ _________________________________________________________________
 =                     4.4 Repeating Actions                     =
 =================================================================
 
-If you want to quickly repeat the last set of actions you entered,
-you can do this without recording a macro. 
+There are two types of actions that you can repeat in Helix. 
 
-Simply type . while in normal mode. This will repeat the last
-series of actions you entered. 
+1. Repeat Insert (.)
+2. Repeat Motion (A-.)
+
+To repeat insert: 
 
 1. Move the Cursor to the first line below marked -->.
-2. Select the word 'dog' and change it to 'fox'. 
-3. Go to the next line and select the word 'dog' again.
+2. Select the first instance of 'Banana' and change it to 
+'Orange'. 
+3. Go to the next instance and select the word again.
 4. Type .
-5. Move to the next line and repeat
+5. Move to the next and repeat until they all say 'Orange'.
 
---> The quick brown dog jumped over the lazy dog. 
---> The quick brown dog jumped over the lazy dog. 
---> The quick brown dog jumped over the lazy dog. 
+--> Banana Banana Banana Banana Banana Banana 
+
+To repeat motion:
+
+1. Move the Cursor to the first line below marked -->.
+2. Press 'f' then 'O' to find the next instatne of 'O'
+3. Press 'A-.' to repeat that select motion.
+4. Notice that in this case, the selection extends each time.
 
 Note: You can also use this to add/modify/delete text. Try
 combining the repeat action command with multiple cursors to 
