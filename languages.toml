@@ -1554,3 +1554,17 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "ungrammar"
 source = { git = "https://github.com/Philipp-M/tree-sitter-ungrammar", rev = "0113de880a58ea14f2a75802e9b99fcc25003d9c" }
+
+[[language]]
+name = "agda"
+scope = "source.agda"
+injection-regex = "agda"
+file-types = ["agda"]
+roots = []
+comment-token = "--"
+indent = { tab-width =2, unit = "  " }
+language-server = { command = "als" }
+
+[[grammar]]
+name = "agda"
+source = { git="https://github.com/tree-sitter/tree-sitter-agda", rev = "ca69cdf485e9ce2b2ef0991a720aa88d87d30231" }
