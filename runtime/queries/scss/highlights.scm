@@ -19,45 +19,6 @@
 "not" @operator
 "only" @operator
 
-(tag_name) @tag
-(universal_selector) @tag
-(attribute_selector (plain_value) @string)
-(nesting_selector) @variable.other.member
-(pseudo_element_selector) @attribute
-(pseudo_class_selector) @attribute
-
-(identifier) @variable
-(class_name) @variable
-(id_name) @variable
-(namespace_name) @variable
-(property_name) @variable.other.member
-(feature_name) @variable
-(variable) @variable
-(variable_name) @variable.other.member
-(variable_value) @variable.other.member
-(argument_name) @variable.parameter
-(selectors) @variable.other.member
-
-(attribute_name) @attribute
-
-(function_name) @function
-
-((property_name) @variable
- (match? @variable "^--"))
-((plain_value) @variable
- (match? @variable "^--"))
-
-(to) @keyword
-(from) @keyword
-(important) @keyword
-
-(string_value) @string
-(color_value) @string.special
-
-(integer_value) @constant.numeric.integer
-(float_value) @constant.numeric.float
-(unit) @type
-
 "@apply" @constant.builtin
 "@at-root" @constant.builtin
 "@charset" @constant.builtin
@@ -81,6 +42,45 @@
 "@use" @keyword.control.import
 "@warn" @constant.builtin
 "@while" @keyword.control.repeat
+
+(tag_name) @tag
+(universal_selector) @tag
+(attribute_selector (plain_value) @string)
+(nesting_selector) @variable.other.member
+(pseudo_element_selector) @attribute
+(pseudo_class_selector) @attribute
+  
+((property_name) @variable
+ (match? @variable "^--"))
+((plain_value) @variable
+ (match? @variable "^--"))
+
+(identifier) @variable
+(class_name) @variable
+(id_name) @variable
+(namespace_name) @variable
+(property_name) @variable.other.member
+(feature_name) @variable
+(variable) @variable
+(variable_name) @variable.other.member
+(variable_value) @variable.other.member
+(argument_name) @variable.parameter
+(selectors) @variable.other.member
+
+(attribute_name) @attribute
+
+(function_name) @function
+
+(to) @keyword
+(from) @keyword
+(important) @keyword
+
+(string_value) @string
+(color_value) @string.special
+
+(integer_value) @constant.numeric.integer
+(float_value) @constant.numeric.float
+(unit) @type
 
 "#" @punctuation.delimiter
 "," @punctuation.delimiter
