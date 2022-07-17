@@ -37,6 +37,7 @@ hidden = false
 | `scroll-lines` | Number of lines to scroll per scroll wheel step. | `3` |
 | `shell` | Shell to use when running external commands. | Unix: `["sh", "-c"]`<br/>Windows: `["cmd", "/C"]` |
 | `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers. | `absolute` |
+| `cursorline` | Highlight all lines with a cursor. | `false` |
 | `gutters` | Gutters to display: Available are `diagnostics` and `line-numbers`, note that `diagnostics` also includes other features like breakpoints | `["diagnostics", "line-numbers"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
 | `auto-format` | Enable automatic formatting on save. | `true` |
@@ -45,6 +46,7 @@ hidden = false
 | `auto-info` | Whether to display infoboxes | `true` |
 | `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. | `false` |
 | `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file. | `[]` |
+| `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
 
 ### `[editor.lsp]` Section
 
@@ -58,7 +60,7 @@ hidden = false
 
 Defines the shape of cursor in each mode. Note that due to limitations
 of the terminal environment, only the primary cursor can change shape.
-Valid values for these options are `block`, `bar`, `underline`, or `none`.
+Valid values for these options are `block`, `bar`, `underline`, or `hidden`.
 
 | Key      | Description                                | Default |
 | ---      | -----------                                | ------- |
@@ -166,4 +168,21 @@ space = "·"
 nbsp = "⍽"
 tab = "→"
 newline = "⏎"
+```
+
+### `[editor.indent-guides]` Section
+
+Options for rendering vertical indent guides.
+
+| Key         | Description                                             | Default |
+| ---         | ---                                                     | ---     |
+| `render`    | Whether to render indent guides.                        | `false` |
+| `character` | Literal character to use for rendering the indent guide | `│`     |
+
+Example:
+
+```toml
+[editor.indent-guides]
+render = true
+character = "╎"
 ```

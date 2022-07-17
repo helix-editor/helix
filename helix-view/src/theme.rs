@@ -77,6 +77,14 @@ impl Loader {
         names
     }
 
+    pub fn default_theme(&self, true_color: bool) -> Theme {
+        if true_color {
+            self.default()
+        } else {
+            self.base16_default()
+        }
+    }
+
     /// Returns the default theme
     pub fn default(&self) -> Theme {
         DEFAULT_THEME.clone()

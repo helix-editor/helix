@@ -87,7 +87,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "%" => select_all,
         "x" => extend_line,
         "X" => extend_to_line_bounds,
-        // crop_to_whole_line
+        "A-x" => shrink_to_line_bounds,
 
         "m" => { "Match"
             "m" => match_brackets,
@@ -104,6 +104,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "c" => goto_prev_class,
             "a" => goto_prev_parameter,
             "o" => goto_prev_comment,
+            "t" => goto_prev_test,
             "p" => goto_prev_paragraph,
             "space" => add_newline_above,
         },
@@ -114,6 +115,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "c" => goto_next_class,
             "a" => goto_next_parameter,
             "o" => goto_next_comment,
+            "t" => goto_next_test,
             "p" => goto_next_paragraph,
             "space" => add_newline_below,
         },
@@ -171,6 +173,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "C-w" | "w" => rotate_view,
             "C-s" | "s" => hsplit,
             "C-v" | "v" => vsplit,
+            "C-t" | "t" => transpose_view,
             "f" => goto_file_hsplit,
             "F" => goto_file_vsplit,
             "C-q" | "q" => wclose,
@@ -179,6 +182,10 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "C-j" | "j" | "down" => jump_view_down,
             "C-k" | "k" | "up" => jump_view_up,
             "C-l" | "l" | "right" => jump_view_right,
+            "L" => swap_view_right,
+            "K" => swap_view_up,
+            "H" => swap_view_left,
+            "J" => swap_view_down,
             "n" => { "New split scratch buffer"
                 "C-s" | "s" => hsplit_new,
                 "C-v" | "v" => vsplit_new,
@@ -200,6 +207,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "b" => buffer_picker,
             "s" => symbol_picker,
             "S" => workspace_symbol_picker,
+            "g" => diagnostics_picker,
+            "G" => workspace_diagnostics_picker,
             "a" => code_action,
             "'" => last_picker,
             "d" => { "Debug (experimental)" sticky=true
@@ -226,6 +235,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
                 "C-w" | "w" => rotate_view,
                 "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,
+                "C-t" | "t" => transpose_view,
                 "f" => goto_file_hsplit,
                 "F" => goto_file_vsplit,
                 "C-q" | "q" => wclose,
@@ -234,6 +244,10 @@ pub fn default() -> HashMap<Mode, Keymap> {
                 "C-j" | "j" | "down" => jump_view_down,
                 "C-k" | "k" | "up" => jump_view_up,
                 "C-l" | "l" | "right" => jump_view_right,
+                "H" => swap_view_left,
+                "J" => swap_view_down,
+                "K" => swap_view_up,
+                "L" => swap_view_right,
                 "n" => { "New split scratch buffer"
                     "C-s" | "s" => hsplit_new,
                     "C-v" | "v" => vsplit_new,
@@ -247,6 +261,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "/" => global_search,
             "k" => hover,
             "r" => rename_symbol,
+            "h" => select_references_to_symbol_under_cursor,
             "?" => command_palette,
         },
         "z" => { "View"
@@ -258,8 +273,13 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "j" | "down" => scroll_down,
             "C-b" | "pageup" => page_up,
             "C-f" | "pagedown" => page_down,
-            "C-u" => half_page_up,
-            "C-d" => half_page_down,
+            "C-u" | "backspace" => half_page_up,
+            "C-d" | "space" => half_page_down,
+
+            "/" => search,
+            "?" => rsearch,
+            "n" => search_next,
+            "N" => search_prev,
         },
         "Z" => { "View" sticky=true
             "z" | "c" => align_view_center,
@@ -270,8 +290,13 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "j" | "down" => scroll_down,
             "C-b" | "pageup" => page_up,
             "C-f" | "pagedown" => page_down,
-            "C-u" => half_page_up,
-            "C-d" => half_page_down,
+            "C-u" | "backspace" => half_page_up,
+            "C-d" | "space" => half_page_down,
+
+            "/" => search,
+            "?" => rsearch,
+            "n" => search_next,
+            "N" => search_prev,
         },
 
         "\"" => select_register,
@@ -326,6 +351,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "C-w" => delete_word_backward,
         "A-backspace" => delete_word_backward,
         "A-d" => delete_word_forward,
+        "A-del" => delete_word_forward,
         "C-s" => commit_undo_checkpoint,
 
         "left" => move_char_left,

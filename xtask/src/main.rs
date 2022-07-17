@@ -106,7 +106,7 @@ pub mod md_gen {
                 .collect::<Vec<_>>()
                 .join(", ");
 
-            let doc = cmd.doc.replace("\n", "<br>");
+            let doc = cmd.doc.replace('\n', "<br>");
 
             md.push_str(&md_table_row(&[names.to_owned(), doc.to_owned()]));
         }

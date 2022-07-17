@@ -377,7 +377,7 @@ mod test {
     }
 
     #[test]
-    fn test_increment_basic_hexadedimal_numbers() {
+    fn test_increment_basic_hexadecimal_numbers() {
         let tests = [
             ("0x0100", 1, "0x0101"),
             ("0x0100", -1, "0x00ff"),

@@ -11,15 +11,17 @@ pub fn runtime_dir() -> std::path::PathBuf {
         return dir.into();
     }
 
+    if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
+        // this is the directory of the crate being run by cargo, we need the workspace path so we take the parent
+        let path = std::path::PathBuf::from(dir).parent().unwrap().join(RT_DIR);
+        log::debug!("runtime dir: {}", path.to_string_lossy());
+        return path;
+    }
+
     const RT_DIR: &str = "runtime";
     let conf_dir = config_dir().join(RT_DIR);
     if conf_dir.exists() {
         return conf_dir;
-    }
-
-    if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        // this is the directory of the crate being run by cargo, we need the workspace path so we take the parent
-        return std::path::PathBuf::from(dir).parent().unwrap().join(RT_DIR);
     }
 
     // fallback to location of the executable being run

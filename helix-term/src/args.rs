@@ -1,5 +1,6 @@
 use anyhow::Result;
 use helix_core::Position;
+use helix_view::tree::Layout;
 use std::path::{Path, PathBuf};
 
 #[derive(Default)]
@@ -11,6 +12,7 @@ pub struct Args {
     pub load_tutor: bool,
     pub fetch_grammars: bool,
     pub build_grammars: bool,
+    pub split: Option<Layout>,
     pub verbosity: u64,
     pub files: Vec<(PathBuf, Position)>,
 }
@@ -28,6 +30,8 @@ impl Args {
                 "--version" => args.display_version = true,
                 "--help" => args.display_help = true,
                 "--tutor" => args.load_tutor = true,
+                "--vsplit" => args.split = Some(Layout::Vertical),
+                "--hsplit" => args.split = Some(Layout::Horizontal),
                 "--health" => {
                     args.health = true;
                     args.health_arg = argv.next_if(|opt| !opt.starts_with('-'));

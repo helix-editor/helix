@@ -27,10 +27,7 @@ impl Component for Info {
             .borders(Borders::ALL)
             .border_style(popup_style);
 
-        let margin = Margin {
-            vertical: 0,
-            horizontal: 1,
-        };
+        let margin = Margin::horizontal(1);
         let inner = block.inner(area).inner(&margin);
         block.render(area, surface);
 

@@ -5,9 +5,8 @@ use std::path::{Component, Path, PathBuf};
 /// is available, otherwise returns the path unchanged.
 pub fn fold_home_dir(path: &Path) -> PathBuf {
     if let Ok(home) = home_dir() {
-        if path.starts_with(&home) {
-            // it's ok to unwrap, the path starts with home dir
-            return PathBuf::from("~").join(path.strip_prefix(&home).unwrap());
+        if let Ok(stripped) = path.strip_prefix(&home) {
+            return PathBuf::from("~").join(stripped);
         }
     }
 
@@ -90,4 +89,55 @@ pub fn get_relative_path(path: &Path) -> PathBuf {
         path
     };
     fold_home_dir(path)
+}
+
+/// Returns a truncated filepath where the basepart of the path is reduced to the first
+/// char of the folder and the whole filename appended.
+///
+/// Also strip the current working directory from the beginning of the path.
+/// Note that this function does not check if the truncated path is unambiguous.
+///
+/// ```   
+///    use helix_core::path::get_truncated_path;
+///    use std::path::Path;
+///
+///    assert_eq!(
+///         get_truncated_path("/home/cnorris/documents/jokes.txt").as_path(),
+///         Path::new("/h/c/d/jokes.txt")
+///     );
+///     assert_eq!(
+///         get_truncated_path("jokes.txt").as_path(),
+///         Path::new("jokes.txt")
+///     );
+///     assert_eq!(
+///         get_truncated_path("/jokes.txt").as_path(),
+///         Path::new("/jokes.txt")
+///     );
+///     assert_eq!(
+///         get_truncated_path("/h/c/d/jokes.txt").as_path(),
+///         Path::new("/h/c/d/jokes.txt")
+///     );
+///     assert_eq!(get_truncated_path("").as_path(), Path::new(""));
+/// ```
+///
+pub fn get_truncated_path<P: AsRef<Path>>(path: P) -> PathBuf {
+    let cwd = std::env::current_dir().unwrap_or_default();
+    let path = path
+        .as_ref()
+        .strip_prefix(cwd)
+        .unwrap_or_else(|_| path.as_ref());
+    let file = path.file_name().unwrap_or_default();
+    let base = path.parent().unwrap_or_else(|| Path::new(""));
+    let mut ret = PathBuf::new();
+    for d in base {
+        ret.push(
+            d.to_string_lossy()
+                .chars()
+                .next()
+                .unwrap_or_default()
+                .to_string(),
+        );
+    }
+    ret.push(file);
+    ret
 }
