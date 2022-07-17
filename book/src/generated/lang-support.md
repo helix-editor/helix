@@ -85,6 +85,7 @@
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | scala | ✓ |  | ✓ | `metals` |
 | scheme | ✓ |  |  |  |
+| scss | ✓ |  |  | `vscode-css-language-server` |
 | solidity | ✓ |  |  | `solc` |
 | sql | ✓ |  |  |  |
 | sshclientconfig | ✓ |  |  |  |
