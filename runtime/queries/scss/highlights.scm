@@ -43,17 +43,17 @@
 "@warn" @constant.builtin
 "@while" @keyword.control.repeat
 
+((property_name) @variable
+ (match? @variable "^--"))
+((plain_value) @variable
+ (match? @variable "^--"))
+
 (tag_name) @tag
 (universal_selector) @tag
 (attribute_selector (plain_value) @string)
 (nesting_selector) @variable.other.member
 (pseudo_element_selector) @attribute
 (pseudo_class_selector) @attribute
-  
-((property_name) @variable
- (match? @variable "^--"))
-((plain_value) @variable
- (match? @variable "^--"))
 
 (identifier) @variable
 (class_name) @variable
