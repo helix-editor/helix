@@ -392,7 +392,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "scss"
-source = { git = "https://github.com/serenadeai/tree-sitter-scss.git", rev = "c478c6868648eff49eb04a4df90d703dc45b312a" }
+source = { git = "https://github.com/serenadeai/tree-sitter-scss", rev = "c478c6868648eff49eb04a4df90d703dc45b312a" }
 
 [[language]]
 name = "html"
