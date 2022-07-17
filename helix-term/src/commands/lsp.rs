@@ -886,19 +886,20 @@ pub fn hover(cx: &mut Context) {
 
 pub fn rename_symbol(cx: &mut Context) {
     let (view, doc) = current_ref!(cx.editor);
-    let primary_selection = doc
-        .selection(view.id)
-        .primary()
-        .fragment(doc.text().slice(..))
-        .to_string();
+    let text = doc.text().slice(..);
+    let primary_selection = doc.selection(view.id).primary();
+    let prefill = if primary_selection.len() > 1 {
+        primary_selection
+    } else {
+        use helix_core::textobject::{textobject_word, TextObject};
+        textobject_word(text, primary_selection, TextObject::Inside, 1, false)
+    }
+    .fragment(text)
+    .into();
     ui::prompt_with_input(
         cx,
         "rename-to:".into(),
-        if primary_selection.len() > 1 {
-            primary_selection
-        } else {
-            String::new()
-        },
+        prefill,
         None,
         ui::completers::none,
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
