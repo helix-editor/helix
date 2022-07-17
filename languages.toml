@@ -286,6 +286,20 @@ name = "gomod"
 source = { git = "https://github.com/camdencheek/tree-sitter-go-mod", rev = "e8f51f8e4363a3d9a427e8f63f4c1bbc5ef5d8d0" }
 
 [[language]]
+name = "gotmpl"
+scope = "source.gotmpl"
+injection-regex = "gotmpl"
+file-types = ["gotmpl"]
+roots = []
+comment-token = "//"
+language-server = { command = "gopls" }
+indent = { tab-width = 2, unit = " " }
+
+[[grammar]]
+name = "gotmpl"
+source = { git = "https://github.com/dannylongeuay/tree-sitter-go-template", rev = "45acf03891557b80a45ac1897e2cca2e8b9cf0ff" }
+
+[[language]]
 name = "gowork"
 scope = "source.gowork"
 injection-regex = "gowork"
