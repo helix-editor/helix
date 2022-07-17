@@ -185,7 +185,7 @@ where
     write(
         context,
         format!(
-            " {} ",
+            "{}",
             context
                 .doc
                 .language_server()
