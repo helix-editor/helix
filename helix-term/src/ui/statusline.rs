@@ -184,18 +184,18 @@ where
 {
     write(
         context,
-        format!(
-            "{}",
-            context
-                .doc
-                .language_server()
-                .and_then(|srv| context
+        context
+            .doc
+            .language_server()
+            .and_then(|srv| {
+                context
                     .spinners
                     .get(srv.id())
-                    .and_then(|spinner| spinner.frame()))
-                // Even if there's no spinner; reserve its space to avoid elements frequently shifting.
-                .unwrap_or(" ")
-        ),
+                    .and_then(|spinner| spinner.frame())
+            })
+            // Even if there's no spinner; reserve its space to avoid elements frequently shifting.
+            .unwrap_or(" ")
+            .to_string(),
         None,
     );
 }
