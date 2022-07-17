@@ -313,7 +313,7 @@ _________________________________________________________________
  Type v to enter Select mode.
  Type v again or <ESC> to return to Normal mode
  In Select mode every movement will extend the selection, as
- oppposed to replacing it.
+ opposed to replacing it.
 
  1. Move the cursor to the line below marked -->.
  2. Move to the F of FOO and type v2w to select the two words.
@@ -985,11 +985,11 @@ lines.
  --> How much would would a wouldchuck chuck
  --> if a wouldchuck could chuck would?
 
- Note: A-( and A-) cycle the *contents* of the selections
-       as well as the position of the primary selection.
+ Note: Additionally, A-( and A-) cycle the *contents* of the
+       selections as well.
 
 =================================================================
-=                     10.3 CHANGING CASE                        =
+=                     10.2 CHANGING CASE                        =
 =================================================================
 
  Type ~ to switch the case of all selected letters.
@@ -1011,13 +1011,40 @@ lines.
  --> THIS sentence should ALL BE IN uppercase!
 
 =================================================================
+=                   10.3 SPLITTING SELECTIONS                   =
+=================================================================
+
+ Type S to split each selection on a regex pattern.
+
+ 1. Move the cursor to the line under ---.
+ 2. Type xx / 2x to select the lines.
+ 3. Type S then \.|!<enter>. This effectively splits the
+    selection into sentences at each dot or exclamation mark.
+ 4. Type A-; to reverse the selections.
+ 5. Type ; to reduce selections to a single character - the first
+    letter of each sentence.
+ 6. Type A-` to convert all selected letters to uppercase.
+
+---
+these are sentences. some sentences don't start with uppercase
+letters! that is not good grammar. you can fix this.
+
+
+
+
+=================================================================
 =                        CHAPTER 10 RECAP                       =
 =================================================================
 
+ * Use ) and ( to cycle the primary selection back and forward
+   through selections respectively.
+   * Type A-, to remove the primary selection.
+
  * Type ~ to alternate case of selected letters.
-   * Use ` and alt-` to set the case of selected letters to
+   * Use ` and A-` to set the case of selected letters to
      upper and lower respectively.
 
+ * Type S to split selections on regex.
 
 
 
