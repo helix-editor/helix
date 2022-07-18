@@ -427,7 +427,7 @@ impl MappableCommand {
         suspend, "Suspend and return to shell",
         rename_symbol, "Rename symbol",
         increment, "Increment item under cursor",
-        decrement, "Decremen item under cursort",
+        decrement, "Decrement item under cursor",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
