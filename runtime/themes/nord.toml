@@ -41,7 +41,7 @@
 "constant.builtin" = "nord4"
 "namespace" = "nord4"
 
-# nord5 - suble UI text
+# nord5 - subtle UI text
 
 # nord6 - base text, punctuation
 "ui.text" = { fg = "nord6" }

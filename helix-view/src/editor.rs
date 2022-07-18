@@ -147,6 +147,8 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
+    /// Configuration of the statusline elements
+    pub statusline: StatusLineConfig,
     /// Shape for cursor in each mode
     pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
@@ -193,6 +195,54 @@ pub struct SearchConfig {
     pub smart_case: bool,
     /// Whether the search should wrap after depleting the matches. Default to true.
     pub wrap_around: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct StatusLineConfig {
+    pub left: Vec<StatusLineElement>,
+    pub center: Vec<StatusLineElement>,
+    pub right: Vec<StatusLineElement>,
+}
+
+impl Default for StatusLineConfig {
+    fn default() -> Self {
+        use StatusLineElement as E;
+
+        Self {
+            left: vec![E::Mode, E::Spinner, E::FileName],
+            center: vec![],
+            right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum StatusLineElement {
+    /// The editor mode (Normal, Insert, Visual/Selection)
+    Mode,
+
+    /// The LSP activity spinner
+    Spinner,
+
+    /// The file nane/path, including a dirty flag if it's unsaved
+    FileName,
+
+    /// The file encoding
+    FileEncoding,
+
+    /// The file type (language ID or "text")
+    FileType,
+
+    /// A summary of the number of errors and warnings
+    Diagnostics,
+
+    /// The number of selections (cursors)
+    Selections,
+
+    /// The cursor position
+    Position,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -279,6 +329,8 @@ pub enum GutterType {
     Diagnostics,
     /// Show line numbers
     LineNumbers,
+    /// Show one blank space
+    Padding,
 }
 
 impl std::str::FromStr for GutterType {
@@ -415,7 +467,11 @@ impl Default for Config {
             },
             line_number: LineNumber::Absolute,
             cursorline: false,
-            gutters: vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            gutters: vec![
+                GutterType::Diagnostics,
+                GutterType::LineNumbers,
+                GutterType::Padding,
+            ],
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
@@ -424,6 +480,7 @@ impl Default for Config {
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             search: SearchConfig::default(),
@@ -479,7 +536,6 @@ pub struct Editor {
     pub registers: Registers,
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub macro_replaying: Vec<char>,
-    pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
 
@@ -491,6 +547,12 @@ pub struct Editor {
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
+    /// last_theme is used for theme previews. We store the current theme here,
+    /// and if previewing is cancelled, we can return to it.
+    pub last_theme: Option<Theme>,
+    /// The currently applied editor theme. While previewing a theme, the previewed theme
+    /// is set here.
+    pub theme: Theme,
 
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
@@ -513,6 +575,11 @@ pub struct Editor {
 pub enum ConfigEvent {
     Refresh,
     Update(Box<Config>),
+}
+
+enum ThemeAction {
+    Set,
+    Preview,
 }
 
 #[derive(Debug, Clone)]
@@ -559,6 +626,7 @@ impl Editor {
             breakpoints: HashMap::new(),
             syn_loader,
             theme_loader,
+            last_theme: None,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
@@ -628,7 +696,22 @@ impl Editor {
             .unwrap_or(false)
     }
 
+    pub fn unset_theme_preview(&mut self) {
+        if let Some(last_theme) = self.last_theme.take() {
+            self.set_theme(last_theme);
+        }
+        // None likely occurs when the user types ":theme" and then exits before previewing
+    }
+
+    pub fn set_theme_preview(&mut self, theme: Theme) {
+        self.set_theme_impl(theme, ThemeAction::Preview);
+    }
+
     pub fn set_theme(&mut self, theme: Theme) {
+        self.set_theme_impl(theme, ThemeAction::Set);
+    }
+
+    fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) {
         // `ui.selection` is the only scope required to be able to render a theme.
         if theme.find_scope_index("ui.selection").is_none() {
             self.set_error("Invalid theme: `ui.selection` required");
@@ -638,7 +721,18 @@ impl Editor {
         let scopes = theme.scopes();
         self.syn_loader.set_scopes(scopes.to_vec());
 
-        self.theme = theme;
+        match preview {
+            ThemeAction::Preview => {
+                let last_theme = std::mem::replace(&mut self.theme, theme);
+                // only insert on first preview: this will be the last theme the user has saved
+                self.last_theme.get_or_insert(last_theme);
+            }
+            ThemeAction::Set => {
+                self.last_theme = None;
+                self.theme = theme;
+            }
+        }
+
         self._refresh();
     }
 

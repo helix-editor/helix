@@ -69,13 +69,13 @@
 "error" = "my_red"
 
 [palette]
-my_black      = "#212121" # Cursorline
-my_gray0      = "#262626" # Default Background
-my_gray1      = "#2b2b2b" # Ruler
-my_gray2      = "#323232" # Lighter Background (Used for status bars, line number and folding marks)
-my_gray3      = "#505050" # Selection Background
+my_black      = "#111111" # Cursorline
+my_gray0      = "#090909" # Default Background
+my_gray1      = "#0e0e0e" # Ruler
+my_gray2      = "#1a1a1a" # Lighter Background (Used for status bars, line number and folding marks)
+my_gray3      = "#323232" # Selection Background
 my_gray4      = "#7c7c7c" # Comments, Invisibles, Line Highlighting
-my_gray5      = "#a8a8a8" # Dark Foreground (Used for status bars)
+my_gray5      = "#aaaaaa" # Dark Foreground (Used for status bars)
 my_gray6      = "#c0c0c0" # Light Foreground (Not often used)
 my_gray7      = "#e8e8e8" # Light Background (Not often used)
 my_white      = "#F3F2CC" # Default Foreground, Caret, Delimiters, Operators

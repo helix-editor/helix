@@ -18,9 +18,11 @@
 | ejs | ✓ |  |  |  |
 | elixir | ✓ | ✓ |  | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
+| elvish | ✓ |  |  | `elvish` |
 | erb | ✓ |  |  |  |
 | erlang | ✓ | ✓ |  | `erlang_ls` |
 | fish | ✓ | ✓ | ✓ |  |
+| fortran | ✓ |  | ✓ | `fortls` |
 | gdscript | ✓ |  | ✓ |  |
 | git-attributes | ✓ |  |  |  |
 | git-commit | ✓ |  |  |  |
@@ -29,7 +31,7 @@
 | git-ignore | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |
 | gleam | ✓ | ✓ |  |  |
-| glsl | ✓ |  | ✓ |  |
+| glsl | ✓ | ✓ | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | gomod | ✓ |  |  | `gopls` |
 | gowork | ✓ |  |  | `gopls` |
@@ -39,6 +41,7 @@
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
+| idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  | `jdtls` |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
@@ -82,6 +85,7 @@
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | scala | ✓ |  | ✓ | `metals` |
 | scheme | ✓ |  |  |  |
+| scss | ✓ |  |  | `vscode-css-language-server` |
 | solidity | ✓ |  |  | `solc` |
 | sql | ✓ |  |  |  |
 | sshclientconfig | ✓ |  |  |  |
@@ -95,6 +99,7 @@
 | tsx | ✓ |  |  | `typescript-language-server` |
 | twig | ✓ |  |  |  |
 | typescript | ✓ |  | ✓ | `typescript-language-server` |
+| ungrammar | ✓ |  |  |  |
 | v | ✓ |  |  | `vls` |
 | vala | ✓ |  |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |

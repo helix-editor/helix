@@ -382,6 +382,19 @@ name = "css"
 source = { git = "https://github.com/tree-sitter/tree-sitter-css", rev = "94e10230939e702b4fa3fa2cb5c3bc7173b95d07" }
 
 [[language]]
+name = "scss"
+scope = "source.scss"
+injection-regex = "scss"
+file-types = ["scss"]
+roots = []
+language-server = { command = "vscode-css-language-server", args = ["--stdio"] }
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "scss"
+source = { git = "https://github.com/serenadeai/tree-sitter-scss", rev = "c478c6868648eff49eb04a4df90d703dc45b312a" }
+
+[[language]]
 name = "html"
 scope = "text.html.basic"
 injection-regex = "html"
@@ -425,7 +438,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "nickel"
-source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "9a502ea2e774df3d743a48310bb40e1cc097c86e" }
+source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "9d83db400b6c11260b9106f131f93ddda8131933" }
 
 [[language]]
 name = "nix"
@@ -570,7 +583,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "ledger"
-source = { git = "https://github.com/cbarrete/tree-sitter-ledger", rev = "0cdeb0e51411a3ba5493662952c3039de08939ca" }
+source = { git = "https://github.com/cbarrete/tree-sitter-ledger", rev = "1f864fb2bf6a87fe1b48545cc6adc6d23090adf7" }
 
 [[language]]
 name = "ocaml"
@@ -660,7 +673,7 @@ name = "haskell"
 scope = "source.haskell"
 injection-regex = "haskell"
 file-types = ["hs"]
-roots = []
+roots = ["Setup.hs", "stack.yaml", "*.cabal"]
 comment-token = "--"
 language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
 indent = { tab-width = 2, unit = "  " }
@@ -707,7 +720,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "tsq"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-tsq", rev = "ea68fc2b571ca1c8f70936855130c380f518ff35" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-tsq", rev = "48b5e9f82ae0a4727201626f33a17f69f8e0ff86" }
 
 [[language]]
 name = "cmake"
@@ -1489,3 +1502,55 @@ roots = []
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 grammar = "python"
+
+[[language]]
+name = "elvish"
+scope = "source.elvish"
+file-types = ["elv"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "elvish", args = ["-lsp"] }
+grammar = "elvish"
+
+[[grammar]]
+name = "elvish"
+source = { git = "https://github.com/ckafi/tree-sitter-elvish", rev = "e50787cadd3bc54f6d9c0704493a79078bb8a4e5" }
+
+[[language]]
+name = "idris"
+scope = "source.idr"
+injection-regex = "idr"
+file-types = ["idr"]
+shebangs = []
+roots = []
+comment-token = "--"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "idris2-lsp" }
+
+[[language]]
+name = "fortran"
+scope = "source.fortran"
+injection-regex = "fortran"
+file-types = ["f", "for", "f90", "f95", "f03"]
+roots = ["fpm.toml"]
+comment-token = "!"
+indent = { tab-width = 4, unit = "    "}
+language-server = { command = "fortls", args = ["--lowercase_intrinsics"] }
+
+[[grammar]]
+name = "fortran"
+source = { git = "https://github.com/stadelmanma/tree-sitter-fortran", rev = "f0f2f100952a353e64e26b0fa710b4c296d7af13" }
+
+[[language]]
+name = "ungrammar"
+scope = "source.ungrammar"
+injection-regex = "ungrammar"
+file-types = ["ungram", "ungrammar"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "ungrammar"
+source = { git = "https://github.com/Philipp-M/tree-sitter-ungrammar", rev = "0113de880a58ea14f2a75802e9b99fcc25003d9c" }

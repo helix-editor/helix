@@ -94,8 +94,15 @@
 # main cursor/selection
 "ui.cursor.primary" = { fg = "base03", bg = "base1" }
 "ui.cursor.select" = { fg = "base02", bg = "cyan" }
+
+"ui.cursorline.primary" = { bg = "base02" }
+"ui.cursorline.secondary" = { bg = "base025" }
+
 "ui.selection" = { bg = "base0175" }
 "ui.selection.primary" = { bg = "base015" }
+
+"ui.virtual.indent-guide" = { fg = "base02" }
+"ui.virtual.ruler" = { fg = "red" }
 
 # normal模式的光标
 # normal mode cursor
@@ -135,4 +142,5 @@ base01   = '#93a1a1'
 base015  = '#c5c8bd'
 base0175 = '#dddbcc'
 base02   = '#eee8d5'
+base025  = '#f5eedb'
 base03   = '#fdf6e3'

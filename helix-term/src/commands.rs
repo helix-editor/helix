@@ -1228,9 +1228,12 @@ fn extend_prev_char(cx: &mut Context) {
 }
 
 fn repeat_last_motion(cx: &mut Context) {
+    let count = cx.count();
     let last_motion = cx.editor.last_motion.take();
     if let Some(m) = &last_motion {
-        m.run(cx.editor);
+        for _ in 0..count {
+            m.run(cx.editor);
+        }
         cx.editor.last_motion = last_motion;
     }
 }
@@ -1415,16 +1418,16 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
         let is_primary = *range == selection.primary();
 
         // The range is always head exclusive
-        let head = if range.anchor < range.head {
-            range.head - 1
+        let (head, anchor) = if range.anchor < range.head {
+            (range.head - 1, range.anchor)
         } else {
-            range.head
+            (range.head, range.anchor.saturating_sub(1))
         };
 
         let tab_width = doc.tab_width();
 
         let head_pos = visual_coords_at_pos(text, head, tab_width);
-        let anchor_pos = visual_coords_at_pos(text, range.anchor, tab_width);
+        let anchor_pos = visual_coords_at_pos(text, anchor, tab_width);
 
         let height = std::cmp::max(head_pos.row, anchor_pos.row)
             - std::cmp::min(head_pos.row, anchor_pos.row)
@@ -1688,6 +1691,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
 }
 
 fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Direction) {
+    let count = cx.count();
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
     let (view, doc) = current!(cx.editor);
@@ -1706,16 +1710,18 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
             .multi_line(true)
             .build()
         {
-            search_impl(
-                doc,
-                view,
-                &contents,
-                &regex,
-                movement,
-                direction,
-                scrolloff,
-                wrap_around,
-            );
+            for _ in 0..count {
+                search_impl(
+                    doc,
+                    view,
+                    &contents,
+                    &regex,
+                    movement,
+                    direction,
+                    scrolloff,
+                    wrap_around,
+                );
+            }
         } else {
             let error = format!("Invalid regex: {}", query);
             cx.editor.set_error(error);

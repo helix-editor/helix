@@ -173,7 +173,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         // |         | |         |
         // +---------+ +---------+
 
-        let render_preview = area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+        let render_preview = self.picker.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
@@ -300,6 +300,8 @@ pub struct Picker<T: Item> {
     previous_pattern: String,
     /// Whether to truncate the start (default true)
     pub truncate_start: bool,
+    /// Whether to show the preview panel (default true)
+    show_preview: bool,
 
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
 }
@@ -327,6 +329,7 @@ impl<T: Item> Picker<T> {
             prompt,
             previous_pattern: String::new(),
             truncate_start: true,
+            show_preview: true,
             callback_fn: Box::new(callback_fn),
             completion_height: 0,
         };
@@ -470,6 +473,10 @@ impl<T: Item> Picker<T> {
         self.filters.sort_unstable(); // used for binary search later
         self.prompt.clear(cx);
     }
+
+    pub fn toggle_preview(&mut self) {
+        self.show_preview = !self.show_preview;
+    }
 }
 
 // process:
@@ -490,7 +497,7 @@ impl<T: Item + 'static> Component for Picker<T> {
             _ => return EventResult::Ignored(None),
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _cx| {
             // remove the layer
             compositor.last_picker = compositor.pop();
         })));
@@ -537,6 +544,9 @@ impl<T: Item + 'static> Component for Picker<T> {
             }
             ctrl!(' ') => {
                 self.save_filter(cx);
+            }
+            ctrl!('t') => {
+                self.toggle_preview();
             }
             _ => {
                 if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
@@ -607,7 +617,16 @@ impl<T: Item + 'static> Component for Picker<T> {
         for (i, (_index, option)) in files.take(rows as usize).enumerate() {
             let is_active = i == (self.cursor - offset);
             if is_active {
-                surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
+                surface.set_string(
+                    inner.x.saturating_sub(3),
+                    inner.y + i as u16,
+                    " > ",
+                    selected,
+                );
+                surface.set_style(
+                    Rect::new(inner.x, inner.y + i as u16, inner.width, 1),
+                    selected,
+                );
             }
 
             let spans = option.label(&self.editor_data);
