@@ -182,13 +182,35 @@ hidden = false
 <tr><td><code>color-modes</code></td><td>Whether to color the mode indicator with different colors depending on the mode itself</td><td><code>false</code></td></tr>
 </tbody></table>
 </div>
+<h3 id="editorstatusline-section"><a class="header" href="#editorstatusline-section"><code>[editor.statusline]</code> Section</a></h3>
+<p>Allows configuring the statusline at the bottom of the editor.</p>
+<p>The configuration distinguishes between three areas of the status line:</p>
+<p><code>[ ... ... LEFT ... ... | ... ... ... ... CENTER ... ... ... ... | ... ... RIGHT ... ... ]</code></p>
+<p>Statusline elements can be defined as follows:</p>
+<pre><code class="language-toml">[editor.statusline]
+left = [&quot;mode&quot;, &quot;spinner&quot;]
+center = [&quot;file-name&quot;]
+right = [&quot;diagnostics&quot;, &quot;selections&quot;, &quot;position&quot;, &quot;file-encoding&quot;, &quot;file-type&quot;]
+</code></pre>
+<p>The following elements can be configured:</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>mode</code></td><td>The current editor mode (<code>NOR</code>/<code>INS</code>/<code>SEL</code>)</td></tr>
+<tr><td><code>spinner</code></td><td>A progress spinner indicating LSP activity</td></tr>
+<tr><td><code>file-name</code></td><td>The path/name of the opened file</td></tr>
+<tr><td><code>file-encoding</code></td><td>The encoding of the opened file if it differs from UTF-8</td></tr>
+<tr><td><code>file-type</code></td><td>The type of the opened file</td></tr>
+<tr><td><code>diagnostics</code></td><td>The number of warnings and/or errors</td></tr>
+<tr><td><code>selections</code></td><td>The number of active selections</td></tr>
+<tr><td><code>position</code></td><td>The cursor position</td></tr>
+</tbody></table>
+</div>
 <h3 id="editorlsp-section"><a class="header" href="#editorlsp-section"><code>[editor.lsp]</code> Section</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>display-messages</code></td><td>Display LSP progress messages below statusline<sup class="footnote-reference"><a href="#1">1</a></sup></td><td><code>false</code></td></tr>
 </tbody></table>
 </div>
 <div class="footnote-definition" id="1"><sup class="footnote-definition-label">1</sup>
-<p>A progress spinner is always shown in the statusline beside the file path.</p>
+<p>By default, a progress spinner is shown in the statusline beside the file path.</p>
 </div>
 <h3 id="editorcursor-shape-section"><a class="header" href="#editorcursor-shape-section"><code>[editor.cursor-shape]</code> Section</a></h3>
 <p>Defines the shape of cursor in each mode. Note that due to limitations
