@@ -60,7 +60,7 @@ impl JumpList {
     }
 
     pub fn get(&self) -> &[Jump] {
-        &self.jumps[..]
+        &self.jumps
     }
 }
 
