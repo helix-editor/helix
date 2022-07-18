@@ -352,6 +352,7 @@ Keys to use within picker. Remapping currently not supported.
 | `Enter`                      | Open selected     |
 | `Ctrl-s`                     | Open horizontally |
 | `Ctrl-v`                     | Open vertically   |
+| `Ctrl-t`                     | Toggle preview    |
 | `Escape`, `Ctrl-c`           | Close picker      |
 
 # Prompt
