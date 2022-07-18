@@ -365,6 +365,7 @@ _________________________________________________________________
     by the motions.
 
  --> This is an error-free line with words to move around in.
+
  Note: This works the same in select mode.
  Note: Another related command is A-; which flips selections.
 
@@ -911,11 +912,11 @@ lines.
  1. Move the cursor to the line below marked -->.
  2. Select the first "bat" and type * to set it to search.
  3. Type v to enter select mode.
- 4. Type n twice to select the next two "bat"s.
- 5. Use c or r to change every "bat" to "cat".
+ 4. Type n to select the othe "bat".
+ 5. Use c or r to change the "bat"s to "cat".
 
  --> Everybody wants to be a bat,
- --> because a bat's the only bat
+ --> because a cat's the only bat
  --> who knows where it's at.
 
 
@@ -933,8 +934,8 @@ lines.
  Type C-s (ctrl-s) to manually save your current position to
  the jumplist.
 
- Type C-i ("in") and C-o ("out") to move forward and backwards in the jumplist
- respectively.
+ Type C-i ("in") and C-o ("out") to move forward and backwards in
+ the jumplist respectively.
 
  1. Type C-s somewhere.
  2. Move far away in the file.
@@ -950,11 +951,11 @@ lines.
 
  * Type * to set the search register to the primary selection.
 
- * Type n / N in visual mode to add selections on each search match.
+ * Type n / N in visual mode to add selections on each search
+   match.
 
  * Type C-s to save position to the jumplist.
    * Type C-i and C-o to go forward and backward in the jumplist.
-
 
 
 
@@ -1018,8 +1019,9 @@ lines.
 
  1. Move the cursor to the line under ---.
  2. Type xx / 2x to select the lines.
- 3. Type S then \.|!<enter>. This effectively splits the
-    selection into sentences at each dot or exclamation mark.
+ 3. Type S then \. |! <enter> (note the spaces after . and !).
+    This effectively splits the selection into sentences at each
+    dot or exclamation mark.
  4. Type A-; to reverse the selections.
  5. Type ; to reduce selections to a single character - the first
     letter of each sentence.
@@ -1028,7 +1030,6 @@ lines.
 ---
 these are sentences. some sentences don't start with uppercase
 letters! that is not good grammar. you can fix this.
-
 
 
 
@@ -1045,11 +1046,6 @@ letters! that is not good grammar. you can fix this.
      upper and lower respectively.
 
  * Type S to split selections on regex.
-
-
-
-
-
 
 
 
