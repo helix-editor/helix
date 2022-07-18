@@ -58,8 +58,7 @@ pub enum OffsetEncoding {
 
 pub mod util {
     use super::*;
-    use helix_core::{Range, Rope, Transaction};
-    use lsp::NumberOrString;
+    use helix_core::{diagnostic::NumberOrString, Range, Rope, Transaction};
 
     /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
     ///
@@ -81,12 +80,8 @@ pub mod util {
 
         let code = match diag.code.clone() {
             Some(x) => match x {
-                helix_core::diagnostic::NumberOrString::Number(x) => {
-                    Some(lsp::NumberOrString::Number(x))
-                }
-                helix_core::diagnostic::NumberOrString::String(x) => {
-                    Some(lsp::NumberOrString::String(x))
-                }
+                NumberOrString::Number(x) => Some(lsp::NumberOrString::Number(x)),
+                NumberOrString::String(x) => Some(lsp::NumberOrString::String(x)),
             },
             None => None,
         };
