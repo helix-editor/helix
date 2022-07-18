@@ -284,9 +284,23 @@ fn render_file_type<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let file_type = context.doc.language_id().unwrap_or("text");
+    let file_type: String = context
+        .doc
+        .language_id()
+        .unwrap_or("text")
+        .split('-')
+        .map(|x| capitalized(x))
+        .collect();
 
     write(context, format!(" {} ", file_type), None);
+}
+
+fn capitalized(s: &str) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        None => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+    }
 }
 
 fn render_file_name<F>(context: &mut RenderContext, write: F)

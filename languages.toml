@@ -361,7 +361,7 @@ injection-regex = "^(tsx)$" # |typescript
 file-types = ["tsx"]
 roots = []
 # TODO: highlights-params
-language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "typescriptreact" }
+language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "typescript-react" }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
