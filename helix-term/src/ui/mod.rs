@@ -8,6 +8,7 @@ mod picker;
 mod popup;
 mod prompt;
 mod spinner;
+mod statusline;
 mod text;
 
 pub use completion::Completion;
