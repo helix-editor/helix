@@ -2293,7 +2293,7 @@ fn jumplist_picker(cx: &mut Context) {
             } else {
                 format!(" ({})", flags.join(""))
             };
-            format!("{} {}{} {}", self.id, path, flag, &self.text).into()
+            format!("{} {}{} {}", self.id, path, flag, self.text).into()
         }
     }
 
