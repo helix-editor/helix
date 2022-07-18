@@ -2,6 +2,7 @@ use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
 use helix_core::{
     config::{default_syntax_loader, user_syntax_loader},
+    diagnostic::NumberOrString,
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
@@ -556,12 +557,24 @@ impl Application {
                                         }
                                     };
 
+                                    let code = match diagnostic.code.clone() {
+                                        Some(x) => match x {
+                                            lsp::NumberOrString::Number(x) => {
+                                                Some(NumberOrString::Number(x))
+                                            }
+                                            lsp::NumberOrString::String(x) => {
+                                                Some(NumberOrString::String(x))
+                                            }
+                                        },
+                                        None => None,
+                                    };
+
                                     Some(Diagnostic {
                                         range: Range { start, end },
                                         line: diagnostic.range.start.line as usize,
                                         message: diagnostic.message.clone(),
                                         severity,
-                                        // code
+                                        code,
                                         // source
                                     })
                                 })
