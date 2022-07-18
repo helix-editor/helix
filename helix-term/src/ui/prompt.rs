@@ -84,6 +84,13 @@ impl Prompt {
         }
     }
 
+    pub fn with_line(mut self, line: String) -> Self {
+        let cursor = line.len();
+        self.line = line;
+        self.cursor = cursor;
+        self
+    }
+
     pub fn line(&self) -> &String {
         &self.line
     }
