@@ -30,6 +30,7 @@
 "ui.linenr.selected" = { fg = "foreground" }
 "ui.menu" = { fg = "foreground", bg = "background_dark" }
 "ui.menu.selected" = { fg = "cyan", bg = "background_dark" }
+"ui.menu.highlighted" = { fg = "cyan" }
 "ui.popup" = { fg = "foreground", bg = "background_dark" }
 "ui.selection" = { bg = "secondary_highlight" }
 "ui.selection.primary" = { bg = "primary_highlight" }

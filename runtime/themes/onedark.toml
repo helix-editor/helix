@@ -75,6 +75,7 @@ diagnostic = { modifiers = ["underlined"] }
 "ui.menu" = { fg = "white", bg = "gray" }
 "ui.menu.selected" = { fg = "black", bg = "blue" }
 "ui.menu.scroll" = { fg = "white", bg = "light-gray" }
+"ui.menu.highlighted" = { fg = "red" }
 
 [palette]
 

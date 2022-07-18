@@ -10,6 +10,7 @@
 "ui.background" = { bg = "my_gray0" }
 "ui.menu" = { fg = "my_white", bg = "my_gray2" }
 "ui.menu.selected" = { fg = "my_gray2", bg = "my_gray5" }
+"ui.menu.highlighted" = { fg = "my_red", bg = "my_gray2" }
 "ui.linenr" = { fg = "my_gray4", bg = "my_gray2" }
 "ui.popup" = { bg = "my_gray2" }
 "ui.window" = { fg = "my_gray4", bg = "my_gray2" }

@@ -62,6 +62,7 @@
 
 "ui.menu" = { fg = "#e5ded6bg", bg = "#232d38" }
 "ui.menu.selected" = { bg = "#313f4e" }
+"ui.menu.highlighted" = { fg = "#dcb659" }
 
 "warning" = "#dc7759"
 "error" = "#dc597f"

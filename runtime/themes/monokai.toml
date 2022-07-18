@@ -61,6 +61,7 @@
 "ui.help" = { bg = "widget" }
 "ui.menu" = { bg = "widget" }
 "ui.menu.selected" = { bg = "#414339" }
+"ui.menu.highlighted" = { fg = "#F92672" }
 
 "ui.cursor" = { fg = "cursor", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "cursor", modifiers = ["reversed"] }
