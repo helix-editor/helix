@@ -59,10 +59,10 @@
 
 (parameters
   (list_splat_pattern ; *args
-    (identifier) @parameter))
+    (identifier) @variable.parameter))
 (parameters
   (dictionary_splat_pattern ; **kwargs
-    (identifier) @parameter))
+    (identifier) @variable.parameter))
 
 ; Types
 
