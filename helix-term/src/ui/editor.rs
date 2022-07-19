@@ -422,12 +422,18 @@ impl EditorView {
             }
 
             for i in 0..(indent_level / tab_width as u16) {
-                surface.set_string(
-                    viewport.x + (i * tab_width as u16) - offset.col as u16,
-                    viewport.y + line,
-                    &indent_guide_char,
-                    indent_style,
-                );
+                let visual_x = i * tab_width as u16;
+                let out_of_bounds =
+                    visual_x < offset.col as u16 || visual_x >= viewport.width + offset.col as u16;
+
+                if !out_of_bounds {
+                    surface.set_string(
+                        viewport.x + visual_x - offset.col as u16,
+                        viewport.y + line,
+                        &indent_guide_char,
+                        indent_style,
+                    );
+                }
             }
         };
 
