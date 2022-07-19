@@ -1,3 +1,4 @@
+use futures_util::FutureExt;
 use helix_lsp::{
     block_on,
     lsp::{self, DiagnosticSeverity, NumberOrString},
@@ -14,7 +15,8 @@ use helix_view::{editor::Action, theme::Style};
 use crate::{
     compositor::{self, Compositor},
     ui::{
-        self, lsp::SignatureHelp, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent,
+        self, lsp::SignatureHelp, overlay::overlayed, DynamicPicker, FileLocation, FilePicker,
+        Popup, PromptEvent,
     },
 };
 
@@ -365,10 +367,36 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     cx.callback(
         future,
         move |_editor, compositor, response: Option<Vec<lsp::SymbolInformation>>| {
-            if let Some(symbols) = response {
-                let picker = sym_picker(symbols, current_url, offset_encoding);
-                compositor.push(Box::new(overlayed(picker)))
-            }
+            let symbols = match response {
+                Some(s) => s,
+                None => return,
+            };
+            let picker = sym_picker(symbols, current_url, offset_encoding);
+            let get_symbols = |query: String, editor: &mut Editor| {
+                let doc = doc!(editor);
+                let language_server = match doc.language_server() {
+                    Some(s) => s,
+                    None => {
+                        // This should not generally happen since the picker will not
+                        // even open in the first place if there is no server.
+                        return async move { Err(anyhow::anyhow!("LSP not active")) }.boxed();
+                    }
+                };
+                let symbol_request = language_server.workspace_symbols(query);
+
+                let future = async move {
+                    let json = symbol_request.await?;
+                    let response: Option<Vec<lsp::SymbolInformation>> =
+                        serde_json::from_value(json)?;
+
+                    response.ok_or_else(|| {
+                        anyhow::anyhow!("No response for workspace symbols from language server")
+                    })
+                };
+                future.boxed()
+            };
+            let dyn_picker = DynamicPicker::new(picker, Box::new(get_symbols));
+            compositor.push(Box::new(overlayed(dyn_picker)))
         },
     )
 }
