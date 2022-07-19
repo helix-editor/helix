@@ -390,35 +390,42 @@ impl<T: Item> Picker<T> {
             self.matches
                 .sort_unstable_by_key(|(_, score)| Reverse(*score));
         } else {
-            self.matches.clear();
-            self.matches.extend(
-                self.options
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(index, option)| {
-                        // filter options first before matching
-                        if !self.filters.is_empty() {
-                            // TODO: this filters functionality seems inefficient,
-                            // instead store and operate on filters if any
-                            self.filters.binary_search(&index).ok()?;
-                        }
-
-                        let text = option.filter_text(&self.editor_data);
-
-                        self.matcher
-                            .fuzzy_match(&text, pattern)
-                            .map(|score| (index, score))
-                    }),
-            );
-            self.matches
-                .sort_unstable_by_key(|(_, score)| Reverse(*score));
+            self.force_score();
         }
 
         log::debug!("picker score {:?}", Instant::now().duration_since(now));
 
         // reset cursor position
         self.cursor = 0;
+        let pattern = self.prompt.line();
         self.previous_pattern.clone_from(pattern);
+    }
+
+    pub fn force_score(&mut self) {
+        let pattern = self.prompt.line();
+
+        self.matches.clear();
+        self.matches.extend(
+            self.options
+                .iter()
+                .enumerate()
+                .filter_map(|(index, option)| {
+                    // filter options first before matching
+                    if !self.filters.is_empty() {
+                        // TODO: this filters functionality seems inefficient,
+                        // instead store and operate on filters if any
+                        self.filters.binary_search(&index).ok()?;
+                    }
+
+                    let text = option.filter_text(&self.editor_data);
+
+                    self.matcher
+                        .fuzzy_match(&text, pattern)
+                        .map(|score| (index, score))
+                }),
+        );
+        self.matches
+            .sort_unstable_by_key(|(_, score)| Reverse(*score));
     }
 
     /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
