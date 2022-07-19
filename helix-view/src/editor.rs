@@ -167,10 +167,25 @@ pub struct Config {
     pub color_modes: bool,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
+    /// Display LSP progress messages below statusline
     pub display_messages: bool,
+    /// Enable automatic pop up of signature help (parameter hints)
+    pub auto_signature_help: bool,
+    /// Display docs under signature help popup
+    pub display_signature_help_docs: bool,
+}
+
+impl Default for LspConfig {
+    fn default() -> Self {
+        Self {
+            display_messages: false,
+            auto_signature_help: true,
+            display_signature_help_docs: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

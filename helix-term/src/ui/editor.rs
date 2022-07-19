@@ -1,7 +1,7 @@
 use crate::{
     commands,
     compositor::{Component, Context, EventResult},
-    key,
+    job, key,
     keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
@@ -28,6 +28,7 @@ use std::borrow::Cow;
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
 
+use super::lsp::SignatureHelp;
 use super::statusline;
 
 pub struct EditorView {
@@ -1205,10 +1206,21 @@ impl Component for EditorView {
                             _ => unimplemented!(),
                         };
                         self.last_insert.1.clear();
+                        commands::signature_help_impl(
+                            &mut cx,
+                            commands::SignatureHelpInvoked::Automatic,
+                        );
                     }
                     (Mode::Insert, Mode::Normal) => {
                         // if exiting insert mode, remove completion
                         self.completion = None;
+                        // TODO: Use an on_mode_change hook to remove signature help
+                        context.jobs.callback(async {
+                            let call: job::Callback = Box::new(|_editor, compositor| {
+                                compositor.remove(SignatureHelp::ID);
+                            });
+                            Ok(call)
+                        });
                     }
                     _ => (),
                 }
