@@ -138,6 +138,7 @@ where
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
+        helix_view::editor::StatusLineElement::FileLineEndings => render_file_line_endings,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
         helix_view::editor::StatusLineElement::Selections => render_selections,
@@ -278,6 +279,19 @@ where
     if enc != encoding::UTF_8 {
         write(context, format!(" {} ", enc.name()), None);
     }
+}
+
+fn render_file_line_endings<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    use helix_core::LineEnding::*;
+    let line_ending = match context.doc.line_ending {
+        Crlf => "CRLF",
+        LF => "LF",
+    };
+
+    write(context, format!(" {} ", line_ending), None);
 }
 
 fn render_file_type<F>(context: &mut RenderContext, write: F)
