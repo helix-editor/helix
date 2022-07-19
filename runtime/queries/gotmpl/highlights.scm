@@ -3,7 +3,7 @@
 [
   (field)
   (field_identifier)
-] @property
+] @variable.other.member
 
 (variable) @variable
 
@@ -63,13 +63,14 @@
   (int_literal)
   (float_literal)
   (imaginary_literal)
-] @number
+] @constant.numeric.integer
 
 [
   (true)
   (false)
-  (nil)
-] @constant.builtin
+] @constant.builtin.boolean
+
+(nil) @constant.builtin
 
 (comment) @comment
 (ERROR) @error
