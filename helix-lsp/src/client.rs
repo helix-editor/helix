@@ -294,6 +294,7 @@ impl Client {
                         dynamic_registration: Some(false),
                     }),
                     workspace_folders: Some(true),
+                    apply_edit: Some(true),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
@@ -319,6 +320,16 @@ impl Client {
                         // if not specified, rust-analyzer returns plaintext marked as markdown but
                         // badly formatted.
                         content_format: Some(vec![lsp::MarkupKind::Markdown]),
+                        ..Default::default()
+                    }),
+                    signature_help: Some(lsp::SignatureHelpClientCapabilities {
+                        signature_information: Some(lsp::SignatureInformationSettings {
+                            documentation_format: Some(vec![lsp::MarkupKind::Markdown]),
+                            parameter_information: Some(lsp::ParameterInformationSettings {
+                                label_offset_support: Some(true),
+                            }),
+                            active_parameter_support: Some(true),
+                        }),
                         ..Default::default()
                     }),
                     rename: Some(lsp::RenameClientCapabilities {
@@ -645,7 +656,12 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> impl Future<Output = Result<Value>> {
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        // Return early if signature help is not supported
+        capabilities.signature_help_provider.as_ref()?;
+
         let params = lsp::SignatureHelpParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
@@ -656,7 +672,7 @@ impl Client {
             // lsp::SignatureHelpContext
         };
 
-        self.call::<lsp::request::SignatureHelpRequest>(params)
+        Some(self.call::<lsp::request::SignatureHelpRequest>(params))
     }
 
     pub fn text_document_hover(

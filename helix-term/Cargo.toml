@@ -63,8 +63,8 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
 # ripgrep for global search
-grep-regex = "0.1.9"
-grep-searcher = "0.1.8"
+grep-regex = "0.1.10"
+grep-searcher = "0.1.10"
 
 # Remove once retain_mut lands in stable rust
 retain_mut = "0.1.7"

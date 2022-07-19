@@ -102,6 +102,17 @@ pub fn line_numbers<'doc>(
     })
 }
 
+pub fn padding<'doc>(
+    _editor: &'doc Editor,
+    _doc: &'doc Document,
+    _view: &View,
+    _theme: &Theme,
+    _is_focused: bool,
+    _width: usize,
+) -> GutterFn<'doc> {
+    Box::new(|_line: usize, _selected: bool, _out: &mut String| None)
+}
+
 #[inline(always)]
 const fn abs_diff(a: usize, b: usize) -> usize {
     if a > b {
