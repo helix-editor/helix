@@ -233,7 +233,7 @@ pub enum StatusLineElement {
     FileEncoding,
 
     /// The file line endings (CRLF or LF)
-    FileLineEndings,
+    FileLineEnding,
 
     /// The file type (language ID or "text")
     FileType,

@@ -138,7 +138,7 @@ where
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
-        helix_view::editor::StatusLineElement::FileLineEndings => render_file_line_endings,
+        helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
         helix_view::editor::StatusLineElement::Selections => render_selections,
@@ -281,7 +281,7 @@ where
     }
 }
 
-fn render_file_line_endings<F>(context: &mut RenderContext, write: F)
+fn render_file_line_ending<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
