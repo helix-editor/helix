@@ -111,7 +111,7 @@
 ["," "." ":" ";" (ellipsis)] @punctuation.delimiter
 (interpolation
   "{" @punctuation.special
-  "}" @punctuation.special)
+  "}" @punctuation.special) @embedded
 "(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
 [
