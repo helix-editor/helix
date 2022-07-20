@@ -108,7 +108,7 @@ FLAGS:
     }
 
     if args.build_grammars {
-        helix_loader::grammar::build_grammars()?;
+        helix_loader::grammar::build_grammars(None)?;
         return Ok(0);
     }
 
