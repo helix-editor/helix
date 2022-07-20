@@ -108,11 +108,11 @@
 (string) @string
 (escape_sequence) @constant.character.escape
 
-"(" ")" "[" "]" "{" "}"] @punctuation.bracket
 ["," "." ":" ";" (ellipsis)] @punctuation.delimiter
 (interpolation
   "{" @punctuation.special
   "}" @punctuation.special)
+"(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
 [
   "-"
