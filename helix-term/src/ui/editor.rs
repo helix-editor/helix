@@ -416,12 +416,17 @@ impl EditorView {
         let mut last_line_indent_level = 0;
         let indent_style = theme.get("ui.virtual.indent-guide");
 
-        let draw_indent_guides = |indent_level, line, surface: &mut Surface| {
+        let mut hide_indent_level = 0u16;
+        let mut draw_indent_guides = |indent_level, line, surface: &mut Surface| {
             if !config.indent_guides.render {
                 return;
             }
 
             for i in 0..(indent_level / tab_width as u16) {
+                if i < hide_indent_level {
+                    continue;
+                }
+
                 let visual_x = i * tab_width as u16;
                 let out_of_bounds =
                     visual_x < offset.col as u16 || visual_x >= viewport.width + offset.col as u16;
@@ -433,6 +438,8 @@ impl EditorView {
                         &indent_guide_char,
                         indent_style,
                     );
+                } else {
+                    hide_indent_level = i;
                 }
             }
         };
