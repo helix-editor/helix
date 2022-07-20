@@ -289,6 +289,18 @@ where
     let line_ending = match context.doc.line_ending {
         Crlf => "CRLF",
         LF => "LF",
+        #[cfg(feature = "unicode-lines")]
+        VT => "VT", // U+000B -- VerticalTab
+        #[cfg(feature = "unicode-lines")]
+        FF => "FF", // U+000C -- FormFeed
+        #[cfg(feature = "unicode-lines")]
+        CR => "CR", // U+000D -- CarriageReturn
+        #[cfg(feature = "unicode-lines")]
+        Nel => "NEL", // U+0085 -- NextLine
+        #[cfg(feature = "unicode-lines")]
+        LS => "LS", // U+2028 -- Line Separator
+        #[cfg(feature = "unicode-lines")]
+        PS => "PS", // U+2029 -- ParagraphSeparator
     };
 
     write(context, format!(" {} ", line_ending), None);
