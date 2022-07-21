@@ -6,7 +6,7 @@
 ## GENERAL ==============================
 
 "warning" = { fg ="yellow", modifiers = ["bold"] } # Editor warnings.
-"error" = { fg = "red", modifiers = ["bold"] } # Editor errors, like mis-typing a command.
+"error" = { bg = "mid-green", fg = "red", modifiers = ["bold"] } # Editor errors, like mis-typing a command.
 "info" = { fg = "mid-blue", bg = "mid-green" } # Code diagnostic info in gutter (LSP).
 # ? Difference between info and hint ?
 "hint" = { fg = "light-green", modifiers = ["bold"] } # Code diagnostics hint in gutter (LSP).
@@ -30,8 +30,8 @@
 'ui.cursor.select' = { fg = "light-blue" } # The cursor in select mode (v).
 'ui.cursor.match' = { fg = "red", modifiers = ["bold", "reversed"] } # The matching parentheses of that under the cursor.
 
-'ui.selection' = { bg = "mid-green" } # All currently selected text.
-'ui.selection.primary' = { bg = "mid-green" } # The primary selection when there are multiple.
+'ui.selection' = { bg = "autocomp-green" } # All currently selected text.
+'ui.selection.primary' = { bg = "autocomp-green" } # The primary selection when there are multiple.
 'ui.cursorline.primary' = { bg = 'mid-green' }
 
 'ui.linenr' = { bg = "dark-green", fg = "gray"  } # Line numbers.
@@ -42,15 +42,19 @@
 'ui.virtual.whitespace' = { fg = "gray"} # Whitespace markers in editing area.
 'ui.virtual.indent-guide' = { fg = "gray" } # Indentation guides.
 
-'ui.statusline' = { fg = "white", bg = "autocomp-green"} # Status line.
+'ui.statusline' = { fg = "light-green", bg = "autocomp-green"} # Status line.
 'ui.statusline.inactive' = { fg = "white", bg = "mid-green"} # Status line in unfocused windows.
+
+"ui.statusline.normal" = { fg = "dark-green", bg = "mid-blue", modifiers = [ "bold" ] }
+"ui.statusline.insert" = { fg = "dark-green", bg = "pink", modifiers = [ "bold" ] }
+"ui.statusline.select" = { fg = "dark-green", bg = "yellow", modifiers = [ "bold" ] }
 
 'ui.help' = { bg = "mid-green", fg = "white"} # `:command` descriptions above the command line.
 
 'ui.highlight' = { bg = "mid-green"} # selected contents of symbol pickers (spc-s, spc-S) and current line in buffer picker (spc-b).
 
-'ui.menu' = { fg = "gray", bg = "mid-green" } # Autocomplete menu.
-'ui.menu.selected' = { fg = "white", bg = "autocomp-green" } # Selected autocomplete item.
+'ui.menu' = { fg = "white", bg = "mid-green" } # Autocomplete menu.
+'ui.menu.selected' = { fg = "light-green", bg = "autocomp-green" } # Selected autocomplete item.
 
 'ui.popup' = { bg = "mid-green" } # Documentation popups (space-k).
 # 'ui.ppopup.info' = { bg = "midgreen", fg = "gray", modifiers = ["bold"] } # Info popups box (space mode menu).
@@ -124,7 +128,6 @@
 
 'namespace' = { fg = "mid-blue" } # * Namespace keyword in java, C#, etc.
 
-
 # Markup ==============================
 # Colors for markup languages, like Markdown or XML.
 
@@ -174,7 +177,7 @@
 'diff.plus' = "light-green" # { } # Additions.
 'diff.minus' = "yellow" # { } # Deletions.
 'diff.delta' = "red" # { } # Modifications.
-'diff.delta.moved' = { } # Renamed or moved files / changes.
+# 'diff.delta.moved' = { } # Renamed or moved files / changes.
 
 
 [palette] # Define your custom colors here.
@@ -185,9 +188,9 @@ light-green = "#48e9a7" # strings
 
 pink = "#df769b"
 yellow = "#ffd800"
-purple = "#6f60ea"
+purple = "#918cff"
 white = "#b1cace"
-orange = "#e4b782"
+orange = "#ffa864"
 gray = "#5b858b" # mainly for comments/background text
 red = "#e34e1b"
 
