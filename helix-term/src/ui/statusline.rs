@@ -325,10 +325,15 @@ where
             .as_ref()
             .map(|p| p.to_string_lossy())
             .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
+        let file_modification_indicator = &context.editor.config().file_modification_indicator;
         format!(
-            " {}{} ",
+            "{}{}",
             path,
-            if context.doc.is_modified() { "[+]" } else { "" }
+            if context.doc.is_modified() {
+                file_modification_indicator
+            } else {
+                ""
+            }
         )
     };
 
