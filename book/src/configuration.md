@@ -62,7 +62,7 @@ Statusline elements can be defined as follows:
 [editor.statusline]
 left = ["mode", "spinner"]
 center = ["file-name"]
-right = ["diagnostics", "selections", "position", "file-encoding", "file-type"]
+right = ["diagnostics", "selections", "position", "file-encoding", "file-line-ending", "file-type"]
 ```
 
 The following elements can be configured:
@@ -73,6 +73,7 @@ The following elements can be configured:
 | `spinner` | A progress spinner indicating LSP activity |
 | `file-name` | The path/name of the opened file |
 | `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
+| `file-line-ending` | The file line endings (CRLF or LF) |
 | `file-type` | The type of the opened file |
 | `diagnostics` | The number of warnings and/or errors |
 | `selections` | The number of active selections |
