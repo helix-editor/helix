@@ -260,7 +260,7 @@ This layer is a kludge of mappings, mostly pickers.
 
 #### File mode
 
-This layer is a kludge of mappings, mostly pickers.
+This layer is a collection of file-opening commands.
 
 
 | Key     | Description                                                             | Command                             |
