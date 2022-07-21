@@ -10,5 +10,5 @@
 (change kind: "modified" @diff.delta)
 (change kind: "renamed" @diff.delta.moved)
 
-[":" "->"] @punctuation.delimeter
+[":" "->" (scissors)] @punctuation.delimiter
 (comment) @comment

@@ -1,9 +1,11 @@
+use std::{borrow::Cow, path::PathBuf};
+
 use crate::{
     compositor::{Callback, Component, Compositor, Context, EventResult},
     ctrl, key, shift,
 };
 use crossterm::event::Event;
-use tui::{buffer::Buffer as Surface, widgets::Table};
+use tui::{buffer::Buffer as Surface, text::Spans, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
 
@@ -14,22 +16,41 @@ use helix_view::{graphics::Rect, Editor};
 use tui::layout::Constraint;
 
 pub trait Item {
-    fn label(&self) -> &str;
+    /// Additional editor state that is used for label calculation.
+    type Data;
 
-    fn sort_text(&self) -> &str {
-        self.label()
-    }
-    fn filter_text(&self) -> &str {
-        self.label()
+    fn label(&self, data: &Self::Data) -> Spans;
+
+    fn sort_text(&self, data: &Self::Data) -> Cow<str> {
+        let label: String = self.label(data).into();
+        label.into()
     }
 
-    fn row(&self) -> Row {
-        Row::new(vec![Cell::from(self.label())])
+    fn filter_text(&self, data: &Self::Data) -> Cow<str> {
+        let label: String = self.label(data).into();
+        label.into()
+    }
+
+    fn row(&self, data: &Self::Data) -> Row {
+        Row::new(vec![Cell::from(self.label(data))])
+    }
+}
+
+impl Item for PathBuf {
+    /// Root prefix to strip.
+    type Data = PathBuf;
+
+    fn label(&self, root_path: &Self::Data) -> Spans {
+        self.strip_prefix(&root_path)
+            .unwrap_or(self)
+            .to_string_lossy()
+            .into()
     }
 }
 
 pub struct Menu<T: Item> {
     options: Vec<T>,
+    editor_data: T::Data,
 
     cursor: Option<usize>,
 
@@ -48,14 +69,18 @@ pub struct Menu<T: Item> {
 }
 
 impl<T: Item> Menu<T> {
+    const LEFT_PADDING: usize = 1;
+
     // TODO: it's like a slimmed down picker, share code? (picker = menu + prompt with different
     // rendering)
     pub fn new(
         options: Vec<T>,
+        editor_data: <T as Item>::Data,
         callback_fn: impl Fn(&mut Editor, Option<&T>, MenuEvent) + 'static,
     ) -> Self {
         let mut menu = Self {
             options,
+            editor_data,
             matcher: Box::new(Matcher::default()),
             matches: Vec::new(),
             cursor: None,
@@ -81,16 +106,17 @@ impl<T: Item> Menu<T> {
                 .iter()
                 .enumerate()
                 .filter_map(|(index, option)| {
-                    let text = option.filter_text();
+                    let text: String = option.filter_text(&self.editor_data).into();
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
                     self.matcher
-                        .fuzzy_match(text, pattern)
+                        .fuzzy_match(&text, pattern)
                         .map(|score| (index, score))
                 }),
         );
         // matches.sort_unstable_by_key(|(_, score)| -score);
-        self.matches
-            .sort_unstable_by_key(|(index, _score)| self.options[*index].sort_text());
+        self.matches.sort_unstable_by_key(|(index, _score)| {
+            self.options[*index].sort_text(&self.editor_data)
+        });
 
         // reset cursor position
         self.cursor = None;
@@ -125,10 +151,10 @@ impl<T: Item> Menu<T> {
         let n = self
             .options
             .first()
-            .map(|option| option.row().cells.len())
+            .map(|option| option.row(&self.editor_data).cells.len())
             .unwrap_or_default();
         let max_lens = self.options.iter().fold(vec![0; n], |mut acc, option| {
-            let row = option.row();
+            let row = option.row(&self.editor_data);
             // maintain max for each column
             for (acc, cell) in acc.iter_mut().zip(row.cells.iter()) {
                 let width = cell.content.width();
@@ -150,6 +176,7 @@ impl<T: Item> Menu<T> {
             len += 1; // +1: reserve some space for scrollbar
         }
 
+        len += Self::LEFT_PADDING;
         let width = len.min(viewport.0 as usize);
 
         self.widths = max_lens
@@ -271,6 +298,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             .try_get("ui.menu")
             .unwrap_or_else(|| theme.get("ui.text"));
         let selected = theme.get("ui.menu.selected");
+        surface.clear_with(area, style);
 
         let scroll = self.scroll;
 
@@ -288,7 +316,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         let win_height = area.height as usize;
 
         const fn div_ceil(a: usize, b: usize) -> usize {
-            (a + b - 1) / a
+            (a + b - 1) / b
         }
 
         let scroll_height = std::cmp::min(div_ceil(win_height.pow(2), len), win_height as usize);
@@ -296,7 +324,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         let scroll_line = (win_height - scroll_height) * scroll
             / std::cmp::max(1, len.saturating_sub(win_height));
 
-        let rows = options.iter().map(|option| option.row());
+        let rows = options.iter().map(|option| option.row(&self.editor_data));
         let table = Table::new(rows)
             .style(style)
             .highlight_style(selected)
@@ -306,7 +334,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         use tui::widgets::TableState;
 
         table.render_table(
-            area,
+            area.clip_left(Self::LEFT_PADDING as u16).clip_right(1),
             surface,
             &mut TableState {
                 offset: scroll,
@@ -314,16 +342,34 @@ impl<T: Item + 'static> Component for Menu<T> {
             },
         );
 
+        if let Some(cursor) = self.cursor {
+            let offset_from_top = cursor - scroll;
+            let left = &mut surface[(area.left(), area.y + offset_from_top as u16)];
+            left.set_style(selected);
+            let right = &mut surface[(
+                area.right().saturating_sub(1),
+                area.y + offset_from_top as u16,
+            )];
+            right.set_style(selected);
+        }
+
         let fits = len <= win_height;
 
+        let scroll_style = theme.get("ui.menu.scroll");
         for (i, _) in (scroll..(scroll + win_height).min(len)).enumerate() {
+            let cell = &mut surface[(area.x + area.width - 1, area.y + i as u16)];
+
+            if !fits {
+                // Draw scroll track
+                cell.set_symbol("▐"); // right half block
+                cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
+            }
+
             let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
 
             if !fits && is_marked {
-                let cell = &mut surface[(area.x + area.width - 2, area.y + i as u16)];
-                cell.set_symbol("▐");
-                // cell.set_style(selected);
-                // cell.set_style(if is_marked { selected } else { style });
+                // Draw scroll thumb
+                cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
             }
         }
     }

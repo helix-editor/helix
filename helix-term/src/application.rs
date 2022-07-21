@@ -5,7 +5,7 @@ use helix_core::{
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{align_view, editor::ConfigEvent, theme, Align, Editor};
+use helix_view::{align_view, editor::ConfigEvent, theme, tree::Layout, Align, Editor};
 use serde_json::json;
 
 use crate::{
@@ -108,13 +108,7 @@ impl Application {
                     .ok()
                     .filter(|theme| (true_color || theme.is_16_color()))
             })
-            .unwrap_or_else(|| {
-                if true_color {
-                    theme_loader.default()
-                } else {
-                    theme_loader.base16_default()
-                }
-            });
+            .unwrap_or_else(|| theme_loader.default_theme(true_color));
 
         let syn_loader_conf = user_syntax_loader().unwrap_or_else(|err| {
             eprintln!("Bad language config: {}", err);
@@ -157,17 +151,30 @@ impl Application {
                 compositor.push(Box::new(overlayed(picker)));
             } else {
                 let nr_of_files = args.files.len();
-                editor.open(first, Action::VerticalSplit)?;
-                for (file, pos) in args.files {
+                for (i, (file, pos)) in args.files.into_iter().enumerate() {
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
                             "expected a path to file, found a directory. (to open a directory pass it as first argument)"
                         ));
                     } else {
+                        // If the user passes in either `--vsplit` or
+                        // `--hsplit` as a command line argument, all the given
+                        // files will be opened according to the selected
+                        // option. If neither of those two arguments are passed
+                        // in, just load the files normally.
+                        let action = match args.split {
+                            _ if i == 0 => Action::VerticalSplit,
+                            Some(Layout::Vertical) => Action::VerticalSplit,
+                            Some(Layout::Horizontal) => Action::HorizontalSplit,
+                            None => Action::Load,
+                        };
                         let doc_id = editor
-                            .open(&file, Action::Load)
+                            .open(&file, action)
                             .context(format!("open '{}'", file.to_string_lossy()))?;
                         // with Action::Load all documents have the same view
+                        // NOTE: this isn't necessarily true anymore. If
+                        // `--vsplit` or `--hsplit` are used, the file which is
+                        // opened last is focused on.
                         let view_id = editor.tree.focus;
                         let doc = editor.document_mut(doc_id).unwrap();
                         let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
@@ -341,7 +348,7 @@ impl Application {
     }
 
     fn refresh_config(&mut self) {
-        let config = Config::load(helix_loader::config_file()).unwrap_or_else(|err| {
+        let config = Config::load_default().unwrap_or_else(|err| {
             self.editor.set_error(err.to_string());
             Config::default()
         });
@@ -358,13 +365,7 @@ impl Application {
                     })
                     .ok()
                     .filter(|theme| (true_color || theme.is_16_color()))
-                    .unwrap_or_else(|| {
-                        if true_color {
-                            self.theme_loader.default()
-                        } else {
-                            self.theme_loader.base16_default()
-                        }
-                    }),
+                    .unwrap_or_else(|| self.theme_loader.default_theme(true_color)),
             );
         }
 
@@ -495,7 +496,7 @@ impl Application {
                             ));
                         }
                     }
-                    Notification::PublishDiagnostics(params) => {
+                    Notification::PublishDiagnostics(mut params) => {
                         let path = params.uri.to_file_path().unwrap();
                         let doc = self.editor.document_by_path_mut(&path);
 
@@ -505,12 +506,9 @@ impl Application {
 
                             let diagnostics = params
                                 .diagnostics
-                                .into_iter()
+                                .iter()
                                 .filter_map(|diagnostic| {
-                                    use helix_core::{
-                                        diagnostic::{Range, Severity::*},
-                                        Diagnostic,
-                                    };
+                                    use helix_core::diagnostic::{Diagnostic, Range, Severity::*};
                                     use lsp::DiagnosticSeverity;
 
                                     let language_server = doc.language_server().unwrap();
@@ -561,7 +559,7 @@ impl Application {
                                     Some(Diagnostic {
                                         range: Range { start, end },
                                         line: diagnostic.range.start.line as usize,
-                                        message: diagnostic.message,
+                                        message: diagnostic.message.clone(),
                                         severity,
                                         // code
                                         // source
@@ -571,6 +569,19 @@ impl Application {
 
                             doc.set_diagnostics(diagnostics);
                         }
+
+                        // Sort diagnostics first by severity and then by line numbers.
+                        // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
+                        params
+                            .diagnostics
+                            .sort_unstable_by_key(|d| (d.severity, d.range.start));
+
+                        // Insert the original lsp::Diagnostics here because we may have no open document
+                        // for diagnosic message and so we can't calculate the exact position.
+                        // When using them later in the diagnostics picker, we calculate them on-demand.
+                        self.editor
+                            .diagnostics
+                            .insert(params.uri, params.diagnostics);
                     }
                     Notification::ShowMessage(params) => {
                         log::warn!("unhandled window/showMessage: {:?}", params);

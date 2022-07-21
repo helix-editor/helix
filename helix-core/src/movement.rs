@@ -396,9 +396,9 @@ pub fn goto_treesitter_object(
     dir: Direction,
     slice_tree: Node,
     lang_config: &LanguageConfiguration,
-    _count: usize,
+    count: usize,
 ) -> Range {
-    let get_range = move || -> Option<Range> {
+    let get_range = move |range: Range| -> Option<Range> {
         let byte_pos = slice.char_to_byte(range.cursor(slice));
 
         let cap_name = |t: TextObject| format!("{}.{}", object_name, t);
@@ -436,7 +436,7 @@ pub fn goto_treesitter_object(
         // head of range should be at beginning
         Some(Range::new(end_char, start_char))
     };
-    get_range().unwrap_or(range)
+    (0..count).fold(range, |range, _| get_range(range).unwrap_or(range))
 }
 
 #[cfg(test)]

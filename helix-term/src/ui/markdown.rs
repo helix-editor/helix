@@ -144,7 +144,7 @@ impl Markdown {
         }
     }
 
-    fn parse(&self, theme: Option<&Theme>) -> tui::text::Text<'_> {
+    pub fn parse(&self, theme: Option<&Theme>) -> tui::text::Text<'_> {
         fn push_line<'a>(spans: &mut Vec<Span<'a>>, lines: &mut Vec<Spans<'a>>) {
             let spans = std::mem::take(spans);
             if !spans.is_empty() {
@@ -204,7 +204,7 @@ impl Markdown {
 
                     tags.push(Tag::Item);
 
-                    // get the approriate bullet for the current list
+                    // get the appropriate bullet for the current list
                     let bullet = list_stack
                         .last()
                         .unwrap_or(&None) // use the '- ' bullet in case the list stack would be empty

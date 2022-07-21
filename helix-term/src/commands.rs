@@ -4,6 +4,7 @@ pub(crate) mod typed;
 
 pub use dap::*;
 pub use lsp::*;
+use tui::text::Spans;
 pub use typed::*;
 
 use helix_core::{
@@ -44,6 +45,7 @@ use movement::Movement;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
+    keymap::ReverseKeymap,
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 
@@ -265,7 +267,10 @@ impl MappableCommand {
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         symbol_picker, "Open symbol picker",
+        select_references_to_symbol_under_cursor, "Select symbol references",
         workspace_symbol_picker, "Open workspace symbol picker",
+        diagnostics_picker, "Open diagnostic picker",
+        workspace_diagnostics_picker, "Open workspace diagnostic picker",
         last_picker, "Open last picker",
         prepend_to_line, "Insert at start of line",
         append_to_line, "Insert at end of line",
@@ -712,6 +717,8 @@ fn kill_to_line_start(cx: &mut Context) {
         Range::new(head, anchor)
     });
     delete_selection_insert_mode(doc, view, &selection);
+
+    lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
 }
 
 fn kill_to_line_end(cx: &mut Context) {
@@ -731,6 +738,8 @@ fn kill_to_line_end(cx: &mut Context) {
         new_range
     });
     delete_selection_insert_mode(doc, view, &selection);
+
+    lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
 }
 
 fn goto_first_nonwhitespace(cx: &mut Context) {
@@ -1221,9 +1230,12 @@ fn extend_prev_char(cx: &mut Context) {
 }
 
 fn repeat_last_motion(cx: &mut Context) {
+    let count = cx.count();
     let last_motion = cx.editor.last_motion.take();
     if let Some(m) = &last_motion {
-        m.run(cx.editor);
+        for _ in 0..count {
+            m.run(cx.editor);
+        }
         cx.editor.last_motion = last_motion;
     }
 }
@@ -1408,16 +1420,16 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
         let is_primary = *range == selection.primary();
 
         // The range is always head exclusive
-        let head = if range.anchor < range.head {
-            range.head - 1
+        let (head, anchor) = if range.anchor < range.head {
+            (range.head - 1, range.anchor)
         } else {
-            range.head
+            (range.head, range.anchor.saturating_sub(1))
         };
 
         let tab_width = doc.tab_width();
 
         let head_pos = visual_coords_at_pos(text, head, tab_width);
-        let anchor_pos = visual_coords_at_pos(text, range.anchor, tab_width);
+        let anchor_pos = visual_coords_at_pos(text, anchor, tab_width);
 
         let height = std::cmp::max(head_pos.row, anchor_pos.row)
             - std::cmp::min(head_pos.row, anchor_pos.row)
@@ -1681,6 +1693,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
 }
 
 fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Direction) {
+    let count = cx.count();
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
     let (view, doc) = current!(cx.editor);
@@ -1699,16 +1712,18 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
             .multi_line(true)
             .build()
         {
-            search_impl(
-                doc,
-                view,
-                &contents,
-                &regex,
-                movement,
-                direction,
-                scrolloff,
-                wrap_around,
-            );
+            for _ in 0..count {
+                search_impl(
+                    doc,
+                    view,
+                    &contents,
+                    &regex,
+                    movement,
+                    direction,
+                    scrolloff,
+                    wrap_around,
+                );
+            }
         } else {
             let error = format!("Invalid regex: {}", query);
             cx.editor.set_error(error);
@@ -1742,8 +1757,42 @@ fn search_selection(cx: &mut Context) {
 }
 
 fn global_search(cx: &mut Context) {
-    let (all_matches_sx, all_matches_rx) =
-        tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
+    #[derive(Debug)]
+    struct FileResult {
+        path: PathBuf,
+        /// 0 indexed lines
+        line_num: usize,
+    }
+
+    impl FileResult {
+        fn new(path: &Path, line_num: usize) -> Self {
+            Self {
+                path: path.to_path_buf(),
+                line_num,
+            }
+        }
+    }
+
+    impl ui::menu::Item for FileResult {
+        type Data = Option<PathBuf>;
+
+        fn label(&self, current_path: &Self::Data) -> Spans {
+            let relative_path = helix_core::path::get_relative_path(&self.path)
+                .to_string_lossy()
+                .into_owned();
+            if current_path
+                .as_ref()
+                .map(|p| p == &self.path)
+                .unwrap_or(false)
+            {
+                format!("{} (*)", relative_path).into()
+            } else {
+                relative_path.into()
+            }
+        }
+    }
+
+    let (all_matches_sx, all_matches_rx) = tokio::sync::mpsc::unbounded_channel::<FileResult>();
     let config = cx.editor.config();
     let smart_case = config.search.smart_case;
     let file_picker_config = config.file_picker.clone();
@@ -1807,7 +1856,7 @@ fn global_search(cx: &mut Context) {
                                 entry.path(),
                                 sinks::UTF8(|line_num, _| {
                                     all_matches_sx
-                                        .send((line_num as usize - 1, entry.path().to_path_buf()))
+                                        .send(FileResult::new(entry.path(), line_num as usize - 1))
                                         .unwrap();
 
                                     Ok(true)
@@ -1834,7 +1883,7 @@ fn global_search(cx: &mut Context) {
     let current_path = doc_mut!(cx.editor).path().cloned();
 
     let show_picker = async move {
-        let all_matches: Vec<(usize, PathBuf)> =
+        let all_matches: Vec<FileResult> =
             UnboundedReceiverStream::new(all_matches_rx).collect().await;
         let call: job::Callback =
             Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
@@ -1845,17 +1894,8 @@ fn global_search(cx: &mut Context) {
 
                 let picker = FilePicker::new(
                     all_matches,
-                    move |(_line_num, path)| {
-                        let relative_path = helix_core::path::get_relative_path(path)
-                            .to_string_lossy()
-                            .into_owned();
-                        if current_path.as_ref().map(|p| p == path).unwrap_or(false) {
-                            format!("{} (*)", relative_path).into()
-                        } else {
-                            relative_path.into()
-                        }
-                    },
-                    move |cx, (line_num, path), action| {
+                    current_path,
+                    move |cx, FileResult { path, line_num }, action| {
                         match cx.editor.open(path, action) {
                             Ok(_) => {}
                             Err(e) => {
@@ -1877,7 +1917,9 @@ fn global_search(cx: &mut Context) {
                         doc.set_selection(view.id, Selection::single(start, end));
                         align_view(doc, view, Align::Center);
                     },
-                    |_editor, (line_num, path)| Some((path.clone(), Some((*line_num, *line_num)))),
+                    |_editor, FileResult { path, line_num }| {
+                        Some((path.clone(), Some((*line_num, *line_num))))
+                    },
                 );
                 compositor.push(Box::new(overlayed(picker)));
             });
@@ -2172,8 +2214,10 @@ fn buffer_picker(cx: &mut Context) {
         current_indicator: String,
     }
 
-    impl BufferMeta {
-        fn format(&self) -> Cow<str> {
+    impl ui::menu::Item for BufferMeta {
+        type Data = ();
+
+        fn label(&self, _data: &Self::Data) -> Spans {
             let path = self
                 .path
                 .as_deref()
@@ -2196,7 +2240,7 @@ fn buffer_picker(cx: &mut Context) {
             } else {
                 format!(" ({})", flags.join(""))
             };
-            Cow::Owned(format!("{} {}{}", self.id, path, flag))
+            format!("{} {}{}", self.id, path, flag).into()
         }
     }
 
@@ -2215,7 +2259,7 @@ fn buffer_picker(cx: &mut Context) {
             .iter()
             .map(|(_, doc)| new_meta(doc))
             .collect(),
-        BufferMeta::format,
+        (),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
         },
@@ -2230,6 +2274,38 @@ fn buffer_picker(cx: &mut Context) {
         },
     );
     cx.push_layer(Box::new(overlayed(picker)));
+}
+
+impl ui::menu::Item for MappableCommand {
+    type Data = ReverseKeymap;
+
+    fn label(&self, keymap: &Self::Data) -> Spans {
+        // formats key bindings, multiple bindings are comma separated,
+        // individual key presses are joined with `+`
+        let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
+            bindings
+                .iter()
+                .map(|bind| {
+                    bind.iter()
+                        .map(|key| key.to_string())
+                        .collect::<Vec<String>>()
+                        .join("+")
+                })
+                .collect::<Vec<String>>()
+                .join(", ")
+        };
+
+        match self {
+            MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String) {
+                Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
+                None => doc.as_str().into(),
+            },
+            MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
+                Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
+                None => (*doc).into(),
+            },
+        }
+    }
 }
 
 pub fn command_palette(cx: &mut Context) {
@@ -2248,45 +2324,17 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            // formats key bindings, multiple bindings are comma separated,
-            // individual key presses are joined with `+`
-            let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
-                bindings
-                    .iter()
-                    .map(|bind| {
-                        bind.iter()
-                            .map(|key| key.key_sequence_format())
-                            .collect::<String>()
-                    })
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            };
-
-            let picker = Picker::new(
-                commands,
-                move |command| match command {
-                    MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String)
-                    {
-                        Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
-                        None => doc.into(),
-                    },
-                    MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
-                        Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
-                        None => (*doc).into(),
-                    },
-                },
-                move |cx, command, _action| {
-                    let mut ctx = Context {
-                        register: None,
-                        count: std::num::NonZeroUsize::new(1),
-                        editor: cx.editor,
-                        callback: None,
-                        on_next_key_callback: None,
-                        jobs: cx.jobs,
-                    };
-                    command.execute(&mut ctx);
-                },
-            );
+            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
+                let mut ctx = Context {
+                    register: None,
+                    count: std::num::NonZeroUsize::new(1),
+                    editor: cx.editor,
+                    callback: None,
+                    on_next_key_callback: None,
+                    jobs: cx.jobs,
+                };
+                command.execute(&mut ctx);
+            });
             compositor.push(Box::new(overlayed(picker)));
         },
     ));
@@ -2349,6 +2397,7 @@ async fn make_format_callback(
             if doc.version() == doc_version {
                 doc.apply(&Transaction::from(format), view_id);
                 doc.append_changes_to_history(view_id);
+                doc.detect_indent_and_line_ending();
                 if let Modified::SetUnmodified = modified {
                     doc.reset_modified();
                 }
@@ -2360,7 +2409,8 @@ async fn make_format_callback(
     Ok(call)
 }
 
-enum Open {
+#[derive(PartialEq)]
+pub enum Open {
     Below,
     Above,
 }
@@ -2758,6 +2808,9 @@ pub mod insert {
         use helix_lsp::lsp;
         // if ch matches signature_help char, trigger
         let doc = doc_mut!(cx.editor);
+        // The language_server!() macro is not used here since it will
+        // print an "LSP not active for current buffer" message on
+        // every keypress.
         let language_server = match doc.language_server() {
             Some(language_server) => language_server,
             None => return,
@@ -2777,26 +2830,15 @@ pub mod insert {
         {
             // TODO: what if trigger is multiple chars long
             let is_trigger = triggers.iter().any(|trigger| trigger.contains(ch));
+            // lsp doesn't tell us when to close the signature help, so we request
+            // the help information again after common close triggers which should
+            // return None, which in turn closes the popup.
+            let close_triggers = &[')', ';', '.'];
 
-            if is_trigger {
-                super::signature_help(cx);
+            if is_trigger || close_triggers.contains(&ch) {
+                super::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
             }
         }
-
-        // SignatureHelp {
-        // signatures: [
-        //  SignatureInformation {
-        //      label: "fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error>",
-        //      documentation: None,
-        //      parameters: Some(
-        //          [ParameterInformation { label: Simple("path: PathBuf"), documentation: None },
-        //          ParameterInformation { label: Simple("action: Action"), documentation: None }]
-        //      ),
-        //      active_parameter: Some(0)
-        //  }
-        // ],
-        // active_signature: None, active_parameter: Some(0)
-        // }
     }
 
     // The default insert hook: simply insert the character
@@ -2831,7 +2873,6 @@ pub mod insert {
         // this could also generically look at Transaction, but it's a bit annoying to look at
         // Operation instead of Change.
         for hook in &[language_server_completion, signature_help] {
-            // for hook in &[signature_help] {
             hook(cx, c);
         }
     }
@@ -2950,7 +2991,7 @@ pub mod insert {
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
                 // consider to delete by indent level if all characters before `pos` are indent units.
                 let fragment = Cow::from(text.slice(line_start_pos..pos));
-                if !fragment.is_empty() && fragment.chars().all(|ch| ch.is_whitespace()) {
+                if !fragment.is_empty() && fragment.chars().all(|ch| ch == ' ' || ch == '\t') {
                     if text.get_char(pos.saturating_sub(1)) == Some('\t') {
                         // fast path, delete one char
                         (
@@ -3003,6 +3044,8 @@ pub mod insert {
                 }
             });
         doc.apply(&transaction, view.id);
+
+        lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
     }
 
     pub fn delete_char_forward(cx: &mut Context) {
@@ -3019,6 +3062,8 @@ pub mod insert {
                 )
             });
         doc.apply(&transaction, view.id);
+
+        lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
     }
 
     pub fn delete_word_backward(cx: &mut Context) {
@@ -3032,6 +3077,8 @@ pub mod insert {
             exclude_cursor(text, next, range)
         });
         delete_selection_insert_mode(doc, view, &selection);
+
+        lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
     }
 
     pub fn delete_word_forward(cx: &mut Context) {
@@ -3044,6 +3091,8 @@ pub mod insert {
             .clone()
             .transform(|range| movement::move_next_word_start(text, range, count));
         delete_selection_insert_mode(doc, view, &selection);
+
+        lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
     }
 }
 
@@ -4659,8 +4708,6 @@ fn replay_macro(cx: &mut Context) {
         return;
     }
 
-    cx.editor.macro_replaying.push(reg);
-
     let keys: Vec<KeyEvent> = if let Some([keys_str]) = cx.editor.registers.read(reg) {
         match helix_view::input::parse_macro(keys_str) {
             Ok(keys) => keys,
@@ -4674,6 +4721,10 @@ fn replay_macro(cx: &mut Context) {
         return;
     };
 
+    // Once the macro has been fully validated, it's marked as being under replay
+    // to ensure we don't fall into infinite recursion.
+    cx.editor.macro_replaying.push(reg);
+
     let count = cx.count();
     cx.callback = Some(Box::new(move |compositor, cx| {
         for _ in 0..count {
@@ -4681,7 +4732,9 @@ fn replay_macro(cx: &mut Context) {
                 compositor.handle_event(crossterm::event::Event::Key(key.into()), cx);
             }
         }
+        // The macro under replay is cleared at the end of the callback, not in the
+        // macro replay context, or it will not correctly protect the user from
+        // replaying recursively.
+        cx.editor.macro_replaying.pop();
     }));
-
-    cx.editor.macro_replaying.pop();
 }

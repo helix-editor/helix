@@ -49,7 +49,7 @@
 ] @keyword
 
 
-(import) @keyword.contol.import
+(import) @keyword.control.import
 (module) @keyword.other
 
 (number_constant_expr) @constant.numeric

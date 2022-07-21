@@ -9,6 +9,9 @@
 "ui.selection" = { bg = "highlight" }
 "comment" = "subtle"
 "ui.statusline" = {fg = "foam", bg = "surface" }
+"ui.statusline.insert" = {fg = "base", bg = "foam", modifiers = ["bold"]}
+"ui.statusline.normal" = {fg = "base", bg = "rose", modifiers = ["bold"]}
+"ui.statusline.select" = {fg = "base", bg = "iris", modifiers = ["bold"]}
 "ui.statusline.inactive" = { fg = "iris", bg = "surface" }
 "ui.cursor" = { fg = "rose", modifiers = ["reversed"] }
 "ui.text" = { fg = "text" }
