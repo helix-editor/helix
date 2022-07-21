@@ -30,7 +30,7 @@
 | git-diff | ✓ |  |  |  |
 | git-ignore | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |
-| gleam | ✓ | ✓ |  |  |
+| gleam | ✓ | ✓ |  | `gleam` |
 | glsl | ✓ | ✓ | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | gomod | ✓ |  |  | `gopls` |
