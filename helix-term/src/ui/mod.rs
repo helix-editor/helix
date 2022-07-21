@@ -12,6 +12,8 @@ mod spinner;
 mod statusline;
 mod text;
 
+use crate::compositor::{Component, Compositor};
+use crate::job;
 pub use completion::Completion;
 pub use editor::EditorView;
 pub use markdown::Markdown;
@@ -117,14 +119,31 @@ pub fn regex_prompt(
 
                             view.ensure_cursor_in_view(doc, config.scrolloff);
                         }
-                        Err(_err) => {
+                        Err(err) => {
                             let (view, doc) = current!(cx.editor);
                             doc.set_selection(view.id, snapshot.clone());
                             view.offset = offset_snapshot;
 
                             if event == PromptEvent::Validate {
-                                let error = format!("Invalid regex: {}", input);
-                                cx.editor.set_error(error);
+                                let callback = async move {
+                                    let call: job::Callback = Box::new(
+                                        move |_editor: &mut Editor, compositor: &mut Compositor| {
+                                            let contents = Text::new(format!("{}", err));
+                                            let mut popup = Popup::new("invalid-regex", contents);
+                                            let size = compositor.size();
+                                            popup.required_size((size.width, size.height));
+                                            popup.set_position(Some(helix_core::Position::new(
+                                                size.height as usize - 2, // 2 = statusline + commandline
+                                                0,
+                                            )));
+
+                                            compositor.replace_or_push("invalid-regex", popup);
+                                        },
+                                    );
+                                    Ok(call)
+                                };
+
+                                cx.jobs.callback(callback);
                             } else {
                                 // Update
                                 // TODO: mark command line as error
