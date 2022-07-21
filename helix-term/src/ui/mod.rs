@@ -129,13 +129,13 @@ pub fn regex_prompt(
                                     let call: job::Callback = Box::new(
                                         move |_editor: &mut Editor, compositor: &mut Compositor| {
                                             let contents = Text::new(format!("{}", err));
-                                            let mut popup = Popup::new("invalid-regex", contents);
                                             let size = compositor.size();
+                                            let mut popup = Popup::new("invalid-regex", contents)
+                                                .position(Some(helix_core::Position::new(
+                                                    size.height as usize - 2, // 2 = statusline + commandline
+                                                    0,
+                                                )));
                                             popup.required_size((size.width, size.height));
-                                            popup.set_position(Some(helix_core::Position::new(
-                                                size.height as usize - 2, // 2 = statusline + commandline
-                                                0,
-                                            )));
 
                                             compositor.replace_or_push("invalid-regex", popup);
                                         },
