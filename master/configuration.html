@@ -190,7 +190,7 @@ hidden = false
 <pre><code class="language-toml">[editor.statusline]
 left = [&quot;mode&quot;, &quot;spinner&quot;]
 center = [&quot;file-name&quot;]
-right = [&quot;diagnostics&quot;, &quot;selections&quot;, &quot;position&quot;, &quot;file-encoding&quot;, &quot;file-type&quot;]
+right = [&quot;diagnostics&quot;, &quot;selections&quot;, &quot;position&quot;, &quot;file-encoding&quot;, &quot;file-line-ending&quot;, &quot;file-type&quot;]
 </code></pre>
 <p>The following elements can be configured:</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
@@ -198,6 +198,7 @@ right = [&quot;diagnostics&quot;, &quot;selections&quot;, &quot;position&quot;, 
 <tr><td><code>spinner</code></td><td>A progress spinner indicating LSP activity</td></tr>
 <tr><td><code>file-name</code></td><td>The path/name of the opened file</td></tr>
 <tr><td><code>file-encoding</code></td><td>The encoding of the opened file if it differs from UTF-8</td></tr>
+<tr><td><code>file-line-ending</code></td><td>The file line endings (CRLF or LF)</td></tr>
 <tr><td><code>file-type</code></td><td>The type of the opened file</td></tr>
 <tr><td><code>diagnostics</code></td><td>The number of warnings and/or errors</td></tr>
 <tr><td><code>selections</code></td><td>The number of active selections</td></tr>
