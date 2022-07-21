@@ -16,7 +16,7 @@ use helix_core::{
     LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
-    document::{Mode, WritePermission},
+    document::Mode,
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::KeyEvent,

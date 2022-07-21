@@ -214,7 +214,7 @@ impl Default for StatusLineConfig {
         use StatusLineElement as E;
 
         Self {
-            left: vec![E::Mode, E::Spinner, E::FileName],
+            left: vec![E::Mode, E::Spinner, E::FileName, E::ReadOnlyIndicator],
             center: vec![],
             right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
         }
@@ -250,6 +250,9 @@ pub enum StatusLineElement {
 
     /// The cursor position
     Position,
+
+    /// The read-only indicator
+    ReadOnlyIndicator,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs

@@ -1,6 +1,6 @@
 use helix_core::{coords_at_pos, encoding};
 use helix_view::{
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::{Mode, WritePermission, SCRATCH_BUFFER_NAME},
     graphics::Rect,
     theme::Style,
     Document, Editor, View,
@@ -143,6 +143,7 @@ where
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
         helix_view::editor::StatusLineElement::Selections => render_selections,
         helix_view::editor::StatusLineElement::Position => render_position,
+        helix_view::editor::StatusLineElement::ReadOnlyIndicator => render_read_only_indicator,
     }
 }
 
@@ -333,4 +334,16 @@ where
     };
 
     write(context, title, None);
+}
+fn render_read_only_indicator<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let readonly = if context.doc.write_permission == WritePermission::ReadOnly {
+        context.editor.config().read_only_indicator.to_string()
+    } else {
+        String::new()
+    };
+
+    write(context, readonly, None);
 }
