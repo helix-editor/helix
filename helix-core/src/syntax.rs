@@ -1457,7 +1457,7 @@ fn intersect_ranges(
         };
 
         for excluded_range in node
-            .children(&mut cursor)
+            .named_children(&mut cursor)
             .filter_map(|child| {
                 if includes_children {
                     None
