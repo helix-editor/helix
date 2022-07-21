@@ -207,6 +207,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "b" => buffer_picker,
             "s" => symbol_picker,
             "S" => workspace_symbol_picker,
+            "g" => diagnostics_picker,
+            "G" => workspace_diagnostics_picker,
             "a" => code_action,
             "'" => last_picker,
             "d" => { "Debug (experimental)" sticky=true
@@ -259,6 +261,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "/" => global_search,
             "k" => hover,
             "r" => rename_symbol,
+            "h" => select_references_to_symbol_under_cursor,
             "?" => command_palette,
         },
         "z" => { "View"
@@ -270,8 +273,13 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "j" | "down" => scroll_down,
             "C-b" | "pageup" => page_up,
             "C-f" | "pagedown" => page_down,
-            "C-u" => half_page_up,
-            "C-d" => half_page_down,
+            "C-u" | "backspace" => half_page_up,
+            "C-d" | "space" => half_page_down,
+
+            "/" => search,
+            "?" => rsearch,
+            "n" => search_next,
+            "N" => search_prev,
         },
         "Z" => { "View" sticky=true
             "z" | "c" => align_view_center,
@@ -282,8 +290,13 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "j" | "down" => scroll_down,
             "C-b" | "pageup" => page_up,
             "C-f" | "pagedown" => page_down,
-            "C-u" => half_page_up,
-            "C-d" => half_page_down,
+            "C-u" | "backspace" => half_page_up,
+            "C-d" | "space" => half_page_down,
+
+            "/" => search,
+            "?" => rsearch,
+            "n" => search_next,
+            "N" => search_prev,
         },
 
         "\"" => select_register,
@@ -338,6 +351,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "C-w" => delete_word_backward,
         "A-backspace" => delete_word_backward,
         "A-d" => delete_word_forward,
+        "A-del" => delete_word_forward,
         "C-s" => commit_undo_checkpoint,
 
         "left" => move_char_left,

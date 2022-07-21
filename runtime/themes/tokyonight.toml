@@ -30,6 +30,7 @@
 "ui.cursor" = { modifiers = ["reversed"] }
 "ui.cursor.match" = { fg = "orange", modifiers = ["bold"] }
 "ui.cursor.primary" = { modifiers = ["reversed"] }
+"ui.cursorline.primary" = { bg = "background_menu" }
 "ui.help" = { fg = "foreground", bg = "background_menu" }
 "ui.linenr" = { fg = "foreground_gutter" }
 "ui.linenr.selected" = { fg = "foreground" }

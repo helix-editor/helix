@@ -9,4 +9,5 @@ complete -c hx -l health -x -a "$langs" -d "Checks for errors in editor setup"
 complete -c hx -s g -l grammar -x -a "fetch build" -d "Fetches or builds tree-sitter grammars"
 complete -c hx -s v -o vv -o vvv -d "Increases logging verbosity"
 complete -c hx -s V -l version -d "Prints version information"
-
+complete -c hx -l vsplit -d "Splits all given files vertically into different windows"
+complete -c hx -l hsplit -d "Splits all given files horizontally into different windows"

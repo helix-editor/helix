@@ -55,7 +55,7 @@
 ; HEEx components are highlighted as Elixir modules and functions
 (component_name
   [
-    (module) @module
+    (module) @namespace
     (function) @function
     "." @punctuation.delimiter
   ])

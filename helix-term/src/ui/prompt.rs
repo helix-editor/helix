@@ -84,6 +84,13 @@ impl Prompt {
         }
     }
 
+    pub fn with_line(mut self, line: String) -> Self {
+        let cursor = line.len();
+        self.line = line;
+        self.cursor = cursor;
+        self
+    }
+
     pub fn line(&self) -> &String {
         &self.line
     }
@@ -443,7 +450,7 @@ impl Prompt {
         let input: Cow<str> = if self.line.is_empty() {
             // latest value in the register list
             self.history_register
-                .and_then(|reg| cx.editor.registers.first(reg))
+                .and_then(|reg| cx.editor.registers.last(reg))
                 .map(|entry| entry.into())
                 .unwrap_or_else(|| Cow::from(""))
         } else {
@@ -477,14 +484,14 @@ impl Component for Prompt {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
                 return close_fn;
             }
-            alt!('b') | alt!(Left) => self.move_cursor(Movement::BackwardWord(1)),
-            alt!('f') | alt!(Right) => self.move_cursor(Movement::ForwardWord(1)),
+            alt!('b') | ctrl!(Left) => self.move_cursor(Movement::BackwardWord(1)),
+            alt!('f') | ctrl!(Right) => self.move_cursor(Movement::ForwardWord(1)),
             ctrl!('b') | key!(Left) => self.move_cursor(Movement::BackwardChar(1)),
             ctrl!('f') | key!(Right) => self.move_cursor(Movement::ForwardChar(1)),
             ctrl!('e') | key!(End) => self.move_end(),
             ctrl!('a') | key!(Home) => self.move_start(),
-            ctrl!('w') => self.delete_word_backwards(cx),
-            alt!('d') => self.delete_word_forwards(cx),
+            ctrl!('w') | alt!(Backspace) | ctrl!(Backspace) => self.delete_word_backwards(cx),
+            alt!('d') | alt!(Delete) | ctrl!(Delete) => self.delete_word_forwards(cx),
             ctrl!('k') => self.kill_to_end_of_line(cx),
             ctrl!('u') => self.kill_to_start_of_line(cx),
             ctrl!('h') | key!(Backspace) => {
@@ -522,7 +529,7 @@ impl Component for Prompt {
                     let input: Cow<str> = if self.line.is_empty() {
                         // latest value in the register list
                         self.history_register
-                            .and_then(|reg| cx.editor.registers.first(reg).cloned())
+                            .and_then(|reg| cx.editor.registers.last(reg).cloned())
                             .map(|entry| entry.into())
                             .unwrap_or_else(|| Cow::from(""))
                     } else {

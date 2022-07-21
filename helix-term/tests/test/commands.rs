@@ -91,3 +91,43 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_selection_duplication() -> anyhow::Result<()> {
+    // Forward
+    test((
+        platform_line(indoc! {"\
+            #[lo|]#rem
+            ipsum
+            dolor
+            "})
+        .as_str(),
+        "CC",
+        platform_line(indoc! {"\
+            #(lo|)#rem
+            #(ip|)#sum
+            #[do|]#lor
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    // Backward
+    test((
+        platform_line(indoc! {"\
+            #[|lo]#rem
+            ipsum
+            dolor
+            "})
+        .as_str(),
+        "CC",
+        platform_line(indoc! {"\
+            #(|lo)#rem
+            #(|ip)#sum
+            #[|do]#lor
+            "})
+        .as_str(),
+    ))
+    .await?;
+    Ok(())
+}
