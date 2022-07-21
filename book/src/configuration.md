@@ -61,8 +61,8 @@ Statusline elements can be defined as follows:
 
 ```toml
 [editor.statusline]
-left = ["mode", "spinner"]
-center = ["file-name", "read-only-indicator"]
+left = ["mode", "spinner", "file-name", "read-only-indicator"]
+center = []
 right = ["diagnostics", "selections", "position", "file-encoding", "file-line-ending", "file-type"]
 ```
 
