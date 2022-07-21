@@ -1287,7 +1287,7 @@ fn replace(cx: &mut Context) {
 
 fn switch_case_impl<F>(cx: &mut Context, change_fn: F)
 where
-    F: Fn(Cow<str>) -> Tendril,
+    F: Fn(RopeSlice) -> Tendril,
 {
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
@@ -1318,11 +1318,15 @@ fn switch_case(cx: &mut Context) {
 }
 
 fn switch_to_uppercase(cx: &mut Context) {
-    switch_case_impl(cx, |string| string.to_uppercase().into());
+    switch_case_impl(cx, |string| {
+        string.chunks().map(|chunk| chunk.to_uppercase()).collect()
+    });
 }
 
 fn switch_to_lowercase(cx: &mut Context) {
-    switch_case_impl(cx, |string| string.to_lowercase().into());
+    switch_case_impl(cx, |string| {
+        string.chunks().map(|chunk| chunk.to_lowercase()).collect()
+    });
 }
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
@@ -1748,7 +1752,7 @@ fn search_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let contents = doc.text().slice(..);
     let query = doc.selection(view.id).primary().fragment(contents);
-    let regex = regex::escape(&query);
+    let regex = regex::escape(&Cow::from(query));
     cx.editor.registers.get_mut('/').push(regex);
     let msg = format!("register '{}' set to '{}'", '/', query);
     cx.editor.set_status(msg);
@@ -2044,7 +2048,7 @@ fn delete_selection_impl(cx: &mut Context, op: Operation) {
 
     if cx.register != Some('_') {
         // first yank the selection
-        let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
+        let values: Vec<String> = selection.fragments(text).map(String::from).collect();
         let reg_name = cx.register.unwrap_or('"');
         let registers = &mut cx.editor.registers;
         let reg = registers.get_mut(reg_name);
@@ -3152,7 +3156,7 @@ fn yank(cx: &mut Context) {
     let values: Vec<String> = doc
         .selection(view.id)
         .fragments(text)
-        .map(Cow::into_owned)
+        .map(String::from)
         .collect();
 
     let msg = format!(
@@ -3180,7 +3184,7 @@ fn yank_joined_to_clipboard_impl(
     let values: Vec<String> = doc
         .selection(view.id)
         .fragments(text)
-        .map(Cow::into_owned)
+        .map(String::from)
         .collect();
 
     let msg = format!(
@@ -3218,7 +3222,7 @@ fn yank_main_selection_to_clipboard_impl(
 
     if let Err(e) = editor
         .clipboard_provider
-        .set_contents(value.into_owned(), clipboard_type)
+        .set_contents(String::from(value), clipboard_type)
     {
         bail!("Couldn't set system clipboard content: {}", e);
     }
@@ -3789,7 +3793,7 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
     let selection = doc.selection(view.id);
     let mut fragments: Vec<_> = selection
         .fragments(text)
-        .map(|fragment| Tendril::from(fragment.as_ref()))
+        .map(|fragment| fragment.chunks().collect())
         .collect();
 
     let group = count
@@ -4398,7 +4402,7 @@ fn shell_keep_pipe(cx: &mut Context) {
 
             for (i, range) in selection.ranges().iter().enumerate() {
                 let fragment = range.fragment(text);
-                let (_output, success) = match shell_impl(shell, input, Some(fragment.as_bytes())) {
+                let (_output, success) = match shell_impl(shell, input, Some(fragment)) {
                     Ok(result) => result,
                     Err(err) => {
                         cx.editor.set_error(err.to_string());
@@ -4429,7 +4433,7 @@ fn shell_keep_pipe(cx: &mut Context) {
 fn shell_impl(
     shell: &[String],
     cmd: &str,
-    input: Option<&[u8]>,
+    input: Option<RopeSlice>,
 ) -> anyhow::Result<(Tendril, bool)> {
     use std::io::Write;
     use std::process::{Command, Stdio};
@@ -4451,7 +4455,9 @@ fn shell_impl(
     };
     if let Some(input) = input {
         let mut stdin = process.stdin.take().unwrap();
-        stdin.write_all(input)?;
+        for chunk in input.chunks() {
+            stdin.write_all(chunk.as_bytes())?;
+        }
     }
     let output = process.wait_with_output()?;
 
@@ -4481,7 +4487,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
 
     for range in selection.ranges() {
         let fragment = range.fragment(text);
-        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment.as_bytes())) {
+        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment)) {
             Ok(result) => result,
             Err(err) => {
                 cx.editor.set_error(err.to_string());

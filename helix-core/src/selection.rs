@@ -222,9 +222,12 @@ impl Range {
 
     // groupAt
 
+    /// This returns a RopeSlice since returning a string might imply copying
+    /// the entire content within the range. If you really need the text in a
+    /// continuous slice, you can call Cow::<str>.from(...).
     #[inline]
-    pub fn fragment<'a, 'b: 'a>(&'a self, text: RopeSlice<'b>) -> Cow<'b, str> {
-        text.slice(self.from()..self.to()).into()
+    pub fn fragment<'a, 'b: 'a>(&'a self, text: RopeSlice<'b>) -> RopeSlice<'b> {
+        text.slice(self.from()..self.to())
     }
 
     //--------------------------------
@@ -544,7 +547,7 @@ impl Selection {
         self.transform(|range| Range::point(range.cursor(text)))
     }
 
-    pub fn fragments<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = Cow<str>> + 'a {
+    pub fn fragments<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = RopeSlice> + 'a {
         self.ranges.iter().map(move |range| range.fragment(text))
     }
 
@@ -611,7 +614,7 @@ pub fn keep_or_remove_matches(
 ) -> Option<Selection> {
     let result: SmallVec<_> = selection
         .iter()
-        .filter(|range| regex.is_match(&range.fragment(text)) ^ remove)
+        .filter(|range| regex.is_match(&Cow::from(range.fragment(text))) ^ remove)
         .copied()
         .collect();
 
@@ -636,7 +639,7 @@ pub fn select_on_matches(
         let sel_start = sel.from();
         let start_byte = text.char_to_byte(sel_start);
 
-        for mat in regex.find_iter(&fragment) {
+        for mat in regex.find_iter(&Cow::from(fragment)) {
             // TODO: retain range direction
 
             let start = text.byte_to_char(start_byte + mat.start());
@@ -678,7 +681,7 @@ pub fn split_on_matches(
 
         let mut start = sel_start;
 
-        for mat in regex.find_iter(&fragment) {
+        for mat in regex.find_iter(&Cow::from(fragment)) {
             // TODO: retain range direction
             let end = text.byte_to_char(start_byte + mat.start());
             result.push(Range::new(start, end));
@@ -1024,7 +1027,10 @@ mod test {
         );
 
         assert_eq!(
-            result.fragments(text.slice(..)).collect::<Vec<_>>(),
+            result
+                .fragments(text.slice(..))
+                .map(Cow::from)
+                .collect::<Vec<_>>(),
             &["", "abcd", "efg", "rs", "xyz"]
         );
     }

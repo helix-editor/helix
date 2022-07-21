@@ -1029,8 +1029,8 @@ impl EditorView {
                 if doc
                     .selection(view.id)
                     .primary()
-                    .fragment(doc.text().slice(..))
-                    .width()
+                    .slice(doc.text().slice(..))
+                    .len_chars()
                     <= 1
                 {
                     return EventResult::Ignored(None);
