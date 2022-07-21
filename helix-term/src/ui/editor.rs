@@ -1,13 +1,12 @@
 use crate::{
     commands,
     compositor::{Component, Context, EventResult},
-    key,
+    job, key,
     keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
 
 use helix_core::{
-    coords_at_pos, encoding,
     graphemes::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
     },
@@ -17,7 +16,7 @@ use helix_core::{
     LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::Mode,
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::KeyEvent,
@@ -28,6 +27,9 @@ use std::borrow::Cow;
 
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
+
+use super::lsp::SignatureHelp;
+use super::statusline;
 
 pub struct EditorView {
     pub keymaps: Keymaps,
@@ -161,7 +163,11 @@ impl EditorView {
             .area
             .clip_top(view.area.height.saturating_sub(1))
             .clip_bottom(1); // -1 from bottom to remove commandline
-        self.render_statusline(editor, doc, view, statusline_area, surface, is_focused);
+
+        let mut context =
+            statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
+
+        statusline::render(&mut context, statusline_area, surface);
     }
 
     pub fn render_rulers(
@@ -415,7 +421,11 @@ impl EditorView {
                 return;
             }
 
-            for i in 0..(indent_level / tab_width as u16) {
+            let starting_indent = (offset.col / tab_width) as u16;
+            // TODO: limit to a max indent level too. It doesn't cause visual artifacts but it would avoid some
+            // extra loops if the code is deeply nested.
+
+            for i in starting_indent..(indent_level / tab_width as u16) {
                 surface.set_string(
                     viewport.x + (i * tab_width as u16) - offset.col as u16,
                     viewport.y + line,
@@ -610,7 +620,7 @@ impl EditorView {
         // avoid lots of small allocations by reusing a text buffer for each line
         let mut text = String::with_capacity(8);
 
-        for (constructor, width) in &view.gutters {
+        for (constructor, width) in view.gutters() {
             let gutter = constructor(editor, doc, view, theme, is_focused, *width);
             text.reserve(*width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
@@ -728,158 +738,6 @@ impl EditorView {
                 surface.set_style(area, secondary_style);
             }
         }
-    }
-
-    pub fn render_statusline(
-        &self,
-        editor: &Editor,
-        doc: &Document,
-        view: &View,
-        viewport: Rect,
-        surface: &mut Surface,
-        is_focused: bool,
-    ) {
-        use tui::text::{Span, Spans};
-
-        //-------------------------------
-        // Left side of the status line.
-        //-------------------------------
-
-        let theme = &editor.theme;
-        let (mode, mode_style) = match doc.mode() {
-            Mode::Insert => (" INS ", theme.get("ui.statusline.insert")),
-            Mode::Select => (" SEL ", theme.get("ui.statusline.select")),
-            Mode::Normal => (" NOR ", theme.get("ui.statusline.normal")),
-        };
-        let progress = doc
-            .language_server()
-            .and_then(|srv| {
-                self.spinners
-                    .get(srv.id())
-                    .and_then(|spinner| spinner.frame())
-            })
-            .unwrap_or("");
-
-        let base_style = if is_focused {
-            theme.get("ui.statusline")
-        } else {
-            theme.get("ui.statusline.inactive")
-        };
-        // statusline
-        surface.set_style(viewport.with_height(1), base_style);
-        if is_focused {
-            let color_modes = editor.config().color_modes;
-            surface.set_string(
-                viewport.x,
-                viewport.y,
-                mode,
-                if color_modes { mode_style } else { base_style },
-            );
-        }
-        surface.set_string(viewport.x + 5, viewport.y, progress, base_style);
-
-        //-------------------------------
-        // Right side of the status line.
-        //-------------------------------
-
-        let mut right_side_text = Spans::default();
-
-        // Compute the individual info strings and add them to `right_side_text`.
-
-        // Diagnostics
-        let diags = doc.diagnostics().iter().fold((0, 0), |mut counts, diag| {
-            use helix_core::diagnostic::Severity;
-            match diag.severity {
-                Some(Severity::Warning) => counts.0 += 1,
-                Some(Severity::Error) | None => counts.1 += 1,
-                _ => {}
-            }
-            counts
-        });
-        let (warnings, errors) = diags;
-        let warning_style = theme.get("warning");
-        let error_style = theme.get("error");
-        for i in 0..2 {
-            let (count, style) = match i {
-                0 => (warnings, warning_style),
-                1 => (errors, error_style),
-                _ => unreachable!(),
-            };
-            if count == 0 {
-                continue;
-            }
-            let style = base_style.patch(style);
-            right_side_text.0.push(Span::styled("●", style));
-            right_side_text
-                .0
-                .push(Span::styled(format!(" {} ", count), base_style));
-        }
-
-        // Selections
-        let sels_count = doc.selection(view.id).len();
-        right_side_text.0.push(Span::styled(
-            format!(
-                " {} sel{} ",
-                sels_count,
-                if sels_count == 1 { "" } else { "s" }
-            ),
-            base_style,
-        ));
-
-        // Position
-        let pos = coords_at_pos(
-            doc.text().slice(..),
-            doc.selection(view.id)
-                .primary()
-                .cursor(doc.text().slice(..)),
-        );
-        right_side_text.0.push(Span::styled(
-            format!(" {}:{} ", pos.row + 1, pos.col + 1), // Convert to 1-indexing.
-            base_style,
-        ));
-
-        let enc = doc.encoding();
-        if enc != encoding::UTF_8 {
-            right_side_text
-                .0
-                .push(Span::styled(format!(" {} ", enc.name()), base_style));
-        }
-
-        // Render to the statusline.
-        surface.set_spans(
-            viewport.x
-                + viewport
-                    .width
-                    .saturating_sub(right_side_text.width() as u16),
-            viewport.y,
-            &right_side_text,
-            right_side_text.width() as u16,
-        );
-
-        //-------------------------------
-        // Middle / File path / Title
-        //-------------------------------
-        let title = {
-            let rel_path = doc.relative_path();
-            let path = rel_path
-                .as_ref()
-                .map(|p| p.to_string_lossy())
-                .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-            format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" })
-        };
-
-        surface.set_string_truncated(
-            viewport.x + 8, // 8: 1 space + 3 char mode string + 1 space + 1 spinner + 1 space
-            viewport.y,
-            &title,
-            viewport
-                .width
-                .saturating_sub(6)
-                .saturating_sub(right_side_text.width() as u16 + 1) as usize, // "+ 1": a space between the title and the selection info
-            |_| base_style,
-            true,
-            true,
-        );
     }
 
     /// Handle events by looking them up in `self.keymaps`. Returns None
@@ -1352,10 +1210,21 @@ impl Component for EditorView {
                             _ => unimplemented!(),
                         };
                         self.last_insert.1.clear();
+                        commands::signature_help_impl(
+                            &mut cx,
+                            commands::SignatureHelpInvoked::Automatic,
+                        );
                     }
                     (Mode::Insert, Mode::Normal) => {
                         // if exiting insert mode, remove completion
                         self.completion = None;
+                        // TODO: Use an on_mode_change hook to remove signature help
+                        context.jobs.callback(async {
+                            let call: job::Callback = Box::new(|_editor, compositor| {
+                                compositor.remove(SignatureHelp::ID);
+                            });
+                            Ok(call)
+                        });
                     }
                     _ => (),
                 }

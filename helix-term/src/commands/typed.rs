@@ -413,11 +413,10 @@ fn set_line_ending(
 
     // Attempt to parse argument as a line ending.
     let line_ending = match arg {
-        // We check for CR first because it shares a common prefix with CRLF.
-        #[cfg(feature = "unicode-lines")]
-        arg if arg.starts_with("cr") => CR,
         arg if arg.starts_with("crlf") => Crlf,
         arg if arg.starts_with("lf") => LF,
+        #[cfg(feature = "unicode-lines")]
+        arg if arg.starts_with("cr") => CR,
         #[cfg(feature = "unicode-lines")]
         arg if arg.starts_with("ff") => FF,
         #[cfg(feature = "unicode-lines")]
@@ -1501,11 +1500,9 @@ fn run_shell_command(
                         format!("```sh\n{}\n```", output),
                         editor.syn_loader.clone(),
                     );
-                    let mut popup = Popup::new("shell", contents);
-                    popup.set_position(Some(helix_core::Position::new(
-                        editor.cursor().0.unwrap_or_default().row,
-                        2,
-                    )));
+                    let popup = Popup::new("shell", contents).position(Some(
+                        helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
+                    ));
                     compositor.replace_or_push("shell", popup);
                 });
             Ok(call)

@@ -147,6 +147,8 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
+    /// Configuration of the statusline elements
+    pub statusline: StatusLineConfig,
     /// Shape for cursor in each mode
     pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
@@ -165,10 +167,25 @@ pub struct Config {
     pub color_modes: bool,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
+    /// Display LSP progress messages below statusline
     pub display_messages: bool,
+    /// Enable automatic pop up of signature help (parameter hints)
+    pub auto_signature_help: bool,
+    /// Display docs under signature help popup
+    pub display_signature_help_docs: bool,
+}
+
+impl Default for LspConfig {
+    fn default() -> Self {
+        Self {
+            display_messages: false,
+            auto_signature_help: true,
+            display_signature_help_docs: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -178,6 +195,57 @@ pub struct SearchConfig {
     pub smart_case: bool,
     /// Whether the search should wrap after depleting the matches. Default to true.
     pub wrap_around: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct StatusLineConfig {
+    pub left: Vec<StatusLineElement>,
+    pub center: Vec<StatusLineElement>,
+    pub right: Vec<StatusLineElement>,
+}
+
+impl Default for StatusLineConfig {
+    fn default() -> Self {
+        use StatusLineElement as E;
+
+        Self {
+            left: vec![E::Mode, E::Spinner, E::FileName],
+            center: vec![],
+            right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum StatusLineElement {
+    /// The editor mode (Normal, Insert, Visual/Selection)
+    Mode,
+
+    /// The LSP activity spinner
+    Spinner,
+
+    /// The file nane/path, including a dirty flag if it's unsaved
+    FileName,
+
+    /// The file encoding
+    FileEncoding,
+
+    /// The file line endings (CRLF or LF)
+    FileLineEnding,
+
+    /// The file type (language ID or "text")
+    FileType,
+
+    /// A summary of the number of errors and warnings
+    Diagnostics,
+
+    /// The number of selections (cursors)
+    Selections,
+
+    /// The cursor position
+    Position,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -264,6 +332,8 @@ pub enum GutterType {
     Diagnostics,
     /// Show line numbers
     LineNumbers,
+    /// Show one blank space
+    Padding,
 }
 
 impl std::str::FromStr for GutterType {
@@ -400,7 +470,11 @@ impl Default for Config {
             },
             line_number: LineNumber::Absolute,
             cursorline: false,
-            gutters: vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            gutters: vec![
+                GutterType::Diagnostics,
+                GutterType::LineNumbers,
+                GutterType::Padding,
+            ],
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
@@ -409,6 +483,7 @@ impl Default for Config {
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             search: SearchConfig::default(),

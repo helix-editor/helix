@@ -16,17 +16,19 @@
 "function.macro" = { fg = "red" }
 
 "keyword" = { fg = "purple" }
+"keyword.function" = { fg = "purple" }
 "keyword.control" = { fg = "purple" }
 "keyword.control.import" = { fg = "purple" }
 "keyword.directive" = { fg = "purple" }
 "keyword.operator" = { fg = "purple" }
+"keyword.storage.type" = { fg = "purple" }
 
 "tag" = "cyan"
 "label" = { fg = "cyan" }
 "namespace" = { fg = "red" }
 "operator" = { fg = "red" }
 "property" = { fg = "red" }
-"special" = { fg = "blue" }
+"special" = { fg = "purple" }
 "string" = { fg = "green" }
 "module" = { fg = "cyan" }
 
@@ -35,7 +37,7 @@
 
 "punctuation" = { fg = "gray" }
 "punctuation.delimiter" = { fg = "black" }
-# "punctuation.bracket" = { fg="black" }
+"punctuation.bracket" = { fg = "gray" }
 
 "variable" = { fg = "black" }
 "variable.builtin" = { fg = "light-blue" }
@@ -43,12 +45,12 @@
 "variable.other.member" = { fg = "red" }
 
 "markup.heading" = { fg = "red" }
-# "markup.raw" = { bg = "light-white" }
-"markup.raw.inline" = { fg = "green", bg = "light-white" }
+"markup.raw" = { fg = "gray" }
+"markup.raw.inline" = { fg = "green", bg = "grey-200" }
 "markup.bold" = { fg = "yellow", modifiers = ["bold"] }
 "markup.italic" = { fg = "purple", modifiers = ["italic"] }
-"markup.list" = { fg = "red" }
-"markup.quote" = { fg = "yellow" }
+"markup.list" = { fg = "light-blue" }
+"markup.quote" = { fg = "gray" }
 "markup.link.url" = { fg = "cyan", modifiers = ["underlined"] }
 "markup.link.text" = { fg = "light-blue" }
 "markup.heading.1" = { fg = "red", modifiers = ["bold"] }
@@ -79,7 +81,7 @@
 
 "ui.highlight" = { bg = "light-white" }
 
-"ui.selection" = { modifiers = ["reversed"] }
+"ui.selection" = { bg="light-white", modifiers = ["dim"] }
 "ui.selection.primary" = { bg = "light-white" }
 
 "ui.virtual" = { fg = "light-white" }
@@ -92,6 +94,9 @@
 
 "ui.statusline" = { fg = "black", bg = "light-white" }
 "ui.statusline.inactive" = { fg = "gray", bg = "light-white" }
+"ui.statusline.normal" = { fg = "light-white", bg = "light-blue" }
+"ui.statusline.insert" = { fg = "light-white", bg = "green" }
+"ui.statusline.select" = { fg = "light-white", bg = "purple" }
 
 "ui.text" = { fg = "black" }
 "ui.text.focus" = { fg = "red", bg = "light-white", modifiers = ["bold"] }
