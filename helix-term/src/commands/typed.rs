@@ -551,7 +551,6 @@ fn write_all_impl(
     let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
     // save all documents
-    // Saves only visible buffers? How do we reload the not visible ones?
     for doc in &mut cx.editor.documents.values_mut() {
         if doc.path().is_none() {
             errors.push_str("cannot write a buffer without a filename\n");
