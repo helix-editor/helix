@@ -175,7 +175,7 @@
 # Version control changes.
 
 'diff.plus' = "light-green" # { } # Additions.
-'diff.minus' = "yelllow" # { } # Deletions.
+'diff.minus' = "yellow" # { } # Deletions.
 'diff.delta' = "red" # { } # Modifications.
 # 'diff.delta.moved' = { } # Renamed or moved files / changes.
 

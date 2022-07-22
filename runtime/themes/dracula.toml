@@ -22,7 +22,7 @@
 "ui.background" = { fg = "foreground", bg = "background" }
 "ui.cursor" =  { fg = "background", bg = "orange", modifiers = ["dim"] }
 "ui.cursor.match" = { fg = "green", modifiers = ["underlined"] }
-"ui.cursor.primary" = { fg = "background", bg = "cyan", modifier = ["dim"] }
+"ui.cursor.primary" = { fg = "background", bg = "cyan", modifiers = ["dim"] }
 "ui.cursorline.primary" = { bg = "background_dark" }
 "ui.help" = { fg = "foreground", bg = "background_dark" }
 "ui.linenr" = { fg = "comment" }
