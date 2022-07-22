@@ -3056,14 +3056,18 @@ pub mod insert {
 
     pub fn delete_char_backward(cx: &mut Context) {
         let count = cx.count();
-        let (view, doc) = current!(cx.editor);
+        let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
         let indent_unit = doc.indent_unit();
         let tab_size = doc.tab_width();
+        let auto_pairs = doc.auto_pairs(cx.editor);
 
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
                 let pos = range.cursor(text);
+                if pos == 0 {
+                    return (pos, pos, None);
+                }
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
                 // consider to delete by indent level if all characters before `pos` are indent units.
                 let fragment = Cow::from(text.slice(line_start_pos..pos));
@@ -3111,14 +3115,36 @@ pub mod insert {
                         (start, pos, None) // delete!
                     }
                 } else {
-                    // delete char
-                    (
-                        graphemes::nth_prev_grapheme_boundary(text, pos, count),
-                        pos,
-                        None,
-                    )
+                    match (
+                        text.get_char(pos.saturating_sub(1)),
+                        text.get_char(pos),
+                        auto_pairs,
+                    ) {
+                        (Some(_x), Some(_y), Some(ap))
+                            if range.is_single_grapheme(text)
+                                && ap.get(_x).is_some()
+                                && ap.get(_x).unwrap().close == _y =>
+                        // delete both autopaired characters
+                        {
+                            (
+                                graphemes::nth_prev_grapheme_boundary(text, pos, count),
+                                graphemes::nth_next_grapheme_boundary(text, pos, count),
+                                None,
+                            )
+                        }
+                        _ =>
+                        // delete 1 char
+                        {
+                            (
+                                graphemes::nth_prev_grapheme_boundary(text, pos, count),
+                                pos,
+                                None,
+                            )
+                        }
+                    }
                 }
             });
+        let (view, doc) = current!(cx.editor);
         doc.apply(&transaction, view.id);
 
         lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
