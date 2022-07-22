@@ -383,6 +383,7 @@ dependencies = [
  "slotmap",
  "smallvec",
  "smartstring",
+ "str_indices",
  "textwrap",
  "toml",
  "tree-sitter",
