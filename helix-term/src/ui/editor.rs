@@ -430,7 +430,11 @@ impl EditorView {
                 return;
             }
 
-            for i in 0..(indent_level / tab_width as u16) {
+            let starting_indent = (offset.col / tab_width) as u16;
+            // TODO: limit to a max indent level too. It doesn't cause visual artifacts but it would avoid some
+            // extra loops if the code is deeply nested.
+
+            for i in starting_indent..(indent_level / tab_width as u16) {
                 surface.set_string(
                     viewport.x + (i * tab_width as u16) - offset.col as u16,
                     viewport.y + line,

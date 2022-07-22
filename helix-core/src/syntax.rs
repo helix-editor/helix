@@ -328,29 +328,15 @@ fn read_query(language: &str, filename: &str) -> String {
 
     let query = load_runtime_file(language, filename).unwrap_or_default();
 
-    // TODO: the collect() is not ideal
-    let inherits = INHERITS_REGEX
-        .captures_iter(&query)
-        .flat_map(|captures| {
+    // replaces all "; inherits <language>(,<language>)*" with the queries of the given language(s)
+    INHERITS_REGEX
+        .replace_all(&query, |captures: &regex::Captures| {
             captures[1]
                 .split(',')
-                .map(str::to_owned)
-                .collect::<Vec<_>>()
+                .map(|language| format!("\n{}\n", read_query(language, filename)))
+                .collect::<String>()
         })
-        .collect::<Vec<_>>();
-
-    if inherits.is_empty() {
-        return query;
-    }
-
-    let mut queries = inherits
-        .iter()
-        .map(|language| read_query(language, filename))
-        .collect::<Vec<_>>();
-
-    queries.push(query);
-
-    queries.concat()
+        .to_string()
 }
 
 impl LanguageConfiguration {

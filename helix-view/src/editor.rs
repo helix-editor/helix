@@ -232,6 +232,9 @@ pub enum StatusLineElement {
     /// The file encoding
     FileEncoding,
 
+    /// The file line endings (CRLF or LF)
+    FileLineEnding,
+
     /// The file type (language ID or "text")
     FileType,
 
@@ -871,7 +874,12 @@ impl Editor {
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
-                let view = View::new(id, self.config().gutters.clone());
+                // copy the current view, unless there is no view yet
+                let view = self
+                    .tree
+                    .try_get(self.tree.focus)
+                    .cloned()
+                    .unwrap_or_else(|| View::new(id, self.config().gutters.clone()));
                 let view_id = self.tree.split(
                     view,
                     match action {
