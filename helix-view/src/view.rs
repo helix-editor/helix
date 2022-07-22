@@ -64,6 +64,7 @@ impl JumpList {
     }
 }
 
+#[derive(Clone)]
 pub struct View {
     pub id: ViewId,
     pub offset: Position,
