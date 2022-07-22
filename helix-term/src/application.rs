@@ -287,9 +287,6 @@ impl Application {
     where
         S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
     {
-        #[cfg(feature = "integration")]
-        let mut idle_handled = false;
-
         loop {
             if self.editor.should_close() {
                 return false;
@@ -315,56 +312,19 @@ impl Application {
                     self.render();
                 }
                 event = self.editor.wait_event() => {
-                    log::debug!("received editor event: {:?}", event);
+                    let _idle_handled = self.handle_editor_event(event).await;
 
-                    match event {
-                        EditorEvent::DocumentSave(event) => {
-                            self.handle_document_write(event);
-                            self.render();
+                    // for integration tests only, reset the idle timer after every
+                    // event to signal when test events are done processing
+                    #[cfg(feature = "integration")]
+                    {
+                        if _idle_handled {
+                            return true;
                         }
-                        EditorEvent::ConfigEvent(event) => {
-                            self.handle_config_events(event);
-                            self.render();
-                        }
-                        EditorEvent::LanguageServerMessage((id, call)) => {
-                            self.handle_language_server_message(call, id).await;
-                            // limit render calls for fast language server messages
-                            let last = self.editor.language_servers.incoming.is_empty();
 
-                            if last || self.last_render.elapsed() > LSP_DEADLINE {
-                                self.render();
-                                self.last_render = Instant::now();
-                            }
-                        }
-                        EditorEvent::DebuggerEvent(payload) => {
-                            let needs_render = self.editor.handle_debugger_message(payload).await;
-                            if needs_render {
-                                self.render();
-                            }
-                        }
-                        EditorEvent::IdleTimer => {
-                            self.editor.clear_idle_timer();
-                            self.handle_idle_timeout();
-
-                            #[cfg(feature = "integration")]
-                            {
-                                log::debug!("idle handled");
-                                idle_handled = true;
-                            }
-                        }
+                        self.editor.reset_idle_timer();
                     }
                 }
-            }
-
-            // for integration tests only, reset the idle timer after every
-            // event to signal when test events are done processing
-            #[cfg(feature = "integration")]
-            {
-                if idle_handled {
-                    return true;
-                }
-
-                self.editor.reset_idle_timer();
             }
         }
     }
@@ -515,6 +475,49 @@ impl Application {
                 bytes
             ));
         }
+    }
+
+    #[inline(always)]
+    pub async fn handle_editor_event(&mut self, event: EditorEvent) -> bool {
+        log::debug!("received editor event: {:?}", event);
+
+        match event {
+            EditorEvent::DocumentSave(event) => {
+                self.handle_document_write(event);
+                self.render();
+            }
+            EditorEvent::ConfigEvent(event) => {
+                self.handle_config_events(event);
+                self.render();
+            }
+            EditorEvent::LanguageServerMessage((id, call)) => {
+                self.handle_language_server_message(call, id).await;
+                // limit render calls for fast language server messages
+                let last = self.editor.language_servers.incoming.is_empty();
+
+                if last || self.last_render.elapsed() > LSP_DEADLINE {
+                    self.render();
+                    self.last_render = Instant::now();
+                }
+            }
+            EditorEvent::DebuggerEvent(payload) => {
+                let needs_render = self.editor.handle_debugger_message(payload).await;
+                if needs_render {
+                    self.render();
+                }
+            }
+            EditorEvent::IdleTimer => {
+                self.editor.clear_idle_timer();
+                self.handle_idle_timeout();
+
+                #[cfg(feature = "integration")]
+                {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 
     pub fn handle_terminal_events(&mut self, event: Result<CrosstermEvent, crossterm::ErrorKind>) {
