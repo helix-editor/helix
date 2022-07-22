@@ -54,7 +54,6 @@ hidden = false
 | Key                | Description                                         | Default |
 | ---                | -----------                                         | ------- |
 | `display-messages` | Display LSP progress messages below statusline[^1]  | `false` |
-| `preselect`        | Show the LSP server's preselected suggestions first | `true`  |
 
 [^1]: A progress spinner is always shown in the statusline beside the file path.
 

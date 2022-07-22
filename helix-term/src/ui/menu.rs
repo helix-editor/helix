@@ -76,7 +76,6 @@ pub struct Menu<T: Item> {
     viewport: (u16, u16),
     recalculate: bool,
     sort_strategy: SortStrategy,
-    use_preselect: bool,
 }
 
 impl<T: Item> Menu<T> {
@@ -88,7 +87,6 @@ impl<T: Item> Menu<T> {
         options: Vec<T>,
         editor_data: <T as Item>::Data,
         sort_strategy: SortStrategy,
-        use_preselect: bool,
         callback_fn: impl Fn(&mut Editor, Option<&T>, MenuEvent) + 'static,
     ) -> Self {
         let mut menu = Self {
@@ -104,7 +102,6 @@ impl<T: Item> Menu<T> {
             viewport: (0, 0),
             recalculate: true,
             sort_strategy,
-            use_preselect,
         };
 
         // TODO: scoring on empty input should just use a fastpath
@@ -116,7 +113,6 @@ impl<T: Item> Menu<T> {
     pub fn score(&mut self, pattern: &str) {
         // dereference pointers here, not inside of the filter_map() loop
         let is_pattern_empty = pattern.is_empty();
-        let use_preselect = self.use_preselect;
 
         // reuse the matches allocation
         self.matches.clear();
@@ -129,7 +125,7 @@ impl<T: Item> Menu<T> {
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
 
                     // If prompt pattern is empty, show the preselected item as first option
-                    if use_preselect && is_pattern_empty {
+                    if is_pattern_empty {
                         if option.preselected() {
                             // The LSP server can preselect multiple items, however it doesn't give any preference
                             // for one over the other, so they all have the same score

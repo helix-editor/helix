@@ -172,8 +172,6 @@ pub struct Config {
 pub struct LspConfig {
     /// Whether to display LSP status messages below the statusline
     pub display_messages: bool,
-    /// Whether to use show the LSP server preselected suggestion at the top of the menu. Defaults to true.
-    pub preselect: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

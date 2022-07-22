@@ -453,7 +453,6 @@ pub fn code_action(cx: &mut Context) {
                 actions,
                 (),
                 ui::menu::SortStrategy::Text,
-                false,
                 move |editor, code_action, event| {
                     if event != PromptEvent::Validate {
                         return;

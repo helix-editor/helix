@@ -100,7 +100,6 @@ impl Completion {
             items,
             (),
             menu::SortStrategy::Score,
-            editor.config().lsp.preselect.unwrap_or(false),
             move |editor: &mut Editor, item, event| {
                 fn item_to_transaction(
                     doc: &Document,
