@@ -1140,6 +1140,7 @@ file-types = ["gleam"]
 roots = ["gleam.toml"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
+language-server = { command = "gleam", args = ["lsp"] }
 
 [[grammar]]
 name = "gleam"
