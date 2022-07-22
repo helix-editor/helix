@@ -58,6 +58,10 @@ impl JumpList {
     pub fn remove(&mut self, doc_id: &DocumentId) {
         self.jumps.retain(|(other_id, _)| other_id != doc_id);
     }
+
+    pub fn get(&self) -> &[Jump] {
+        &self.jumps
+    }
 }
 
 pub struct View {

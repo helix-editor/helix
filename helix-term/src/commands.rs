@@ -264,6 +264,7 @@ impl MappableCommand {
         file_picker_in_current_directory, "Open file picker at current working directory",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
+        jumplist_picker, "Open jumplist picker",
         symbol_picker, "Open symbol picker",
         select_references_to_symbol_under_cursor, "Select symbol references",
         workspace_symbol_picker, "Open workspace symbol picker",
@@ -2264,6 +2265,87 @@ fn buffer_picker(cx: &mut Context) {
                 .selection(view_id)
                 .primary()
                 .cursor_line(doc.text().slice(..));
+            Some((meta.path.clone()?, Some((line, line))))
+        },
+    );
+    cx.push_layer(Box::new(overlayed(picker)));
+}
+
+fn jumplist_picker(cx: &mut Context) {
+    struct JumpMeta {
+        id: DocumentId,
+        path: Option<PathBuf>,
+        selection: Selection,
+        text: String,
+        is_current: bool,
+    }
+
+    impl ui::menu::Item for JumpMeta {
+        type Data = ();
+
+        fn label(&self, _data: &Self::Data) -> Spans {
+            let path = self
+                .path
+                .as_deref()
+                .map(helix_core::path::get_relative_path);
+            let path = match path.as_deref().and_then(Path::to_str) {
+                Some(path) => path,
+                None => SCRATCH_BUFFER_NAME,
+            };
+
+            let mut flags = Vec::new();
+            if self.is_current {
+                flags.push("*");
+            }
+
+            let flag = if flags.is_empty() {
+                "".into()
+            } else {
+                format!(" ({})", flags.join(""))
+            };
+            format!("{} {}{} {}", self.id, path, flag, self.text).into()
+        }
+    }
+
+    let new_meta = |view: &View, doc_id: DocumentId, selection: Selection| {
+        let doc = &cx.editor.documents.get(&doc_id);
+        let text = doc.map_or("".into(), |d| {
+            selection
+                .fragments(d.text().slice(..))
+                .map(Cow::into_owned)
+                .collect::<Vec<_>>()
+                .join(" ")
+        });
+
+        JumpMeta {
+            id: doc_id,
+            path: doc.and_then(|d| d.path().cloned()),
+            selection,
+            text,
+            is_current: view.doc == doc_id,
+        }
+    };
+
+    let picker = FilePicker::new(
+        cx.editor
+            .tree
+            .views()
+            .flat_map(|(view, _)| {
+                view.jumps
+                    .get()
+                    .iter()
+                    .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
+            })
+            .collect(),
+        (),
+        |cx, meta, action| {
+            cx.editor.switch(meta.id, action);
+            let (view, doc) = current!(cx.editor);
+            doc.set_selection(view.id, meta.selection.clone());
+        },
+        |editor, meta| {
+            let doc = &editor.documents.get(&meta.id)?;
+            let line = meta.selection.primary().cursor_line(doc.text().slice(..));
             Some((meta.path.clone()?, Some((line, line))))
         },
     );

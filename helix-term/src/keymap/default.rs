@@ -205,6 +205,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "f" => file_picker,
             "F" => file_picker_in_current_directory,
             "b" => buffer_picker,
+            "j" => jumplist_picker,
             "s" => symbol_picker,
             "S" => workspace_symbol_picker,
             "g" => diagnostics_picker,
