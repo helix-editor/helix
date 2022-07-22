@@ -1,11 +1,3 @@
-; Identifier naming conventions
-
-((identifier) @constructor
- (#match? @constructor "^[A-Z]"))
-
-((identifier) @constant
- (#match? @constant "^[A-Z][A-Z_]*$"))
-
 ; Builtin functions
 
 ((call
@@ -16,21 +8,77 @@
 
 ; Function calls
 
-(decorator) @function
+(call
+  function: (attribute attribute: (identifier) @constructor)
+ (#match? @constructor "^[A-Z]"))
+(call
+  function: (identifier) @constructor
+ (#match? @constructor "^[A-Z]"))
 
 (call
   function: (attribute attribute: (identifier) @function.method))
+
 (call
   function: (identifier) @function)
 
 ; Function definitions
 
 (function_definition
+  name: (identifier) @constructor
+ (#match? @constructor "^(__new__|__init__)$"))
+
+(function_definition
   name: (identifier) @function)
 
-(identifier) @variable
+; Decorators
+
+(decorator) @function
+(decorator (identifier) @function)
+(decorator (attribute attribute: (identifier) @function))
+(decorator (call
+  function: (attribute attribute: (identifier) @function)))
+
+; Parameters
+
+((identifier) @variable.builtin
+ (#match? @variable.builtin "^(self|cls)$"))
+
+(parameters (identifier) @variable.parameter)
+(parameters (typed_parameter (identifier) @variable.parameter))
+(parameters (default_parameter name: (identifier) @variable.parameter))
+(parameters (typed_default_parameter name: (identifier) @variable.parameter))
+(keyword_argument name: (identifier) @variable.parameter)
+
+; Types
+
+((identifier) @type.builtin
+ (#match?
+   @type.builtin
+   "^(bool|bytes|dict|float|frozenset|int|list|set|str|tuple)$"))
+
+; In type hints make everything types to catch non-conforming identifiers
+; (e.g., datetime.datetime) and None
+(type [(identifier) (none)] @type)
+; Handle [] . and | nesting 4 levels deep
+(type
+  (_ [(identifier) (none)]? @type
+    (_ [(identifier) (none)]? @type
+      (_ [(identifier) (none)]? @type
+        (_ [(identifier) (none)]? @type)))))
+
+(class_definition name: (identifier) @type)
+(class_definition superclasses: (argument_list (identifier) @type))
+
+; Variables
+
+((identifier) @constant
+ (#match? @constant "^[A-Z_]{2,}$"))
+
+((identifier) @type
+ (#match? @type "^[A-Z]")) 
+
 (attribute attribute: (identifier) @variable.other.member)
-(type (identifier) @type)
+(identifier) @variable
 
 ; Literals
 
@@ -81,41 +129,48 @@
   ">>"
   "|"
   "~"
-  "and"
-  "in"
-  "is"
-  "not"
-  "or"
 ] @operator
 
 [
   "as"
   "assert"
-  "async"
   "await"
   "break"
-  "class"
   "continue"
-  "def"
-  "del"
   "elif"
   "else"
   "except"
-  "exec"
   "finally"
   "for"
   "from"
-  "global"
   "if"
   "import"
-  "lambda"
-  "nonlocal"
   "pass"
-  "print"
   "raise"
   "return"
   "try"
   "while"
   "with"
   "yield"
+] @keyword.control
+
+(for_statement "in" @keyword.control)
+(for_in_clause "in" @keyword.control)
+
+[
+  "and"
+  "async"
+  "class"
+  "def"
+  "del"
+  "exec"
+  "global"
+  "in"
+  "is"
+  "lambda"
+  "nonlocal"
+  "not"
+  "or"
+  "print"
 ] @keyword
+

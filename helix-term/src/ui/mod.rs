@@ -1,13 +1,15 @@
 mod completion;
 pub(crate) mod editor;
 mod info;
+pub mod lsp;
 mod markdown;
 pub mod menu;
 pub mod overlay;
 mod picker;
-mod popup;
+pub mod popup;
 mod prompt;
 mod spinner;
+mod statusline;
 mod text;
 
 pub use completion::Completion;
@@ -33,7 +35,27 @@ pub fn prompt(
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
-    let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
+    show_prompt(
+        cx,
+        Prompt::new(prompt, history_register, completion_fn, callback_fn),
+    );
+}
+
+pub fn prompt_with_input(
+    cx: &mut crate::commands::Context,
+    prompt: std::borrow::Cow<'static, str>,
+    input: String,
+    history_register: Option<char>,
+    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
+) {
+    show_prompt(
+        cx,
+        Prompt::new(prompt, history_register, completion_fn, callback_fn).with_line(input),
+    );
+}
+
+fn show_prompt(cx: &mut crate::commands::Context, mut prompt: Prompt) {
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
     cx.push_layer(Box::new(prompt));
@@ -63,18 +85,8 @@ pub fn regex_prompt(
                     doc.set_selection(view.id, snapshot.clone());
                     view.offset = offset_snapshot;
                 }
-                PromptEvent::Validate => match Regex::new(input) {
-                    Ok(regex) => {
-                        let (view, doc) = current!(cx.editor);
-                        // Equivalent to push_jump to store selection just before jump
-                        view.jumps.push((doc_id, snapshot.clone()));
-                        fun(view, doc, regex, event);
-                    }
-                    Err(_err) => (), // TODO: mark command line as error
-                },
-
-                PromptEvent::Update => {
-                    // skip empty input, TODO: trigger default
+                PromptEvent::Update | PromptEvent::Validate => {
+                    // skip empty input
                     if input.is_empty() {
                         return;
                     }
@@ -95,6 +107,11 @@ pub fn regex_prompt(
 
                             // revert state to what it was before the last update
                             doc.set_selection(view.id, snapshot.clone());
+
+                            if event == PromptEvent::Validate {
+                                // Equivalent to push_jump to store selection just before jump
+                                view.jumps.push((doc_id, snapshot.clone()));
+                            }
 
                             fun(view, doc, regex, event);
 
@@ -123,6 +140,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         .hidden(config.file_picker.hidden)
         .parents(config.file_picker.parents)
         .ignore(config.file_picker.ignore)
+        .follow_links(config.file_picker.follow_symlinks)
         .git_ignore(config.file_picker.git_ignore)
         .git_global(config.file_picker.git_global)
         .git_exclude(config.file_picker.git_exclude)
@@ -151,14 +169,13 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         let entry = entry.ok()?;
 
         // This is faster than entry.path().is_dir() since it uses cached fs::Metadata fetched by ignore/walkdir
-        let is_dir = entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
-
+        let is_dir = entry.file_type().map_or(false, |ft| ft.is_dir());
         if is_dir {
             // Will give a false positive if metadata cannot be read (eg. permission error)
-            return None;
+            None
+        } else {
+            Some(entry.into_path())
         }
-
-        Some(entry.into_path())
     });
 
     // Cap the number of files if we aren't in a git project, preventing
@@ -175,14 +192,16 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     FilePicker::new(
         files,
-        move |path: &PathBuf| {
-            // format_fn
-            path.strip_prefix(&root).unwrap_or(path).to_string_lossy()
-        },
+        root,
         move |cx, path: &PathBuf, action| {
-            cx.editor
-                .open(path.into(), action)
-                .expect("editor.open failed");
+            if let Err(e) = cx.editor.open(path, action) {
+                let err = if let Some(err) = e.source() {
+                    format!("{}", err)
+                } else {
+                    format!("unable to open \"{}\"", path.display())
+                };
+                cx.editor.set_error(err);
+            }
         },
         |_editor, path| Some((path.clone(), None)),
     )
@@ -240,6 +259,7 @@ pub mod completers {
         ));
         names.push("default".into());
         names.push("base16_default".into());
+        names.sort();
 
         let mut names: Vec<_> = names
             .into_iter()
@@ -255,7 +275,9 @@ pub mod completers {
             })
             .collect();
 
-        matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+        matches.sort_unstable_by(|(name1, score1), (name2, score2)| {
+            (Reverse(*score1), name1).cmp(&(Reverse(*score2), name2))
+        });
         names = matches.into_iter().map(|(name, _)| ((0..), name)).collect();
 
         names
@@ -263,8 +285,7 @@ pub mod completers {
 
     pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
-            serde_json::to_value(Config::default())
-                .unwrap()
+            serde_json::json!(Config::default())
                 .as_object()
                 .unwrap()
                 .keys()
@@ -286,8 +307,8 @@ pub mod completers {
             .collect()
     }
 
-    pub fn filename(_editor: &Editor, input: &str) -> Vec<Completion> {
-        filename_impl(input, |entry| {
+    pub fn filename(editor: &Editor, input: &str) -> Vec<Completion> {
+        filename_impl(editor, input, |entry| {
             let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
             if is_dir {
@@ -311,7 +332,9 @@ pub mod completers {
             })
             .collect();
 
-        matches.sort_unstable_by_key(|(_language, score)| Reverse(*score));
+        matches.sort_unstable_by(|(language1, score1), (language2, score2)| {
+            (Reverse(*score1), language1).cmp(&(Reverse(*score2), language2))
+        });
 
         matches
             .into_iter()
@@ -319,8 +342,8 @@ pub mod completers {
             .collect()
     }
 
-    pub fn directory(_editor: &Editor, input: &str) -> Vec<Completion> {
-        filename_impl(input, |entry| {
+    pub fn directory(editor: &Editor, input: &str) -> Vec<Completion> {
+        filename_impl(editor, input, |entry| {
             let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
             if is_dir {
@@ -343,7 +366,7 @@ pub mod completers {
     }
 
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
-    fn filename_impl<F>(input: &str, filter_fn: F) -> Vec<Completion>
+    fn filename_impl<F>(editor: &Editor, input: &str, filter_fn: F) -> Vec<Completion>
     where
         F: Fn(&ignore::DirEntry) -> FileMatch,
     {
@@ -375,6 +398,7 @@ pub mod completers {
 
         let mut files: Vec<_> = WalkBuilder::new(&dir)
             .hidden(false)
+            .follow_links(editor.config().file_picker.follow_symlinks)
             .max_depth(Some(1))
             .build()
             .filter_map(|file| {
@@ -426,13 +450,18 @@ pub mod completers {
 
             let range = (input.len().saturating_sub(file_name.len()))..;
 
-            matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+            matches.sort_unstable_by(|(file1, score1), (file2, score2)| {
+                (Reverse(*score1), file1).cmp(&(Reverse(*score2), file2))
+            });
+
             files = matches
                 .into_iter()
                 .map(|(file, _)| (range.clone(), file))
                 .collect();
 
             // TODO: complete to longest common match
+        } else {
+            files.sort_unstable_by(|(_, path1), (_, path2)| path1.cmp(path2));
         }
 
         files

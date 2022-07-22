@@ -1,6 +1,6 @@
 //! Input event handling, currently backed by crossterm.
 use anyhow::{anyhow, Error};
-use helix_core::unicode::width::UnicodeWidthStr;
+use helix_core::unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr};
 use serde::de::{self, Deserialize, Deserializer};
 use std::fmt;
 
@@ -22,6 +22,31 @@ impl KeyEvent {
             _ => None,
         }
     }
+
+    /// Format the key in such a way that a concatenated sequence
+    /// of keys can be read easily.
+    ///
+    /// ```
+    /// # use std::str::FromStr;
+    /// # use helix_view::input::KeyEvent;
+    ///
+    /// let k = KeyEvent::from_str("w").unwrap().key_sequence_format();
+    /// assert_eq!(k, "w");
+    ///
+    /// let k = KeyEvent::from_str("C-w").unwrap().key_sequence_format();
+    /// assert_eq!(k, "<C-w>");
+    ///
+    /// let k = KeyEvent::from_str(" ").unwrap().key_sequence_format();
+    /// assert_eq!(k, "<space>");
+    /// ```
+    pub fn key_sequence_format(&self) -> String {
+        let s = self.to_string();
+        if s.graphemes(true).count() > 1 {
+            format!("<{}>", s)
+        } else {
+            s
+        }
+    }
 }
 
 pub(crate) mod keys {
@@ -41,12 +66,7 @@ pub(crate) mod keys {
     pub(crate) const NULL: &str = "null";
     pub(crate) const ESC: &str = "esc";
     pub(crate) const SPACE: &str = "space";
-    pub(crate) const LESS_THAN: &str = "lt";
-    pub(crate) const GREATER_THAN: &str = "gt";
-    pub(crate) const PLUS: &str = "plus";
     pub(crate) const MINUS: &str = "minus";
-    pub(crate) const SEMICOLON: &str = "semicolon";
-    pub(crate) const PERCENT: &str = "percent";
 }
 
 impl fmt::Display for KeyEvent {
@@ -86,12 +106,7 @@ impl fmt::Display for KeyEvent {
             KeyCode::Null => f.write_str(keys::NULL)?,
             KeyCode::Esc => f.write_str(keys::ESC)?,
             KeyCode::Char(' ') => f.write_str(keys::SPACE)?,
-            KeyCode::Char('<') => f.write_str(keys::LESS_THAN)?,
-            KeyCode::Char('>') => f.write_str(keys::GREATER_THAN)?,
-            KeyCode::Char('+') => f.write_str(keys::PLUS)?,
             KeyCode::Char('-') => f.write_str(keys::MINUS)?,
-            KeyCode::Char(';') => f.write_str(keys::SEMICOLON)?,
-            KeyCode::Char('%') => f.write_str(keys::PERCENT)?,
             KeyCode::F(i) => f.write_fmt(format_args!("F{}", i))?,
             KeyCode::Char(c) => f.write_fmt(format_args!("{}", c))?,
         };
@@ -119,12 +134,7 @@ impl UnicodeWidthStr for KeyEvent {
             KeyCode::Null => keys::NULL.len(),
             KeyCode::Esc => keys::ESC.len(),
             KeyCode::Char(' ') => keys::SPACE.len(),
-            KeyCode::Char('<') => keys::LESS_THAN.len(),
-            KeyCode::Char('>') => keys::GREATER_THAN.len(),
-            KeyCode::Char('+') => keys::PLUS.len(),
             KeyCode::Char('-') => keys::MINUS.len(),
-            KeyCode::Char(';') => keys::SEMICOLON.len(),
-            KeyCode::Char('%') => keys::PERCENT.len(),
             KeyCode::F(1..=9) => 2,
             KeyCode::F(_) => 3,
             KeyCode::Char(c) => c.width().unwrap_or(0),
@@ -168,12 +178,7 @@ impl std::str::FromStr for KeyEvent {
             keys::NULL => KeyCode::Null,
             keys::ESC => KeyCode::Esc,
             keys::SPACE => KeyCode::Char(' '),
-            keys::LESS_THAN => KeyCode::Char('<'),
-            keys::GREATER_THAN => KeyCode::Char('>'),
-            keys::PLUS => KeyCode::Char('+'),
             keys::MINUS => KeyCode::Char('-'),
-            keys::SEMICOLON => KeyCode::Char(';'),
-            keys::PERCENT => KeyCode::Char('%'),
             single if single.chars().count() == 1 => KeyCode::Char(single.chars().next().unwrap()),
             function if function.len() > 1 && function.starts_with('F') => {
                 let function: String = function.chars().skip(1).collect();
@@ -336,6 +341,46 @@ mod test {
                 modifiers: KeyModifiers::NONE
             }
         );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("%").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('%'),
+                modifiers: KeyModifiers::NONE
+            }
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>(";").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char(';'),
+                modifiers: KeyModifiers::NONE
+            }
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>(">").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('>'),
+                modifiers: KeyModifiers::NONE
+            }
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("<").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('<'),
+                modifiers: KeyModifiers::NONE
+            }
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("+").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('+'),
+                modifiers: KeyModifiers::NONE
+            }
+        );
     }
 
     #[test]
@@ -363,6 +408,14 @@ mod test {
                 modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL
             }
         );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("A-C-+").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('+'),
+                modifiers: KeyModifiers::ALT | KeyModifiers::CONTROL
+            }
+        );
     }
 
     #[test]
@@ -375,6 +428,16 @@ mod test {
         assert!(str::parse::<KeyEvent>("FU").is_err());
         assert!(str::parse::<KeyEvent>("123").is_err());
         assert!(str::parse::<KeyEvent>("S--").is_err());
+        assert!(str::parse::<KeyEvent>("S-percent").is_err());
+    }
+
+    #[test]
+    fn parsing_unsupported_named_keys() {
+        assert!(str::parse::<KeyEvent>("lt").is_err());
+        assert!(str::parse::<KeyEvent>("gt").is_err());
+        assert!(str::parse::<KeyEvent>("plus").is_err());
+        assert!(str::parse::<KeyEvent>("percent").is_err());
+        assert!(str::parse::<KeyEvent>("semicolon").is_err());
     }
 
     #[test]

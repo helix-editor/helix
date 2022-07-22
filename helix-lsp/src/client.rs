@@ -1,13 +1,15 @@
 use crate::{
+    jsonrpc,
     transport::{Payload, Transport},
     Call, Error, OffsetEncoding, Result,
 };
 
 use anyhow::anyhow;
 use helix_core::{find_root, ChangeSet, Rope};
-use jsonrpc_core as jsonrpc;
 use lsp_types as lsp;
+use serde::Deserialize;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::future::Future;
 use std::process::Stdio;
 use std::sync::{
@@ -269,8 +271,8 @@ impl Client {
     // -------------------------------------------------------------------------------------------
 
     pub(crate) async fn initialize(&self) -> Result<lsp::InitializeResult> {
-        if self.config.is_some() {
-            log::info!("Using custom LSP config: {}", self.config.as_ref().unwrap());
+        if let Some(config) = &self.config {
+            log::info!("Using custom LSP config: {}", config);
         }
 
         #[allow(deprecated)]
@@ -292,6 +294,7 @@ impl Client {
                         dynamic_registration: Some(false),
                     }),
                     workspace_folders: Some(true),
+                    apply_edit: Some(true),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
@@ -317,6 +320,16 @@ impl Client {
                         // if not specified, rust-analyzer returns plaintext marked as markdown but
                         // badly formatted.
                         content_format: Some(vec![lsp::MarkupKind::Markdown]),
+                        ..Default::default()
+                    }),
+                    signature_help: Some(lsp::SignatureHelpClientCapabilities {
+                        signature_information: Some(lsp::SignatureInformationSettings {
+                            documentation_format: Some(vec![lsp::MarkupKind::Markdown]),
+                            parameter_information: Some(lsp::ParameterInformationSettings {
+                                label_offset_support: Some(true),
+                            }),
+                            active_parameter_support: Some(true),
+                        }),
                         ..Default::default()
                     }),
                     rename: Some(lsp::RenameClientCapabilities {
@@ -643,7 +656,12 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> impl Future<Output = Result<Value>> {
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        // Return early if signature help is not supported
+        capabilities.signature_help_provider.as_ref()?;
+
         let params = lsp::SignatureHelpParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
@@ -654,7 +672,7 @@ impl Client {
             // lsp::SignatureHelpContext
         };
 
-        self.call::<lsp::request::SignatureHelpRequest>(params)
+        Some(self.call::<lsp::request::SignatureHelpRequest>(params))
     }
 
     pub fn text_document_hover(
@@ -692,6 +710,24 @@ impl Client {
             _ => return None,
         };
         // TODO: return err::unavailable so we can fall back to tree sitter formatting
+
+        // merge FormattingOptions with 'config.format'
+        let config_format = self
+            .config
+            .as_ref()
+            .and_then(|cfg| cfg.get("format"))
+            .and_then(|fmt| HashMap::<String, lsp::FormattingProperty>::deserialize(fmt).ok());
+
+        let options = if let Some(mut properties) = config_format {
+            // passed in options take precedence over 'config.format'
+            properties.extend(options.properties);
+            lsp::FormattingOptions {
+                properties,
+                ..options
+            }
+        } else {
+            options
+        };
 
         let params = lsp::DocumentFormattingParams {
             text_document,
@@ -737,6 +773,26 @@ impl Client {
             .await?;
 
         Ok(response.unwrap_or_default())
+    }
+
+    pub fn text_document_document_highlight(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> impl Future<Output = Result<Value>> {
+        let params = lsp::DocumentHighlightParams {
+            text_document_position_params: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
+            partial_result_params: lsp::PartialResultParams {
+                partial_result_token: None,
+            },
+        };
+
+        self.call::<lsp::request::DocumentHighlightRequest>(params)
     }
 
     fn goto_request<
@@ -876,8 +932,8 @@ impl Client {
             Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_)) => (),
             // None | Some(false)
             _ => {
+                log::warn!("rename_symbol failed: The server does not support rename");
                 let err = "The server does not support rename";
-                log::warn!("rename_symbol failed: {}", err);
                 return Err(anyhow!(err));
             }
         };

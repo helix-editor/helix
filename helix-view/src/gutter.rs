@@ -26,7 +26,18 @@ pub fn diagnostic<'doc>(
     Box::new(move |line: usize, _selected: bool, out: &mut String| {
         use helix_core::diagnostic::Severity;
         if let Ok(index) = diagnostics.binary_search_by_key(&line, |d| d.line) {
-            let diagnostic = &diagnostics[index];
+            let after = diagnostics[index..].iter().take_while(|d| d.line == line);
+
+            let before = diagnostics[..index]
+                .iter()
+                .rev()
+                .take_while(|d| d.line == line);
+
+            let diagnostics_on_line = after.chain(before);
+
+            // This unwrap is safe because the iterator cannot be empty as it contains at least the item found by the binary search.
+            let diagnostic = diagnostics_on_line.max_by_key(|d| d.severity).unwrap();
+
             write!(out, "●").unwrap();
             return Some(match diagnostic.severity {
                 Some(Severity::Error) => error,
@@ -54,7 +65,7 @@ pub fn line_numbers<'doc>(
     let draw_last = text.line_to_byte(last_line) < text.len_bytes();
 
     let linenr = theme.get("ui.linenr");
-    let linenr_select: Style = theme.try_get("ui.linenr.selected").unwrap_or(linenr);
+    let linenr_select = theme.get("ui.linenr.selected");
 
     let current_line = doc
         .text()
@@ -89,6 +100,17 @@ pub fn line_numbers<'doc>(
             Some(style)
         }
     })
+}
+
+pub fn padding<'doc>(
+    _editor: &'doc Editor,
+    _doc: &'doc Document,
+    _view: &View,
+    _theme: &Theme,
+    _is_focused: bool,
+    _width: usize,
+) -> GutterFn<'doc> {
+    Box::new(|_line: usize, _selected: bool, _out: &mut String| None)
 }
 
 #[inline(always)]

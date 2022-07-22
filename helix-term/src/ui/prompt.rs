@@ -16,6 +16,7 @@ use helix_view::{
 };
 
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
+type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
 
 pub struct Prompt {
     prompt: Cow<'static, str>,
@@ -28,6 +29,7 @@ pub struct Prompt {
     completion_fn: Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
     pub doc_fn: Box<dyn Fn(&str) -> Option<Cow<str>>>,
+    next_char_handler: Option<PromptCharHandler>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -78,7 +80,15 @@ impl Prompt {
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
+            next_char_handler: None,
         }
+    }
+
+    pub fn with_line(mut self, line: String) -> Self {
+        let cursor = line.len();
+        self.line = line;
+        self.cursor = cursor;
+        self
     }
 
     pub fn line(&self) -> &String {
@@ -191,6 +201,13 @@ impl Prompt {
     }
 
     pub fn insert_char(&mut self, c: char, cx: &Context) {
+        if let Some(handler) = &self.next_char_handler.take() {
+            handler(self, c, cx);
+
+            self.next_char_handler = None;
+            return;
+        }
+
         self.line.insert(self.cursor, c);
         let mut cursor = GraphemeCursor::new(self.cursor, self.line.len(), false);
         if let Ok(Some(pos)) = cursor.next_boundary(&self.line, 0) {
@@ -330,7 +347,7 @@ impl Prompt {
     pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
         let prompt_color = theme.get("ui.text");
-        let completion_color = theme.get("ui.statusline");
+        let completion_color = theme.get("ui.menu");
         let selected_color = theme.get("ui.menu.selected");
         // completion
 
@@ -358,7 +375,7 @@ impl Prompt {
 
         if !self.completion.is_empty() {
             let area = completion_area;
-            let background = theme.get("ui.statusline");
+            let background = theme.get("ui.menu");
 
             let items = height as usize * cols as usize;
 
@@ -420,10 +437,7 @@ impl Prompt {
                 .borders(Borders::ALL)
                 .border_style(background);
 
-            let inner = block.inner(area).inner(&Margin {
-                vertical: 0,
-                horizontal: 1,
-            });
+            let inner = block.inner(area).inner(&Margin::horizontal(1));
 
             block.render(area, surface);
             text.render(inner, surface, cx);
@@ -432,10 +446,21 @@ impl Prompt {
         let line = area.height - 1;
         // render buffer text
         surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
+
+        let input: Cow<str> = if self.line.is_empty() {
+            // latest value in the register list
+            self.history_register
+                .and_then(|reg| cx.editor.registers.last(reg))
+                .map(|entry| entry.into())
+                .unwrap_or_else(|| Cow::from(""))
+        } else {
+            self.line.as_str().into()
+        };
+
         surface.set_string(
             area.x + self.prompt.len() as u16,
             area.y + line,
-            &self.line,
+            &input,
             prompt_color,
         );
     }
@@ -459,14 +484,14 @@ impl Component for Prompt {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
                 return close_fn;
             }
-            alt!('b') | alt!(Left) => self.move_cursor(Movement::BackwardWord(1)),
-            alt!('f') | alt!(Right) => self.move_cursor(Movement::ForwardWord(1)),
+            alt!('b') | ctrl!(Left) => self.move_cursor(Movement::BackwardWord(1)),
+            alt!('f') | ctrl!(Right) => self.move_cursor(Movement::ForwardWord(1)),
             ctrl!('b') | key!(Left) => self.move_cursor(Movement::BackwardChar(1)),
             ctrl!('f') | key!(Right) => self.move_cursor(Movement::ForwardChar(1)),
             ctrl!('e') | key!(End) => self.move_end(),
             ctrl!('a') | key!(Home) => self.move_start(),
-            ctrl!('w') => self.delete_word_backwards(cx),
-            alt!('d') => self.delete_word_forwards(cx),
+            ctrl!('w') | alt!(Backspace) | ctrl!(Backspace) => self.delete_word_backwards(cx),
+            alt!('d') | alt!(Delete) | ctrl!(Delete) => self.delete_word_forwards(cx),
             ctrl!('k') => self.kill_to_end_of_line(cx),
             ctrl!('u') => self.kill_to_start_of_line(cx),
             ctrl!('h') | key!(Backspace) => {
@@ -500,7 +525,18 @@ impl Component for Prompt {
                     self.recalculate_completion(cx.editor);
                     self.exit_selection();
                 } else {
-                    (self.callback_fn)(cx, &self.line, PromptEvent::Validate);
+                    // handle executing with last command in history if nothing entered
+                    let input: Cow<str> = if self.line.is_empty() {
+                        // latest value in the register list
+                        self.history_register
+                            .and_then(|reg| cx.editor.registers.last(reg).cloned())
+                            .map(|entry| entry.into())
+                            .unwrap_or_else(|| Cow::from(""))
+                    } else {
+                        self.line.as_str().into()
+                    };
+
+                    (self.callback_fn)(cx, &input, PromptEvent::Validate);
 
                     if let Some(register) = self.history_register {
                         // store in history
@@ -538,6 +574,35 @@ impl Component for Prompt {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
             ctrl!('q') => self.exit_selection(),
+            ctrl!('r') => {
+                self.completion = cx
+                    .editor
+                    .registers
+                    .inner()
+                    .iter()
+                    .map(|(ch, reg)| {
+                        let content = reg
+                            .read()
+                            .get(0)
+                            .and_then(|s| s.lines().next().to_owned())
+                            .unwrap_or_default();
+                        (0.., format!("{} {}", ch, &content).into())
+                    })
+                    .collect();
+                self.next_char_handler = Some(Box::new(|prompt, c, context| {
+                    prompt.insert_str(
+                        context
+                            .editor
+                            .registers
+                            .read(c)
+                            .and_then(|r| r.first())
+                            .map_or("", |r| r.as_str()),
+                    );
+                    prompt.recalculate_completion(context.editor);
+                }));
+                (self.callback_fn)(cx, &self.line, PromptEvent::Update);
+                return EventResult::Consumed(None);
+            }
             // any char event that's not mapped to any other combo
             KeyEvent {
                 code: KeyCode::Char(c),
