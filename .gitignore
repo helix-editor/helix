@@ -3,5 +3,3 @@ target
 helix-term/rustfmt.toml
 result
 runtime/grammars
-.vale.ini
-styles
