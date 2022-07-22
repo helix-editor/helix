@@ -1291,7 +1291,7 @@ fn sort_impl(
     let selection = doc.selection(view.id);
 
     let mut fragments: Vec<_> = selection
-        .fragments(text)
+        .slices(text)
         .map(|fragment| fragment.chunks().collect())
         .collect();
 
@@ -1346,7 +1346,7 @@ fn reflow(
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(rope, selection, |range| {
         let fragment = range.fragment(rope.slice(..));
-        let reflowed_text = helix_core::wrap::reflow_hard_wrap(&Cow::from(fragment), max_line_len);
+        let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, max_line_len);
 
         (range.from(), range.to(), Some(reflowed_text))
     });

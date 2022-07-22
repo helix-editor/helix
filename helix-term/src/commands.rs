@@ -765,7 +765,7 @@ fn trim_selections(cx: &mut Context) {
         .selection(view.id)
         .iter()
         .filter_map(|range| {
-            if range.is_empty() || range.fragment(text).chars().all(|ch| ch.is_whitespace()) {
+            if range.is_empty() || range.slice(text).chars().all(|ch| ch.is_whitespace()) {
                 return None;
             }
             let mut start = range.from();
@@ -1292,7 +1292,7 @@ where
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        let text: Tendril = change_fn(range.fragment(doc.text().slice(..)));
+        let text: Tendril = change_fn(range.slice(doc.text().slice(..)));
 
         (range.from(), range.to(), Some(text))
     });
@@ -1752,7 +1752,7 @@ fn search_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let contents = doc.text().slice(..);
     let query = doc.selection(view.id).primary().fragment(contents);
-    let regex = regex::escape(&Cow::from(query));
+    let regex = regex::escape(&query);
     cx.editor.registers.get_mut('/').push(regex);
     let msg = format!("register '{}' set to '{}'", '/', query);
     cx.editor.set_status(msg);
@@ -2048,7 +2048,7 @@ fn delete_selection_impl(cx: &mut Context, op: Operation) {
 
     if cx.register != Some('_') {
         // first yank the selection
-        let values: Vec<String> = selection.fragments(text).map(String::from).collect();
+        let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
         let reg_name = cx.register.unwrap_or('"');
         let registers = &mut cx.editor.registers;
         let reg = registers.get_mut(reg_name);
@@ -3156,7 +3156,7 @@ fn yank(cx: &mut Context) {
     let values: Vec<String> = doc
         .selection(view.id)
         .fragments(text)
-        .map(String::from)
+        .map(Cow::into_owned)
         .collect();
 
     let msg = format!(
@@ -3184,7 +3184,7 @@ fn yank_joined_to_clipboard_impl(
     let values: Vec<String> = doc
         .selection(view.id)
         .fragments(text)
-        .map(String::from)
+        .map(Cow::into_owned)
         .collect();
 
     let msg = format!(
@@ -3222,7 +3222,7 @@ fn yank_main_selection_to_clipboard_impl(
 
     if let Err(e) = editor
         .clipboard_provider
-        .set_contents(String::from(value), clipboard_type)
+        .set_contents(value.into_owned(), clipboard_type)
     {
         bail!("Couldn't set system clipboard content: {}", e);
     }
@@ -3792,7 +3792,7 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
 
     let selection = doc.selection(view.id);
     let mut fragments: Vec<_> = selection
-        .fragments(text)
+        .slices(text)
         .map(|fragment| fragment.chunks().collect())
         .collect();
 
@@ -4401,7 +4401,7 @@ fn shell_keep_pipe(cx: &mut Context) {
             let text = doc.text().slice(..);
 
             for (i, range) in selection.ranges().iter().enumerate() {
-                let fragment = range.fragment(text);
+                let fragment = range.slice(text);
                 let (_output, success) = match shell_impl(shell, input, Some(fragment)) {
                     Ok(result) => result,
                     Err(err) => {
@@ -4486,7 +4486,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let text = doc.text().slice(..);
 
     for range in selection.ranges() {
-        let fragment = range.fragment(text);
+        let fragment = range.slice(text);
         let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment)) {
             Ok(result) => result,
             Err(err) => {
