@@ -134,7 +134,8 @@ pub fn regex_prompt(
                                                 .position(Some(helix_core::Position::new(
                                                     size.height as usize - 2, // 2 = statusline + commandline
                                                     0,
-                                                )));
+                                                )))
+                                                .auto_close(true);
                                             popup.required_size((size.width, size.height));
 
                                             compositor.replace_or_push("invalid-regex", popup);
