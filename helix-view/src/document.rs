@@ -448,6 +448,10 @@ impl Document {
                     ));
                 }
 
+                if !output.status.success() {
+                    return Err(FormatterError::NonZeroExitStatus);
+                }
+
                 let str = String::from_utf8(output.stdout)
                     .map_err(|_| FormatterError::InvalidUtf8Output)?;
 
@@ -1094,6 +1098,7 @@ pub enum FormatterError {
     Stderr(String),
     InvalidUtf8Output,
     DiskReloadError(String),
+    NonZeroExitStatus,
 }
 
 impl std::error::Error for FormatterError {}
@@ -1109,6 +1114,7 @@ impl Display for FormatterError {
             Self::Stderr(output) => format!("Formatter error: {}", output),
             Self::InvalidUtf8Output => "Invalid UTF-8 formatter output".to_string(),
             Self::DiskReloadError(error) => format!("Error reloading file from disk: {}", error),
+            Self::NonZeroExitStatus => "Formatter exited with non zero exit status:".to_string(),
         };
         f.write_str(&s)
     }
