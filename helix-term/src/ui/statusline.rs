@@ -143,7 +143,7 @@ where
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
         helix_view::editor::StatusLineElement::Selections => render_selections,
         helix_view::editor::StatusLineElement::Position => render_position,
-        helix_view::editor::StatusLineElement::PositionPct => render_position_pct,
+        helix_view::editor::StatusLineElement::PositionPercent => render_position_percent,
     }
 }
 
@@ -274,7 +274,7 @@ where
     );
 }
 
-fn render_position_pct<F>(context: &mut RenderContext, write: F)
+fn render_position_percent<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
