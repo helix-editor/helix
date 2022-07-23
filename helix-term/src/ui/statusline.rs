@@ -143,6 +143,7 @@ where
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
         helix_view::editor::StatusLineElement::Selections => render_selections,
         helix_view::editor::StatusLineElement::Position => render_position,
+        helix_view::editor::StatusLineElement::Spacer => render_spacer,
     }
 }
 
@@ -333,4 +334,11 @@ where
     };
 
     write(context, title, None);
+}
+
+fn render_spacer<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    write(context, String::from(" "), None);
 }
