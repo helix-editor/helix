@@ -78,6 +78,7 @@ The following elements can be configured:
 | `diagnostics` | The number of warnings and/or errors |
 | `selections` | The number of active selections |
 | `position` | The cursor position |
+| `position-pct` | The cursor position as a percentage of the total number of lines |
 
 ### `[editor.lsp]` Section
 
