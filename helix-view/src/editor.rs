@@ -248,7 +248,7 @@ pub enum StatusLineElement {
     Position,
 
     /// The cursor position as a percent of the total file
-    PositionPercent,
+    PositionPercentage,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
