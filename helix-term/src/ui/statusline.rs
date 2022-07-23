@@ -251,7 +251,7 @@ where
     );
 }
 
-fn get_position(context: &mut RenderContext) -> Position {
+fn get_position(context: &RenderContext) -> Position {
     coords_at_pos(
         context.doc.text().slice(..),
         context
