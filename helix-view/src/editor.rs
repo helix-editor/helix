@@ -878,6 +878,7 @@ impl Editor {
                 let view = self
                     .tree
                     .try_get(self.tree.focus)
+                    .filter(|v| id == v.doc) // Different Document
                     .cloned()
                     .unwrap_or_else(|| View::new(id, self.config().gutters.clone()));
                 let view_id = self.tree.split(
