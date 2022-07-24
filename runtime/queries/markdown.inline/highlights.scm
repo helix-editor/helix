@@ -13,6 +13,8 @@
 
 (strong_emphasis) @markup.bold
 
+(strikethrough) @markup.strikethrough
+
 [
   (link_destination)
   (uri_autolink)

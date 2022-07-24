@@ -892,7 +892,6 @@ scope = "source.markdown.inline"
 injection-regex = "markdown\\.inline"
 file-types = []
 roots = []
-indent = { tab-width = 2, unit = "  " }
 grammar = "markdown_inline"
 
 [[grammar]]
