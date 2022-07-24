@@ -24,7 +24,7 @@ pub use text::Text;
 
 use helix_core::regex::Regex;
 use helix_core::regex::RegexBuilder;
-use helix_view::{Document, Editor, View};
+use helix_view::Editor;
 
 use std::path::PathBuf;
 
@@ -66,7 +66,7 @@ pub fn regex_prompt(
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
-    fun: impl Fn(&mut View, &mut Document, Regex, PromptEvent) + 'static,
+    fun: impl Fn(&mut Editor, Regex, PromptEvent) + 'static,
 ) {
     let (view, doc) = current!(cx.editor);
     let doc_id = view.doc;
@@ -103,18 +103,21 @@ pub fn regex_prompt(
                         .build()
                     {
                         Ok(regex) => {
-                            let (view, doc) = current!(cx.editor);
+                            {
+                                let (view, doc) = current!(cx.editor);
 
-                            // revert state to what it was before the last update
-                            doc.set_selection(view.id, snapshot.clone());
+                                // revert state to what it was before the last update
+                                doc.set_selection(view.id, snapshot.clone());
 
-                            if event == PromptEvent::Validate {
-                                // Equivalent to push_jump to store selection just before jump
-                                view.jumps.push((doc_id, snapshot.clone()));
+                                if event == PromptEvent::Validate {
+                                    // Equivalent to push_jump to store selection just before jump
+                                    view.jumps.push((doc_id, snapshot.clone()));
+                                }
                             }
 
-                            fun(view, doc, regex, event);
+                            fun(cx.editor, regex, event);
 
+                            let (view, doc) = current!(cx.editor);
                             view.ensure_cursor_in_view(doc, config.scrolloff);
                         }
                         Err(_err) => (), // TODO: mark command line as error
