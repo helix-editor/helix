@@ -592,7 +592,18 @@ impl EditorView {
                 .try_get("ui.bufferline.background")
                 .unwrap_or_else(|| editor.theme.get("ui.statusline")),
         );
-        let mut len = 0usize;
+
+        let bufferline_active = editor
+            .theme
+            .try_get("ui.bufferline.active")
+            .unwrap_or_else(|| editor.theme.get("ui.background"));
+
+        let bufferline_inactive = editor
+            .theme
+            .try_get("ui.bufferline")
+            .unwrap_or_else(|| editor.theme.get("ui.statusline"));
+
+        let mut x = viewport.x;
         for doc in editor.documents() {
             let fname = doc
                 .path()
@@ -603,31 +614,20 @@ impl EditorView {
                 .unwrap_or_default();
 
             let style = if view!(editor).doc == doc.id() {
-                editor
-                    .theme
-                    .try_get("ui.bufferline.active")
-                    .unwrap_or_else(|| editor.theme.get("ui.background"))
+                bufferline_active
             } else {
-                editor
-                    .theme
-                    .try_get("ui.bufferline")
-                    .unwrap_or_else(|| editor.theme.get("ui.statusline"))
+                bufferline_inactive
             };
 
             let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
-            let offset = text.len();
+            let used_width = viewport.x.saturating_sub(x);
+            let rem_width = surface.area.width.saturating_sub(used_width);
 
-            surface.set_stringn(
-                1 + viewport.x + len as u16,
-                viewport.y,
-                text,
-                surface.area.width as usize,
-                style,
-            );
+            x = surface
+                .set_stringn(x, viewport.y, text, rem_width as usize, style)
+                .0;
 
-            len += offset;
-
-            if len > surface.area.width as usize {
+            if x >= surface.area.right() {
                 break;
             }
         }
