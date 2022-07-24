@@ -103,16 +103,14 @@ pub fn regex_prompt(
                         .build()
                     {
                         Ok(regex) => {
-                            {
-                                let (view, doc) = current!(cx.editor);
+                            let (view, doc) = current!(cx.editor);
 
-                                // revert state to what it was before the last update
-                                doc.set_selection(view.id, snapshot.clone());
+                            // revert state to what it was before the last update
+                            doc.set_selection(view.id, snapshot.clone());
 
-                                if event == PromptEvent::Validate {
-                                    // Equivalent to push_jump to store selection just before jump
-                                    view.jumps.push((doc_id, snapshot.clone()));
-                                }
+                            if event == PromptEvent::Validate {
+                                // Equivalent to push_jump to store selection just before jump
+                                view.jumps.push((doc_id, snapshot.clone()));
                             }
 
                             fun(cx.editor, regex, event);
