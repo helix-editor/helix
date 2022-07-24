@@ -1589,19 +1589,23 @@ fn search_impl(
         Direction::Backward => regex.find_iter(&contents[..start]).last(),
     };
 
-    if wrap_around && mat.is_none() {
-        mat = match direction {
-            Direction::Forward => regex.find(contents),
-            Direction::Backward => {
-                offset = start;
-                regex.find_iter(&contents[start..]).last()
-            }
-        };
-        let msg = match direction {
-            Direction::Forward => "Cycled to beginning of file",
-            Direction::Backward => "Cycled to end of file",
-        };
-        editor.set_status(msg);
+    if mat.is_none() {
+        if wrap_around {
+            mat = match direction {
+                Direction::Forward => regex.find(contents),
+                Direction::Backward => {
+                    offset = start;
+                    regex.find_iter(&contents[start..]).last()
+                }
+            };
+            let msg = match direction {
+                Direction::Forward => "Cycled to beginning of file",
+                Direction::Backward => "Cycled to end of file",
+            };
+            editor.set_status(msg);
+        } else {
+            editor.set_error("No more matches");
+        }
     }
 
     let (view, doc) = current!(editor);
