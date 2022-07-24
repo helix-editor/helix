@@ -143,6 +143,7 @@ where
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
         helix_view::editor::StatusLineElement::Selections => render_selections,
         helix_view::editor::StatusLineElement::Position => render_position,
+        helix_view::editor::StatusLineElement::Separator => render_separator,
     }
 }
 
@@ -333,4 +334,12 @@ where
     };
 
     write(context, title, None);
+}
+fn render_separator<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let sep = &context.editor.config().statusline.separator;
+
+    write(context, format!(" {} ", sep), None);
 }
