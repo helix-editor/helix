@@ -341,5 +341,9 @@ where
 {
     let sep = &context.editor.config().statusline.separator;
 
-    write(context, format!(" {} ", sep), None);
+    write(
+        context,
+        format!("{}", sep),
+        Some(context.editor.theme.get("ui.statusline.separator")),
+    );
 }
