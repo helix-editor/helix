@@ -343,7 +343,7 @@ where
 
     write(
         context,
-        format!("{}", sep),
+        sep.to_string(),
         Some(context.editor.theme.get("ui.statusline.separator")),
     );
 }
