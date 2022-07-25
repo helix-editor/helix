@@ -138,6 +138,7 @@ where
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
+        helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
         helix_view::editor::StatusLineElement::Selections => render_selections,
@@ -278,6 +279,31 @@ where
     if enc != encoding::UTF_8 {
         write(context, format!(" {} ", enc.name()), None);
     }
+}
+
+fn render_file_line_ending<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    use helix_core::LineEnding::*;
+    let line_ending = match context.doc.line_ending {
+        Crlf => "CRLF",
+        LF => "LF",
+        #[cfg(feature = "unicode-lines")]
+        VT => "VT", // U+000B -- VerticalTab
+        #[cfg(feature = "unicode-lines")]
+        FF => "FF", // U+000C -- FormFeed
+        #[cfg(feature = "unicode-lines")]
+        CR => "CR", // U+000D -- CarriageReturn
+        #[cfg(feature = "unicode-lines")]
+        Nel => "NEL", // U+0085 -- NextLine
+        #[cfg(feature = "unicode-lines")]
+        LS => "LS", // U+2028 -- Line Separator
+        #[cfg(feature = "unicode-lines")]
+        PS => "PS", // U+2029 -- ParagraphSeparator
+    };
+
+    write(context, format!(" {} ", line_ending), None);
 }
 
 fn render_file_type<F>(context: &mut RenderContext, write: F)

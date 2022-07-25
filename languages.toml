@@ -459,7 +459,7 @@ source = { git = "https://github.com/cstrahan/tree-sitter-nix", rev = "6b71a810c
 name = "ruby"
 scope = "source.ruby"
 injection-regex = "ruby"
-file-types = ["rb", "rake", "rakefile", "irb", "gemfile", "gemspec", "Rakefile", "Gemfile"]
+file-types = ["rb", "rake", "rakefile", "irb", "gemfile", "gemspec", "Rakefile", "Gemfile", "rabl", "jbuilder", "jb"]
 shebangs = ["ruby"]
 roots = []
 comment-token = "#"
@@ -1140,6 +1140,7 @@ file-types = ["gleam"]
 roots = ["gleam.toml"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
+language-server = { command = "gleam", args = ["lsp"] }
 
 [[grammar]]
 name = "gleam"
@@ -1415,7 +1416,7 @@ source = { git = "https://github.com/vlang/vls", subpath = "tree_sitter_v", rev 
 [[language]]
 name = "verilog"
 scope = "source.verilog"
-file-types = ["v", "sv", "svh"]
+file-types = ["v", "vh", "sv", "svh"]
 roots = []
 comment-token = "//"
 language-server = { command = "svlangserver", args = [] }
