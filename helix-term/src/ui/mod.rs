@@ -289,7 +289,7 @@ pub mod completers {
                 .as_object()
                 .unwrap()
                 .iter()
-                .map(|(key, value)| {
+                .flat_map(|(key, value)| {
                     if let Some(map) = value.as_object() {
                         let mut v: Vec<String> = map
                             .keys()
@@ -301,7 +301,6 @@ pub mod completers {
                         vec![key.clone()]
                     }
                 })
-                .flatten()
                 .collect()
         });
 
