@@ -319,7 +319,7 @@ fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> 
         command.env(key, value);
     }
 
-    if cfg!(windows) {
+    if cfg!(all(windows, target_env = "msvc")) {
         command
             .args(&["/nologo", "/LD", "/I"])
             .arg(header_path)
