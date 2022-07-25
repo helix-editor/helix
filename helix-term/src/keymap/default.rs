@@ -205,6 +205,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "f" => file_picker,
             "F" => file_picker_in_current_directory,
             "b" => buffer_picker,
+            "j" => jumplist_picker,
             "s" => symbol_picker,
             "S" => workspace_symbol_picker,
             "g" => diagnostics_picker,
@@ -351,6 +352,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "C-w" => delete_word_backward,
         "A-backspace" => delete_word_backward,
         "A-d" => delete_word_forward,
+        "A-del" => delete_word_forward,
         "C-s" => commit_undo_checkpoint,
 
         "left" => move_char_left,

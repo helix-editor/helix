@@ -35,7 +35,7 @@ label = "peach"
 
 "diff.plus" = "#35bf86"
 "diff.minus" = "#f22c86"
-"diff.delta" = "#6f44f0"
+"diff.delta" = "#6F44F0"
 
 "ui.background" = { bg = "black_2" }
 "ui.linenr" = { fg = "gray_0" }
@@ -62,10 +62,10 @@ label = "peach"
 
 diagnostic = { modifiers = ["underlined"] }
 
-warning = "lightning"
-error = "apricot"
-info = "delta"
-hint = "silver"
+warning = "peach"
+error = "maroon"
+info = "blue"
+hint = "lavender"
 
 [palette]
 flamingo = "#F2CDCD"

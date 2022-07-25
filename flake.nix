@@ -63,7 +63,7 @@
 
             postFixup = ''
               if [ -f "$out/bin/hx" ]; then
-                wrapProgram "$out/bin/hx" --set HELIX_RUNTIME "${runtimeDir}"
+                wrapProgram "$out/bin/hx" ''${makeWrapperArgs[@]} --set HELIX_RUNTIME "${runtimeDir}"
               fi
             '';
           };
@@ -96,4 +96,9 @@
         };
       };
     };
+
+  nixConfig = {
+    extra-substituters = ["https://helix.cachix.org"];
+    extra-trusted-public-keys = ["helix.cachix.org-1:ejp9KQpR1FBI2onstMQ34yogDm4OgU2ru6lIwPvuCVs="];
+  };
 }

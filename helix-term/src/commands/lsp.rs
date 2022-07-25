@@ -6,21 +6,19 @@ use helix_lsp::{
 };
 use tui::text::{Span, Spans};
 
-use super::{align_view, push_jump, Align, Context, Editor};
+use super::{align_view, push_jump, Align, Context, Editor, Open};
 
 use helix_core::{path, Selection};
-use helix_view::{
-    editor::Action,
-    theme::{Modifier, Style},
-};
+use helix_view::{editor::Action, theme::Style};
 
 use crate::{
     compositor::{self, Compositor},
-    ui::{self, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent},
+    ui::{
+        self, lsp::SignatureHelp, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent,
+    },
 };
 
-use std::collections::BTreeMap;
-use std::{borrow::Cow, path::PathBuf};
+use std::{borrow::Cow, collections::BTreeMap, path::PathBuf, sync::Arc};
 
 /// Gets the language server that is attached to a document, and
 /// if it's not active displays a status message. Using this macro
@@ -99,9 +97,9 @@ struct PickerDiagnostic {
 }
 
 impl ui::menu::Item for PickerDiagnostic {
-    type Data = DiagnosticStyles;
+    type Data = (DiagnosticStyles, DiagnosticsFormat);
 
-    fn label(&self, styles: &Self::Data) -> Spans {
+    fn label(&self, (styles, format): &Self::Data) -> Spans {
         let mut style = self
             .diag
             .severity
@@ -125,23 +123,23 @@ impl ui::menu::Item for PickerDiagnostic {
                 NumberOrString::Number(n) => n.to_string(),
                 NumberOrString::String(s) => s.to_string(),
             })
+            .map(|code| format!(" ({})", code))
             .unwrap_or_default();
 
-        let truncated_path = path::get_truncated_path(self.url.path())
-            .to_string_lossy()
-            .into_owned();
+        let path = match format {
+            DiagnosticsFormat::HideSourcePath => String::new(),
+            DiagnosticsFormat::ShowSourcePath => {
+                let path = path::get_truncated_path(self.url.path())
+                    .to_string_lossy()
+                    .into_owned();
+                format!("{}: ", path)
+            }
+        };
 
         Spans::from(vec![
-            Span::styled(
-                self.diag.source.clone().unwrap_or_default(),
-                style.add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(": "),
-            Span::styled(truncated_path, style),
-            Span::raw(" - "),
-            Span::styled(code, style.add_modifier(Modifier::BOLD)),
-            Span::raw(": "),
+            Span::raw(path),
             Span::styled(&self.diag.message, style),
+            Span::styled(code, style),
         ])
     }
 }
@@ -242,10 +240,17 @@ fn sym_picker(
     .truncate_start(false)
 }
 
+#[derive(Copy, Clone, PartialEq)]
+enum DiagnosticsFormat {
+    ShowSourcePath,
+    HideSourcePath,
+}
+
 fn diag_picker(
     cx: &Context,
     diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
     current_path: Option<lsp::Url>,
+    format: DiagnosticsFormat,
     offset_encoding: OffsetEncoding,
 ) -> FilePicker<PickerDiagnostic> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
@@ -271,7 +276,7 @@ fn diag_picker(
 
     FilePicker::new(
         flat_diag,
-        styles,
+        (styles, format),
         move |cx, PickerDiagnostic { url, diag }, action| {
             if current_path.as_ref() == Some(url) {
                 let (view, doc) = current!(cx.editor);
@@ -383,6 +388,7 @@ pub fn diagnostics_picker(cx: &mut Context) {
             cx,
             [(current_url.clone(), diagnostics)].into(),
             Some(current_url),
+            DiagnosticsFormat::HideSourcePath,
             offset_encoding,
         );
         cx.push_layer(Box::new(overlayed(picker)));
@@ -395,7 +401,13 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
     let current_url = doc.url();
     let offset_encoding = language_server.offset_encoding();
     let diagnostics = cx.editor.diagnostics.clone();
-    let picker = diag_picker(cx, diagnostics, current_url, offset_encoding);
+    let picker = diag_picker(
+        cx,
+        diagnostics,
+        current_url,
+        DiagnosticsFormat::ShowSourcePath,
+        offset_encoding,
+    );
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
@@ -794,31 +806,116 @@ pub fn goto_reference(cx: &mut Context) {
     );
 }
 
+#[derive(PartialEq)]
+pub enum SignatureHelpInvoked {
+    Manual,
+    Automatic,
+}
+
 pub fn signature_help(cx: &mut Context) {
+    signature_help_impl(cx, SignatureHelpInvoked::Manual)
+}
+
+pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
     let (view, doc) = current!(cx.editor);
-    let language_server = language_server!(cx.editor, doc);
+    let was_manually_invoked = invoked == SignatureHelpInvoked::Manual;
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => {
+            // Do not show the message if signature help was invoked
+            // automatically on backspace, trigger characters, etc.
+            if was_manually_invoked {
+                cx.editor
+                    .set_status("Language server not active for current buffer");
+            }
+            return;
+        }
+    };
     let offset_encoding = language_server.offset_encoding();
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.text_document_signature_help(doc.identifier(), pos, None);
+    let future = match language_server.text_document_signature_help(doc.identifier(), pos, None) {
+        Some(f) => f,
+        None => return,
+    };
 
     cx.callback(
         future,
-        move |_editor, _compositor, response: Option<lsp::SignatureHelp>| {
-            if let Some(signature_help) = response {
-                log::info!("{:?}", signature_help);
-                // signatures
-                // active_signature
-                // active_parameter
-                // render as:
+        move |editor, compositor, response: Option<lsp::SignatureHelp>| {
+            let config = &editor.config();
 
-                // signature
-                // ----------
-                // doc
-
-                // with active param highlighted
+            if !(config.lsp.auto_signature_help
+                || SignatureHelp::visible_popup(compositor).is_some()
+                || was_manually_invoked)
+            {
+                return;
             }
+
+            let response = match response {
+                // According to the spec the response should be None if there
+                // are no signatures, but some servers don't follow this.
+                Some(s) if !s.signatures.is_empty() => s,
+                _ => {
+                    compositor.remove(SignatureHelp::ID);
+                    return;
+                }
+            };
+            let doc = doc!(editor);
+            let language = doc
+                .language()
+                .and_then(|scope| scope.strip_prefix("source."))
+                .unwrap_or("");
+
+            let signature = match response
+                .signatures
+                .get(response.active_signature.unwrap_or(0) as usize)
+            {
+                Some(s) => s,
+                None => return,
+            };
+            let mut contents = SignatureHelp::new(
+                signature.label.clone(),
+                language.to_string(),
+                Arc::clone(&editor.syn_loader),
+            );
+
+            let signature_doc = if config.lsp.display_signature_help_docs {
+                signature.documentation.as_ref().map(|doc| match doc {
+                    lsp::Documentation::String(s) => s.clone(),
+                    lsp::Documentation::MarkupContent(markup) => markup.value.clone(),
+                })
+            } else {
+                None
+            };
+
+            contents.set_signature_doc(signature_doc);
+
+            let active_param_range = || -> Option<(usize, usize)> {
+                let param_idx = signature
+                    .active_parameter
+                    .or(response.active_parameter)
+                    .unwrap_or(0) as usize;
+                let param = signature.parameters.as_ref()?.get(param_idx)?;
+                match &param.label {
+                    lsp::ParameterLabel::Simple(string) => {
+                        let start = signature.label.find(string.as_str())?;
+                        Some((start, start + string.len()))
+                    }
+                    lsp::ParameterLabel::LabelOffsets([start, end]) => {
+                        Some((*start as usize, *end as usize))
+                    }
+                }
+            };
+            contents.set_active_param_range(active_param_range());
+
+            let old_popup = compositor.find_id::<Popup<SignatureHelp>>(SignatureHelp::ID);
+            let popup = Popup::new(SignatureHelp::ID, contents)
+                .position(old_popup.and_then(|p| p.get_position()))
+                .position_bias(Open::Above)
+                .ignore_escape_key(true);
+            compositor.replace_or_push(SignatureHelp::ID, popup);
         },
     );
 }
@@ -874,9 +971,21 @@ pub fn hover(cx: &mut Context) {
 }
 
 pub fn rename_symbol(cx: &mut Context) {
-    ui::prompt(
+    let (view, doc) = current_ref!(cx.editor);
+    let text = doc.text().slice(..);
+    let primary_selection = doc.selection(view.id).primary();
+    let prefill = if primary_selection.len() > 1 {
+        primary_selection
+    } else {
+        use helix_core::textobject::{textobject_word, TextObject};
+        textobject_word(text, primary_selection, TextObject::Inside, 1, false)
+    }
+    .fragment(text)
+    .into();
+    ui::prompt_with_input(
         cx,
         "rename-to:".into(),
+        prefill,
         None,
         ui::completers::none,
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {

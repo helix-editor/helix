@@ -1,4 +1,5 @@
 use crate::{
+    commands::Open,
     compositor::{Callback, Component, Context, EventResult},
     ctrl, key,
 };
@@ -17,8 +18,10 @@ pub struct Popup<T: Component> {
     margin: Margin,
     size: (u16, u16),
     child_size: (u16, u16),
+    position_bias: Open,
     scroll: usize,
     auto_close: bool,
+    ignore_escape_key: bool,
     id: &'static str,
 }
 
@@ -29,15 +32,27 @@ impl<T: Component> Popup<T> {
             position: None,
             margin: Margin::none(),
             size: (0, 0),
+            position_bias: Open::Below,
             child_size: (0, 0),
             scroll: 0,
             auto_close: false,
+            ignore_escape_key: false,
             id,
         }
     }
 
-    pub fn set_position(&mut self, pos: Option<Position>) {
+    pub fn position(mut self, pos: Option<Position>) -> Self {
         self.position = pos;
+        self
+    }
+
+    pub fn get_position(&self) -> Option<Position> {
+        self.position
+    }
+
+    pub fn position_bias(mut self, bias: Open) -> Self {
+        self.position_bias = bias;
+        self
     }
 
     pub fn margin(mut self, margin: Margin) -> Self {
@@ -47,6 +62,18 @@ impl<T: Component> Popup<T> {
 
     pub fn auto_close(mut self, auto_close: bool) -> Self {
         self.auto_close = auto_close;
+        self
+    }
+
+    /// Ignores an escape keypress event, letting the outer layer
+    /// (usually the editor) handle it. This is useful for popups
+    /// in insert mode like completion and signature help where
+    /// the popup is closed on the mode change from insert to normal
+    /// which is done with the escape key. Otherwise the popup consumes
+    /// the escape key event and closes it, and an additional escape
+    /// would be required to exit insert mode.
+    pub fn ignore_escape_key(mut self, ignore: bool) -> Self {
+        self.ignore_escape_key = ignore;
         self
     }
 
@@ -68,13 +95,23 @@ impl<T: Component> Popup<T> {
             rel_x = rel_x.saturating_sub((rel_x + width).saturating_sub(viewport.width));
         }
 
-        // TODO: be able to specify orientation preference. We want above for most popups, below
-        // for menus/autocomplete.
-        if viewport.height > rel_y + height {
-            rel_y += 1 // position below point
-        } else {
-            rel_y = rel_y.saturating_sub(height) // position above point
-        }
+        let can_put_below = viewport.height > rel_y + height;
+        let can_put_above = rel_y.checked_sub(height).is_some();
+        let final_pos = match self.position_bias {
+            Open::Below => match can_put_below {
+                true => Open::Below,
+                false => Open::Above,
+            },
+            Open::Above => match can_put_above {
+                true => Open::Above,
+                false => Open::Below,
+            },
+        };
+
+        rel_y = match final_pos {
+            Open::Above => rel_y.saturating_sub(height),
+            Open::Below => rel_y + 1,
+        };
 
         (rel_x, rel_y)
     }
@@ -112,9 +149,13 @@ impl<T: Component> Component for Popup<T> {
             _ => return EventResult::Ignored(None),
         };
 
+        if key!(Esc) == key.into() && self.ignore_escape_key {
+            return EventResult::Ignored(None);
+        }
+
         let close_fn: Callback = Box::new(|compositor, _| {
             // remove the layer
-            compositor.pop();
+            compositor.remove(self.id.as_ref());
         });
 
         match key.into() {

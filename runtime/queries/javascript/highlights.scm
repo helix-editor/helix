@@ -163,19 +163,14 @@
 [
   "as"
   "async"
-  "class"
-  "const"
   "debugger"
   "delete"
-  "export"
   "extends"
   "from"
   "function"
   "get"
-  "import"
   "in"
   "instanceof"
-  "let"
   "new"
   "of"
   "set"
@@ -183,10 +178,16 @@
   "target"
   "try"
   "typeof"
-  "var"
   "void"
   "with"
 ] @keyword
+
+[
+  "class"
+  "let"
+  "const"
+  "var"
+] @keyword.storage.type
 
 [
   "switch"
@@ -206,3 +207,9 @@
   "do"
   "await"
 ] @keyword.control
+
+[
+  "import"
+  "export"
+] @keyword.control.import 
+
