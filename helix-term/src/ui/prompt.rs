@@ -550,6 +550,8 @@ impl Component for Prompt {
                 if let Some(register) = self.history_register {
                     let register = cx.editor.registers.get_mut(register);
                     self.change_history(register.read(), CompletionDirection::Backward);
+                    self.recalculate_completion(cx.editor);
+                    self.exit_selection();
                     (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
@@ -557,6 +559,8 @@ impl Component for Prompt {
                 if let Some(register) = self.history_register {
                     let register = cx.editor.registers.get_mut(register);
                     self.change_history(register.read(), CompletionDirection::Forward);
+                    self.recalculate_completion(cx.editor);
+                    self.exit_selection();
                     (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
