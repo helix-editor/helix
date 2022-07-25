@@ -8,7 +8,7 @@ use tui::text::Spans;
 pub use typed::*;
 
 use helix_core::{
-    comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes,
+    comment, coords_at_pos, encoding, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
     increment::date_time::DateTimeIncrementor,
     increment::{number::NumberIncrementor, Increment},
@@ -4515,7 +4515,7 @@ fn shell_keep_pipe(cx: &mut Context) {
 
             for (i, range) in selection.ranges().iter().enumerate() {
                 let fragment = range.slice(text);
-                let (_output, success) = match shell_impl(shell, input, Some(fragment)) {
+                let (_output, success) = match shell_impl(shell, input, Some(fragment.into())) {
                     Ok(result) => result,
                     Err(err) => {
                         cx.editor.set_error(err.to_string());
@@ -4543,13 +4543,20 @@ fn shell_keep_pipe(cx: &mut Context) {
     );
 }
 
-fn shell_impl(
+fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<(Tendril, bool)> {
+    tokio::task::block_in_place(|| {
+        let runtime = tokio::runtime::Handle::current();
+        runtime.block_on(shell_impl_async(shell, cmd, input))
+    })
+}
+
+async fn shell_impl_async(
     shell: &[String],
     cmd: &str,
-    input: Option<RopeSlice>,
+    input: Option<Rope>,
 ) -> anyhow::Result<(Tendril, bool)> {
-    use std::io::Write;
-    use std::process::{Command, Stdio};
+    use std::process::Stdio;
+    use tokio::process::Command;
     ensure!(!shell.is_empty(), "No shell set");
 
     let mut process = Command::new(&shell[0]);
@@ -4570,13 +4577,18 @@ fn shell_impl(
             return Err(e.into());
         }
     };
-    if let Some(input) = input {
-        let mut stdin = process.stdin.take().unwrap();
-        for chunk in input.chunks() {
-            stdin.write_all(chunk.as_bytes())?;
+    let mut stdin = process.stdin.take().unwrap();
+    let input_task = tokio::spawn(async move {
+        if let Some(input) = input {
+            helix_view::document::to_writer(&mut stdin, encoding::UTF_8, &input).await?;
         }
-    }
-    let output = process.wait_with_output()?;
+        Ok::<_, anyhow::Error>(())
+    });
+    let (output, _) = tokio::join! {
+        process.wait_with_output(),
+        input_task,
+    };
+    let output = output?;
 
     if !output.stderr.is_empty() {
         log::error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
@@ -4604,7 +4616,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
 
     for range in selection.ranges() {
         let fragment = range.slice(text);
-        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment)) {
+        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment.into())) {
             Ok(result) => result,
             Err(err) => {
                 cx.editor.set_error(err.to_string());
