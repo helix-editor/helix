@@ -288,8 +288,20 @@ pub mod completers {
             serde_json::json!(Config::default())
                 .as_object()
                 .unwrap()
-                .keys()
-                .cloned()
+                .iter()
+                .map(|(key, value)| {
+                    if let Some(map) = value.as_object() {
+                        let mut v: Vec<String> = map
+                            .keys()
+                            .map(|sub_key| format!("{}.{}", key, sub_key))
+                            .collect();
+                        v.push(key.clone());
+                        v
+                    } else {
+                        vec![key.clone()]
+                    }
+                })
+                .flatten()
                 .collect()
         });
 
