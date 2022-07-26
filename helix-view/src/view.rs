@@ -106,14 +106,14 @@ impl View {
             let width = match gutter_type {
                 GutterType::Diagnostics => 1,
                 GutterType::LineNumbers => 5,
-                GutterType::Padding => 1,
+                GutterType::Spacer => 1,
             };
             gutter_offset += width;
             gutters.push((
                 match gutter_type {
                     GutterType::Diagnostics => gutter::diagnostics_or_breakpoints,
                     GutterType::LineNumbers => gutter::line_numbers,
-                    GutterType::Padding => gutter::padding,
+                    GutterType::Spacer => gutter::padding,
                 },
                 width as usize,
             ));
