@@ -31,3 +31,5 @@
   (arguments ((string) . (_)?))
   (do_block (_)* @test.inside)?)
  (#match? @_keyword "^(test|describe)$")) @test.around
+
+(comment) @comment.around @comment.inside

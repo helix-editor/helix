@@ -1,3 +1,5 @@
+; inherits: javascript
+
 [
   (element)
   (if_statement)

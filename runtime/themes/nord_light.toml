@@ -3,7 +3,7 @@
 "ui.background" = {bg="nord6"}
 "ui.text" = "nord0"
 "ui.selection" = {bg="nord7", fg="nord6"}
-"ui.statusline" = {bg="nord4"}
+"ui.statusline" = {bg="nord4", fg="nord0"}
 "ui.statusline.inactive" = {bg="nord8"}
 "ui.virtual" = "nord8"
 "ui.cursor.match" = {bg="nord8"}
@@ -11,9 +11,17 @@
 "ui.cursorline.primary" = {bg="nord5"}
 "ui.linenr" = {fg="nord7"}
 "ui.linenr.selected" = {fg="nord0", bg="nord5"}
-"ui.menu" = {bg="nord4"}
+"ui.menu" = {bg="nord4",fg="nord0"}
 "ui.menu.selected" = {bg="nord5"}
 "ui.popup" = {bg="nord4"}
+"ui.popup.info" = {bg="nord4",fg="nord0"}
+"ui.help" = {bg="nord4",fg="nord0"}
+
+
+"ui.statusline.normal" = { fg = "nord0", bg = "nord8" }
+"ui.statusline.insert" = { fg = "nord0", bg = "nord13" }
+"ui.statusline.select" = { fg = "nord0", bg = "nord15" }
+
 
 "diagnostic.error" = {fg="nord11", modifiers=["bold"]}
 "diagnostic.warning" = {bg="nord13", modifiers=["bold"]}
