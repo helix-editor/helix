@@ -249,6 +249,8 @@ pub enum StatusLineElement {
 
     /// The cursor position as a percent of the total file
     PositionPercentage,
+    /// A single space
+    Spacer,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -336,7 +338,7 @@ pub enum GutterType {
     /// Show line numbers
     LineNumbers,
     /// Show one blank space
-    Padding,
+    Spacer,
 }
 
 impl std::str::FromStr for GutterType {
@@ -473,11 +475,7 @@ impl Default for Config {
             },
             line_number: LineNumber::Absolute,
             cursorline: false,
-            gutters: vec![
-                GutterType::Diagnostics,
-                GutterType::LineNumbers,
-                GutterType::Padding,
-            ],
+            gutters: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
