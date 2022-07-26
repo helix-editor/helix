@@ -144,6 +144,7 @@ where
         helix_view::editor::StatusLineElement::Selections => render_selections,
         helix_view::editor::StatusLineElement::Position => render_position,
         helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
+        helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
     }
 }
@@ -351,6 +352,19 @@ where
     };
 
     write(context, title, None);
+}
+
+fn render_separator<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let sep = &context.editor.config().statusline.separator;
+
+    write(
+        context,
+        sep.to_string(),
+        Some(context.editor.theme.get("ui.statusline.separator")),
+    );
 }
 
 fn render_spacer<F>(context: &mut RenderContext, write: F)

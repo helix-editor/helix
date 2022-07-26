@@ -203,6 +203,7 @@ pub struct StatusLineConfig {
     pub left: Vec<StatusLineElement>,
     pub center: Vec<StatusLineElement>,
     pub right: Vec<StatusLineElement>,
+    pub separator: String,
 }
 
 impl Default for StatusLineConfig {
@@ -213,6 +214,7 @@ impl Default for StatusLineConfig {
             left: vec![E::Mode, E::Spinner, E::FileName],
             center: vec![],
             right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
+            separator: String::from("│"),
         }
     }
 }
@@ -247,8 +249,12 @@ pub enum StatusLineElement {
     /// The cursor position
     Position,
 
+    /// The separator string
+    Separator,
+
     /// The cursor position as a percent of the total file
     PositionPercentage,
+
     /// A single space
     Spacer,
 }
