@@ -975,6 +975,7 @@ hidden = false
 left = [&quot;mode&quot;, &quot;spinner&quot;]
 center = [&quot;file-name&quot;]
 right = [&quot;diagnostics&quot;, &quot;selections&quot;, &quot;position&quot;, &quot;file-encoding&quot;, &quot;file-line-ending&quot;, &quot;file-type&quot;]
+separator = &quot;│&quot;
 </code></pre>
 <p>The following elements can be configured:</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
@@ -988,6 +989,7 @@ right = [&quot;diagnostics&quot;, &quot;selections&quot;, &quot;position&quot;, 
 <tr><td><code>selections</code></td><td>The number of active selections</td></tr>
 <tr><td><code>position</code></td><td>The cursor position</td></tr>
 <tr><td><code>position-percentage</code></td><td>The cursor position as a percentage of the total number of lines</td></tr>
+<tr><td><code>separator</code></td><td>The string defined in <code>editor.statusline.separator</code> (defaults to <code>&quot;│&quot;</code>)</td></tr>
 <tr><td><code>spacer</code></td><td>Inserts a space between elements (multiple/contiguous spacers may be specified)</td></tr>
 </tbody></table>
 </div>
@@ -1384,6 +1386,7 @@ over it and is merged into the default palette.</p>
 <tr><td><code>ui.statusline.normal</code></td><td>Statusline mode during normal mode (<a href="./configuration.html#editor-section">only if <code>editor.color-modes</code> is enabled</a>)</td></tr>
 <tr><td><code>ui.statusline.insert</code></td><td>Statusline mode during insert mode (<a href="./configuration.html#editor-section">only if <code>editor.color-modes</code> is enabled</a>)</td></tr>
 <tr><td><code>ui.statusline.select</code></td><td>Statusline mode during select mode (<a href="./configuration.html#editor-section">only if <code>editor.color-modes</code> is enabled</a>)</td></tr>
+<tr><td><code>ui.statusline.separator</code></td><td>Separator character in statusline</td></tr>
 <tr><td><code>ui.popup</code></td><td>Documentation popups (e.g space-k)</td></tr>
 <tr><td><code>ui.popup.info</code></td><td>Prompt for multiple key options</td></tr>
 <tr><td><code>ui.window</code></td><td>Border lines separating splits</td></tr>
