@@ -204,17 +204,17 @@ impl MappableCommand {
         extend_line_down, "Extend down",
         copy_selection_on_next_line, "Copy selection on next line",
         copy_selection_on_prev_line, "Copy selection on previous line",
-        move_next_word_start, "Move to beginning of next word",
-        move_prev_word_start, "Move to beginning of previous word",
+        move_next_word_start, "Move to start of next word",
+        move_prev_word_start, "Move to start of previous word",
         move_prev_word_end, "Move to end of previous word",
         move_next_word_end, "Move to end of next word",
-        move_next_long_word_start, "Move to beginning of next long word",
-        move_prev_long_word_start, "Move to beginning of previous long word",
+        move_next_long_word_start, "Move to start of next long word",
+        move_prev_long_word_start, "Move to start of previous long word",
         move_next_long_word_end, "Move to end of next long word",
-        extend_next_word_start, "Extend to beginning of next word",
-        extend_prev_word_start, "Extend to beginning of previous word",
-        extend_next_long_word_start, "Extend to beginning of next long word",
-        extend_prev_long_word_start, "Extend to beginning of previous long word",
+        extend_next_word_start, "Extend to start of next word",
+        extend_prev_word_start, "Extend to start of previous word",
+        extend_next_long_word_start, "Extend to start of next long word",
+        extend_prev_long_word_start, "Extend to start of previous long word",
         extend_next_long_word_end, "Extend to end of next long word",
         extend_next_word_end, "Extend to end of next word",
         find_till_char, "Move till next occurrence of char",
@@ -225,7 +225,7 @@ impl MappableCommand {
         find_prev_char, "Move to previous occurrence of char",
         extend_till_prev_char, "Extend till previous occurrence of char",
         extend_prev_char, "Extend to previous occurrence of char",
-        repeat_last_motion, "repeat last motion(extend_next_char, extend_till_char, find_next_char, find_till_char...)",
+        repeat_last_motion, "Repeat last motion",
         replace, "Replace with new char",
         switch_case, "Switch (toggle) case",
         switch_to_uppercase, "Switch to uppercase",
@@ -236,7 +236,7 @@ impl MappableCommand {
         half_page_down, "Move half page down",
         select_all, "Select whole document",
         select_regex, "Select all regex matches inside selections",
-        split_selection, "Split selection into subselections on regex matches",
+        split_selection, "Split selections on regex matches",
         split_selection_on_newline, "Split selection on newlines",
         search, "Search for regex pattern",
         rsearch, "Reverse search for regex pattern",
@@ -245,25 +245,26 @@ impl MappableCommand {
         extend_search_next, "Add next search match to selection",
         extend_search_prev, "Add previous search match to selection",
         search_selection, "Use current selection as search pattern",
-        global_search, "Global Search in workspace folder",
+        global_search, "Global search in workspace folder",
         extend_line, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
-        extend_to_line_bounds, "Extend selection to line bounds (line-wise selection)",
-        shrink_to_line_bounds, "Shrink selection to line bounds (line-wise selection)",
+        extend_to_line_bounds, "Extend selection to line bounds",
+        shrink_to_line_bounds, "Shrink selection to line bounds",
         delete_selection, "Delete selection",
-        delete_selection_noyank, "Delete selection, without yanking",
-        change_selection, "Change selection (delete and enter insert mode)",
-        change_selection_noyank, "Change selection (delete and enter insert mode, without yanking)",
-        collapse_selection, "Collapse selection onto a single cursor",
+        delete_selection_noyank, "Delete selection without yanking",
+        change_selection, "Change selection",
+        change_selection_noyank, "Change selection without yanking",
+        collapse_selection, "Collapse selection into single cursor",
         flip_selections, "Flip selection cursor and anchor",
-        ensure_selections_forward, "Ensure the selection is in forward direction",
+        ensure_selections_forward, "Ensure all selections face forward",
         insert_mode, "Insert before selection",
-        append_mode, "Insert after selection (append)",
+        append_mode, "Append after selection",
         command_mode, "Enter command mode",
         file_picker, "Open file picker",
         file_picker_in_current_directory, "Open file picker at current working directory",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
+        jumplist_picker, "Open jumplist picker",
         symbol_picker, "Open symbol picker",
         select_references_to_symbol_under_cursor, "Select symbol references",
         workspace_symbol_picker, "Open workspace symbol picker",
@@ -271,7 +272,7 @@ impl MappableCommand {
         workspace_diagnostics_picker, "Open workspace diagnostic picker",
         last_picker, "Open last picker",
         prepend_to_line, "Insert at start of line",
-        append_to_line, "Insert at end of line",
+        append_to_line, "Append to end of line",
         open_below, "Open new line below selection",
         open_above, "Open new line above selection",
         normal_mode, "Enter normal mode",
@@ -318,13 +319,13 @@ impl MappableCommand {
         delete_char_forward, "Delete next char",
         delete_word_backward, "Delete previous word",
         delete_word_forward, "Delete next word",
-        kill_to_line_start, "Delete content till the start of the line",
-        kill_to_line_end, "Delete content till the end of the line",
+        kill_to_line_start, "Delete till start of line",
+        kill_to_line_end, "Delete till end of line",
         undo, "Undo change",
         redo, "Redo change",
         earlier, "Move backward in history",
         later, "Move forward in history",
-        commit_undo_checkpoint, "Commit changes to a new checkpoint",
+        commit_undo_checkpoint, "Commit changes to new checkpoint",
         yank, "Yank selection",
         yank_joined_to_clipboard, "Join and yank selections to clipboard",
         yank_main_selection_to_clipboard, "Yank main selection to clipboard",
@@ -332,7 +333,7 @@ impl MappableCommand {
         yank_main_selection_to_primary_clipboard, "Yank main selection to primary clipboard",
         replace_with_yanked, "Replace with yanked text",
         replace_selections_with_clipboard, "Replace selections by clipboard content",
-        replace_selections_with_primary_clipboard, "Replace selections by primary clipboard content",
+        replace_selections_with_primary_clipboard, "Replace selections by primary clipboard",
         paste_after, "Paste after selection",
         paste_before, "Paste before selection",
         paste_clipboard_after, "Paste clipboard after selections",
@@ -357,19 +358,19 @@ impl MappableCommand {
         rotate_selection_contents_backward, "Rotate selections contents backward",
         expand_selection, "Expand selection to parent syntax node",
         shrink_selection, "Shrink selection to previously expanded syntax node",
-        select_next_sibling, "Select the next sibling in the syntax tree",
-        select_prev_sibling, "Select the previous sibling in the syntax tree",
+        select_next_sibling, "Select next sibling in syntax tree",
+        select_prev_sibling, "Select previous sibling in syntax tree",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
-        save_selection, "Save the current selection to the jumplist",
-        jump_view_right, "Jump to the split to the right",
-        jump_view_left, "Jump to the split to the left",
-        jump_view_up, "Jump to the split above",
-        jump_view_down, "Jump to the split below",
-        swap_view_right, "Swap with the split to the right",
-        swap_view_left, "Swap with the split to the left",
-        swap_view_up, "Swap with the split above",
-        swap_view_down, "Swap with the split below",
+        save_selection, "Save current selection to jumplist",
+        jump_view_right, "Jump to right split",
+        jump_view_left, "Jump to left split",
+        jump_view_up, "Jump to split above",
+        jump_view_down, "Jump to split below",
+        swap_view_right, "Swap with right split",
+        swap_view_left, "Swap with left split",
+        swap_view_up, "Swap with split above",
+        swap_view_down, "Swap with split below",
         transpose_view, "Transpose splits",
         rotate_view, "Goto next window",
         hsplit, "Horizontal bottom split",
@@ -377,7 +378,7 @@ impl MappableCommand {
         vsplit, "Vertical right split",
         vsplit_new, "Vertical right split scratch buffer",
         wclose, "Close window",
-        wonly, "Current window only",
+        wonly, "Close windows except current",
         select_register, "Select register",
         insert_register, "Insert register",
         align_view_middle, "Align view middle",
@@ -413,21 +414,21 @@ impl MappableCommand {
         dap_next, "Step to next",
         dap_variables, "List variables",
         dap_terminate, "End debug session",
-        dap_edit_condition, "Edit condition of the breakpoint on the current line",
-        dap_edit_log, "Edit log message of the breakpoint on the current line",
+        dap_edit_condition, "Edit breakpoint condition on current line",
+        dap_edit_log, "Edit breakpoint log message on current line",
         dap_switch_thread, "Switch current thread",
         dap_switch_stack_frame, "Switch stack frame",
         dap_enable_exceptions, "Enable exception breakpoints",
         dap_disable_exceptions, "Disable exception breakpoints",
         shell_pipe, "Pipe selections through shell command",
-        shell_pipe_to, "Pipe selections into shell command, ignoring command output",
-        shell_insert_output, "Insert output of shell command before each selection",
-        shell_append_output, "Append output of shell command after each selection",
+        shell_pipe_to, "Pipe selections into shell command ignoring output",
+        shell_insert_output, "Insert shell command output before selections",
+        shell_append_output, "Append shell command output after selections",
         shell_keep_pipe, "Filter selections with shell predicate",
-        suspend, "Suspend",
+        suspend, "Suspend and return to shell",
         rename_symbol, "Rename symbol",
-        increment, "Increment",
-        decrement, "Decrement",
+        increment, "Increment item under cursor",
+        decrement, "Decrement item under cursor",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
@@ -2270,6 +2271,87 @@ fn buffer_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
+fn jumplist_picker(cx: &mut Context) {
+    struct JumpMeta {
+        id: DocumentId,
+        path: Option<PathBuf>,
+        selection: Selection,
+        text: String,
+        is_current: bool,
+    }
+
+    impl ui::menu::Item for JumpMeta {
+        type Data = ();
+
+        fn label(&self, _data: &Self::Data) -> Spans {
+            let path = self
+                .path
+                .as_deref()
+                .map(helix_core::path::get_relative_path);
+            let path = match path.as_deref().and_then(Path::to_str) {
+                Some(path) => path,
+                None => SCRATCH_BUFFER_NAME,
+            };
+
+            let mut flags = Vec::new();
+            if self.is_current {
+                flags.push("*");
+            }
+
+            let flag = if flags.is_empty() {
+                "".into()
+            } else {
+                format!(" ({})", flags.join(""))
+            };
+            format!("{} {}{} {}", self.id, path, flag, self.text).into()
+        }
+    }
+
+    let new_meta = |view: &View, doc_id: DocumentId, selection: Selection| {
+        let doc = &cx.editor.documents.get(&doc_id);
+        let text = doc.map_or("".into(), |d| {
+            selection
+                .fragments(d.text().slice(..))
+                .map(Cow::into_owned)
+                .collect::<Vec<_>>()
+                .join(" ")
+        });
+
+        JumpMeta {
+            id: doc_id,
+            path: doc.and_then(|d| d.path().cloned()),
+            selection,
+            text,
+            is_current: view.doc == doc_id,
+        }
+    };
+
+    let picker = FilePicker::new(
+        cx.editor
+            .tree
+            .views()
+            .flat_map(|(view, _)| {
+                view.jumps
+                    .get()
+                    .iter()
+                    .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
+            })
+            .collect(),
+        (),
+        |cx, meta, action| {
+            cx.editor.switch(meta.id, action);
+            let (view, doc) = current!(cx.editor);
+            doc.set_selection(view.id, meta.selection.clone());
+        },
+        |editor, meta| {
+            let doc = &editor.documents.get(&meta.id)?;
+            let line = meta.selection.primary().cursor_line(doc.text().slice(..));
+            Some((meta.path.clone()?, Some((line, line))))
+        },
+    );
+    cx.push_layer(Box::new(overlayed(picker)));
+}
+
 impl ui::menu::Item for MappableCommand {
     type Data = ReverseKeymap;
 
@@ -2974,14 +3056,18 @@ pub mod insert {
 
     pub fn delete_char_backward(cx: &mut Context) {
         let count = cx.count();
-        let (view, doc) = current!(cx.editor);
+        let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
         let indent_unit = doc.indent_unit();
         let tab_size = doc.tab_width();
+        let auto_pairs = doc.auto_pairs(cx.editor);
 
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
                 let pos = range.cursor(text);
+                if pos == 0 {
+                    return (pos, pos, None);
+                }
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
                 // consider to delete by indent level if all characters before `pos` are indent units.
                 let fragment = Cow::from(text.slice(line_start_pos..pos));
@@ -3029,14 +3115,36 @@ pub mod insert {
                         (start, pos, None) // delete!
                     }
                 } else {
-                    // delete char
-                    (
-                        graphemes::nth_prev_grapheme_boundary(text, pos, count),
-                        pos,
-                        None,
-                    )
+                    match (
+                        text.get_char(pos.saturating_sub(1)),
+                        text.get_char(pos),
+                        auto_pairs,
+                    ) {
+                        (Some(_x), Some(_y), Some(ap))
+                            if range.is_single_grapheme(text)
+                                && ap.get(_x).is_some()
+                                && ap.get(_x).unwrap().close == _y =>
+                        // delete both autopaired characters
+                        {
+                            (
+                                graphemes::nth_prev_grapheme_boundary(text, pos, count),
+                                graphemes::nth_next_grapheme_boundary(text, pos, count),
+                                None,
+                            )
+                        }
+                        _ =>
+                        // delete 1 char
+                        {
+                            (
+                                graphemes::nth_prev_grapheme_boundary(text, pos, count),
+                                pos,
+                                None,
+                            )
+                        }
+                    }
                 }
             });
+        let (view, doc) = current!(cx.editor);
         doc.apply(&transaction, view.id);
 
         lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
@@ -4001,13 +4109,11 @@ fn split(cx: &mut Context, action: Action) {
     let (view, doc) = current!(cx.editor);
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
-    let offset = view.offset;
 
     cx.editor.switch(id, action);
 
     // match the selection in the previous view
     let (view, doc) = current!(cx.editor);
-    view.offset = offset;
     doc.set_selection(view.id, selection);
 }
 

@@ -1,4 +1,4 @@
-use helix_core::{coords_at_pos, encoding};
+use helix_core::{coords_at_pos, encoding, Position};
 use helix_view::{
     document::{Mode, WritePermission, SCRATCH_BUFFER_NAME},
     graphics::Rect,
@@ -143,7 +143,9 @@ where
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
         helix_view::editor::StatusLineElement::Selections => render_selections,
         helix_view::editor::StatusLineElement::Position => render_position,
+        helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
         helix_view::editor::StatusLineElement::ReadOnlyIndicator => render_read_only_indicator,
+        helix_view::editor::StatusLineElement::Spacer => render_spacer,
     }
 }
 
@@ -251,22 +253,38 @@ where
     );
 }
 
-fn render_position<F>(context: &mut RenderContext, write: F)
-where
-    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-{
-    let position = coords_at_pos(
+fn get_position(context: &RenderContext) -> Position {
+    coords_at_pos(
         context.doc.text().slice(..),
         context
             .doc
             .selection(context.view.id)
             .primary()
             .cursor(context.doc.text().slice(..)),
-    );
+    )
+}
 
+fn render_position<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let position = get_position(context);
     write(
         context,
         format!(" {}:{} ", position.row + 1, position.col + 1),
+        None,
+    );
+}
+
+fn render_position_percentage<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let position = get_position(context);
+    let maxrows = context.doc.text().len_lines();
+    write(
+        context,
+        format!("{}%", (position.row + 1) * 100 / maxrows),
         None,
     );
 }
@@ -335,6 +353,7 @@ where
 
     write(context, title, None);
 }
+
 fn render_read_only_indicator<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
@@ -346,4 +365,11 @@ where
     };
 
     write(context, readonly, None);
+}
+
+fn render_spacer<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    write(context, String::from(" "), None);
 }

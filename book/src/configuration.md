@@ -38,7 +38,7 @@ hidden = false
 | `shell` | Shell to use when running external commands. | Unix: `["sh", "-c"]`<br/>Windows: `["cmd", "/C"]` |
 | `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers. | `absolute` |
 | `cursorline` | Highlight all lines with a cursor. | `false` |
-| `gutters` | Gutters to display: Available are `diagnostics` and `line-numbers` and `padding`, note that `diagnostics` also includes other features like breakpoints | `["diagnostics", "line-numbers", "padding"]` |
+| `gutters` | Gutters to display: Available are `diagnostics` and `line-numbers` and `spacer`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "line-numbers"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
 | `auto-format` | Enable automatic formatting on save. | `true` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
@@ -80,6 +80,8 @@ The following elements can be configured:
 | `diagnostics` | The number of warnings and/or errors |
 | `selections` | The number of active selections |
 | `position` | The cursor position |
+| `position-percentage` | The cursor position as a percentage of the total number of lines |
+| `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
 
 ### `[editor.lsp]` Section
 

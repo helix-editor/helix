@@ -58,8 +58,13 @@ impl JumpList {
     pub fn remove(&mut self, doc_id: &DocumentId) {
         self.jumps.retain(|(other_id, _)| other_id != doc_id);
     }
+
+    pub fn get(&self) -> &[Jump] {
+        &self.jumps
+    }
 }
 
+#[derive(Clone)]
 pub struct View {
     pub id: ViewId,
     pub offset: Position,
@@ -101,17 +106,20 @@ impl View {
             let width = match gutter_type {
                 GutterType::Diagnostics => 1,
                 GutterType::LineNumbers => 5,
-                GutterType::Padding => 1,
+                GutterType::Spacer => 1,
             };
             gutter_offset += width;
             gutters.push((
                 match gutter_type {
                     GutterType::Diagnostics => gutter::diagnostics_or_breakpoints,
                     GutterType::LineNumbers => gutter::line_numbers,
-                    GutterType::Padding => gutter::padding,
+                    GutterType::Spacer => gutter::padding,
                 },
                 width as usize,
             ));
+        }
+        if !gutter_types.is_empty() {
+            gutter_offset += 1;
         }
         Self {
             id: ViewId::default(),
@@ -341,11 +349,7 @@ mod tests {
     fn test_text_pos_at_screen_coords() {
         let mut view = View::new(
             DocumentId::default(),
-            vec![
-                GutterType::Diagnostics,
-                GutterType::LineNumbers,
-                GutterType::Padding,
-            ],
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
@@ -392,10 +396,7 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_without_line_numbers_gutter() {
-        let mut view = View::new(
-            DocumentId::default(),
-            vec![GutterType::Diagnostics, GutterType::Padding],
-        );
+        let mut view = View::new(DocumentId::default(), vec![GutterType::Diagnostics]);
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let text = rope.slice(..);
@@ -421,11 +422,7 @@ mod tests {
     fn test_text_pos_at_screen_coords_cjk() {
         let mut view = View::new(
             DocumentId::default(),
-            vec![
-                GutterType::Diagnostics,
-                GutterType::LineNumbers,
-                GutterType::Padding,
-            ],
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
@@ -465,11 +462,7 @@ mod tests {
     fn test_text_pos_at_screen_coords_graphemes() {
         let mut view = View::new(
             DocumentId::default(),
-            vec![
-                GutterType::Diagnostics,
-                GutterType::LineNumbers,
-                GutterType::Padding,
-            ],
+            vec![GutterType::Diagnostics, GutterType::LineNumbers],
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");

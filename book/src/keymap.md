@@ -1,7 +1,27 @@
 # Keymap
 
-- Mappings marked (**LSP**) require an active language server for the file.
-- Mappings marked (**TS**) require a tree-sitter grammar for the filetype.
+- [Normal mode](#normal-mode)
+  - [Movement](#movement)
+  - [Changes](#changes)
+    - [Shell](#shell)
+  - [Selection manipulation](#selection-manipulation)
+  - [Search](#search)
+  - [Minor modes](#minor-modes)
+    - [View mode](#view-mode)
+    - [Goto mode](#goto-mode)
+    - [Match mode](#match-mode)
+    - [Window mode](#window-mode)
+    - [Space mode](#space-mode)
+      - [Popup](#popup)
+    - [Unimpaired](#unimpaired)
+- [Insert Mode](#insert-mode)
+- [Select / extend mode](#select--extend-mode)
+- [Picker](#picker)
+- [Prompt](#prompt)
+
+> 💡 Mappings marked (**LSP**) require an active language server for the file.
+
+> 💡 Mappings marked (**TS**) require a tree-sitter grammar for the filetype.
 
 ## Normal mode
 
@@ -238,6 +258,7 @@ This layer is a kludge of mappings, mostly pickers.
 | -----   | -----------                                                             | -------                             |
 | `f`     | Open file picker                                                        | `file_picker`                       |
 | `b`     | Open buffer picker                                                      | `buffer_picker`                     |
+| `j`     | Open jumplist picker                                                    | `jumplist_picker`                   |
 | `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                             |
 | `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                     |
 | `S`     | Open workspace symbol picker (**LSP**)                                  | `workspace_symbol_picker`           |
@@ -336,7 +357,7 @@ mode before pressing `n` or `N` makes it possible to keep the current
 selection. Toggling it on and off during your iterative searching allows
 you to selectively add search terms to your selections.
 
-# Picker
+## Picker
 
 Keys to use within picker. Remapping currently not supported.
 
@@ -355,7 +376,7 @@ Keys to use within picker. Remapping currently not supported.
 | `Ctrl-t`                     | Toggle preview    |
 | `Escape`, `Ctrl-c`           | Close picker      |
 
-# Prompt
+## Prompt
 
 Keys to use within prompt, Remapping currently not supported.
 
