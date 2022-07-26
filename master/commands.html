@@ -141,18 +141,18 @@
 <p>Command mode can be activated by pressing <code>:</code>, similar to vim. Built-in commands:</p>
 <div class="table-wrapper"><table><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>:quit</code>, <code>:q</code></td><td>Close the current view.</td></tr>
-<tr><td><code>:quit!</code>, <code>:q!</code></td><td>Close the current view forcefully (ignoring unsaved changes).</td></tr>
+<tr><td><code>:quit!</code>, <code>:q!</code></td><td>Force close the current view, ignoring unsaved changes.</td></tr>
 <tr><td><code>:open</code>, <code>:o</code></td><td>Open a file from disk into the current view.</td></tr>
 <tr><td><code>:buffer-close</code>, <code>:bc</code>, <code>:bclose</code></td><td>Close the current buffer.</td></tr>
-<tr><td><code>:buffer-close!</code>, <code>:bc!</code>, <code>:bclose!</code></td><td>Close the current buffer forcefully (ignoring unsaved changes).</td></tr>
+<tr><td><code>:buffer-close!</code>, <code>:bc!</code>, <code>:bclose!</code></td><td>Close the current buffer forcefully, ignoring unsaved changes.</td></tr>
 <tr><td><code>:buffer-close-others</code>, <code>:bco</code>, <code>:bcloseother</code></td><td>Close all buffers but the currently focused one.</td></tr>
-<tr><td><code>:buffer-close-others!</code>, <code>:bco!</code>, <code>:bcloseother!</code></td><td>Close all buffers but the currently focused one.</td></tr>
-<tr><td><code>:buffer-close-all</code>, <code>:bca</code>, <code>:bcloseall</code></td><td>Close all buffers, without quitting.</td></tr>
-<tr><td><code>:buffer-close-all!</code>, <code>:bca!</code>, <code>:bcloseall!</code></td><td>Close all buffers forcefully (ignoring unsaved changes), without quitting.</td></tr>
-<tr><td><code>:buffer-next</code>, <code>:bn</code>, <code>:bnext</code></td><td>Go to next buffer.</td></tr>
-<tr><td><code>:buffer-previous</code>, <code>:bp</code>, <code>:bprev</code></td><td>Go to previous buffer.</td></tr>
+<tr><td><code>:buffer-close-others!</code>, <code>:bco!</code>, <code>:bcloseother!</code></td><td>Force close all buffers but the currently focused one.</td></tr>
+<tr><td><code>:buffer-close-all</code>, <code>:bca</code>, <code>:bcloseall</code></td><td>Close all buffers without quitting.</td></tr>
+<tr><td><code>:buffer-close-all!</code>, <code>:bca!</code>, <code>:bcloseall!</code></td><td>Force close all buffers ignoring unsaved changes without quitting.</td></tr>
+<tr><td><code>:buffer-next</code>, <code>:bn</code>, <code>:bnext</code></td><td>Goto next buffer.</td></tr>
+<tr><td><code>:buffer-previous</code>, <code>:bp</code>, <code>:bprev</code></td><td>Goto previous buffer.</td></tr>
 <tr><td><code>:write</code>, <code>:w</code></td><td>Write changes to disk. Accepts an optional path (:write some/path.txt)</td></tr>
-<tr><td><code>:write!</code>, <code>:w!</code></td><td>Write changes to disk forcefully (creating necessary subdirectories). Accepts an optional path (:write some/path.txt)</td></tr>
+<tr><td><code>:write!</code>, <code>:w!</code></td><td>Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write some/path.txt)</td></tr>
 <tr><td><code>:new</code>, <code>:n</code></td><td>Create a new scratch buffer.</td></tr>
 <tr><td><code>:format</code>, <code>:fmt</code></td><td>Format the file using the LSP formatter.</td></tr>
 <tr><td><code>:indent-style</code></td><td>Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.)</td></tr>
@@ -165,9 +165,9 @@
 <tr><td><code>:write-quit-all</code>, <code>:wqa</code>, <code>:xa</code></td><td>Write changes from all buffers to disk and close all views.</td></tr>
 <tr><td><code>:write-quit-all!</code>, <code>:wqa!</code>, <code>:xa!</code></td><td>Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes).</td></tr>
 <tr><td><code>:quit-all</code>, <code>:qa</code></td><td>Close all views.</td></tr>
-<tr><td><code>:quit-all!</code>, <code>:qa!</code></td><td>Close all views forcefully (ignoring unsaved changes).</td></tr>
+<tr><td><code>:quit-all!</code>, <code>:qa!</code></td><td>Force close all views ignoring unsaved changes.</td></tr>
 <tr><td><code>:cquit</code>, <code>:cq</code></td><td>Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).</td></tr>
-<tr><td><code>:cquit!</code>, <code>:cq!</code></td><td>Quit with exit code (default 1) forcefully (ignoring unsaved changes). Accepts an optional integer exit code (:cq! 2).</td></tr>
+<tr><td><code>:cquit!</code>, <code>:cq!</code></td><td>Force quit with exit code (default 1) ignoring unsaved changes. Accepts an optional integer exit code (:cq! 2).</td></tr>
 <tr><td><code>:theme</code></td><td>Change the editor theme.</td></tr>
 <tr><td><code>:clipboard-yank</code></td><td>Yank main selection into system clipboard.</td></tr>
 <tr><td><code>:clipboard-yank-join</code></td><td>Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.</td></tr>
@@ -182,7 +182,7 @@
 <tr><td><code>:show-clipboard-provider</code></td><td>Show clipboard provider name in status bar.</td></tr>
 <tr><td><code>:change-current-directory</code>, <code>:cd</code></td><td>Change the current working directory.</td></tr>
 <tr><td><code>:show-directory</code>, <code>:pwd</code></td><td>Show the current working directory.</td></tr>
-<tr><td><code>:encoding</code></td><td>Set encoding based on <code>https://encoding.spec.whatwg.org</code></td></tr>
+<tr><td><code>:encoding</code></td><td>Set encoding. Based on <code>https://encoding.spec.whatwg.org</code>.</td></tr>
 <tr><td><code>:reload</code></td><td>Discard changes and reload from the source file.</td></tr>
 <tr><td><code>:tree-sitter-scopes</code></td><td>Display tree sitter scopes, primarily for theming and development.</td></tr>
 <tr><td><code>:debug-start</code>, <code>:dbg</code></td><td>Start a debug session from a given template with given parameters.</td></tr>
@@ -193,7 +193,7 @@
 <tr><td><code>:hsplit</code>, <code>:hs</code>, <code>:sp</code></td><td>Open the file in a horizontal split.</td></tr>
 <tr><td><code>:hsplit-new</code>, <code>:hnew</code></td><td>Open a scratch buffer in a horizontal split.</td></tr>
 <tr><td><code>:tutor</code></td><td>Open the tutorial.</td></tr>
-<tr><td><code>:goto</code>, <code>:g</code></td><td>Go to line number.</td></tr>
+<tr><td><code>:goto</code>, <code>:g</code></td><td>Goto line number.</td></tr>
 <tr><td><code>:set-language</code>, <code>:lang</code></td><td>Set the language of current buffer.</td></tr>
 <tr><td><code>:set-option</code>, <code>:set</code></td><td>Set a config option at runtime.<br>For example to disable smart case search, use <code>:set search.smart-case false</code>.</td></tr>
 <tr><td><code>:get-option</code>, <code>:get</code></td><td>Get the current value of a config option.</td></tr>
@@ -201,8 +201,8 @@
 <tr><td><code>:rsort</code></td><td>Sort ranges in selection in reverse order.</td></tr>
 <tr><td><code>:reflow</code></td><td>Hard-wrap the current selection of lines to a given width.</td></tr>
 <tr><td><code>:tree-sitter-subtree</code>, <code>:ts-subtree</code></td><td>Display tree sitter subtree under cursor, primarily for debugging queries.</td></tr>
-<tr><td><code>:config-reload</code></td><td>Refreshes helix's config.</td></tr>
-<tr><td><code>:config-open</code></td><td>Open the helix config.toml file.</td></tr>
+<tr><td><code>:config-reload</code></td><td>Refresh user config.</td></tr>
+<tr><td><code>:config-open</code></td><td>Open the user config.toml file.</td></tr>
 <tr><td><code>:log-open</code></td><td>Open the helix log file.</td></tr>
 <tr><td><code>:insert-output</code></td><td>Run shell command, inserting output after each selection.</td></tr>
 <tr><td><code>:append-output</code></td><td>Run shell command, appending output after each selection.</td></tr>
