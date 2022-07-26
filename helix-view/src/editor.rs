@@ -246,6 +246,9 @@ pub enum StatusLineElement {
 
     /// The cursor position
     Position,
+
+    /// A single space
+    Spacer,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
