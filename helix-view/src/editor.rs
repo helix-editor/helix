@@ -1140,7 +1140,6 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            log::error!("abbrs: {:?}", self.abbreviations);
             let mut doc = Document::open(
                 &path,
                 None,
