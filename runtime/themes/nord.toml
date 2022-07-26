@@ -15,6 +15,9 @@
 "ui.background" = { bg = "nord0" }
 "ui.statusline.inactive" = { fg = "nord8", bg = "nord1" }
 
+"ui.statusline.normal" = { fg = "nord0", bg = "nord8" }
+"ui.statusline.insert" = { fg = "nord0", bg = "nord13" }
+"ui.statusline.select" = { fg = "nord0", bg = "nord15" }
 
 # nord1 - status bars, panels, modals, autocompletion
 "ui.statusline" = { fg = "nord4", bg = "#4c566a" }
