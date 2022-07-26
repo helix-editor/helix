@@ -58,7 +58,7 @@ pub enum OffsetEncoding {
 
 pub mod util {
     use super::*;
-    use helix_core::{Range, Rope, Transaction};
+    use helix_core::{diagnostic::NumberOrString, Range, Rope, Transaction};
 
     /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
     ///
@@ -78,11 +78,19 @@ pub mod util {
             Error => lsp::DiagnosticSeverity::ERROR,
         });
 
+        let code = match diag.code.clone() {
+            Some(x) => match x {
+                NumberOrString::Number(x) => Some(lsp::NumberOrString::Number(x)),
+                NumberOrString::String(x) => Some(lsp::NumberOrString::String(x)),
+            },
+            None => None,
+        };
+
         // TODO: add support for Diagnostic.data
         lsp::Diagnostic::new(
             range_to_lsp_range(doc, range, offset_encoding),
             severity,
-            None,
+            code,
             None,
             diag.message.to_owned(),
             None,
