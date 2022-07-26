@@ -214,7 +214,7 @@ impl Default for StatusLineConfig {
             left: vec![E::Mode, E::Spinner, E::FileName],
             center: vec![],
             right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
-            separator: String::new(),
+            separator: String::from("│"),
         }
     }
 }
