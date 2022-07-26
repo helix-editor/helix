@@ -247,6 +247,8 @@ pub enum StatusLineElement {
     /// The cursor position
     Position,
 
+    /// The cursor position as a percent of the total file
+    PositionPercentage,
     /// A single space
     Spacer,
 }
