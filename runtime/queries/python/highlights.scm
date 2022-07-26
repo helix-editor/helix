@@ -112,7 +112,7 @@
 (interpolation
   "{" @punctuation.special
   "}" @punctuation.special) @embedded
-"(" ")" "[" "]" "{" "}"] @punctuation.bracket
+["(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
 [
   "-"
