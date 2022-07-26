@@ -222,12 +222,20 @@ impl Range {
 
     // groupAt
 
-    /// Consider using `slice` instead.
+    /// Returns the text inside this range given the text of the whole buffer.
+    ///
+    /// The returned `Cow` is a reference if the range of text is inside a single
+    /// chunk of the rope. Otherwise a copy of the text is returned. Consider
+    /// using `slice` instead if you do not need a `Cow` or `String` to avoid copying.
     #[inline]
     pub fn fragment<'a, 'b: 'a>(&'a self, text: RopeSlice<'b>) -> Cow<'b, str> {
         self.slice(text).into()
     }
 
+    /// Returns the text inside this range given the text of the whole buffer.
+    ///
+    /// The returned value is a reference to the passed slice. This method never
+    /// copies any contents.
     #[inline]
     pub fn slice<'a, 'b: 'a>(&'a self, text: RopeSlice<'b>) -> RopeSlice<'b> {
         text.slice(self.from()..self.to())
