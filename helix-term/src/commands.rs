@@ -1597,11 +1597,7 @@ fn search_impl(
                     regex.find_iter(&contents[start..]).last()
                 }
             };
-            let msg = match direction {
-                Direction::Forward => "Cycled to beginning of file",
-                Direction::Backward => "Cycled to end of file",
-            };
-            editor.set_status(msg);
+            editor.set_status("Wrapped around document");
         } else {
             editor.set_error("No more matches");
         }
