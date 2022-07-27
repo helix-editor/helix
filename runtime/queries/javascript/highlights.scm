@@ -66,6 +66,8 @@
 ;-----------
 
 (property_identifier) @variable.other.member
+(shorthand_property_identifier) @variable.other.member
+(shorthand_property_identifier_pattern) @variable.other.member
 
 ; Literals
 ;---------
@@ -149,7 +151,10 @@
   "&&="
   "||="
   "??="
+  "..."
 ] @operator
+
+(ternary_expression ["?" ":"] @operator)
 
 [
   "("
