@@ -63,7 +63,7 @@
 | `:tree-sitter-subtree`, `:ts-subtree` | Display tree sitter subtree under cursor, primarily for debugging queries. |
 | `:config-reload` | Refresh user config. |
 | `:config-open` | Open the user config.toml file. |
-| `:lang-open` | Open the user languages.toml file. |
+| `:languages-open` | Open the user languages.toml file. |
 | `:log-open` | Open the helix log file. |
 | `:insert-output` | Run shell command, inserting output after each selection. |
 | `:append-output` | Run shell command, appending output after each selection. |
