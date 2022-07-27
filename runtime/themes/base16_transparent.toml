@@ -18,7 +18,9 @@
 "ui.statusline.select" = { fg = "magenta", modifiers = ["reversed"] }
 "ui.help" = { fg = "light-gray" }
 "ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "light-yellow", modifiers = ["underlined"] }
 "ui.cursor.primary" = { modifiers = ["reversed", "slow_blink"] }
+"ui.cursor.secondary" = { modifiers = ["reversed"] }
 "ui.virtual.ruler" = { fg = "gray", modifiers = ["reversed"] }
 "ui.virtual.whitespace" = "gray"
 "ui.virtual.indent-guide" = "gray"
@@ -28,7 +30,6 @@
 "constant" = "yellow"
 "attributes" = "yellow"
 "type" = "light-yellow"
-"ui.cursor.match" = { fg = "light-yellow", modifiers = ["underlined"] }
 "string"  = "light-green"
 "variable.other.member" = "green"
 "constant.character.escape" = "light-cyan"
