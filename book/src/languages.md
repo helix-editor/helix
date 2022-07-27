@@ -1,9 +1,14 @@
 # Languages
 
-Language-specific settings and settings for language servers are configured
+Language-specific settings, and language server settings, are configured
 in `languages.toml` files.
 
 ## `languages.toml` files
+
+* Linux and Mac: `~/.config/helix/languages.toml`
+* Windows: `%AppData%\helix\languages.toml`
+
+> Hint: You can easily open the languages config file by typing `:lang-open` within Helix normal mode.
 
 There are three possible `languages.toml` files. The first is compiled into
 Helix and lives in the [Helix repository](https://github.com/helix-editor/helix/blob/master/languages.toml).
