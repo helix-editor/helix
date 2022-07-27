@@ -5,7 +5,7 @@
   body: (statement_block)) @function.around
 
 (export_statement
-  (function_declaration) @function.around) @function.around.start
+  declaration: (function_declaration) @function.around) 
 
 (arrow_function
   body: (statement_block)) @function.around
@@ -21,6 +21,9 @@
 
 (class
   (class_body) @class.inside) @class.around
+
+(export_statement
+  declaration: (class_declaration) @class.around) 
 
 (formal_parameters
   ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
