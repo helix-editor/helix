@@ -1368,7 +1368,8 @@ name = "odin"
 auto-format = false
 scope = "source.odin"
 file-types = ["odin"]
-roots = []
+roots = ["ols.json"]
+language-server = { command = "ols", args = [] }
 comment-token = "//"
 indent = { tab-width = 4, unit = "\t" }
 
