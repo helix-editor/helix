@@ -64,6 +64,7 @@ Statusline elements can be defined as follows:
 left = ["mode", "spinner", "file-name", "read-only-indicator"]
 center = []
 right = ["diagnostics", "selections", "position", "file-encoding", "file-line-ending", "file-type"]
+separator = "│"
 ```
 
 The following elements can be configured:
@@ -81,6 +82,7 @@ The following elements can be configured:
 | `selections` | The number of active selections |
 | `position` | The cursor position |
 | `position-percentage` | The cursor position as a percentage of the total number of lines |
+| `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |
 | `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
 
 ### `[editor.lsp]` Section
