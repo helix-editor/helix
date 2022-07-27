@@ -15,6 +15,11 @@ use fuzzy_matcher::FuzzyMatcher;
 use helix_view::{graphics::Rect, Editor};
 use tui::layout::Constraint;
 
+pub enum SortStrategy {
+    Text,
+    Score,
+}
+
 pub trait Item {
     /// Additional editor state that is used for label calculation.
     type Data;
@@ -66,6 +71,7 @@ pub struct Menu<T: Item> {
     size: (u16, u16),
     viewport: (u16, u16),
     recalculate: bool,
+    sort_strategy: SortStrategy,
 }
 
 impl<T: Item> Menu<T> {
@@ -76,6 +82,7 @@ impl<T: Item> Menu<T> {
     pub fn new(
         options: Vec<T>,
         editor_data: <T as Item>::Data,
+        sort_strategy: SortStrategy,
         callback_fn: impl Fn(&mut Editor, Option<&T>, MenuEvent) + 'static,
     ) -> Self {
         let mut menu = Self {
@@ -90,6 +97,7 @@ impl<T: Item> Menu<T> {
             size: (0, 0),
             viewport: (0, 0),
             recalculate: true,
+            sort_strategy,
         };
 
         // TODO: scoring on empty input should just use a fastpath
@@ -113,10 +121,18 @@ impl<T: Item> Menu<T> {
                         .map(|score| (index, score))
                 }),
         );
-        // matches.sort_unstable_by_key(|(_, score)| -score);
-        self.matches.sort_unstable_by_key(|(index, _score)| {
-            self.options[*index].sort_text(&self.editor_data)
-        });
+
+        // Match according to sorting strategy
+        match self.sort_strategy {
+            SortStrategy::Text => {
+                self.matches.sort_unstable_by_key(|(index, _score)| {
+                    self.options[*index].sort_text(&self.editor_data)
+                });
+            }
+            SortStrategy::Score => {
+                self.matches.sort_unstable_by_key(|(_, score)| -score);
+            }
+        };
 
         // reset cursor position
         self.cursor = None;

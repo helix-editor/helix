@@ -10,7 +10,10 @@ use helix_core::{Change, Transaction};
 use helix_view::{graphics::Rect, Document, Editor};
 
 use crate::commands;
-use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
+use crate::ui::{
+    menu::{self, SortStrategy},
+    Markdown, Menu, Popup, PromptEvent,
+};
 
 use helix_lsp::{lsp, util};
 use lsp::CompletionItem;
@@ -94,128 +97,136 @@ impl Completion {
         start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
-        let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
-            fn item_to_transaction(
-                doc: &Document,
-                item: &CompletionItem,
-                offset_encoding: helix_lsp::OffsetEncoding,
-                start_offset: usize,
-                trigger_offset: usize,
-            ) -> Transaction {
-                let transaction = if let Some(edit) = &item.text_edit {
-                    let edit = match edit {
-                        lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
-                        lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                            unimplemented!("completion: insert_and_replace {:?}", item)
-                        }
-                    };
+        let menu = Menu::new(
+            items,
+            (),
+            SortStrategy::Score,
+            move |editor: &mut Editor, item, event| {
+                fn item_to_transaction(
+                    doc: &Document,
+                    item: &CompletionItem,
+                    offset_encoding: helix_lsp::OffsetEncoding,
+                    start_offset: usize,
+                    trigger_offset: usize,
+                ) -> Transaction {
+                    let transaction = if let Some(edit) = &item.text_edit {
+                        let edit = match edit {
+                            lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
+                            lsp::CompletionTextEdit::InsertAndReplace(item) => {
+                                unimplemented!("completion: insert_and_replace {:?}", item)
+                            }
+                        };
 
-                    util::generate_transaction_from_edits(
-                        doc.text(),
-                        vec![edit],
-                        offset_encoding, // TODO: should probably transcode in Client
-                    )
-                } else {
-                    let text = item.insert_text.as_ref().unwrap_or(&item.label);
-                    // Some LSPs just give you an insertText with no offset ¯\_(ツ)_/¯
-                    // in these cases we need to check for a common prefix and remove it
-                    let prefix = Cow::from(doc.text().slice(start_offset..trigger_offset));
-                    let text = text.trim_start_matches::<&str>(&prefix);
-                    Transaction::change(
-                        doc.text(),
-                        vec![(trigger_offset, trigger_offset, Some(text.into()))].into_iter(),
-                    )
-                };
-
-                transaction
-            }
-
-            fn completion_changes(transaction: &Transaction, trigger_offset: usize) -> Vec<Change> {
-                transaction
-                    .changes_iter()
-                    .filter(|(start, end, _)| (*start..=*end).contains(&trigger_offset))
-                    .collect()
-            }
-
-            let (view, doc) = current!(editor);
-
-            // if more text was entered, remove it
-            doc.restore(view.id);
-
-            match event {
-                PromptEvent::Abort => {
-                    doc.restore(view.id);
-                    editor.last_completion = None;
-                }
-                PromptEvent::Update => {
-                    // always present here
-                    let item = item.unwrap();
-
-                    let transaction = item_to_transaction(
-                        doc,
-                        item,
-                        offset_encoding,
-                        start_offset,
-                        trigger_offset,
-                    );
-
-                    // initialize a savepoint
-                    doc.savepoint();
-                    doc.apply(&transaction, view.id);
-
-                    editor.last_completion = Some(CompleteAction {
-                        trigger_offset,
-                        changes: completion_changes(&transaction, trigger_offset),
-                    });
-                }
-                PromptEvent::Validate => {
-                    // always present here
-                    let item = item.unwrap();
-
-                    let transaction = item_to_transaction(
-                        doc,
-                        item,
-                        offset_encoding,
-                        start_offset,
-                        trigger_offset,
-                    );
-
-                    doc.apply(&transaction, view.id);
-
-                    editor.last_completion = Some(CompleteAction {
-                        trigger_offset,
-                        changes: completion_changes(&transaction, trigger_offset),
-                    });
-
-                    // apply additional edits, mostly used to auto import unqualified types
-                    let resolved_item = if item
-                        .additional_text_edits
-                        .as_ref()
-                        .map(|edits| !edits.is_empty())
-                        .unwrap_or(false)
-                    {
-                        None
+                        util::generate_transaction_from_edits(
+                            doc.text(),
+                            vec![edit],
+                            offset_encoding, // TODO: should probably transcode in Client
+                        )
                     } else {
-                        Self::resolve_completion_item(doc, item.clone())
+                        let text = item.insert_text.as_ref().unwrap_or(&item.label);
+                        // Some LSPs just give you an insertText with no offset ¯\_(ツ)_/¯
+                        // in these cases we need to check for a common prefix and remove it
+                        let prefix = Cow::from(doc.text().slice(start_offset..trigger_offset));
+                        let text = text.trim_start_matches::<&str>(&prefix);
+                        Transaction::change(
+                            doc.text(),
+                            vec![(trigger_offset, trigger_offset, Some(text.into()))].into_iter(),
+                        )
                     };
 
-                    if let Some(additional_edits) = resolved_item
-                        .as_ref()
-                        .and_then(|item| item.additional_text_edits.as_ref())
-                        .or(item.additional_text_edits.as_ref())
-                    {
-                        if !additional_edits.is_empty() {
-                            let transaction = util::generate_transaction_from_edits(
-                                doc.text(),
-                                additional_edits.clone(),
-                                offset_encoding, // TODO: should probably transcode in Client
-                            );
-                            doc.apply(&transaction, view.id);
+                    transaction
+                }
+
+                fn completion_changes(
+                    transaction: &Transaction,
+                    trigger_offset: usize,
+                ) -> Vec<Change> {
+                    transaction
+                        .changes_iter()
+                        .filter(|(start, end, _)| (*start..=*end).contains(&trigger_offset))
+                        .collect()
+                }
+
+                let (view, doc) = current!(editor);
+
+                // if more text was entered, remove it
+                doc.restore(view.id);
+
+                match event {
+                    PromptEvent::Abort => {
+                        doc.restore(view.id);
+                        editor.last_completion = None;
+                    }
+                    PromptEvent::Update => {
+                        // always present here
+                        let item = item.unwrap();
+
+                        let transaction = item_to_transaction(
+                            doc,
+                            item,
+                            offset_encoding,
+                            start_offset,
+                            trigger_offset,
+                        );
+
+                        // initialize a savepoint
+                        doc.savepoint();
+                        doc.apply(&transaction, view.id);
+
+                        editor.last_completion = Some(CompleteAction {
+                            trigger_offset,
+                            changes: completion_changes(&transaction, trigger_offset),
+                        });
+                    }
+                    PromptEvent::Validate => {
+                        // always present here
+                        let item = item.unwrap();
+
+                        let transaction = item_to_transaction(
+                            doc,
+                            item,
+                            offset_encoding,
+                            start_offset,
+                            trigger_offset,
+                        );
+
+                        doc.apply(&transaction, view.id);
+
+                        editor.last_completion = Some(CompleteAction {
+                            trigger_offset,
+                            changes: completion_changes(&transaction, trigger_offset),
+                        });
+
+                        // apply additional edits, mostly used to auto import unqualified types
+                        let resolved_item = if item
+                            .additional_text_edits
+                            .as_ref()
+                            .map(|edits| !edits.is_empty())
+                            .unwrap_or(false)
+                        {
+                            None
+                        } else {
+                            Self::resolve_completion_item(doc, item.clone())
+                        };
+
+                        if let Some(additional_edits) = resolved_item
+                            .as_ref()
+                            .and_then(|item| item.additional_text_edits.as_ref())
+                            .or(item.additional_text_edits.as_ref())
+                        {
+                            if !additional_edits.is_empty() {
+                                let transaction = util::generate_transaction_from_edits(
+                                    doc.text(),
+                                    additional_edits.clone(),
+                                    offset_encoding, // TODO: should probably transcode in Client
+                                );
+                                doc.apply(&transaction, view.id);
+                            }
                         }
                     }
-                }
-            };
-        });
+                };
+            },
+        );
         let popup = Popup::new(Self::ID, menu);
         let mut completion = Self {
             popup,
