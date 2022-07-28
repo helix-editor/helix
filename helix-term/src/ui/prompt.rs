@@ -84,10 +84,12 @@ impl Prompt {
         }
     }
 
-    pub fn with_line(mut self, line: String) -> Self {
+    pub fn with_line(mut self, line: String, editor: &Editor) -> Self {
         let cursor = line.len();
         self.line = line;
         self.cursor = cursor;
+        self.exit_selection();
+        self.recalculate_completion(editor);
         self
     }
 
