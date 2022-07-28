@@ -25,8 +25,15 @@ select = "underline"
 hidden = false
 ```
 
+<<<<<<< HEAD
 You may also specify a file to use for configuration with the `-c` or
 `--config` CLI argument: `hx -c path/to/custom-config.toml`.
+=======
+Editor configuration may also be overridden local to a project by creating
+a `config.toml` file under a `.helix` directory. Its settings will be merged
+with the configuration directory `config.toml` and the built-in configuration.
+
+>>>>>>> a4a8e122 (docs: add section about local config, written like the one for languages)
 
 ## Editor
 
