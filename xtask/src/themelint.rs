@@ -8,14 +8,17 @@ pub fn lint_all() -> Result<(), DynError> {
         .unwrap()
         .filter_map(|entry| {
             let path = entry.ok()?.path();
-            if path.is_dir() {
+            let name = path.file_name()?.to_string_lossy().to_string();
+            if path.is_dir() || name.contains("README") {
                 None
             } else {
-                Some(path.file_name()?.to_string_lossy().to_string())
+                Some(name)
             }
         })
         .collect::<Vec<String>>();
     let mut errors = vec![];
+    let files_count = files.len();
+    println!("{{");
     files
         .into_iter()
         .for_each(|path| match lint(path.replace(".toml", "")) {
@@ -25,6 +28,11 @@ pub fn lint_all() -> Result<(), DynError> {
             }
             _ => return,
         });
+    println!(
+        "\"status\":\"{} of {} themes had issues\"}}",
+        errors.len(),
+        files_count
+    );
     if errors.len() > 0 {
         Err(errors.join(" ").into())
     } else {
@@ -33,21 +41,53 @@ pub fn lint_all() -> Result<(), DynError> {
 }
 
 pub fn lint(file: String) -> Result<(), DynError> {
-    let path = paths::themes().join(file + ".toml");
+    let path = paths::themes().join(file.clone() + ".toml");
     let theme = std::fs::read(&path).unwrap();
     let theme: Theme = toml::from_slice(&theme).expect("Failed to parse theme");
     let check = vec![
         "ui.background",
-        "ui.virtual",
+        "ui.background.separator",
         "ui.cursor",
-        "ui.selection",
+        "ui.cursor.insert",
+        "ui.cursor.select",
+        "ui.cursor.match",
+        "ui.cursor.primary",
         "ui.linenr",
-        "ui.text",
-        "ui.popup",
-        "ui.window",
-        "ui.menu",
+        "ui.linenr.selected",
         "ui.statusline",
+        "ui.statusline.inactive",
+        "ui.statusline.normal",
+        "ui.statusline.insert",
+        "ui.statusline.select",
+        "ui.statusline.separator",
+        "ui.popup",
+        "ui.popup.info",
+        "ui.window",
+        "ui.help",
+        "ui.text",
+        "ui.text.focus",
+        "ui.text.info",
+        "ui.virtual.ruler",
+        "ui.virtual.whitespace",
+        "ui.virtual.indent-guide",
+        "ui.menu",
+        "ui.menu.selected",
+        "ui.menu.scroll",
+        "ui.selection",
+        "ui.selection.primary",
         "ui.cursorline.primary",
+        //"ui.cursorline.secondary",
+        "warning",
+        "error",
+        "info",
+        "hint",
+        "diagnostic",
+        "diagnostic.hint",
+        "diagnostic.info",
+        "diagnostic.warning",
+        "diagnostic.error",
+        "markup.raw.inline",
+        "markup.heading",
     ];
 
     let lint_errors: Vec<String> = check
@@ -55,7 +95,7 @@ pub fn lint(file: String) -> Result<(), DynError> {
         .filter_map(|path| {
             let style = theme.get(path);
             if style.eq(&Style::default()) {
-                Some(path.split(".").take(2).collect::<Vec<&str>>().join("."))
+                Some(path.to_string())
             } else {
                 None
             }
@@ -63,9 +103,20 @@ pub fn lint(file: String) -> Result<(), DynError> {
         .collect();
 
     if lint_errors.len() > 0 {
-        println!("{:?}", path);
-        println!("{:?}", lint_errors);
+        print!("{:?}:", file);
+        print_json_arr(lint_errors);
+        println!(",");
+        Err(path.to_string_lossy().to_string().into())
+    } else {
+        Ok(())
     }
-
-    Ok(())
+}
+fn print_json_arr(arr: Vec<String>) {
+    println!("[");
+    let mut first = true;
+    for err in arr {
+        println!("\t{}\"{}\"", if first { "" } else { "," }, err);
+        first = false;
+    }
+    println!("]");
 }
