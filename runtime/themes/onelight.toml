@@ -76,12 +76,12 @@
 "ui.cursor.primary" = { fg = "white", bg = "black" }
 "ui.cursor.match" = { bg = "light-gray" }
 
-"ui.cursorline.primary" = { fg = "white", bg = "grey-200" }
-"ui.cursorline.secondary" = { fg = "white", bg = "light-white" }
+"ui.cursorline.primary" = { fg = "white", bg = "grey-100" }
+# "ui.cursorline.secondary" = { fg = "white", bg = "grey-200" }
 
 "ui.highlight" = { bg = "light-white" }
 
-"ui.selection" = { bg="light-white", modifiers = ["dim"] }
+"ui.selection" = { bg = "light-white", modifiers = ["dim"] }
 "ui.selection.primary" = { bg = "light-white" }
 
 "ui.virtual" = { fg = "light-white" }
@@ -90,7 +90,7 @@
 "ui.virtual.whitespace" = { fg = "light-white" }
 
 "ui.linenr" = { fg = "grey-500" }
-"ui.linenr.selected" = { fg = "black", modifiers = ["reversed"] }
+"ui.linenr.selected" = { fg = "black", modifiers = ["dim"] }
 
 "ui.statusline" = { fg = "black", bg = "light-white" }
 "ui.statusline.inactive" = { fg = "gray", bg = "light-white" }
@@ -101,10 +101,10 @@
 "ui.text" = { fg = "black" }
 "ui.text.focus" = { fg = "red", bg = "light-white", modifiers = ["bold"] }
 
-"ui.help" = { fg = "black", bg = "light-white" }
+"ui.help" = { fg = "black", bg = "grey-200" }
 "ui.popup" = { fg = "black", bg = "grey-200" }
-"ui.window" = { fg = "black", bg = "grey-200" }
-"ui.menu" = { fg = "black", bg = "grey-200" }
+"ui.window" = { fg = "black", bg = "light-white" }
+"ui.menu" = { fg = "black", bg = "light-white" }
 "ui.menu.selected" = { fg = "white", bg = "light-blue" }
 
 [palette]
@@ -118,7 +118,8 @@ green = "#24A443"
 gold = "#D35400"
 cyan = "#0086C1"
 black = "#282C34"
-light-white = "#E0E0E0"
+light-white = "#E3E3E3"
 gray = "#5C6370"
-grey-200 = "#EEEEEE"
+grey-100 = "#F3F3F3"
+grey-200 = "#EDEDED"
 grey-500 = "#9E9E9E"
