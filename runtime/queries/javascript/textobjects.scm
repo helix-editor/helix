@@ -1,14 +1,14 @@
 (function_declaration
-  body: (_)) @function.around
+  body: (_) @function.inside) @function.around
 
 (function
-  body: (_)) @function.around
+  body: (_) @function.inside) @function.around
 
 (arrow_function
-  body: (_)) @function.around
+  body: (_) @function.inside) @function.around
 
 (method_definition
-  body: (_)) @function.around
+  body: (_) @function.inside) @function.around
 
 (generator_function_declaration
   body: (_) @function.inside) @function.around

@@ -1,7 +1,6 @@
 ; inherits: javascript
 
-(interface_declaration
-  name: (_) ) @class.around
-  
-(type_alias_declaration
-  name: (_) ) @class.around
+[
+(interface_declaration)
+(type_alias_declaration)
+] @class.around
