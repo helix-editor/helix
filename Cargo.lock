@@ -1422,5 +1422,6 @@ version = "0.6.0"
 dependencies = [
  "helix-core",
  "helix-term",
+ "helix-view",
  "toml",
 ]
