@@ -213,13 +213,15 @@ impl Prompt {
         if let Ok(Some(pos)) = cursor.next_boundary(&self.line, 0) {
             self.cursor = pos;
         }
-        self.recalculate_completion(cx.editor);
         self.exit_selection();
+        self.recalculate_completion(cx.editor);
     }
 
-    pub fn insert_str(&mut self, s: &str) {
+    pub fn insert_str(&mut self, s: &str, editor: &Editor) {
         self.line.insert_str(self.cursor, s);
         self.cursor += s.len();
+        self.exit_selection();
+        self.recalculate_completion(editor);
     }
 
     pub fn move_cursor(&mut self, movement: Movement) {
@@ -235,65 +237,72 @@ impl Prompt {
         self.cursor = self.line.len();
     }
 
-    pub fn delete_char_backwards(&mut self, cx: &Context) {
+    pub fn delete_char_backwards(&mut self, editor: &Editor) {
         let pos = self.eval_movement(Movement::BackwardChar(1));
         self.line.replace_range(pos..self.cursor, "");
         self.cursor = pos;
 
         self.exit_selection();
-        self.recalculate_completion(cx.editor);
+        self.recalculate_completion(editor);
     }
 
-    pub fn delete_char_forwards(&mut self, cx: &Context) {
+    pub fn delete_char_forwards(&mut self, editor: &Editor) {
         let pos = self.eval_movement(Movement::ForwardChar(1));
         self.line.replace_range(self.cursor..pos, "");
 
         self.exit_selection();
-        self.recalculate_completion(cx.editor);
+        self.recalculate_completion(editor);
     }
 
-    pub fn delete_word_backwards(&mut self, cx: &Context) {
+    pub fn delete_word_backwards(&mut self, editor: &Editor) {
         let pos = self.eval_movement(Movement::BackwardWord(1));
         self.line.replace_range(pos..self.cursor, "");
         self.cursor = pos;
 
         self.exit_selection();
-        self.recalculate_completion(cx.editor);
+        self.recalculate_completion(editor);
     }
 
-    pub fn delete_word_forwards(&mut self, cx: &Context) {
+    pub fn delete_word_forwards(&mut self, editor: &Editor) {
         let pos = self.eval_movement(Movement::ForwardWord(1));
         self.line.replace_range(self.cursor..pos, "");
 
         self.exit_selection();
-        self.recalculate_completion(cx.editor);
+        self.recalculate_completion(editor);
     }
 
-    pub fn kill_to_start_of_line(&mut self, cx: &Context) {
+    pub fn kill_to_start_of_line(&mut self, editor: &Editor) {
         let pos = self.eval_movement(Movement::StartOfLine);
         self.line.replace_range(pos..self.cursor, "");
         self.cursor = pos;
 
         self.exit_selection();
-        self.recalculate_completion(cx.editor);
+        self.recalculate_completion(editor);
     }
 
-    pub fn kill_to_end_of_line(&mut self, cx: &Context) {
+    pub fn kill_to_end_of_line(&mut self, editor: &Editor) {
         let pos = self.eval_movement(Movement::EndOfLine);
         self.line.replace_range(self.cursor..pos, "");
 
         self.exit_selection();
-        self.recalculate_completion(cx.editor);
+        self.recalculate_completion(editor);
     }
 
-    pub fn clear(&mut self, cx: &Context) {
+    pub fn clear(&mut self, editor: &Editor) {
         self.line.clear();
         self.cursor = 0;
-        self.recalculate_completion(cx.editor);
+        self.recalculate_completion(editor);
         self.exit_selection();
     }
 
-    pub fn change_history(&mut self, register: &[String], direction: CompletionDirection) {
+    pub fn change_history(
+        &mut self,
+        cx: &mut Context,
+        register: char,
+        direction: CompletionDirection,
+    ) {
+        let register = cx.editor.registers.get_mut(register).read();
+
         if register.is_empty() {
             return;
         }
@@ -313,6 +322,8 @@ impl Prompt {
         self.history_pos = Some(index);
 
         self.move_end();
+        self.exit_selection();
+        self.recalculate_completion(cx.editor);
     }
 
     pub fn change_completion_selection(&mut self, direction: CompletionDirection) {
@@ -490,16 +501,18 @@ impl Component for Prompt {
             ctrl!('f') | key!(Right) => self.move_cursor(Movement::ForwardChar(1)),
             ctrl!('e') | key!(End) => self.move_end(),
             ctrl!('a') | key!(Home) => self.move_start(),
-            ctrl!('w') | alt!(Backspace) | ctrl!(Backspace) => self.delete_word_backwards(cx),
-            alt!('d') | alt!(Delete) | ctrl!(Delete) => self.delete_word_forwards(cx),
-            ctrl!('k') => self.kill_to_end_of_line(cx),
-            ctrl!('u') => self.kill_to_start_of_line(cx),
+            ctrl!('w') | alt!(Backspace) | ctrl!(Backspace) => {
+                self.delete_word_backwards(cx.editor)
+            }
+            alt!('d') | alt!(Delete) | ctrl!(Delete) => self.delete_word_forwards(cx.editor),
+            ctrl!('k') => self.kill_to_end_of_line(cx.editor),
+            ctrl!('u') => self.kill_to_start_of_line(cx.editor),
             ctrl!('h') | key!(Backspace) => {
-                self.delete_char_backwards(cx);
+                self.delete_char_backwards(cx.editor);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
             ctrl!('d') | key!(Delete) => {
-                self.delete_char_forwards(cx);
+                self.delete_char_forwards(cx.editor);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
             ctrl!('s') => {
@@ -516,7 +529,7 @@ impl Component for Prompt {
                 );
                 let line = text.slice(range.from()..range.to()).to_string();
                 if !line.is_empty() {
-                    self.insert_str(line.as_str());
+                    self.insert_str(line.as_str(), cx.editor);
                     (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
@@ -548,19 +561,13 @@ impl Component for Prompt {
             }
             ctrl!('p') | key!(Up) => {
                 if let Some(register) = self.history_register {
-                    let register = cx.editor.registers.get_mut(register);
-                    self.change_history(register.read(), CompletionDirection::Backward);
-                    self.recalculate_completion(cx.editor);
-                    self.exit_selection();
+                    self.change_history(cx, register, CompletionDirection::Backward);
                     (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
             ctrl!('n') | key!(Down) => {
                 if let Some(register) = self.history_register {
-                    let register = cx.editor.registers.get_mut(register);
-                    self.change_history(register.read(), CompletionDirection::Forward);
-                    self.recalculate_completion(cx.editor);
-                    self.exit_selection();
+                    self.change_history(cx, register, CompletionDirection::Forward);
                     (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
@@ -601,8 +608,8 @@ impl Component for Prompt {
                             .read(c)
                             .and_then(|r| r.first())
                             .map_or("", |r| r.as_str()),
+                        context.editor,
                     );
-                    prompt.recalculate_completion(context.editor);
                 }));
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 return EventResult::Consumed(None);
