@@ -67,7 +67,7 @@
 | nu | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |
-| odin | ✓ |  |  |  |
+| odin | ✓ |  |  | `ols` |
 | openscad | ✓ |  |  | `openscad-language-server` |
 | org | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |
