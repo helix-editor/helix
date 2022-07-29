@@ -274,6 +274,8 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
+    /// Whether to center views by default, Defaults to `false`.
+    pub centered_views: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -772,6 +774,7 @@ impl Default for Config {
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
             soft_wrap: SoftWrap::default(),
+            centered_views: false,
         }
     }
 }
@@ -1241,7 +1244,13 @@ impl Editor {
                     .try_get(self.tree.focus)
                     .filter(|v| id == v.doc) // Different Document
                     .cloned()
-                    .unwrap_or_else(|| View::new(id, self.config().gutters.clone()));
+                    .unwrap_or_else(|| {
+                        View::new(
+                            id,
+                            self.config().gutters.clone(),
+                            self.config().centered_views,
+                        )
+                    });
                 let view_id = self.tree.split(
                     view,
                     match action {
@@ -1398,7 +1407,11 @@ impl Editor {
                 .map(|(&doc_id, _)| doc_id)
                 .next()
                 .unwrap_or_else(|| self.new_document(Document::default(self.config.clone())));
-            let view = View::new(doc_id, self.config().gutters.clone());
+            let view = View::new(
+                doc_id,
+                self.config().gutters.clone(),
+                self.config().centered_views,
+            );
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
             doc.ensure_view_init(view_id);

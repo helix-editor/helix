@@ -179,6 +179,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "C-d" => half_page_down,
 
         "C-w" => { "Window"
+            "c" => toggle_centered_view,
             "C-w" | "w" => rotate_view,
             "C-s" | "s" => hsplit,
             "C-v" | "v" => vsplit,
@@ -242,6 +243,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
                 "E" => dap_disable_exceptions,
             },
             "w" => { "Window"
+                "c" => toggle_centered_view,
                 "C-w" | "w" => rotate_view,
                 "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,

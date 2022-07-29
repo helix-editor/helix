@@ -405,6 +405,7 @@ impl MappableCommand {
         wonly, "Close windows except current",
         select_register, "Select register",
         insert_register, "Insert register",
+        toggle_centered_view, "Toggle centered view",
         align_view_middle, "Align view middle",
         align_view_top, "Align view top",
         align_view_center, "Align view center",
@@ -4569,6 +4570,13 @@ fn insert_register(cx: &mut Context) {
             paste(cx, Paste::Cursor);
         }
     })
+}
+
+fn toggle_centered_view(cx: &mut Context) {
+    let mut view = view_mut!(cx.editor);
+    view.is_centered = !view.is_centered;
+
+    cx.editor.tree.recalculate();
 }
 
 fn align_view_top(cx: &mut Context) {
