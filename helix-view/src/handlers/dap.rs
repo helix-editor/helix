@@ -307,11 +307,18 @@ impl Editor {
                                 e => panic!("Error to start debug console: {:?}", e),
                             })
                     } else {
-                        std::process::Command::new("tmux")
+                        let res = std::process::Command::new("tmux")
                             .arg("split-window")
                             .arg(arguments.args.join(" "))
-                            .spawn()
-                            .unwrap()
+                            .spawn();
+                        match res {
+                            Ok(child) => child,
+                            Err(e) if e.kind() == ErrorKind::NotFound => {
+                                // TODO: Gracefully handle this case without panicing
+                                panic!("Cannot find tmux in PATH");
+                            }
+                            Err(e) => panic!("Error when starting tmux: {:?}", e),
+                        }
                     };
 
                     let _ = debugger
