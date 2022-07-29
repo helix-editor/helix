@@ -1,7 +1,9 @@
 use bitflags::bitflags;
+use serde::Serialize;
 
 bitflags! {
     /// Represents key modifiers (shift, control, alt).
+    #[derive(Serialize)]
     #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
     pub struct KeyModifiers: u8 {
         const SHIFT = 0b0000_0001;
@@ -54,8 +56,8 @@ impl From<crossterm::event::KeyModifiers> for KeyModifiers {
 }
 
 /// Represents a key.
-#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, Hash, Serialize)]
+#[cfg_attr(feature = "serde", derive(Deserialize))]
 pub enum KeyCode {
     /// Backspace key.
     Backspace,

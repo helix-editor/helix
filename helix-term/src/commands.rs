@@ -60,7 +60,10 @@ use std::{
 };
 
 use once_cell::sync::Lazy;
-use serde::de::{self, Deserialize, Deserializer};
+use serde::{
+    de::{self, Deserialize, Deserializer},
+    Serialize, Serializer,
+};
 
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
@@ -486,6 +489,15 @@ impl<'de> Deserialize<'de> for MappableCommand {
     {
         let s = String::deserialize(deserializer)?;
         s.parse().map_err(de::Error::custom)
+    }
+}
+
+impl Serialize for MappableCommand {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.collect_str(&self.to_string())
     }
 }
 

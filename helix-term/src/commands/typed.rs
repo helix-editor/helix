@@ -1,8 +1,14 @@
 use std::ops::Deref;
 
+use crate::application::Application;
+
 use super::*;
 
-use helix_view::editor::{Action, ConfigEvent};
+use helix_loader::config;
+use helix_view::{
+    document,
+    editor::{Action, ConfigEvent},
+};
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -1424,6 +1430,32 @@ fn open_log(
     Ok(())
 }
 
+fn current_keymap(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let show_picker = async move {
+        let call: job::Callback =
+            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                log::debug!("get ui");
+                let ui = compositor.find::<ui::EditorView>().unwrap();
+                //let map = ui.keymaps.map()[&Mode::Normal].clone();
+                let str = toml::to_string(&ui.keymaps.map()[&Mode::Normal].root).unwrap();
+                let doc = Document::from(Rope::from_str(str.as_str()), None);
+                editor.new_file_from_document(Action::Replace, doc);
+            });
+        Ok(call)
+    };
+    cx.jobs.callback(show_picker);
+
+    Ok(())
+}
+
 fn refresh_config(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1964,6 +1996,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Open the helix log file.",
             fun: open_log,
+            completer: None,
+        },
+        TypableCommand {
+            name: "current-keymap",
+            aliases: &[],
+            doc: "Open the current keymap.",
+            fun: current_keymap,
             completer: None,
         },
         TypableCommand {

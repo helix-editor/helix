@@ -8,7 +8,10 @@ use arc_swap::{
     ArcSwap,
 };
 use helix_view::{document::Mode, info::Info, input::KeyEvent};
-use serde::Deserialize;
+use serde::{
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Serialize,
+};
 use std::{
     borrow::Cow,
     collections::{BTreeSet, HashMap},
@@ -40,6 +43,21 @@ impl<'de> Deserialize<'de> for KeyTrieNode {
             order,
             ..Default::default()
         })
+    }
+}
+
+impl Serialize for KeyTrieNode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // 3 is the number of fields in the struct.
+        let mut state = serializer.serialize_struct("KeyTrieNode", 4)?;
+        state.serialize_field("map", &self.map)?;
+        state.serialize_field("name", &self.name)?;
+        state.serialize_field("is_sticky", &self.is_sticky)?;
+        state.serialize_field("order", &self.order)?;
+        state.end()
     }
 }
 
@@ -144,7 +162,7 @@ impl DerefMut for KeyTrieNode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum KeyTrie {
     Leaf(MappableCommand),
@@ -205,7 +223,7 @@ pub enum KeymapResult {
 #[serde(transparent)]
 pub struct Keymap {
     /// Always a Node
-    root: KeyTrie,
+    pub root: KeyTrie,
 }
 
 /// A map of command names to keybinds that will execute the command.
