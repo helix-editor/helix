@@ -13,7 +13,7 @@ use serde::{
     Deserialize, Serialize,
 };
 use std::{
-    borrow::Cow,
+    borrow::{Borrow, Cow},
     collections::{BTreeSet, HashMap},
     ops::{Deref, DerefMut},
     sync::Arc,
@@ -51,13 +51,7 @@ impl Serialize for KeyTrieNode {
     where
         S: Serializer,
     {
-        // 3 is the number of fields in the struct.
-        let mut state = serializer.serialize_struct("KeyTrieNode", 4)?;
-        state.serialize_field("map", &self.map)?;
-        state.serialize_field("name", &self.name)?;
-        state.serialize_field("is_sticky", &self.is_sticky)?;
-        state.serialize_field("order", &self.order)?;
-        state.end()
+        toml::ser::tables_last(&self.map, serializer)
     }
 }
 
