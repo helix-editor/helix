@@ -56,10 +56,12 @@
 # operator, tags, units, punctuations
 "operator" = "red"
 "variable.other.member" = "base8"
+"tag" = "yellow"
 
 # keywords, special
 "keyword" = { fg = "red" }
 "keyword.directive" = "blue"
+"keyword.function" = "blue"
 "variable.parameter" = "#f59762"
 
 # error
