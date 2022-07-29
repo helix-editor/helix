@@ -38,7 +38,7 @@ hidden = false
 | `shell` | Shell to use when running external commands. | Unix: `["sh", "-c"]`<br/>Windows: `["cmd", "/C"]` |
 | `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers. | `absolute` |
 | `cursorline` | Highlight all lines with a cursor. | `false` |
-| `gutters` | Gutters to display: Available are `diagnostics` and `line-numbers`, note that `diagnostics` also includes other features like breakpoints | `["diagnostics", "line-numbers"]` |
+| `gutters` | Gutters to display: Available are `diagnostics` and `line-numbers` and `spacer`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "line-numbers"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
 | `auto-format` | Enable automatic formatting on save. | `true` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
@@ -48,19 +48,56 @@ hidden = false
 | `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file. | `[]` |
 | `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
 
+### `[editor.statusline]` Section
+
+Allows configuring the statusline at the bottom of the editor.
+
+The configuration distinguishes between three areas of the status line:
+
+`[ ... ... LEFT ... ... | ... ... ... ... CENTER ... ... ... ... | ... ... RIGHT ... ... ]`
+
+Statusline elements can be defined as follows:
+
+```toml
+[editor.statusline]
+left = ["mode", "spinner"]
+center = ["file-name"]
+right = ["diagnostics", "selections", "position", "file-encoding", "file-line-ending", "file-type"]
+separator = "│"
+```
+
+The following elements can be configured:
+
+| Key    | Description |
+| ------ | ----------- |
+| `mode` | The current editor mode (`NOR`/`INS`/`SEL`) |
+| `spinner` | A progress spinner indicating LSP activity |
+| `file-name` | The path/name of the opened file |
+| `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
+| `file-line-ending` | The file line endings (CRLF or LF) |
+| `file-type` | The type of the opened file |
+| `diagnostics` | The number of warnings and/or errors |
+| `selections` | The number of active selections |
+| `position` | The cursor position |
+| `position-percentage` | The cursor position as a percentage of the total number of lines |
+| `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |
+| `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
+
 ### `[editor.lsp]` Section
 
-| Key                | Description                                 | Default |
-| ---                | -----------                                 | ------- |
-| `display-messages` | Display LSP progress messages below statusline[^1] | `false` |
+| Key                   | Description                                                 | Default |
+| ---                   | -----------                                                 | ------- |
+| `display-messages`    | Display LSP progress messages below statusline[^1]          | `false` |
+| `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
+| `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
 
-[^1]: A progress spinner is always shown in the statusline beside the file path.
+[^1]: By default, a progress spinner is shown in the statusline beside the file path.
 
 ### `[editor.cursor-shape]` Section
 
 Defines the shape of cursor in each mode. Note that due to limitations
 of the terminal environment, only the primary cursor can change shape.
-Valid values for these options are `block`, `bar`, `underline`, or `none`.
+Valid values for these options are `block`, `bar`, `underline`, or `hidden`.
 
 | Key      | Description                                | Default |
 | ---      | -----------                                | ------- |

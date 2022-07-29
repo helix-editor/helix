@@ -6,7 +6,6 @@ use crate::{
 use crossterm::event::Event;
 use tui::{
     buffer::Buffer as Surface,
-    text::Spans,
     widgets::{Block, BorderType, Borders},
 };
 
@@ -30,6 +29,8 @@ use helix_view::{
     Document, Editor,
 };
 
+use super::menu::Item;
+
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
@@ -37,7 +38,7 @@ pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 /// File path and range of lines (used to align and highlight lines)
 pub type FileLocation = (PathBuf, Option<(usize, usize)>);
 
-pub struct FilePicker<T> {
+pub struct FilePicker<T: Item> {
     picker: Picker<T>,
     pub truncate_start: bool,
     /// Caches paths to documents
@@ -84,15 +85,15 @@ impl Preview<'_, '_> {
     }
 }
 
-impl<T> FilePicker<T> {
+impl<T: Item> FilePicker<T> {
     pub fn new(
         options: Vec<T>,
-        format_fn: impl Fn(&T) -> Spans + 'static,
+        editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
         let truncate_start = true;
-        let mut picker = Picker::new(options, format_fn, callback_fn);
+        let mut picker = Picker::new(options, editor_data, callback_fn);
         picker.truncate_start = truncate_start;
 
         Self {
@@ -163,7 +164,7 @@ impl<T> FilePicker<T> {
     }
 }
 
-impl<T: 'static> Component for FilePicker<T> {
+impl<T: Item + 'static> Component for FilePicker<T> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // +---------+ +---------+
         // |prompt   | |preview  |
@@ -172,7 +173,7 @@ impl<T: 'static> Component for FilePicker<T> {
         // |         | |         |
         // +---------+ +---------+
 
-        let render_preview = area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+        let render_preview = self.picker.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
@@ -280,8 +281,9 @@ impl<T: 'static> Component for FilePicker<T> {
     }
 }
 
-pub struct Picker<T> {
+pub struct Picker<T: Item> {
     options: Vec<T>,
+    editor_data: T::Data,
     // filter: String,
     matcher: Box<Matcher>,
     /// (index, score)
@@ -298,15 +300,16 @@ pub struct Picker<T> {
     previous_pattern: String,
     /// Whether to truncate the start (default true)
     pub truncate_start: bool,
+    /// Whether to show the preview panel (default true)
+    show_preview: bool,
 
-    format_fn: Box<dyn Fn(&T) -> Spans>,
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
 }
 
-impl<T> Picker<T> {
+impl<T: Item> Picker<T> {
     pub fn new(
         options: Vec<T>,
-        format_fn: impl Fn(&T) -> Spans + 'static,
+        editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
@@ -318,6 +321,7 @@ impl<T> Picker<T> {
 
         let mut picker = Self {
             options,
+            editor_data,
             matcher: Box::new(Matcher::default()),
             matches: Vec::new(),
             filters: Vec::new(),
@@ -325,7 +329,7 @@ impl<T> Picker<T> {
             prompt,
             previous_pattern: String::new(),
             truncate_start: true,
-            format_fn: Box::new(format_fn),
+            show_preview: true,
             callback_fn: Box::new(callback_fn),
             completion_height: 0,
         };
@@ -371,9 +375,9 @@ impl<T> Picker<T> {
             #[allow(unstable_name_collisions)]
             self.matches.retain_mut(|(index, score)| {
                 let option = &self.options[*index];
-                // TODO: maybe using format_fn isn't the best idea here
-                let line: String = (self.format_fn)(option).into();
-                match self.matcher.fuzzy_match(&line, pattern) {
+                let text = option.sort_text(&self.editor_data);
+
+                match self.matcher.fuzzy_match(&text, pattern) {
                     Some(s) => {
                         // Update the score
                         *score = s;
@@ -399,11 +403,10 @@ impl<T> Picker<T> {
                             self.filters.binary_search(&index).ok()?;
                         }
 
-                        // TODO: maybe using format_fn isn't the best idea here
-                        let line: String = (self.format_fn)(option).into();
+                        let text = option.filter_text(&self.editor_data);
 
                         self.matcher
-                            .fuzzy_match(&line, pattern)
+                            .fuzzy_match(&text, pattern)
                             .map(|score| (index, score))
                     }),
             );
@@ -470,6 +473,10 @@ impl<T> Picker<T> {
         self.filters.sort_unstable(); // used for binary search later
         self.prompt.clear(cx);
     }
+
+    pub fn toggle_preview(&mut self) {
+        self.show_preview = !self.show_preview;
+    }
 }
 
 // process:
@@ -477,7 +484,7 @@ impl<T> Picker<T> {
 // - on input change:
 //  - score all the names in relation to input
 
-impl<T: 'static> Component for Picker<T> {
+impl<T: Item + 'static> Component for Picker<T> {
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         self.completion_height = viewport.1.saturating_sub(4);
         Some(viewport)
@@ -490,7 +497,7 @@ impl<T: 'static> Component for Picker<T> {
             _ => return EventResult::Ignored(None),
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _cx| {
             // remove the layer
             compositor.last_picker = compositor.pop();
         })));
@@ -537,6 +544,9 @@ impl<T: 'static> Component for Picker<T> {
             }
             ctrl!(' ') => {
                 self.save_filter(cx);
+            }
+            ctrl!('t') => {
+                self.toggle_preview();
             }
             _ => {
                 if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
@@ -607,10 +617,19 @@ impl<T: 'static> Component for Picker<T> {
         for (i, (_index, option)) in files.take(rows as usize).enumerate() {
             let is_active = i == (self.cursor - offset);
             if is_active {
-                surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
+                surface.set_string(
+                    inner.x.saturating_sub(3),
+                    inner.y + i as u16,
+                    " > ",
+                    selected,
+                );
+                surface.set_style(
+                    Rect::new(inner.x, inner.y + i as u16, inner.width, 1),
+                    selected,
+                );
             }
 
-            let spans = (self.format_fn)(option);
+            let spans = option.label(&self.editor_data);
             let (_score, highlights) = self
                 .matcher
                 .fuzzy_indices(&String::from(&spans), self.prompt.line())

@@ -1,4 +1,4 @@
-# Author: Ramojus <ramojus.lap@gmail.com>
+# Author: Ramojus Lapinskas <ramojus.lap@gmail.com>
 
 "comment" = { fg = "comment" }
 "constant" = { fg = "magenta" }
@@ -43,6 +43,9 @@
 
 "ui.statusline" = { fg = "dark_white", bg = "light_black3" }
 "ui.statusline.inactive" = { fg = "dark_white2", bg = "light_black" }
+"ui.statusline.normal" = { bg  = "dark_white2", fg = "black" }
+"ui.statusline.insert" = { bg  = "blue", fg = "black" }
+"ui.statusline.select" = { bg  = "orange", fg = "black" }
 
 "ui.text" = { fg = "white" }
 "ui.text.focus" = { fg = "orange" }

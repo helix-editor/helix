@@ -151,7 +151,9 @@ We use a similar set of scopes as
   - `operator` - `or`, `in`
   - `directive` - Preprocessor directives (`#if` in C) 
   - `function` - `fn`, `func`
-  - `storage` - Keywords that affect the storage of a variable, function or data structure `static`, `mut`, `const`, `ref`
+  - `storage` - Keywords describing how things are stored
+    - `type` - The type of something, `class`, `function`, `var`, `let`, etc. 
+    - `modifier` - Storage modifiers like `static`, `mut`, `const`, `ref`, etc.
 
 - `operator` - `||`, `+=`, `>`
 
@@ -222,6 +224,7 @@ These scopes are used for theming the editor interface.
 | `ui.statusline.normal`    | Statusline mode during normal mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.insert`    | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.select`    | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
+| `ui.statusline.separator` | Separator character in statusline              |
 | `ui.popup`                | Documentation popups (e.g space-k)             |
 | `ui.popup.info`           | Prompt for multiple key options                |
 | `ui.window`               | Border lines separating splits                 |

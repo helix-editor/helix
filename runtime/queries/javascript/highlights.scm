@@ -66,6 +66,8 @@
 ;-----------
 
 (property_identifier) @variable.other.member
+(shorthand_property_identifier) @variable.other.member
+(shorthand_property_identifier_pattern) @variable.other.member
 
 ; Literals
 ;---------
@@ -149,7 +151,10 @@
   "&&="
   "||="
   "??="
+  "..."
 ] @operator
+
+(ternary_expression ["?" ":"] @operator)
 
 [
   "("
@@ -163,19 +168,14 @@
 [
   "as"
   "async"
-  "class"
-  "const"
   "debugger"
   "delete"
-  "export"
   "extends"
   "from"
   "function"
   "get"
-  "import"
   "in"
   "instanceof"
-  "let"
   "new"
   "of"
   "set"
@@ -183,10 +183,16 @@
   "target"
   "try"
   "typeof"
-  "var"
   "void"
   "with"
 ] @keyword
+
+[
+  "class"
+  "let"
+  "const"
+  "var"
+] @keyword.storage.type
 
 [
   "switch"
@@ -206,3 +212,9 @@
   "do"
   "await"
 ] @keyword.control
+
+[
+  "import"
+  "export"
+] @keyword.control.import 
+

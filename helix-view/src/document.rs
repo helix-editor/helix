@@ -27,7 +27,7 @@ use crate::{DocumentId, Editor, ViewId};
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
 
-const DEFAULT_INDENT: IndentStyle = IndentStyle::Spaces(4);
+const DEFAULT_INDENT: IndentStyle = IndentStyle::Tabs;
 
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 

@@ -23,6 +23,12 @@ pub struct Range {
     pub end: usize,
 }
 
+#[derive(Debug, Eq, Hash, PartialEq, Clone, Deserialize, Serialize)]
+pub enum NumberOrString {
+    Number(i32),
+    String(String),
+}
+
 /// Corresponds to [`lsp_types::Diagnostic`](https://docs.rs/lsp-types/0.91.0/lsp_types/struct.Diagnostic.html)
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
@@ -30,4 +36,5 @@ pub struct Diagnostic {
     pub line: usize,
     pub message: String,
     pub severity: Option<Severity>,
+    pub code: Option<NumberOrString>,
 }

@@ -65,13 +65,16 @@ diagnostic = { modifiers = ["underlined"] }
 
 "ui.statusline" = { fg = "white", bg = "light-black" }
 "ui.statusline.inactive" = { fg = "light-gray", bg = "light-black" }
+"ui.statusline.normal" = { fg = "light-black", bg = "blue" }
+"ui.statusline.insert" = { fg = "light-black", bg = "green" }
+"ui.statusline.select" = { fg = "light-black", bg = "purple" }
 
 "ui.text" = { fg = "white" }
 "ui.text.focus" = { fg = "white", bg = "light-black", modifiers = ["bold"] }
 
 "ui.help" = { bg = "gray" }
 "ui.popup" = { bg = "gray" }
-"ui.window" = { bg = "gray" }
+"ui.window" = { fg = "gray" }
 "ui.menu" = { fg = "white", bg = "gray" }
 "ui.menu.selected" = { fg = "black", bg = "blue" }
 "ui.menu.scroll" = { fg = "white", bg = "light-gray" }
