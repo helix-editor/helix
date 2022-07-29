@@ -1,10 +1,10 @@
-use crate::paths;
+use crate::path;
 use crate::DynError;
 use helix_view::theme::Style;
 use helix_view::Theme;
 
 pub fn lint_all() -> Result<(), DynError> {
-    let files = std::fs::read_dir(paths::themes())
+    let files = std::fs::read_dir(path::themes())
         .unwrap()
         .filter_map(|entry| {
             let path = entry.ok()?.path();
@@ -41,7 +41,7 @@ pub fn lint_all() -> Result<(), DynError> {
 }
 
 pub fn lint(file: String) -> Result<(), DynError> {
-    let path = paths::themes().join(file.clone() + ".toml");
+    let path = path::themes().join(file.clone() + ".toml");
     let theme = std::fs::read(&path).unwrap();
     let theme: Theme = toml::from_slice(&theme).expect("Failed to parse theme");
     let check = vec![

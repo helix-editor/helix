@@ -1,6 +1,6 @@
 mod docgen;
 mod helpers;
-mod paths;
+mod path;
 mod themelint;
 
 use std::{env, error::Error};

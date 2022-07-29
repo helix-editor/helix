@@ -1,5 +1,5 @@
 use crate::helpers;
-use crate::paths;
+use crate::path;
 use crate::DynError;
 
 use helix_term::commands::TYPABLE_COMMAND_LIST;
@@ -112,6 +112,6 @@ pub fn lang_features() -> Result<String, DynError> {
 
 pub fn write(filename: &str, data: &str) {
     let error = format!("Could not write to {}", filename);
-    let path = paths::book_gen().join(filename);
+    let path = path::book_gen().join(filename);
     fs::write(path, data).expect(&error);
 }

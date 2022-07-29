@@ -1,13 +1,13 @@
 use std::path::{Path, PathBuf};
 
-use crate::paths;
+use crate::path;
 use helix_core::syntax::Configuration as LangConfig;
 use helix_term::health::TsFeature;
 
 /// Get the list of languages that support a particular tree-sitter
 /// based feature.
 pub fn ts_lang_support(feat: TsFeature) -> Vec<String> {
-    let queries_dir = paths::ts_queries();
+    let queries_dir = path::ts_queries();
 
     find_files(&queries_dir, feat.runtime_filename())
         .iter()
@@ -23,7 +23,7 @@ pub fn ts_lang_support(feat: TsFeature) -> Vec<String> {
 /// Get the list of languages that have any form of tree-sitter
 /// queries defined in the runtime directory.
 pub fn langs_with_ts_queries() -> Vec<String> {
-    std::fs::read_dir(paths::ts_queries())
+    std::fs::read_dir(path::ts_queries())
         .unwrap()
         .filter_map(|entry| {
             let entry = entry.ok()?;
@@ -53,6 +53,6 @@ pub fn find_files(dir: &Path, filename: &str) -> Vec<PathBuf> {
 }
 
 pub fn lang_config() -> LangConfig {
-    let bytes = std::fs::read(paths::lang_config()).unwrap();
+    let bytes = std::fs::read(path::lang_config()).unwrap();
     toml::from_slice(&bytes).unwrap()
 }
