@@ -569,24 +569,43 @@ impl EditorView {
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
             use helix_core::match_brackets;
-            let pos = doc.selection(view.id).primary().cursor(text);
 
-            let pos = match_brackets::find_matching_bracket(syntax, doc.text(), pos)
-                .and_then(|pos| view.screen_coords_at_pos(doc, text, pos));
+            let default_style = Style::default()
+                .add_modifier(Modifier::REVERSED)
+                .add_modifier(Modifier::DIM);
 
-            if let Some(pos) = pos {
-                // ensure col is on screen
-                if (pos.col as u16) < viewport.width + view.offset.col as u16
-                    && pos.col >= view.offset.col
-                {
-                    let style = theme.try_get("ui.cursor.match").unwrap_or_else(|| {
-                        Style::default()
-                            .add_modifier(Modifier::REVERSED)
-                            .add_modifier(Modifier::DIM)
-                    });
+            let style_primary = theme
+                .try_get("ui.cursor.match.primary")
+                .unwrap_or(default_style);
 
-                    surface[(viewport.x + pos.col as u16, viewport.y + pos.row as u16)]
-                        .set_style(style);
+            let style_secondary = theme
+                .try_get("ui.cursor.match.secondary")
+                .unwrap_or(default_style);
+
+            let primary_index = doc.selection(view.id).primary_index();
+
+            for (i, selection) in doc.selection(view.id).iter().enumerate() {
+                let is_primary = i == primary_index;
+
+                let pos = selection.cursor(text);
+
+                let pos = match_brackets::find_matching_bracket(syntax, doc.text(), pos)
+                    .and_then(|pos| view.screen_coords_at_pos(doc, text, pos));
+
+                if let Some(pos) = pos {
+                    // ensure col is on screen
+                    if (pos.col as u16) < viewport.width + view.offset.col as u16
+                        && pos.col >= view.offset.col
+                    {
+                        let style = if is_primary {
+                            style_primary
+                        } else {
+                            style_secondary
+                        };
+
+                        surface[(viewport.x + pos.col as u16, viewport.y + pos.row as u16)]
+                            .set_style(style);
+                    }
                 }
             }
         }
