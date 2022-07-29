@@ -4541,13 +4541,24 @@ fn shell_impl(
     use std::process::{Command, Stdio};
     ensure!(!shell.is_empty(), "No shell set");
 
-    let mut process = match Command::new(&shell[0])
-        .args(&shell[1..])
-        .arg(cmd)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
+    let process_ = match input {
+        Some(_) => Command::new(&shell[0])
+                     .args(&shell[1..])
+                     .arg(cmd)
+                     .stdin(Stdio::piped())
+                     .stdout(Stdio::piped())
+                     .stderr(Stdio::piped())
+                     .spawn(),
+        None => Command::new(&shell[0])
+                     .args(&shell[1..])
+                     .arg(cmd)
+                     .stdout(Stdio::piped())
+                     .stderr(Stdio::piped())
+                     .spawn()
+    };
+
+
+    let mut process = match process_
     {
         Ok(process) => process,
         Err(e) => {
