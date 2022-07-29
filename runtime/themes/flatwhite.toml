@@ -1,43 +1,43 @@
 # Author: Alexander Brevig <alexanderbrevig@gmail.com>
 # Adopted from https://github.com/biletskyy/flatwhite-syntax
 
-"variable" = { fg = "base1", bg= "base7"}
+"variable" = { fg = "base1", bg = "base7" }
 "namespace" = { fg = "base1", bg = "base4" }
 "function" = { fg = "base1", bg = "base6" }
-"constructor" = { fg = "base1", bg= "base7"}
-"comment" = { fg = "base3", bg = "base7", modifiers = ["italic"]}
-"string" = { fg = "green_text", bg= "green_bg"}
+"constructor" = { fg = "base1", bg = "base7" }
+"comment" = { fg = "base3", bg = "base7", modifiers = ["italic"] }
+"string" = { fg = "green_text", bg = "green_bg" }
 "type" = { fg = "purple_text", bg = "purple_bg" }
-"keyword" = { fg = "orange_text", bg= "orange_bg"}
-"operator" = { fg = "orange_text", bg= "orange_bg"}
-"property" = { fg = "blue_text", bg= "blue_bg"} 
-"constant" = { fg = "blue_text", bg= "blue_bg" }
-"attribute" = { fg = "blue_text", bg= "blue_bg"} 
-"special" = { fg = "blue_text", bg= "blue_bg" }
+"keyword" = { fg = "orange_text", bg = "orange_bg" }
+"operator" = { fg = "orange_text", bg = "orange_bg" }
+"property" = { fg = "blue_text", bg = "blue_bg" }
+"constant" = { fg = "blue_text", bg = "blue_bg" }
+"attribute" = { fg = "blue_text", bg = "blue_bg" }
+"special" = { fg = "blue_text", bg = "blue_bg" }
 "label" = { modifiers = ["bold"] }
 
-"diagnostic" = { modifiers = ["underlined"]}
+"diagnostic" = { modifiers = ["underlined"] }
 "info" = { fg = "orange_text", bg = "orange_bg" }
-"hint" = { modifiers = ["bold"]}
+"hint" = { modifiers = ["bold"] }
 "warning" = { bg = "diff_change" }
 "error" = { bg = "diff_delete" }
 
-"markup.heading" = { fg = "green_text", bg= "green_bg" }
+"markup.heading" = { fg = "green_text", bg = "green_bg" }
 "markup.raw.inline" = { fg = "orange_text" }
 "markup.italic" = { modifiers = ["italic"] }
 "markup.link.url" = { modifiers = ["underlined"] }
 "markup.link.text" = { fg = "blue_text", bg = "blue_bg" }
-"markup.quote" = { fg = "teal_text", bg= "teal_bg" }
+"markup.quote" = { fg = "teal_text", bg = "teal_bg" }
 "markup.bold" = { modifiers = ["bold"] }
 "markup.list" = { fg = "purple_text", bg = "purple_bg" }
 
 "ui.background" = { fg = "base1", bg = "base7" }
 "ui.cursorline" = { bg = "base6" }
-"ui.cursor" = { fg = "base1", bg = "base7", modifiers = ["reversed"]}
-"ui.cursor.primary" = { fg = "base1", bg = "base7", modifiers = ["reversed"]}
-"ui.cursor.match" = { fg = "base5", bg = "base3", modifiers = ["reversed"]}
+"ui.cursor" = { fg = "base1", bg = "base7", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "base1", bg = "base7", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "base5", bg = "base3", modifiers = ["reversed"] }
 "ui.selection" = { bg = "base3" }
-"ui.selection.primary" = { fg= "base5", bg = "base3" }
+"ui.selection.primary" = { fg = "base5", bg = "base3" }
 
 "ui.virtual" = { bg = "base6" }
 "ui.virtual.whitespace" = { bg = "base7" }
@@ -45,52 +45,56 @@
 "ui.linenr" = { bg = "base6" }
 "ui.linenr.selected" = { bg = "base6", modifiers = ["reversed"] }
 
-"ui.statusline" = { fg = "base7", bg = "base1", modifiers = ["bold"]}
-"ui.statusline.normal" = { fg = "base7", bg = "base1", modifiers = ["bold"]}
-"ui.statusline.insert" = { fg = "purple_text", bg = "purple_bg", modifiers = ["bold"]}
-"ui.statusline.select" = { fg = "teal_text", bg = "teal_bg", modifiers = ["bold"]}
+"ui.statusline" = { fg = "base7", bg = "base1", modifiers = ["bold"] }
+"ui.statusline.normal" = { fg = "base7", bg = "base1", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "purple_text", bg = "purple_bg", modifiers = [
+  "bold",
+] }
+"ui.statusline.select" = { fg = "teal_text", bg = "teal_bg", modifiers = [
+  "bold",
+] }
 
-"ui.text" = { fg = "base1", bg= "base7" }
-"ui.text.focus" = { fg = "base1", bg= "base6", modifiers=["bold"] }
+"ui.text" = { fg = "base1", bg = "base7" }
+"ui.text.focus" = { fg = "base1", bg = "base6", modifiers = ["bold"] }
 
-"ui.menu" = { fg = "base1", bg= "base6" }
-"ui.menu.selected" = { fg = "base1", bg= "base6", modifiers=["reversed"]}
-"ui.menu.scroll" = { fg = "base1", bg= "base6" }
-"ui.help" = { fg = "base1", bg= "base7" }
-"ui.popup" = { fg = "base1", bg= "base7" }
-"ui.window" = { fg = "base1", bg= "base7" }
+"ui.menu" = { fg = "base1", bg = "base6" }
+"ui.menu.selected" = { fg = "base1", bg = "base6", modifiers = ["reversed"] }
+"ui.menu.scroll" = { fg = "base1", bg = "base6" }
+"ui.help" = { fg = "base1", bg = "base7" }
+"ui.popup" = { fg = "base1", bg = "base7" }
+"ui.window" = { fg = "base1", bg = "base7" }
 
 "diff.plus" = { bg = "diff_add" }
 "diff.delta" = { bg = "diff_change" }
 "diff.minus" = { bg = "diff_delete" }
 
 [palette]
-base1        = "#605a52"
-base2        = "#93836c"
-base3        = "#b9a992"
-base4        = "#dcd3c6"
-base5        = "#e4ddd2"
-base6        = "#f1ece4"
-base7        = "#f7f3ee"
-accent      = "#6a4cff"
-orange_text    = "#5b5143"
-orange_text_sec  = "#957f5f"
-orange_bg      = "#f7e0c3"
-green_text    = "#525643"
-green_text_sec  = "#81895d"
-green_bg      = "#e2e9c1"
-teal_text      = "#465953"
-teal_text_sec    = "#5f8c7d"
-teal_bg      = "#d2ebe3"
-blue_text      = "#4c5361"
-blue_text_sec    = "#7382a0"
-blue_bg      = "#dde4f2"
-purple_text    = "#614c61"
-purple_text_sec  = "#9c739c"
-purple_bg      = "#f1ddf1"
-diff_add      = "#2db448"
-diff_change    = "#f2a60d"
-diff_change_dark  = "#795306"
-diff_delete    = "#ff1414"
-diff_renamed    = "#52aeff"
-white        = "#ffffff"
+base1 = "#605a52"
+base2 = "#93836c"
+base3 = "#b9a992"
+base4 = "#dcd3c6"
+base5 = "#e4ddd2"
+base6 = "#f1ece4"
+base7 = "#f7f3ee"
+accent = "#6a4cff"
+orange_text = "#5b5143"
+orange_text_sec = "#957f5f"
+orange_bg = "#f7e0c3"
+green_text = "#525643"
+green_text_sec = "#81895d"
+green_bg = "#e2e9c1"
+teal_text = "#465953"
+teal_text_sec = "#5f8c7d"
+teal_bg = "#d2ebe3"
+blue_text = "#4c5361"
+blue_text_sec = "#7382a0"
+blue_bg = "#dde4f2"
+purple_text = "#614c61"
+purple_text_sec = "#9c739c"
+purple_bg = "#f1ddf1"
+diff_add = "#2db448"
+diff_change = "#f2a60d"
+diff_change_dark = "#795306"
+diff_delete = "#ff1414"
+diff_renamed = "#52aeff"
+white = "#ffffff"
