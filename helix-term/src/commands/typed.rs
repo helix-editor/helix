@@ -1570,10 +1570,27 @@ fn pipe(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     Ok(())
 }
 
+fn run_shell_command_no_output(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    run_shell_command_impl(cx, args, event, ShellBehavior::Ignore)
+}
+
 fn run_shell_command(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     event: PromptEvent,
+) -> anyhow::Result<()> {
+    run_shell_command_impl(cx, args, event, ShellBehavior::Append)
+}
+
+fn run_shell_command_impl(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+    behavior: ShellBehavior
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -1587,7 +1604,7 @@ fn run_shell_command(
         cx.editor.set_error("Command failed");
     }
 
-    if !output.is_empty() {
+    if !output.is_empty() && behavior != ShellBehavior::Ignore {
         let callback = async move {
             let call: job::Callback =
                 Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
@@ -2096,6 +2113,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             fun: run_shell_command,
             completer: Some(completers::directory),
         },
+        TypableCommand {
+            name: "run-shell-command-no-output",
+            aliases: &["sh!"],
+            doc: "Run a shell command ignoring output",
+            fun: run_shell_command_no_output,
+            completer: Some(completers::directory)
+        }
     ];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
