@@ -1,31 +1,43 @@
 # Author: Alexander Brevig <alexanderbrevig@gmail.com>
 # Adopted from https://github.com/biletskyy/flatwhite-syntax
 
-"variable" = { fg = "base1", bg = "base7" }
-"namespace" = { fg = "base1", bg = "base4" }
-"function" = { fg = "base1", bg = "base6" }
-"constructor" = { fg = "base1", bg = "base7" }
-"comment" = { fg = "base3", bg = "base7", modifiers = ["italic"] }
-"string" = { fg = "green_text", bg = "green_bg" }
-"type" = { fg = "purple_text", bg = "purple_bg" }
-"keyword" = { fg = "orange_text", bg = "orange_bg" }
-"operator" = { fg = "orange_text", bg = "orange_bg" }
-"property" = { fg = "blue_text", bg = "blue_bg" }
-"constant" = { fg = "blue_text", bg = "blue_bg" }
 "attribute" = { fg = "blue_text", bg = "blue_bg" }
-"special" = { fg = "blue_text", bg = "blue_bg" }
+"comment" = { fg = "base3", bg = "base7", modifiers = ["italic"] }
+"comment.line" = {}
+"comment.block" = {}
+"comment.block.documentation" = { fg = "base2" }
+"constant" = { fg = "blue_text", bg = "blue_bg" }
+"constructor" = { fg = "base1", bg = "base7" }
+"function" = { fg = "base1", bg = "base7", modifiers = ["bold"] }
+"keyword" = { fg = "purple_text", bg = "purple_bg" }
 "label" = { modifiers = ["bold"] }
+"namespace" = { fg = "teal_text", bg = "teal_bg" }
+"operator" = { fg = "base1", bg = "base7" }
+"property" = { fg = "blue_text", bg = "blue_bg" }
+"punctuation.bracket" = { modifiers = ["bold"] }
+"special" = { fg = "blue_text", bg = "blue_bg" }
+"string" = { fg = "green_text", bg = "green_bg" }
+"type" = { fg = "base1", bg = "base7" }
+"variable" = { fg = "base1", bg = "base7" }
+"variable.parameter" = { fg = "blue_text", bg = "blue_bg" }
 
 "diagnostic" = { modifiers = ["underlined"] }
 "info" = { fg = "orange_text", bg = "orange_bg" }
 "hint" = { modifiers = ["bold"] }
-"warning" = { bg = "diff_change" }
-"error" = { bg = "diff_delete" }
+"warning" = { fg = "orange_text", bg = "orange_bg" }
+"error" = { fg = "diff_delete", bg = "base7" }
 
-"markup.heading" = { fg = "green_text", bg = "green_bg" }
-"markup.raw.inline" = { fg = "orange_text" }
+"markup.heading" = { fg = "purple_text", bg = "purple_bg", modifiers = [
+  "bold",
+] }
+"markup.raw" = { fg = "orange_text", bg = "orange_bg" }
+"markup.raw.inline" = { fg = "orange_text", bg = "orange_bg" }
+"markup.raw.block" = { fg = "orange_text", bg = "orange_bg" }
 "markup.italic" = { modifiers = ["italic"] }
-"markup.link.url" = { modifiers = ["underlined"] }
+"markup.link.url" = { fg = "blue_text", bg = "blue_bg", modifiers = [
+  "underlined",
+] }
+"markup.link.label" = { fg = "blue_text", bg = "blue_bg" }
 "markup.link.text" = { fg = "blue_text", bg = "blue_bg" }
 "markup.quote" = { fg = "teal_text", bg = "teal_bg" }
 "markup.bold" = { modifiers = ["bold"] }
