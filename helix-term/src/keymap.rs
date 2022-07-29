@@ -8,12 +8,9 @@ use arc_swap::{
     ArcSwap,
 };
 use helix_view::{document::Mode, info::Info, input::KeyEvent};
-use serde::{
-    ser::{SerializeStruct, Serializer},
-    Deserialize, Serialize,
-};
+use serde::{ser::Serializer, Deserialize, Serialize};
+use std::borrow::Cow;
 use std::{
-    borrow::{Borrow, Cow},
     collections::{BTreeSet, HashMap},
     ops::{Deref, DerefMut},
     sync::Arc,

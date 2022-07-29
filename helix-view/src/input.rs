@@ -3,7 +3,7 @@ use anyhow::{anyhow, Error};
 use helix_core::unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr};
 use serde::{
     de::{self, Deserialize, Deserializer},
-    ser::{Serialize, SerializeStruct, Serializer},
+    ser::{Serialize, Serializer},
 };
 use std::fmt;
 
