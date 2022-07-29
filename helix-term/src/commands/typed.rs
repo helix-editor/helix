@@ -1,14 +1,8 @@
 use std::ops::Deref;
 
-use crate::application::Application;
-
 use super::*;
 
-use helix_loader::config;
-use helix_view::{
-    document,
-    editor::{Action, ConfigEvent},
-};
+use helix_view::editor::{Action, ConfigEvent};
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -1443,9 +1437,22 @@ fn current_keymap(
         let call: job::Callback =
             Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
                 log::debug!("get ui");
-                let ui = compositor.find::<ui::EditorView>().unwrap();
-                //let map = ui.keymaps.map()[&Mode::Normal].clone();
-                let str = toml::to_string(&ui.keymaps.map()[&Mode::Normal].root).unwrap();
+                let ui = compositor
+                    .find::<ui::EditorView>()
+                    .expect("Editor view shall exist");
+
+                let keymaps = &ui.keymaps.map();
+
+                let serialized_str = keymaps
+                    .keys()
+                    .map(|mode| toml::to_string(&keymaps[&mode].root))
+                    .collect::<Result<String, toml::ser::Error>>();
+
+                let str = match serialized_str {
+                    Ok(serialized) => serialized,
+                    Err(_) => return (),
+                };
+
                 let doc = Document::from(Rope::from_str(str.as_str()), None);
                 editor.new_file_from_document(Action::Replace, doc);
             });
