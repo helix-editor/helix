@@ -533,16 +533,17 @@ impl Component for Prompt {
                             .map(|entry| entry.into())
                             .unwrap_or_else(|| Cow::from(""))
                     } else {
+                        if let Some(register) = self.history_register {
+                            // store in history
+                            let register = cx.editor.registers.get_mut(register);
+                            register.push(self.line.clone());
+                        }
+
                         self.line.as_str().into()
                     };
 
                     (self.callback_fn)(cx, &input, PromptEvent::Validate);
 
-                    if let Some(register) = self.history_register {
-                        // store in history
-                        let register = cx.editor.registers.get_mut(register);
-                        register.push(self.line.clone());
-                    }
                     return close_fn;
                 }
             }
