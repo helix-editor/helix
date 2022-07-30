@@ -4361,7 +4361,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
             ("a", "Argument/parameter (tree-sitter)"),
             ("o", "Comment (tree-sitter)"),
             ("t", "Test (tree-sitter)"),
-            ("m", "Matching delimiter under cursor"),
+            ("m", "Nearest matching brace-like pair"),
             (" ", "... or any character acting as a pair"),
         ];
 
