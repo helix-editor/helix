@@ -1,8 +1,11 @@
 use std::ops::Deref;
 
+use crate::keymap;
+
 use super::*;
 
 use helix_view::editor::{Action, ConfigEvent};
+
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -1424,6 +1427,21 @@ fn open_log(
     Ok(())
 }
 
+#[derive(Serialize)]
+struct ModeInsert<'a> {
+    insert: &'a keymap::Keymap,
+}
+
+#[derive(Serialize)]
+struct ModeNormal<'a> {
+    normal: &'a keymap::Keymap,
+}
+
+#[derive(Serialize)]
+struct ModeSelect<'a> {
+    select: &'a keymap::Keymap,
+}
+
 fn current_keymap(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1444,16 +1462,21 @@ fn current_keymap(
                 let keymaps = &ui.keymaps.map();
 
                 let serialized_str = keymaps
-                    .keys()
-                    .map(|mode| toml::to_string(&keymaps[&mode].root))
+                    .iter()
+                    // there must be a way to make this easier i think
+                    .map(|couple| match couple.0 {
+                        Mode::Insert => toml::to_string(&ModeInsert { insert: couple.1 }),
+                        Mode::Normal => toml::to_string(&ModeNormal { normal: couple.1 }),
+                        Mode::Select => toml::to_string(&ModeSelect { select: couple.1 }),
+                    })
                     .collect::<Result<String, toml::ser::Error>>();
 
                 let str = match serialized_str {
-                    Ok(serialized) => serialized,
+                    Ok(str) => str,
                     Err(_) => return (),
                 };
 
-                let doc = Document::from(Rope::from_str(str.as_str()), None);
+                let doc = Document::from(Rope::from_str(&str), None);
                 editor.new_file_from_document(Action::Replace, doc);
             });
         Ok(call)

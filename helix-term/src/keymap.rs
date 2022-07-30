@@ -210,7 +210,7 @@ pub enum KeymapResult {
     Cancelled(Vec<KeyEvent>),
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct Keymap {
     /// Always a Node
