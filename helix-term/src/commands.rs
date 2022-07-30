@@ -4269,6 +4269,7 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
                     lang_config,
                     count,
                 )
+                .with_direction(direction)
             });
 
             doc.set_selection(view.id, selection);

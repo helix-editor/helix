@@ -122,12 +122,22 @@ impl Range {
         }
     }
 
-    // flips the direction of the selection
+    /// Flips the direction of the selection
     pub fn flip(&self) -> Self {
         Self {
             anchor: self.head,
             head: self.anchor,
             horiz: self.horiz,
+        }
+    }
+
+    /// Returns the selection if it goes in the direction of `direction`,
+    /// flipping the selection otherwise.
+    pub fn with_direction(self, direction: Direction) -> Self {
+        if self.direction() == direction {
+            self
+        } else {
+            self.flip()
         }
     }
 
