@@ -2159,10 +2159,7 @@ fn ensure_selections_forward(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .transform(|r| match r.direction() {
-            Direction::Forward => r,
-            Direction::Backward => r.flip(),
-        });
+        .transform(|r| r.with_direction(Direction::Forward));
 
     doc.set_selection(view.id, selection);
 }
