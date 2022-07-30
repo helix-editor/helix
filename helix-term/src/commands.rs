@@ -4220,26 +4220,33 @@ fn scroll_down(cx: &mut Context) {
     scroll(cx, cx.count(), Direction::Forward);
 }
 
-fn goto_ts_object_impl(cx: &mut Context, object: &str, direction: Direction) {
+fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direction) {
     let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-    let range = doc.selection(view.id).primary();
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+        if let Some((lang_config, syntax)) = doc.language_config().zip(doc.syntax()) {
+            let text = doc.text().slice(..);
+            let root = syntax.tree().root_node();
 
-    let new_range = match doc.language_config().zip(doc.syntax()) {
-        Some((lang_config, syntax)) => movement::goto_treesitter_object(
-            text,
-            range,
-            object,
-            direction,
-            syntax.tree().root_node(),
-            lang_config,
-            count,
-        ),
-        None => range,
+            let selection = doc.selection(view.id).clone().transform(|range| {
+                movement::goto_treesitter_object(
+                    text,
+                    range,
+                    object,
+                    direction,
+                    root,
+                    lang_config,
+                    count,
+                )
+            });
+
+            doc.set_selection(view.id, selection);
+        } else {
+            editor.set_status("Syntax-tree is not available in current buffer");
+        }
     };
-
-    doc.set_selection(view.id, Selection::single(new_range.anchor, new_range.head));
+    motion(cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
 }
 
 fn goto_next_function(cx: &mut Context) {
