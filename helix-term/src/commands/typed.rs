@@ -1471,9 +1471,10 @@ fn current_keymap(
                     })
                     .collect::<Result<String, toml::ser::Error>>();
 
-                let str = match serialized_str {
-                    Ok(str) => str,
-                    Err(_) => return (),
+                let str = if let Ok(str) = serialized_str {
+                    str
+                } else {
+                    return;
                 };
 
                 let doc = Document::from(Rope::from_str(&str), None);
