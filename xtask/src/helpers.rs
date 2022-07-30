@@ -20,22 +20,6 @@ pub fn ts_lang_support(feat: TsFeature) -> Vec<String> {
         .collect()
 }
 
-/// Get the list of languages that have any form of tree-sitter
-/// queries defined in the runtime directory.
-pub fn langs_with_ts_queries() -> Vec<String> {
-    std::fs::read_dir(path::ts_queries())
-        .unwrap()
-        .filter_map(|entry| {
-            let entry = entry.ok()?;
-            entry
-                .file_type()
-                .ok()?
-                .is_dir()
-                .then(|| entry.file_name().to_string_lossy().to_string())
-        })
-        .collect()
-}
-
 // naive implementation, but suffices for our needs
 pub fn find_files(dir: &Path, filename: &str) -> Vec<PathBuf> {
     std::fs::read_dir(dir)
