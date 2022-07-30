@@ -4257,7 +4257,7 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
             let root = syntax.tree().root_node();
 
             let selection = doc.selection(view.id).clone().transform(|range| {
-                movement::goto_treesitter_object(
+                let new_range = movement::goto_treesitter_object(
                     text,
                     range,
                     object,
@@ -4265,8 +4265,19 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
                     root,
                     lang_config,
                     count,
-                )
-                .with_direction(direction)
+                );
+
+                if editor.mode == Mode::Select {
+                    let head = if new_range.head < range.anchor {
+                        new_range.anchor
+                    } else {
+                        new_range.head
+                    };
+
+                    Range::new(range.anchor, head)
+                } else {
+                    new_range.with_direction(direction)
+                }
             });
 
             doc.set_selection(view.id, selection);
