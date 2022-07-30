@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use crate::keymap;
+use crate::keymap::{self, default as default_keymap};
 
 use super::*;
 
@@ -1427,22 +1427,62 @@ fn open_log(
     Ok(())
 }
 
-#[derive(Serialize)]
-struct ModeInsert<'a> {
-    insert: &'a keymap::Keymap,
+fn open_serialized_keymap(editor: &mut Editor, keymap: &HashMap<Mode, keymap::Keymap>) {
+    #[derive(Serialize)]
+    struct Keys<T> {
+        keys: T,
+    }
+    #[derive(Serialize)]
+    struct ModeInsert<'a> {
+        insert: &'a keymap::Keymap,
+    }
+
+    #[derive(Serialize)]
+    struct ModeNormal<'a> {
+        normal: &'a keymap::Keymap,
+    }
+
+    #[derive(Serialize)]
+    struct ModeSelect<'a> {
+        select: &'a keymap::Keymap,
+    }
+    let serialized_str = keymap
+        .iter()
+        // there must be a way to make this easier i think
+        .map(|couple| match couple.0 {
+            Mode::Insert => toml::to_string(&Keys {
+                keys: ModeInsert { insert: couple.1 },
+            }),
+            Mode::Normal => toml::to_string(&Keys {
+                keys: ModeNormal { normal: couple.1 },
+            }),
+            Mode::Select => toml::to_string(&Keys {
+                keys: ModeSelect { select: couple.1 },
+            }),
+        })
+        .collect::<Result<String, toml::ser::Error>>()
+        .expect("Keymap should serialze");
+    let mut doc = Document::from(
+        Rope::from_str(&serialized_str),
+        Some(helix_core::encoding::UTF_8),
+    );
+    doc.set_language2("toml", editor.syn_loader.clone());
+    editor.new_file_from_document(Action::Replace, doc);
 }
 
-#[derive(Serialize)]
-struct ModeNormal<'a> {
-    normal: &'a keymap::Keymap,
+fn default_keymap_open(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    open_serialized_keymap(cx.editor, &default_keymap::default());
+    Ok(())
 }
 
-#[derive(Serialize)]
-struct ModeSelect<'a> {
-    select: &'a keymap::Keymap,
-}
-
-fn current_keymap(
+fn current_keymap_open(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
     event: PromptEvent,
@@ -1451,7 +1491,7 @@ fn current_keymap(
         return Ok(());
     }
 
-    let show_picker = async move {
+    let get_keymaps_job = async move {
         let call: job::Callback =
             Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
                 log::debug!("get ui");
@@ -1459,30 +1499,11 @@ fn current_keymap(
                     .find::<ui::EditorView>()
                     .expect("Editor view shall exist");
 
-                let keymaps = &ui.keymaps.map();
-
-                let serialized_str = keymaps
-                    .iter()
-                    // there must be a way to make this easier i think
-                    .map(|couple| match couple.0 {
-                        Mode::Insert => toml::to_string(&ModeInsert { insert: couple.1 }),
-                        Mode::Normal => toml::to_string(&ModeNormal { normal: couple.1 }),
-                        Mode::Select => toml::to_string(&ModeSelect { select: couple.1 }),
-                    })
-                    .collect::<Result<String, toml::ser::Error>>();
-
-                let str = if let Ok(str) = serialized_str {
-                    str
-                } else {
-                    return;
-                };
-
-                let doc = Document::from(Rope::from_str(&str), None);
-                editor.new_file_from_document(Action::Replace, doc);
+                open_serialized_keymap(editor, &ui.keymaps.map());
             });
         Ok(call)
     };
-    cx.jobs.callback(show_picker);
+    cx.jobs.callback(get_keymaps_job);
 
     Ok(())
 }
@@ -2030,10 +2051,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: None,
         },
         TypableCommand {
-            name: "current-keymap",
+            name: "current-keymap-open",
             aliases: &[],
             doc: "Open the current keymap.",
-            fun: current_keymap,
+            fun: current_keymap_open,
+            completer: None,
+        },
+        TypableCommand {
+            name: "default-keymap-open",
+            aliases: &[],
+            doc: "Open the default keymap.",
+            fun: default_keymap_open,
             completer: None,
         },
         TypableCommand {
