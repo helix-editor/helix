@@ -88,7 +88,6 @@ impl Prompt {
         let cursor = line.len();
         self.line = line;
         self.cursor = cursor;
-        self.exit_selection();
         self.recalculate_completion(editor);
         self
     }
@@ -98,6 +97,7 @@ impl Prompt {
     }
 
     pub fn recalculate_completion(&mut self, editor: &Editor) {
+        self.exit_selection();
         self.completion = (self.completion_fn)(editor, &self.line);
     }
 
@@ -215,14 +215,12 @@ impl Prompt {
         if let Ok(Some(pos)) = cursor.next_boundary(&self.line, 0) {
             self.cursor = pos;
         }
-        self.exit_selection();
         self.recalculate_completion(cx.editor);
     }
 
     pub fn insert_str(&mut self, s: &str, editor: &Editor) {
         self.line.insert_str(self.cursor, s);
         self.cursor += s.len();
-        self.exit_selection();
         self.recalculate_completion(editor);
     }
 
@@ -244,7 +242,6 @@ impl Prompt {
         self.line.replace_range(pos..self.cursor, "");
         self.cursor = pos;
 
-        self.exit_selection();
         self.recalculate_completion(editor);
     }
 
@@ -252,7 +249,6 @@ impl Prompt {
         let pos = self.eval_movement(Movement::ForwardChar(1));
         self.line.replace_range(self.cursor..pos, "");
 
-        self.exit_selection();
         self.recalculate_completion(editor);
     }
 
@@ -261,7 +257,6 @@ impl Prompt {
         self.line.replace_range(pos..self.cursor, "");
         self.cursor = pos;
 
-        self.exit_selection();
         self.recalculate_completion(editor);
     }
 
@@ -269,7 +264,6 @@ impl Prompt {
         let pos = self.eval_movement(Movement::ForwardWord(1));
         self.line.replace_range(self.cursor..pos, "");
 
-        self.exit_selection();
         self.recalculate_completion(editor);
     }
 
@@ -278,7 +272,6 @@ impl Prompt {
         self.line.replace_range(pos..self.cursor, "");
         self.cursor = pos;
 
-        self.exit_selection();
         self.recalculate_completion(editor);
     }
 
@@ -286,7 +279,6 @@ impl Prompt {
         let pos = self.eval_movement(Movement::EndOfLine);
         self.line.replace_range(self.cursor..pos, "");
 
-        self.exit_selection();
         self.recalculate_completion(editor);
     }
 
@@ -294,7 +286,6 @@ impl Prompt {
         self.line.clear();
         self.cursor = 0;
         self.recalculate_completion(editor);
-        self.exit_selection();
     }
 
     pub fn change_history(
@@ -324,7 +315,6 @@ impl Prompt {
         self.history_pos = Some(index);
 
         self.move_end();
-        self.exit_selection();
         self.recalculate_completion(cx.editor);
     }
 
@@ -538,7 +528,6 @@ impl Component for Prompt {
             key!(Enter) => {
                 if self.selection.is_some() && self.line.ends_with(std::path::MAIN_SEPARATOR) {
                     self.recalculate_completion(cx.editor);
-                    self.exit_selection();
                 } else {
                     // handle executing with last command in history if nothing entered
                     let input: Cow<str> = if self.line.is_empty() {
@@ -578,7 +567,6 @@ impl Component for Prompt {
                 // if single completion candidate is a directory list content in completion
                 if self.completion.len() == 1 && self.line.ends_with(std::path::MAIN_SEPARATOR) {
                     self.recalculate_completion(cx.editor);
-                    self.exit_selection();
                 }
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
