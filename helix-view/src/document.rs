@@ -128,7 +128,7 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
-    /// Mode of file - currently read-only, writable, or unknown.
+    /// Write permissions of the file - read-only, writable, or unknown.
     pub write_permission: WritePermission,
 }
 
@@ -152,7 +152,7 @@ impl fmt::Debug for Document {
             .field("version", &self.version)
             .field("modified_since_accessed", &self.modified_since_accessed)
             .field("diagnostics", &self.diagnostics)
-            .field("file mode", &self.write_permission)
+            .field("write_permission", &self.write_permission)
             // .field("language_server", &self.language_server)
             .finish()
     }
