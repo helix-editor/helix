@@ -223,3 +223,19 @@ Example:
 render = true
 character = "╎"
 ```
+
+### `[editor.file-type]` Section
+
+Remaps / overrides the standard file type strings to custom strings. If a file type is
+defined in this section, the string value assigned will be used instead of the default.
+Any file types not defined in this section will use the default file type string.
+Example:
+
+```toml
+[editor.file-type]
+"rust" = "rs"
+"typescript" = "ts"
+```
+In the above example, Rust and TypeScript files will use "rs" and "ts" as their respective
+file type indicators, while JavaScript and others not defined will use the Helix default.
+
