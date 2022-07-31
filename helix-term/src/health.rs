@@ -4,6 +4,7 @@ use crossterm::{
 };
 use helix_core::config::{default_syntax_loader, user_syntax_loader};
 use helix_loader::grammar::load_runtime_file;
+use helix_view::clipboard::get_clipboard_provider;
 use std::io::Write;
 
 #[derive(Copy, Clone)]
@@ -52,6 +53,7 @@ pub fn general() -> std::io::Result<()> {
     let lang_file = helix_loader::lang_config_file();
     let log_file = helix_loader::log_file();
     let rt_dir = helix_loader::runtime_dir();
+    let clipboard_provider = get_clipboard_provider();
 
     if config_file.exists() {
         writeln!(stdout, "Config file: {}", config_file.display())?;
@@ -76,6 +78,7 @@ pub fn general() -> std::io::Result<()> {
     if rt_dir.read_dir().ok().map(|it| it.count()) == Some(0) {
         writeln!(stdout, "{}", "Runtime directory is empty.".red())?;
     }
+    writeln!(stdout, "Clipboard provider: {}", clipboard_provider.name())?;
 
     Ok(())
 }
