@@ -45,61 +45,79 @@ pub fn lint(file: String) -> Result<(), DynError> {
     let theme = std::fs::read(&path).unwrap();
     let theme: Theme = toml::from_slice(&theme).expect("Failed to parse theme");
     let check = vec![
-        "ui.background",
-        "ui.background.separator",
-        "ui.cursor",
-        "ui.cursor.insert",
-        "ui.cursor.select",
-        "ui.cursor.match",
-        "ui.cursor.primary",
-        "ui.linenr",
-        "ui.linenr.selected",
-        "ui.statusline",
-        "ui.statusline.inactive",
-        "ui.statusline.normal",
-        "ui.statusline.insert",
-        "ui.statusline.select",
-        "ui.statusline.separator",
-        "ui.popup",
-        "ui.popup.info",
-        "ui.window",
-        "ui.help",
-        "ui.text",
-        "ui.text.focus",
-        "ui.text.info",
-        "ui.virtual.ruler",
-        "ui.virtual.whitespace",
-        "ui.virtual.indent-guide",
-        "ui.menu",
-        "ui.menu.selected",
-        "ui.menu.scroll",
-        "ui.selection",
-        "ui.selection.primary",
-        "ui.cursorline.primary",
-        //"ui.cursorline.secondary",
-        "warning",
-        "error",
-        "info",
-        "hint",
-        "diagnostic",
-        "diagnostic.hint",
-        "diagnostic.info",
-        "diagnostic.warning",
-        "diagnostic.error",
-        "markup.raw.inline",
-        "markup.heading",
+        vec!["ui.background", "ui.background.separator"],
+        vec![
+            "ui.cursor",
+            "ui.cursor.insert",
+            "ui.cursor.select",
+            "ui.cursor.match",
+            "ui.cursor.primary",
+        ],
+        vec!["ui.linenr", "ui.linenr.selected"],
+        vec![
+            "ui.statusline",
+            "ui.statusline.inactive",
+            "ui.statusline.normal",
+            "ui.statusline.insert",
+            "ui.statusline.select",
+            "ui.statusline.separator",
+        ],
+        vec!["ui.popup", "ui.popup.info"],
+        vec!["ui.window"],
+        vec!["ui.help"],
+        vec!["ui.text"],
+        vec!["ui.text.focus", "ui.text.info"],
+        vec![
+            "ui.virtual",
+            "ui.virtual.ruler",
+            "ui.virtual.whitespace",
+            "ui.virtual.indent-guide",
+        ],
+        vec!["ui.menu", "ui.menu.selected", "ui.menu.scroll"],
+        vec!["ui.selection", "ui.selection.primary"],
+        vec![
+            "ui.cursorline",
+            "ui.cursorline.primary",
+            "ui.cursorline.secondary",
+        ],
+        vec!["warning"],
+        vec!["error"],
+        vec!["info"],
+        vec!["hint"],
+        vec![
+            "diagnostic",
+            "diagnostic.hint",
+            "diagnostic.info",
+            "diagnostic.warning",
+            "diagnostic.error",
+        ],
+        vec!["markup.raw.inline", "markup.heading"],
     ];
+    struct ScopeWithError {
+        error: bool,
+        scope: String,
+    }
 
     let lint_errors: Vec<String> = check
         .into_iter()
-        .filter_map(|path| {
-            let style = theme.get(path);
-            if style.eq(&Style::default()) {
-                Some(path.to_string())
-            } else {
-                None
-            }
+        .map(|oneof| {
+            oneof.into_iter().fold(
+                ScopeWithError {
+                    error: false,
+                    scope: String::new(),
+                },
+                |mut acc, path| {
+                    let style = theme.get(path);
+                    if !style.eq(&Style::default()) {
+                        acc.error = true;
+                    } else if acc.scope.len() == 0 {
+                        acc.scope = path.to_string();
+                    }
+                    acc
+                },
+            )
         })
+        .filter_map(|s| if !s.error { Some(s.scope) } else { None })
         .collect();
 
     if lint_errors.len() > 0 {
