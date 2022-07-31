@@ -1358,20 +1358,34 @@ impl HighlightConfiguration {
 
                 let mut best_index = None;
                 let mut best_match_len = 0;
+                let mut best_leftmost = usize::MAX;
                 for (i, recognized_name) in recognized_names.iter().enumerate() {
                     let recognized_name = recognized_name;
-                    let mut len = 0;
+                    let mut match_len = 0;
+                    let mut leftmost = usize::MAX;
                     let mut matches = true;
                     for part in recognized_name.split('.') {
-                        len += 1;
-                        if !capture_parts.contains(&part) {
-                            matches = false;
-                            break;
+                        let pos = capture_parts.iter().position(|a| *a == part);
+                        match pos {
+                            None => {
+                                matches = false;
+                                break;
+                            }
+                            Some(p) => {
+                                if p < leftmost {
+                                    leftmost = p;
+                                }
+                                match_len += 1;
+                            }
                         }
                     }
-                    if matches && len > best_match_len {
+
+                    let better_len = match_len > best_match_len;
+                    let better_leftmost = match_len == best_match_len && leftmost < best_leftmost;
+                    if matches && (better_len || better_leftmost) {
                         best_index = Some(i);
-                        best_match_len = len;
+                        best_leftmost = leftmost;
+                        best_match_len = match_len;
                     }
                 }
                 best_index.map(Highlight)
