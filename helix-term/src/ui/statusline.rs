@@ -359,13 +359,13 @@ fn render_read_only_indicator<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let readonly = if context.doc.write_permission == WritePermission::ReadOnly {
+    let readonly_indicator = if context.doc.write_permission == WritePermission::ReadOnly {
         context.editor.config().read_only_indicator.to_string()
     } else {
         String::new()
     };
 
-    write(context, readonly, None);
+    write(context, readonly_indicator, None);
 }
 
 fn render_separator<F>(context: &mut RenderContext, write: F)
