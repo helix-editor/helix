@@ -27,9 +27,10 @@ pub fn new_reflow_hard_wrap(
                 Some(SmartString::from(line_ending.as_str())),
             )),
             TextFormatEvent::Backtrack(_, backtrack) => {
-                let mut change = changes.last_mut().unwrap();
-                change.0 -= backtrack;
-                change.1 -= backtrack;
+                changes.last_mut().map(|(from, to, _)| {
+                    *from -= backtrack;
+                    *to -= backtrack;
+                });
             }
             _ => {}
         }
@@ -46,7 +47,7 @@ pub enum GraphemeKind<'a> {
     Other(RopeSlice<'a>),
 }
 
-/// An event created by [TextWrap].
+/// An event created by [TextFormatter].
 #[derive(Debug)]
 pub enum TextFormatEvent<'a> {
     /// Grapheme and its width.
@@ -55,7 +56,7 @@ pub enum TextFormatEvent<'a> {
     Backtrack(usize, usize),
 }
 
-/// Iterates over the text's graphemes yielding [TextWrapEvent]s.
+/// Iterates over the text's graphemes yielding [TextFormatEvent]s.
 pub struct TextFormatter<'a> {
     text: RopeSlice<'a>,
     graphemes: RopeGraphemes<'a>,
@@ -68,7 +69,7 @@ pub struct TextFormatter<'a> {
 }
 
 impl<'a> TextFormatter<'a> {
-    /// Create a new [TextWrap] instance.
+    /// Create a new [TextFormatter] instance.
     // If you want to offset the text, you can have `max_width = offset + max_width`
     // and ignore any grapheme events yielded before the offset.
     pub fn new(text: RopeSlice<'a>, max_width: usize, tab_width: usize) -> Self {
@@ -84,16 +85,23 @@ impl<'a> TextFormatter<'a> {
         }
     }
 
-    /// Offset the internal calculated width by n characters.
+    /// Offset the internal calculated width by `n` characters.
     // TODO: To be used in the editor to indent virtual lines.
-    pub fn offset(&mut self, offset: usize) {
-        self.width += offset;
+    #[inline]
+    pub fn offset(&mut self, n: usize) {
+        self.width += n;
         self.backtrack = 0;
         self.backtrack_width = 0;
     }
 
+    #[inline]
     pub fn index(&self) -> usize {
         self.idx
+    }
+
+    #[inline]
+    pub fn width(&self) -> usize {
+        self.width
     }
 }
 
@@ -110,6 +118,8 @@ impl<'a> Iterator for TextFormatter<'a> {
                 (GraphemeKind::Space, 1)
             } else if display_grapheme == "\u{00A0}" {
                 (GraphemeKind::NbSpace, 1)
+            } else if LineEnding::from_str(&display_grapheme).is_some() {
+                (GraphemeKind::LineBreak, 1)
             } else {
                 // Cow will prevent allocations if span contained in a single slice
                 // which should really be the majority case
@@ -118,6 +128,11 @@ impl<'a> Iterator for TextFormatter<'a> {
             };
             self.idx += 1;
             self.backtrack += 1;
+
+            if !matches!(display_grapheme, GraphemeKind::Other(_)) {
+                self.backtrack = 0;
+                self.backtrack_width = 0;
+            }
 
             // Check if the total width of the line exceeds the max width. If so, then
             // a backtrack is yielded.
