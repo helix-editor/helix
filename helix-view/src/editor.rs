@@ -166,7 +166,7 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     /// File type icon/string map for overriding file type.
-    pub file_types: FileTypeConfig,
+    pub file_type_indicators: FileTypeConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -532,7 +532,7 @@ impl Default for Config {
             whitespace: WhitespaceConfig::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
-            file_types: FileTypeConfig::default(),
+            file_type_indicators: FileTypeConfig::default(),
         }
     }
 }

@@ -332,7 +332,7 @@ where
     let file_type = context.doc.language_id().unwrap_or("text");
     let editor_config = context.editor.config();
     let file_type = editor_config
-        .file_types
+        .file_type_indicators
         .get(file_type)
         .map(|x| x.as_str())
         .unwrap_or(file_type);
