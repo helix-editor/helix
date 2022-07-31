@@ -45,10 +45,10 @@
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  | `jdtls` |
-| javascript | ✓ |  | ✓ | `typescript-language-server` |
+| javascript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | jsdoc | ✓ |  |  |  |
 | json | ✓ |  | ✓ | `vscode-json-language-server` |
-| jsx | ✓ |  | ✓ | `typescript-language-server` |
+| jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ |  |  | `julia` |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ |  |  | `texlab` |
@@ -97,9 +97,9 @@
 | tfvars |  |  |  | `terraform-ls` |
 | toml | ✓ |  |  | `taplo` |
 | tsq | ✓ |  |  |  |
-| tsx | ✓ |  |  | `typescript-language-server` |
+| tsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | twig | ✓ |  |  |  |
-| typescript | ✓ |  | ✓ | `typescript-language-server` |
+| typescript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | ungrammar | ✓ |  |  |  |
 | v | ✓ |  |  | `vls` |
 | vala | ✓ |  |  | `vala-language-server` |
