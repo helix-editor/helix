@@ -1358,12 +1358,12 @@ impl HighlightConfiguration {
 
                 let mut best_index = None;
                 let mut best_match_len = 0;
-                let mut best_positions = Vec::new();
-                let mut positions = Vec::new();
+                let mut best_positions = 0;
+                let capture_parts_len = capture_parts.len();
                 for (i, recognized_name) in recognized_names.iter().enumerate() {
                     let recognized_name = recognized_name;
                     let mut match_len = 0;
-                    positions.clear();
+                    let mut positions = 0; // bitmask for where it matches
                     let mut matches = true;
                     for part in recognized_name.split('.') {
                         let pos = capture_parts.iter().position(|a| *a == part);
@@ -1373,20 +1373,20 @@ impl HighlightConfiguration {
                                 break;
                             }
                             Some(pos) => {
-                                positions.push(pos);
+                                positions += 1 << (capture_parts_len - pos);
                                 match_len += 1;
                             }
                         }
                     }
-                    positions.sort_unstable();
 
                     let better_len = match_len > best_match_len;
+
+                    // bigger positions means that the matches are closer to the start and therefore better.
                     let better_positions =
-                        match_len == best_match_len && positions < best_positions; // Vec comparison is lexicographic
+                        match_len == best_match_len && positions > best_positions;
                     if matches && (better_len || better_positions) {
                         best_index = Some(i);
-                        best_positions.clear();
-                        best_positions.extend_from_slice(positions.as_slice());
+                        best_positions = positions;
                         best_match_len = match_len;
                     }
                 }
