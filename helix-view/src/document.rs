@@ -128,7 +128,7 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
-    /// Mode of file - currently read-only, writable, or unknown.
+    /// Write permissions of the file - read-only, writable, or unknown.
     pub write_permission: WritePermission,
 }
 
