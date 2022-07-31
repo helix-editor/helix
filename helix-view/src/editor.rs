@@ -166,7 +166,7 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     /// File type icon/string map for overriding file type.
-    pub file_type_indicators: FileTypeConfig,
+    pub file_type_indicators: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -312,37 +312,6 @@ impl std::ops::Deref for CursorShapeConfig {
 impl Default for CursorShapeConfig {
     fn default() -> Self {
         Self([CursorKind::Block; 3])
-    }
-}
-
-#[derive(Debug, Default, Clone, PartialEq)]
-pub struct FileTypeConfig(HashMap<String, String>);
-
-impl<'de> Deserialize<'de> for FileTypeConfig {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let m = HashMap::<String, String>::deserialize(deserializer)?;
-        Ok(FileTypeConfig(m))
-    }
-}
-
-impl Serialize for FileTypeConfig {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let map = serializer.serialize_map(Some(self.len()))?;
-        map.end()
-    }
-}
-
-impl std::ops::Deref for FileTypeConfig {
-    type Target = HashMap<String, String>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
     }
 }
 
@@ -532,7 +501,7 @@ impl Default for Config {
             whitespace: WhitespaceConfig::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
-            file_type_indicators: FileTypeConfig::default(),
+            file_type_indicators: HashMap::new(),
         }
     }
 }
