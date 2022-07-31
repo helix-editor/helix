@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 
-use ropey::RopeSlice;
+use ropey::{Rope, RopeSlice};
 use smartstring::{LazyCompact, SmartString};
 
-use crate::RopeGraphemes;
+use crate::{LineEnding, RopeGraphemes, Transaction};
 
 /// Given a slice of text, return the text re-wrapped to fit it
 /// within the given width.
@@ -11,11 +11,38 @@ pub fn reflow_hard_wrap(text: &str, max_line_len: usize) -> SmartString<LazyComp
     textwrap::refill(text, max_line_len).into()
 }
 
+pub fn new_reflow_hard_wrap(
+    text: &Rope,
+    line_ending: LineEnding,
+    max_width: usize,
+    tab_width: usize,
+) -> Transaction {
+    let mut changes = Vec::new();
+    let mut formatter = TextFormatter::new(text.slice(..), max_width, tab_width);
+    while let Some(event) = formatter.next() {
+        match event {
+            TextFormatEvent::Backtrack(_, _backtrack @ 0) => changes.push((
+                formatter.index(),
+                formatter.index(),
+                Some(SmartString::from(line_ending.as_str())),
+            )),
+            TextFormatEvent::Backtrack(_, backtrack) => {
+                let mut change = changes.last_mut().unwrap();
+                change.0 -= backtrack;
+                change.1 -= backtrack;
+            }
+            _ => {}
+        }
+    }
+    Transaction::change(text, changes.into_iter())
+}
+
 #[derive(Debug)]
 pub enum GraphemeKind<'a> {
     Tab,
     Space,
     NbSpace,
+    LineBreak,
     Other(RopeSlice<'a>),
 }
 
@@ -24,10 +51,8 @@ pub enum GraphemeKind<'a> {
 pub enum TextFormatEvent<'a> {
     /// Grapheme and its width.
     Grapheme(GraphemeKind<'a>, usize),
-    /// The width to backtrack. To be interpreted as going to the next virtual line.
-    Backtrack(usize),
-    /// Reached a line break.
-    LineBreak,
+    /// The (width, len_chars) to backtrack. To be interpreted as going to the next virtual line.
+    Backtrack(usize, usize),
 }
 
 /// Iterates over the text's graphemes yielding [TextWrapEvent]s.
@@ -66,6 +91,10 @@ impl<'a> TextFormatter<'a> {
         self.backtrack = 0;
         self.backtrack_width = 0;
     }
+
+    pub fn index(&self) -> usize {
+        self.idx
+    }
 }
 
 impl<'a> Iterator for TextFormatter<'a> {
@@ -73,12 +102,10 @@ impl<'a> Iterator for TextFormatter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         // Maybe virtual text could be inserted through this function?
-        self.graphemes.next().and_then(|grapheme| {
+        self.graphemes.next().map(|grapheme| {
             let display_grapheme = Cow::from(grapheme);
             let (display_grapheme, width) = if display_grapheme == "\t" {
-                // make sure we display tab as appropriate amount of spaces
-                let visual_tab_width = self.tab_width - (self.width % self.tab_width);
-                (GraphemeKind::Tab, visual_tab_width)
+                (GraphemeKind::Tab, self.tab_width)
             } else if display_grapheme == " " {
                 (GraphemeKind::Space, 1)
             } else if display_grapheme == "\u{00A0}" {
@@ -90,6 +117,7 @@ impl<'a> Iterator for TextFormatter<'a> {
                 (GraphemeKind::Other(grapheme), width)
             };
             self.idx += 1;
+            self.backtrack += 1;
 
             // Check if the total width of the line exceeds the max width. If so, then
             // a backtrack is yielded.
@@ -99,21 +127,29 @@ impl<'a> Iterator for TextFormatter<'a> {
                 let event = if self.backtrack_width + width < 80 {
                     self.graphemes =
                         RopeGraphemes::new(self.text.slice(self.idx - self.backtrack..));
-                    TextFormatEvent::Backtrack(self.backtrack_width)
+                    TextFormatEvent::Backtrack(self.backtrack_width, self.backtrack)
                 } else {
-                    TextFormatEvent::Backtrack(0)
+                    TextFormatEvent::Backtrack(0, 0)
                 };
                 self.backtrack = 0;
                 self.backtrack_width = 0;
 
-                Some(event)
+                event
             } else {
                 self.width += width;
                 self.backtrack_width += width;
-                self.backtrack += 1;
 
-                Some(TextFormatEvent::Grapheme(display_grapheme, width))
+                TextFormatEvent::Grapheme(display_grapheme, width)
             }
         })
     }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_reflow() {}
+
+    #[test]
+    fn test_text_formatter() {}
 }
