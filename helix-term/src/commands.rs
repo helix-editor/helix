@@ -800,13 +800,14 @@ fn align_selections(cx: &mut Context) {
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
 
+    let tab_width = doc.tab_width();
     let mut column_widths: Vec<Vec<_>> = Vec::new();
     let mut last_line = text.len_lines() + 1;
     let mut col = 0;
 
     for range in selection {
-        let coords = coords_at_pos(text, range.head);
-        let anchor_coords = coords_at_pos(text, range.anchor);
+        let coords = visual_coords_at_pos(text, range.head, tab_width);
+        let anchor_coords = visual_coords_at_pos(text, range.anchor, tab_width);
 
         if coords.row != anchor_coords.row {
             cx.editor
