@@ -1358,11 +1358,12 @@ impl HighlightConfiguration {
 
                 let mut best_index = None;
                 let mut best_match_len = 0;
-                let mut best_leftmost = usize::MAX;
+                let mut best_positions = Vec::new();
+                let mut positions = Vec::new();
                 for (i, recognized_name) in recognized_names.iter().enumerate() {
                     let recognized_name = recognized_name;
                     let mut match_len = 0;
-                    let mut leftmost = usize::MAX;
+                    positions.clear();
                     let mut matches = true;
                     for part in recognized_name.split('.') {
                         let pos = capture_parts.iter().position(|a| *a == part);
@@ -1371,20 +1372,21 @@ impl HighlightConfiguration {
                                 matches = false;
                                 break;
                             }
-                            Some(p) => {
-                                if p < leftmost {
-                                    leftmost = p;
-                                }
+                            Some(pos) => {
+                                positions.push(pos);
                                 match_len += 1;
                             }
                         }
                     }
+                    positions.sort_unstable();
 
                     let better_len = match_len > best_match_len;
-                    let better_leftmost = match_len == best_match_len && leftmost < best_leftmost;
-                    if matches && (better_len || better_leftmost) {
+                    let better_positions =
+                        match_len == best_match_len && positions < best_positions; // Vec comparison is lexicographic
+                    if matches && (better_len || better_positions) {
                         best_index = Some(i);
-                        best_leftmost = leftmost;
+                        best_positions.clear();
+                        best_positions.extend_from_slice(positions.as_slice());
                         best_match_len = match_len;
                     }
                 }
