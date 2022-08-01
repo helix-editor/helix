@@ -1,5 +1,5 @@
 # Author : Jakub Bartodziej <kubabartodziej@gmail.com>
-# The theme uses the gruvbox dark palette with standard contrast: github.com/morhetz/gruvbox
+# The theme uses the gruvbox dark palette with medium contrast: github.com/morhetz/gruvbox
 
 "attribute" = "aqua1"
 "keyword" = { fg = "red1" }
