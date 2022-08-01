@@ -4541,25 +4541,19 @@ fn shell_impl(
     use std::process::{Command, Stdio};
     ensure!(!shell.is_empty(), "No shell set");
 
-    let process_ = match input {
-        Some(_) => Command::new(&shell[0])
-                     .args(&shell[1..])
-                     .arg(cmd)
-                     .stdin(Stdio::piped())
-                     .stdout(Stdio::piped())
-                     .stderr(Stdio::piped())
-                     .spawn(),
-        None => Command::new(&shell[0])
-                     .args(&shell[1..])
-                     .arg(cmd)
-                     .stdout(Stdio::piped())
-                     .stderr(Stdio::piped())
-                     .spawn()
-    };
+    let mut process_ = Command::new(&shell[0]);
 
+    process_
+        .args(&shell[1..])
+        .arg(cmd)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
-    let mut process = match process_
-    {
+    if let Some(_) = input {
+        process_.stdin(Stdio::piped());
+    }
+
+    let mut process = match process_.spawn() {
         Ok(process) => process,
         Err(e) => {
             log::error!("Failed to start shell: {}", e);
