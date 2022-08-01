@@ -1341,8 +1341,8 @@ impl HighlightConfiguration {
     /// Tree-sitter syntax-highlighting queries specify highlights in the form of dot-separated
     /// highlight names like `punctuation.bracket` and `function.method.builtin`. Consumers of
     /// these queries can choose to recognize highlights with different levels of specificity.
-    /// For example, the string `function.builtin` will match against `function.method.builtin`
-    /// and `function.builtin.constructor`, but will not match `function.method`.
+    /// For example, the string `function.builtin` will match against `function.builtin.constructor`
+    /// but will not match `function.method.builtin` and `function.method`.
     ///
     /// When highlighting, results are returned as `Highlight` values, which contain the index
     /// of the matched highlight this list of highlight names.
@@ -1358,36 +1358,22 @@ impl HighlightConfiguration {
 
                 let mut best_index = None;
                 let mut best_match_len = 0;
-                let mut best_positions = 0;
-                let capture_parts_len = capture_parts.len();
                 for (i, recognized_name) in recognized_names.iter().enumerate() {
                     let recognized_name = recognized_name;
-                    let mut match_len = 0;
-                    let mut positions = 0; // bitmask for where it matches
+                    let mut len = 0;
                     let mut matches = true;
-                    for part in recognized_name.split('.') {
-                        let pos = capture_parts.iter().position(|a| *a == part);
-                        match pos {
-                            None => {
+                    for (i, part) in recognized_name.split('.').enumerate() {
+                        match capture_parts.get(i) {
+                            Some(capture_part) if *capture_part == part => len += 1,
+                            _ => {
                                 matches = false;
                                 break;
                             }
-                            Some(pos) => {
-                                positions += 1 << (capture_parts_len - pos);
-                                match_len += 1;
-                            }
                         }
                     }
-
-                    let better_len = match_len > best_match_len;
-
-                    // bigger positions means that the matches are closer to the start and therefore better.
-                    let better_positions =
-                        match_len == best_match_len && positions > best_positions;
-                    if matches && (better_len || better_positions) {
+                    if matches && len > best_match_len {
                         best_index = Some(i);
-                        best_positions = positions;
-                        best_match_len = match_len;
+                        best_match_len = len;
                     }
                 }
                 best_index.map(Highlight)
