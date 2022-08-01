@@ -64,6 +64,8 @@
 | `:config-reload` | Refresh user config. |
 | `:config-open` | Open the user config.toml file. |
 | `:log-open` | Open the helix log file. |
+| `:current-keymap-open` | Open the current keymap. |
+| `:default-keymap-open` | Open the default keymap. |
 | `:insert-output` | Run shell command, inserting output after each selection. |
 | `:append-output` | Run shell command, appending output after each selection. |
 | `:pipe` | Pipe each selection to the shell command. |
