@@ -1604,7 +1604,7 @@ source = { git = "https://github.com/eonpatapon/tree-sitter-cue", rev = "61843e3
 name = "lisp"
 scope = "source.lisp"
 injection-regex = "(lisp|cl)"
-file-types = ["lisp", "cl"]
+file-types = ["lisp", "cl", "el", "mud", "asd"]
 roots = []
 comment-token = ";"
 language-server = { command = "cl-lsp", args = ["stdio"] }
