@@ -1,5 +1,10 @@
+; Imports
+
 (dotted_name
   (identifier)* @namespace)
+  
+(aliased_import
+  alias: (identifier) @namespace)
 
 ; Builtin functions
 
