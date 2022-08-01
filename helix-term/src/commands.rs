@@ -4542,14 +4542,13 @@ fn shell_impl(
     ensure!(!shell.is_empty(), "No shell set");
 
     let mut process_ = Command::new(&shell[0]);
-
     process_
         .args(&shell[1..])
         .arg(cmd)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    if let Some(_) = input {
+    if input.is_some() {
         process_.stdin(Stdio::piped());
     }
 
