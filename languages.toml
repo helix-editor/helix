@@ -1599,3 +1599,17 @@ indent = { tab-width = 4, unit = "\t" }
 [[grammar]]
 name = "cue"
 source = { git = "https://github.com/eonpatapon/tree-sitter-cue", rev = "61843e3beebf19417e4fede4e8be4df1084317ad" }
+
+[[language]]
+name = "lisp"
+scope = "source.lisp"
+injection-regex = "(lisp|cl)"
+file-types = ["lisp", "cl"]
+roots = []
+comment-token = ";"
+language-server = { command = "cl-lsp", args = ["stdio"] }
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "lisp"
+source = { git = "https://github.com/alexanderbrevig/tree-sitter-lisp", rev = "4656598b7ba7b6610b47db4709528eecdd60f6c8" }
