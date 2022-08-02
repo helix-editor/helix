@@ -56,7 +56,10 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(!args.is_empty(), "wrong argument count");
     for arg in args {
         let (path, pos) = args::parse_file(arg);
+        // If the path is a directory, open a file picker on that directory
+        // Use a vector to 'reverse' the order of the opened directories
         if std::fs::canonicalize(&path)?.is_dir() {
+            cx.editor.set_status(path.to_string_lossy().to_string());
             let callback = async move {
                 let call: job::Callback =
                     Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
@@ -67,12 +70,13 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             };
             cx.jobs.callback(callback);
         } else {
-          let _ = cx.editor.open(&path, Action::Replace)?;
-          let (view, doc) = current!(cx.editor);
-          let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-          doc.set_selection(view.id, pos);
-          // does not affect opening a buffer without pos
-          align_view(doc, view, Align::Center);
+            // Otherwise, just open the file
+            let _ = cx.editor.open(&path, Action::Replace)?;
+            let (view, doc) = current!(cx.editor);
+            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+            doc.set_selection(view.id, pos);
+            // does not affect opening a buffer without pos
+            align_view(doc, view, Align::Center);
         }
     }
     Ok(())
