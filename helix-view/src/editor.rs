@@ -222,8 +222,11 @@ impl Default for StatusLineConfig {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum StatusLineElement {
-    /// The editor mode (Normal, Insert, Visual/Selection)
+    /// The editor mode (NOR, INS, SEL)
     Mode,
+
+    /// The editor mode (NORMAL, INSERT, SELECT)
+    LongMode,
 
     /// The LSP activity spinner
     Spinner,
