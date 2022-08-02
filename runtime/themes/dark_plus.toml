@@ -81,6 +81,7 @@
 
 "ui.virtual.whitespace" = { fg = "dark_gray" }
 "ui.virtual.ruler" = { bg = "borders" }
+"ui.virtual.indent-guide" = { bg = "dark_gray4" }
 
 "warning" = { fg = "gold2" }
 "error" = { fg = "red" }
@@ -101,7 +102,8 @@ light_gray2 = "#c6c6c6"
 light_gray3 = "#eeeeee"
 dark_gray = "#858585"
 dark_gray2 = "#1e1e1e"
-dark_gray3= "#282828"
+dark_gray3 = "#282828"
+dark_gray4 = "#404040"
 blue = "#007acc"
 blue2 = "#569CD6"
 blue3 = "#6796E6"
