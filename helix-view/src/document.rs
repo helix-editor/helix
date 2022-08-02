@@ -12,7 +12,6 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
-use tokio::io::AsyncWriteExt;
 
 use helix_core::{
     encoding,
