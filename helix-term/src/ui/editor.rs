@@ -1011,7 +1011,7 @@ impl EditorView {
                     None => return EventResult::Ignored(None),
                 }
 
-                let offset = config.scroll_lines.abs() as usize;
+                let offset = config.scroll_lines.unsigned_abs();
                 commands::scroll(cxt, offset, direction);
 
                 cxt.editor.tree.focus = current_view;
