@@ -65,6 +65,7 @@
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
 | nickel | ✓ |  | ✓ | `nls` |
+| nim |  |  |  | `nimlangserver` |
 | nix | ✓ |  | ✓ | `rnix-lsp` |
 | nu | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
