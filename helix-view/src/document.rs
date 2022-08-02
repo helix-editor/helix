@@ -431,8 +431,7 @@ impl Document {
                     })?;
                 {
                     let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
-                    stdin
-                        .write_all(&text.bytes().collect::<Vec<u8>>())
+                    to_writer(&mut stdin, encoding::UTF_8, &text)
                         .await
                         .map_err(|_| FormatterError::BrokenStdin)?;
                 }
@@ -1105,18 +1104,17 @@ impl std::error::Error for FormatterError {}
 
 impl Display for FormatterError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
+        match self {
             Self::SpawningFailed { command, error } => {
-                format!("Failed to spawn formatter {}: {:?}", command, error)
+                write!(f, "Failed to spawn formatter {}: {:?}", command, error)
             }
-            Self::BrokenStdin => "Could not write to formatter stdin".to_string(),
-            Self::WaitForOutputFailed => "Waiting for formatter output failed".to_string(),
-            Self::Stderr(output) => format!("Formatter error: {}", output),
-            Self::InvalidUtf8Output => "Invalid UTF-8 formatter output".to_string(),
-            Self::DiskReloadError(error) => format!("Error reloading file from disk: {}", error),
-            Self::NonZeroExitStatus => "Formatter exited with non zero exit status:".to_string(),
-        };
-        f.write_str(&s)
+            Self::BrokenStdin => write!(f, "Could not write to formatter stdin"),
+            Self::WaitForOutputFailed => write!(f, "Waiting for formatter output failed"),
+            Self::Stderr(output) => write!(f, "Formatter error: {}", output),
+            Self::InvalidUtf8Output => write!(f, "Invalid UTF-8 formatter output"),
+            Self::DiskReloadError(error) => write!(f, "Error reloading file from disk: {}", error),
+            Self::NonZeroExitStatus => write!(f, "Formatter exited with non zero exit status:"),
+        }
     }
 }
 
