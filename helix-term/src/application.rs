@@ -801,7 +801,7 @@ impl Application {
     fn restore_term(&mut self) -> Result<(), Error> {
         let mut stdout = stdout();
         // reset cursor shape
-        write!(stdout, "\x1B[2 q")?;
+        write!(stdout, "\x1B[0 q")?;
         // Ignore errors on disabling, this might trigger on windows if we call
         // disable without calling enable previously
         let _ = execute!(stdout, DisableMouseCapture);
