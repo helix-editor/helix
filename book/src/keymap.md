@@ -251,30 +251,34 @@ This layer is similar to vim keybindings as kakoune does not support window.
 
 #### Space mode
 
-This layer is a kludge of mappings, mostly pickers.
+This layer contains high-level commands like pickers, some LSP/DAP operations,
+clipboard interaction, window management and other miscellaneous commands.
 
-
-| Key     | Description                                                             | Command                             |
-| -----   | -----------                                                             | -------                             |
-| `f`     | Open file picker                                                        | `file_picker`                       |
-| `b`     | Open buffer picker                                                      | `buffer_picker`                     |
-| `j`     | Open jumplist picker                                                    | `jumplist_picker`                   |
-| `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                             |
-| `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                     |
-| `S`     | Open workspace symbol picker (**LSP**)                                  | `workspace_symbol_picker`           |
-| `g`     | Open document diagnostics picker (**LSP**)                              | `diagnostics_picker`                |
-| `G`     | Open workspace diagnostics picker (**LSP**)                             | `workspace_diagnostics_picker`
-| `r`     | Rename symbol (**LSP**)                                                 | `rename_symbol`                     |
-| `a`     | Apply code action  (**LSP**)                                            | `code_action`                       |
-| `'`     | Open last fuzzy picker                                                  | `last_picker`                       |
-| `w`     | Enter [window mode](#window-mode)                                       | N/A                                 |
-| `p`     | Paste system clipboard after selections                                 | `paste_clipboard_after`             |
-| `P`     | Paste system clipboard before selections                                | `paste_clipboard_before`            |
-| `y`     | Join and yank selections to clipboard                                   | `yank_joined_to_clipboard`          |
-| `Y`     | Yank main selection to clipboard                                        | `yank_main_selection_to_clipboard`  |
-| `R`     | Replace selections by clipboard contents                                | `replace_selections_with_clipboard` |
-| `/`     | Global search in workspace folder                                       | `global_search`                     |
-| `?`     | Open command palette                                                    | `command_palette`                   |
+| Key     | Description                                                             | Command                                    |
+| -----   | -----------                                                             | -------                                    |
+| `f`     | Open file picker                                                        | `file_picker`                              |
+| `F`     | Open file picker at current working directory                           | `file_picker_in_current_directory`         |
+| `b`     | Open buffer picker                                                      | `buffer_picker`                            |
+| `j`     | Open jumplist picker                                                    | `jumplist_picker`                          |
+| `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                            |
+| `S`     | Open workspace symbol picker (**LSP**)                                  | `workspace_symbol_picker`                  |
+| `g`     | Open document diagnostics picker (**LSP**)                              | `diagnostics_picker`                       |
+| `G`     | Open workspace diagnostics picker (**LSP**)                             | `workspace_diagnostics_picker`             |
+| `a`     | Apply code action  (**LSP**)                                            | `code_action`                              |
+| `'`     | Open last fuzzy picker                                                  | `last_picker`                              |
+| `d`     | Debug (experimental)                                                    | N/A                                        |
+| `w`     | Enter [window mode](#window-mode)                                       | N/A                                        |
+| `y`     | Join and yank selections to clipboard                                   | `yank_joined_to_clipboard`                 |
+| `Y`     | Yank main selection to clipboard                                        | `yank_main_selection_to_clipboard`         |
+| `p`     | Paste system clipboard after selections                                 | `paste_clipboard_after`                    |
+| `P`     | Paste system clipboard before selections                                | `paste_clipboard_before`                   |
+| `R`     | Replace selections by clipboard contents                                | `replace_selections_with_clipboard`        |
+| `t`     | Toggle setting                                                          | `toggle_setting`                           |
+| `/`     | Global search in workspace folder                                       | `global_search`                            |
+| `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                                    |
+| `r`     | Rename symbol (**LSP**)                                                 | `rename_symbol`                            |
+| `h`     | Select symbol references (**LSP**)                                      | `select_references_to_symbol_under_cursor` |
+| `?`     | Open command palette                                                    | `command_palette`                          |
 
 > TIP: Global search displays results in a fuzzy picker, use `space + '` to bring it back up after opening a file.
 

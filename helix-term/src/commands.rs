@@ -432,6 +432,7 @@ impl MappableCommand {
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
+        toggle_setting, "Toggle setting",
     );
 }
 
@@ -4844,4 +4845,76 @@ fn replay_macro(cx: &mut Context) {
         // replaying recursively.
         cx.editor.macro_replaying.pop();
     }));
+}
+
+fn toggle_setting(cx: &mut Context) {
+    cx.on_next_key(move |cx, event| {
+        use helix_view::editor::ConfigEvent;
+
+        cx.editor.autoinfo = None;
+        cx.editor.pseudo_pending = None;
+
+        if let Some(ch) = event.char() {
+            let mut config = cx.editor.config().clone();
+
+            match ch {
+                'w' => {
+                    use helix_view::editor::{
+                        WhitespaceRender::Basic, WhitespaceRenderValue::All,
+                        WhitespaceRenderValue::None,
+                    };
+
+                    config.whitespace.render = match config.whitespace.render {
+                        Basic(None) => Basic(All),
+                        _ => Basic(None),
+                    };
+                }
+                'i' => config.indent_guides.render = !config.indent_guides.render,
+                'c' => config.cursorline = !config.cursorline,
+                'r' => {
+                    config.rulers = match config.rulers.as_slice() {
+                        [80] => vec![],
+                        _ => vec![80],
+                    };
+                }
+                'p' => {
+                    use helix_core::syntax::AutoPairConfig::Enable;
+
+                    config.auto_pairs = match config.auto_pairs {
+                        Enable(false) => Enable(true),
+                        _ => Enable(false),
+                    }
+                }
+                _ => cx.editor.set_error(format!("Unknown setting '{}'", ch)),
+            }
+
+            if cx
+                .editor
+                .config_events
+                .0
+                .send(ConfigEvent::Update(Box::new(config)))
+                .is_err()
+            {
+                cx.editor
+                    .set_error(format!("Failed to update setting '{}'", ch));
+            }
+        }
+    });
+
+    let help_text = [
+        ("w", "Whitespace"),
+        ("i", "Indent guides"),
+        ("c", "Cursorline"),
+        ("r", "Ruler at 80 columns"),
+        ("p", "Auto-pairs"),
+    ];
+
+    cx.editor.autoinfo = Some(Info::new(
+        "Toggle setting",
+        help_text
+            .into_iter()
+            .map(|(col1, col2)| (col1.to_string(), col2.to_string()))
+            .collect(),
+    ));
+    cx.editor.pseudo_pending = Some("<space>t".to_string());
 }

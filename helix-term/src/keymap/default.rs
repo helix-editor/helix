@@ -259,6 +259,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "p" => paste_clipboard_after,
             "P" => paste_clipboard_before,
             "R" => replace_selections_with_clipboard,
+            "t" => toggle_setting,
             "/" => global_search,
             "k" => hover,
             "r" => rename_symbol,
