@@ -461,7 +461,6 @@ injection-regex = "nim"
 file-types = ["nim", "nims"]
 shebangs = ["nim"]
 roots = []
-auto-format = true
 comment-token = "#"
 language-server = { command = "nimlangserver" }
 indent = { tab-width = 2, unit = " " }
