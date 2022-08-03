@@ -43,6 +43,8 @@ type Signals = futures_util::stream::Empty<()>;
 
 const LSP_DEADLINE: Duration = Duration::from_millis(16);
 
+pub static mut ENABLE_SIGTSTP: bool = true;
+
 pub struct Application {
     compositor: Compositor,
     pub editor: Editor,
@@ -205,9 +207,19 @@ impl Application {
 
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
+
+        let mut app_signals = vec![signal::SIGTSTP, signal::SIGCONT];
+        unsafe {
+            // If SIGTSTP is SIG_IGN, then do not listen for it
+            let tstp = libc::signal(signal_hook::consts::SIGTSTP, /*SIG_IGN*/ 1);
+            if tstp != /*SIG_ERR*/ 0 {
+                log::debug!("Disabling SIGTSTP, C-z will not suspend Helix");
+                ENABLE_SIGTSTP = false;
+                app_signals.remove(0);
+            }
+        }
         #[cfg(not(windows))]
-        let signals =
-            Signals::new(&[signal::SIGTSTP, signal::SIGCONT]).context("build signal handler")?;
+        let signals = Signals::new(app_signals).context("build signal handler")?;
 
         let app = Self {
             compositor,
