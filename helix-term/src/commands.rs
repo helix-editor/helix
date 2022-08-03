@@ -4872,9 +4872,10 @@ fn toggle_setting(cx: &mut Context) {
                 'i' => config.indent_guides.render = !config.indent_guides.render,
                 'c' => config.cursorline = !config.cursorline,
                 'r' => {
-                    config.rulers = match config.rulers.as_slice() {
-                        [80] => vec![],
-                        _ => vec![80],
+                    config.rulers = if config.rulers.is_empty() {
+                        vec![80]
+                    } else {
+                        vec![]
                     };
                 }
                 'p' => {
