@@ -49,7 +49,7 @@
   "readonly"
 ] @keyword.storage.modifier
 
-; inherits: javascript
+; inherits: ecma
 
 ; Types
 
