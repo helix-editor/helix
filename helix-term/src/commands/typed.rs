@@ -2115,7 +2115,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
         TypableCommand {
             name: "run-shell-command-no-output",
-            aliases: &["sh!"],
+            aliases: &["shush"],
             doc: "Run a shell command ignoring output",
             fun: run_shell_command_no_output,
             completer: Some(completers::directory)
