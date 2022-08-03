@@ -7,6 +7,7 @@ use helix_core::{
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{align_view, editor::ConfigEvent, theme, tree::Layout, Align, Editor};
+use once_cell::sync::OnceCell;
 use serde_json::json;
 
 use crate::{
@@ -43,7 +44,7 @@ type Signals = futures_util::stream::Empty<()>;
 
 const LSP_DEADLINE: Duration = Duration::from_millis(16);
 
-pub static mut ENABLE_SIGTSTP: bool = true;
+pub static ENABLE_SIGTSTP: OnceCell<bool> = OnceCell::new();
 
 pub struct Application {
     compositor: Compositor,
@@ -216,8 +217,10 @@ impl Application {
             // If SIGTSTP is SIG_IGN, then do not listen for it
             if libc::signal(signal_hook::consts::SIGTSTP, HX_SIG_IGN) != HX_SIG_ERR {
                 log::debug!("Disabling SIGTSTP, C-z will not suspend Helix");
-                ENABLE_SIGTSTP = false;
+                ENABLE_SIGTSTP.set(false).unwrap();
                 app_signals.remove(0);
+            } else {
+                ENABLE_SIGTSTP.set(true).unwrap();
             }
         }
         #[cfg(not(windows))]
