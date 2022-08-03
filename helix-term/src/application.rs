@@ -209,6 +209,7 @@ impl Application {
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
 
+        #[cfg(not(windows))]
         let mut app_signals = vec![signal::SIGTSTP, signal::SIGCONT];
         unsafe {
             // X platform constants
@@ -223,7 +224,6 @@ impl Application {
                 ENABLE_SIGTSTP.set(true).unwrap();
             }
         }
-        #[cfg(not(windows))]
         let signals = Signals::new(app_signals).context("build signal handler")?;
 
         let app = Self {
