@@ -473,10 +473,10 @@ impl EditorView {
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
                     for grapheme in RopeGraphemes::new(text) {
-                        let out_of_bounds = visual_x < offset.col as u16
-                            || visual_x >= viewport.width + offset.col as u16;
-
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
+                            let out_of_bounds = visual_x < offset.col as u16
+                                || visual_x >= viewport.width + offset.col as u16;
+
                             if !out_of_bounds {
                                 // we still want to render an empty cell with the style
                                 surface.set_string(
@@ -530,12 +530,25 @@ impl EditorView {
                                 (grapheme.as_ref(), width)
                             };
 
+                            let cut_off_start = offset.col.saturating_sub(visual_x as usize);
+                            let out_of_bounds = cut_off_start >= width;
+
                             if !out_of_bounds {
+                                let substring = {
+                                    let mut chars = display_grapheme.chars();
+                                    // TODO use advance_by once stable
+                                    for _ in 0..cut_off_start {
+                                        chars.next();
+                                    }
+                                    chars.as_str()
+                                };
+
                                 // if we're offscreen just keep going until we hit a new line
                                 surface.set_string(
-                                    viewport.x + visual_x - offset.col as u16,
+                                    viewport.x + visual_x - offset.col as u16
+                                        + cut_off_start as u16,
                                     viewport.y + line,
-                                    display_grapheme,
+                                    substring,
                                     if is_whitespace {
                                         style.patch(whitespace_style)
                                     } else {
