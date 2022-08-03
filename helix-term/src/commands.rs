@@ -4886,6 +4886,14 @@ fn toggle_setting(cx: &mut Context) {
                         _ => Enable(false),
                     }
                 }
+                'l' => {
+                    use helix_view::editor::LineNumber::{Absolute, Relative};
+
+                    config.line_number = match config.line_number {
+                        Absolute => Relative,
+                        Relative => Absolute,
+                    };
+                }
                 _ => cx.editor.set_error(format!("Unknown setting '{}'", ch)),
             }
 
@@ -4908,6 +4916,8 @@ fn toggle_setting(cx: &mut Context) {
         ("c", "Cursorline"),
         ("r", "Ruler at 80 columns"),
         ("p", "Auto-pairs"),
+        ("l", "Line-number (absolute/relative)"),
+        ("l", "Line-number (absolute, relative)"),
     ];
 
     cx.editor.autoinfo = Some(Info::new(
