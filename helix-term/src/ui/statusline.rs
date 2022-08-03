@@ -154,17 +154,17 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let visible = context.focused;
+    let (iname, nname, sname) = (
+        &context.editor.config().statusline.insert_mode_name,
+        &context.editor.config().statusline.normal_mode_name,
+        &context.editor.config().statusline.select_mode_name,
+    );
 
     write(
         context,
         format!(
             " {} ",
             if visible {
-                let (iname, nname, sname) = (
-                    context.editor.config().statusline.insert_mode_name.clone(),
-                    context.editor.config().statusline.normal_mode_name.clone(),
-                    context.editor.config().statusline.select_mode_name.clone(),
-                );
                 match context.doc.mode() {
                     Mode::Insert => iname,
                     Mode::Select => sname,
@@ -172,7 +172,7 @@ where
                 }
             } else {
                 // If not focused, explicitly leave an empty space instead of returning None.
-                "   ".to_string()
+                "   "
             }
         ),
         if visible && context.editor.config().color_modes {
