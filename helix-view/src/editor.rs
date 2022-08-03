@@ -120,6 +120,8 @@ pub struct Config {
     pub mouse: bool,
     /// Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise.
     pub shell: Vec<String>,
+    /// Path to terminal executable file
+    pub terminal: String,
     /// Line number mode.
     pub line_number: LineNumber,
     /// Highlight the lines cursors are currently on. Defaults to false.
@@ -479,6 +481,7 @@ impl Default for Config {
             } else {
                 vec!["sh".to_owned(), "-c".to_owned()]
             },
+            terminal: String::new(),
             line_number: LineNumber::Absolute,
             cursorline: false,
             gutters: vec![GutterType::Diagnostics, GutterType::LineNumbers],

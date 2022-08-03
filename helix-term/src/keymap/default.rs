@@ -212,6 +212,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "G" => workspace_diagnostics_picker,
             "a" => code_action,
             "'" => last_picker,
+            "`" => launch_external_terminal,
             "d" => { "Debug (experimental)" sticky=true
                 "l" => dap_launch,
                 "b" => dap_toggle_breakpoint,

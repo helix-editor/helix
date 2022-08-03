@@ -425,6 +425,7 @@ impl MappableCommand {
         shell_insert_output, "Insert shell command output before selections",
         shell_append_output, "Append shell command output after selections",
         shell_keep_pipe, "Filter selections with shell predicate",
+        launch_external_terminal, "Launch external terminal",
         suspend, "Suspend and return to shell",
         rename_symbol, "Rename symbol",
         increment, "Increment item under cursor",
@@ -4644,6 +4645,28 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
             shell(cx, input, &behavior);
         },
     );
+}
+
+fn launch_external_terminal(cx: &mut Context) {
+    let terminal = &cx.editor.config().terminal;
+
+    if terminal.is_empty() {
+        cx.editor.set_error("Missing terminal config");
+        return;
+    }
+
+    match std::env::current_dir() {
+        Ok(current_dir) => match std::process::Command::new(terminal)
+            .arg(current_dir)
+            .spawn()
+        {
+            Ok(_) => (),
+            Err(_) => cx
+                .editor
+                .set_error("Launching terminal failed, make sure it's configured correctly"),
+        },
+        Err(_) => cx.editor.set_error("Launching terminal failed"),
+    }
 }
 
 fn suspend(_cx: &mut Context) {
