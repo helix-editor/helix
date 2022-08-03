@@ -42,9 +42,13 @@ namespace = { fg = 'red' }
 'ui.background'= { bg = 'bg' }
 'ui.cursor' = { bg = 'orange', fg = 'bg-alt' }
 'ui.cursor.match' = { fg = 'red', modifiers = ['bold'] }
+'ui.cursorline' = { bg = 'bg-alt' }
 'ui.linenr' = { fg = 'base4' }
 'ui.linenr.selected' = { fg = 'orange', bg = 'bg-alt', modifiers = ['bold'] }
 'ui.statusline' = { bg = 'base3' }
+'ui.statusline.normal' = { bg = 'base3' }
+'ui.statusline.insert' = { bg = 'base3' }
+'ui.statusline.select' = { bg = 'base3' }
 'ui.popup' = { bg = 'bg-alt' }
 'ui.window' = { fg = 'gray' }
 'ui.help' = { bg = 'base2' }
