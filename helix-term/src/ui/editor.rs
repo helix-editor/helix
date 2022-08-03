@@ -473,10 +473,10 @@ impl EditorView {
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
                     for grapheme in RopeGraphemes::new(text) {
-                        if LineEnding::from_rope_slice(&grapheme).is_some() {
-                            let out_of_bounds = visual_x < offset.col as u16
-                                || visual_x >= viewport.width + offset.col as u16;
+                        let out_of_bounds = visual_x < offset.col as u16
+                            || visual_x >= viewport.width + offset.col as u16;
 
+                        if LineEnding::from_rope_slice(&grapheme).is_some() {
                             if !out_of_bounds {
                                 // we still want to render an empty cell with the style
                                 surface.set_string(
@@ -530,32 +530,33 @@ impl EditorView {
                                 (grapheme.as_ref(), width)
                             };
 
+                            let style = if is_whitespace {
+                                style.patch(whitespace_style)
+                            } else {
+                                style
+                            };
+
                             let cut_off_start = offset.col.saturating_sub(visual_x as usize);
-                            let out_of_bounds = cut_off_start >= width;
 
                             if !out_of_bounds {
-                                let substring = {
-                                    let mut chars = display_grapheme.chars();
-                                    // TODO use advance_by once stable
-                                    for _ in 0..cut_off_start {
-                                        chars.next();
-                                    }
-                                    chars.as_str()
-                                };
-
                                 // if we're offscreen just keep going until we hit a new line
                                 surface.set_string(
-                                    viewport.x + visual_x - offset.col as u16
-                                        + cut_off_start as u16,
+                                    viewport.x + visual_x - offset.col as u16,
                                     viewport.y + line,
-                                    substring,
-                                    if is_whitespace {
-                                        style.patch(whitespace_style)
-                                    } else {
-                                        style
-                                    },
+                                    display_grapheme,
+                                    style,
                                 );
+                            } else if cut_off_start != 0 && cut_off_start < width {
+                                // partially on screen
+                                let rect = Rect::new(
+                                    viewport.x as u16,
+                                    viewport.y + line,
+                                    (width - cut_off_start) as u16,
+                                    1,
+                                );
+                                surface.set_style(rect, style);
                             }
+
                             if is_in_indent_area && !(grapheme == " " || grapheme == "\t") {
                                 draw_indent_guides(visual_x, line, surface);
                                 is_in_indent_area = false;
