@@ -4911,12 +4911,11 @@ fn toggle_setting(cx: &mut Context) {
     });
 
     let help_text = [
-        ("w", "Whitespace"),
-        ("i", "Indent guides"),
-        ("c", "Cursorline"),
-        ("r", "Ruler at 80 columns"),
-        ("p", "Auto-pairs"),
-        ("l", "Line-number (absolute/relative)"),
+        ("w", "Whitespace (visible, invisible)"),
+        ("i", "Indent guides (on, off)"),
+        ("c", "Cursorline (on, off)"),
+        ("r", "Ruler (80 columns, none)"),
+        ("p", "Auto-pairs (on, off)"),
         ("l", "Line-number (absolute, relative)"),
     ];
 
