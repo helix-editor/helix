@@ -204,6 +204,9 @@ pub struct StatusLineConfig {
     pub center: Vec<StatusLineElement>,
     pub right: Vec<StatusLineElement>,
     pub separator: String,
+    pub normal_mode_name: String,
+    pub insert_mode_name: String,
+    pub select_mode_name: String,
 }
 
 impl Default for StatusLineConfig {
@@ -215,6 +218,9 @@ impl Default for StatusLineConfig {
             center: vec![],
             right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
             separator: String::from("│"),
+            normal_mode_name: String::from("NOR"),
+            insert_mode_name: String::from("INS"),
+            select_mode_name: String::from("SEL"),
         }
     }
 }
@@ -222,11 +228,8 @@ impl Default for StatusLineConfig {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum StatusLineElement {
-    /// The editor mode (NOR, INS, SEL)
+    /// The editor mode (Normal, Insert, Visual/Selection)
     Mode,
-
-    /// The editor mode (NORMAL, INSERT, SELECT)
-    LongMode,
 
     /// The LSP activity spinner
     Spinner,

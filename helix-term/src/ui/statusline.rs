@@ -135,7 +135,6 @@ where
 {
     match element_id {
         helix_view::editor::StatusLineElement::Mode => render_mode,
-        helix_view::editor::StatusLineElement::LongMode => render_long_mode,
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
@@ -161,47 +160,19 @@ where
         format!(
             " {} ",
             if visible {
+                let (iname, nname, sname) = (
+                    context.editor.config().statusline.insert_mode_name.clone(),
+                    context.editor.config().statusline.normal_mode_name.clone(),
+                    context.editor.config().statusline.select_mode_name.clone(),
+                );
                 match context.doc.mode() {
-                    Mode::Insert => "INS",
-                    Mode::Select => "SEL",
-                    Mode::Normal => "NOR",
+                    Mode::Insert => iname,
+                    Mode::Select => sname,
+                    Mode::Normal => nname,
                 }
             } else {
                 // If not focused, explicitly leave an empty space instead of returning None.
-                "   "
-            }
-        ),
-        if visible && context.editor.config().color_modes {
-            match context.doc.mode() {
-                Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
-                Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
-                Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
-            }
-        } else {
-            None
-        },
-    );
-}
-
-fn render_long_mode<F>(context: &mut RenderContext, write: F)
-where
-    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-{
-    let visible = context.focused;
-
-    write(
-        context,
-        format!(
-            " {} ",
-            if visible {
-                match context.doc.mode() {
-                    Mode::Insert => "INSERT",
-                    Mode::Select => "SELECT",
-                    Mode::Normal => "NORMAL",
-                }
-            } else {
-                // If not focused, explicitly leave an empty space instead of returning None.
-                "   "
+                "   ".to_string()
             }
         ),
         if visible && context.editor.config().color_modes {
