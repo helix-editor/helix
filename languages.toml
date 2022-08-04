@@ -1601,3 +1601,16 @@ indent = { tab-width = 4, unit = "\t" }
 [[grammar]]
 name = "cue"
 source = { git = "https://github.com/eonpatapon/tree-sitter-cue", rev = "61843e3beebf19417e4fede4e8be4df1084317ad" }
+
+[[language]]
+name = "jinja2"
+scope = "source.jinja2"
+injection-regex = "jinja2"
+file-types = ["jinja2"]
+roots = []
+comment-token = "{##}"
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "jinja2"
+source = { git = "https://github.com/dbt-labs/tree-sitter-jinja2", rev = "9ddfc895d9e1c6084d238f133437a78a16bd84e9" }
