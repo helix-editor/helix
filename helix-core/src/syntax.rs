@@ -79,6 +79,9 @@ pub struct LanguageConfiguration {
     #[serde(default)]
     pub auto_format: bool,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub formatter: Option<FormatterConfiguration>,
+
     #[serde(default)]
     pub diagnostic_severity: Severity,
 
@@ -124,6 +127,15 @@ pub struct LanguageServerConfiguration {
     #[serde(default = "default_timeout")]
     pub timeout: u64,
     pub language_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct FormatterConfiguration {
+    pub command: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub args: Vec<String>,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
