@@ -1291,8 +1291,8 @@ fn sort_impl(
     let selection = doc.selection(view.id);
 
     let mut fragments: Vec<_> = selection
-        .fragments(text)
-        .map(|fragment| Tendril::from(fragment.as_ref()))
+        .slices(text)
+        .map(|fragment| fragment.chunks().collect())
         .collect();
 
     fragments.sort_by(match reverse {
