@@ -76,7 +76,7 @@ The following elements can be configured:
 
 | Key    | Description |
 | ------ | ----------- |
-| `mode` | The current editor mode (`normal-mode-name`/`insert-mode-name`/`select-mode-name`) |
+| `mode` | The current editor mode (`mode.normal`/`mode.insert`/`mode.select`) |
 | `mode.normal` | The text displayed by the `mode` element while in normal mode (defaults to `"NOR"`) |
 | `mode.insert` | The text displayed by the `mode` element while in insert mode (defaults to `"INS"`) |
 | `mode.select` | The text displayed by the `mode` element while in select mode (defaults to `"SEL"`) |
