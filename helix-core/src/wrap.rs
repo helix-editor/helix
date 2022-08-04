@@ -19,18 +19,21 @@ pub fn new_reflow_hard_wrap(
 ) -> Transaction {
     let mut changes = Vec::new();
     let mut formatter = TextFormatter::new(text.slice(..), max_width, tab_width);
+    panic!("{:#?}", formatter.collect::<Vec<_>>());
     while let Some(event) = formatter.next() {
         match event {
+            // Insert a newline if it's a virtual line break.
             TextFormatEvent::Backtrack(_, _backtrack @ 0) => changes.push((
                 formatter.index(),
                 formatter.index(),
                 Some(SmartString::from(line_ending.as_str())),
             )),
+            // Update the location of the last inserted line break if we're backtracking.
             TextFormatEvent::Backtrack(_, backtrack) => {
-                changes.last_mut().map(|(from, to, _)| {
+                if let Some((from, to, _)) = changes.last_mut() {
                     *from -= backtrack;
                     *to -= backtrack;
-                });
+                }
             }
             _ => {}
         }
@@ -38,22 +41,35 @@ pub fn new_reflow_hard_wrap(
     Transaction::change(text, changes.into_iter())
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum GraphemeKind<'a> {
     Tab,
     Space,
     NbSpace,
     LineBreak,
-    Other(RopeSlice<'a>),
+    Other(Cow<'a, str>),
+}
+
+impl<'a> GraphemeKind<'a> {
+    pub fn is_whitespace(&'a self) -> bool {
+        matches!(
+            self,
+            GraphemeKind::Tab
+                | GraphemeKind::Space
+                | GraphemeKind::NbSpace
+                | GraphemeKind::LineBreak
+        )
+    }
 }
 
 /// An event created by [TextFormatter].
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TextFormatEvent<'a> {
     /// Grapheme and its width.
     Grapheme(GraphemeKind<'a>, usize),
     /// The (width, len_chars) to backtrack. To be interpreted as going to the next virtual line.
     Backtrack(usize, usize),
+    VirtualLineBreak,
 }
 
 /// Iterates over the text's graphemes yielding [TextFormatEvent]s.
@@ -63,9 +79,11 @@ pub struct TextFormatter<'a> {
     max_width: usize,
     tab_width: usize,
     width: usize,
-    idx: usize,
+    index: usize,
     backtrack: usize,
     backtrack_width: usize,
+    // If a word doesn't fit on one line, then give up on backtracking.
+    last_backtrack_index: usize,
 }
 
 impl<'a> TextFormatter<'a> {
@@ -79,13 +97,14 @@ impl<'a> TextFormatter<'a> {
             max_width,
             tab_width,
             width: 0,
-            idx: 0,
+            index: 0,
             backtrack: 0,
             backtrack_width: 0,
+            last_backtrack_index: 0,
         }
     }
 
-    /// Offset the internal calculated width by `n` characters.
+    /// Offset the calculated width by `n` characters.
     // TODO: To be used in the editor to indent virtual lines.
     #[inline]
     pub fn offset(&mut self, n: usize) {
@@ -94,11 +113,21 @@ impl<'a> TextFormatter<'a> {
         self.backtrack_width = 0;
     }
 
+    // TODO: to be used if soft-wrapping is disabled
     #[inline]
-    pub fn index(&self) -> usize {
-        self.idx
+    pub fn next_line(&mut self) {
+        let len = self.text.line_to_char(1);
+        self.text = self.text.slice(len..);
+        self.graphemes = RopeGraphemes::new(self.text);
     }
 
+    /// Get the current char index.
+    #[inline]
+    pub fn index(&self) -> usize {
+        self.index
+    }
+
+    /// Get the current calculated width.
     #[inline]
     pub fn width(&self) -> usize {
         self.width
@@ -108,63 +137,210 @@ impl<'a> TextFormatter<'a> {
 impl<'a> Iterator for TextFormatter<'a> {
     type Item = TextFormatEvent<'a>;
 
+    // Maybe virtual text could be inserted through this?
+    #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
-        // Maybe virtual text could be inserted through this function?
         self.graphemes.next().map(|grapheme| {
-            let display_grapheme = Cow::from(grapheme);
-            let (display_grapheme, width) = if display_grapheme == "\t" {
+            debug_assert!(self.index >= self.backtrack);
+            debug_assert!(self.width >= self.backtrack_width);
+
+            let grapheme = Cow::from(grapheme);
+            let (display_grapheme, width) = if grapheme == "\t" {
                 (GraphemeKind::Tab, self.tab_width)
-            } else if display_grapheme == " " {
+            } else if grapheme == " " {
                 (GraphemeKind::Space, 1)
-            } else if display_grapheme == "\u{00A0}" {
+            } else if grapheme == "\u{00A0}" {
                 (GraphemeKind::NbSpace, 1)
-            } else if LineEnding::from_str(&display_grapheme).is_some() {
+            } else if LineEnding::from_str(&grapheme).is_some() {
                 (GraphemeKind::LineBreak, 1)
             } else {
                 // Cow will prevent allocations if span contained in a single slice
                 // which should really be the majority case
-                let width = crate::graphemes::grapheme_width(&display_grapheme);
+                let width = crate::graphemes::grapheme_width(&grapheme);
                 (GraphemeKind::Other(grapheme), width)
             };
-            self.idx += 1;
+            // We've read one character.
+            self.index += 1;
             self.backtrack += 1;
+            self.width += width;
+            self.backtrack_width += width;
 
-            if !matches!(display_grapheme, GraphemeKind::Other(_)) {
-                self.backtrack = 0;
-                self.backtrack_width = 0;
-            }
+            // * If the final character is whitespace and fits within the width,
+            // then it'll be rendered and we'll go to the next line.
+            // * If the final character isn't whitespace and/or exceeds the width,
+            // then a virtual line break event is sent and we go to the next line.
+            // * If the character fits, then we sent the grapheme and increment the
+            // internal width calculations.
+            // * If the character is whitespace and fits, then we send the grapheme
+            // and reset the backtrack counters.
+            // * If we've already backtracked once for this word, then give up on
+            // placing the word on one line and just insert a virtual line break.
 
-            // Check if the total width of the line exceeds the max width. If so, then
-            // a backtrack is yielded.
-            if self.width + width >= self.max_width {
-                // If the backtrack width is greater than 80 chars (TODO: configurable).
-                // then it won't try to fit the entire word.
-                let event = if self.backtrack_width + width < 80 {
-                    self.graphemes =
-                        RopeGraphemes::new(self.text.slice(self.idx - self.backtrack..));
-                    TextFormatEvent::Backtrack(self.backtrack_width, self.backtrack)
+            if display_grapheme.is_whitespace() {
+                if self.width <= self.max_width {
+                    self.backtrack = 0;
+                    self.backtrack_width = 0;
+                    TextFormatEvent::Grapheme(display_grapheme, width)
                 } else {
-                    TextFormatEvent::Backtrack(0, 0)
-                };
-                self.backtrack = 0;
-                self.backtrack_width = 0;
+                    if self.last_backtrack_index == self.index {
+                        self.last_backtrack_index = 0;
+                        self.index -= 1;
+                        self.graphemes = RopeGraphemes::new(self.text.slice(self.index..));
+                        self.backtrack = 0;
+                        self.backtrack_width = 0;
+                        self.width = 0;
+                        return TextFormatEvent::VirtualLineBreak;
+                    }
 
-                event
+                    self.last_backtrack_index = self.index;
+                    self.index -= self.backtrack;
+                    self.width = 0;
+                    self.backtrack = 0;
+                    self.backtrack_width = 0;
+                    self.graphemes = RopeGraphemes::new(self.text.slice(self.index..));
+                    TextFormatEvent::Backtrack(self.backtrack_width, self.backtrack)
+                }
             } else {
-                self.width += width;
-                self.backtrack_width += width;
-
-                TextFormatEvent::Grapheme(display_grapheme, width)
+                if self.width < self.max_width {
+                    TextFormatEvent::Grapheme(display_grapheme, width)
+                } else {
+                    if self.last_backtrack_index == self.index {
+                        self.last_backtrack_index = 0;
+                        self.index -= 1;
+                        self.graphemes = RopeGraphemes::new(self.text.slice(self.index..));
+                        self.backtrack = 0;
+                        self.backtrack_width = 0;
+                        self.width = 0;
+                        return TextFormatEvent::VirtualLineBreak;
+                    }
+                    
+                    self.last_backtrack_index = self.index;
+                    self.index -= self.backtrack;
+                    self.width = 0;
+                    self.backtrack = 0;
+                    self.backtrack_width = 0;
+                    self.graphemes = RopeGraphemes::new(self.text.slice(self.index..));
+                    TextFormatEvent::Backtrack(self.backtrack_width, self.backtrack)
+                }
             }
+
+            // if self.width < self.max_width {
+            //     if display_grapheme.is_whitespace() {
+            //         self.backtrack = 0;
+            //         self.backtrack_width = 0;
+            //     }
+
+            //     TextFormatEvent::Grapheme(display_grapheme, width)
+            // } else if self.width == self.max_width && display_grapheme.is_whitespace() {
+
+            // }
+
+            // if self.width == self.max_width && display_grapheme.is_whitespace() {
+
+            // } else if self.width >= self.max_width {
+            // } else {
+            // }
+
+            //     // Reset backtracking if this character is whitespace.
+            //     // "Hello world!" Backtracking would otherwise be `6` on the space grapheme,
+            //     // but that would make it return `hello \nworld` if the max_width was also 6.
+
+            //     // Still incremented later on. Whitespace should not be treated as backtrackable.
+
+            //     // If the grapheme's width would cause the text formatter to exceed the max width,
+            //     // then we want to send a virtual line break if the grapheme isn't a real line break.
+            //     // There should always be 1 space before the max_width is reached.
+            //     // TODO: Check if next char is whitespace or not.
+            //     if self.width >= self.max_width && !matches!(display_grapheme, GraphemeKind::LineBreak)
+            //     {
+            //         // If we're in the middle of a word, then we want to backtrack the width of that word.
+            //         // But if we've already backtracked this word once already, then give up.
+            //         let event = if self.last_backtrack_index == self.index {
+            //             TextFormatEvent::VirtualLineBreak
+            //         } else {
+            //             self.last_backtrack_index = self.index;
+
+            //             // Reset the index and graphemes iterator to the character we backtracked to.
+            //             self.index -= self.backtrack;
+            //             self.graphemes = RopeGraphemes::new(self.text.slice(self.index..));
+            //             TextFormatEvent::Backtrack(self.backtrack_width, self.backtrack)
+            //         };
+
+            //         // We're on a new line now.
+            //         self.width = 0;
+            //         self.backtrack = 0;
+            //         self.backtrack_width = 0;
+
+            //         event
+            //     } else {
+            //         // We've read one character.
+            //         self.index += 1;
+            //         self.backtrack += 1;
+            //         self.width += width;
+            //         self.backtrack_width += width;
+
+            //         if !matches!(display_grapheme, GraphemeKind::Other(_)) {
+            //             self.backtrack = 0;
+            //             self.backtrack_width = 0;
+            //         }
+
+            //         TextFormatEvent::Grapheme(display_grapheme, width)
+            //     }
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn test_reflow() {}
+    use super::*;
 
     #[test]
-    fn test_text_formatter() {}
+    fn test_reflow() {
+        let mut text = Rope::from("Hello world! How are you doing?");
+        let a = reflow_hard_wrap(&text.to_string(), 6);
+        let b = new_reflow_hard_wrap(&text, LineEnding::LF, 6, 0).apply(&mut text);
+        assert_eq!(a.to_string(), b.to_string())
+    }
+
+    // #[test]
+    // fn test_text_formatter() {
+    //     let graphemes = |text: &str| {
+    //         text.chars().map(|char| {
+    //             TextFormatEvent::Grapheme(
+    //                 GraphemeKind::Other(Rope::from(char.to_string()).slice(..)),
+    //                 1,
+    //             )
+    //         })
+    //     };
+
+    //     let text = Rope::from("Hello world! How are you doing?");
+    //     let formatter_events = TextFormatter::new(text.slice(..), 6, 0).collect::<Vec<_>>();
+    //     let mut expected = Vec::new();
+    //     expected.extend(graphemes("Hello"));
+    //     expected.push(TextFormatEvent::Grapheme(GraphemeKind::Space, 1));
+    //     expected.push(TextFormatEvent::Backtrack(0, 0));
+    //     expected.extend(graphemes("world"));
+    //     expected.push(TextFormatEvent::Backtrack(5, 5));
+    //     expected.extend(graphemes("world"));
+    //     expected.push(TextFormatEvent::Backtrack(0, 0));
+    //     expected.push(TextFormatEvent::Grapheme(GraphemeKind::Space, 1));
+    //     expected.extend(graphemes("How"));
+    //     expected.push(TextFormatEvent::Grapheme(GraphemeKind::Space, 1));
+    //     expected.push(TextFormatEvent::Backtrack(0, 0));
+    //     expected.extend(graphemes("are"));
+    //     expected.push(TextFormatEvent::Grapheme(GraphemeKind::Space, 1));
+    //     expected.extend(graphemes("yo"));
+    //     expected.push(TextFormatEvent::Backtrack(2, 2));
+    //     expected.extend(graphemes("you"));
+    //     expected.push(TextFormatEvent::Grapheme(GraphemeKind::Space, 1));
+    //     expected.extend(graphemes("do"));
+    //     expected.push(TextFormatEvent::Backtrack(2, 2));
+    //     expected.extend(graphemes("doing"));
+    //     expected.push(TextFormatEvent::Backtrack(5, 5));
+    //     expected.extend(graphemes("doing"));
+    //     expected.push(TextFormatEvent::Backtrack(0, 0));
+    //     expected.extend(graphemes("?"));
+
+    //     assert_eq!(expected, formatter_events)
+    // }
 }
