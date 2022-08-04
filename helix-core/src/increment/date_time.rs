@@ -5,6 +5,7 @@ use ropey::RopeSlice;
 
 use std::borrow::Cow;
 use std::cmp;
+use std::fmt::Write;
 
 use super::Increment;
 use crate::{Range, Tendril};
@@ -162,7 +163,7 @@ impl Format {
             fields.push(field);
             max_len += field.max_len + remaining[..i].len();
             regex += &remaining[..i];
-            regex += &format!("({})", field.regex);
+            write!(regex, "({})", field.regex).unwrap();
             remaining = &after[spec_len..];
         }
 
