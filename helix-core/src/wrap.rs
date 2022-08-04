@@ -176,116 +176,28 @@ impl<'a> Iterator for TextFormatter<'a> {
             // * If we've already backtracked once for this word, then give up on
             // placing the word on one line and just insert a virtual line break.
 
-            if display_grapheme.is_whitespace() {
-                if self.width <= self.max_width {
-                    self.backtrack = 0;
-                    self.backtrack_width = 0;
-                    TextFormatEvent::Grapheme(display_grapheme, width)
-                } else {
-                    if self.last_backtrack_index == self.index {
-                        self.last_backtrack_index = 0;
-                        self.index -= 1;
-                        self.graphemes = RopeGraphemes::new(self.text.slice(self.index..));
-                        self.backtrack = 0;
-                        self.backtrack_width = 0;
-                        self.width = 0;
-                        return TextFormatEvent::VirtualLineBreak;
-                    }
-
-                    self.last_backtrack_index = self.index;
-                    self.index -= self.backtrack;
-                    self.width = 0;
-                    self.backtrack = 0;
-                    self.backtrack_width = 0;
-                    self.graphemes = RopeGraphemes::new(self.text.slice(self.index..));
-                    TextFormatEvent::Backtrack(self.backtrack_width, self.backtrack)
-                }
+            if self.width <= self.max_width && display_grapheme.is_whitespace() {
+                self.backtrack = 0;
+                self.backtrack_width = 0;
+                TextFormatEvent::Grapheme(display_grapheme, width)
+            } else if self.width < self.max_width {
+                TextFormatEvent::Grapheme(display_grapheme, width)
             } else {
-                if self.width < self.max_width {
-                    TextFormatEvent::Grapheme(display_grapheme, width)
+                let event = if self.last_backtrack_index == self.index {
+                    self.last_backtrack_index = 0;
+                    self.index -= 1;
+                    TextFormatEvent::VirtualLineBreak
                 } else {
-                    if self.last_backtrack_index == self.index {
-                        self.last_backtrack_index = 0;
-                        self.index -= 1;
-                        self.graphemes = RopeGraphemes::new(self.text.slice(self.index..));
-                        self.backtrack = 0;
-                        self.backtrack_width = 0;
-                        self.width = 0;
-                        return TextFormatEvent::VirtualLineBreak;
-                    }
-                    
                     self.last_backtrack_index = self.index;
                     self.index -= self.backtrack;
-                    self.width = 0;
-                    self.backtrack = 0;
-                    self.backtrack_width = 0;
-                    self.graphemes = RopeGraphemes::new(self.text.slice(self.index..));
-                    TextFormatEvent::Backtrack(self.backtrack_width, self.backtrack)
-                }
+                    TextFormatEvent::Backtrack(self.backtrack_width - width, self.backtrack - 1)
+                };
+                self.graphemes = RopeGraphemes::new(self.text.slice(self.index..));
+                self.backtrack = 0;
+                self.backtrack_width = 0;
+                self.width = 0;
+                event
             }
-
-            // if self.width < self.max_width {
-            //     if display_grapheme.is_whitespace() {
-            //         self.backtrack = 0;
-            //         self.backtrack_width = 0;
-            //     }
-
-            //     TextFormatEvent::Grapheme(display_grapheme, width)
-            // } else if self.width == self.max_width && display_grapheme.is_whitespace() {
-
-            // }
-
-            // if self.width == self.max_width && display_grapheme.is_whitespace() {
-
-            // } else if self.width >= self.max_width {
-            // } else {
-            // }
-
-            //     // Reset backtracking if this character is whitespace.
-            //     // "Hello world!" Backtracking would otherwise be `6` on the space grapheme,
-            //     // but that would make it return `hello \nworld` if the max_width was also 6.
-
-            //     // Still incremented later on. Whitespace should not be treated as backtrackable.
-
-            //     // If the grapheme's width would cause the text formatter to exceed the max width,
-            //     // then we want to send a virtual line break if the grapheme isn't a real line break.
-            //     // There should always be 1 space before the max_width is reached.
-            //     // TODO: Check if next char is whitespace or not.
-            //     if self.width >= self.max_width && !matches!(display_grapheme, GraphemeKind::LineBreak)
-            //     {
-            //         // If we're in the middle of a word, then we want to backtrack the width of that word.
-            //         // But if we've already backtracked this word once already, then give up.
-            //         let event = if self.last_backtrack_index == self.index {
-            //             TextFormatEvent::VirtualLineBreak
-            //         } else {
-            //             self.last_backtrack_index = self.index;
-
-            //             // Reset the index and graphemes iterator to the character we backtracked to.
-            //             self.index -= self.backtrack;
-            //             self.graphemes = RopeGraphemes::new(self.text.slice(self.index..));
-            //             TextFormatEvent::Backtrack(self.backtrack_width, self.backtrack)
-            //         };
-
-            //         // We're on a new line now.
-            //         self.width = 0;
-            //         self.backtrack = 0;
-            //         self.backtrack_width = 0;
-
-            //         event
-            //     } else {
-            //         // We've read one character.
-            //         self.index += 1;
-            //         self.backtrack += 1;
-            //         self.width += width;
-            //         self.backtrack_width += width;
-
-            //         if !matches!(display_grapheme, GraphemeKind::Other(_)) {
-            //             self.backtrack = 0;
-            //             self.backtrack_width = 0;
-            //         }
-
-            //         TextFormatEvent::Grapheme(display_grapheme, width)
-            //     }
         })
     }
 }
