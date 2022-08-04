@@ -603,7 +603,7 @@ source = { git = "https://github.com/cbarrete/tree-sitter-ledger", rev = "1f864f
 name = "beancount"
 scope = "source.beancount"
 injection-regex = "beancount"
-file-types = ["beancount"]
+file-types = ["beancount", "bean"]
 roots = []
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
