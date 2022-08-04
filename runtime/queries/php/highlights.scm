@@ -13,7 +13,7 @@
 )
 
 (subscript_expression
-  (variable_name(name) @constant)
+  (variable_name(name) @constant.builtin)
 )
 
 ; Functions
