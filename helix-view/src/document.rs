@@ -576,7 +576,7 @@ impl Document {
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
-    /// configured in `languages.toml`, with a fallback to 4 space indentation if it isn't
+    /// configured in `languages.toml`, with a fallback to the default indentation if it isn't
     /// specified. Line ending is likewise auto-detected, and will fallback to the default OS
     /// line ending.
     pub fn detect_indent_and_line_ending(&mut self) {
