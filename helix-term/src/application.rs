@@ -210,21 +210,7 @@ impl Application {
         let signals = futures_util::stream::empty();
 
         #[cfg(not(windows))]
-        let mut app_signals = vec![signal::SIGTSTP, signal::SIGCONT];
-        unsafe {
-            // X platform constants
-            const HX_SIG_IGN: libc::sighandler_t = 1;
-            const HX_SIG_ERR: libc::sighandler_t = 0;
-            // If SIGTSTP is SIG_IGN, then do not listen for it
-            if libc::signal(signal_hook::consts::SIGTSTP, HX_SIG_IGN) != HX_SIG_ERR {
-                log::debug!("Disabling SIGTSTP, C-z will not suspend Helix");
-                ENABLE_SIGTSTP.set(false).unwrap();
-                app_signals.remove(0);
-            } else {
-                ENABLE_SIGTSTP.set(true).unwrap();
-            }
-        }
-        let signals = Signals::new(app_signals).context("build signal handler")?;
+        let signals = get_signals();
 
         let app = Self {
             compositor,
@@ -861,4 +847,25 @@ impl Application {
 
         Ok(())
     }
+}
+
+#[cfg(not(windows))]
+fn get_signals() -> Signals {
+    const HX_SIGTSTP: libc::c_int = 20;
+    const HX_SIGCONT: libc::c_int = 18;
+    const HX_SIG_IGN: libc::sighandler_t = 1;
+    const HX_SIG_ERR: libc::sighandler_t = 0;
+    let mut app_signals = vec![HX_SIGTSTP, HX_SIGCONT];
+
+    unsafe {
+        // If SIGTSTP is SIG_IGN, then do not listen for it
+        if libc::signal(HX_SIGTSTP, HX_SIG_IGN) != HX_SIG_ERR {
+            log::debug!("Disabling SIGTSTP, C-z will not suspend Helix");
+            ENABLE_SIGTSTP.set(false).unwrap();
+            app_signals.remove(0);
+        } else {
+            ENABLE_SIGTSTP.set(true).unwrap();
+        }
+    }
+    Signals::new(app_signals).expect("build signal handler")
 }
