@@ -9,7 +9,7 @@
 (named_type (qualified_name) @type) @type
 
 (namespace_definition
-  name: (namespace_name(name)) @constructor
+  name: (namespace_name(name)) @namespace
 )
 
 (subscript_expression
