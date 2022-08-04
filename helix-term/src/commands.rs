@@ -766,7 +766,7 @@ fn trim_selections(cx: &mut Context) {
         .selection(view.id)
         .iter()
         .filter_map(|range| {
-            if range.is_empty() || range.fragment(text).chars().all(|ch| ch.is_whitespace()) {
+            if range.is_empty() || range.slice(text).chars().all(|ch| ch.is_whitespace()) {
                 return None;
             }
             let mut start = range.from();
@@ -1289,12 +1289,12 @@ fn replace(cx: &mut Context) {
 
 fn switch_case_impl<F>(cx: &mut Context, change_fn: F)
 where
-    F: Fn(Cow<str>) -> Tendril,
+    F: Fn(RopeSlice) -> Tendril,
 {
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        let text: Tendril = change_fn(range.fragment(doc.text().slice(..)));
+        let text: Tendril = change_fn(range.slice(doc.text().slice(..)));
 
         (range.from(), range.to(), Some(text))
     });
@@ -1320,11 +1320,15 @@ fn switch_case(cx: &mut Context) {
 }
 
 fn switch_to_uppercase(cx: &mut Context) {
-    switch_case_impl(cx, |string| string.to_uppercase().into());
+    switch_case_impl(cx, |string| {
+        string.chunks().map(|chunk| chunk.to_uppercase()).collect()
+    });
 }
 
 fn switch_to_lowercase(cx: &mut Context) {
-    switch_case_impl(cx, |string| string.to_lowercase().into());
+    switch_case_impl(cx, |string| {
+        string.chunks().map(|chunk| chunk.to_lowercase()).collect()
+    });
 }
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
@@ -3903,8 +3907,8 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
 
     let selection = doc.selection(view.id);
     let mut fragments: Vec<_> = selection
-        .fragments(text)
-        .map(|fragment| Tendril::from(fragment.as_ref()))
+        .slices(text)
+        .map(|fragment| fragment.chunks().collect())
         .collect();
 
     let group = count
@@ -4510,8 +4514,8 @@ fn shell_keep_pipe(cx: &mut Context) {
             let text = doc.text().slice(..);
 
             for (i, range) in selection.ranges().iter().enumerate() {
-                let fragment = range.fragment(text);
-                let (_output, success) = match shell_impl(shell, input, Some(fragment.as_bytes())) {
+                let fragment = range.slice(text);
+                let (_output, success) = match shell_impl(shell, input, Some(fragment)) {
                     Ok(result) => result,
                     Err(err) => {
                         cx.editor.set_error(err.to_string());
@@ -4542,7 +4546,7 @@ fn shell_keep_pipe(cx: &mut Context) {
 fn shell_impl(
     shell: &[String],
     cmd: &str,
-    input: Option<&[u8]>,
+    input: Option<RopeSlice>,
 ) -> anyhow::Result<(Tendril, bool)> {
     use std::io::Write;
     use std::process::{Command, Stdio};
@@ -4564,7 +4568,9 @@ fn shell_impl(
     };
     if let Some(input) = input {
         let mut stdin = process.stdin.take().unwrap();
-        stdin.write_all(input)?;
+        for chunk in input.chunks() {
+            stdin.write_all(chunk.as_bytes())?;
+        }
     }
     let output = process.wait_with_output()?;
 
@@ -4593,8 +4599,8 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let text = doc.text().slice(..);
 
     for range in selection.ranges() {
-        let fragment = range.fragment(text);
-        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment.as_bytes())) {
+        let fragment = range.slice(text);
+        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment)) {
             Ok(result) => result,
             Err(err) => {
                 cx.editor.set_error(err.to_string());
