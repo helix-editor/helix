@@ -16,6 +16,8 @@ _hx() {
 		"--grammar[Fetches or builds tree-sitter grammars]:action:->grammar" \
 		"--vsplit[Splits all given files vertically into different windows]" \
 		"--hsplit[Splits all given files horizontally into different windows]" \
+		"-c[Specifies a file to use for configuration]" \
+		"--config[Specifies a file to use for configuration]" \
 		"*:file:_files"
 
 	case "$state" in

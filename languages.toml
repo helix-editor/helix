@@ -706,6 +706,8 @@ auto-format = true
 comment-token = "//"
 language-server = { command = "zls" }
 indent = { tab-width = 4, unit = "    " }
+formatter = { command = "zig" , args = ["fmt", "--stdin"] }
+
 
 [[grammar]]
 name = "zig"

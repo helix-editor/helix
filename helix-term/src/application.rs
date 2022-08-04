@@ -89,9 +89,8 @@ impl Application {
 
         use helix_view::editor::Action;
 
-        let config_dir = helix_loader::config_dir();
         let theme_loader = std::sync::Arc::new(theme::Loader::new(
-            &config_dir,
+            &helix_loader::config_dir(),
             &helix_loader::runtime_dir(),
         ));
 

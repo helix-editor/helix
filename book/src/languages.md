@@ -40,6 +40,7 @@ file-types = ["mylang", "myl"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "mylang-lsp", args = ["--stdio"] }
+formatter = { command = "mylang-formatter" , args = ["--stdin"] }
 ```
 
 These configuration keys are available:
@@ -59,6 +60,7 @@ These configuration keys are available:
 | `language-server`     | The Language Server to run. See the Language Server configuration section below. |
 | `config`              | Language Server configuration                                 |
 | `grammar`             | The tree-sitter grammar to use (defaults to the value of `name`) |
+| `formatter`           | The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout |
 
 ### Language Server configuration
 
