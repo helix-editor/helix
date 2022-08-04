@@ -430,7 +430,7 @@ impl EditorView {
                     viewport.x + (i * tab_width as u16) - offset.col as u16,
                     viewport.y + line,
                     &indent_guide_char,
-                    indent_style,
+                    text_style.patch(indent_style),
                 );
             }
         };
@@ -487,14 +487,7 @@ impl EditorView {
                                 );
                             }
 
-                            // This is an empty line; draw indent guides at previous line's
-                            // indent level to avoid breaking the guides on blank lines.
-                            if visual_x == 0 {
-                                draw_indent_guides(last_line_indent_level, line, surface);
-                            } else if is_in_indent_area {
-                                // A line with whitespace only
-                                draw_indent_guides(visual_x, line, surface);
-                            }
+                            draw_indent_guides(last_line_indent_level, line, surface);
 
                             visual_x = 0;
                             line += 1;
