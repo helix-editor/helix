@@ -11,36 +11,6 @@ pub fn reflow_hard_wrap(text: &str, max_line_len: usize) -> SmartString<LazyComp
     textwrap::refill(text, max_line_len).into()
 }
 
-pub fn new_reflow_hard_wrap(
-    text: &Rope,
-    line_ending: LineEnding,
-    max_width: usize,
-    tab_width: usize,
-) -> Transaction {
-    let mut changes = Vec::new();
-    let mut formatter = TextFormatter::new(text.slice(..), max_width, tab_width);
-    panic!("{:#?}", formatter.collect::<Vec<_>>());
-    while let Some(event) = formatter.next() {
-        match event {
-            // Insert a newline if it's a virtual line break.
-            TextFormatEvent::Backtrack(_, _backtrack @ 0) => changes.push((
-                formatter.index(),
-                formatter.index(),
-                Some(SmartString::from(line_ending.as_str())),
-            )),
-            // Update the location of the last inserted line break if we're backtracking.
-            TextFormatEvent::Backtrack(_, backtrack) => {
-                if let Some((from, to, _)) = changes.last_mut() {
-                    *from -= backtrack;
-                    *to -= backtrack;
-                }
-            }
-            _ => {}
-        }
-    }
-    Transaction::change(text, changes.into_iter())
-}
-
 #[derive(Debug, PartialEq)]
 pub enum GraphemeKind<'a> {
     Tab,
@@ -69,7 +39,7 @@ pub enum TextFormatEvent<'a> {
     Grapheme(GraphemeKind<'a>, usize),
     /// The (width, len_chars) to backtrack. To be interpreted as going to the next virtual line.
     Backtrack(usize, usize),
-    VirtualLineBreak,
+    ForceBreak,
 }
 
 /// Iterates over the text's graphemes yielding [TextFormatEvent]s.
@@ -175,7 +145,6 @@ impl<'a> Iterator for TextFormatter<'a> {
             // and reset the backtrack counters.
             // * If we've already backtracked once for this word, then give up on
             // placing the word on one line and just insert a virtual line break.
-
             if self.width <= self.max_width && display_grapheme.is_whitespace() {
                 self.backtrack = 0;
                 self.backtrack_width = 0;
@@ -186,7 +155,7 @@ impl<'a> Iterator for TextFormatter<'a> {
                 let event = if self.last_backtrack_index == self.index {
                     self.last_backtrack_index = 0;
                     self.index -= 1;
-                    TextFormatEvent::VirtualLineBreak
+                    TextFormatEvent::ForceBreak
                 } else {
                     self.last_backtrack_index = self.index;
                     self.index -= self.backtrack;
@@ -205,14 +174,6 @@ impl<'a> Iterator for TextFormatter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_reflow() {
-        let mut text = Rope::from("Hello world! How are you doing?");
-        let a = reflow_hard_wrap(&text.to_string(), 6);
-        let b = new_reflow_hard_wrap(&text, LineEnding::LF, 6, 0).apply(&mut text);
-        assert_eq!(a.to_string(), b.to_string())
-    }
 
     // #[test]
     // fn test_text_formatter() {
