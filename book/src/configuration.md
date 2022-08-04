@@ -67,9 +67,9 @@ left = ["mode", "spinner"]
 center = ["file-name"]
 right = ["diagnostics", "selections", "position", "file-encoding", "file-line-ending", "file-type"]
 separator = "│"
-normal-mode-name = "NORMAL"
-insert-mode-name = "INSERT"
-select-mode-name = "SELECT"
+mode.normal= "NORMAL"
+mode.insert= "INSERT"
+mode.select= "SELECT"
 ```
 
 The following elements can be configured:
@@ -77,9 +77,9 @@ The following elements can be configured:
 | Key    | Description |
 | ------ | ----------- |
 | `mode` | The current editor mode (`normal-mode-name`/`insert-mode-name`/`select-mode-name`) |
-| `normal-mode-name` | The text displayed by the `mode` element while in normal mode (defaults to `"NOR"`) |
-| `insert-mode-name` | The text displayed by the `mode` element while in insert mode (defaults to `"INS"`) |
-| `select-mode-name` | The text displayed by the `mode` element while in select mode (defaults to `"SEL"`) |
+| `mode.normal` | The text displayed by the `mode` element while in normal mode (defaults to `"NOR"`) |
+| `mode.insert` | The text displayed by the `mode` element while in insert mode (defaults to `"INS"`) |
+| `mode.select` | The text displayed by the `mode` element while in select mode (defaults to `"SEL"`) |
 | `spinner` | A progress spinner indicating LSP activity |
 | `file-name` | The path/name of the opened file |
 | `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
