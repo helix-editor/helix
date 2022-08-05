@@ -579,7 +579,7 @@ pub struct Editor {
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
-    handle_sigtstp: bool,
+    pub suspend_enabled: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -613,6 +613,7 @@ impl Editor {
         theme_loader: Arc<theme::Loader>,
         syn_loader: Arc<syntax::Loader>,
         config: Box<dyn DynAccess<Config>>,
+        enable_suspend: bool,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
         let conf = config.load();
@@ -650,7 +651,7 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
-            handle_sigtstp: true,
+            suspend_enabled: enable_suspend,
         }
     }
 
@@ -1159,15 +1160,5 @@ impl Editor {
         )
         .await
         .map(|_| ())
-    }
-
-    /// Disables SIGTSTP handling
-    pub fn disable_sigtstp(&mut self) {
-        self.handle_sigtstp = false;
-    }
-
-    /// Check if we should react to SIGTSTP
-    pub fn sigtstp_enabled(&self) -> bool {
-        self.handle_sigtstp
     }
 }

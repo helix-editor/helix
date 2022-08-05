@@ -7,7 +7,6 @@ use helix_core::{
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{align_view, editor::ConfigEvent, theme, tree::Layout, Align, Editor};
-use once_cell::sync::OnceCell;
 use serde_json::json;
 
 use crate::{
@@ -130,6 +129,19 @@ impl Application {
 
         let mut compositor = Compositor::new().context("build compositor")?;
         let config = Arc::new(ArcSwap::from_pointee(config));
+
+        // Handle signals now, so we can pass flag to the Editor
+        #[cfg(windows)]
+        let signals = futures_util::stream::empty();
+
+        let enable_suspend = check_enable_tstp();
+        let mut app_signals = vec![HX_SIGTSTP, HX_SIGCONT];
+        if !enable_suspend {
+            app_signals.remove(0);
+        }
+        #[cfg(not(windows))]
+        let signals = Signals::new(app_signals)?;
+
         let mut editor = Editor::new(
             compositor.size(),
             theme_loader.clone(),
@@ -137,6 +149,7 @@ impl Application {
             Box::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
+            enable_suspend,
         );
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
@@ -209,18 +222,6 @@ impl Application {
         }
 
         editor.set_theme(theme);
-
-        #[cfg(windows)]
-        let signals = futures_util::stream::empty();
-
-        let enable_sigtstp = check_enable_tstp();
-        let mut app_signals = vec![HX_SIGTSTP, HX_SIGCONT];
-        if !enable_sigtstp {
-            editor.disable_sigtstp();
-            app_signals.remove(0);
-        }
-        #[cfg(not(windows))]
-        let signals = Signals::new(app_signals)?;
 
         let app = Self {
             compositor,
