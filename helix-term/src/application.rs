@@ -44,6 +44,7 @@ type Signals = futures_util::stream::Empty<()>;
 
 const LSP_DEADLINE: Duration = Duration::from_millis(16);
 
+// Allow compilation on Windows by forwarding these
 const HX_SIGTSTP: libc::c_int = 20;
 const HX_SIGCONT: libc::c_int = 18;
 const HX_SIG_IGN: libc::sighandler_t = 1;
