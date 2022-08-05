@@ -3,7 +3,7 @@
 # Interface
 "ui.background" = { bg = "black" }
 "ui.window" = { fg = "aqua" }
-"special" = "orange" # file picker fizzy match
+"special" = "orange" # file picker fuzzy match
 "ui.background.separator" = { fg = "white" }
 "ui.text" = "white"
 "ui.text.focus" = { modifiers = ["reversed"] } # file picker selected
