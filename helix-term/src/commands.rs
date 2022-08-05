@@ -4647,11 +4647,7 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
 }
 
 fn suspend(_cx: &mut Context) {
-    if *crate::application::ENABLE_SIGTSTP
-        .get()
-        .expect("ENABLE_SIGTSTP flag must be set")
-    {
-        #[cfg(not(windows))]
+    if cfg!(not(windows)) && *crate::application::ENABLE_SIGTSTP.get() == Some(true) {
         signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
     }
 }
