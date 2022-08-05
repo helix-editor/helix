@@ -210,7 +210,7 @@ impl Application {
         let signals = futures_util::stream::empty();
 
         #[cfg(not(windows))]
-        let signals = get_signals();
+        let signals = get_signals()?;
 
         let app = Self {
             compositor,
@@ -850,7 +850,7 @@ impl Application {
 }
 
 #[cfg(not(windows))]
-fn get_signals() -> Signals {
+fn get_signals() -> Result<Signals, std::io::Error> {
     const HX_SIGTSTP: libc::c_int = 20;
     const HX_SIGCONT: libc::c_int = 18;
     const HX_SIG_IGN: libc::sighandler_t = 1;
@@ -866,5 +866,5 @@ fn get_signals() -> Signals {
     };
 
     ENABLE_SIGTSTP.set(enable_sigtstp).ok();
-    Signals::new(app_signals).context("build signal handler")
+    Signals::new(app_signals)
 }
