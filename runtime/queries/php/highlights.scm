@@ -9,8 +9,7 @@
 (named_type (qualified_name) @type) @type
 
 (namespace_definition
-  name: (namespace_name(name)) @namespace
-)
+  name: (namespace_name (name) @namespace))
 
 (subscript_expression
   (variable_name(name) @constant.builtin)
