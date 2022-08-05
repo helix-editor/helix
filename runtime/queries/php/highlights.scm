@@ -11,9 +11,10 @@
 (namespace_definition
   name: (namespace_name (name) @namespace))
 
+; Superglobals
 (subscript_expression
-  (variable_name(name) @constant.builtin)
-)
+  (variable_name(name) @constant.builtin
+    (#match? @constant.builtin "^_?[A-Z][A-Z\\d_]+$")))
 
 ; Functions
 
