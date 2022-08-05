@@ -44,7 +44,10 @@ type Signals = futures_util::stream::Empty<()>;
 
 const LSP_DEADLINE: Duration = Duration::from_millis(16);
 
-pub static ENABLE_SIGTSTP: OnceCell<bool> = OnceCell::new();
+const HX_SIGTSTP: libc::c_int = 20;
+const HX_SIGCONT: libc::c_int = 18;
+const HX_SIG_IGN: libc::sighandler_t = 1;
+const HX_SIG_ERR: libc::sighandler_t = 0;
 
 pub struct Application {
     compositor: Compositor,
@@ -209,8 +212,14 @@ impl Application {
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
 
+        let enable_sigtstp = check_enable_tstp();
+        let mut app_signals = vec![HX_SIGTSTP, HX_SIGCONT];
+        if !enable_sigtstp {
+            editor.disable_sigtstp();
+            app_signals.remove(0);
+        }
         #[cfg(not(windows))]
-        let signals = get_signals()?;
+        let signals = Signals::new(app_signals)?;
 
         let app = Self {
             compositor,
@@ -850,21 +859,12 @@ impl Application {
 }
 
 #[cfg(not(windows))]
-fn get_signals() -> Result<Signals, std::io::Error> {
-    const HX_SIGTSTP: libc::c_int = 20;
-    const HX_SIGCONT: libc::c_int = 18;
-    const HX_SIG_IGN: libc::sighandler_t = 1;
-    const HX_SIG_ERR: libc::sighandler_t = 0;
-    let mut app_signals = vec![HX_SIGTSTP, HX_SIGCONT];
+fn check_enable_tstp() -> bool {
     // If SIGTSTP is SIG_IGN, then do not listen for it
-    let enable_sigtstp = if unsafe { libc::signal(HX_SIGTSTP, HX_SIG_IGN) } != HX_SIG_ERR {
+    if unsafe { libc::signal(HX_SIGTSTP, HX_SIG_IGN) } != HX_SIG_ERR {
         log::debug!("Disabling SIGTSTP, C-z will not suspend Helix");
-        app_signals.remove(0);
         false
     } else {
         true
-    };
-
-    ENABLE_SIGTSTP.set(enable_sigtstp).ok();
-    Signals::new(app_signals)
+    }
 }

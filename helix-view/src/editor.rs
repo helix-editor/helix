@@ -20,7 +20,10 @@ use std::{
     num::NonZeroUsize,
     path::{Path, PathBuf},
     pin::Pin,
-    sync::Arc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
 };
 
 use tokio::{
@@ -579,6 +582,7 @@ pub struct Editor {
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
+    handle_sigtstp: AtomicBool,
 }
 
 #[derive(Debug, Clone)]
@@ -649,6 +653,7 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
+            handle_sigtstp: AtomicBool::new(true),
         }
     }
 
@@ -1157,5 +1162,15 @@ impl Editor {
         )
         .await
         .map(|_| ())
+    }
+
+    /// Disables SIGTSTP handling
+    pub fn disable_sigtstp(&self) {
+        self.handle_sigtstp.store(false, Ordering::Relaxed)
+    }
+
+    /// Check if we should react to SIGTSTP
+    pub fn sigtstp_enabled(&self) -> bool {
+        self.handle_sigtstp.load(Ordering::Relaxed)
     }
 }
