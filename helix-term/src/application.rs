@@ -868,8 +868,6 @@ fn get_signals() -> Signals {
         true
     };
 
-    if let Err(e) = ENABLE_SIGTSTP.set(enable_sigtstp) {
-        eprintln!("ENABLE_SIGTSTP error: {}", e);
-    }
+    ENABLE_SIGTSTP.set(enable_sigtstp).ok();
     Signals::new(app_signals).context("build signal handler")
 }
