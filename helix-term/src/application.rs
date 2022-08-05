@@ -859,15 +859,14 @@ fn get_signals() -> Signals {
     const HX_SIG_IGN: libc::sighandler_t = 1;
     const HX_SIG_ERR: libc::sighandler_t = 0;
     let mut app_signals = vec![HX_SIGTSTP, HX_SIGCONT];
-    let mut enable_sigtstp = true;
-    unsafe {
-        // If SIGTSTP is SIG_IGN, then do not listen for it
-        if libc::signal(HX_SIGTSTP, HX_SIG_IGN) != HX_SIG_ERR {
-            log::debug!("Disabling SIGTSTP, C-z will not suspend Helix");
-            app_signals.remove(0);
-            enable_sigtstp = false;
-        }
-    }
+    // If SIGTSTP is SIG_IGN, then do not listen for it
+    let enable_sigtstp = if unsafe { libc::signal(HX_SIGTSTP, HX_SIG_IGN) } != HX_SIG_ERR {
+        log::debug!("Disabling SIGTSTP, C-z will not suspend Helix");
+        app_signals.remove(0);
+        false
+    } else {
+        true
+    };
 
     if let Err(e) = ENABLE_SIGTSTP.set(enable_sigtstp) {
         eprintln!("ENABLE_SIGTSTP error: {}", e);
