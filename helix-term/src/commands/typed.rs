@@ -1254,6 +1254,7 @@ fn language(
 
     let doc = doc_mut!(cx.editor);
     doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone());
+    doc.detect_indent_and_line_ending();
 
     let id = doc.id();
     cx.editor.refresh_language_server(id);
