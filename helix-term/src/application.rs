@@ -212,9 +212,6 @@ impl Application {
         #[cfg(not(windows))]
         let signals = get_signals();
 
-        #[cfg(windows)]
-        ENABLE_SIGTSTP.set(false);
-
         let app = Self {
             compositor,
             editor,
