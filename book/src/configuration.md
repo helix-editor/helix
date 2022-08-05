@@ -72,14 +72,11 @@ mode.insert= "INSERT"
 mode.select= "SELECT"
 ```
 
-The following elements can be configured:
+The following statusline elements can be configured:
 
 | Key    | Description |
 | ------ | ----------- |
 | `mode` | The current editor mode (`mode.normal`/`mode.insert`/`mode.select`) |
-| `mode.normal` | The text displayed by the `mode` element while in normal mode (defaults to `"NOR"`) |
-| `mode.insert` | The text displayed by the `mode` element while in insert mode (defaults to `"INS"`) |
-| `mode.select` | The text displayed by the `mode` element while in select mode (defaults to `"SEL"`) |
 | `spinner` | A progress spinner indicating LSP activity |
 | `file-name` | The path/name of the opened file |
 | `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
@@ -91,6 +88,13 @@ The following elements can be configured:
 | `position-percentage` | The cursor position as a percentage of the total number of lines |
 | `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |
 | `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
+
+The statusline elements can be customized using the options below:
+| Key    | Description |
+| ------ | ----------- |
+| `mode.normal` | The text displayed by the `mode` element while in normal mode (defaults to `"NOR"`) |
+| `mode.insert` | The text displayed by the `mode` element while in insert mode (defaults to `"INS"`) |
+| `mode.select` | The text displayed by the `mode` element while in select mode (defaults to `"SEL"`) |
 
 ### `[editor.lsp]` Section
 
