@@ -530,12 +530,6 @@ impl EditorView {
                                 (grapheme.as_ref(), width)
                             };
 
-                            let style = if is_whitespace {
-                                style.patch(whitespace_style)
-                            } else {
-                                style
-                            };
-
                             let cut_off_start = offset.col.saturating_sub(visual_x as usize);
 
                             if !out_of_bounds {
@@ -544,7 +538,11 @@ impl EditorView {
                                     viewport.x + visual_x - offset.col as u16,
                                     viewport.y + line,
                                     display_grapheme,
-                                    style,
+                                    if is_whitespace {
+                                        style.patch(whitespace_style)
+                                    } else {
+                                        style
+                                    },
                                 );
                             } else if cut_off_start != 0 && cut_off_start < width {
                                 // partially on screen
@@ -554,7 +552,14 @@ impl EditorView {
                                     (width - cut_off_start) as u16,
                                     1,
                                 );
-                                surface.set_style(rect, style);
+                                surface.set_style(
+                                    rect,
+                                    if is_whitespace {
+                                        style.patch(whitespace_style)
+                                    } else {
+                                        style
+                                    },
+                                );
                             }
 
                             if is_in_indent_area && !(grapheme == " " || grapheme == "\t") {
