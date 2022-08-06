@@ -529,6 +529,8 @@ impl EditorView {
                                 (grapheme.as_ref(), width)
                             };
 
+                            let cut_off_start = offset.col.saturating_sub(visual_x as usize);
+
                             if !out_of_bounds {
                                 // if we're offscreen just keep going until we hit a new line
                                 surface.set_string(
@@ -541,7 +543,24 @@ impl EditorView {
                                         style
                                     },
                                 );
+                            } else if cut_off_start != 0 && cut_off_start < width {
+                                // partially on screen
+                                let rect = Rect::new(
+                                    viewport.x as u16,
+                                    viewport.y + line,
+                                    (width - cut_off_start) as u16,
+                                    1,
+                                );
+                                surface.set_style(
+                                    rect,
+                                    if is_whitespace {
+                                        style.patch(whitespace_style)
+                                    } else {
+                                        style
+                                    },
+                                );
                             }
+
                             if is_in_indent_area && !(grapheme == " " || grapheme == "\t") {
                                 draw_indent_guides(visual_x, line, surface);
                                 is_in_indent_area = false;
