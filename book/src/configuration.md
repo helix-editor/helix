@@ -83,7 +83,7 @@ The `[editor.statusline]` key takes the following sub-keys
 | `mode.insert` | The text shown in the `mode` element for insert mode | `"INS"` |
 | `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
 
-The following statusline elements can be configured as follows:The following statusline elements can be configured:
+The following statusline elements can be configured as follows:
 
 | Key    | Description |
 | ------ | ----------- |
