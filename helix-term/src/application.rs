@@ -43,12 +43,6 @@ type Signals = futures_util::stream::Empty<()>;
 
 const LSP_DEADLINE: Duration = Duration::from_millis(16);
 
-// Allow compilation on Windows by forwarding these
-pub const HX_SIGTSTP: libc::c_int = 20;
-const HX_SIGCONT: libc::c_int = 18;
-const HX_SIG_IGN: libc::sighandler_t = 1;
-const HX_SIG_ERR: libc::sighandler_t = 0;
-
 pub struct Application {
     compositor: Compositor,
     pub editor: Editor,
@@ -131,10 +125,13 @@ impl Application {
         let config = Arc::new(ArcSwap::from_pointee(config));
 
         // Handle signals now, so we can pass flag to the Editor
-        let enable_suspend = check_enable_suspend();
+        #[cfg(windows)]
+        let enable_suspend = false;
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
 
+        #[cfg(not(windows))]
+        let enable_suspend = check_enable_suspend();
         #[cfg(not(windows))]
         let signals = get_available_signals(enable_suspend)?;
 
@@ -856,15 +853,16 @@ impl Application {
     }
 }
 
+#[cfg(not(windows))]
 fn check_enable_suspend() -> bool {
-    unsafe { libc::signal(HX_SIGTSTP, HX_SIG_IGN) == HX_SIG_ERR }
+    unsafe { libc::signal(libc::SIGTSTP, libc::SIG_IGN) == 0 }
 }
 
 #[cfg(not(windows))]
 fn get_available_signals(enable_suspend: bool) -> Result<Signals, std::io::Error> {
-    let mut app_signals = vec![HX_SIGCONT];
+    let mut app_signals = vec![libc::SIGCONT];
     if enable_suspend {
-        app_signals.push(HX_SIGTSTP);
+        app_signals.push(libc::SIGTSTP);
     }
     Signals::new(app_signals)
 }
