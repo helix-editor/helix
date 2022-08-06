@@ -4648,6 +4648,7 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
 
 fn suspend(cx: &mut Context) {
     if cx.editor.suspend_enabled {
+        #[cfg(not(windows))]
         signal_hook::low_level::raise(application::HX_SIGTSTP).unwrap();
     }
 }
