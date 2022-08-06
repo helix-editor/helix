@@ -131,16 +131,12 @@ impl Application {
         let config = Arc::new(ArcSwap::from_pointee(config));
 
         // Handle signals now, so we can pass flag to the Editor
+        let enable_suspend = check_enable_suspend();
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
 
-        let enable_suspend = check_enable_tstp();
-        let mut app_signals = vec![HX_SIGTSTP, HX_SIGCONT];
-        if !enable_suspend {
-            app_signals.remove(0);
-        }
         #[cfg(not(windows))]
-        let signals = Signals::new(app_signals)?;
+        let signals = get_available_signals(enable_suspend)?;
 
         let mut editor = Editor::new(
             compositor.size(),
@@ -860,13 +856,15 @@ impl Application {
     }
 }
 
+fn check_enable_suspend() -> bool {
+    unsafe { libc::signal(HX_SIGTSTP, HX_SIG_IGN) == HX_SIG_ERR }
+}
+
 #[cfg(not(windows))]
-fn check_enable_tstp() -> bool {
-    // If SIGTSTP is SIG_IGN, then do not listen for it
-    if unsafe { libc::signal(HX_SIGTSTP, HX_SIG_IGN) } != HX_SIG_ERR {
-        log::debug!("Disabling SIGTSTP, C-z will not suspend Helix");
-        false
-    } else {
-        true
+fn get_available_signals(enable_suspend: bool) -> Result<Signals, std::io::Error> {
+    let mut app_signals = vec![HX_SIGCONT];
+    if enable_suspend {
+        app_signals.push(HX_SIGTSTP);
     }
+    Signals::new(app_signals)
 }
