@@ -25,7 +25,7 @@
 [
   (minus)
   (plus)
-] @keyword.operator
+] @operator
 
 [
   (balance) (open) (close) (commodity) (pad)
@@ -33,3 +33,6 @@
   (custom) (pushtag) (poptag) (pushmeta)
   (popmeta) (option) (include) (plugin)
 ] @keyword
+
+
+(headline item: (item) @markup.heading.1) @markup.heading.marker
