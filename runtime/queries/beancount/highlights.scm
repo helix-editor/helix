@@ -11,7 +11,7 @@
 ] @constant.numeric
 
 
-(key) @label
+[(key_value) (key)] @variable.other.member
 (string) @string
 
 [
