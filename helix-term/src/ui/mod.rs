@@ -292,7 +292,9 @@ pub mod completers {
                     None => key.clone(),
                 };
                 get_keys(value, vec, Some(&key));
-                vec.push(key);
+                if !value.is_object() {
+                    vec.push(key);
+                }
             }
         }
     }
