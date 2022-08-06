@@ -416,9 +416,11 @@ impl EditorView {
         let mut last_line_indent_level = 0;
 
         // use whitespace style as fallback for indent-guide
-        let indent_guide_style = theme
-            .try_get("ui.virtual.indent-guide")
-            .unwrap_or_else(|| theme.get("ui.virtual.whitespace"));
+        let indent_guide_style = text_style.patch(
+            theme
+                .try_get("ui.virtual.indent-guide")
+                .unwrap_or_else(|| theme.get("ui.virtual.whitespace")),
+        );
 
         let draw_indent_guides = |indent_level, line, surface: &mut Surface| {
             if !config.indent_guides.render {
@@ -434,7 +436,7 @@ impl EditorView {
                     viewport.x + (i * tab_width as u16) - offset.col as u16,
                     viewport.y + line,
                     &indent_guide_char,
-                    text_style.patch(indent_guide_style),
+                    indent_guide_style,
                 );
             }
         };
