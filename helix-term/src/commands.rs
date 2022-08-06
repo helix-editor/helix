@@ -4651,7 +4651,8 @@ fn suspend(cx: &mut Context) {
         #[cfg(not(windows))]
         signal_hook::low_level::raise(libc::SIGTSTP).unwrap();
     } else {
-        cx.editor.set_status("Suspend is not supported by this terminal");
+        cx.editor
+            .set_status("Suspend is not supported by this terminal");
     }
 }
 
