@@ -13,9 +13,9 @@ pub fn reflow_hard_wrap(
     textwrap::refill(text, options).into()
 }
 
-impl Into<textwrap::LineEnding> for LineEnding {
-    fn into(self) -> textwrap::LineEnding {
-        match self {
+impl From<LineEnding> for textwrap::LineEnding {
+    fn from(le: LineEnding) -> Self {
+        match le {
             LineEnding::Crlf => textwrap::LineEnding::CRLF,
             // Best effort, match what's supported by textwrap
             _ => textwrap::LineEnding::LF,
