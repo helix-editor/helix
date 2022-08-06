@@ -86,16 +86,11 @@ pub fn find_nth_closest_pairs_pos(
                 match find_nth_pairs_pos(text, ch, range, n) {
                     // Before we accept this pair, we want to ensure that the
                     // pair encloses the range rather than just the cursor.
-                    Ok(matching_pair) => {
-                        let (_, close) = matching_pair;
-                        if close >= range.to() {
-                            return Ok(matching_pair);
-                        }
+                    Ok(matching_pair) if matching_pair.1 >= range.to() => {
+                        return Ok(matching_pair);
                     }
-                    Err(_) => continue,
+                    _ => continue,
                 }
-
-                continue;
             }
         }
     }
