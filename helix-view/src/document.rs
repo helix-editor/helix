@@ -2,6 +2,7 @@ use anyhow::{anyhow, bail, Context, Error};
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
+use helix_core::normalized_url::NormalizedUrl;
 use helix_core::Range;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
@@ -25,6 +26,7 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, Syntax, Transaction,
     DEFAULT_LINE_ENDING,
 };
+use helix_lsp::lsp;
 
 use crate::editor::RedrawHandle;
 use crate::{apply_transaction, DocumentId, Editor, View, ViewId};
@@ -346,9 +348,6 @@ where
 {
     *mut_ref = f(mem::take(mut_ref));
 }
-
-use helix_lsp::lsp;
-use url::Url;
 
 impl Document {
     pub fn from(text: Rope, encoding: Option<&'static encoding::Encoding>) -> Self {
@@ -1106,8 +1105,8 @@ impl Document {
     }
 
     /// File path as a URL.
-    pub fn url(&self) -> Option<Url> {
-        Url::from_file_path(self.path()?).ok()
+    pub fn url(&self) -> Option<NormalizedUrl> {
+        NormalizedUrl::from_file_path(self.path()?)
     }
 
     #[inline]
@@ -1142,11 +1141,11 @@ impl Document {
 
     #[inline]
     pub fn identifier(&self) -> lsp::TextDocumentIdentifier {
-        lsp::TextDocumentIdentifier::new(self.url().unwrap())
+        lsp::TextDocumentIdentifier::new(self.url().unwrap().base().clone())
     }
 
     pub fn versioned_identifier(&self) -> lsp::VersionedTextDocumentIdentifier {
-        lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap(), self.version)
+        lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap().base().clone(), self.version)
     }
 
     pub fn position(

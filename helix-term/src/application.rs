@@ -690,7 +690,7 @@ impl Application {
                                 doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
                             tokio::spawn(language_server.text_document_did_open(
-                                url,
+                                &url,
                                 doc.version(),
                                 doc.text(),
                                 language_id,
@@ -815,7 +815,7 @@ impl Application {
                         // When using them later in the diagnostics picker, we calculate them on-demand.
                         self.editor
                             .diagnostics
-                            .insert(params.uri, params.diagnostics);
+                            .insert(params.uri.into(), params.diagnostics);
                     }
                     Notification::ShowMessage(params) => {
                         log::warn!("unhandled window/showMessage: {:?}", params);

@@ -9,7 +9,7 @@ use tui::text::{Span, Spans};
 
 use super::{align_view, push_jump, Align, Context, Editor, Open};
 
-use helix_core::{path, Selection};
+use helix_core::{normalized_url::NormalizedUrl, path, Selection};
 use helix_view::{apply_transaction, document::Mode, editor::Action, theme::Style};
 
 use crate::{
@@ -78,10 +78,13 @@ impl ui::menu::Item for lsp::Location {
 
 impl ui::menu::Item for lsp::SymbolInformation {
     /// Path to currently focussed document
-    type Data = Option<lsp::Url>;
+    type Data = Option<NormalizedUrl>;
 
     fn label(&self, current_doc_path: &Self::Data) -> Spans {
-        if current_doc_path.as_ref() == Some(&self.location.uri) {
+        if current_doc_path
+            .as_ref()
+            .map_or(false, |cdp| cdp == &self.location.uri)
+        {
             self.name.as_str().into()
         } else {
             match self.location.uri.to_file_path() {
@@ -103,7 +106,7 @@ struct DiagnosticStyles {
 }
 
 struct PickerDiagnostic {
-    url: lsp::Url,
+    url: NormalizedUrl,
     diag: lsp::Diagnostic,
 }
 
@@ -202,7 +205,7 @@ fn jump_to_location(
 
 fn sym_picker(
     symbols: Vec<lsp::SymbolInformation>,
-    current_path: Option<lsp::Url>,
+    current_path: Option<NormalizedUrl>,
     offset_encoding: OffsetEncoding,
 ) -> FilePicker<lsp::SymbolInformation> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
@@ -213,7 +216,10 @@ fn sym_picker(
             let (view, doc) = current!(cx.editor);
             push_jump(view, doc);
 
-            if current_path.as_ref() != Some(&symbol.location.uri) {
+            if current_path
+                .as_ref()
+                .map_or(false, |cdp| cdp == &symbol.location.uri)
+            {
                 let uri = &symbol.location.uri;
                 let path = match uri.to_file_path() {
                     Ok(path) => path,
@@ -255,8 +261,8 @@ enum DiagnosticsFormat {
 
 fn diag_picker(
     cx: &Context,
-    diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
-    current_path: Option<lsp::Url>,
+    diagnostics: BTreeMap<NormalizedUrl, Vec<lsp::Diagnostic>>,
+    current_path: Option<NormalizedUrl>,
     format: DiagnosticsFormat,
     offset_encoding: OffsetEncoding,
 ) -> FilePicker<PickerDiagnostic> {
@@ -303,7 +309,7 @@ fn diag_picker(
             }
         },
         move |_editor, PickerDiagnostic { url, diag }| {
-            let location = lsp::Location::new(url.clone(), diag.range);
+            let location = lsp::Location::new(url.base().clone(), diag.range);
             Some(location_to_file_location(&location))
         },
     )
@@ -752,7 +758,7 @@ pub fn apply_workspace_edit(
     offset_encoding: OffsetEncoding,
     workspace_edit: &lsp::WorkspaceEdit,
 ) {
-    let mut apply_edits = |uri: &helix_lsp::Url, text_edits: Vec<lsp::TextEdit>| {
+    let mut apply_edits = |uri: &lsp::Url, text_edits: Vec<lsp::TextEdit>| {
         let path = match uri.to_file_path() {
             Ok(path) => path,
             Err(_) => {

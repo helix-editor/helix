@@ -38,12 +38,12 @@ use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::Position;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig},
     Change,
 };
+use helix_core::{normalized_url::NormalizedUrl, Position};
 use helix_dap as dap;
 use helix_lsp::lsp;
 
@@ -692,7 +692,7 @@ pub struct Editor {
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
-    pub diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
+    pub diagnostics: BTreeMap<NormalizedUrl, Vec<lsp::Diagnostic>>,
     pub diff_providers: DiffProviderRegistry,
 
     pub debugger: Option<dap::Client>,
@@ -967,7 +967,7 @@ impl Editor {
 
                 // TODO: this now races with on_init code if the init happens too quickly
                 tokio::spawn(language_server.text_document_did_open(
-                    doc_url,
+                    &doc_url,
                     doc.version(),
                     doc.text(),
                     language_id,

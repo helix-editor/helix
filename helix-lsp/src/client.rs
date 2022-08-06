@@ -4,7 +4,7 @@ use crate::{
     Call, Error, OffsetEncoding, Result,
 };
 
-use helix_core::{find_root, ChangeSet, Rope};
+use helix_core::{find_root, normalized_url::NormalizedUrl, ChangeSet, Rope};
 use helix_loader::{self, VERSION_AND_GIT_HASH};
 use lsp_types as lsp;
 use serde::Deserialize;
@@ -35,7 +35,7 @@ pub struct Client {
     offset_encoding: OffsetEncoding,
     config: Option<Value>,
     root_path: std::path::PathBuf,
-    root_uri: Option<lsp::Url>,
+    root_uri: Option<NormalizedUrl>,
     workspace_folders: Vec<lsp::WorkspaceFolder>,
     req_timeout: u64,
 }
@@ -81,19 +81,20 @@ impl Client {
             root_markers,
         );
 
-        let root_uri = lsp::Url::from_file_path(root_path.clone()).ok();
+        let root_uri = NormalizedUrl::from_file_path(&root_path);
 
         // TODO: support multiple workspace folders
         let workspace_folders = root_uri
-            .clone()
+            .as_ref()
             .map(|root| {
                 vec![lsp::WorkspaceFolder {
                     name: root
+                        .base()
                         .path_segments()
-                        .and_then(|segments| segments.last())
-                        .map(|basename| basename.to_string())
+                        .and_then(Iterator::last)
+                        .map(ToString::to_string)
                         .unwrap_or_default(),
-                    uri: root,
+                    uri: root.base().clone(),
                 }]
             })
             .unwrap_or_default();
@@ -287,7 +288,7 @@ impl Client {
             // root_path is obsolete, but some clients like pyright still use it so we specify both.
             // clients will prefer _uri if possible
             root_path: self.root_path.to_str().map(|path| path.to_owned()),
-            root_uri: self.root_uri.clone(),
+            root_uri: self.root_uri.as_ref().map(NormalizedUrl::base).cloned(),
             initialization_options: self.config.clone(),
             capabilities: lsp::ClientCapabilities {
                 workspace: Some(lsp::WorkspaceClientCapabilities {
@@ -429,14 +430,14 @@ impl Client {
 
     pub fn text_document_did_open(
         &self,
-        uri: lsp::Url,
+        uri: &NormalizedUrl,
         version: i32,
         doc: &Rope,
         language_id: String,
     ) -> impl Future<Output = Result<()>> {
         self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
             text_document: lsp::TextDocumentItem {
-                uri,
+                uri: uri.base().clone(),
                 language_id,
                 version,
                 text: String::from(doc),

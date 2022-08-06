@@ -14,6 +14,7 @@ pub mod line_ending;
 pub mod macros;
 pub mod match_brackets;
 pub mod movement;
+pub mod normalized_url;
 pub mod object;
 pub mod path;
 mod position;
