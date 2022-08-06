@@ -71,8 +71,19 @@ mode.normal= "NORMAL"
 mode.insert= "INSERT"
 mode.select= "SELECT"
 ```
+The `[editor.statusline]` key takes the following sub-keys
 
-The following statusline elements can be configured:
+| Key           | Description | Default |
+| ---           | ---         | ---     |
+| `left`        | A list of elements aligned to the left of the statusline | `["mode", "spinner", "file-name"]` |
+| `center`      | A list of elements aligned to the middle of the statusline | `[]` |
+| `right`       | A list of elements aligned to the right of the statusline | `["diagnostics", "selections", "position", "file-encoding"]` |
+| `separator`   | The character used to separate elements in the statusline | `"|"` |
+| `mode.normal` | The text shown in the `mode` element for normal mode | `"NOR"` |
+| `mode.insert` | The text shown in the `mode` element for insert mode | `"INS"` |
+| `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
+
+The following statusline elements can be configured as follows:The following statusline elements can be configured:
 
 | Key    | Description |
 | ------ | ----------- |
@@ -86,15 +97,7 @@ The following statusline elements can be configured:
 | `selections` | The number of active selections |
 | `position` | The cursor position |
 | `position-percentage` | The cursor position as a percentage of the total number of lines |
-| `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |
 | `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
-
-The statusline elements can be customized using the options below:
-| Key    | Description |
-| ------ | ----------- |
-| `mode.normal` | The text displayed by the `mode` element while in normal mode (defaults to `"NOR"`) |
-| `mode.insert` | The text displayed by the `mode` element while in insert mode (defaults to `"INS"`) |
-| `mode.select` | The text displayed by the `mode` element while in select mode (defaults to `"SEL"`) |
 
 ### `[editor.lsp]` Section
 
