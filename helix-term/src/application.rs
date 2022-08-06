@@ -859,10 +859,10 @@ fn check_enable_suspend() -> bool {
 }
 
 #[cfg(not(windows))]
-fn get_available_signals(enable_suspend: bool) -> Result<Signals, std::io::Error> {
+fn get_available_signals(enable_suspend: bool) -> Result<Signals, Error> {
     let mut app_signals = vec![libc::SIGCONT];
     if enable_suspend {
         app_signals.push(libc::SIGTSTP);
     }
-    Signals::new(app_signals)
+    Signals::new(app_signals).context("build signal handler")
 }
