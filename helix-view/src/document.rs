@@ -440,14 +440,14 @@ impl Document {
                     .await
                     .map_err(|_| FormatterError::WaitForOutputFailed)?;
 
-                if !output.stderr.is_empty() {
-                    return Err(FormatterError::Stderr(
-                        String::from_utf8_lossy(&output.stderr).to_string(),
-                    ));
-                }
-
                 if !output.status.success() {
-                    return Err(FormatterError::NonZeroExitStatus);
+                    if !output.stderr.is_empty() {
+                        return Err(FormatterError::NonZeroExitStatus(Some(
+                            String::from_utf8_lossy(&output.stderr).to_string(),
+                        )));
+                    }
+
+                    return Err(FormatterError::NonZeroExitStatus(None));
                 }
 
                 let str = String::from_utf8(output.stdout)
@@ -1092,10 +1092,9 @@ pub enum FormatterError {
     },
     BrokenStdin,
     WaitForOutputFailed,
-    Stderr(String),
     InvalidUtf8Output,
     DiskReloadError(String),
-    NonZeroExitStatus,
+    NonZeroExitStatus(Option<String>),
 }
 
 impl std::error::Error for FormatterError {}
@@ -1108,10 +1107,12 @@ impl Display for FormatterError {
             }
             Self::BrokenStdin => write!(f, "Could not write to formatter stdin"),
             Self::WaitForOutputFailed => write!(f, "Waiting for formatter output failed"),
-            Self::Stderr(output) => write!(f, "Formatter error: {}", output),
             Self::InvalidUtf8Output => write!(f, "Invalid UTF-8 formatter output"),
             Self::DiskReloadError(error) => write!(f, "Error reloading file from disk: {}", error),
-            Self::NonZeroExitStatus => write!(f, "Formatter exited with non zero exit status:"),
+            Self::NonZeroExitStatus(Some(output)) => write!(f, "Formatter error: {}", output),
+            Self::NonZeroExitStatus(None) => {
+                write!(f, "Formatter exited with non zero exit status:")
+            }
         }
     }
 }
