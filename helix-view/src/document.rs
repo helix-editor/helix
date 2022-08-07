@@ -376,18 +376,18 @@ impl Document {
         encoding: Option<&'static encoding::Encoding>,
         config_loader: Option<Arc<syntax::Loader>>,
     ) -> Result<Self, Error> {
-        Self::open_with_config(path, config_loader, move |_| {
-            Config::from_encoding(encoding)
+        Self::open_with_options(path, config_loader, move |_| {
+            DocumentOptions::from_encoding(encoding)
         })
     }
 
     // TODO: async fn?
     /// Create a new document from `path`,
     /// using document settings from a [Config].
-    pub fn open_with_config(
+    pub fn open_with_options(
         path: &Path,
         lang_config_loader: Option<Arc<syntax::Loader>>,
-        doc_config_fn: impl FnOnce(&Path) -> Config,
+        doc_config_fn: impl FnOnce(&Path) -> DocumentOptions,
     ) -> Result<Self, Error> {
         let (rope, config) = if path.exists() {
             let mut file =
@@ -1091,32 +1091,35 @@ impl Default for Document {
     }
 }
 
+/// Options for a new document.
+///
+/// This will usually be populated by edito
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
-pub struct Config {
+pub struct DocumentOptions {
     pub encoding: Option<&'static encoding::Encoding>,
     pub line_ending: Option<LineEnding>,
     pub indent_style: Option<IndentStyle>,
     pub tab_width: Option<usize>,
 }
 
-impl Config {
+impl DocumentOptions {
     /// Wraps an optional encoding in a `Config`, using default values for everything else.
-    pub fn from_encoding(encoding: Option<&'static encoding::Encoding>) -> Config {
-        Config {
+    pub fn from_encoding(encoding: Option<&'static encoding::Encoding>) -> DocumentOptions {
+        DocumentOptions {
             encoding,
             ..Default::default()
         }
     }
 
     /// Tries to parse a config from editorconfig properties.
-    pub fn try_from_editorconfig(for_file_at: &std::path::Path) -> Result<Config, ec4rs::Error> {
+    pub fn try_from_editorconfig(for_file_at: &std::path::Path) -> Result<DocumentOptions, ec4rs::Error> {
         let mut ecfg = ec4rs::properties_of(for_file_at)?;
         ecfg.use_fallbacks();
 
         use ec4rs::property::{
             Charset, EndOfLine, IndentSize, IndentStyle as EcIndentStyle, TabWidth,
         };
-        Ok(Config {
+        Ok(DocumentOptions {
             encoding: ecfg
                 .get_raw::<Charset>()
                 .filter_unset()
