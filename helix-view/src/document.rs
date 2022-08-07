@@ -96,8 +96,8 @@ pub struct Document {
     /// Current indent style.
     pub indent_style: IndentStyle,
 
-    /// An override of the language-specified tab width.
-    tab_width_override: Option<usize>,
+    /// Tab size in columns.
+    tab_width: usize,
 
     /// The document's default line ending.
     pub line_ending: LineEnding,
@@ -350,7 +350,7 @@ impl Document {
             text,
             selections: HashMap::default(),
             indent_style: DEFAULT_INDENT,
-            tab_width_override: None,
+            tab_width: 4,
             line_ending: DEFAULT_LINE_ENDING,
             mode: Mode::Normal,
             restore_cursor: false,
@@ -426,7 +426,14 @@ impl Document {
         }
 
         // Set the tab width.
-        doc.tab_width_override = config.tab_width;
+        let tab_width = config.tab_width.or_else(|| {
+            doc.language_config()
+                .and_then(|config| config.indent.as_ref())
+                .map(|config| config.tab_width)
+        });
+        if let Some(tab_width) = tab_width {
+            doc.tab_width = tab_width;
+        }
 
         Ok(doc)
     }
@@ -962,22 +969,7 @@ impl Document {
 
     /// Tab size in columns.
     pub fn tab_width(&self) -> usize {
-        if let Some(width) = self.tab_width_override {
-            width
-        } else {
-            self.language_config()
-                .and_then(|config| config.indent.as_ref())
-                .map_or(4, |config| config.tab_width) // fallback to 4 columns
-        }
-    }
-
-    /// Sets the tab size in columns.
-    ///
-    /// If `None` is passed, then [Document::tab_width]
-    /// will return the value specified by the language configuration
-    /// for this document.
-    pub fn set_tab_width(&mut self, tab_width_override: Option<usize>) {
-        self.tab_width_override = tab_width_override;
+        self.tab_width
     }
 
     /// Returns a string containing a single level of indentation.
@@ -1112,7 +1104,9 @@ impl DocumentOptions {
     }
 
     /// Tries to parse a config from editorconfig properties.
-    pub fn try_from_editorconfig(for_file_at: &std::path::Path) -> Result<DocumentOptions, ec4rs::Error> {
+    pub fn try_from_editorconfig(
+        for_file_at: &std::path::Path,
+    ) -> Result<DocumentOptions, ec4rs::Error> {
         let mut ecfg = ec4rs::properties_of(for_file_at)?;
         ecfg.use_fallbacks();
 
