@@ -414,7 +414,13 @@ impl EditorView {
 
         let mut is_in_indent_area = true;
         let mut last_line_indent_level = 0;
-        let indent_style = theme.get("ui.virtual.indent-guide");
+
+        // use whitespace style as fallback for indent-guide
+        let indent_guide_style = text_style.patch(
+            theme
+                .try_get("ui.virtual.indent-guide")
+                .unwrap_or_else(|| theme.get("ui.virtual.whitespace")),
+        );
 
         let draw_indent_guides = |indent_level, line, surface: &mut Surface| {
             if !config.indent_guides.render {
@@ -430,7 +436,7 @@ impl EditorView {
                     viewport.x + (i * tab_width as u16) - offset.col as u16,
                     viewport.y + line,
                     &indent_guide_char,
-                    indent_style,
+                    indent_guide_style,
                 );
             }
         };
@@ -487,14 +493,7 @@ impl EditorView {
                                 );
                             }
 
-                            // This is an empty line; draw indent guides at previous line's
-                            // indent level to avoid breaking the guides on blank lines.
-                            if visual_x == 0 {
-                                draw_indent_guides(last_line_indent_level, line, surface);
-                            } else if is_in_indent_area {
-                                // A line with whitespace only
-                                draw_indent_guides(visual_x, line, surface);
-                            }
+                            draw_indent_guides(last_line_indent_level, line, surface);
 
                             visual_x = 0;
                             line += 1;
@@ -530,6 +529,8 @@ impl EditorView {
                                 (grapheme.as_ref(), width)
                             };
 
+                            let cut_off_start = offset.col.saturating_sub(visual_x as usize);
+
                             if !out_of_bounds {
                                 // if we're offscreen just keep going until we hit a new line
                                 surface.set_string(
@@ -542,7 +543,24 @@ impl EditorView {
                                         style
                                     },
                                 );
+                            } else if cut_off_start != 0 && cut_off_start < width {
+                                // partially on screen
+                                let rect = Rect::new(
+                                    viewport.x as u16,
+                                    viewport.y + line,
+                                    (width - cut_off_start) as u16,
+                                    1,
+                                );
+                                surface.set_style(
+                                    rect,
+                                    if is_whitespace {
+                                        style.patch(whitespace_style)
+                                    } else {
+                                        style
+                                    },
+                                );
                             }
+
                             if is_in_indent_area && !(grapheme == " " || grapheme == "\t") {
                                 draw_indent_guides(visual_x, line, surface);
                                 is_in_indent_area = false;
