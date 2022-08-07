@@ -35,4 +35,15 @@
 ] @keyword
 
 
-(headline item: (item) @markup.heading.1) @markup.heading.marker
+((headline item: (item) @markup.heading.6) @markup.heading.marker
+ (#match? @markup.heading.marker "^\\*\\*\\*\\*\\*\\*"))
+((headline item: (item) @markup.heading.5) @markup.heading.marker
+ (#match? @markup.heading.marker "^\\*\\*\\*\\*\\*"))
+((headline item: (item) @markup.heading.4) @markup.heading.marker
+ (#match? @markup.heading.marker "^\\*\\*\\*\\*"))
+((headline item: (item) @markup.heading.3) @markup.heading.marker
+ (#match? @markup.heading.marker "^\\*\\*\\*"))
+((headline item: (item) @markup.heading.2) @markup.heading.marker
+ (#match? @markup.heading.marker "^\\*\\*"))
+((headline item: (item) @markup.heading.1) @markup.heading.marker
+ (#match? @markup.heading.marker "^\\*"))
