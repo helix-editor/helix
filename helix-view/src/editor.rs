@@ -1288,14 +1288,14 @@ impl Editor {
         }
     }
 
-    /// Closes language servers with timeout. The default timeout is 500 ms, use
+    /// Closes language servers with timeout. The default timeout is 10000 ms, use
     /// `timeout` parameter to override this.
     pub async fn close_language_servers(
         &self,
         timeout: Option<u64>,
     ) -> Result<(), tokio::time::error::Elapsed> {
         tokio::time::timeout(
-            Duration::from_millis(timeout.unwrap_or(500)),
+            Duration::from_millis(timeout.unwrap_or(10000)),
             future::join_all(
                 self.language_servers
                     .iter_clients()
