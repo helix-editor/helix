@@ -334,8 +334,7 @@ where
     let file_type = editor_config
         .file_type_indicators
         .get(file_type)
-        .map(|x| x.as_str())
-        .unwrap_or(file_type);
+        .map_or(file_type, String::as_str);
 
     write(context, format!(" {} ", file_type), None);
 }
