@@ -1135,7 +1135,10 @@ impl Default for Document {
 
 /// Options for a new document.
 ///
-/// This will usually be populated by edito
+/// This will usually be populated by editorconfig,
+/// which may not set all of these fields.
+/// In that case, Helix will fall back to language config values
+/// and then to sensible defaults.
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct DocumentOptions {
     pub encoding: Option<&'static encoding::Encoding>,
