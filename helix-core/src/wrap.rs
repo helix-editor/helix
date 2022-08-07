@@ -145,14 +145,15 @@ pub enum TextFormatEvent<'a> {
 
 /// Iterates over the text's graphemes yielding [TextFormatEvent]s.
 pub struct TextFormatter<'a> {
-    pub text: RopeSlice<'a>,
-    pub graphemes: RopeGraphemes<'a>,
-    pub max_width: usize,
-    pub tab_width: usize,
-    pub width: usize,
-    pub index: usize,
-    pub backtrack: usize,
-    pub backtrack_width: usize,
+    text: RopeSlice<'a>,
+    graphemes: RopeGraphemes<'a>,
+    max_width: usize,
+    tab_width: usize,
+    // index != char_idx
+    index: usize,
+    width: usize,
+    backtrack: usize,
+    backtrack_width: usize,
 }
 
 impl<'a> TextFormatter<'a> {
@@ -165,8 +166,8 @@ impl<'a> TextFormatter<'a> {
             graphemes: RopeGraphemes::new(text),
             max_width,
             tab_width,
-            width: 0,
             index: 0,
+            width: 0,
             backtrack: 0,
             backtrack_width: 0,
         }
@@ -200,6 +201,24 @@ impl<'a> TextFormatter<'a> {
     pub fn width(&self) -> usize {
         self.width
     }
+
+    pub fn delete_grapheme(&mut self, count: usize, width: usize) {
+        self.index -= count;
+        self.width -= width;
+        self.graphemes = RopeGraphemes::new(self.text.slice(self.index..));
+        if self.backtrack != 0 {
+            self.backtrack -= count;
+            self.backtrack_width -= width;
+        }
+
+    }
+
+    pub fn delete_width(&mut self, width: usize) {
+        self.width -= width;
+        if self.backtrack != 0 {
+            self.backtrack_width -= width;
+        }
+    }
 }
 
 impl<'a> Iterator for TextFormatter<'a> {
@@ -208,11 +227,11 @@ impl<'a> Iterator for TextFormatter<'a> {
     // Maybe virtual text could be inserted through this?
     #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
-        self.graphemes.next().map(|grapheme| {
+        self.graphemes.next().map(|slice| {
             debug_assert!(self.index >= self.backtrack);
             debug_assert!(self.width >= self.backtrack_width);
 
-            let grapheme = Cow::from(grapheme);
+            let grapheme = Cow::from(slice);
             let (display_grapheme, width) = if grapheme == "\t" {
                 (GraphemeKind::Tab, self.tab_width)
             } else if grapheme == " " {
@@ -227,9 +246,9 @@ impl<'a> Iterator for TextFormatter<'a> {
                 let width = crate::graphemes::grapheme_width(&grapheme);
                 (GraphemeKind::Other(grapheme), width)
             };
-            // We've read one character.
-            self.index += 1;
-            self.backtrack += 1;
+            // We've read one grapheme.
+            self.index += slice.len_chars();
+            self.backtrack += slice.len_chars();
             self.width += width;
             self.backtrack_width += width;
 
@@ -251,11 +270,11 @@ impl<'a> Iterator for TextFormatter<'a> {
                 TextFormatEvent::Grapheme(display_grapheme, width)
             } else {
                 let event = if self.backtrack_width >= self.max_width {
-                    self.index -= 1;
+                    self.index -= slice.len_chars();
                     TextFormatEvent::ForceBreak
                 } else {
                     self.index -= self.backtrack;
-                    TextFormatEvent::Backtrack(self.backtrack_width - width, self.backtrack - 1)
+                    TextFormatEvent::Backtrack(self.backtrack_width - width, self.backtrack - slice.len_chars())
                 };
                 self.graphemes = RopeGraphemes::new(self.text.slice(self.index..));
                 self.backtrack = 0;
