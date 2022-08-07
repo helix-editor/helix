@@ -17,6 +17,10 @@ pub trait ClipboardProvider: std::fmt::Debug {
 #[cfg(not(windows))]
 macro_rules! command_provider {
     (paste => $get_prg:literal $( , $get_arg:literal )* ; copy => $set_prg:literal $( , $set_arg:literal )* ; ) => {{
+        log::info!(
+            "Using {} to interact with the system clipboard",
+            if $set_prg != $get_prg { format!("{}+{}", $set_prg, $get_prg)} else { $set_prg.to_string() }
+        );
         Box::new(provider::command::Provider {
             get_cmd: provider::command::Config {
                 prg: $get_prg,
@@ -36,6 +40,10 @@ macro_rules! command_provider {
      primary_paste => $pr_get_prg:literal $( , $pr_get_arg:literal )* ;
      primary_copy => $pr_set_prg:literal $( , $pr_set_arg:literal )* ;
     ) => {{
+        log::info!(
+            "Using {} to interact with the system and selection (primary) clipboard",
+            if $set_prg != $get_prg { format!("{}+{}", $set_prg, $get_prg)} else { $set_prg.to_string() }
+        );
         Box::new(provider::command::Provider {
             get_cmd: provider::command::Config {
                 prg: $get_prg,
@@ -146,6 +154,9 @@ mod provider {
     #[cfg(not(target_os = "windows"))]
     impl NopProvider {
         pub fn new() -> Self {
+            log::warn!(
+                "No clipboard provider found! Yanking and pasting will be internal to Helix"
+            );
             Self {
                 buf: String::new(),
                 primary_buf: String::new(),
@@ -184,6 +195,7 @@ mod provider {
     #[cfg(target_os = "windows")]
     impl ClipboardProvider for WindowsProvider {
         fn name(&self) -> Cow<str> {
+            log::info!("Using clipboard-win to interact with the system clipboard");
             Cow::Borrowed("clipboard-win")
         }
 

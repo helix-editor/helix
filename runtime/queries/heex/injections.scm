@@ -19,3 +19,6 @@
 ;     <link href={ Routes.static_path(..) } />
 ((expression (expression_value) @injection.content)
  (#set! injection.language "elixir"))
+
+((comment) @injection.content 
+ (#set! injection.language "comment"))

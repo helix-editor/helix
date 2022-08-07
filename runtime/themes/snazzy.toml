@@ -24,7 +24,7 @@
 "ui.background" = { fg = "foreground", bg = "background" }
 "ui.cursor" =  { fg = "background", bg = "blue", modifiers = ["dim"] }
 "ui.cursor.match" = { fg = "green", modifiers = ["underlined"] }
-"ui.cursor.primary" = { fg = "background", bg = "cyan", modifier = ["dim"] }
+"ui.cursor.primary" = { fg = "background", bg = "cyan", modifiers = ["dim"] }
 "ui.help" = { fg = "foreground", bg = "background_dark" }
 "ui.linenr" = { fg = "comment" }
 "ui.linenr.selected" = { fg = "foreground" }
