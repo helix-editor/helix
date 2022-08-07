@@ -56,8 +56,8 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(!args.is_empty(), "wrong argument count");
     for arg in args {
         let (path, pos) = args::parse_file(arg);
-        // If the path is a directory, open a file picker on that directory
-        // Use a vector to 'reverse' the order of the opened directories
+        // If the path is a directory, open a file picker on that directory and update the status
+        // message
         if std::fs::canonicalize(&path)?.is_dir() {
             cx.editor.set_status(path.to_string_lossy().to_string());
             let callback = async move {
