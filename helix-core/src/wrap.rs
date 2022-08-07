@@ -19,7 +19,78 @@ pub fn new_reflow_hard_wrap(
 ) -> Transaction {
     let mut changes = Vec::new();
     let mut formatter = TextFormatter::new(text.slice(..), max_width, tab_width);
-    panic!("{:#?}", formatter.collect::<Vec<_>>());
+
+    // * If the leading graphemes are whitespace, we want to keep track of how many there
+    // are. Once a non-whitespace grapheme or a virtual linebreak is returned, we want to
+    // delete those whitespace graphemes and reset the formatter's width back to 0.
+    // * If the trailing graphemes are whitespace, we want to count how many there are.
+    // If no non-whitespace graphemes are returned at a virtual line break, we delete them
+    // and reset the formatter's width back to 0.
+    // * All other whitespace should be preserved.
+    let mut whitespace_count: usize = 0;
+    let mut trim = true;
+    while let Some(event) = formatter.next() {
+        match event {
+            TextFormatEvent::Grapheme(grapheme, _)
+                if matches!(grapheme, GraphemeKind::LineBreak) && whitespace_count > 0 =>
+            {
+                // -1 to not delete line break
+                changes.push((
+                    formatter.index - whitespace_count - 1,
+                    formatter.index - 1,
+                    None,
+                ));
+                whitespace_count = 0;
+                trim = true;
+            }
+            TextFormatEvent::Backtrack(_, count) => {
+                // -1 to not delete line break
+                changes.push((
+                    formatter.index - whitespace_count - 1,
+                    formatter.index - 1,
+                    None,
+                ));
+                whitespace_count = 0;
+                trim = true;
+
+                if count == 0 {
+                    if let Some((from, to, _)) = changes.last_mut() {
+                        *from -= count;
+                        *to -= count;
+                    }
+                } else {
+                    changes.push((
+                        formatter.index,
+                        formatter.index,
+                        Some(SmartString::from(line_ending.as_str())),
+                    ))
+                }
+            }
+            TextFormatEvent::Grapheme(grapheme, _) if grapheme.is_whitespace() => {
+                whitespace_count += 1;
+            }
+            TextFormatEvent::Grapheme(_, _) => {
+                if trim {
+                    // -1 to not delete grapheme
+                    formatter.index -= 1;
+                    changes.push((formatter.index - whitespace_count, formatter.index, None));
+                    formatter.width = 0;
+                    trim = false;
+                }
+                whitespace_count = 0;
+            }
+            TextFormatEvent::ForceBreak => {
+                changes.push((
+                    formatter.index,
+                    formatter.index,
+                    Some(SmartString::from(line_ending.as_str())),
+                ));
+                whitespace_count = 0;
+                trim = true;
+            }
+        }
+    }
+
     while let Some(event) = formatter.next() {
         match event {
             // Insert a newline if it's a virtual line break.
@@ -70,26 +141,18 @@ pub enum TextFormatEvent<'a> {
     /// The (width, len_chars) to backtrack. To be interpreted as going to the next virtual line.
     Backtrack(usize, usize),
     ForceBreak,
-    /// Range of whitespace characters to delete.
-    Trim(usize, usize),
 }
 
 /// Iterates over the text's graphemes yielding [TextFormatEvent]s.
 pub struct TextFormatter<'a> {
-    text: RopeSlice<'a>,
-    graphemes: RopeGraphemes<'a>,
-    trim_whitespace: bool,
-    trim_index: usize,
-    trim_width: usize,
-    trim_count: usize,
-    max_width: usize,
-    tab_width: usize,
-    width: usize,
-    index: usize,
-    backtrack: usize,
-    backtrack_width: usize,
-    // If a word doesn't fit on one line, then give up on backtracking.
-    last_backtrack_index: usize,
+    pub text: RopeSlice<'a>,
+    pub graphemes: RopeGraphemes<'a>,
+    pub max_width: usize,
+    pub tab_width: usize,
+    pub width: usize,
+    pub index: usize,
+    pub backtrack: usize,
+    pub backtrack_width: usize,
 }
 
 impl<'a> TextFormatter<'a> {
@@ -106,7 +169,6 @@ impl<'a> TextFormatter<'a> {
             index: 0,
             backtrack: 0,
             backtrack_width: 0,
-            last_backtrack_index: 0,
         }
     }
 
@@ -146,12 +208,12 @@ impl<'a> Iterator for TextFormatter<'a> {
     // Maybe virtual text could be inserted through this?
     #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(grapheme) = self.graphemes.next() {
+        self.graphemes.next().map(|grapheme| {
             debug_assert!(self.index >= self.backtrack);
             debug_assert!(self.width >= self.backtrack_width);
 
             let grapheme = Cow::from(grapheme);
-            let (grapheme, width) = if grapheme == "\t" {
+            let (display_grapheme, width) = if grapheme == "\t" {
                 (GraphemeKind::Tab, self.tab_width)
             } else if grapheme == " " {
                 (GraphemeKind::Space, 1)
@@ -165,6 +227,11 @@ impl<'a> Iterator for TextFormatter<'a> {
                 let width = crate::graphemes::grapheme_width(&grapheme);
                 (GraphemeKind::Other(grapheme), width)
             };
+            // We've read one character.
+            self.index += 1;
+            self.backtrack += 1;
+            self.width += width;
+            self.backtrack_width += width;
 
             // * If the final character is whitespace and fits within the width,
             // then it'll be rendered and we'll go to the next line.
@@ -176,63 +243,17 @@ impl<'a> Iterator for TextFormatter<'a> {
             // and reset the backtrack counters.
             // * If we've already backtracked once for this word, then give up on
             // placing the word on one line and just insert a virtual line break.
-            // * If the starting grapheme is whitespace, then we add it to the internal
-            // trim tracker, and instead just get the next grapheme. No event is reported
-            // until a non-whitespace grapheme character is encountered, upon which a
-            // trim event is sent. The width counter remains 0.
-            // * If the ending graphemes are all whitespace, then we keep track of the last
-            // whitespace index. If there is multiple whitespace, then we add their widths.
-            // If the end of the line is reached before a non-whitespace character,
-            // then we send a trim event and subtract the width by the whitespace width.
-
-            if self.trim_whitespace && self.width == 0 && grapheme.is_whitespace() {
-                self.index += 1;
-                self.trim_count += 1;
-                continue;
-            } else if self.trim_whitespace && self.trim_count >= 1 && !grapheme.is_whitespace() {
-                let event = TextFormatEvent::Trim(self.index - self.trim_count, self.index);
-                self.graphemes = RopeGraphemes::new(self.text.slice(self.index..));
-                self.trim_count = 0;
-                return Some(event);
-            } else {
-                // We've read one character.
-                self.index += 1;
-                self.backtrack += 1;
-                self.width += width;
-                self.backtrack_width += width;
-
-                if self.width == self.max_width && grapheme.is_whitespace() {
-                    self.trim_count += 1;
-                    let event = TextFormatEvent::Trim(self.index - self.trim_count, self.index);
-                    self.index -= 1;
-                }
-                if self.width <= self.max_width && grapheme.is_whitespace() {
-                    if self.trim_whitespace {
-                        self.trim_count += 1;
-                        continue;
-                    }
-                    self.backtrack = 0;
-                    self.backtrack_width = 0;
-                    return Some(TextFormatEvent::Grapheme(grapheme, width));
-                }
-            } else if self.width < self.max_width {
-                if self.trim_whitespace {}
-                self.trim_count = 0;
-            }
-
-            if self.width <= self.max_width && grapheme.is_whitespace() {
+            if self.width <= self.max_width && display_grapheme.is_whitespace() {
                 self.backtrack = 0;
                 self.backtrack_width = 0;
-                TextFormatEvent::Grapheme(grapheme, width)
+                TextFormatEvent::Grapheme(display_grapheme, width)
             } else if self.width < self.max_width {
-                TextFormatEvent::Grapheme(grapheme, width)
+                TextFormatEvent::Grapheme(display_grapheme, width)
             } else {
-                let event = if self.last_backtrack_index == self.index {
-                    self.last_backtrack_index = 0;
+                let event = if self.backtrack_width >= self.max_width {
                     self.index -= 1;
                     TextFormatEvent::ForceBreak
                 } else {
-                    self.last_backtrack_index = self.index;
                     self.index -= self.backtrack;
                     TextFormatEvent::Backtrack(self.backtrack_width - width, self.backtrack - 1)
                 };
@@ -242,8 +263,7 @@ impl<'a> Iterator for TextFormatter<'a> {
                 self.width = 0;
                 event
             }
-        }
-        None
+        })
     }
 }
 
