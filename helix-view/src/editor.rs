@@ -613,7 +613,6 @@ impl Editor {
         syn_loader: Arc<syntax::Loader>,
         config: Box<dyn DynAccess<Config>>,
     ) -> Self {
-        let language_servers = helix_lsp::Registry::new();
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
 
@@ -629,7 +628,7 @@ impl Editor {
             macro_recording: None,
             macro_replaying: Vec::new(),
             theme: theme_loader.default(),
-            language_servers,
+            language_servers: helix_lsp::Registry::new(),
             diagnostics: BTreeMap::new(),
             debugger: None,
             debugger_events: SelectAll::new(),

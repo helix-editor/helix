@@ -89,9 +89,8 @@ impl Application {
 
         use helix_view::editor::Action;
 
-        let config_dir = helix_loader::config_dir();
         let theme_loader = std::sync::Arc::new(theme::Loader::new(
-            &config_dir,
+            &helix_loader::config_dir(),
             &helix_loader::runtime_dir(),
         ));
 
@@ -801,7 +800,7 @@ impl Application {
     fn restore_term(&mut self) -> Result<(), Error> {
         let mut stdout = stdout();
         // reset cursor shape
-        write!(stdout, "\x1B[2 q")?;
+        write!(stdout, "\x1B[0 q")?;
         // Ignore errors on disabling, this might trigger on windows if we call
         // disable without calling enable previously
         let _ = execute!(stdout, DisableMouseCapture);

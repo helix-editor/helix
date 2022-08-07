@@ -80,7 +80,9 @@
             packages =
               prev.packages
               ++ (
-                with common.pkgs; [lld_13 lldb cargo-tarpaulin cargo-flamegraph rust-analyzer]
+                with common.pkgs;
+                [lld_13 lldb cargo-flamegraph rust-analyzer] ++
+                (lib.optional (stdenv.isx86_64 && stdenv.isLinux) cargo-tarpaulin)
               );
             env =
               prev.env

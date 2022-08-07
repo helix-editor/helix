@@ -92,8 +92,12 @@ pub fn fetch_grammars() -> Result<()> {
     run_parallel(grammars, fetch_grammar, "fetch")
 }
 
-pub fn build_grammars() -> Result<()> {
-    run_parallel(get_grammar_configs()?, build_grammar, "build")
+pub fn build_grammars(target: Option<String>) -> Result<()> {
+    run_parallel(
+        get_grammar_configs()?,
+        move |grammar| build_grammar(grammar, target.as_deref()),
+        "build",
+    )
 }
 
 // Returns the set of grammar configurations the user requests.
@@ -124,13 +128,14 @@ fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
 
 fn run_parallel<F>(grammars: Vec<GrammarConfiguration>, job: F, action: &'static str) -> Result<()>
 where
-    F: Fn(GrammarConfiguration) -> Result<()> + std::marker::Send + 'static + Copy,
+    F: Fn(GrammarConfiguration) -> Result<()> + std::marker::Send + 'static + Clone,
 {
     let pool = threadpool::Builder::new().build();
     let (tx, rx) = channel();
 
     for grammar in grammars {
         let tx = tx.clone();
+        let job = job.clone();
 
         pool.execute(move || {
             // Ignore any SendErrors, if any job in another thread has encountered an
@@ -240,7 +245,7 @@ where
     }
 }
 
-fn build_grammar(grammar: GrammarConfiguration) -> Result<()> {
+fn build_grammar(grammar: GrammarConfiguration, target: Option<&str>) -> Result<()> {
     let grammar_dir = if let GrammarSource::Local { path } = &grammar.source {
         PathBuf::from(&path)
     } else {
@@ -273,10 +278,14 @@ fn build_grammar(grammar: GrammarConfiguration) -> Result<()> {
     }
     .join("src");
 
-    build_tree_sitter_library(&path, grammar)
+    build_tree_sitter_library(&path, grammar, target)
 }
 
-fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> Result<()> {
+fn build_tree_sitter_library(
+    src_path: &Path,
+    grammar: GrammarConfiguration,
+    target: Option<&str>,
+) -> Result<()> {
     let header_path = src_path;
     let parser_path = src_path.join("parser.c");
     let mut scanner_path = src_path.join("scanner.c");
@@ -311,13 +320,14 @@ fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> 
         .opt_level(3)
         .cargo_metadata(false)
         .host(BUILD_TARGET)
-        .target(BUILD_TARGET);
+        .target(target.unwrap_or(BUILD_TARGET));
     let compiler = config.get_compiler();
     let mut command = Command::new(compiler.path());
     command.current_dir(src_path);
     for (key, value) in compiler.env() {
         command.env(key, value);
     }
+    command.args(compiler.args());
 
     if cfg!(all(windows, target_env = "msvc")) {
         command

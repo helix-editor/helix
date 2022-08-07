@@ -64,6 +64,7 @@ FLAGS:
     --health [LANG]                Checks for potential errors in editor setup
                                    If given, checks for config errors in language LANG
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
+    -c, --config <file>            Specifies a file to use for configuration
     -v                             Increases logging verbosity each use for up to 3 times
                                    (default file: {})
     -V, --version                  Prints version information
@@ -108,7 +109,7 @@ FLAGS:
     }
 
     if args.build_grammars {
-        helix_loader::grammar::build_grammars()?;
+        helix_loader::grammar::build_grammars(None)?;
         return Ok(0);
     }
 
@@ -119,14 +120,15 @@ FLAGS:
         std::fs::create_dir_all(&config_dir).ok();
     }
 
-    let config = match std::fs::read_to_string(config_dir.join("config.toml")) {
+    helix_loader::initialize_config_file(args.config_file.clone());
+
+    let config = match std::fs::read_to_string(helix_loader::config_file()) {
         Ok(config) => toml::from_str(&config)
             .map(helix_term::keymap::merge_keys)
             .unwrap_or_else(|err| {
                 eprintln!("Bad config: {}", err);
                 eprintln!("Press <ENTER> to continue with default config");
                 use std::io::Read;
-                // This waits for an enter press.
                 let _ = std::io::stdin().read(&mut []);
                 Config::default()
             }),
