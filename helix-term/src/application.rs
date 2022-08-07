@@ -126,14 +126,14 @@ impl Application {
 
         // Handle signals now, so we can pass flag to the Editor
         #[cfg(windows)]
-        let enable_suspend = false;
+        let suspend_enabled = false;
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
 
         #[cfg(not(windows))]
-        let enable_suspend = check_enable_suspend();
+        let suspend_enabled = check_suspend_enabled();
         #[cfg(not(windows))]
-        let signals = get_available_signals(enable_suspend)?;
+        let signals = get_available_signals(suspend_enabled)?;
 
         let mut editor = Editor::new(
             compositor.size(),
@@ -142,7 +142,7 @@ impl Application {
             Box::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
-            enable_suspend,
+            suspend_enabled,
         );
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
@@ -854,14 +854,14 @@ impl Application {
 }
 
 #[cfg(not(windows))]
-fn check_enable_suspend() -> bool {
+fn check_suspend_enabled() -> bool {
     unsafe { libc::signal(libc::SIGTSTP, libc::SIG_IGN) == 0 }
 }
 
 #[cfg(not(windows))]
-fn get_available_signals(enable_suspend: bool) -> Result<Signals, Error> {
+fn get_available_signals(suspend_enabled: bool) -> Result<Signals, Error> {
     let mut app_signals = vec![libc::SIGCONT];
-    if enable_suspend {
+    if suspend_enabled {
         app_signals.push(libc::SIGTSTP);
     }
     Signals::new(app_signals).context("build signal handler")

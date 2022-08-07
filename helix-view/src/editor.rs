@@ -613,7 +613,7 @@ impl Editor {
         theme_loader: Arc<theme::Loader>,
         syn_loader: Arc<syntax::Loader>,
         config: Box<dyn DynAccess<Config>>,
-        enable_suspend: bool,
+        suspend_enabled: bool,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
         let conf = config.load();
@@ -651,7 +651,7 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
-            suspend_enabled: enable_suspend,
+            suspend_enabled,
         }
     }
 
