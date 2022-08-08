@@ -271,6 +271,8 @@ impl MappableCommand {
         diagnostics_picker, "Open diagnostic picker",
         workspace_diagnostics_picker, "Open workspace diagnostic picker",
         last_picker, "Open last picker",
+        goto_next_from_last_picker, "Goto next from last picker",
+        goto_prev_from_last_picker, "Goto previous from last picker",
         prepend_to_line, "Insert at start of line",
         append_to_line, "Append to end of line",
         open_below, "Open new line below selection",
@@ -2436,6 +2438,26 @@ fn last_picker(cx: &mut Context) {
         // XXX: figure out how to show error when no last picker lifetime
         // cx.editor.set_error("no last picker")
     }));
+}
+
+fn goto_next_from_last_picker(cx: &mut Context) {
+    cx.callback = Some(Box::new(
+        move |compositor: &mut Compositor, cx: &mut compositor::Context| {
+            if let Some(picker) = &mut compositor.last_picker {
+                picker.as_pickstepper().unwrap().next(cx);
+            }
+        },
+    ));
+}
+
+fn goto_prev_from_last_picker(cx: &mut Context) {
+    cx.callback = Some(Box::new(
+        move |compositor: &mut Compositor, cx: &mut compositor::Context| {
+            if let Some(picker) = &mut compositor.last_picker {
+                picker.as_pickstepper().unwrap().prev(cx);
+            }
+        },
+    ));
 }
 
 // I inserts at the first nonwhitespace character of each line with a selection

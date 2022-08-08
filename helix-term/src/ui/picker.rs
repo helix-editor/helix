@@ -34,6 +34,11 @@ pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
+pub trait PickStepper {
+    fn next(&mut self, cx: &mut Context);
+    fn prev(&mut self, cx: &mut Context);
+}
+
 /// File path and range of lines (used to align and highlight lines)
 pub type FileLocation = (PathBuf, Option<(usize, usize)>);
 
@@ -163,6 +168,16 @@ impl<T: Item> FilePicker<T> {
     }
 }
 
+impl<T: Item + 'static> PickStepper for FilePicker<T> {
+    fn next(&mut self, cx: &mut Context) {
+        self.picker.next(cx);
+    }
+
+    fn prev(&mut self, cx: &mut Context) {
+        self.picker.prev(cx);
+    }
+}
+
 impl<T: Item + 'static> Component for FilePicker<T> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // +---------+ +---------+
@@ -277,6 +292,10 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         };
         self.picker.required_size((picker_width, height))?;
         Some((width, height))
+    }
+
+    fn as_pickstepper(&mut self) -> Option<&mut dyn PickStepper> {
+        Some(self)
     }
 }
 
@@ -478,6 +497,18 @@ impl<T: Item> Picker<T> {
     }
 }
 
+impl<T: Item + 'static> PickStepper for Picker<T> {
+    fn next(&mut self, cx: &mut Context) {
+        self.move_by(1, Direction::Forward);
+        (self.callback_fn)(cx, self.selection().unwrap(), Action::Replace);
+    }
+
+    fn prev(&mut self, cx: &mut Context) {
+        self.move_by(1, Direction::Backward);
+        (self.callback_fn)(cx, self.selection().unwrap(), Action::Replace);
+    }
+}
+
 // process:
 // - read all the files into a list, maxed out at a large value
 // - on input change:
@@ -668,5 +699,9 @@ impl<T: Item + 'static> Component for Picker<T> {
         let area = inner.clip_left(1).with_height(1);
 
         self.prompt.cursor(area, editor)
+    }
+
+    fn as_pickstepper(&mut self) -> Option<&mut dyn PickStepper> {
+        Some(self)
     }
 }

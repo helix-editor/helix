@@ -16,7 +16,7 @@ pub enum EventResult {
     Consumed(Option<Callback>),
 }
 
-use crate::job::Jobs;
+use crate::{job::Jobs, ui::PickStepper};
 use helix_view::Editor;
 
 pub use helix_view::input::Event;
@@ -61,6 +61,10 @@ pub trait Component: Any + AnyComponent {
     }
 
     fn id(&self) -> Option<&'static str> {
+        None
+    }
+
+    fn as_pickstepper(&mut self) -> Option<&mut dyn PickStepper> {
         None
     }
 }

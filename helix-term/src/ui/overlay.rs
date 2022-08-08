@@ -69,4 +69,8 @@ impl<T: Component + 'static> Component for Overlay<T> {
         let dimensions = (self.calc_child_size)(area);
         self.content.cursor(dimensions, ctx)
     }
+
+    fn as_pickstepper(&mut self) -> Option<&mut dyn super::PickStepper> {
+        self.content.as_pickstepper()
+    }
 }
