@@ -48,6 +48,7 @@
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | `typescript-language-server` |
+| jinja2 |  |  |  |  |
 | jsdoc | ✓ |  |  |  |
 | json | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
