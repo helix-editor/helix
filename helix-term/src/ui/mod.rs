@@ -336,13 +336,19 @@ pub mod completers {
     pub fn language(editor: &Editor, input: &str) -> Vec<Completion> {
         let matcher = Matcher::default();
 
-        let mut matches: Vec<_> = editor
+        let text: String = "text".into();
+
+        let language_ids = editor
             .syn_loader
             .language_configs()
-            .filter_map(|config| {
+            .map(|config| &config.language_id)
+            .chain(std::iter::once(&text));
+
+        let mut matches: Vec<_> = language_ids
+            .filter_map(|language_id| {
                 matcher
-                    .fuzzy_match(&config.language_id, input)
-                    .map(|score| (&config.language_id, score))
+                    .fuzzy_match(language_id, input)
+                    .map(|score| (language_id, score))
             })
             .collect();
 
