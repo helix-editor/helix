@@ -683,9 +683,13 @@ impl Document {
         &mut self,
         language_id: &str,
         config_loader: Arc<syntax::Loader>,
-    ) {
+    ) -> bool {
         let language_config = config_loader.language_config_for_language_id(language_id);
+        if language_config.is_none() {
+            return false;
+        }
         self.set_language(language_config, Some(config_loader));
+        true
     }
 
     /// Set the LSP.

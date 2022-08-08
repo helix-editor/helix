@@ -1253,7 +1253,16 @@ fn language(
     }
 
     let doc = doc_mut!(cx.editor);
-    doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone());
+
+    let loader = cx.editor.syn_loader.clone();
+    if args[0] == "text" {
+        doc.set_language(None, Some(loader))
+    } else {
+        let ok = doc.set_language_by_language_id(&args[0], loader);
+        if !ok {
+            anyhow::bail!("invalid language: {}", args[0]);
+        }
+    }
     doc.detect_indent_and_line_ending();
 
     let id = doc.id();
