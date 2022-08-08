@@ -90,6 +90,7 @@
 | scala | ✓ |  | ✓ | `metals` |
 | scheme | ✓ |  |  |  |
 | scss | ✓ |  |  | `vscode-css-language-server` |
+| slint | ✓ |  | ✓ | `slint-lsp` |
 | solidity | ✓ |  |  | `solc` |
 | sql | ✓ |  |  |  |
 | sshclientconfig | ✓ |  |  |  |
