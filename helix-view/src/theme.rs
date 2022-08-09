@@ -5,20 +5,20 @@ use std::{
 
 use anyhow::Context;
 use helix_core::hashmap;
+use helix_loader::merge_toml_values;
 use log::warn;
 use once_cell::sync::Lazy;
-use serde::{Deserialize, Deserializer};
-use toml::Value;
+use toml::{map::Map, Value};
 
 pub use crate::graphics::{Color, Modifier, Style};
 
 pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
-    let raw_theme: RawTheme = toml::from_slice(include_bytes!("../../theme.toml"))
+    let raw_theme: Value = toml::from_slice(include_bytes!("../../theme.toml"))
         .expect("Failed to parse default theme");
     Theme::from(raw_theme)
 });
 pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
-    let raw_theme: RawTheme = toml::from_slice(include_bytes!("../../base16_theme.toml"))
+    let raw_theme: Value = toml::from_slice(include_bytes!("../../base16_theme.toml"))
         .expect("Failed to parse base 16 default theme");
     Theme::from(raw_theme)
 });
@@ -46,17 +46,40 @@ impl Loader {
             return Ok(self.base16_default());
         }
 
-        let path = self.path(name, false);
-        let mut raw_theme: RawTheme = self.load_raw(path)?;
+        let theme_toml = self.load_theme(name, name, false)?;
 
-        if let Some(parent_theme_name) = &raw_theme.inherits_from {
-            let path = self.path(parent_theme_name, parent_theme_name == name);
-            let parent_raw_theme = self.load_raw(path)?;
+        Ok(Theme::from(theme_toml))
+    }
 
-            raw_theme.inherit(parent_raw_theme);
-        }
+    // load the theme and its parent recursively and merge them
+    // `base_theme_name` is the theme from the config.toml,
+    // used to prevent some circular loading scenarios
+    fn load_theme(
+        &self,
+        name: &str,
+        base_them_name: &str,
+        only_default_dir: bool,
+    ) -> Result<Value, anyhow::Error> {
+        let path = self.path(name, only_default_dir);
+        let theme_toml = self.load_toml(path)?;
 
-        Ok(Theme::from(raw_theme))
+        let inherits_from = theme_toml.get("inherits_from");
+
+        let theme_toml = if let Some(parent_theme_name) = inherits_from {
+            let parent_theme_name = parent_theme_name.to_string().replace('\"', "");
+
+            let parent_theme_toml = self.load_theme(
+                &parent_theme_name,
+                base_them_name,
+                base_them_name == parent_theme_name,
+            )?;
+
+            self.merge_themes(parent_theme_toml, theme_toml)
+        } else {
+            theme_toml
+        };
+
+        Ok(theme_toml)
     }
 
     pub fn read_names(path: &Path) -> Vec<String> {
@@ -74,14 +97,47 @@ impl Loader {
             .unwrap_or_default()
     }
 
-    // Loads the raw theme data first from the user_dir then in default_dir
-    fn load_raw(&self, path: PathBuf) -> Result<RawTheme, anyhow::Error> {
-        let data = std::fs::read(&path)?;
+    // merge one theme into the parent theme
+    fn merge_themes(&self, parent_theme_toml: Value, theme_toml: Value) -> Value {
+        let parent_palette = parent_theme_toml.get("palette");
+        let palette = theme_toml.get("palette");
 
-        toml::from_slice(data.as_slice()).context("Faled to deserialize theme")
+        // handle the table seperately since it needs a `merge_depth` of 2
+        // this would conflict with the rest of the theme merge strategy
+        let palette_values = if let Some(parent_palette) = parent_palette {
+            if let Some(palette) = palette {
+                merge_toml_values(parent_palette.clone(), palette.clone(), 2)
+            } else {
+                parent_palette.clone()
+            }
+        } else {
+            if let Some(palette) = palette {
+                palette.clone()
+            } else {
+                Map::new().into()
+            }
+        };
+
+        // add the palette correctly as nested table
+        let mut palette = Map::new();
+        palette.insert(String::from("palette"), palette_values);
+
+        // merge the theme into the parent theme
+        let theme = merge_toml_values(parent_theme_toml, theme_toml, 1);
+        // merge the before specially handled palette into the theme
+        merge_toml_values(theme, palette.into(), 1)
     }
 
-    // Returns the path to the theme name
+    // Loads the theme data as `toml::Value` first from the user_dir then in default_dir
+    fn load_toml(&self, path: PathBuf) -> Result<toml::Value, anyhow::Error> {
+        let data = std::fs::read(&path)?;
+
+        toml::from_slice(data.as_slice()).context("Failed to deserialize theme")
+    }
+
+    // Returns the path to the theme with the name
+    // With `only_default_dir` as false the path will first search for the user path
+    // disabled it ignores the user path and returns only the default path
     fn path(&self, name: &str, only_default_dir: bool) -> PathBuf {
         let filename = format!("{}.toml", name);
 
@@ -119,64 +175,6 @@ impl Loader {
     }
 }
 
-struct RawTheme {
-    // Raw toml values
-    values: HashMap<String, Value>,
-    palette: ThemePalette,
-    inherits_from: Option<String>,
-}
-
-impl RawTheme {
-    fn inherit(&mut self, parent_theme: RawTheme) {
-        let palette = ThemePalette::new(
-            parent_theme
-                .palette
-                .palette
-                .into_iter()
-                .chain(self.palette.palette.clone())
-                .collect(),
-        );
-        self.palette = palette;
-
-        let values = parent_theme
-            .values
-            .into_iter()
-            .chain(self.values.clone())
-            .collect();
-        self.values = values;
-    }
-}
-
-impl<'de> Deserialize<'de> for RawTheme {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let mut values = HashMap::<String, Value>::deserialize(deserializer)?;
-
-        // TODO: alert user of parsing failures in editor
-        let palette = values
-            .remove("palette")
-            .map(|value| {
-                ThemePalette::try_from(value).unwrap_or_else(|err| {
-                    warn!("{}", err);
-                    ThemePalette::default()
-                })
-            })
-            .unwrap_or_default();
-
-        let inherits_from = values
-            .remove("inherits_from")
-            .map(|value| value.to_string().replace('\"', ""));
-
-        Ok(Self {
-            values,
-            palette,
-            inherits_from,
-        })
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct Theme {
     // UI styles are stored in a HashMap
@@ -186,22 +184,45 @@ pub struct Theme {
     highlights: Vec<Style>,
 }
 
-impl From<RawTheme> for Theme {
-    fn from(raw_theme: RawTheme) -> Self {
+impl From<Value> for Theme {
+    fn from(value: Value) -> Self {
         let mut styles = HashMap::new();
         let mut scopes = Vec::new();
         let mut highlights = Vec::new();
 
-        for (name, style_value) in raw_theme.values {
-            let mut style = Style::default();
-            if let Err(err) = raw_theme.palette.parse_style(&mut style, style_value) {
-                warn!("{}", err);
-            }
+        let theme_values: Result<HashMap<String, Value>, anyhow::Error> =
+            toml::from_str(&value.to_string()).context("Failed to load theme");
 
-            // these are used both as UI and as highlights
-            styles.insert(name.clone(), style);
-            scopes.push(name);
-            highlights.push(style);
+        if let Ok(mut colors) = theme_values {
+            // TODO: alert user of parsing failures in editor
+            let palette = colors
+                .remove("palette")
+                .map(|value| {
+                    ThemePalette::try_from(value).unwrap_or_else(|err| {
+                        warn!("{}", err);
+                        ThemePalette::default()
+                    })
+                })
+                .unwrap_or_default();
+
+            // remove inherits from value to prevent errors
+            let _ = colors.remove("inherits_from");
+
+            styles.reserve(colors.len());
+            scopes.reserve(colors.len());
+            highlights.reserve(colors.len());
+
+            for (name, style_value) in colors {
+                let mut style = Style::default();
+                if let Err(err) = palette.parse_style(&mut style, style_value) {
+                    warn!("{}", err);
+                }
+
+                // these are used both as UI and as highlights
+                styles.insert(name.clone(), style);
+                scopes.push(name);
+                highlights.push(style);
+            }
         }
 
         Self {
