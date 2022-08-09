@@ -163,6 +163,8 @@ pub struct Config {
     pub whitespace: WhitespaceConfig,
     /// Vertical indent width guides.
     pub indent_guides: IndentGuidesConfig,
+    /// The initial mode for newly opened editors. Defaults to `"normal"`.
+    pub initial_mode: Mode,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
 }
@@ -498,6 +500,7 @@ impl Default for Config {
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
             indent_guides: IndentGuidesConfig::default(),
+            initial_mode: Mode::Normal,
             color_modes: false,
         }
     }
@@ -906,6 +909,7 @@ impl Editor {
 
     /// Generate an id for a new document and register it.
     fn new_document(&mut self, mut doc: Document) -> DocumentId {
+        doc.mode = self.config().initial_mode;
         let id = self.next_document_id;
         // Safety: adding 1 from 1 is fine, probably impossible to reach usize max
         self.next_document_id =
