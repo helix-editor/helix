@@ -442,15 +442,20 @@ impl Document {
 
                 if !output.status.success() {
                     if !output.stderr.is_empty() {
-                        return Err(FormatterError::NonZeroExitStatus(Some(
-                            String::from_utf8_lossy(&output.stderr).to_string(),
-                        )));
+                        let err = String::from_utf8_lossy(&output.stderr).to_string();
+                        log::error!("Formatter error: {}", err);
+                        return Err(FormatterError::NonZeroExitStatus(Some(err)));
                     }
 
                     return Err(FormatterError::NonZeroExitStatus(None));
+                } else if !output.stderr.is_empty() {
+                    log::debug!(
+                        "Formatter printed to stderr: {}",
+                        String::from_utf8_lossy(&output.stderr).to_string()
+                    );
                 }
 
-                let str = String::from_utf8(output.stdout)
+                let str = std::str::from_utf8(&output.stdout)
                     .map_err(|_| FormatterError::InvalidUtf8Output)?;
 
                 Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
@@ -1111,7 +1116,7 @@ impl Display for FormatterError {
             Self::DiskReloadError(error) => write!(f, "Error reloading file from disk: {}", error),
             Self::NonZeroExitStatus(Some(output)) => write!(f, "Formatter error: {}", output),
             Self::NonZeroExitStatus(None) => {
-                write!(f, "Formatter exited with non zero exit status:")
+                write!(f, "Formatter exited with non zero exit status")
             }
         }
     }
