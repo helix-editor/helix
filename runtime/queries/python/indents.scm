@@ -28,11 +28,31 @@
 ] @indent
 
 [
+  (if_statement)
+  (for_statement)
+  (while_statement)
+  (with_statement)
+  (try_statement)
+
+  (function_definition)
+  (class_definition)
+] @extend-indented
+
+[
+  (return_statement)
+  (break_statement)
+  (continue_statement)
+  (raise_statement)
+  (pass_statement)
+] @stop-extend
+
+[
   ")"
   "]"
   "}"
-  (return_statement)
-  (pass_statement)
-  (raise_statement)
 ] @outdent
+(elif_clause
+  "elif" @outdent)
+(else_clause
+  "else" @outdent)
 
