@@ -118,6 +118,18 @@ impl EditorView {
             Self::highlight_cursorline(doc, view, surface, theme);
         }
 
+        let whitespace = &editor.config().whitespace;
+        use helix_view::editor::WhitespaceRenderValue;
+        let whitespace_events = if whitespace.render.tab() == WhitespaceRenderValue::Selection
+            || whitespace.render.nbsp() == WhitespaceRenderValue::Selection
+            || whitespace.render.space() == WhitespaceRenderValue::Selection
+            || whitespace.render.newline() == WhitespaceRenderValue::Selection
+        {
+            Some((HighlightEvent::SelectionStart, HighlightEvent::SelectionEnd))
+        } else {
+            None
+        };
+
         let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
         let highlights = syntax::merge(
             highlights,
@@ -128,7 +140,7 @@ impl EditorView {
             Box::new(syntax::merge(
                 highlights,
                 Self::doc_selection_highlights(doc, view, theme, &editor.config().cursor_shape),
-                Some((HighlightEvent::SelectionStart, HighlightEvent::SelectionEnd)),
+                whitespace_events,
             ))
         } else {
             Box::new(highlights)
