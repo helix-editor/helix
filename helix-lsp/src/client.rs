@@ -295,6 +295,10 @@ impl Client {
                     }),
                     workspace_folders: Some(true),
                     apply_edit: Some(true),
+                    symbol: Some(lsp::WorkspaceSymbolClientCapabilities {
+                        dynamic_registration: Some(false),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
