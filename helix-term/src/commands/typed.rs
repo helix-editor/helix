@@ -34,6 +34,7 @@ fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         buffers_remaining_impl(cx.editor)?
     }
 
+    cx.block_try_flush_writes()?;
     cx.editor.close(view!(cx.editor).id);
 
     Ok(())
@@ -518,15 +519,7 @@ fn write_quit(
     }
 
     write_impl(cx, args.first(), false)?;
-
-    tokio::task::block_in_place(|| helix_lsp::block_on(cx.jobs.finish(Some(cx.editor), None)))?;
-
-    let doc = doc_mut!(cx.editor);
-
-    tokio::task::block_in_place(|| helix_lsp::block_on(doc.try_flush_saves()))
-        .map(|result| result.map(|_| ()))
-        .unwrap_or(Ok(()))?;
-
+    cx.block_try_flush_writes()?;
     quit(cx, &[], event)
 }
 
@@ -540,6 +533,7 @@ fn force_write_quit(
     }
 
     write_impl(cx, args.first(), true)?;
+    cx.block_try_flush_writes()?;
     force_quit(cx, &[], event)
 }
 
@@ -613,6 +607,8 @@ fn write_all_impl(
             buffers_remaining_impl(cx.editor)?;
         }
 
+        cx.block_try_flush_writes()?;
+
         // close all views
         let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
         for view_id in views {
@@ -682,6 +678,7 @@ fn quit_all(
         return Ok(());
     }
 
+    cx.block_try_flush_writes()?;
     quit_all_impl(cx.editor, false)
 }
 
@@ -710,8 +707,9 @@ fn cquit(
         .first()
         .and_then(|code| code.parse::<i32>().ok())
         .unwrap_or(1);
-    cx.editor.exit_code = exit_code;
 
+    cx.editor.exit_code = exit_code;
+    cx.block_try_flush_writes()?;
     quit_all_impl(cx.editor, false)
 }
 
