@@ -12,7 +12,7 @@ use serde_json::json;
 use crate::{
     args::Args,
     commands::apply_workspace_edit,
-    compositor::Compositor,
+    compositor::{Compositor, Event},
     config::Config,
     job::Jobs,
     keymap::Keymaps,
@@ -29,7 +29,7 @@ use std::{
 use anyhow::{Context, Error};
 
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture, Event},
+    event::{DisableMouseCapture, EnableMouseCapture, Event as CrosstermEvent},
     execute, terminal,
     tty::IsTty,
 };
@@ -418,7 +418,7 @@ impl Application {
         }
     }
 
-    pub fn handle_terminal_events(&mut self, event: Result<Event, crossterm::ErrorKind>) {
+    pub fn handle_terminal_events(&mut self, event: Result<CrosstermEvent, crossterm::ErrorKind>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -426,13 +426,12 @@ impl Application {
         };
         // Handle key events
         let should_redraw = match event {
-            Ok(Event::Resize(width, height)) => {
+            Ok(CrosstermEvent::Resize(width, height)) => {
                 self.compositor.resize(width, height);
-
                 self.compositor
                     .handle_event(Event::Resize(width, height), &mut cx)
             }
-            Ok(event) => self.compositor.handle_event(event, &mut cx),
+            Ok(event) => self.compositor.handle_event(event.into(), &mut cx),
             Err(x) => panic!("{}", x),
         };
 
