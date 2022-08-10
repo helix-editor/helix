@@ -314,17 +314,20 @@ impl Application {
                 event = self.editor.wait_event() => {
                     let _idle_handled = self.handle_editor_event(event).await;
 
-                    // for integration tests only, reset the idle timer after every
-                    // event to signal when test events are done processing
                     #[cfg(feature = "integration")]
                     {
                         if _idle_handled {
                             return true;
                         }
-
-                        self.editor.reset_idle_timer();
                     }
                 }
+            }
+
+            // for integration tests only, reset the idle timer after every
+            // event to signal when test events are done processing
+            #[cfg(feature = "integration")]
+            {
+                self.editor.reset_idle_timer();
             }
         }
     }
