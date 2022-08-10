@@ -1,13 +1,15 @@
 mod completion;
 pub(crate) mod editor;
 mod info;
+pub mod lsp;
 mod markdown;
 pub mod menu;
 pub mod overlay;
 mod picker;
-mod popup;
+pub mod popup;
 mod prompt;
 mod spinner;
+mod statusline;
 mod text;
 
 pub use completion::Completion;
@@ -33,7 +35,27 @@ pub fn prompt(
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
-    let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
+    show_prompt(
+        cx,
+        Prompt::new(prompt, history_register, completion_fn, callback_fn),
+    );
+}
+
+pub fn prompt_with_input(
+    cx: &mut crate::commands::Context,
+    prompt: std::borrow::Cow<'static, str>,
+    input: String,
+    history_register: Option<char>,
+    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
+) {
+    show_prompt(
+        cx,
+        Prompt::new(prompt, history_register, completion_fn, callback_fn).with_line(input),
+    );
+}
+
+fn show_prompt(cx: &mut crate::commands::Context, mut prompt: Prompt) {
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
     cx.push_layer(Box::new(prompt));
@@ -170,10 +192,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     FilePicker::new(
         files,
-        move |path: &PathBuf| {
-            // format_fn
-            path.strip_prefix(&root).unwrap_or(path).to_string_lossy()
-        },
+        root,
         move |cx, path: &PathBuf, action| {
             if let Err(e) = cx.editor.open(path, action) {
                 let err = if let Some(err) = e.source() {
@@ -240,6 +259,7 @@ pub mod completers {
         ));
         names.push("default".into());
         names.push("base16_default".into());
+        names.sort();
 
         let mut names: Vec<_> = names
             .into_iter()
@@ -255,20 +275,36 @@ pub mod completers {
             })
             .collect();
 
-        matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+        matches.sort_unstable_by(|(name1, score1), (name2, score2)| {
+            (Reverse(*score1), name1).cmp(&(Reverse(*score2), name2))
+        });
         names = matches.into_iter().map(|(name, _)| ((0..), name)).collect();
 
         names
     }
 
+    /// Recursive function to get all keys from this value and add them to vec
+    fn get_keys(value: &serde_json::Value, vec: &mut Vec<String>, scope: Option<&str>) {
+        if let Some(map) = value.as_object() {
+            for (key, value) in map.iter() {
+                let key = match scope {
+                    Some(scope) => format!("{}.{}", scope, key),
+                    None => key.clone(),
+                };
+                get_keys(value, vec, Some(&key));
+                if !value.is_object() {
+                    vec.push(key);
+                }
+            }
+        }
+    }
+
     pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
-            serde_json::json!(Config::default())
-                .as_object()
-                .unwrap()
-                .keys()
-                .cloned()
-                .collect()
+            let mut keys = Vec::new();
+            let json = serde_json::json!(Config::default());
+            get_keys(&json, &mut keys, None);
+            keys
         });
 
         let matcher = Matcher::default();
@@ -310,7 +346,9 @@ pub mod completers {
             })
             .collect();
 
-        matches.sort_unstable_by_key(|(_language, score)| Reverse(*score));
+        matches.sort_unstable_by(|(language1, score1), (language2, score2)| {
+            (Reverse(*score1), language1).cmp(&(Reverse(*score2), language2))
+        });
 
         matches
             .into_iter()
@@ -426,13 +464,18 @@ pub mod completers {
 
             let range = (input.len().saturating_sub(file_name.len()))..;
 
-            matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+            matches.sort_unstable_by(|(file1, score1), (file2, score2)| {
+                (Reverse(*score1), file1).cmp(&(Reverse(*score2), file2))
+            });
+
             files = matches
                 .into_iter()
                 .map(|(file, _)| (range.clone(), file))
                 .collect();
 
             // TODO: complete to longest common match
+        } else {
+            files.sort_unstable_by(|(_, path1), (_, path2)| path1.cmp(path2));
         }
 
         files

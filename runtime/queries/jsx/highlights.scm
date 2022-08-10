@@ -1,4 +1,4 @@
-; inherits: javascript
+; inherits: ecma
 
 ; Highlight component names differently
 (jsx_opening_element ((identifier) @constructor

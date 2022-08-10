@@ -1,3 +1,5 @@
+; inherits: ecma
+
 [
   (element)
   (if_statement)

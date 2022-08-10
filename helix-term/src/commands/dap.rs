@@ -4,13 +4,15 @@ use crate::{
     job::{Callback, Jobs},
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
 };
-use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion};
+use dap::{StackFrame, Thread, ThreadStates};
+use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
 use helix_dap::{self as dap, Client};
 use helix_lsp::block_on;
 use helix_view::editor::Breakpoint;
 
 use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
+use tui::text::Spans;
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -19,6 +21,38 @@ use std::path::PathBuf;
 use anyhow::{anyhow, bail};
 
 use helix_view::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select_thread_id};
+
+impl ui::menu::Item for StackFrame {
+    type Data = ();
+
+    fn label(&self, _data: &Self::Data) -> Spans {
+        self.name.as_str().into() // TODO: include thread_states in the label
+    }
+}
+
+impl ui::menu::Item for DebugTemplate {
+    type Data = ();
+
+    fn label(&self, _data: &Self::Data) -> Spans {
+        self.name.as_str().into()
+    }
+}
+
+impl ui::menu::Item for Thread {
+    type Data = ThreadStates;
+
+    fn label(&self, thread_states: &Self::Data) -> Spans {
+        format!(
+            "{} ({})",
+            self.name,
+            thread_states
+                .get(&self.id)
+                .map(|state| state.as_str())
+                .unwrap_or("unknown")
+        )
+        .into()
+    }
+}
 
 fn thread_picker(
     cx: &mut Context,
@@ -41,17 +75,7 @@ fn thread_picker(
             let thread_states = debugger.thread_states.clone();
             let picker = FilePicker::new(
                 threads,
-                move |thread| {
-                    format!(
-                        "{} ({})",
-                        thread.name,
-                        thread_states
-                            .get(&thread.id)
-                            .map(|state| state.as_str())
-                            .unwrap_or("unknown")
-                    )
-                    .into()
-                },
+                thread_states,
                 move |cx, thread, _action| callback_fn(cx.editor, thread),
                 move |editor, thread| {
                     let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
@@ -192,6 +216,8 @@ pub fn dap_start_impl(
         }
     }
 
+    args.insert("cwd", to_value(std::env::current_dir().unwrap())?);
+
     let args = to_value(args).unwrap();
 
     let callback = |_editor: &mut Editor, _compositor: &mut Compositor, _response: Value| {
@@ -243,7 +269,7 @@ pub fn dap_launch(cx: &mut Context) {
 
     cx.push_layer(Box::new(overlayed(Picker::new(
         templates,
-        |template| template.name.as_str().into(),
+        (),
         |cx, template, _action| {
             let completions = template.completion.clone();
             let name = template.name.clone();
@@ -475,7 +501,7 @@ pub fn dap_variables(cx: &mut Context) {
 
     for scope in scopes.iter() {
         // use helix_view::graphics::Style;
-        use tui::text::{Span, Spans};
+        use tui::text::Span;
         let response = block_on(debugger.variables(scope.variables_reference));
 
         variables.push(Spans::from(Span::styled(
@@ -652,7 +678,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
 
     let picker = FilePicker::new(
         frames,
-        |frame| frame.name.as_str().into(), // TODO: include thread_states in the label
+        (),
         move |cx, frame, _action| {
             let debugger = debugger!(cx.editor);
             // TODO: this should be simpler to find

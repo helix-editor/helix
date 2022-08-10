@@ -58,7 +58,7 @@ pub enum OffsetEncoding {
 
 pub mod util {
     use super::*;
-    use helix_core::{Range, Rope, Transaction};
+    use helix_core::{diagnostic::NumberOrString, Range, Rope, Transaction};
 
     /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
     ///
@@ -78,11 +78,19 @@ pub mod util {
             Error => lsp::DiagnosticSeverity::ERROR,
         });
 
+        let code = match diag.code.clone() {
+            Some(x) => match x {
+                NumberOrString::Number(x) => Some(lsp::NumberOrString::Number(x)),
+                NumberOrString::String(x) => Some(lsp::NumberOrString::String(x)),
+            },
+            None => None,
+        };
+
         // TODO: add support for Diagnostic.data
         lsp::Diagnostic::new(
             range_to_lsp_range(doc, range, offset_encoding),
             severity,
-            None,
+            code,
             None,
             diag.message.to_owned(),
             None,
@@ -204,22 +212,6 @@ pub mod util {
                 (start, end, replacement)
             }),
         )
-    }
-
-    /// The result of asking the language server to format the document. This can be turned into a
-    /// `Transaction`, but the advantage of not doing that straight away is that this one is
-    /// `Send` and `Sync`.
-    #[derive(Clone, Debug)]
-    pub struct LspFormatting {
-        pub doc: Rope,
-        pub edits: Vec<lsp::TextEdit>,
-        pub offset_encoding: OffsetEncoding,
-    }
-
-    impl From<LspFormatting> for Transaction {
-        fn from(fmt: LspFormatting) -> Transaction {
-            generate_transaction_from_edits(&fmt.doc, fmt.edits, fmt.offset_encoding)
-        }
     }
 }
 

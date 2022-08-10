@@ -1,12 +1,16 @@
-use crate::compositor::{Component, Context, EventResult};
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crate::compositor::{Component, Context, Event, EventResult};
 use helix_view::editor::CompleteAction;
 use tui::buffer::Buffer as Surface;
+use tui::text::Spans;
 
 use std::borrow::Cow;
 
 use helix_core::{Change, Transaction};
-use helix_view::{graphics::Rect, Document, Editor};
+use helix_view::{
+    graphics::Rect,
+    input::{KeyCode, KeyEvent},
+    Document, Editor,
+};
 
 use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
@@ -15,19 +19,25 @@ use helix_lsp::{lsp, util};
 use lsp::CompletionItem;
 
 impl menu::Item for CompletionItem {
-    fn sort_text(&self) -> &str {
-        self.filter_text.as_ref().unwrap_or(&self.label).as_str()
+    type Data = ();
+    fn sort_text(&self, data: &Self::Data) -> Cow<str> {
+        self.filter_text(data)
     }
 
-    fn filter_text(&self) -> &str {
-        self.filter_text.as_ref().unwrap_or(&self.label).as_str()
+    #[inline]
+    fn filter_text(&self, _data: &Self::Data) -> Cow<str> {
+        self.filter_text
+            .as_ref()
+            .unwrap_or(&self.label)
+            .as_str()
+            .into()
     }
 
-    fn label(&self) -> &str {
-        self.label.as_str()
+    fn label(&self, _data: &Self::Data) -> Spans {
+        self.label.as_str().into()
     }
 
-    fn row(&self) -> menu::Row {
+    fn row(&self, _data: &Self::Data) -> menu::Row {
         menu::Row::new(vec![
             menu::Cell::from(self.label.as_str()),
             menu::Cell::from(match self.kind {
@@ -78,6 +88,8 @@ pub struct Completion {
 }
 
 impl Completion {
+    pub const ID: &'static str = "completion";
+
     pub fn new(
         editor: &Editor,
         items: Vec<CompletionItem>,
@@ -85,7 +97,7 @@ impl Completion {
         start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
-        let menu = Menu::new(items, move |editor: &mut Editor, item, event| {
+        let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
             fn item_to_transaction(
                 doc: &Document,
                 item: &CompletionItem,
@@ -207,7 +219,7 @@ impl Completion {
                 }
             };
         });
-        let popup = Popup::new("completion", menu);
+        let popup = Popup::new(Self::ID, menu);
         let mut completion = Self {
             popup,
             start_offset,

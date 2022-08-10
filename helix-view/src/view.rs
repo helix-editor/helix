@@ -58,8 +58,13 @@ impl JumpList {
     pub fn remove(&mut self, doc_id: &DocumentId) {
         self.jumps.retain(|(other_id, _)| other_id != doc_id);
     }
+
+    pub fn get(&self) -> &[Jump] {
+        &self.jumps
+    }
 }
 
+#[derive(Clone)]
 pub struct View {
     pub id: ViewId,
     pub offset: Position,
@@ -75,7 +80,11 @@ pub struct View {
     pub last_modified_docs: [Option<DocumentId>; 2],
     /// used to store previous selections of tree-sitter objects
     pub object_selections: Vec<Selection>,
-    pub gutters: Vec<(Gutter, usize)>,
+    /// Gutter (constructor) and width of gutter, used to calculate
+    /// `gutter_offset`
+    gutters: Vec<(Gutter, usize)>,
+    /// cached total width of gutter
+    gutter_offset: u16,
 }
 
 impl fmt::Debug for View {
@@ -91,12 +100,26 @@ impl fmt::Debug for View {
 impl View {
     pub fn new(doc: DocumentId, gutter_types: Vec<crate::editor::GutterType>) -> Self {
         let mut gutters: Vec<(Gutter, usize)> = vec![];
+        let mut gutter_offset = 0;
         use crate::editor::GutterType;
         for gutter_type in &gutter_types {
-            match gutter_type {
-                GutterType::Diagnostics => gutters.push((gutter::diagnostics_or_breakpoints, 1)),
-                GutterType::LineNumbers => gutters.push((gutter::line_numbers, 5)),
-            }
+            let width = match gutter_type {
+                GutterType::Diagnostics => 1,
+                GutterType::LineNumbers => 5,
+                GutterType::Spacer => 1,
+            };
+            gutter_offset += width;
+            gutters.push((
+                match gutter_type {
+                    GutterType::Diagnostics => gutter::diagnostics_or_breakpoints,
+                    GutterType::LineNumbers => gutter::line_numbers,
+                    GutterType::Spacer => gutter::padding,
+                },
+                width as usize,
+            ));
+        }
+        if !gutter_types.is_empty() {
+            gutter_offset += 1;
         }
         Self {
             id: ViewId::default(),
@@ -108,6 +131,7 @@ impl View {
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
             gutters,
+            gutter_offset,
         }
     }
 
@@ -119,14 +143,12 @@ impl View {
     }
 
     pub fn inner_area(&self) -> Rect {
-        // TODO: cache this
-        let offset = self
-            .gutters
-            .iter()
-            .map(|(_, width)| *width as u16)
-            .sum::<u16>()
-            + 1; // +1 for some space between gutters and line
-        self.area.clip_left(offset).clip_bottom(1) // -1 for statusline
+        // TODO add abilty to not use cached offset for runtime configurable gutter
+        self.area.clip_left(self.gutter_offset).clip_bottom(1) // -1 for statusline
+    }
+
+    pub fn gutters(&self) -> &[(Gutter, usize)] {
+        &self.gutters
     }
 
     //

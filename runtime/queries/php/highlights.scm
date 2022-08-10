@@ -8,6 +8,14 @@
 (named_type (name) @type) @type
 (named_type (qualified_name) @type) @type
 
+(namespace_definition
+  name: (namespace_name (name) @namespace))
+
+; Superglobals
+(subscript_expression
+  (variable_name(name) @constant.builtin
+    (#match? @constant.builtin "^_?[A-Z][A-Z\\d_]+$")))
+
 ; Functions
 
 (array_creation_expression "array" @function.builtin)
@@ -17,7 +25,7 @@
   name: (name) @function.method)
 
 (function_call_expression
-  function: (qualified_name (name)) @function)
+  function: (_) @function)
 
 (scoped_call_expression
   name: (name) @function)
@@ -27,6 +35,7 @@
 
 (function_definition
   name: (name) @function)
+
 
 ; Member
 
@@ -67,52 +76,54 @@
 
 ; Keywords
 
-"abstract" @keyword
-"as" @keyword
-"break" @keyword
-"case" @keyword
-"catch" @keyword
-"class" @keyword
-"const" @keyword
-"continue" @keyword
-"declare" @keyword
-"default" @keyword
-"do" @keyword
-"echo" @keyword
-"else" @keyword
-"elseif" @keyword
-"enddeclare" @keyword
-"endforeach" @keyword
-"endif" @keyword
-"endswitch" @keyword
-"endwhile" @keyword
-"enum" @keyword
-"extends" @keyword
-"final" @keyword
-"finally" @keyword
-"foreach" @keyword
-"fn" @keyword
-"function" @keyword
-"global" @keyword
-"if" @keyword
-"implements" @keyword
-"include_once" @keyword
-"include" @keyword
-"insteadof" @keyword
-"interface" @keyword
-"match" @keyword
-"namespace" @keyword
-"new" @keyword
-"private" @keyword
-"protected" @keyword
-"public" @keyword
-"require_once" @keyword
-"require" @keyword
-"return" @keyword
-"static" @keyword
-"switch" @keyword
-"throw" @keyword
-"trait" @keyword
-"try" @keyword
-"use" @keyword
-"while" @keyword
+[
+  "abstract" 
+  "as" 
+  "break" 
+  "case" 
+  "catch" 
+  "class" 
+  "const" 
+  "continue" 
+  "declare" 
+  "default" 
+  "do" 
+  "echo" 
+  "else" 
+  "elseif" 
+  "enddeclare" 
+  "endforeach" 
+  "endif" 
+  "endswitch" 
+  "endwhile" 
+  "enum" 
+  "extends" 
+  "final" 
+  "finally" 
+  "foreach" 
+  "fn" 
+  "function" 
+  "global" 
+  "if" 
+  "implements" 
+  "include_once" 
+  "include" 
+  "insteadof" 
+  "interface" 
+  "match" 
+  "namespace" 
+  "new" 
+  "private" 
+  "protected" 
+  "public" 
+  "require_once" 
+  "require" 
+  "return" 
+  "static" 
+  "switch" 
+  "throw" 
+  "trait" 
+  "try" 
+  "use" 
+  "while" 
+] @keyword

@@ -197,7 +197,7 @@
 (interpolated_string) @string
 ; (escape_sequence) @string.escape
 
-; Reset highlighing in string interpolation
+; Reset highlighting in string interpolation
 (interpolation) @none
 
 (interpolation
