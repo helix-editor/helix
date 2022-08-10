@@ -119,16 +119,11 @@ impl EditorView {
         }
 
         let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
-        let highlights = syntax::merge(
-            highlights,
-            Self::doc_diagnostics_highlights(doc, theme),
-            false,
-        );
+        let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
                 Self::doc_selection_highlights(doc, view, theme, &editor.config().cursor_shape),
-                true,
             ))
         } else {
             Box::new(highlights)
@@ -461,19 +456,17 @@ impl EditorView {
             }
         };
 
-        let mut selected = false;
+        let mut selecting = false;
 
         'outer: for event in highlights {
             match event {
-                HighlightEvent::HighlightStart {
-                    highlight,
-                    is_selection,
-                } => {
-                    spans.push((highlight, is_selection));
-                    selected |= is_selection;
+                HighlightEvent::HighlightStart(span) => {
+                    spans.push(span);
+                    selecting |= theme.selection_scopes().contains(&span.0);
                 }
                 HighlightEvent::HighlightEnd => {
-                    selected &= !spans.pop().unwrap().1;
+                    let span = spans.pop().unwrap();
+                    selecting &= !theme.selection_scopes().contains(&span.0);
                 }
                 HighlightEvent::Source { start, end } => {
                     let is_trailing_cursor = text.len_chars() < end;
@@ -482,14 +475,14 @@ impl EditorView {
                     // the rope, to allow cursor highlighting at the end
                     // of the rope.
                     let text = text.get_slice(start..end).unwrap_or_else(|| " ".into());
-                    let style = spans.iter().fold(text_style, |acc, span| {
-                        acc.patch(theme.highlight(span.0 .0))
-                    });
+                    let style = spans
+                        .iter()
+                        .fold(text_style, |acc, span| acc.patch(theme.highlight(span.0)));
 
                     let space = if whitespace.render.space() != WhitespaceRenderValue::None
                         && !is_trailing_cursor
                     {
-                        space(selected)
+                        space(selecting)
                     } else {
                         " "
                     };
@@ -497,7 +490,7 @@ impl EditorView {
                     let nbsp = if whitespace.render.nbsp() != WhitespaceRenderValue::None
                         && text.len_chars() < end
                     {
-                        nbsp(selected)
+                        nbsp(selecting)
                     } else {
                         " "
                     };
@@ -514,7 +507,7 @@ impl EditorView {
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
                                     viewport.y + line,
-                                    newline(selected),
+                                    newline(selecting),
                                     style.patch(whitespace_style),
                                 );
                             }
@@ -537,7 +530,7 @@ impl EditorView {
                                 is_whitespace = true;
                                 // make sure we display tab as appropriate amount of spaces
                                 let visual_tab_width = tab_width - (visual_x as usize % tab_width);
-                                let tab = tab(selected);
+                                let tab = tab(selecting);
                                 let grapheme_tab_width =
                                     helix_core::str_utils::char_to_byte_idx(tab, visual_tab_width);
 

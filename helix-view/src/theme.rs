@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    collections::HashSet,
     path::{Path, PathBuf},
 };
 
@@ -102,6 +103,7 @@ pub struct Theme {
     styles: HashMap<String, Style>,
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
     scopes: Vec<String>,
+    selection_scopes: HashSet<usize>,
     highlights: Vec<Style>,
 }
 
@@ -112,6 +114,7 @@ impl<'de> Deserialize<'de> for Theme {
     {
         let mut styles = HashMap::new();
         let mut scopes = Vec::new();
+        let mut selection_scopes = HashSet::new();
         let mut highlights = Vec::new();
 
         if let Ok(mut colors) = HashMap::<String, Value>::deserialize(deserializer) {
@@ -138,6 +141,9 @@ impl<'de> Deserialize<'de> for Theme {
 
                 // these are used both as UI and as highlights
                 styles.insert(name.clone(), style);
+                if name.starts_with("ui.selection") {
+                    selection_scopes.insert(scopes.len());
+                }
                 scopes.push(name);
                 highlights.push(style);
             }
@@ -145,6 +151,7 @@ impl<'de> Deserialize<'de> for Theme {
 
         Ok(Self {
             scopes,
+            selection_scopes,
             styles,
             highlights,
         })
@@ -172,6 +179,11 @@ impl Theme {
     #[inline]
     pub fn scopes(&self) -> &[String] {
         &self.scopes
+    }
+
+    #[inline]
+    pub fn selection_scopes(&self) -> &HashSet<usize> {
+        &self.selection_scopes
     }
 
     pub fn find_scope_index(&self, scope: &str) -> Option<usize> {

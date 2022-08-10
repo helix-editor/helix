@@ -1141,14 +1141,8 @@ pub enum Error {
 /// Represents a single step in rendering a syntax-highlighted document.
 #[derive(Copy, Clone, Debug)]
 pub enum HighlightEvent {
-    Source {
-        start: usize,
-        end: usize,
-    },
-    HighlightStart {
-        highlight: Highlight,
-        is_selection: bool,
-    },
+    Source { start: usize, end: usize },
+    HighlightStart(Highlight),
     HighlightEnd,
 }
 
@@ -1803,13 +1797,8 @@ impl<'a> Iterator for HighlightIter<'a> {
             if let Some(highlight) = reference_highlight.or(current_highlight) {
                 self.last_highlight_range = Some((range.start, range.end, layer.depth));
                 layer.highlight_end_stack.push(range.end);
-                return self.emit_event(
-                    range.start,
-                    Some(HighlightEvent::HighlightStart {
-                        highlight,
-                        is_selection: false,
-                    }),
-                );
+                return self
+                    .emit_event(range.start, Some(HighlightEvent::HighlightStart(highlight)));
             }
 
             self.sort_layers();
@@ -1870,7 +1859,6 @@ fn injection_for_match<'a>(
 pub struct Merge<I> {
     iter: I,
     spans: Box<dyn Iterator<Item = (usize, std::ops::Range<usize>)>>,
-    is_selection: bool,
 
     next_event: Option<HighlightEvent>,
     next_span: Option<(usize, std::ops::Range<usize>)>,
@@ -1882,13 +1870,11 @@ pub struct Merge<I> {
 pub fn merge<I: Iterator<Item = HighlightEvent>>(
     iter: I,
     spans: Vec<(usize, std::ops::Range<usize>)>,
-    is_selection: bool,
 ) -> Merge<I> {
     let spans = Box::new(spans.into_iter());
     let mut merge = Merge {
         iter,
         spans,
-        is_selection,
         next_event: None,
         next_span: None,
         queue: Vec::new(),
@@ -1921,9 +1907,9 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
         }
 
         match (self.next_event, &self.next_span) {
-            (highlight_start @ Some(HighlightStart { .. }), _) => {
+            (Some(HighlightStart(i)), _) => {
                 self.next_event = self.iter.next();
-                highlight_start
+                Some(HighlightStart(i))
             }
             (Some(HighlightEnd), _) => {
                 self.next_event = self.iter.next();
@@ -1951,10 +1937,7 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
             }
             (Some(Source { start, end }), Some((span, range))) if start == range.start => {
                 let intersect = range.end.min(end);
-                let event = HighlightStart {
-                    highlight: Highlight(*span),
-                    is_selection: self.is_selection,
-                };
+                let event = HighlightStart(Highlight(*span));
 
                 // enqueue in reverse order
                 self.queue.push(HighlightEnd);
@@ -1992,10 +1975,7 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
             // handled appropriately by the drawing code by not assuming that
             // all `Source` events point to valid indices in the rope.
             (None, Some((span, range))) => {
-                let event = HighlightStart {
-                    highlight: Highlight(*span),
-                    is_selection: self.is_selection,
-                };
+                let event = HighlightStart(Highlight(*span));
                 self.queue.push(HighlightEnd);
                 self.queue.push(Source {
                     start: range.start,

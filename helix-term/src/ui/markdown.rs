@@ -61,7 +61,7 @@ pub fn highlighted_code_block<'a>(
         .map(|e| e.unwrap());
     let highlight_iter: Box<dyn Iterator<Item = HighlightEvent>> =
         if let Some(spans) = additional_highlight_spans {
-            Box::new(helix_core::syntax::merge(highlight_iter, spans, false))
+            Box::new(helix_core::syntax::merge(highlight_iter, spans))
         } else {
             Box::new(highlight_iter)
         };
@@ -69,8 +69,8 @@ pub fn highlighted_code_block<'a>(
     let mut highlights = Vec::new();
     for event in highlight_iter {
         match event {
-            HighlightEvent::HighlightStart{highlight, is_selection: _} => {
-                highlights.push(highlight);
+            HighlightEvent::HighlightStart(span) => {
+                highlights.push(span);
             }
             HighlightEvent::HighlightEnd => {
                 highlights.pop();
