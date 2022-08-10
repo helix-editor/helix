@@ -1525,10 +1525,10 @@ source = { git = "https://github.com/victorhqc/tree-sitter-prisma", rev = "17a59
 [[language]]
 name = "clojure"
 scope = "source.clojure"
-injection-regex = "(clojure|clj)"
-file-types = ["clj"]
-roots = ["project.clj"]
-comment-token = ";;"
+injection-regex = "(clojure|clj|edn|boot)"
+file-types = ["clj", "cljs", "cljc", "clje", "cljr", "cljx", "edn", "boot"]
+roots = ["project.clj", "build.boot", "deps.edn", "shadow-cljs.edn"]
+comment-token = ";"
 language-server = { command = "clojure-lsp" }
 indent = { tab-width = 2, unit = "  " }
 
