@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::Context;
+use anyhow::{anyhow, Context, Result};
 use helix_core::hashmap;
 use helix_loader::merge_toml_values;
 use log::warn;
@@ -38,7 +38,7 @@ impl Loader {
     }
 
     /// Loads a theme first looking in the `user_dir` then in `default_dir`
-    pub fn load(&self, name: &str) -> Result<Theme, anyhow::Error> {
+    pub fn load(&self, name: &str) -> Result<Theme> {
         if name == "default" {
             return Ok(self.default());
         }
@@ -59,17 +59,22 @@ impl Loader {
         name: &str,
         base_them_name: &str,
         only_default_dir: bool,
-    ) -> Result<Value, anyhow::Error> {
+    ) -> Result<Value> {
         let path = self.path(name, only_default_dir);
         let theme_toml = self.load_toml(path)?;
 
-        let inherits_from = theme_toml.get("inherits_from");
+        let inherits = theme_toml.get("inherits");
 
-        let theme_toml = if let Some(parent_theme_name) = inherits_from {
-            let parent_theme_name = parent_theme_name.to_string().replace('\"', "");
+        let theme_toml = if let Some(parent_theme_name) = inherits {
+            let parent_theme_name = parent_theme_name.as_str().ok_or_else(|| {
+                anyhow!(
+                    "Theme: expected 'inherits' to be a string: {}",
+                    parent_theme_name
+                )
+            })?;
 
             let parent_theme_toml = self.load_theme(
-                &parent_theme_name,
+                parent_theme_name,
                 base_them_name,
                 base_them_name == parent_theme_name,
             )?;
@@ -104,18 +109,13 @@ impl Loader {
 
         // handle the table seperately since it needs a `merge_depth` of 2
         // this would conflict with the rest of the theme merge strategy
-        let palette_values = if let Some(parent_palette) = parent_palette {
-            if let Some(palette) = palette {
+        let palette_values = match (parent_palette, palette) {
+            (Some(parent_palette), Some(palette)) => {
                 merge_toml_values(parent_palette.clone(), palette.clone(), 2)
-            } else {
-                parent_palette.clone()
             }
-        } else {
-            if let Some(palette) = palette {
-                palette.clone()
-            } else {
-                Map::new().into()
-            }
+            (Some(parent_palette), None) => parent_palette.clone(),
+            (None, Some(palette)) => palette.clone(),
+            (None, None) => Map::new().into(),
         };
 
         // add the palette correctly as nested table
@@ -129,7 +129,7 @@ impl Loader {
     }
 
     // Loads the theme data as `toml::Value` first from the user_dir then in default_dir
-    fn load_toml(&self, path: PathBuf) -> Result<toml::Value, anyhow::Error> {
+    fn load_toml(&self, path: PathBuf) -> Result<Value> {
         let data = std::fs::read(&path)?;
 
         toml::from_slice(data.as_slice()).context("Failed to deserialize theme")
@@ -190,7 +190,7 @@ impl From<Value> for Theme {
         let mut scopes = Vec::new();
         let mut highlights = Vec::new();
 
-        let theme_values: Result<HashMap<String, Value>, anyhow::Error> =
+        let theme_values: Result<HashMap<String, Value>> =
             toml::from_str(&value.to_string()).context("Failed to load theme");
 
         if let Ok(mut colors) = theme_values {
@@ -206,7 +206,7 @@ impl From<Value> for Theme {
                 .unwrap_or_default();
 
             // remove inherits from value to prevent errors
-            let _ = colors.remove("inherits_from");
+            let _ = colors.remove("inherits");
 
             styles.reserve(colors.len());
             scopes.reserve(colors.len());
