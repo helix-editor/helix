@@ -1141,11 +1141,15 @@ pub enum Error {
 /// Represents a single step in rendering a syntax-highlighted document.
 #[derive(Copy, Clone, Debug)]
 pub enum HighlightEvent {
-    Source { start: usize, end: usize },
-    HighlightStart(Highlight),
+    Source {
+        start: usize,
+        end: usize,
+    },
+    HighlightStart {
+        highlight: Highlight,
+        is_selection: bool,
+    },
     HighlightEnd,
-    SelectionStart,
-    SelectionEnd,
 }
 
 /// Contains the data needed to highlight code written in a particular language.
@@ -1799,8 +1803,13 @@ impl<'a> Iterator for HighlightIter<'a> {
             if let Some(highlight) = reference_highlight.or(current_highlight) {
                 self.last_highlight_range = Some((range.start, range.end, layer.depth));
                 layer.highlight_end_stack.push(range.end);
-                return self
-                    .emit_event(range.start, Some(HighlightEvent::HighlightStart(highlight)));
+                return self.emit_event(
+                    range.start,
+                    Some(HighlightEvent::HighlightStart {
+                        highlight,
+                        is_selection: false,
+                    }),
+                );
             }
 
             self.sort_layers();
@@ -1861,7 +1870,7 @@ fn injection_for_match<'a>(
 pub struct Merge<I> {
     iter: I,
     spans: Box<dyn Iterator<Item = (usize, std::ops::Range<usize>)>>,
-    events: Option<(HighlightEvent, HighlightEvent)>,
+    is_selection: bool,
 
     next_event: Option<HighlightEvent>,
     next_span: Option<(usize, std::ops::Range<usize>)>,
@@ -1873,13 +1882,13 @@ pub struct Merge<I> {
 pub fn merge<I: Iterator<Item = HighlightEvent>>(
     iter: I,
     spans: Vec<(usize, std::ops::Range<usize>)>,
-    events: Option<(HighlightEvent, HighlightEvent)>,
+    is_selection: bool,
 ) -> Merge<I> {
     let spans = Box::new(spans.into_iter());
     let mut merge = Merge {
         iter,
         spans,
-        events,
+        is_selection,
         next_event: None,
         next_span: None,
         queue: Vec::new(),
@@ -1912,9 +1921,9 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
         }
 
         match (self.next_event, &self.next_span) {
-            (Some(HighlightStart(i)), _) => {
+            (highlight_start @ Some(HighlightStart { .. }), _) => {
                 self.next_event = self.iter.next();
-                Some(HighlightStart(i))
+                highlight_start
             }
             (Some(HighlightEnd), _) => {
                 self.next_event = self.iter.next();
@@ -1942,20 +1951,17 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
             }
             (Some(Source { start, end }), Some((span, range))) if start == range.start => {
                 let intersect = range.end.min(end);
-                let event = HighlightStart(Highlight(*span));
+                let event = HighlightStart {
+                    highlight: Highlight(*span),
+                    is_selection: self.is_selection,
+                };
 
                 // enqueue in reverse order
-                if let Some((_, end)) = self.events {
-                    self.queue.push(end)
-                }
                 self.queue.push(HighlightEnd);
                 self.queue.push(Source {
                     start,
                     end: intersect,
                 });
-                if let Some((start, _)) = self.events {
-                    self.queue.push(start)
-                }
 
                 if end == intersect {
                     // the event is complete
@@ -1986,18 +1992,15 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
             // handled appropriately by the drawing code by not assuming that
             // all `Source` events point to valid indices in the rope.
             (None, Some((span, range))) => {
-                let event = HighlightStart(Highlight(*span));
-                if let Some((_, end)) = self.events {
-                    self.queue.push(end)
-                }
+                let event = HighlightStart {
+                    highlight: Highlight(*span),
+                    is_selection: self.is_selection,
+                };
                 self.queue.push(HighlightEnd);
                 self.queue.push(Source {
                     start: range.start,
                     end: range.end,
                 });
-                if let Some((start, _)) = self.events {
-                    self.queue.push(start)
-                }
                 self.next_span = self.spans.next();
                 Some(event)
             }
