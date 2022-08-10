@@ -492,6 +492,7 @@ fn query_indents(
 ///     },
 /// );
 /// ```
+#[allow(clippy::too_many_arguments)]
 pub fn treesitter_indent_for_pos(
     query: &Query,
     syntax: &Syntax,
