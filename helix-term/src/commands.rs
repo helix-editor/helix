@@ -4377,7 +4377,9 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
 }
 
 fn surround_add(cx: &mut Context) {
+    cx.editor.pseudo_pending = Some("ma".to_string());
     cx.on_next_key(move |cx, event| {
+        cx.editor.pseudo_pending = None;
         let ch = match event.char() {
             Some(ch) => ch,
             None => return,
@@ -4403,7 +4405,9 @@ fn surround_add(cx: &mut Context) {
 
 fn surround_replace(cx: &mut Context) {
     let count = cx.count();
+    cx.editor.pseudo_pending = Some("mr".to_string());
     cx.on_next_key(move |cx, event| {
+        cx.editor.pseudo_pending = None;
         let surround_ch = match event.char() {
             Some('m') => None, // m selects the closest surround pair
             Some(ch) => Some(ch),
@@ -4443,7 +4447,9 @@ fn surround_replace(cx: &mut Context) {
 
 fn surround_delete(cx: &mut Context) {
     let count = cx.count();
+    cx.editor.pseudo_pending = Some("md".to_string());
     cx.on_next_key(move |cx, event| {
+        cx.editor.pseudo_pending = None;
         let surround_ch = match event.char() {
             Some('m') => None, // m selects the closest surround pair
             Some(ch) => Some(ch),
