@@ -6,7 +6,7 @@
   command: _ @function)
 
 (key_value_pair
-  key: (_) @parameter
+  key: (_) @variable.parameter
   value: (_))
 
 [
