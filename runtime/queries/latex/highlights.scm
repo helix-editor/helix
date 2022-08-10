@@ -75,7 +75,7 @@
 (label_number
   command: _ @function.macro
   name: (curly_group_text (_) @label)
-  number: (_) @text.reference)
+  number: (_) @markup.link.label)
 
 (citation
   command: _ @function.macro
