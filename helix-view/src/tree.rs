@@ -271,12 +271,16 @@ impl Tree {
     }
 
     pub fn get(&self, index: ViewId) -> &View {
+        self.try_get(index).unwrap()
+    }
+
+    pub fn try_get(&self, index: ViewId) -> Option<&View> {
         match &self.nodes[index] {
             Node {
                 content: Content::View(view),
                 ..
-            } => view,
-            _ => unreachable!(),
+            } => Some(view),
+            _ => None,
         }
     }
 

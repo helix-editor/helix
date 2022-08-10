@@ -4,6 +4,8 @@
   runCommandLocal,
   runCommandNoCC,
   yj,
+  includeGrammarIf ? _: true,
+  ...
 }: let
   # HACK: nix < 2.6 has a bug in the toml parser, so we convert to JSON
   # before parsing
@@ -102,12 +104,13 @@
         runHook postFixup
       '';
     };
+  grammarsToBuild = builtins.filter includeGrammarIf gitGrammars;
   builtGrammars =
     builtins.map (grammar: {
       inherit (grammar) name;
       artifact = buildGrammar grammar;
     })
-    gitGrammars;
+    grammarsToBuild;
   grammarLinks =
     builtins.map (grammar: "ln -s ${grammar.artifact}/${grammar.name}.so $out/${grammar.name}.so")
     builtGrammars;

@@ -64,10 +64,12 @@ jobs:
           rust: stable
           target: x86_64-pc-windows-msvc
           cross: false
-        # - build: aarch64-macos
-        #   os: macos-latest
-        #   rust: stable
-        #   target: aarch64-apple-darwin
+        - build: aarch64-macos
+          os: macos-latest
+          rust: stable
+          target: aarch64-apple-darwin
+          cross: false
+          skip_tests: true  # x86_64 host can't run aarch64 code
         # - build: x86_64-win-gnu
         #   os: windows-2019
         #   rust: stable-x86_64-gnu
@@ -100,6 +102,7 @@ jobs:
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
+        if: "!matrix.skip_tests"
         with:
           use-cross: ${{ matrix.cross }}
           command: test
@@ -113,7 +116,7 @@ jobs:
           args: --release --locked --target ${{ matrix.target }}
 
       - name: Strip release binary (linux and macos)
-        if: matrix.build == 'x86_64-linux' || matrix.build == 'x86_64-macos'
+        if: matrix.build == 'x86_64-linux' || endsWith(matrix.build, 'macos')
         run: strip "target/${{ matrix.target }}/release/hx"
 
       - name: Strip release binary (arm)

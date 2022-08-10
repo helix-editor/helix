@@ -1,9 +1,8 @@
 use crate::{
-    compositor::{Component, Compositor, Context, EventResult},
+    compositor::{Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
     ui::{self, EditorView},
 };
-use crossterm::event::Event;
 use tui::{
     buffer::Buffer as Surface,
     widgets::{Block, BorderType, Borders},
@@ -173,7 +172,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         // |         | |         |
         // +---------+ +---------+
 
-        let render_preview = area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+        let render_preview = self.picker.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
@@ -300,6 +299,8 @@ pub struct Picker<T: Item> {
     previous_pattern: String,
     /// Whether to truncate the start (default true)
     pub truncate_start: bool,
+    /// Whether to show the preview panel (default true)
+    show_preview: bool,
 
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
 }
@@ -327,6 +328,7 @@ impl<T: Item> Picker<T> {
             prompt,
             previous_pattern: String::new(),
             truncate_start: true,
+            show_preview: true,
             callback_fn: Box::new(callback_fn),
             completion_height: 0,
         };
@@ -470,6 +472,10 @@ impl<T: Item> Picker<T> {
         self.filters.sort_unstable(); // used for binary search later
         self.prompt.clear(cx);
     }
+
+    pub fn toggle_preview(&mut self) {
+        self.show_preview = !self.show_preview;
+    }
 }
 
 // process:
@@ -495,7 +501,7 @@ impl<T: Item + 'static> Component for Picker<T> {
             compositor.last_picker = compositor.pop();
         })));
 
-        match key_event.into() {
+        match key_event {
             shift!(Tab) | key!(Up) | ctrl!('p') => {
                 self.move_by(1, Direction::Backward);
             }
@@ -537,6 +543,9 @@ impl<T: Item + 'static> Component for Picker<T> {
             }
             ctrl!(' ') => {
                 self.save_filter(cx);
+            }
+            ctrl!('t') => {
+                self.toggle_preview();
             }
             _ => {
                 if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {

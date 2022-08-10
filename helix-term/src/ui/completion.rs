@@ -1,5 +1,4 @@
-use crate::compositor::{Component, Context, EventResult};
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crate::compositor::{Component, Context, Event, EventResult};
 use helix_view::editor::CompleteAction;
 use tui::buffer::Buffer as Surface;
 use tui::text::Spans;
@@ -7,7 +6,11 @@ use tui::text::Spans;
 use std::borrow::Cow;
 
 use helix_core::{Change, Transaction};
-use helix_view::{graphics::Rect, Document, Editor};
+use helix_view::{
+    graphics::Rect,
+    input::{KeyCode, KeyEvent},
+    Document, Editor,
+};
 
 use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
@@ -85,6 +88,8 @@ pub struct Completion {
 }
 
 impl Completion {
+    pub const ID: &'static str = "completion";
+
     pub fn new(
         editor: &Editor,
         items: Vec<CompletionItem>,
@@ -214,7 +219,7 @@ impl Completion {
                 }
             };
         });
-        let popup = Popup::new("completion", menu);
+        let popup = Popup::new(Self::ID, menu);
         let mut completion = Self {
             popup,
             start_offset,

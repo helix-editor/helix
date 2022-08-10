@@ -224,6 +224,7 @@ These scopes are used for theming the editor interface.
 | `ui.statusline.normal`    | Statusline mode during normal mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.insert`    | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.select`    | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
+| `ui.statusline.separator` | Separator character in statusline              |
 | `ui.popup`                | Documentation popups (e.g space-k)             |
 | `ui.popup.info`           | Prompt for multiple key options                |
 | `ui.window`               | Border lines separating splits                 |

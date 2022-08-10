@@ -2,14 +2,10 @@
 ; HEEx delimiters
 [
   "<!"
-  "<!--"
   "<"
-  "<%!--"
   "<%#"
   ">"
   "</"
-  "--%>"
-  "-->"
   "/>"
   ; These could be `@keyword`s but the closing `>` wouldn't be highlighted
   ; as `@keyword`
@@ -34,7 +30,13 @@
 (doctype) @constant
 
 ; HEEx comments are highlighted as such
-(comment) @comment
+[
+  "<!--"
+  "-->"
+  "<%!--"
+  "--%>"
+  (comment)
+] @comment
 
 ; HEEx tags are highlighted as HTML
 (tag_name) @tag
