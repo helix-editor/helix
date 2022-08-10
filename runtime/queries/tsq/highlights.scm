@@ -5,7 +5,7 @@
  (#eq? @function "#match?"))
 
 ; highlight inheritance comments
-((query . (comment) @keyword.directive)
+(((comment) @keyword.directive)
  (#match? @keyword.directive "^; +inherits *:"))
 
 [

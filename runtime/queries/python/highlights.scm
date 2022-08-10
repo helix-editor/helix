@@ -1,3 +1,11 @@
+; Imports
+
+(dotted_name
+  (identifier)* @namespace)
+  
+(aliased_import
+  alias: (identifier) @namespace)
+
 ; Builtin functions
 
 ((call
@@ -7,6 +15,11 @@
    "^(abs|all|any|ascii|bin|bool|breakpoint|bytearray|bytes|callable|chr|classmethod|compile|complex|delattr|dict|dir|divmod|enumerate|eval|exec|filter|float|format|frozenset|getattr|globals|hasattr|hash|help|hex|id|input|int|isinstance|issubclass|iter|len|list|locals|map|max|memoryview|min|next|object|oct|open|ord|pow|print|property|range|repr|reversed|round|set|setattr|slice|sorted|staticmethod|str|sum|super|tuple|type|vars|zip|__import__)$"))
 
 ; Function calls
+
+[
+  "def"
+  "lambda"
+] @keyword.function
 
 (call
   function: (attribute attribute: (identifier) @constructor)
@@ -47,7 +60,16 @@
 (parameters (typed_parameter (identifier) @variable.parameter))
 (parameters (default_parameter name: (identifier) @variable.parameter))
 (parameters (typed_default_parameter name: (identifier) @variable.parameter))
-(keyword_argument name: (identifier) @variable.parameter)
+
+(parameters
+  (list_splat_pattern ; *args
+    (identifier) @variable.parameter))
+(parameters
+  (dictionary_splat_pattern ; **kwargs
+    (identifier) @variable.parameter))
+    
+(lambda_parameters
+  (identifier) @variable.parameter)
 
 ; Types
 
@@ -81,12 +103,11 @@
 (identifier) @variable
 
 ; Literals
-
+(none) @constant.builtin
 [
-  (none)
   (true)
   (false)
-] @constant.builtin
+] @constant.builtin.boolean
 
 (integer) @constant.numeric.integer
 (float) @constant.numeric.float
@@ -94,9 +115,11 @@
 (string) @string
 (escape_sequence) @constant.character.escape
 
+["," "." ":" ";" (ellipsis)] @punctuation.delimiter
 (interpolation
   "{" @punctuation.special
   "}" @punctuation.special) @embedded
+["(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
 [
   "-"
@@ -135,24 +158,39 @@
   "as"
   "assert"
   "await"
-  "break"
-  "continue"
+  "from"
+  "pass"
+
+  "with"
+] @keyword.control
+
+[
+  "if"
   "elif"
   "else"
+] @keyword.control.conditional
+
+[
+  "while"
+  "for"
+  "break"
+  "continue"
+] @keyword.control.repeat
+
+[
+  "return"
+  "yield"
+] @keyword.control.return
+(yield "from" @keyword.control.return)
+
+[
+  "raise"
+  "try"
   "except"
   "finally"
-  "for"
-  "from"
-  "if"
-  "import"
-  "pass"
-  "raise"
-  "return"
-  "try"
-  "while"
-  "with"
-  "yield"
-] @keyword.control
+] @keyword.control.except
+(raise_statement "from" @keyword.control.except)
+"import" @keyword.control.import
 
 (for_statement "in" @keyword.control)
 (for_in_clause "in" @keyword.control)
@@ -161,16 +199,22 @@
   "and"
   "async"
   "class"
-  "def"
-  "del"
   "exec"
   "global"
-  "in"
-  "is"
-  "lambda"
   "nonlocal"
-  "not"
-  "or"
   "print"
 ] @keyword
+[
+  "and"
+  "or"
+  "in"
+  "not"
+  "del"
+  "is"
+] @keyword.operator
 
+((identifier) @type.builtin
+  (#match? @type.builtin
+    "^(BaseException|Exception|ArithmeticError|BufferError|LookupError|AssertionError|AttributeError|EOFError|FloatingPointError|GeneratorExit|ImportError|ModuleNotFoundError|IndexError|KeyError|KeyboardInterrupt|MemoryError|NameError|NotImplementedError|OSError|OverflowError|RecursionError|ReferenceError|RuntimeError|StopIteration|StopAsyncIteration|SyntaxError|IndentationError|TabError|SystemError|SystemExit|TypeError|UnboundLocalError|UnicodeError|UnicodeEncodeError|UnicodeDecodeError|UnicodeTranslateError|ValueError|ZeroDivisionError|EnvironmentError|IOError|WindowsError|BlockingIOError|ChildProcessError|ConnectionError|BrokenPipeError|ConnectionAbortedError|ConnectionRefusedError|ConnectionResetError|FileExistsError|FileNotFoundError|InterruptedError|IsADirectoryError|NotADirectoryError|PermissionError|ProcessLookupError|TimeoutError|Warning|UserWarning|DeprecationWarning|PendingDeprecationWarning|SyntaxWarning|RuntimeWarning|FutureWarning|ImportWarning|UnicodeWarning|BytesWarning|ResourceWarning)$"))
+
+(ERROR) @error
