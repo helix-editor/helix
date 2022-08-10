@@ -103,23 +103,22 @@
   name: (curly_group_text (_) @string))
 
 ;; Math
-[
-  (displayed_equation)
-  (inline_formula)
-] @text.math
+
+(displayed_equation) @markup.raw.block
+(inline_formula) @markup.raw.inline
 
 (math_environment
   (begin
-    command: _ @text.math
-    name: (curly_group_text (text) @text.math)))
+    command: _ @function.builtin
+    name: (curly_group_text (text) @markup.raw)))
 
 (math_environment
-  (text) @text.math)
+  (text) @markup.raw)
 
 (math_environment
   (end
-    command: _ @text.math
-    name: (curly_group_text (text) @text.math)))
+    command: _ @function.builtin
+    name: (curly_group_text (text) @markup.raw)))
 
 ;; Sectioning
 (title_declaration
