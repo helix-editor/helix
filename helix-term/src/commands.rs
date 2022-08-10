@@ -270,6 +270,10 @@ impl MappableCommand {
         workspace_symbol_picker, "Open workspace symbol picker",
         diagnostics_picker, "Open diagnostic picker",
         workspace_diagnostics_picker, "Open workspace diagnostic picker",
+        ts_class_picker, "Open treesitter class picker",
+        ts_function_picker, "Open treesitter function picker",
+        ts_comment_picker, "Open treesitter comment picker",
+        ts_test_picker, "Open treesitter test picker",
         last_picker, "Open last picker",
         prepend_to_line, "Insert at start of line",
         append_to_line, "Append to end of line",
@@ -2361,6 +2365,67 @@ fn jumplist_picker(cx: &mut Context) {
         },
     );
     cx.push_layer(Box::new(overlayed(picker)));
+}
+
+fn ts_class_picker(cx: &mut Context) {
+    ts_picker(cx, "class")
+}
+
+fn ts_function_picker(cx: &mut Context) {
+    ts_picker(cx, "function")
+}
+
+fn ts_comment_picker(cx: &mut Context) {
+    ts_picker(cx, "comment")
+}
+
+fn ts_test_picker(cx: &mut Context) {
+    ts_picker(cx, "test")
+}
+
+fn ts_picker(cx: &mut Context, object: &str) {
+    struct TsMeta {
+        id: DocumentId,
+        range: Range,
+        text: String,
+    }
+    impl ui::menu::Item for TsMeta {
+        type Data = ();
+
+        fn label(&self, _data: &Self::Data) -> Spans {
+            self.text.to_string().into()
+        }
+    }
+    let (_, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    if let Some((lang_config, syntax)) = doc.language_config().zip(doc.syntax()) {
+        let picker = FilePicker::new(
+            movement::get_treesitter_objects(text, object, syntax.tree().root_node(), lang_config)
+                .into_iter()
+                .map(|range| TsMeta {
+                    id: doc.id(),
+                    range,
+                    text: text.line(range.line_range(text).0).into(),
+                })
+                .collect(),
+            (),
+            |cx, meta, action| {
+                cx.editor.switch(meta.id, action);
+                let (view, doc) = current!(cx.editor);
+                let mut ranges = SmallVec::with_capacity(1);
+                ranges.push(meta.range);
+                doc.set_selection(view.id, Selection::new(ranges, 0));
+            },
+            |editor, meta| {
+                let doc = &editor.documents.get(&meta.id)?;
+                Some((
+                    doc.path().cloned()?,
+                    Some(meta.range.line_range(doc.text().slice(..))),
+                ))
+            },
+        );
+        cx.push_layer(Box::new(overlayed(picker)));
+    }
 }
 
 impl ui::menu::Item for MappableCommand {
