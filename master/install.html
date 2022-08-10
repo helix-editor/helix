@@ -178,8 +178,8 @@ cargo install --path helix-term
 config directory (for example <code>~/.config/helix/runtime</code> on Linux/macOS). This location can be overridden
 via the <code>HELIX_RUNTIME</code> environment variable.</p>
 <div class="table-wrapper"><table><thead><tr><th>OS</th><th>command</th></tr></thead><tbody>
-<tr><td>windows(cmd.exe)</td><td><code>xcopy runtime %AppData%/helix/runtime</code></td></tr>
-<tr><td>windows(powershell)</td><td><code>xcopy runtime $Env:AppData\helix\runtime</code></td></tr>
+<tr><td>windows(cmd.exe)</td><td><code>xcopy /e runtime %AppData%/helix/runtime</code></td></tr>
+<tr><td>windows(powershell)</td><td><code>xcopy /e runtime $Env:AppData\helix\runtime</code></td></tr>
 <tr><td>linux/macos</td><td><code>ln -s $PWD/runtime ~/.config/helix/runtime</code></td></tr>
 </tbody></table>
 </div>
