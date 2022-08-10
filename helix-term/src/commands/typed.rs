@@ -1541,11 +1541,9 @@ fn async_run_shell_command(
                         format!("```sh {}\n{}\n```", &cmd, output),
                         editor.syn_loader.clone(),
                     );
-                    let mut popup = Popup::new("shell", contents);
-                    popup.set_position(Some(helix_core::Position::new(
-                        editor.cursor().0.unwrap_or_default().row,
-                        2,
-                    )));
+                    let popup = Popup::new("shell", contents).position(Some(
+                        helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
+                    ));
                     compositor.replace_or_push("shell", popup);
                 }
             });
