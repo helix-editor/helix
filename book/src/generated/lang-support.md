@@ -86,7 +86,7 @@
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ |  | ✓ |  |
-| python | ✓ | ✓ |  | `pylsp` |
+| python | ✓ | ✓ | ✓ | `pylsp` |
 | r | ✓ |  |  | `R` |
 | racket |  |  |  | `racket` |
 | regex | ✓ |  |  |  |
