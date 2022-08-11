@@ -92,7 +92,8 @@
 "info" = { fg = "light_blue" }
 "hint" = { fg = "light_gray3" }
 
-diagnostic = { modifiers = ["underlined"] }
+"diagnostic.error" = {underline = "red", modifiers = ["undercurled"] }
+"diagnostic" = {underline = "gold", modifiers = ["undercurled"] }
 
 [palette]
 white = "#ffffff"

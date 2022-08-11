@@ -4,7 +4,7 @@ use crossterm::{
     execute, queue,
     style::{
         Attribute as CAttribute, Color as CColor, Print, SetAttribute, SetBackgroundColor,
-        SetForegroundColor,
+        SetForegroundColor, SetUnderlineColor,
     },
     terminal::{self, Clear, ClearType},
 };
@@ -47,6 +47,7 @@ where
     {
         let mut fg = Color::Reset;
         let mut bg = Color::Reset;
+        let mut underline = Color::Reset;
         let mut modifier = Modifier::empty();
         let mut last_pos: Option<(u16, u16)> = None;
         for (x, y, cell) in content {
@@ -72,6 +73,11 @@ where
                 let color = CColor::from(cell.bg);
                 map_error(queue!(self.buffer, SetBackgroundColor(color)))?;
                 bg = cell.bg;
+            }
+            if cell.underline != underline {
+                let color = CColor::from(cell.underline);
+                map_error(queue!(self.buffer, SetUnderlineColor(color)))?;
+                underline = cell.underline;
             }
 
             map_error(queue!(self.buffer, Print(&cell.symbol)))?;

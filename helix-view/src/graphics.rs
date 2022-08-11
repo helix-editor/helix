@@ -440,6 +440,7 @@ impl FromStr for Modifier {
 pub struct Style {
     pub fg: Option<Color>,
     pub bg: Option<Color>,
+    pub underline: Option<Color>,
     pub add_modifier: Modifier,
     pub sub_modifier: Modifier,
 }
@@ -449,6 +450,7 @@ impl Default for Style {
         Style {
             fg: None,
             bg: None,
+            underline: None,
             add_modifier: Modifier::empty(),
             sub_modifier: Modifier::empty(),
         }
@@ -461,6 +463,7 @@ impl Style {
         Style {
             fg: Some(Color::Reset),
             bg: Some(Color::Reset),
+            underline: Some(Color::Reset),
             add_modifier: Modifier::empty(),
             sub_modifier: Modifier::all(),
         }
@@ -493,6 +496,21 @@ impl Style {
     /// ```
     pub fn bg(mut self, color: Color) -> Style {
         self.bg = Some(color);
+        self
+    }
+
+    /// Changes the underline color.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// # use helix_view::graphics::{Color, Style};
+    /// let style = Style::default().underline(Color::Blue);
+    /// let diff = Style::default().underline(Color::Red);
+    /// assert_eq!(style.patch(diff), Style::default().underline(Color::Red));
+    /// ```
+    pub fn underline(mut self, color: Color) -> Style {
+        self.underline = Some(color);
         self
     }
 
@@ -552,6 +570,7 @@ impl Style {
     pub fn patch(mut self, other: Style) -> Style {
         self.fg = other.fg.or(self.fg);
         self.bg = other.bg.or(self.bg);
+        self.underline = other.underline.or(self.underline);
 
         self.add_modifier.remove(other.sub_modifier);
         self.add_modifier.insert(other.add_modifier);
