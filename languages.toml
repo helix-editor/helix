@@ -537,7 +537,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "latex"
-source = { git = "https://github.com/latex-lsp/tree-sitter-latex", rev = "7f720661de5316c0f8fee956526d4002fa1086d8" }
+source = { git = "https://github.com/latex-lsp/tree-sitter-latex", rev = "b3b2cf27f33e71438ebe46934900b1153901c6f2" }
 
 [[language]]
 name = "lean"
@@ -1525,10 +1525,10 @@ source = { git = "https://github.com/victorhqc/tree-sitter-prisma", rev = "17a59
 [[language]]
 name = "clojure"
 scope = "source.clojure"
-injection-regex = "(clojure|clj)"
-file-types = ["clj"]
-roots = ["project.clj"]
-comment-token = ";;"
+injection-regex = "(clojure|clj|edn|boot)"
+file-types = ["clj", "cljs", "cljc", "clje", "cljr", "cljx", "edn", "boot"]
+roots = ["project.clj", "build.boot", "deps.edn", "shadow-cljs.edn"]
+comment-token = ";"
 language-server = { command = "clojure-lsp" }
 indent = { tab-width = 2, unit = "  " }
 
