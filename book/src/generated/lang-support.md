@@ -1,6 +1,7 @@
 | Language | Syntax Highlighting | Treesitter Textobjects | Auto Indent | Default LSP |
 | --- | --- | --- | --- | --- |
 | bash | ✓ |  |  | `bash-language-server` |
+| beancount | ✓ |  |  |  |
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ |  |  | `OmniSharp` |
 | cairo | ✓ |  |  |  |
@@ -53,7 +54,7 @@
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ |  |  | `julia` |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
-| latex | ✓ |  |  | `texlab` |
+| latex | ✓ | ✓ |  | `texlab` |
 | lean | ✓ |  |  | `lean` |
 | ledger | ✓ |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |
@@ -90,6 +91,7 @@
 | scala | ✓ |  | ✓ | `metals` |
 | scheme | ✓ |  |  |  |
 | scss | ✓ |  |  | `vscode-css-language-server` |
+| slint | ✓ |  | ✓ | `slint-lsp` |
 | solidity | ✓ |  |  | `solc` |
 | sql | ✓ |  |  |  |
 | sshclientconfig | ✓ |  |  |  |

@@ -537,7 +537,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "latex"
-source = { git = "https://github.com/latex-lsp/tree-sitter-latex", rev = "7f720661de5316c0f8fee956526d4002fa1086d8" }
+source = { git = "https://github.com/latex-lsp/tree-sitter-latex", rev = "b3b2cf27f33e71438ebe46934900b1153901c6f2" }
 
 [[language]]
 name = "lean"
@@ -598,6 +598,19 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "ledger"
 source = { git = "https://github.com/cbarrete/tree-sitter-ledger", rev = "1f864fb2bf6a87fe1b48545cc6adc6d23090adf7" }
+
+[[language]]
+name = "beancount"
+scope = "source.beancount"
+injection-regex = "beancount"
+file-types = ["beancount", "bean"]
+roots = []
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "beancount"
+source = { git = "https://github.com/polarmutex/tree-sitter-beancount", rev = "4cbd1f09cd07c1f1fabf867c2cf354f9da53cc4c" }
 
 [[language]]
 name = "ocaml"
@@ -1512,10 +1525,10 @@ source = { git = "https://github.com/victorhqc/tree-sitter-prisma", rev = "17a59
 [[language]]
 name = "clojure"
 scope = "source.clojure"
-injection-regex = "(clojure|clj)"
-file-types = ["clj"]
-roots = ["project.clj"]
-comment-token = ";;"
+injection-regex = "(clojure|clj|edn|boot)"
+file-types = ["clj", "cljs", "cljc", "clje", "cljr", "cljx", "edn", "boot"]
+roots = ["project.clj", "build.boot", "deps.edn", "shadow-cljs.edn"]
+comment-token = ";"
 language-server = { command = "clojure-lsp" }
 indent = { tab-width = 2, unit = "  " }
 
@@ -1613,3 +1626,17 @@ indent = { tab-width = 4, unit = "\t" }
 [[grammar]]
 name = "cue"
 source = { git = "https://github.com/eonpatapon/tree-sitter-cue", rev = "61843e3beebf19417e4fede4e8be4df1084317ad" }
+
+[[language]]
+name = "slint"
+scope = "source.slint"
+injection-regex = "slint"
+file-types = ["slint"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+language-server = { command = "slint-lsp", args = [] }
+
+[[grammar]]
+name = "slint"
+source = { git = "https://github.com/jrmoulton/tree-sitter-slint", rev = "0d4dda94f96623302dfc234e06be62a5717f47da" }
