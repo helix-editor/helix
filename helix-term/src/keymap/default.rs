@@ -208,12 +208,6 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "j" => jumplist_picker,
             "s" => symbol_picker,
             "S" => workspace_symbol_picker,
-            "t" => { "Treesitter"
-                "f" => ts_function_picker,
-                "c" => ts_class_picker,
-                "o" => ts_comment_picker,
-                "t" => ts_test_picker,
-            },
             "g" => diagnostics_picker,
             "G" => workspace_diagnostics_picker,
             "a" => code_action,

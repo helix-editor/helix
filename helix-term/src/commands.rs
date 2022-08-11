@@ -3,7 +3,7 @@ pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
-pub use lsp::*;
+pub use lsp::{symbol_picker as _, *};
 use tui::text::Spans;
 pub use typed::*;
 
@@ -270,10 +270,6 @@ impl MappableCommand {
         workspace_symbol_picker, "Open workspace symbol picker",
         diagnostics_picker, "Open diagnostic picker",
         workspace_diagnostics_picker, "Open workspace diagnostic picker",
-        ts_class_picker, "Open treesitter class picker",
-        ts_function_picker, "Open treesitter function picker",
-        ts_comment_picker, "Open treesitter comment picker",
-        ts_test_picker, "Open treesitter test picker",
         last_picker, "Open last picker",
         prepend_to_line, "Insert at start of line",
         append_to_line, "Append to end of line",
@@ -2367,23 +2363,15 @@ fn jumplist_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
-fn ts_class_picker(cx: &mut Context) {
-    ts_picker(cx, "class")
+fn symbol_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    match doc.language_server() {
+        Some(_) => lsp::symbol_picker(cx),
+        None => ts_picker(cx, &["class", "function", "test"]),
+    }
 }
 
-fn ts_function_picker(cx: &mut Context) {
-    ts_picker(cx, "function")
-}
-
-fn ts_comment_picker(cx: &mut Context) {
-    ts_picker(cx, "comment")
-}
-
-fn ts_test_picker(cx: &mut Context) {
-    ts_picker(cx, "test")
-}
-
-fn ts_picker(cx: &mut Context, object: &str) {
+fn ts_picker(cx: &mut Context, objects: &[&str]) {
     struct TsMeta {
         id: DocumentId,
         range: Range,
@@ -2396,16 +2384,25 @@ fn ts_picker(cx: &mut Context, object: &str) {
             self.text.to_string().into()
         }
     }
-    let (_, doc) = current!(cx.editor);
+    let doc = doc!(cx.editor);
     let text = doc.text().slice(..);
     if let Some((lang_config, syntax)) = doc.language_config().zip(doc.syntax()) {
         let picker = FilePicker::new(
-            movement::get_treesitter_objects(text, object, syntax.tree().root_node(), lang_config)
-                .into_iter()
-                .map(|range| TsMeta {
-                    id: doc.id(),
-                    range,
-                    text: text.line(range.line_range(text).0).into(),
+            objects
+                .iter()
+                .flat_map(|object| {
+                    movement::get_treesitter_objects(
+                        text,
+                        object,
+                        syntax.tree().root_node(),
+                        lang_config,
+                    )
+                    .into_iter()
+                    .map(|range| TsMeta {
+                        id: doc.id(),
+                        range,
+                        text: text.line(range.line_range(text).0).into(),
+                    })
                 })
                 .collect(),
             (),

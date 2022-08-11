@@ -11,7 +11,6 @@
     - [Goto mode](#goto-mode)
     - [Match mode](#match-mode)
     - [Window mode](#window-mode)
-    - [Treesitter mode](#treesitter-mode)
     - [Space mode](#space-mode)
       - [Popup](#popup)
     - [Unimpaired](#unimpaired)
@@ -250,19 +249,6 @@ This layer is similar to vim keybindings as kakoune does not support window.
 | `K`                    | Swap window upwards                                  | `swap_view_up`    |
 | `L`                    | Swap window to the right                             | `swap_view_right` |
 
-#### Tresitter mode
-
-This layer is a set of treesitter object pickers.
-
-
-| Key     | Description                                                             | Command                             |
-| -----   | -----------                                                             | -------                             |
-| `f`     | Open function picker                                                    | `ts_function_picker`                |
-| `c`     | Open class picker                                                       | `ts_class_picker`                   |
-| `o`     | Open comment picker                                                     | `ts_comment_picker`                 |
-| `t`     | Open test picker                                                        | `ts_test_picker`                    |
-
-
 #### Space mode
 
 This layer is a kludge of mappings, mostly pickers.
@@ -276,7 +262,6 @@ This layer is a kludge of mappings, mostly pickers.
 | `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                             |
 | `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                     |
 | `S`     | Open workspace symbol picker (**LSP**)                                  | `workspace_symbol_picker`           |
-| `t`     | Enter [Treesitter mode](#treesitter-mode)                               | N/A                                 |
 | `g`     | Open document diagnostics picker (**LSP**)                              | `diagnostics_picker`                |
 | `G`     | Open workspace diagnostics picker (**LSP**)                             | `workspace_diagnostics_picker`
 | `r`     | Rename symbol (**LSP**)                                                 | `rename_symbol`                     |
