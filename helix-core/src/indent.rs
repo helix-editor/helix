@@ -662,7 +662,13 @@ pub fn treesitter_indent_for_pos(
             node = parent;
             first_in_line.pop();
         } else {
-            result.add_line(&indent_for_line_below);
+            // Only add the indentation for the line below if that line
+            // is not after the line that the indentation is calculated for.
+            if (node.start_position().row < line)
+                || (new_line && node.start_position().row == line && node.start_byte() < byte_pos)
+            {
+                result.add_line(&indent_for_line_below);
+            }
             result.add_line(&indent_for_line);
             break;
         }
