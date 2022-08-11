@@ -269,6 +269,7 @@ impl ThemePalette {
                 match name.as_str() {
                     "fg" => *style = style.fg(self.parse_color(value)?),
                     "bg" => *style = style.bg(self.parse_color(value)?),
+                    "underline" => *style = style.underline(self.parse_color(value)?),
                     "modifiers" => {
                         let modifiers = value
                             .as_array()

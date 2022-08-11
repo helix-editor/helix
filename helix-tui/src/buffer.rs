@@ -11,6 +11,7 @@ pub struct Cell {
     pub symbol: String,
     pub fg: Color,
     pub bg: Color,
+    pub underline: Color,
     pub modifier: Modifier,
 }
 
@@ -44,6 +45,9 @@ impl Cell {
         if let Some(c) = style.bg {
             self.bg = c;
         }
+        if let Some(c) = style.underline {
+            self.underline = c;
+        }
         self.modifier.insert(style.add_modifier);
         self.modifier.remove(style.sub_modifier);
         self
@@ -53,6 +57,7 @@ impl Cell {
         Style::default()
             .fg(self.fg)
             .bg(self.bg)
+            .underline(self.bg)
             .add_modifier(self.modifier)
     }
 
@@ -61,6 +66,7 @@ impl Cell {
         self.symbol.push(' ');
         self.fg = Color::Reset;
         self.bg = Color::Reset;
+        self.underline = Color::Reset;
         self.modifier = Modifier::empty();
     }
 }
@@ -71,6 +77,7 @@ impl Default for Cell {
             symbol: " ".into(),
             fg: Color::Reset,
             bg: Color::Reset,
+            underline: Color::Reset,
             modifier: Modifier::empty(),
         }
     }
