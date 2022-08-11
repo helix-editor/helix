@@ -4552,7 +4552,7 @@ fn shell_impl(
     use std::process::{Command, Stdio};
     ensure!(!shell.is_empty(), "No shell set");
 
-let mut process = Command::new(&shell[0]);
+    let mut process = Command::new(&shell[0]);
     process
         .args(&shell[1..])
         .arg(cmd)
