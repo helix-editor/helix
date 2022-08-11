@@ -363,9 +363,9 @@ Keys to use within picker. Remapping currently not supported.
 
 | Key                          | Description       |
 | -----                        | -------------     |
-| `Tab`, `Up`, `Ctrl-p`               | Previous entry    |
+| `Tab`, `Up`, `Ctrl-p`        | Previous entry    |
 | `PageUp`, `Ctrl-u`           | Page up           |
-| `Shift-tab`, `Down`, `Ctrl-n`             | Next entry        |
+| `Shift-tab`, `Down`, `Ctrl-n`| Next entry        |
 | `PageDown`, `Ctrl-d`         | Page down         |
 | `Home`                       | Go to first entry |
 | `End`                        | Go to last entry  |
