@@ -147,6 +147,17 @@ impl From<crossterm::event::KeyCode> for KeyCode {
             CKeyCode::Char(character) => KeyCode::Char(character),
             CKeyCode::Null => KeyCode::Null,
             CKeyCode::Esc => KeyCode::Esc,
+            CKeyCode::CapsLock
+            | CKeyCode::ScrollLock
+            | CKeyCode::NumLock
+            | CKeyCode::PrintScreen
+            | CKeyCode::Pause
+            | CKeyCode::Menu
+            | CKeyCode::KeypadBegin
+            | CKeyCode::Media(_)
+            | CKeyCode::Modifier(_) => unreachable!(
+                "Shouldn't get this key without enabling DISAMBIGUATE_ESCAPE_CODES in crossterm"
+            ),
         }
     }
 }
