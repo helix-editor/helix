@@ -28,7 +28,7 @@
 "variable" = "light-red"
 "constant.numeric" = "yellow"
 "constant" = "yellow"
-"attributes" = "yellow"
+"attribute" = "yellow"
 "type" = "light-yellow"
 "string"  = "light-green"
 "variable.other.member" = "green"
