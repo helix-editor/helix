@@ -4559,12 +4559,7 @@ fn shell_impl(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    #[cfg(not(target_family = "windows"))]
-    if input.is_some() {
-        process.stdin(Stdio::piped());
-    }
-    #[cfg(target_family = "windows")]
-    {
+    if input.is_some() || cfg!(windows) {
         process.stdin(Stdio::piped());
     }
 
