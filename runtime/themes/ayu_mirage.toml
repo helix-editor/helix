@@ -1,5 +1,5 @@
 # Author: André Sá <enkodr@outlook.com>
-# Based on the AYU theme colors from https://github.com/dempfi/ayu 
+# Based on the AYU theme colors from https://github.com/dempfi/ayu
 
 # Syntax highlighting
 "type" = { fg = "blue" }
@@ -23,7 +23,7 @@
 "namespace" = { fg = "blue" }
 "markup.heading" = { fg = "orange" }
 "markup.list" = { fg = "yellow" }
-"markup.raw.block" = { bg = "grey", fg = "orange" } 
+"markup.raw.block" = { bg = "gray", fg = "orange" }
 "markup.link.url" = { fg = "blue" }
 "markup.link.text" = { fg = "yellow" }
 "markup.link.label" = { fg = "green" }
