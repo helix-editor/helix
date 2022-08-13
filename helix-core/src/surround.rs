@@ -62,8 +62,10 @@ pub fn find_nth_closest_pairs_pos(
 
     let mut stack = Vec::with_capacity(2);
     let pos = range.from();
+    let mut close_pos = pos - 1;
 
     for ch in text.chars_at(pos) {
+        close_pos += 1;
         if is_open_pair(ch) {
             // Track open pairs encountered so that we can step over
             // the corresponding close pairs that will come up further
@@ -72,7 +74,7 @@ pub fn find_nth_closest_pairs_pos(
             stack.push(ch);
             continue;
         } else if is_close_pair(ch) {
-            let (open, _) = get_pair(ch);
+            let (open, close) = get_pair(ch);
             if stack.last() == Some(&open) {
                 stack.pop();
                 continue;
@@ -83,14 +85,14 @@ pub fn find_nth_closest_pairs_pos(
                 // are unbalanced and we encounter a close pair that doesn't
                 // close the last seen open pair. In either case use this
                 // char as the auto-detected closest pair.
-                match find_nth_pairs_pos(text, ch, range, n) {
+                match find_nth_open_pair(text, open, close, close_pos, n) {
                     // Before we accept this pair, we want to ensure that the
                     // pair encloses the range rather than just the cursor.
-                    Ok(matching_pair)
-                        if matching_pair.0 <= pos.saturating_add(1)
-                            && matching_pair.1 >= range.to().saturating_sub(1) =>
+                    Some(open_pos)
+                        if open_pos <= pos.saturating_add(1)
+                            && close_pos >= range.to().saturating_sub(1) =>
                     {
-                        return Ok(matching_pair);
+                        return Ok((open_pos, close_pos));
                     }
                     _ => continue,
                 }
