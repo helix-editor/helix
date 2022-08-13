@@ -2164,7 +2164,7 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
         let start = text.line_to_char(start_line);
         let end = text.line_to_char(
             (end_line + 1) // newline of end_line
-                .min(text.len_lines()),
+            .min(text.len_lines()),
         );
 
         // extend to previous/next line if current line is selected
@@ -4784,7 +4784,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         ("a", "Argument/parameter (tree-sitter)"),
         ("c", "Comment (tree-sitter)"),
         ("T", "Test (tree-sitter)"),
-        ("m", "Closest surrounding pair to cursor"),
+        ("m", "Closest surrounding pair"),
         (" ", "... or any character acting as a pair"),
     ];
 
@@ -5218,10 +5218,10 @@ fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
         let selected_text: Cow<str> = range.fragment(text);
         let new_from = ((range.from() as i128) + cumulative_length_diff) as usize;
         let incremented = [increment::integer, increment::date_time]
-            .iter()
+        .iter()
             .find_map(|incrementor| incrementor(selected_text.as_ref(), amount));
 
-        amount += increase_by;
+            amount += increase_by;
 
         match incremented {
             None => {
@@ -5230,14 +5230,14 @@ fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
                     (range.to() as i128 + cumulative_length_diff) as usize,
                 );
                 new_selection_ranges.push(new_range);
-            }
+        }
             Some(new_text) => {
                 let new_range = Range::new(new_from, new_from + new_text.len());
                 cumulative_length_diff += new_text.len() as i128 - selected_text.len() as i128;
                 new_selection_ranges.push(new_range);
                 changes.push((range.from(), range.to(), Some(new_text.into())));
+    }
             }
-        }
     }
 
     if !changes.is_empty() {
