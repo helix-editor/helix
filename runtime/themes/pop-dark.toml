@@ -41,7 +41,6 @@ label = { fg = 'greenS' }
 module = { bg = 'orangeL' }
 special = { fg = 'orangeW' }
 operator = { fg = 'orangeY' }
-property = { bg = 'blueH' }
 attribute = { fg = 'orangeL' }
 attribute = { fg = 'orangeL' }
 namespace = { fg = 'orangeL' }

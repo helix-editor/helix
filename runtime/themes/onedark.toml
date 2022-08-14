@@ -18,7 +18,6 @@
 "namespace" = { fg = "blue" }
 "operator" = { fg = "purple" }
 "keyword.operator" = { fg = "purple" }
-"property" = { fg = "red" }
 "special" = { fg = "blue" }
 "string" = { fg = "green" }
 "type" = { fg = "yellow" }

@@ -10,7 +10,6 @@
 "punctuation.delimiter" = "#6c3163"
 "operator" = "#ba2f59"
 "special" = "#ba2f59"
-"property" = "#7590db"
 "variable.property" = "#7590db"
 "variable" = "#715ab1"
 "variable.builtin" = "#715ab1"

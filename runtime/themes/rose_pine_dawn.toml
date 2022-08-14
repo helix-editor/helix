@@ -23,7 +23,6 @@
 "type" = "foam"
 "ui.cursor.match" = { fg = "gold", modifiers = ["underlined"] }
 "string"  = "gold"
-"property" = "foam"
 "escape" = "subtle"
 "function" = "rose"
 "function.builtin" = "rose"

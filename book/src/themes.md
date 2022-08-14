@@ -125,8 +125,6 @@ We use a similar set of scopes as
     - `url`
     - `symbol` - Erlang/Elixir atoms, Ruby symbols, Clojure keywords
 
-- `property` - Regex group names
-
 - `comment` - Code comments
   - `line` - Single line comments (`//`)
   - `block` - Block comments (e.g. (`/*     */`)
