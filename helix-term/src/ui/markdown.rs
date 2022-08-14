@@ -178,6 +178,21 @@ impl Markdown {
             .map(|key| get_theme(key))
             .collect();
 
+        // Transform text in `<code>` blocks into `Event::Code`
+        let mut in_code = false;
+        let parser = parser.filter_map(|event| match event {
+            Event::Html(tag) if *tag == *"<code>" => {
+                in_code = true;
+                None
+            }
+            Event::Html(tag) if *tag == *"</code>" => {
+                in_code = false;
+                None
+            }
+            Event::Text(text) if in_code => Some(Event::Code(text)),
+            _ => Some(event),
+        });
+
         for event in parser {
             match event {
                 Event::Start(Tag::List(list)) => {
