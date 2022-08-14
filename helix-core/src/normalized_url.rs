@@ -3,8 +3,6 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt;
-#[cfg(windows)]
-use std::path::{Component, Prefix};
 use std::path::{Path, PathBuf};
 
 use url::Url;
@@ -16,34 +14,37 @@ use url::Url;
 /// Helix gets paths from other sources, like LSPs. In such a case, Helix can't know in advance for
 /// every source what the case will be for the prefix component on Windows (`C:` or `c:`). Since
 /// this can hinder comparisons, especially in [`Url`]s, this structure gives access to the opposite
-/// casing of the `Url` on Windows and uses it to compare.
+/// casing of the `Url` and uses it to compare.
 #[derive(Debug, Clone)]
 pub struct NormalizedUrl {
     base: Url,
-    /// This field is only available on Windows since differences in casing on other OSes are not
-    /// limited to the prefix and should be dealt with differently.
-    #[cfg(windows)]
-    opposite_case: Option<Url>,
+    /// When appropriate, this contains the base URL with the drive letter in the opposite case.
+    ///
+    /// `file://C:/my/windows/path` in `base` means this is `Some(file://c:/my/windows/path)`.
+    windows_normalized: Option<Url>,
 }
 
 impl NormalizedUrl {
+    #[inline]
+    pub fn new(base: Url) -> Self {
+        Self {
+            windows_normalized: windows_drive_opposite_case(&base),
+            base,
+        }
+    }
+
+    /// Inspired from [`Url::from_file_path()`] but will attempt to canonicalize the path before
+    /// building the normalized URL
     pub fn from_file_path(path: &Path) -> Option<Self> {
         let path: Cow<'_, Path> = if path.is_absolute() {
             Cow::Borrowed(path)
         } else {
             Cow::Owned(crate::path::get_canonicalized_path(path).ok()?)
         };
+
         // If we managed to canonicalize, this should never fail else its a bug
         let base = Url::from_file_path(&path).unwrap();
-        #[cfg(windows)]
-        let opposite_case =
-            path_prefix_opposite_casing(&path).map(|x| Url::from_file_path(&x).unwrap());
-
-        Some(Self {
-            base,
-            #[cfg(windows)]
-            opposite_case,
-        })
+        Some(Self::new(base))
     }
 
     /// Access the `Url` stored as the base of the normalized one
@@ -68,108 +69,252 @@ impl NormalizedUrl {
     }
 }
 
+impl PartialEq<Url> for NormalizedUrl {
+    #[inline]
+    fn eq(&self, other: &Url) -> bool {
+        self.base.eq(other)
+            || self
+                .windows_normalized
+                .as_ref()
+                .map_or(false, |x| x.eq(other))
+    }
+}
+
+impl PartialEq<NormalizedUrl> for Url {
+    #[inline]
+    fn eq(&self, other: &NormalizedUrl) -> bool {
+        other.eq(self)
+    }
+}
+
 impl PartialEq<Self> for NormalizedUrl {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
-        // Since the other fields are derived from this one deterministically, we can simply
-        // compare `.base` to know if two `NormalizedUrl`s are equal.
-        self.base.eq(&other.base)
+        self.eq(&other.base)
     }
 }
 
 impl Eq for NormalizedUrl {}
 
 impl PartialOrd<Self> for NormalizedUrl {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.base.partial_cmp(&other.base)
     }
 }
 
 impl Ord for NormalizedUrl {
+    #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         self.base.cmp(&other.base)
     }
 }
 
-impl fmt::Display for NormalizedUrl {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.base.fmt(f)
-    }
-}
-
-// Interactions with the original Url type are below
-
-impl From<Url> for NormalizedUrl {
-    fn from(u: Url) -> Self {
-        let path = Path::new(u.path());
-        Self::from_file_path(path).expect("URL failed to convert to absolute path")
-    }
-}
-
-impl PartialEq<Url> for NormalizedUrl {
-    #[cfg(windows)]
-    fn eq(&self, other: &Url) -> bool {
-        self.base.eq(other) || self.opposite_case.as_ref().map_or(false, |oc| oc.eq(other))
-    }
-
-    #[cfg(not(windows))]
-    fn eq(&self, other: &Url) -> bool {
-        self.base.eq(other)
-    }
-}
-
 impl PartialOrd<Url> for NormalizedUrl {
+    #[inline]
     fn partial_cmp(&self, other: &Url) -> Option<Ordering> {
         self.base.partial_cmp(other)
     }
 }
 
-/// Utility function to get the opposite casing of a Windows path, if any
-#[cfg(windows)]
-fn path_prefix_opposite_casing(default_case_path: &Path) -> Option<PathBuf> {
-    let mut components = default_case_path.components();
-    let first_comp = components.next()?;
+impl PartialOrd<NormalizedUrl> for Url {
+    #[inline]
+    fn partial_cmp(&self, other: &NormalizedUrl) -> Option<Ordering> {
+        self.partial_cmp(&other.base)
+    }
+}
 
-    match first_comp {
-        Component::Prefix(prefix)
-        // Anything else than `Disk` variants is not subject to this casing issue
-        if matches!(prefix.kind(), Prefix::VerbatimDisk(_) | Prefix::Disk(_)) => {
-            let cased_prefix = {
-                // Hard to get data on this, but most drive letter should be uppercased by
-                // default so lowercasing first means not having to then uppercase ?
-                let mut prefix_str = prefix.as_os_str().to_ascii_lowercase();
-                if prefix_str == prefix.as_os_str() {
-                    prefix_str.make_ascii_uppercase();
-                }
-                prefix_str
-            };
+impl From<Url> for NormalizedUrl {
+    #[inline]
+    fn from(base: Url) -> Self {
+        Self::new(base)
+    }
+}
 
-            // The `push`s should be free thanks to this
-            let mut updated_case_path = PathBuf::with_capacity(default_case_path.as_os_str().len());
-            updated_case_path.push(&cased_prefix);
-            for cp in components {
-                updated_case_path.push(cp.as_os_str());
-            }
-            Some(updated_case_path)
-        },
-        _ => None,
+impl fmt::Display for NormalizedUrl {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.base.fmt(f)
+    }
+}
+
+/// Find if there is a Windows drive in the URL's path and invert its case if present. Returns
+/// `None` if there is nothing to do.
+///
+/// If `base.scheme()` is not `"file"` this will return `None`.
+fn windows_drive_opposite_case(base: &Url) -> Option<Url> {
+    if base.scheme() != "file" {
+        return None;
+    }
+
+    let base_path = base.path();
+
+    let p = match base_path.as_bytes() {
+        [b'/', drive_letter, b':', b'/', ..] if drive_letter.is_ascii_alphabetic() => {
+            let mut p = base_path.to_owned();
+            // Safety: we're accessing the second byte, which we know exists, to replace
+            // it with another ASCII character so we're not creating invalid UTF-8
+            let sl = unsafe { p.as_bytes_mut() };
+            sl[1] = switch_drive_letter_case(drive_letter);
+            p
+        }
+        [b'/', drive_letter, b':'] if drive_letter.is_ascii_alphabetic() => {
+            let c = char::from(switch_drive_letter_case(drive_letter));
+            format!("/{}:", c)
+        }
+        _ => return None,
+    };
+
+    let mut s = base.clone();
+    s.set_path(&p);
+    Some(s)
+}
+
+/// Switch the case of the given ASCII char in `a..=z` to `A..=Z` and conversely.
+///
+/// If the given ASCII character is not a letter, returns it unchanged.
+fn switch_drive_letter_case(c: &u8) -> u8 {
+    match c {
+        b'A'..=b'Z' => c.to_ascii_lowercase(),
+        b'a'..=b'z' => c.to_ascii_uppercase(),
+        x => *x,
     }
 }
 
 #[cfg(test)]
-#[cfg(windows)]
 mod tests {
     use super::*;
 
     #[test]
-    fn different_drives_case_are_equal() {
-        let p1 = Path::new("C:\\one\\path\\Here");
-        let p2 = Path::new("c:\\one\\path\\Here");
+    fn switching_drive_letter_works() {
+        // 256 integers to test, might as well test them all
+        for c in 0..=u8::MAX {
+            let switched = switch_drive_letter_case(&c);
 
-        assert_eq!(p1, p2);
+            if c.is_ascii_lowercase() {
+                assert_eq!(c.to_ascii_uppercase(), switched);
+            } else if c.is_ascii_uppercase() {
+                assert_eq!(c.to_ascii_lowercase(), switched);
+            } else {
+                assert_eq!(c, switched);
+            }
+        }
+    }
 
-        let norm = NormalizedUrl::new(p1).unwrap();
-        let u = Url::from_file_path(p2).unwrap();
+    #[test]
+    fn opposite_windows_drive_case() {
+        let a = Url::parse("https://example.com/C:/test/path").unwrap();
+        assert_eq!(windows_drive_opposite_case(&a), None);
 
-        assert_eq!(norm, u);
+        let a = Url::parse("file://my/unix/path").unwrap();
+        assert_eq!(windows_drive_opposite_case(&a), None);
+
+        let a = Url::parse("file://C:/my/windows/path").unwrap();
+        let b = Url::parse("file://c:/my/windows/path").unwrap();
+        assert_eq!(windows_drive_opposite_case(&a), Some(b));
+    }
+
+    #[test]
+    fn normalized_url_new() {
+        let a = Url::parse("https://example.com/test/path").unwrap();
+        assert_eq!(
+            NormalizedUrl::new(a.clone()),
+            NormalizedUrl {
+                base: a,
+                windows_normalized: None,
+            }
+        );
+
+        let a = Url::parse("file://unix/test/path").unwrap();
+        assert_eq!(
+            NormalizedUrl::new(a.clone()),
+            NormalizedUrl {
+                base: a,
+                windows_normalized: None,
+            }
+        );
+
+        let a = Url::parse("file://C:/test/path").unwrap();
+        let b = Url::parse("file://c:/test/path").unwrap();
+        assert_eq!(
+            NormalizedUrl::new(a.clone()),
+            NormalizedUrl {
+                base: a,
+                windows_normalized: Some(b),
+            }
+        );
+    }
+
+    #[test]
+    fn different_drive_letters_compare_equal() {
+        let a = Url::parse("file://C:/my/path").unwrap();
+        let b = Url::parse("file://c:/my/path").unwrap();
+
+        // Here the two URLs are different but the normalized forms are equal
+        assert_ne!(a, b);
+        assert_eq!(NormalizedUrl::new(a), NormalizedUrl::new(b));
+
+        let a = Url::parse("file:///C:/my/path").unwrap();
+        let b = Url::parse("file:///c:/my/path").unwrap();
+
+        assert_ne!(a, b);
+        assert_eq!(NormalizedUrl::new(a), NormalizedUrl::new(b));
+    }
+
+    #[test]
+    fn same_drive_letters_compare_equal() {
+        let a = Url::parse("file://C:/my/path").unwrap();
+        let b = Url::parse("file://C:/my/path").unwrap();
+
+        assert_eq!(a, b);
+        assert_eq!(NormalizedUrl::new(a), NormalizedUrl::new(b));
+
+        let a = Url::parse("file:///C:/my/path").unwrap();
+        let b = Url::parse("file:///C:/my/path").unwrap();
+
+        assert_eq!(a, b);
+        assert_eq!(NormalizedUrl::new(a), NormalizedUrl::new(b));
+    }
+
+    #[test]
+    fn not_drive_letters_compare_different() {
+        let a = Url::parse("file:///C:test/my/path").unwrap();
+        let b = Url::parse("file:///c:test/my/path").unwrap();
+
+        assert_ne!(a, b);
+        assert_ne!(NormalizedUrl::new(a), NormalizedUrl::new(b));
+    }
+
+    #[test]
+    fn same_unix_path_compare_equal() {
+        let a = Url::parse("file:///my/unix/path").unwrap();
+        let b = Url::parse("file:///my/unix/path").unwrap();
+
+        assert_eq!(a, b);
+        assert_eq!(NormalizedUrl::new(a), NormalizedUrl::new(b));
+    }
+
+    #[test]
+    fn different_unix_path_compare_different() {
+        let a = Url::parse("file:///My/unix/path").unwrap();
+        let b = Url::parse("file:///my/unix/path").unwrap();
+
+        assert_ne!(a, b);
+        assert_ne!(NormalizedUrl::new(a), NormalizedUrl::new(b));
+    }
+
+    // Ensure the comparison result is the same as the original URL when
+    // it's not a file scheme
+    #[test]
+    fn non_file_scheme_ignores_normalization() {
+        let a = Url::parse("https:///C:/some/path").unwrap();
+        let b = Url::parse("https:///c:/some/path").unwrap();
+
+        assert_eq!(a == b, NormalizedUrl::new(a) == NormalizedUrl::new(b));
+
+        let a = Url::parse("data:text/plain,My Super Path").unwrap();
+        let b = Url::parse("data:text/plain,My Super Data").unwrap();
+
+        assert_eq!(a == b, NormalizedUrl::new(a) == NormalizedUrl::new(b));
     }
 }
