@@ -20,7 +20,7 @@ operator = { fg = 'blue' }
 function = { fg = 'yellow' }
 tag = { fg = 'cyan' }
 attribute = { fg = 'blue' }
-attributes = { fg = 'blue' }
+attribute = { fg = 'blue' }
 namespace = { fg = 'red' }
 
 'markup.heading' = { fg = 'red' }
