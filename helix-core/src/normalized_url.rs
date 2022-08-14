@@ -47,8 +47,11 @@ impl NormalizedUrl {
         Some(Self::new(base))
     }
 
-    /// Access the `Url` stored as the base of the normalized one
-    pub fn base(&self) -> &Url {
+    /// Access the `Url` stored as the base of the normalized one.
+    ///
+    /// If you have the possibility to consume `self` because it's not used later, consider using
+    /// [`Self::into_base()`], especially if you are cloning after the current `.base()` call.
+    pub fn as_base(&self) -> &Url {
         &self.base
     }
 
@@ -66,6 +69,13 @@ impl NormalizedUrl {
     /// See [`Url::path_segments()`]
     pub fn path_segments(&self) -> Option<std::str::Split<'_, char>> {
         self.base.path_segments()
+    }
+
+    /// Consumes the normalized URL to return the base url given on construction.
+    ///
+    /// If only a reference is needed, use [`Self::as_base()`].
+    pub fn into_base(self) -> Url {
+        self.base
     }
 }
 

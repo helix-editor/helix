@@ -309,7 +309,7 @@ fn diag_picker(
             }
         },
         move |_editor, PickerDiagnostic { url, diag }| {
-            let location = lsp::Location::new(url.base().clone(), diag.range);
+            let location = lsp::Location::new(url.as_base().clone(), diag.range);
             Some(location_to_file_location(&location))
         },
     )

@@ -967,7 +967,7 @@ impl Editor {
 
                 // TODO: this now races with on_init code if the init happens too quickly
                 tokio::spawn(language_server.text_document_did_open(
-                    &doc_url,
+                    doc_url.into_base(),
                     doc.version(),
                     doc.text(),
                     language_id,

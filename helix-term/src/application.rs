@@ -690,7 +690,7 @@ impl Application {
                                 doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
                             tokio::spawn(language_server.text_document_did_open(
-                                &url,
+                                url.into_base(),
                                 doc.version(),
                                 doc.text(),
                                 language_id,

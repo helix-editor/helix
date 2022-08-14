@@ -1141,11 +1141,11 @@ impl Document {
 
     #[inline]
     pub fn identifier(&self) -> lsp::TextDocumentIdentifier {
-        lsp::TextDocumentIdentifier::new(self.url().unwrap().base().clone())
+        lsp::TextDocumentIdentifier::new(self.url().unwrap().into_base())
     }
 
     pub fn versioned_identifier(&self) -> lsp::VersionedTextDocumentIdentifier {
-        lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap().base().clone(), self.version)
+        lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap().into_base(), self.version)
     }
 
     pub fn position(
