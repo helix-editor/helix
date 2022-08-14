@@ -119,6 +119,7 @@ the default file-picker configuration below are IgnoreOptions: whether hidden
 files and files listed within ignore files are ignored by (not visible in) the
 helix file picker and global search. There is also one other key, `max-depth`
 available, which is not defined by default.
+
 All git related options are only enabled in a git repository.
 
 | Key | Description | Default |
