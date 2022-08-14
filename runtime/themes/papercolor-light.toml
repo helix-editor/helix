@@ -1,5 +1,5 @@
 # Palette based on https://github.com/NLKNguyen/papercolor-theme
-# Author: Soc Virnyl Estela <socvirny.estela@gmail.com>
+# Author: Soc Virnyl Estela <socvirnyl.estela@gmail.com>
 
 "ui.background" = {bg="background"}
 "ui.text" = "foreground"
