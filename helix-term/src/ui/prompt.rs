@@ -1,6 +1,5 @@
-use crate::compositor::{Component, Compositor, Context, EventResult};
+use crate::compositor::{Component, Compositor, Context, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
-use crossterm::event::Event;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
 use std::{borrow::Cow, ops::RangeFrom};
@@ -82,6 +81,13 @@ impl Prompt {
             doc_fn: Box::new(|_| None),
             next_char_handler: None,
         }
+    }
+
+    pub fn with_line(mut self, line: String) -> Self {
+        let cursor = line.len();
+        self.line = line;
+        self.cursor = cursor;
+        self
     }
 
     pub fn line(&self) -> &String {
@@ -430,10 +436,7 @@ impl Prompt {
                 .borders(Borders::ALL)
                 .border_style(background);
 
-            let inner = block.inner(area).inner(&Margin {
-                vertical: 0,
-                horizontal: 1,
-            });
+            let inner = block.inner(area).inner(&Margin::horizontal(1));
 
             block.render(area, surface);
             text.render(inner, surface, cx);
@@ -442,10 +445,21 @@ impl Prompt {
         let line = area.height - 1;
         // render buffer text
         surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
+
+        let input: Cow<str> = if self.line.is_empty() {
+            // latest value in the register list
+            self.history_register
+                .and_then(|reg| cx.editor.registers.last(reg))
+                .map(|entry| entry.into())
+                .unwrap_or_else(|| Cow::from(""))
+        } else {
+            self.line.as_str().into()
+        };
+
         surface.set_string(
             area.x + self.prompt.len() as u16,
             area.y + line,
-            &self.line,
+            &input,
             prompt_color,
         );
     }
@@ -464,19 +478,19 @@ impl Component for Prompt {
             compositor.pop();
         })));
 
-        match event.into() {
+        match event {
             ctrl!('c') | key!(Esc) => {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
                 return close_fn;
             }
-            alt!('b') | alt!(Left) => self.move_cursor(Movement::BackwardWord(1)),
-            alt!('f') | alt!(Right) => self.move_cursor(Movement::ForwardWord(1)),
+            alt!('b') | ctrl!(Left) => self.move_cursor(Movement::BackwardWord(1)),
+            alt!('f') | ctrl!(Right) => self.move_cursor(Movement::ForwardWord(1)),
             ctrl!('b') | key!(Left) => self.move_cursor(Movement::BackwardChar(1)),
             ctrl!('f') | key!(Right) => self.move_cursor(Movement::ForwardChar(1)),
             ctrl!('e') | key!(End) => self.move_end(),
             ctrl!('a') | key!(Home) => self.move_start(),
-            ctrl!('w') => self.delete_word_backwards(cx),
-            alt!('d') => self.delete_word_forwards(cx),
+            ctrl!('w') | alt!(Backspace) | ctrl!(Backspace) => self.delete_word_backwards(cx),
+            alt!('d') | alt!(Delete) | ctrl!(Delete) => self.delete_word_forwards(cx),
             ctrl!('k') => self.kill_to_end_of_line(cx),
             ctrl!('u') => self.kill_to_start_of_line(cx),
             ctrl!('h') | key!(Backspace) => {
@@ -510,13 +524,25 @@ impl Component for Prompt {
                     self.recalculate_completion(cx.editor);
                     self.exit_selection();
                 } else {
-                    (self.callback_fn)(cx, &self.line, PromptEvent::Validate);
+                    // handle executing with last command in history if nothing entered
+                    let input: Cow<str> = if self.line.is_empty() {
+                        // latest value in the register list
+                        self.history_register
+                            .and_then(|reg| cx.editor.registers.last(reg).cloned())
+                            .map(|entry| entry.into())
+                            .unwrap_or_else(|| Cow::from(""))
+                    } else {
+                        if let Some(register) = self.history_register {
+                            // store in history
+                            let register = cx.editor.registers.get_mut(register);
+                            register.push(self.line.clone());
+                        }
 
-                    if let Some(register) = self.history_register {
-                        // store in history
-                        let register = cx.editor.registers.get_mut(register);
-                        register.push(self.line.clone());
-                    }
+                        self.line.as_str().into()
+                    };
+
+                    (self.callback_fn)(cx, &input, PromptEvent::Validate);
+
                     return close_fn;
                 }
             }

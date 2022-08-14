@@ -1,7 +1,7 @@
 # Author: RayGervais <raygervais@hotmail.ca>
 
 "ui.background" = { bg = "base00" }
-"ui.virtual" = "base03"
+"ui.virtual.whitespace" = "base03"
 "ui.menu" = { fg = "base05", bg = "base01" }
 "ui.menu.selected" = { fg = "base01", bg = "base04" }
 "ui.linenr" = { fg = "base03", bg = "base01" }

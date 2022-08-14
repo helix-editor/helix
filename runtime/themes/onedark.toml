@@ -47,6 +47,8 @@ diagnostic = { modifiers = ["underlined"] }
 "error" = { fg = "red", modifiers = ["bold"] }
 
 "ui.background" = { bg = "black" }
+"ui.virtual" = { fg = "faint-gray" }
+"ui.virtual.indent-guide" = { fg = "faint-gray" }
 "ui.virtual.whitespace" = { fg = "light-gray" }
 "ui.virtual.ruler" = { bg = "gray" }
 
@@ -56,21 +58,26 @@ diagnostic = { modifiers = ["underlined"] }
 
 "ui.selection" = { bg = "light-gray" }
 "ui.selection.primary" = { bg = "gray" }
+"ui.cursorline.primary" = { bg = "light-black" }
 
 "ui.linenr" = { fg = "linenr" }
 "ui.linenr.selected" = { fg = "white" }
 
 "ui.statusline" = { fg = "white", bg = "light-black" }
 "ui.statusline.inactive" = { fg = "light-gray", bg = "light-black" }
+"ui.statusline.normal" = { fg = "light-black", bg = "blue" }
+"ui.statusline.insert" = { fg = "light-black", bg = "green" }
+"ui.statusline.select" = { fg = "light-black", bg = "purple" }
 
 "ui.text" = { fg = "white" }
 "ui.text.focus" = { fg = "white", bg = "light-black", modifiers = ["bold"] }
 
 "ui.help" = { bg = "gray" }
 "ui.popup" = { bg = "gray" }
-"ui.window" = { bg = "gray" }
+"ui.window" = { fg = "gray" }
 "ui.menu" = { fg = "white", bg = "gray" }
 "ui.menu.selected" = { fg = "black", bg = "blue" }
+"ui.menu.scroll" = { fg = "white", bg = "light-gray" }
 
 [palette]
 
@@ -85,5 +92,6 @@ white = "#ABB2BF"
 black = "#282C34"
 light-black = "#2C323C"
 gray = "#3E4452"
+faint-gray = "#3B4048"
 light-gray = "#5C6370"
 linenr = "#4B5263"

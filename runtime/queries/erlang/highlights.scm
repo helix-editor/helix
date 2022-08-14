@@ -2,21 +2,21 @@
 ; module declaration
 (attribute
   name: (atom) @keyword
-  (arguments (atom) @module)
- (#eq? @keyword "module"))
+  (arguments (atom) @namespace)
+ (#match? @keyword "(module|behaviou?r)"))
 
 (attribute
   name: (atom) @keyword
   (arguments
     .
-    (atom) @module)
+    (atom) @namespace)
  (#eq? @keyword "import"))
 
 (attribute
   name: (atom) @keyword
   (arguments
     .
-    (atom) @type
+    [(atom) @type (macro)]
     [
       (tuple (atom) @variable.other.member)
       (tuple
@@ -38,8 +38,8 @@
   (arguments
     .
     [
-      (atom) @keyword.directive
-      (variable) @keyword.directive
+      (atom) @constant
+      (variable) @constant
       (call
         function:
           [(variable) (atom)] @keyword.directive)
@@ -54,15 +54,15 @@
 
 (attribute
   name: (atom) @keyword
-  module: (atom) @module
- (#eq? @keyword "(spec|callback)"))
+  module: (atom) @namespace
+ (#match? @keyword "(spec|callback)"))
 
 ; Functions
-(function name: (atom) @function)
-(call module: (atom) @module)
+(function_clause name: (atom) @function)
+(call module: (atom) @namespace)
 (call function: (atom) @function)
 (stab_clause name: (atom) @function)
-(function_capture module: (atom) @module)
+(function_capture module: (atom) @namespace)
 (function_capture function: (atom) @function)
 
 ; Records
@@ -92,13 +92,18 @@
 
 (binary_operator operator: _ @operator)
 (unary_operator operator: _ @operator)
-["/" ":" "#" "->"] @operator
+["/" ":" "->"] @operator
 
 (tripledot) @comment.discard
 
 (comment) @comment
 
 ; Macros
+(macro
+  "?"+ @constant
+  name: (_) @constant
+  !arguments)
+
 (macro
   "?"+ @keyword.directive
   name: (_) @keyword.directive)
@@ -118,6 +123,6 @@
 
 ; Punctuation
 ["," "." "-" ";"] @punctuation.delimiter
-["(" ")" "{" "}" "[" "]" "<<" ">>"] @punctuation.bracket
+["(" ")" "#" "{" "}" "[" "]" "<<" ">>"] @punctuation.bracket
 
 ; (ERROR) @error

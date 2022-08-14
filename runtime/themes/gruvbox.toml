@@ -42,6 +42,9 @@
 "ui.linenr" = { fg = "bg4" }
 "ui.linenr.selected" = { fg = "yellow1" }
 "ui.statusline" = { fg = "fg1", bg = "bg2" }
+"ui.statusline.normal" = { fg = "fg1", bg = "bg2" }
+"ui.statusline.insert" = { fg = "fg1", bg = "blue0" }
+"ui.statusline.select" = { fg = "fg1", bg = "orange0" }
 "ui.statusline.inactive" = { fg = "fg4", bg = "bg1" }
 "ui.popup" = { bg = "bg1" }
 "ui.window" = { bg = "bg1" }
@@ -53,7 +56,7 @@
 "ui.cursor.match" = { bg = "bg2" }
 "ui.menu" = { fg = "fg1", bg = "bg2" }
 "ui.menu.selected" = { fg = "bg2", bg = "blue1", modifiers = ["bold"] }
-"ui.virtual" = "bg2"
+"ui.virtual.whitespace" = "bg2"
 
 "diagnostic" = { modifiers = ["underlined"] }
 

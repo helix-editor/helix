@@ -8,7 +8,7 @@ use crate::{
         prev_grapheme_boundary,
     },
     movement::Direction,
-    Assoc, ChangeSet, RopeSlice,
+    Assoc, ChangeSet, RopeGraphemes, RopeSlice,
 };
 use smallvec::{smallvec, SmallVec};
 use std::borrow::Cow;
@@ -222,9 +222,23 @@ impl Range {
 
     // groupAt
 
+    /// Returns the text inside this range given the text of the whole buffer.
+    ///
+    /// The returned `Cow` is a reference if the range of text is inside a single
+    /// chunk of the rope. Otherwise a copy of the text is returned. Consider
+    /// using `slice` instead if you do not need a `Cow` or `String` to avoid copying.
     #[inline]
     pub fn fragment<'a, 'b: 'a>(&'a self, text: RopeSlice<'b>) -> Cow<'b, str> {
-        text.slice(self.from()..self.to()).into()
+        self.slice(text).into()
+    }
+
+    /// Returns the text inside this range given the text of the whole buffer.
+    ///
+    /// The returned value is a reference to the passed slice. This method never
+    /// copies any contents.
+    #[inline]
+    pub fn slice<'a, 'b: 'a>(&'a self, text: RopeSlice<'b>) -> RopeSlice<'b> {
+        text.slice(self.from()..self.to())
     }
 
     //--------------------------------
@@ -338,6 +352,14 @@ impl Range {
     #[must_use]
     pub fn cursor_line(&self, text: RopeSlice) -> usize {
         text.char_to_line(self.cursor(text))
+    }
+
+    /// Returns true if this Range covers a single grapheme in the given text
+    pub fn is_single_grapheme(&self, doc: RopeSlice) -> bool {
+        let mut graphemes = RopeGraphemes::new(doc.slice(self.from()..self.to()));
+        let first = graphemes.next();
+        let second = graphemes.next();
+        first.is_some() && second.is_none()
     }
 }
 
@@ -538,6 +560,10 @@ impl Selection {
 
     pub fn fragments<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = Cow<str>> + 'a {
         self.ranges.iter().map(move |range| range.fragment(text))
+    }
+
+    pub fn slices<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = RopeSlice> + 'a {
+        self.ranges.iter().map(move |range| range.slice(text))
     }
 
     #[inline(always)]
@@ -830,7 +856,7 @@ mod test {
     }
 
     #[test]
-    fn test_graphem_aligned() {
+    fn test_grapheme_aligned() {
         let r = Rope::from_str("\r\nHi\r\n");
         let s = r.slice(..);
 

@@ -4,8 +4,12 @@
 "constant" = { fg = "orange" }
 "constant.character.escape" = { fg = "magenta" }
 "function" = { fg = "blue", modifiers = ["italic"] }
-"keyword" = { fg = "magenta" }
+"function.macro" = { fg = "cyan" }
+"keyword" = { fg = "cyan", modifiers = ["italic"] }
+"keyword.control" = { fg = "magenta" }
 "keyword.control.import" = { fg = "cyan" }
+"keyword.operator" = { fg = "turquoise" }
+"keyword.function" = { fg = "magenta", modifiers = ["italic"] }
 "operator" = { fg = "turquoise" }
 "punctuation" = { fg = "turquoise" }
 "string" = { fg = "light-green" }
@@ -14,8 +18,8 @@
 "type" = { fg = "teal" }
 "namespace" = { fg = "blue" }
 "variable" = { fg = "white" }
-"variable.builtin" = { fg = "red", modifiers = ["italic"] }
-"variable.other.member" = { fg = "magenta" }
+"variable.builtin" = { fg = "red" }
+"variable.other.member" = { fg = "green" }
 "variable.parameter" = { fg = "yellow", modifiers = ["italic"] }
 
 "diff.plus" = { fg = "green" }
@@ -26,6 +30,7 @@
 "ui.cursor" = { modifiers = ["reversed"] }
 "ui.cursor.match" = { fg = "orange", modifiers = ["bold"] }
 "ui.cursor.primary" = { modifiers = ["reversed"] }
+"ui.cursorline.primary" = { bg = "background_menu" }
 "ui.help" = { fg = "foreground", bg = "background_menu" }
 "ui.linenr" = { fg = "foreground_gutter" }
 "ui.linenr.selected" = { fg = "foreground" }
@@ -38,7 +43,8 @@
 "ui.statusline.inactive" = { fg = "foreground_gutter", bg = "background_menu" }
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { fg = "cyan" }
-"ui.virtual" = { fg = "foreground_gutter" }
+"ui.virtual.ruler" = { bg = "foreground_gutter" }
+"ui.virtual.whitespace" = { fg = "foreground_gutter" }
 "ui.window" = { fg = "black" }
 
 "error" = { fg = "red" }

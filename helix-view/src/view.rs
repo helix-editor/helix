@@ -1,15 +1,9 @@
-use std::borrow::Cow;
-
 use crate::{
     graphics::Rect,
     gutter::{self, Gutter},
     Document, DocumentId, ViewId,
 };
-use helix_core::{
-    graphemes::{grapheme_width, RopeGraphemes},
-    line_ending::line_end_char_index,
-    visual_coords_at_pos, Position, RopeSlice, Selection,
-};
+use helix_core::{pos_at_visual_coords, visual_coords_at_pos, Position, RopeSlice, Selection};
 
 use std::fmt;
 
@@ -64,8 +58,13 @@ impl JumpList {
     pub fn remove(&mut self, doc_id: &DocumentId) {
         self.jumps.retain(|(other_id, _)| other_id != doc_id);
     }
+
+    pub fn get(&self) -> &[Jump] {
+        &self.jumps
+    }
 }
 
+#[derive(Clone)]
 pub struct View {
     pub id: ViewId,
     pub offset: Position,
@@ -81,7 +80,11 @@ pub struct View {
     pub last_modified_docs: [Option<DocumentId>; 2],
     /// used to store previous selections of tree-sitter objects
     pub object_selections: Vec<Selection>,
-    pub gutters: Vec<(Gutter, usize)>,
+    /// Gutter (constructor) and width of gutter, used to calculate
+    /// `gutter_offset`
+    gutters: Vec<(Gutter, usize)>,
+    /// cached total width of gutter
+    gutter_offset: u16,
 }
 
 impl fmt::Debug for View {
@@ -97,12 +100,26 @@ impl fmt::Debug for View {
 impl View {
     pub fn new(doc: DocumentId, gutter_types: Vec<crate::editor::GutterType>) -> Self {
         let mut gutters: Vec<(Gutter, usize)> = vec![];
+        let mut gutter_offset = 0;
         use crate::editor::GutterType;
         for gutter_type in &gutter_types {
-            match gutter_type {
-                GutterType::Diagnostics => gutters.push((gutter::diagnostics_or_breakpoints, 1)),
-                GutterType::LineNumbers => gutters.push((gutter::line_numbers, 5)),
-            }
+            let width = match gutter_type {
+                GutterType::Diagnostics => 1,
+                GutterType::LineNumbers => 5,
+                GutterType::Spacer => 1,
+            };
+            gutter_offset += width;
+            gutters.push((
+                match gutter_type {
+                    GutterType::Diagnostics => gutter::diagnostics_or_breakpoints,
+                    GutterType::LineNumbers => gutter::line_numbers,
+                    GutterType::Spacer => gutter::padding,
+                },
+                width as usize,
+            ));
+        }
+        if !gutter_types.is_empty() {
+            gutter_offset += 1;
         }
         Self {
             id: ViewId::default(),
@@ -114,6 +131,7 @@ impl View {
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
             gutters,
+            gutter_offset,
         }
     }
 
@@ -125,14 +143,12 @@ impl View {
     }
 
     pub fn inner_area(&self) -> Rect {
-        // TODO: cache this
-        let offset = self
-            .gutters
-            .iter()
-            .map(|(_, width)| *width as u16)
-            .sum::<u16>()
-            + 1; // +1 for some space between gutters and line
-        self.area.clip_left(offset).clip_bottom(1) // -1 for statusline
+        // TODO add abilty to not use cached offset for runtime configurable gutter
+        self.area.clip_left(self.gutter_offset).clip_bottom(1) // -1 for statusline
+    }
+
+    pub fn gutters(&self) -> &[(Gutter, usize)] {
+        &self.gutters
     }
 
     //
@@ -251,44 +267,21 @@ impl View {
             return None;
         }
 
-        let line_number = (row - inner.y) as usize + self.offset.row;
-
-        if line_number > text.len_lines() - 1 {
+        let text_row = (row - inner.y) as usize + self.offset.row;
+        if text_row > text.len_lines() - 1 {
             return Some(text.len_chars());
         }
 
-        let mut pos = text.line_to_char(line_number);
+        let text_col = (column - inner.x) as usize + self.offset.col;
 
-        let current_line = text.line(line_number);
-
-        let target = (column - inner.x) as usize + self.offset.col;
-        let mut col = 0;
-
-        // TODO: extract this part as pos_at_visual_coords
-        for grapheme in RopeGraphemes::new(current_line) {
-            if col >= target {
-                break;
-            }
-
-            let width = if grapheme == "\t" {
-                tab_width - (col % tab_width)
-            } else {
-                let grapheme = Cow::from(grapheme);
-                grapheme_width(&grapheme)
-            };
-
-            // If pos is in the middle of a wider grapheme (tab for example)
-            // return the starting offset.
-            if col + width > target {
-                break;
-            }
-
-            col += width;
-            // TODO: use byte pos that converts back to char pos?
-            pos += grapheme.chars().count();
-        }
-
-        Some(pos.min(line_end_char_index(&text.slice(..), line_number)))
+        Some(pos_at_visual_coords(
+            *text,
+            Position {
+                row: text_row,
+                col: text_col,
+            },
+            tab_width,
+        ))
     }
 
     /// Translates a screen position to position in the text document.
@@ -314,6 +307,11 @@ impl View {
             (row - self.area.top()) as usize,
             (column - self.area.left()) as usize,
         ))
+    }
+
+    pub fn remove_document(&mut self, doc_id: &DocumentId) {
+        self.jumps.remove(doc_id);
+        self.docs_access_history.retain(|doc| doc != doc_id);
     }
 
     // pub fn traverse<F>(&self, text: RopeSlice, start: usize, end: usize, fun: F)

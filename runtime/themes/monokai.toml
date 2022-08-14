@@ -6,7 +6,7 @@
 "type" = { fg = "type" }
 "type.builtin" = { fg = "#66D9EF" }
 "type.enum.variant" = { fg = "text" } 
-"constructor" = { fg = "text" }
+"constructor" = { fg = "fn_declaration" }
 "variable.other.member" = { fg = "variable" }
 
 "keyword" = { fg = "keyword" }
@@ -32,7 +32,7 @@
 "attribute" = { fg = "fn_declaration" }
 
 "comment" = { fg = "#88846F" }
-"ui.virtual" = "#88846F"
+"ui.virtual.whitespace" = "#88846F"
 
 "string" = { fg = "#e6db74" }
 "constant.character" = { fg = "#e6db74" }

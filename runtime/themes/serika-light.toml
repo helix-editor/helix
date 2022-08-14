@@ -50,13 +50,13 @@
 "ui.menu" = { fg = "bg0", bg = "bg3" }
 "ui.menu.selected" = { fg = "bg0", bg = "bg_yellow" }
 "ui.selection" = { fg = "bg0", bg = "bg3" }
-"ui.virtual" = { fg = "bg2" }
+"ui.virtual.whitespace" = { fg = "bg2" }
 
 "hint" = "blue"
 "info" = "aqua"
 "warning" = "yellow"
 "error" = "nasty-red"
-"diagnostic" = { fg = "dark-red", Modifiers = ["underlined"] }
+"diagnostic" = { fg = "dark-red", modifiers = ["underlined"] }
 
 "diff.plus" = { fg = "green" }
 "diff.delta" = { fg = "orange" }
@@ -69,7 +69,7 @@
 "markup.link.url" = "cyan"
 "markup.link.text" = "pink"
 "markup.quote" = { fg = "yellow", modifiers = ["italic"] }
-"markup.raw" = { fg = "foreground" }
+"markup.raw" = { fg = "fg" }
 
 
 [palette]
@@ -91,7 +91,7 @@ red = "#621d28"
 nasty-red = "#da3333"
 dark-red = "#791717"
 orange = "#57320f"
-yellow = "#e2b714"
+yellow = "#9a7d0e"
 green = "#3f4b34"
 aqua = "#455054"
 blue = "#3f5673"
@@ -99,3 +99,4 @@ purple = "#534059"
 grey0 = "#aaaeb3"
 grey1 = "#e1e1e3"
 grey2 = "#646669"
+pink = "#e06c75"

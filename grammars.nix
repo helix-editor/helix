@@ -1,17 +1,25 @@
-{ stdenv, lib, runCommand, yj }:
-let
+{
+  stdenv,
+  lib,
+  runCommandLocal,
+  runCommandNoCC,
+  yj,
+  includeGrammarIf ? _: true,
+  ...
+}: let
   # HACK: nix < 2.6 has a bug in the toml parser, so we convert to JSON
   # before parsing
-  languages-json = runCommand "languages-toml-to-json" { } ''
+  languages-json = runCommandLocal "languages-toml-to-json" {} ''
     ${yj}/bin/yj -t < ${./languages.toml} > $out
   '';
-  languagesConfig = if lib.versionAtLeast builtins.nixVersion "2.6.0" then
-      builtins.fromTOML (builtins.readFile ./languages.toml)
-    else
-      builtins.fromJSON (builtins.readFile (builtins.toPath languages-json));
-  isGitGrammar = (grammar:
-    builtins.hasAttr "source" grammar && builtins.hasAttr "git" grammar.source
-    && builtins.hasAttr "rev" grammar.source);
+  languagesConfig =
+    if lib.versionAtLeast builtins.nixVersion "2.6.0"
+    then builtins.fromTOML (builtins.readFile ./languages.toml)
+    else builtins.fromJSON (builtins.readFile (builtins.toPath languages-json));
+  isGitGrammar = grammar:
+    builtins.hasAttr "source" grammar
+    && builtins.hasAttr "git" grammar.source
+    && builtins.hasAttr "rev" grammar.source;
   isGitHubGrammar = grammar: lib.hasPrefix "https://github.com" grammar.source.git;
   toGitHubFetcher = url: let
     match = builtins.match "https://github\.com/([^/]*)/([^/]*)/?" url;
@@ -20,33 +28,36 @@ let
     repo = builtins.elemAt match 1;
   };
   gitGrammars = builtins.filter isGitGrammar languagesConfig.grammar;
-  buildGrammar = grammar:
-    let
-      gh = toGitHubFetcher grammar.source.git;
-      sourceGit = builtins.fetchTree {
-        type = "git";
-        url = grammar.source.git;
-        rev = grammar.source.rev;
-        ref = grammar.source.ref or "HEAD";
-        shallow = true;
-      };
-      sourceGitHub = builtins.fetchTree {
-        type = "github";
-        owner = gh.owner;
-        repo = gh.repo;
-        inherit (grammar.source) rev;
-      };
-      source = if isGitHubGrammar grammar then sourceGitHub else sourceGit;
-    in stdenv.mkDerivation rec {
+  buildGrammar = grammar: let
+    gh = toGitHubFetcher grammar.source.git;
+    sourceGit = builtins.fetchTree {
+      type = "git";
+      url = grammar.source.git;
+      rev = grammar.source.rev;
+      ref = grammar.source.ref or "HEAD";
+      shallow = true;
+    };
+    sourceGitHub = builtins.fetchTree {
+      type = "github";
+      owner = gh.owner;
+      repo = gh.repo;
+      inherit (grammar.source) rev;
+    };
+    source =
+      if isGitHubGrammar grammar
+      then sourceGitHub
+      else sourceGit;
+  in
+    stdenv.mkDerivation rec {
       # see https://github.com/NixOS/nixpkgs/blob/fbdd1a7c0bc29af5325e0d7dd70e804a972eb465/pkgs/development/tools/parsing/tree-sitter/grammar.nix
 
       pname = "helix-tree-sitter-${grammar.name}";
       version = grammar.source.rev;
 
-      src = if builtins.hasAttr "subpath" grammar.source then
-        "${source}/${grammar.source.subpath}"
-      else
-        source;
+      src =
+        if builtins.hasAttr "subpath" grammar.source
+        then "${source}/${grammar.source.subpath}"
+        else source;
 
       dontUnpack = true;
       dontConfigure = true;
@@ -93,14 +104,18 @@ let
         runHook postFixup
       '';
     };
-  builtGrammars = builtins.map (grammar: {
-    inherit (grammar) name;
-    artifact = buildGrammar grammar;
-  }) gitGrammars;
-  grammarLinks = builtins.map (grammar:
-    "ln -s ${grammar.artifact}/${grammar.name}.so $out/${grammar.name}.so")
+  grammarsToBuild = builtins.filter includeGrammarIf gitGrammars;
+  builtGrammars =
+    builtins.map (grammar: {
+      inherit (grammar) name;
+      artifact = buildGrammar grammar;
+    })
+    grammarsToBuild;
+  grammarLinks =
+    builtins.map (grammar: "ln -s ${grammar.artifact}/${grammar.name}.so $out/${grammar.name}.so")
     builtGrammars;
-in runCommand "consolidated-helix-grammars" { } ''
-  mkdir -p $out
-  ${builtins.concatStringsSep "\n" grammarLinks}
-''
+in
+  runCommandNoCC "consolidated-helix-grammars" {} ''
+    mkdir -p $out
+    ${builtins.concatStringsSep "\n" grammarLinks}
+  ''

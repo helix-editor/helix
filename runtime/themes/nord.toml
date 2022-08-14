@@ -1,10 +1,11 @@
 # Author : RayGervais<raygervais@hotmail.ca>
 
 "ui.linenr.selected" = { fg = "nord4" }
+"ui.cursorline.primary" = { bg = "nord1" }
 "ui.text.focus" = { fg = "nord8", modifiers= ["bold"] }
 "ui.menu" = { fg = "nord6", bg = "#232d38" }
 "ui.menu.selected" = { fg = "nord8", bg = "nord2" }
-"ui.virtual" = "gray"
+"ui.virtual.whitespace" = "gray"
 
 "info" = "nord8"
 "hint" = "nord8"
@@ -14,6 +15,9 @@
 "ui.background" = { bg = "nord0" }
 "ui.statusline.inactive" = { fg = "nord8", bg = "nord1" }
 
+"ui.statusline.normal" = { fg = "nord0", bg = "nord8" }
+"ui.statusline.insert" = { fg = "nord0", bg = "nord13" }
+"ui.statusline.select" = { fg = "nord0", bg = "nord15" }
 
 # nord1 - status bars, panels, modals, autocompletion
 "ui.statusline" = { fg = "nord4", bg = "#4c566a" }
@@ -40,7 +44,7 @@
 "constant.builtin" = "nord4"
 "namespace" = "nord4"
 
-# nord5 - suble UI text
+# nord5 - subtle UI text
 
 # nord6 - base text, punctuation
 "ui.text" = { fg = "nord6" }

@@ -233,7 +233,6 @@ impl Tree {
             {
                 if let Some(pos) = container.children.iter().position(|&child| child == index) {
                     container.children.remove(pos);
-
                     // TODO: if container now only has one child, remove it and place child in parent
                     if container.children.is_empty() && parent_id != self.root {
                         // if container now empty, remove it
@@ -272,12 +271,16 @@ impl Tree {
     }
 
     pub fn get(&self, index: ViewId) -> &View {
+        self.try_get(index).unwrap()
+    }
+
+    pub fn try_get(&self, index: ViewId) -> Option<&View> {
         match &self.nodes[index] {
             Node {
                 content: Content::View(view),
                 ..
-            } => view,
-            _ => unreachable!(),
+            } => Some(view),
+            _ => None,
         }
     }
 

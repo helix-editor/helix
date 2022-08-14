@@ -2,7 +2,7 @@ use helix_view::Editor;
 
 use crate::compositor::Compositor;
 
-use futures_util::future::{self, BoxFuture, Future, FutureExt};
+use futures_util::future::{BoxFuture, Future, FutureExt};
 use futures_util::stream::{FuturesUnordered, StreamExt};
 
 pub type Callback = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
@@ -93,8 +93,21 @@ impl Jobs {
     }
 
     /// Blocks until all the jobs that need to be waited on are done.
-    pub async fn finish(&mut self) {
-        let wait_futures = std::mem::take(&mut self.wait_futures);
-        wait_futures.for_each(|_| future::ready(())).await
+    pub async fn finish(&mut self) -> anyhow::Result<()> {
+        log::debug!("waiting on jobs...");
+        let mut wait_futures = std::mem::take(&mut self.wait_futures);
+        while let (Some(job), tail) = wait_futures.into_future().await {
+            match job {
+                Ok(_) => {
+                    wait_futures = tail;
+                }
+                Err(e) => {
+                    self.wait_futures = tail;
+                    return Err(e);
+                }
+            }
+        }
+
+        Ok(())
     }
 }

@@ -4,6 +4,7 @@ use helix_core::Selection;
 use helix_dap::{self as dap, Client, Payload, Request, ThreadId};
 use helix_lsp::block_on;
 use log::warn;
+use std::fmt::Write;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 
@@ -62,7 +63,7 @@ pub fn jump_to_stack_frame(editor: &mut Editor, frame: &helix_dap::StackFrame) {
         return;
     };
 
-    if let Err(e) = editor.open(path, Action::Replace) {
+    if let Err(e) = editor.open(&path, Action::Replace) {
         editor.set_error(format!("Unable to jump to stack frame: {}", e));
         return;
     }
@@ -86,7 +87,7 @@ pub fn breakpoints_changed(
     path: PathBuf,
     breakpoints: &mut [Breakpoint],
 ) -> Result<(), anyhow::Error> {
-    // TODO: handle capabilities correctly again, by filterin breakpoints when emitting
+    // TODO: handle capabilities correctly again, by filtering breakpoints when emitting
     // if breakpoint.condition.is_some()
     //     && !debugger
     //         .caps
@@ -180,10 +181,10 @@ impl Editor {
 
                     let mut status = format!("{} stopped because of {}", scope, reason);
                     if let Some(desc) = description {
-                        status.push_str(&format!(" {}", desc));
+                        write!(status, " {}", desc).unwrap();
                     }
                     if let Some(text) = text {
-                        status.push_str(&format!(" {}", text));
+                        write!(status, " {}", text).unwrap();
                     }
                     if all_threads_stopped {
                         status.push_str(" (all threads stopped)");

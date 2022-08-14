@@ -20,6 +20,8 @@ The following [captures][tree-sitter-captures] are recognized:
 | `function.around`  |
 | `class.inside`     |
 | `class.around`     |
+| `test.inside`      |
+| `test.around`      |
 | `parameter.inside` |
 | `comment.inside`   |
 | `comment.around`   |

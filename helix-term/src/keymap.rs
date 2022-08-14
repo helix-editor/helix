@@ -208,18 +208,17 @@ pub struct Keymap {
     root: KeyTrie,
 }
 
+/// A map of command names to keybinds that will execute the command.
+pub type ReverseKeymap = HashMap<String, Vec<Vec<KeyEvent>>>;
+
 impl Keymap {
     pub fn new(root: KeyTrie) -> Self {
         Keymap { root }
     }
 
-    pub fn reverse_map(&self) -> HashMap<String, Vec<Vec<KeyEvent>>> {
+    pub fn reverse_map(&self) -> ReverseKeymap {
         // recursively visit all nodes in keymap
-        fn map_node(
-            cmd_map: &mut HashMap<String, Vec<Vec<KeyEvent>>>,
-            node: &KeyTrie,
-            keys: &mut Vec<KeyEvent>,
-        ) {
+        fn map_node(cmd_map: &mut ReverseKeymap, node: &KeyTrie, keys: &mut Vec<KeyEvent>) {
             match node {
                 KeyTrie::Leaf(cmd) => match cmd {
                     MappableCommand::Typable { name, .. } => {
@@ -542,7 +541,7 @@ mod tests {
                     vec![vec![key!('j')], vec![key!('k')]]
                 ),
             ]),
-            "Mistmatch"
+            "Mismatch"
         )
     }
 }

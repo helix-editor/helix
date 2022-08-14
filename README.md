@@ -1,6 +1,5 @@
 # Helix
 
-
 [![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
 
 ![Screenshot](./screenshot.png)
@@ -40,19 +39,20 @@ If you would like to build from source:
 git clone https://github.com/helix-editor/helix
 cd helix
 cargo install --path helix-term
-hx --grammar fetch
-hx --grammar build
 ```
 
 This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars.
+If you want to customize your `languages.toml` config,
+tree-sitter grammars may be manually fetched and built with `hx --grammar fetch` and `hx --grammar build`.
 
 Helix also needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
 config directory (for example `~/.config/helix/runtime` on Linux/macOS, or `%AppData%/helix/runtime` on Windows).
 
-| OS        | command   |
-|-----------|-----------|
-|windows    |`xcopy runtime %AppData%/helix/runtime`|
-|linux/macos|`ln -s $PWD/runtime ~/.config/helix/runtime`
+| OS                   | Command                                      |
+| -------------------- | -------------------------------------------- |
+| Windows (cmd.exe)    | `xcopy /e runtime %AppData%\helix\runtime`      |
+| Windows (PowerShell) | `xcopy /e runtime $Env:AppData\helix\runtime`   |
+| Linux/macOS          | `ln -s $PWD/runtime ~/.config/helix/runtime` |
 
 This location can be overridden via the `HELIX_RUNTIME` environment variable.
 
@@ -76,7 +76,7 @@ Helix can be installed on MacOS through homebrew via:
 brew tap helix-editor/helix
 brew install helix
 ```
- 
+
 # Contributing
 
 Contributing guidelines can be found [here](./docs/CONTRIBUTING.md).

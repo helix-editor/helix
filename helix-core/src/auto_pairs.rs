@@ -1,12 +1,9 @@
 //! When typing the opening character of one of the possible pairs defined below,
 //! this module provides the functionality to insert the paired closing character.
 
-use crate::{
-    graphemes, movement::Direction, Range, Rope, RopeGraphemes, Selection, Tendril, Transaction,
-};
+use crate::{graphemes, movement::Direction, Range, Rope, Selection, Tendril, Transaction};
 use std::collections::HashMap;
 
-use log::debug;
 use smallvec::SmallVec;
 
 // Heavily based on https://github.com/codemirror/closebrackets/
@@ -125,7 +122,7 @@ impl Default for AutoPairs {
 
 #[must_use]
 pub fn hook(doc: &Rope, selection: &Selection, ch: char, pairs: &AutoPairs) -> Option<Transaction> {
-    debug!("autopairs hook selection: {:#?}", selection);
+    log::trace!("autopairs hook selection: {:#?}", selection);
 
     if let Some(pair) = pairs.get(ch) {
         if pair.same() {
@@ -147,14 +144,6 @@ fn prev_char(doc: &Rope, pos: usize) -> Option<char> {
     }
 
     doc.get_char(pos - 1)
-}
-
-fn is_single_grapheme(doc: &Rope, range: &Range) -> bool {
-    let mut graphemes = RopeGraphemes::new(doc.slice(range.from()..range.to()));
-    let first = graphemes.next();
-    let second = graphemes.next();
-    debug!("first: {:#?}, second: {:#?}", first, second);
-    first.is_some() && second.is_none()
 }
 
 /// calculate what the resulting range should be for an auto pair insertion
@@ -189,8 +178,8 @@ fn get_next_range(
         );
     }
 
-    let single_grapheme = is_single_grapheme(doc, start_range);
     let doc_slice = doc.slice(..);
+    let single_grapheme = start_range.is_single_grapheme(doc_slice);
 
     // just skip over graphemes
     if len_inserted == 0 {
@@ -235,9 +224,11 @@ fn get_next_range(
         // other end of the grapheme to get to where the new characters
         // are inserted, then move the head to where it should be
         let prev_bound = graphemes::prev_grapheme_boundary(doc_slice, start_range.head);
-        debug!(
+        log::trace!(
             "prev_bound: {}, offset: {}, len_inserted: {}",
-            prev_bound, offset, len_inserted
+            prev_bound,
+            offset,
+            len_inserted
         );
         prev_bound + offset + len_inserted
     };
@@ -312,7 +303,7 @@ fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     });
 
     let t = transaction.with_selection(Selection::new(end_ranges, selection.primary_index()));
-    debug!("auto pair transaction: {:#?}", t);
+    log::debug!("auto pair transaction: {:#?}", t);
     t
 }
 
@@ -344,7 +335,7 @@ fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     });
 
     let t = transaction.with_selection(Selection::new(end_ranges, selection.primary_index()));
-    debug!("auto pair transaction: {:#?}", t);
+    log::debug!("auto pair transaction: {:#?}", t);
     t
 }
 
@@ -384,7 +375,7 @@ fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     });
 
     let t = transaction.with_selection(Selection::new(end_ranges, selection.primary_index()));
-    debug!("auto pair transaction: {:#?}", t);
+    log::debug!("auto pair transaction: {:#?}", t);
     t
 }
 

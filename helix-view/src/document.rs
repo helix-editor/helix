@@ -1,5 +1,8 @@
 use anyhow::{anyhow, bail, Context, Error};
+use futures_util::future::BoxFuture;
+use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
+use helix_core::Range;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::cell::Cell;
@@ -19,14 +22,13 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, State, Syntax, Transaction,
     DEFAULT_LINE_ENDING,
 };
-use helix_lsp::util::LspFormatting;
 
 use crate::{DocumentId, Editor, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
 
-const DEFAULT_INDENT: IndentStyle = IndentStyle::Spaces(4);
+const DEFAULT_INDENT: IndentStyle = IndentStyle::Tabs;
 
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 
@@ -83,7 +85,7 @@ impl Serialize for Mode {
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
-    pub(crate) selections: HashMap<ViewId, Selection>,
+    selections: HashMap<ViewId, Selection>,
 
     path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
@@ -396,7 +398,7 @@ impl Document {
 
     /// The same as [`format`], but only returns formatting changes if auto-formatting
     /// is configured.
-    pub fn auto_format(&self) -> Option<impl Future<Output = LspFormatting> + 'static> {
+    pub fn auto_format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         if self.language_config()?.auto_format {
             self.format()
         } else {
@@ -406,10 +408,60 @@ impl Document {
 
     /// If supported, returns the changes that should be applied to this document in order
     /// to format it nicely.
-    pub fn format(&self) -> Option<impl Future<Output = LspFormatting> + 'static> {
+    // We can't use anyhow::Result here since the output of the future has to be
+    // clonable to be used as shared future. So use a custom error type.
+    pub fn format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+        if let Some(formatter) = self.language_config().and_then(|c| c.formatter.clone()) {
+            use std::process::Stdio;
+            let text = self.text().clone();
+            let mut process = tokio::process::Command::new(&formatter.command);
+            process
+                .args(&formatter.args)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped());
+
+            let formatting_future = async move {
+                let mut process = process
+                    .spawn()
+                    .map_err(|e| FormatterError::SpawningFailed {
+                        command: formatter.command.clone(),
+                        error: e.kind(),
+                    })?;
+                {
+                    let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
+                    to_writer(&mut stdin, encoding::UTF_8, &text)
+                        .await
+                        .map_err(|_| FormatterError::BrokenStdin)?;
+                }
+
+                let output = process
+                    .wait_with_output()
+                    .await
+                    .map_err(|_| FormatterError::WaitForOutputFailed)?;
+
+                if !output.stderr.is_empty() {
+                    return Err(FormatterError::Stderr(
+                        String::from_utf8_lossy(&output.stderr).to_string(),
+                    ));
+                }
+
+                if !output.status.success() {
+                    return Err(FormatterError::NonZeroExitStatus);
+                }
+
+                let str = String::from_utf8(output.stdout)
+                    .map_err(|_| FormatterError::InvalidUtf8Output)?;
+
+                Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
+            };
+            return Some(formatting_future.boxed());
+        };
+
         let language_server = self.language_server()?;
         let text = self.text.clone();
         let offset_encoding = language_server.offset_encoding();
+
         let request = language_server.text_document_formatting(
             self.identifier(),
             lsp::FormattingOptions {
@@ -425,13 +477,13 @@ impl Document {
                 log::warn!("LSP formatting failed: {}", e);
                 Default::default()
             });
-            LspFormatting {
-                doc: text,
+            Ok(helix_lsp::util::generate_transaction_from_edits(
+                &text,
                 edits,
                 offset_encoding,
-            }
+            ))
         };
-        Some(fut)
+        Some(fut.boxed())
     }
 
     pub fn save(&mut self, force: bool) -> impl Future<Output = Result<(), anyhow::Error>> {
@@ -440,7 +492,7 @@ impl Document {
 
     pub fn format_and_save(
         &mut self,
-        formatting: Option<impl Future<Output = LspFormatting>>,
+        formatting: Option<impl Future<Output = Result<Transaction, FormatterError>>>,
         force: bool,
     ) -> impl Future<Output = anyhow::Result<()>> {
         self.save_impl(formatting, force)
@@ -452,7 +504,7 @@ impl Document {
     /// at its `path()`.
     ///
     /// If `formatting` is present, it supplies some changes that we apply to the text before saving.
-    fn save_impl<F: Future<Output = LspFormatting>>(
+    fn save_impl<F: Future<Output = Result<Transaction, FormatterError>>>(
         &mut self,
         formatting: Option<F>,
         force: bool,
@@ -486,7 +538,8 @@ impl Document {
             }
 
             if let Some(fmt) = formatting {
-                let success = Transaction::from(fmt.await).changes().apply(&mut text);
+                let transaction = fmt.await?;
+                let success = transaction.changes().apply(&mut text);
                 if !success {
                     // This shouldn't happen, because the transaction changes were generated
                     // from the same text we're saving.
@@ -523,9 +576,8 @@ impl Document {
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
-    /// configured in `languages.toml`, with a fallback to 4 space indentation if it isn't
-    /// specified. Line ending is likewise auto-detected, and will fallback to the default OS
-    /// line ending.
+    /// configured in `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
+    /// is likewise auto-detected, and will fallback to the default OS line ending.
     pub fn detect_indent_and_line_ending(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
             self.language_config()
@@ -634,6 +686,37 @@ impl Document {
         // TODO: use a transaction?
         self.selections
             .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
+    }
+
+    /// Find the origin selection of the text in a document, i.e. where
+    /// a single cursor would go if it were on the first grapheme. If
+    /// the text is empty, returns (0, 0).
+    pub fn origin(&self) -> Range {
+        if self.text().len_chars() == 0 {
+            return Range::new(0, 0);
+        }
+
+        Range::new(0, 1).grapheme_aligned(self.text().slice(..))
+    }
+
+    /// Reset the view's selection on this document to the
+    /// [origin](Document::origin) cursor.
+    pub fn reset_selection(&mut self, view_id: ViewId) {
+        let origin = self.origin();
+        self.set_selection(view_id, Selection::single(origin.anchor, origin.head));
+    }
+
+    /// Initializes a new selection for the given view if it does not
+    /// already have one.
+    pub fn ensure_view_init(&mut self, view_id: ViewId) {
+        if self.selections.get(&view_id).is_none() {
+            self.reset_selection(view_id);
+        }
+    }
+
+    /// Remove a view's selection from this document.
+    pub fn remove_view(&mut self, view_id: ViewId) {
+        self.selections.remove(&view_id);
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
@@ -853,9 +936,11 @@ impl Document {
     /// `language-server` configuration, or the document language if no
     /// `language-id` has been specified.
     pub fn language_id(&self) -> Option<&str> {
-        self.language_config()
-            .and_then(|config| config.language_server.as_ref())
-            .and_then(|lsp_config| lsp_config.language_id.as_deref())
+        self.language_config()?
+            .language_server
+            .as_ref()?
+            .language_id
+            .as_deref()
             .or_else(|| Some(self.language()?.rsplit_once('.')?.1))
     }
 
@@ -996,6 +1081,38 @@ impl Default for Document {
     fn default() -> Self {
         let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
         Self::from(text, None)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum FormatterError {
+    SpawningFailed {
+        command: String,
+        error: std::io::ErrorKind,
+    },
+    BrokenStdin,
+    WaitForOutputFailed,
+    Stderr(String),
+    InvalidUtf8Output,
+    DiskReloadError(String),
+    NonZeroExitStatus,
+}
+
+impl std::error::Error for FormatterError {}
+
+impl Display for FormatterError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::SpawningFailed { command, error } => {
+                write!(f, "Failed to spawn formatter {}: {:?}", command, error)
+            }
+            Self::BrokenStdin => write!(f, "Could not write to formatter stdin"),
+            Self::WaitForOutputFailed => write!(f, "Waiting for formatter output failed"),
+            Self::Stderr(output) => write!(f, "Formatter error: {}", output),
+            Self::InvalidUtf8Output => write!(f, "Invalid UTF-8 formatter output"),
+            Self::DiskReloadError(error) => write!(f, "Error reloading file from disk: {}", error),
+            Self::NonZeroExitStatus => write!(f, "Formatter exited with non zero exit status:"),
+        }
     }
 }
 

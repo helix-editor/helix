@@ -22,7 +22,8 @@
 "ui.background" = { fg = "foreground", bg = "background" }
 "ui.cursor" =  { fg = "background", bg = "orange", modifiers = ["dim"] }
 "ui.cursor.match" = { fg = "green", modifiers = ["underlined"] }
-"ui.cursor.primary" = { fg = "background", bg = "cyan", modifier = ["dim"] }
+"ui.cursor.primary" = { fg = "background", bg = "cyan", modifiers = ["dim"] }
+"ui.cursorline.primary" = { bg = "background_dark" }
 "ui.help" = { fg = "foreground", bg = "background_dark" }
 "ui.linenr" = { fg = "comment" }
 "ui.linenr.selected" = { fg = "foreground" }
@@ -33,10 +34,13 @@
 "ui.selection.primary" = { bg = "primary_highlight" }
 "ui.statusline" = { fg = "foreground", bg = "background_dark" }
 "ui.statusline.inactive" = { fg = "comment", bg = "background_dark" }
+"ui.statusline.normal" = { fg = "background_dark", bg = "cyan" }
+"ui.statusline.insert" = { fg = "background_dark", bg = "green" }
+"ui.statusline.select" = { fg = "background_dark", bg = "purple" }
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { fg = "cyan" }
 "ui.window" = { fg = "foreground" }
-"ui.virtual" = { fg = "comment" }
+"ui.virtual.whitespace" = { fg = "comment" }
 
 "error" = { fg = "red" }
 "warning" = { fg = "cyan" }

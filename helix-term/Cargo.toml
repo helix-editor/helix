@@ -10,6 +10,7 @@ repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 include = ["src/**/*", "README.md"]
 default-run = "hx"
+rust-version = "1.57"
 
 [package.metadata.nix]
 build = true
@@ -17,6 +18,7 @@ app = true
 
 [features]
 unicode-lines = ["helix-core/unicode-lines"]
+integration = []
 
 [[bin]]
 name = "hx"
@@ -30,18 +32,17 @@ helix-dap = { version = "0.6", path = "../helix-dap" }
 helix-loader = { version = "0.6", path = "../helix-loader" }
 
 anyhow = "1"
-once_cell = "1.12"
+once_cell = "1.13"
 
 which = "4.2"
-ropey = { version = "1.4", default-features = false }
 
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
 tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = ["crossterm"] }
-crossterm = { version = "0.23", features = ["event-stream"] }
+crossterm = { version = "0.24", features = ["event-stream"] }
 signal-hook = "0.3"
 tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
-arc-swap = { version = "1.5.0" }
+arc-swap = { version = "1.5.1" }
 
 # Logging
 fern = "0.6"
@@ -63,8 +64,8 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
 # ripgrep for global search
-grep-regex = "0.1.9"
-grep-searcher = "0.1.8"
+grep-regex = "0.1.10"
+grep-searcher = "0.1.10"
 
 # Remove once retain_mut lands in stable rust
 retain_mut = "0.1.7"
@@ -74,3 +75,8 @@ signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
 
 [build-dependencies]
 helix-loader = { version = "0.6", path = "../helix-loader" }
+
+[dev-dependencies]
+smallvec = "1.9"
+indoc = "1.0.6"
+tempfile = "3.3.0"

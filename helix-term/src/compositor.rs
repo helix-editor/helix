@@ -4,7 +4,8 @@
 use helix_core::Position;
 use helix_view::graphics::{CursorKind, Rect};
 
-use crossterm::event::Event;
+#[cfg(feature = "integration")]
+use tui::backend::TestBackend;
 use tui::buffer::Buffer as Surface;
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
@@ -15,9 +16,10 @@ pub enum EventResult {
     Consumed(Option<Callback>),
 }
 
+use crate::job::Jobs;
 use helix_view::Editor;
 
-use crate::job::Jobs;
+pub use helix_view::input::Event;
 
 pub struct Context<'a> {
     pub editor: &'a mut Editor,
@@ -63,10 +65,20 @@ pub trait Component: Any + AnyComponent {
     }
 }
 
-use anyhow::Error;
+use anyhow::Context as AnyhowContext;
+use tui::backend::Backend;
+
+#[cfg(not(feature = "integration"))]
+use tui::backend::CrosstermBackend;
+
+#[cfg(not(feature = "integration"))]
 use std::io::stdout;
-use tui::backend::{Backend, CrosstermBackend};
+
+#[cfg(not(feature = "integration"))]
 type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
+
+#[cfg(feature = "integration")]
+type Terminal = tui::terminal::Terminal<TestBackend>;
 
 pub struct Compositor {
     layers: Vec<Box<dyn Component>>,
@@ -76,9 +88,14 @@ pub struct Compositor {
 }
 
 impl Compositor {
-    pub fn new() -> Result<Self, Error> {
+    pub fn new() -> anyhow::Result<Self> {
+        #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout());
-        let terminal = Terminal::new(backend)?;
+
+        #[cfg(feature = "integration")]
+        let backend = TestBackend::new(120, 150);
+
+        let terminal = Terminal::new(backend).context("build terminal")?;
         Ok(Self {
             layers: Vec::new(),
             terminal,
@@ -132,10 +149,18 @@ impl Compositor {
         self.layers.pop()
     }
 
+    pub fn remove(&mut self, id: &'static str) -> Option<Box<dyn Component>> {
+        let idx = self
+            .layers
+            .iter()
+            .position(|layer| layer.id() == Some(id))?;
+        Some(self.layers.remove(idx))
+    }
+
     pub fn handle_event(&mut self, event: Event, cx: &mut Context) -> bool {
         // If it is a key event and a macro is being recorded, push the key event to the recording.
         if let (Event::Key(key), Some((_, keys))) = (event, &mut cx.editor.macro_recording) {
-            keys.push(key.into());
+            keys.push(key);
         }
 
         let mut callbacks = Vec::new();
