@@ -31,7 +31,7 @@
 "variable" = "my_white3"
 "constant.numeric" = "my_turquoise"
 "constant" = "my_white3"
-"attributes" = "my_turquoise"
+"attribute" = "my_turquoise"
 "type" = { fg = "my_white3", modifiers = ["italic"] }
 "ui.cursor.match" = { fg = "my_white3", modifiers = ["underlined"] }
 "string"  = "my_green"

@@ -30,7 +30,6 @@
 "attribute" = "aqua"
 "constructor" = "yellow"
 "module" = "blue"
-"property" = "yellow"
 "special" = "orange"
 
 "ui.background" = { bg = "bg0" }
