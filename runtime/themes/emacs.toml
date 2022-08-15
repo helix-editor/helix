@@ -2,16 +2,23 @@
 
 "comment" = { fg = "firebrick" }
 "constant" = { fg = "dark_cyan" }
+"constant.builtin" = { fg = "dark_slate_blue" }
 "function" = { fg = "blue1" }
+"function.call" = { fg = "blue1" }
 "function.macro" = { fg = "dark_slate_blue" }
+"function.builtin" = { fg = "dark_slate_blue" }
+"function.special" = { fg = "dark_slate_blue" }
 "keyword" = { fg = "purple" }
 "operator" = { fg = "purple" }
 "punctuation" = { fg = "black" }
 "string" = { fg = "violetred4" }
+"string.special" = { fg = "violetred4", modifiers = ["bold"] }
 "type" = { fg = "forest_green" }
+"type.builtin" = { fg = "dark_slate_blue" }
 "constructor" = { fg = "forest_green" }
 "variable" = { fg = "sienna" }
 "variable.builtin" = { fg = "dark_slate_blue" }
+"variable.parameter" = { fg = "sienna" }
 "tag" = { fg = "blue1" }
 "label" = { fg = "dark_slate_blue" }
 "attribute" = { fg = "dark_slate_blue" }
