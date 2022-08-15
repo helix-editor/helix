@@ -260,6 +260,7 @@ pub mod completers {
         names.push("default".into());
         names.push("base16_default".into());
         names.sort();
+        names.dedup();
 
         let mut names: Vec<_> = names
             .into_iter()
