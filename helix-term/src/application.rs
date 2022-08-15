@@ -6,8 +6,9 @@ use helix_core::{
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::document::DocumentEvent;
-use helix_view::{align_view, editor::ConfigEvent, document::DocumentEvent, editor::ConfigEvent, theme, Align, Editor};
+use helix_view::{
+    align_view, document::DocumentEvent, editor::ConfigEvent, theme, tree::Layout, Align, Editor,
+};
 use serde_json::json;
 
 use crate::{

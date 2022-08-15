@@ -1515,6 +1515,31 @@ fn run_shell_command(
     Ok(())
 }
 
+fn toggle_syntax(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<()> {
+    if args.len() != 1 {
+        return Ok(());
+    }
+
+    let (_, doc) = current!(cx.editor);
+    let arg = args.get(0).unwrap().as_ref();
+    match arg {
+        "on" => {
+            doc.enable_syntax = true;
+            doc.detect_language(cx.editor.syn_loader.clone());
+        }
+        "off" => {
+            doc.enable_syntax = false;
+            doc.detect_language(cx.editor.syn_loader.clone());
+        }
+        _ => {}
+    };
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -1995,6 +2020,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             fun: run_shell_command,
             completer: Some(completers::directory),
         },
+        TypableCommand {
+            name: "toggle-syntax",
+            aliases: &[],
+            doc: "Enable/Disable syntax for current document",
+            fun: toggle_syntax,
+            completer: Some(completers::onoff)
+        }
     ];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =

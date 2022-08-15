@@ -656,6 +656,11 @@ impl Document {
 
         if self.text.len_bytes() > BIG_FILE_THRESHOLD {
             self.enable_syntax = false;
+            // Notify that syntax has been disabled
+            self.document_events
+                .0
+                .send(DocumentEvent::DisabledSyntax)
+                .unwrap();
         }
 
         Ok(())
@@ -677,11 +682,6 @@ impl Document {
             } else {
                 // If there is some syntax and it should be disabled, disable it.
                 self.syntax = None;
-                // Notify that syntax has been disabled
-                self.document_events
-                    .0
-                    .send(DocumentEvent::DisabledSyntax)
-                    .unwrap();
             }
 
             self.language = Some(language_config);

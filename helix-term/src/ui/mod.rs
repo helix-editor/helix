@@ -417,6 +417,10 @@ pub mod completers {
         })
     }
 
+    pub fn onoff(_editor: &Editor, _input: &str) -> Vec<Completion> {
+        vec![(0.., Cow::from("on")), (0.., Cow::from("off"))]
+    }
+
     pub fn yesno(_editor: &Editor, _input: &str) -> Vec<Completion> {
         vec![(0.., Cow::from("yes")), (0.., Cow::from("no"))]
     }
