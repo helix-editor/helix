@@ -9,6 +9,7 @@
 "punctuation" = { fg = "black" }
 "string" = { fg = "violetred4" }
 "type" = { fg = "forest_green" }
+"constructor" = { fg = "forest_green" }
 "variable" = { fg = "sienna" }
 "variable.builtin" = { fg = "dark_slate_blue" }
 "tag" = { fg = "blue1" }
