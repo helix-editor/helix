@@ -152,7 +152,9 @@ impl View {
 
     pub fn update_config(&mut self, gutter_types: &Vec<GutterType>) {
         if &self.gutter_types != gutter_types {
-            (self.gutters, self.gutter_offset) = calc_gutters(gutter_types);
+            let (gutters, gutter_offset) = calc_gutters(gutter_types);
+            self.gutters = gutters;
+            self.gutter_offset = gutter_offset;
             self.gutter_types = gutter_types.clone();
         }
     }
