@@ -186,7 +186,7 @@ impl<T: Item> FilePicker<T> {
             }
             PathOrId::Id(id) => {
                 let doc = editor.documents.get(&id).unwrap();
-                return Preview::EditorDocument(doc);
+                Preview::EditorDocument(doc)
             }
         }
     }
