@@ -78,10 +78,6 @@
 "info" = { fg = "forest_green" }
 "hint" = { fg = "dark_cyan" }
 "diagnostic" = { modifiers = ["underlined"] }
-"diagnostic.error" = { fg = "red1" }
-"diagnostic.warning" = { fg = "dark_orange" }
-"diagnostic.info" = { fg = "forest_green" }
-"diagnostic.hint" = { fg = "dark_cyan" }
 
 [palette]
 black = "#000000"
