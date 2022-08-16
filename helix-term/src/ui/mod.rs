@@ -203,7 +203,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
                 cx.editor.set_error(err);
             }
         },
-        |_editor, path| Some((path.clone(), None)),
+        |_editor, path| Some((path.clone().into(), None)),
     )
 }
 
