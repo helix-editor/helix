@@ -660,6 +660,9 @@ impl Editor {
     pub fn refresh_config(&mut self) {
         let config = self.config();
         self.auto_pairs = (&config.auto_pairs).into();
+        for view in self.tree.views_mut() {
+            view.0.update_config(&config.gutters);
+        }
         self.reset_idle_timer();
     }
 
