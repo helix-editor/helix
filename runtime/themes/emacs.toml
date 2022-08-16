@@ -66,10 +66,8 @@
 "ui.selection.primary" = { bg = "lightgoldenrod2" }
 "ui.virtual.whitespace" = "highlight"
 "ui.virtual.ruler" = { bg ="gray95" }
-
-# Disabled by default
-# "ui.cursorline.primary" = { bg = "darkseagreen2" }
-# "ui.cursorline.secondary" = { bg = "darkseagreen2" }
+"ui.cursorline.primary" = { bg = "darkseagreen2" }
+"ui.cursorline.secondary" = { bg = "darkseagreen2" }
 
 "diff.plus" = { fg = "#22aa22", bg = "#eeffee" }
 "diff.delta" = { fg = "#aaaa22", bg = "#ffffcc" }
