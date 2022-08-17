@@ -88,6 +88,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-i" | "A-down" => shrink_selection,
         "A-p" | "A-left" => select_prev_sibling,
         "A-n" | "A-right" => select_next_sibling,
+        "A-e" => move_parent_node_end,
+        "A-b" => move_parent_node_start,
 
         "%" => select_all,
         "x" => extend_line_below,
@@ -335,6 +337,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "W" => extend_next_long_word_start,
         "B" => extend_prev_long_word_start,
         "E" => extend_next_long_word_end,
+
+        "A-e" => extend_parent_node_end,
+        "A-b" => extend_parent_node_start,
 
         "n" => extend_search_next,
         "N" => extend_search_prev,
