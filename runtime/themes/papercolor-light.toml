@@ -13,6 +13,15 @@
 "ui.window" = {bg = "background", fg = "bright3"}
 "ui.menu.selected" = {bg = "selection_background"}
 
+"markup.heading" = { fg = "bright2", modifiers = ["bold"] }
+"markup.list" = "regular4"
+"markup.bold" = { fg = "foreground", modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.link.url" = { fg = "regular4", modifiers = ["underlined"] }
+"markup.link.text" = "bright2"
+"markup.link.label" = { fg = "regular7", modifiers = ["bold"] }
+"markup.raw" = "foreground"
+
 "string" = "foreground"
 "attribute" = "bright7"
 "keyword" = { fg = "regular4", modifiers = ["bold"]}
