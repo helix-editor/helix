@@ -1122,9 +1122,6 @@ fn goto_reference_impl(cx: &mut Context, rotate: bool) {
         future,
         move |editor, compositor, response: Option<Vec<lsp::Location>>| {
             let items = response.unwrap_or_default();
-            if rotate && !items.is_empty() {
-                editor.focus_next();
-            }
             goto_impl(editor, compositor, items, offset_encoding);
         },
     );

@@ -700,6 +700,12 @@ impl<T: Item + 'static> Component for Picker<T> {
                 }
                 return close_fn;
             }
+            ctrl!('o') => {
+                if let Some(option) = self.selection() {
+                    (self.callback_fn)(cx, option, Action::Other);
+                }
+                return close_fn;
+            }
             ctrl!('s') => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(cx, option, Action::HorizontalSplit);
