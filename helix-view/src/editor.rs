@@ -168,6 +168,8 @@ pub struct Config {
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
+    /// ordered lists
+    pub ordered_lists: Vec<Vec<String>>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -577,6 +579,10 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
+            ordered_lists: vec![
+                vec!["yes".to_owned(), "no".to_owned()],
+                vec!["on".to_owned(), "off".to_owned()],
+            ],
         }
     }
 }
