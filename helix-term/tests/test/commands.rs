@@ -2,6 +2,7 @@ use helix_term::application::Application;
 
 use super::*;
 
+mod movement;
 mod write;
 
 #[tokio::test(flavor = "multi_thread")]

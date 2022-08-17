@@ -247,6 +247,8 @@ impl MappableCommand {
         move_prev_long_word_start, "Move to start of previous long word",
         move_next_long_word_end, "Move to end of next long word",
         move_prev_long_word_end, "Move to end of previous long word",
+        move_parent_node_end, "Move to end of the parent node",
+        move_parent_node_start, "Move to beginning of the parent node",
         extend_next_word_start, "Extend to start of next word",
         extend_prev_word_start, "Extend to start of previous word",
         extend_next_word_end, "Extend to end of next word",
@@ -255,6 +257,8 @@ impl MappableCommand {
         extend_prev_long_word_start, "Extend to start of previous long word",
         extend_next_long_word_end, "Extend to end of next long word",
         extend_prev_long_word_end, "Extend to end of prev long word",
+        extend_parent_node_end, "Extend to end of the parent node",
+        extend_parent_node_start, "Extend to beginning of the parent node",
         find_till_char, "Move till next occurrence of char",
         find_next_char, "Move to next occurrence of char",
         extend_till_char, "Extend till next occurrence of char",
@@ -4603,6 +4607,46 @@ fn select_next_sibling(cx: &mut Context) {
 
 fn select_prev_sibling(cx: &mut Context) {
     select_sibling_impl(cx, &|node| Node::prev_sibling(&node))
+}
+
+fn move_node_bound_impl(cx: &mut Context, dir: Direction, movement: Movement) {
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+
+        if let Some(syntax) = doc.syntax() {
+            let text = doc.text().slice(..);
+            let current_selection = doc.selection(view.id);
+
+            let selection = movement::move_parent_node_end(
+                syntax,
+                text,
+                current_selection.clone(),
+                dir,
+                movement,
+            );
+
+            doc.set_selection(view.id, selection);
+        }
+    };
+
+    motion(cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+pub fn move_parent_node_end(cx: &mut Context) {
+    move_node_bound_impl(cx, Direction::Forward, Movement::Move)
+}
+
+pub fn move_parent_node_start(cx: &mut Context) {
+    move_node_bound_impl(cx, Direction::Backward, Movement::Move)
+}
+
+pub fn extend_parent_node_end(cx: &mut Context) {
+    move_node_bound_impl(cx, Direction::Forward, Movement::Extend)
+}
+
+pub fn extend_parent_node_start(cx: &mut Context) {
+    move_node_bound_impl(cx, Direction::Backward, Movement::Extend)
 }
 
 fn match_brackets(cx: &mut Context) {
