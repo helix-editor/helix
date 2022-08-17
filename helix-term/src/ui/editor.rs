@@ -379,19 +379,12 @@ impl EditorView {
         hidden: &'a str,
         visible: &'a str,
         pref: helix_view::editor::WhitespaceRenderValue,
-        selected: bool,
-    ) -> &'a str {
+    ) -> (&'a str, &'a str) {
         use helix_view::editor::WhitespaceRenderValue;
         match pref {
-            WhitespaceRenderValue::None => hidden,
-            WhitespaceRenderValue::All => visible,
-            WhitespaceRenderValue::Selection => {
-                if selected {
-                    visible
-                } else {
-                    hidden
-                }
-            }
+            WhitespaceRenderValue::None => (hidden, hidden),
+            WhitespaceRenderValue::All => (visible, visible),
+            WhitespaceRenderValue::Selection => (visible, hidden),
         }
     }
 
@@ -422,6 +415,14 @@ impl EditorView {
         let nbsp_visible = whitespace.characters.nbsp.to_string();
         let newline_visible = whitespace.characters.newline.to_string();
         let indent_guide_char = config.indent_guides.character.to_string();
+        let (tab_selected, tab_unselected) =
+            Self::render_whitespace(&tab_hidden, &tab_visible, whitespace.render.tab());
+        let (space_selected, space_unselected) =
+            Self::render_whitespace(" ", &space_visible, whitespace.render.space());
+        let (nbsp_selected, nbsp_unselected) =
+            Self::render_whitespace(" ", &nbsp_visible, whitespace.render.nbsp());
+        let (newline_selected, newline_unselected) =
+            Self::render_whitespace(" ", &newline_visible, whitespace.render.newline());
 
         let text_style = theme.get("ui.text");
         let whitespace_style = theme.get("ui.virtual.whitespace");
@@ -486,12 +487,11 @@ impl EditorView {
                     let space = if whitespace.render.space() != WhitespaceRenderValue::None
                         && !is_trailing_cursor
                     {
-                        Self::render_whitespace(
-                            " ",
-                            &space_visible,
-                            whitespace.render.space(),
-                            in_selection,
-                        )
+                        if in_selection {
+                            &space_selected
+                        } else {
+                            &space_unselected
+                        }
                     } else {
                         " "
                     };
@@ -499,12 +499,11 @@ impl EditorView {
                     let nbsp = if whitespace.render.nbsp() != WhitespaceRenderValue::None
                         && text.len_chars() < end
                     {
-                        Self::render_whitespace(
-                            " ",
-                            &nbsp_visible,
-                            whitespace.render.nbsp(),
-                            in_selection,
-                        )
+                        if in_selection {
+                            &nbsp_selected
+                        } else {
+                            &nbsp_unselected
+                        }
                     } else {
                         " "
                     };
@@ -521,12 +520,11 @@ impl EditorView {
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
                                     viewport.y + line,
-                                    Self::render_whitespace(
-                                        " ",
-                                        &newline_visible,
-                                        whitespace.render.newline(),
-                                        in_selection,
-                                    ),
+                                    if in_selection {
+                                        &newline_selected
+                                    } else {
+                                        &newline_unselected
+                                    },
                                     style.patch(whitespace_style),
                                 );
                             }
@@ -549,12 +547,11 @@ impl EditorView {
                                 is_whitespace = true;
                                 // make sure we display tab as appropriate amount of spaces
                                 let visual_tab_width = tab_width - (visual_x as usize % tab_width);
-                                let tab = Self::render_whitespace(
-                                    &tab_hidden,
-                                    &tab_visible,
-                                    whitespace.render.tab(),
-                                    in_selection,
-                                );
+                                let tab = if in_selection {
+                                    &tab_selected
+                                } else {
+                                    &tab_unselected
+                                };
                                 let grapheme_tab_width =
                                     helix_core::str_utils::char_to_byte_idx(tab, visual_tab_width);
 
