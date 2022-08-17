@@ -140,7 +140,10 @@ impl<'de> Deserialize<'de> for Theme {
 
                 // these are used both as UI and as highlights
                 styles.insert(name.clone(), style);
-                if name.starts_with("ui.selection") {
+                if name.starts_with("ui.selection")
+                    || name == "ui.cursor"
+                    || name.starts_with("ui.cursor.")
+                {
                     selection_scopes.push(scopes.len());
                 }
                 scopes.push(name);
