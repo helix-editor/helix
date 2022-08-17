@@ -456,24 +456,25 @@ impl EditorView {
             }
         };
 
-        let mut in_selection = false;
+        let mut selection_scope_depth = 0usize;
 
         'outer: for event in highlights {
             match event {
                 HighlightEvent::HighlightStart(span) => {
                     spans.push(span);
-                    if !in_selection {
-                        in_selection = theme.selection_scopes().contains(&span.0);
+
+                    let in_selection = selection_scope_depth > 0;
+                    if in_selection || theme.selection_scopes().contains(&span.0) {
+                        selection_scope_depth += 1;
                     }
                 }
                 HighlightEvent::HighlightEnd => {
-                    let span = spans.pop().unwrap();
-                    if in_selection {
-                        in_selection = !theme.selection_scopes().contains(&span.0);
-                    }
+                    spans.pop();
+                    selection_scope_depth = selection_scope_depth.saturating_sub(1);
                 }
                 HighlightEvent::Source { start, end } => {
                     let is_trailing_cursor = text.len_chars() < end;
+                    let in_selection = selection_scope_depth > 0;
 
                     // `unwrap_or_else` part is for off-the-end indices of
                     // the rope, to allow cursor highlighting at the end
