@@ -276,7 +276,13 @@ impl Default for StatusLineConfig {
         Self {
             left: vec![E::Mode, E::Spinner, E::FileName],
             center: vec![],
-            right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding, E::WindowIdentifiers],
+            right: vec![
+                E::Diagnostics,
+                E::Selections,
+                E::Position,
+                E::FileEncoding,
+                E::WindowIdentifiers,
+            ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
         }

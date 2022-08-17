@@ -23,8 +23,7 @@ use helix_view::{
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
-    Document, Editor, Theme, View,
-    view_index_to_identifier,
+    view_index_to_identifier, Document, Editor, Theme, View,
 };
 use std::{borrow::Cow, cmp::min, num::NonZeroUsize, path::PathBuf};
 
