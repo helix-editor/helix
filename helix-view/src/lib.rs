@@ -42,14 +42,13 @@ slotmap::new_key_type! {
     pub struct ViewId;
 }
 
-
 const UNICODE_LOWER_CASE_US_START: u32 = 97;
 const UNICODE_LOWER_CASE_US_END: u32 = 122;
 /// Returns a character 0-9 a-z based on the window index, or 0 if out of bounds
 pub fn view_index_to_identifier(view_index: usize) -> Option<char> {
     match view_index {
         0..=8 => Some(char::from_digit((view_index as u32) + 1, 10).unwrap()),
-        9..=35 => {
+        9..=34 => {
             Some(char::from_u32(UNICODE_LOWER_CASE_US_START - 9 + (view_index as u32)).unwrap())
         }
         _ => None,
@@ -107,3 +106,26 @@ pub use document::Document;
 pub use editor::Editor;
 pub use theme::Theme;
 pub use view::View;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_view_index_to_identifier_and_back() {
+        assert_eq!(view_index_to_identifier(0), Some('1'));
+        assert_eq!(view_index_to_identifier(8), Some('9'));
+        assert_eq!(view_index_to_identifier(9), Some('a'));
+        assert_eq!(view_index_to_identifier(34), Some('z'));
+        assert_eq!(view_index_to_identifier(35), None);
+        assert_eq!(view_identifier_to_index('0'), None);
+        assert_eq!(view_identifier_to_index('1'), Some(0));
+        assert_eq!(view_identifier_to_index('9'), Some(8));
+        assert_eq!(view_identifier_to_index('a'), Some(9));
+        assert_eq!(view_identifier_to_index('z'), Some(34));
+        assert_eq!(view_identifier_to_index('A'), Some(9));
+        assert_eq!(view_identifier_to_index('Z'), Some(34));
+        assert_eq!(view_identifier_to_index('{'), None);
+        assert_eq!(view_identifier_to_index('@'), None);
+        assert_eq!(view_identifier_to_index('/'), None);
+    }
+}
