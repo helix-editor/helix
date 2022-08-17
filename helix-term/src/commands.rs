@@ -4604,13 +4604,22 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let mut changes = Vec::with_capacity(selection.len());
     let text = doc.text().slice(..);
 
+    let mut shell_output: Option<Tendril> = None;
     for range in selection.ranges() {
-        let fragment = range.slice(text);
-        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment)) {
-            Ok(result) => result,
-            Err(err) => {
-                cx.editor.set_error(err.to_string());
-                return;
+        let (output, success) = if let Some(output) = shell_output.as_ref() {
+            (output.clone(), true)
+        } else {
+            match shell_impl(shell, cmd, pipe.then(|| range.slice(text))) {
+                Ok(result) => {
+                    if !pipe {
+                        shell_output = Some(result.0.clone());
+                    }
+                    result
+                }
+                Err(err) => {
+                    cx.editor.set_error(err.to_string());
+                    return;
+                }
             }
         };
 
