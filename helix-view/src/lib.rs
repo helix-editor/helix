@@ -44,7 +44,7 @@ slotmap::new_key_type! {
 
 const UNICODE_LOWER_CASE_US_START: u32 = 97;
 const UNICODE_LOWER_CASE_US_END: u32 = 122;
-/// Returns a character 0-9 a-z based on the window index, or 0 if out of bounds
+/// Returns a character 0-9 a-z based on the window index, or None if out of bounds
 pub fn view_index_to_identifier(view_index: usize) -> Option<char> {
     match view_index {
         0..=8 => Some(char::from_digit((view_index as u32) + 1, 10).unwrap()),
@@ -55,7 +55,7 @@ pub fn view_index_to_identifier(view_index: usize) -> Option<char> {
     }
 }
 
-/// Returns a character 0-9 a-z based on the window index, or 0 if out of bounds
+/// Returns a character 0-9 a-z based on the window index, or None if out of bounds
 pub fn view_identifier_to_index(view_index: char) -> Option<usize> {
     let view_index_lowercase = view_index.to_ascii_lowercase();
     match view_index_lowercase as u32 {
