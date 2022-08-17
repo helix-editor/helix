@@ -456,17 +456,17 @@ impl EditorView {
             }
         };
 
-        let mut selecting = false;
+        let mut in_selection = false;
 
         'outer: for event in highlights {
             match event {
                 HighlightEvent::HighlightStart(span) => {
                     spans.push(span);
-                    selecting |= theme.selection_scopes().contains(&span.0);
+                    in_selection |= theme.selection_scopes().contains(&span.0);
                 }
                 HighlightEvent::HighlightEnd => {
                     let span = spans.pop().unwrap();
-                    selecting &= !theme.selection_scopes().contains(&span.0);
+                    in_selection &= !theme.selection_scopes().contains(&span.0);
                 }
                 HighlightEvent::Source { start, end } => {
                     let is_trailing_cursor = text.len_chars() < end;
@@ -482,7 +482,7 @@ impl EditorView {
                     let space = if whitespace.render.space() != WhitespaceRenderValue::None
                         && !is_trailing_cursor
                     {
-                        space(selecting)
+                        space(in_selection)
                     } else {
                         " "
                     };
@@ -490,7 +490,7 @@ impl EditorView {
                     let nbsp = if whitespace.render.nbsp() != WhitespaceRenderValue::None
                         && text.len_chars() < end
                     {
-                        nbsp(selecting)
+                        nbsp(in_selection)
                     } else {
                         " "
                     };
@@ -507,7 +507,7 @@ impl EditorView {
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
                                     viewport.y + line,
-                                    newline(selecting),
+                                    newline(in_selection),
                                     style.patch(whitespace_style),
                                 );
                             }
@@ -530,7 +530,7 @@ impl EditorView {
                                 is_whitespace = true;
                                 // make sure we display tab as appropriate amount of spaces
                                 let visual_tab_width = tab_width - (visual_x as usize % tab_width);
-                                let tab = tab(selecting);
+                                let tab = tab(in_selection);
                                 let grapheme_tab_width =
                                     helix_core::str_utils::char_to_byte_idx(tab, visual_tab_width);
 
