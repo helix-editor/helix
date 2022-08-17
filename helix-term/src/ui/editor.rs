@@ -462,11 +462,15 @@ impl EditorView {
             match event {
                 HighlightEvent::HighlightStart(span) => {
                     spans.push(span);
-                    in_selection |= theme.selection_scopes().contains(&span.0);
+                    if !in_selection {
+                        in_selection = theme.selection_scopes().contains(&span.0);
+                    }
                 }
                 HighlightEvent::HighlightEnd => {
                     let span = spans.pop().unwrap();
-                    in_selection &= !theme.selection_scopes().contains(&span.0);
+                    if in_selection {
+                        in_selection = !theme.selection_scopes().contains(&span.0);
+                    }
                 }
                 HighlightEvent::Source { start, end } => {
                     let is_trailing_cursor = text.len_chars() < end;
