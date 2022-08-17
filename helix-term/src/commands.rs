@@ -4292,11 +4292,7 @@ fn goto_window_idx(cx: &mut Context) {
     cx.editor.show_window_ids = true;
 
     cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
+        if let Some(ch) = event.char() {
             if let Some(view_index) = view_identifier_to_index(ch) {
                 cx.editor.focus_view_idx(view_index);
             }
