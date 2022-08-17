@@ -2,12 +2,14 @@ use crate::{
     auto_pairs::AutoPairs,
     chars::char_is_line_ending,
     diagnostic::Severity,
+    find_root,
     regex::Regex,
     transaction::{ChangeSet, Operation},
     Rope, RopeSlice, Tendril,
 };
 
 use arc_swap::{ArcSwap, Guard};
+use globset::Glob;
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
 use std::{
@@ -484,6 +486,25 @@ impl Loader {
                 path.extension()
                     .and_then(|extension| extension.to_str())
                     .and_then(|extension| self.language_config_ids_by_file_type.get(extension))
+            })
+            .or_else(|| {
+                // find by glob using config.file_type and roots
+                self.language_config_ids_by_file_type
+                    .iter()
+                    .find_map(|(file_type, id)| {
+                        let glob = Glob::new(file_type).unwrap().compile_matcher();
+                        if glob.is_match(path) {
+                            let config = self.language_configs[*id].as_ref();
+                            let root_path = find_root(None, &config.roots);
+                            if root_path.is_some() {
+                                Some(id)
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    })
             });
 
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
