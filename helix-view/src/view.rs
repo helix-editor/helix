@@ -320,7 +320,7 @@ impl View {
 mod tests {
     use super::*;
     use helix_core::Rope;
-    const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
+    const OFFSET: u16 = 4; // 1 diagnostic + 2 linenr (based on view height digits "40") + 1 gutter
     const OFFSET_WITHOUT_LINE_NUMBERS: u16 = 2; // 1 diagnostic + 1 gutter
                                                 // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
     use crate::editor::GutterType;
