@@ -76,8 +76,7 @@ pub struct View {
     pub last_modified_docs: [Option<DocumentId>; 2],
     /// used to store previous selections of tree-sitter objects
     pub object_selections: Vec<Selection>,
-    /// Gutter (constructor) and width of gutter, used to calculate
-    /// `gutter_offset`
+    /// GutterTypes used to fetch Gutter (constructor) and width for rendering
     gutters: Vec<GutterType>,
 }
 
@@ -114,7 +113,6 @@ impl View {
     }
 
     pub fn inner_area(&self) -> Rect {
-        // TODO add abilty to not use cached offset for runtime configurable gutter
         self.area.clip_left(self.gutter_offset()).clip_bottom(1) // -1 for statusline
     }
 

@@ -1,5 +1,4 @@
 use std::fmt::Write;
-use std::iter::successors;
 
 use crate::{
     editor::GutterType,
@@ -8,7 +7,8 @@ use crate::{
 };
 
 fn count_digits(n: usize) -> usize {
-    successors(Some(n), |&n| (n >= 10).then(|| n / 10)).count()
+    // NOTE: if int_log gets standardized in stdlib, can use checked_log10
+    std::iter::successors(Some(n), |&n| (n >= 10).then(|| n / 10)).count()
 }
 
 pub type GutterFn<'doc> = Box<dyn Fn(usize, bool, &mut String) -> Option<Style> + 'doc>;
@@ -89,8 +89,6 @@ pub fn line_numbers<'doc>(
     theme: &Theme,
     is_focused: bool,
 ) -> GutterFn<'doc> {
-    const ELLIPSIS: char = '\u{2026}';
-
     let text = doc.text().slice(..);
     let last_line = view.last_line(doc);
     let width = line_numbers_width(view);
@@ -127,8 +125,6 @@ pub fn line_numbers<'doc>(
                 line + 1
             };
 
-            let n_digits = count_digits(display_num);
-
             let style = if selected && is_focused {
                 linenr_select
             } else {
@@ -136,12 +132,7 @@ pub fn line_numbers<'doc>(
             };
 
             // if line number overflows maximum alotted width, truncate start
-            if n_digits > width {
-                let display_trailing = (display_num as u32) % 10_u32.pow((width - 1) as u32);
-                write!(out, "{}{:0>2$}", ELLIPSIS, display_trailing, width - 1).unwrap();
-            } else {
-                write!(out, "{:>1$}", display_num, width).unwrap();
-            }
+            write!(out, "{:>1$}", display_num, width).unwrap();
 
             Some(style)
         }
@@ -152,7 +143,7 @@ pub fn line_numbers_width(view: &View) -> usize {
     // TODO: allow gutter widths to be dependent on Document. Currently the
     // width is based on full View height, not visible line numbers.
     let last_view_line = view.offset.row + view.area.bottom() as usize;
-    std::cmp::min(count_digits(last_view_line), 5)
+    count_digits(last_view_line)
 }
 
 pub fn padding<'doc>(
