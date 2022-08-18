@@ -1,13 +1,46 @@
 use std::fmt::Write;
+use std::iter::successors;
 
 use crate::{
+    editor::GutterType,
     graphics::{Color, Modifier, Style},
     Document, Editor, Theme, View,
 };
 
+fn count_digits(n: usize) -> usize {
+    successors(Some(n), |&n| (n >= 10).then(|| n / 10)).count()
+}
+
 pub type GutterFn<'doc> = Box<dyn Fn(usize, bool, &mut String) -> Option<Style> + 'doc>;
 pub type Gutter =
     for<'doc> fn(&'doc Editor, &'doc Document, &View, &Theme, bool, usize) -> GutterFn<'doc>;
+
+impl GutterType {
+    pub fn row_styler<'doc>(
+        self,
+        editor: &'doc Editor,
+        doc: &'doc Document,
+        view: &View,
+        theme: &Theme,
+        is_focused: bool,
+    ) -> GutterFn<'doc> {
+        match self {
+            GutterType::Diagnostics => {
+                diagnostics_or_breakpoints(editor, doc, view, theme, is_focused)
+            }
+            GutterType::LineNumbers => line_numbers(editor, doc, view, theme, is_focused),
+            GutterType::Spacer => padding(editor, doc, view, theme, is_focused),
+        }
+    }
+
+    pub fn width(self, view: &View) -> usize {
+        match self {
+            GutterType::Diagnostics => 1,
+            GutterType::LineNumbers => line_numbers_width(view),
+            GutterType::Spacer => 1,
+        }
+    }
+}
 
 pub fn diagnostic<'doc>(
     _editor: &'doc Editor,
@@ -15,7 +48,6 @@ pub fn diagnostic<'doc>(
     _view: &View,
     theme: &Theme,
     _is_focused: bool,
-    _width: usize,
 ) -> GutterFn<'doc> {
     let warning = theme.get("warning");
     let error = theme.get("error");
@@ -56,10 +88,13 @@ pub fn line_numbers<'doc>(
     view: &View,
     theme: &Theme,
     is_focused: bool,
-    width: usize,
 ) -> GutterFn<'doc> {
+    const ELLIPSIS: char = '\u{2026}';
+
     let text = doc.text().slice(..);
     let last_line = view.last_line(doc);
+    let width = line_numbers_width(view);
+
     // Whether to draw the line number for the last line of the
     // document or not.  We only draw it if it's not an empty line.
     let draw_last = text.line_to_byte(last_line) < text.len_bytes();
@@ -91,15 +126,33 @@ pub fn line_numbers<'doc>(
             } else {
                 line + 1
             };
+
+            let n_digits = count_digits(display_num);
+
             let style = if selected && is_focused {
                 linenr_select
             } else {
                 linenr
             };
-            write!(out, "{:>1$}", display_num, width).unwrap();
+
+            // if line number overflows maximum alotted width, truncate start
+            if n_digits > width {
+                let display_trailing = (display_num as u32) % 10_u32.pow((width - 1) as u32);
+                write!(out, "{}{:0>2$}", ELLIPSIS, display_trailing, width - 1).unwrap();
+            } else {
+                write!(out, "{:>1$}", display_num, width).unwrap();
+            }
+
             Some(style)
         }
     })
+}
+
+pub fn line_numbers_width(view: &View) -> usize {
+    // TODO: allow gutter widths to be dependent on Document. Currently the
+    // width is based on full View height, not visible line numbers.
+    let last_view_line = view.offset.row + view.area.bottom() as usize;
+    std::cmp::max(std::cmp::min(count_digits(last_view_line), 5), 3)
 }
 
 pub fn padding<'doc>(
@@ -108,7 +161,6 @@ pub fn padding<'doc>(
     _view: &View,
     _theme: &Theme,
     _is_focused: bool,
-    _width: usize,
 ) -> GutterFn<'doc> {
     Box::new(|_line: usize, _selected: bool, _out: &mut String| None)
 }
@@ -128,7 +180,6 @@ pub fn breakpoints<'doc>(
     _view: &View,
     theme: &Theme,
     _is_focused: bool,
-    _width: usize,
 ) -> GutterFn<'doc> {
     let warning = theme.get("warning");
     let error = theme.get("error");
@@ -181,10 +232,9 @@ pub fn diagnostics_or_breakpoints<'doc>(
     view: &View,
     theme: &Theme,
     is_focused: bool,
-    width: usize,
 ) -> GutterFn<'doc> {
-    let diagnostics = diagnostic(editor, doc, view, theme, is_focused, width);
-    let breakpoints = breakpoints(editor, doc, view, theme, is_focused, width);
+    let diagnostics = diagnostic(editor, doc, view, theme, is_focused);
+    let breakpoints = breakpoints(editor, doc, view, theme, is_focused);
 
     Box::new(move |line, selected, out| {
         breakpoints(line, selected, out).or_else(|| diagnostics(line, selected, out))
