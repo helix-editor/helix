@@ -49,10 +49,15 @@
 
 "label" = { fg = "selection_background", modifiers = ["bold", "italic"] }
 
+"diff.plus" = "regular2"
+"diff.delta" = "bright0"
+"diff.minus" = "bright1"
+
 "warning" = "bright4"
 "error" = "regular1"
 "info" = "#FFAF00"
 diagnostic = { modifiers = ["bold", "underlined"]}
+
 
 [palette]
 background="#eeeeee"
