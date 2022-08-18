@@ -1,4 +1,4 @@
 (comment) @comment
 (datetime) @type
-(identifier) @identifier
+(identifier) @variable
 (keyword) @keyword
