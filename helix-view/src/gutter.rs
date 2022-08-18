@@ -152,7 +152,7 @@ pub fn line_numbers_width(view: &View) -> usize {
     // TODO: allow gutter widths to be dependent on Document. Currently the
     // width is based on full View height, not visible line numbers.
     let last_view_line = view.offset.row + view.area.bottom() as usize;
-    std::cmp::max(std::cmp::min(count_digits(last_view_line), 5), 3)
+    std::cmp::min(count_digits(last_view_line), 5)
 }
 
 pub fn padding<'doc>(

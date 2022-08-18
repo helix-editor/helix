@@ -353,6 +353,7 @@ impl std::str::FromStr for GutterType {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "diagnostics" => Ok(Self::Diagnostics),
+            "spacer" => Ok(Self::Spacer),
             "line-numbers" => Ok(Self::LineNumbers),
             _ => anyhow::bail!("Gutter type can only be `diagnostics` or `line-numbers`."),
         }
