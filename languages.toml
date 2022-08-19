@@ -217,7 +217,7 @@ file-types = ["cs"]
 roots = ["sln", "csproj"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "\t" }
-language-server = { command = "OmniSharp", args = [ "--languageserver", "--stdio" ] }
+language-server = { command = "OmniSharp", args = [ "--languageserver" ] }
 
 [[grammar]]
 name = "c-sharp"
