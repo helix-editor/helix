@@ -3,7 +3,6 @@
   (template_substitution)
   (list_literal)
   (set_or_map_literal)
-;   (inferred_parameters) ; this one is not actually used
   (parenthesized_expression)
   (arguments)
   (index_selector)
@@ -16,16 +15,12 @@
   (enum_body)
   (class_body)
   (extension_body)
-;   (constructor_body) ; this one is not actually used
   (parameter_type_list)
   (optional_positional_parameter_types)
   (named_parameter_types)
   (formal_parameter_list)
-;   (positional_parameters) ; this one is not actually used
   (optional_formal_parameters)
 ] @indent
-
-; dimensions is not actuallly used
 
 ; control flow statement which accept one line as body
 
