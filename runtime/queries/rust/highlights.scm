@@ -320,6 +320,8 @@
   "'"
 ] @operator
 
+(try_expression "?" @operator)
+(removed_trait_bound "?" @operator)
 
 
 ; -------
@@ -357,8 +359,6 @@
 ; -------
 ; Remaining Identifiers
 ; -------
-
-"?" @special
 
 (type_identifier) @type
 (identifier) @variable
