@@ -2,14 +2,12 @@ use crate::{
     auto_pairs::AutoPairs,
     chars::char_is_line_ending,
     diagnostic::Severity,
-    find_root,
     regex::Regex,
     transaction::{ChangeSet, Operation},
     Rope, RopeSlice, Tendril,
 };
 
 use arc_swap::{ArcSwap, Guard};
-use globset::Glob;
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
 use std::{
@@ -438,8 +436,8 @@ impl LanguageConfiguration {
 pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
-    language_config_ids_by_file_type: HashMap<String, usize>, // Vec<usize>
-    language_config_ids_by_shebang: HashMap<String, usize>,
+    language_config_ids_by_file_type: HashMap<String, Vec<usize>>, // Vec<usize>
+    language_config_ids_by_shebang: HashMap<String, Vec<usize>>,
 
     scopes: ArcSwap<Vec<String>>,
 }
@@ -458,15 +456,18 @@ impl Loader {
             let language_id = loader.language_configs.len();
 
             for file_type in &config.file_types {
-                // entry().or_insert(Vec::new).push(language_id);
                 loader
                     .language_config_ids_by_file_type
-                    .insert(file_type.clone(), language_id);
+                    .entry(file_type.clone())
+                    .or_insert_with(Vec::new)
+                    .push(language_id);
             }
             for shebang in &config.shebangs {
                 loader
                     .language_config_ids_by_shebang
-                    .insert(shebang.clone(), language_id);
+                    .entry(shebang.clone())
+                    .or_insert_with(Vec::new)
+                    .push(language_id);
             }
 
             loader.language_configs.push(Arc::new(config));
@@ -478,7 +479,7 @@ impl Loader {
     pub fn language_config_for_file_name(&self, path: &Path) -> Option<Arc<LanguageConfiguration>> {
         // Find all the language configurations that match this file name
         // or a suffix of the file name.
-        let configuration_id = path
+        let configuration_ids = path
             .file_name()
             .and_then(|n| n.to_str())
             .and_then(|file_name| self.language_config_ids_by_file_type.get(file_name))
@@ -486,26 +487,36 @@ impl Loader {
                 path.extension()
                     .and_then(|extension| extension.to_str())
                     .and_then(|extension| self.language_config_ids_by_file_type.get(extension))
-            })
-            .or_else(|| {
-                // find by glob using config.file_type and roots
-                self.language_config_ids_by_file_type
-                    .iter()
-                    .find_map(|(file_type, id)| {
-                        let glob = Glob::new(file_type).unwrap().compile_matcher();
-                        if glob.is_match(path) {
-                            let config = self.language_configs[*id].as_ref();
-                            let root_path = find_root(None, &config.roots);
-                            if root_path.is_some() {
-                                Some(id)
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        }
-                    })
             });
+        // If there are more than one match, try to see if any of the roots
+        // matches to reduce the results.
+        let configuration_id = match configuration_ids.as_ref() {
+            Some(ids) => match &ids[..] {
+                [id] => Some(id),
+                ids => ids
+                    .iter()
+                    // prioritize language configs with root
+                    .find(|&id| {
+                        let roots = &self.language_configs[*id].roots;
+                        if roots.is_empty() {
+                            return false;
+                        }
+                        // check if specified roots is in search root path
+                        let root = helix_loader::search_root(path.to_str());
+                        for ancestor in root.ancestors() {
+                            if roots.iter().any(|marker| ancestor.join(marker).exists()) {
+                                return true;
+                            // but don't go higher than repo
+                            } else if ancestor.join(".git").is_dir() {
+                                return false;
+                            }
+                        }
+                        false
+                    })
+                    .or_else(|| ids.first()),
+            },
+            None => None,
+        };
 
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
 
@@ -517,9 +528,11 @@ impl Loader {
         static SHEBANG_REGEX: Lazy<Regex> = Lazy::new(|| {
             Regex::new(r"^#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)").unwrap()
         });
-        let configuration_id = SHEBANG_REGEX
-            .captures(&line)
-            .and_then(|cap| self.language_config_ids_by_shebang.get(&cap[1]));
+        let configuration_id = SHEBANG_REGEX.captures(&line).and_then(|cap| {
+            self.language_config_ids_by_shebang
+                .get(&cap[1])
+                .map(|ids| ids.first().unwrap())
+        });
 
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
     }

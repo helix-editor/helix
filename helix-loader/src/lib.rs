@@ -2,7 +2,7 @@ pub mod config;
 pub mod grammar;
 
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub static RUNTIME_DIR: once_cell::sync::Lazy<PathBuf> = once_cell::sync::Lazy::new(runtime_dir);
 
@@ -88,21 +88,25 @@ pub fn log_file() -> PathBuf {
     cache_dir().join("helix.log")
 }
 
-pub fn find_root_impl(root: Option<&str>, root_markers: &[String]) -> Vec<PathBuf> {
-    let current_dir = std::env::current_dir().expect("unable to determine current directory");
-    let mut directories = Vec::new();
-
-    let root = match root {
+/// Get root to search until.
+pub fn search_root(root: Option<&str>) -> PathBuf {
+    let current_dir = || std::env::current_dir().expect("unable to determine current directory");
+    match root {
         Some(root) => {
-            let root = std::path::Path::new(root);
+            let root = Path::new(root);
             if root.is_absolute() {
                 root.to_path_buf()
             } else {
-                current_dir.join(root)
+                current_dir().join(root)
             }
         }
-        None => current_dir,
-    };
+        None => current_dir(),
+    }
+}
+
+pub fn find_root_impl(root: Option<&str>, root_markers: &[String]) -> Vec<PathBuf> {
+    let root = search_root(root);
+    let mut directories = Vec::new();
 
     for ancestor in root.ancestors() {
         // don't go higher than repo

@@ -392,7 +392,6 @@ dependencies = [
  "chrono",
  "encoding_rs",
  "etcetera",
- "globset",
  "helix-loader",
  "log",
  "once_cell",

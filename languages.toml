@@ -409,22 +409,10 @@ name = "scss"
 source = { git = "https://github.com/serenadeai/tree-sitter-scss", rev = "c478c6868648eff49eb04a4df90d703dc45b312a" }
 
 [[language]]
-name = "htmldjango"
-scope = "source.htmldjango"
-injection-regex = "htmldjango"
-file-types = ["**/templates/**.html"]
-roots = ["manage.py"]
-indent = { tab-width = 2, unit = "  " }
-
-[[grammar]]
-name = "htmldjango"
-source = { git = "https://github.com/interdependence/tree-sitter-htmldjango", rev = "184a50456186c2ff49b9b410f7060a176e2a3080" }
-
-[[language]]
 name = "html"
 scope = "text.html.basic"
 injection-regex = "html"
-file-types = ["*.html"]
+file-types = ["html"]
 roots = []
 language-server = { command = "vscode-html-language-server", args = ["--stdio"] }
 auto-format = true
@@ -434,6 +422,18 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "html"
 source = { git = "https://github.com/tree-sitter/tree-sitter-html", rev = "d93af487cc75120c89257195e6be46c999c6ba18" }
+
+[[language]]
+name = "htmldjango"
+scope = "source.htmldjango"
+injection-regex = "htmldjango"
+file-types = ["html"]
+roots = ["manage.py"]
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "htmldjango"
+source = { git = "https://github.com/interdependence/tree-sitter-htmldjango", rev = "184a50456186c2ff49b9b410f7060a176e2a3080" }
 
 [[language]]
 name = "python"
