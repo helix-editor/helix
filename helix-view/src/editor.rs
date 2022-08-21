@@ -438,6 +438,7 @@ pub struct WhitespaceCharacters {
     pub space: char,
     pub nbsp: char,
     pub tab: char,
+    pub tabpad: char,
     pub newline: char,
 }
 
@@ -448,6 +449,7 @@ impl Default for WhitespaceCharacters {
             nbsp: '⍽',    // U+237D
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
+            tabpad: ' ',
         }
     }
 }

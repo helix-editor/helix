@@ -390,19 +390,23 @@ impl EditorView {
         // of times than it is to always call Rope::slice/get_slice (it will internally always hit RSEnum::Light).
         let text = doc.text().slice(..);
 
+        let characters = &whitespace.characters;
+
         let mut spans = Vec::new();
         let mut visual_x = 0u16;
         let mut line = 0u16;
         let tab_width = doc.tab_width();
         let tab = if whitespace.render.tab() == WhitespaceRenderValue::All {
-            (1..tab_width).fold(whitespace.characters.tab.to_string(), |s, _| s + " ")
+            std::iter::once(characters.tab)
+                .chain(std::iter::repeat(characters.tabpad).take(tab_width - 1))
+                .collect()
         } else {
             " ".repeat(tab_width)
         };
-        let space = whitespace.characters.space.to_string();
-        let nbsp = whitespace.characters.nbsp.to_string();
+        let space = characters.space.to_string();
+        let nbsp = characters.nbsp.to_string();
         let newline = if whitespace.render.newline() == WhitespaceRenderValue::All {
-            whitespace.characters.newline.to_string()
+            characters.newline.to_string()
         } else {
             " ".to_string()
         };
