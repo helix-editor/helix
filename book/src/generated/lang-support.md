@@ -45,7 +45,7 @@
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ | ✓ |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
-| htmldjango | ✓ | ✓ | ✓ |  |
+| htmldjango | ✓ |  | ✓ |  |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | java | ✓ |  |  | `jdtls` |
