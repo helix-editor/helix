@@ -905,7 +905,8 @@ name = "markdown"
 scope = "source.md"
 injection-regex = "md|markdown"
 file-types = ["md", "markdown"]
-roots = []
+roots = [".marksman.toml"]
+language-server = { command = "marksman", args=["server"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]

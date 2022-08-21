@@ -67,7 +67,7 @@
 | llvm-mir-yaml | ✓ |  | ✓ |  |
 | lua | ✓ |  | ✓ | `lua-language-server` |
 | make | ✓ |  |  |  |
-| markdown | ✓ |  |  |  |
+| markdown | ✓ |  |  | `marksman` |
 | markdown.inline | ✓ |  |  |  |
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
