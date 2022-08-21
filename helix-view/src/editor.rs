@@ -392,8 +392,7 @@ pub enum WhitespaceRender {
 #[serde(rename_all = "kebab-case")]
 pub enum WhitespaceRenderValue {
     None,
-    // TODO
-    // Selection,
+    Selection,
     All,
 }
 
