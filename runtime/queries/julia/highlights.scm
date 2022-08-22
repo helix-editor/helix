@@ -1,10 +1,7 @@
 
-[
-  (triple_string)
-  (string)
-] @string
+(string_literal) @string
 
-(string
+(prefixed_string_literal
   prefix: (identifier) @constant.builtin)
 
 (macro_identifier) @function.macro
@@ -80,7 +77,9 @@
 (struct_definition
   name: (identifier) @type)
 
-(number) @constant.numeric.integer
+(integer_literal) @constant.numeric.integer
+(float_literal) @constant.numeric.float
+
 (range_expression
     (identifier) @constant.numeric.integer
       (eq? @constant.numeric.integer "end"))
@@ -89,7 +88,10 @@
     (identifier) @constant.numeric.integer
       (eq? @constant.numeric.integer "end")))
 (coefficient_expression
-  (number)
+  [
+    (integer_literal)
+    (float_literal)
+  ]
   (identifier) @constant.builtin)
 
 ;; TODO: operators.
@@ -117,7 +119,10 @@
 
 (function_definition ["function" "end"] @keyword.function)
 
-(comment) @comment
+[
+  (line_comment)
+  (block_comment)
+] @comment
 
 [
   "const"
@@ -171,7 +176,7 @@
 (((identifier) @constant.builtin.boolean) (#eq? @constant.builtin.boolean "false"))
 
 
-["::" ":" "." "," "..." "!"] @punctuation.delimiter
+["::" ":" "." "," "..."] @punctuation.delimiter
 ["[" "]" "(" ")" "{" "}"] @punctuation.bracket
 
 ["="] @operator
