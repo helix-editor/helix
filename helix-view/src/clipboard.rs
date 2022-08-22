@@ -164,6 +164,7 @@ pub mod provider {
         }
     }
 
+    #[cfg(not(target_os = "windows"))]
     impl Default for NopProvider {
         fn default() -> Self {
             Self::new()
