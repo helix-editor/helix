@@ -1140,7 +1140,8 @@ impl Component for EditorView {
                 // clear status
                 cx.editor.status_msg = None;
 
-                let doc = doc!(cx.editor);
+                let (view, doc) = current!(cx.editor);
+                let focus = view.id;
                 let mode = doc.mode();
 
                 if let Some(on_next_key) = self.on_next_key.take() {
@@ -1204,7 +1205,9 @@ impl Component for EditorView {
                     return EventResult::Ignored(None);
                 }
                 let config = cx.editor.config();
-                let (view, doc) = current!(cx.editor);
+                let view = cx.editor.tree.get_mut(focus);
+                let doc = cx.editor.documents.get_mut(&view.doc).unwrap();
+
                 view.ensure_cursor_in_view(doc, config.scrolloff);
 
                 // Store a history state if not in insert mode. This also takes care of
