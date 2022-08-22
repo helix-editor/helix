@@ -231,12 +231,11 @@ pub mod provider {
         use super::*;
         use anyhow::{bail, Context as _, Result};
 
-        #[cfg(not(windows))]
         pub fn exists(executable_name: &str) -> bool {
             which::which(executable_name).is_ok()
         }
 
-        #[cfg(not(any(windows, target_os = "macos")))]
+        #[cfg(not(windows))]
         pub fn env_var_is_set(env_var_name: &str) -> bool {
             std::env::var_os(env_var_name).is_some()
         }
