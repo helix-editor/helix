@@ -139,7 +139,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     }
 }
 
-mod provider {
+pub mod provider {
     use super::{ClipboardProvider, ClipboardType};
     use anyhow::Result;
     use std::borrow::Cow;
@@ -161,6 +161,12 @@ mod provider {
                 buf: String::new(),
                 primary_buf: String::new(),
             }
+        }
+    }
+
+    impl Default for NopProvider {
+        fn default() -> Self {
+            Self::new()
         }
     }
 

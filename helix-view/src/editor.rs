@@ -157,6 +157,7 @@ pub struct Config {
     #[serde(default)]
     pub search: SearchConfig,
     pub lsp: LspConfig,
+    pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Default to `[]`, meaning no rulers.
     pub rulers: Vec<u16>,
     #[serde(default)]
@@ -165,6 +166,52 @@ pub struct Config {
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct TerminalConfig {
+    pub command: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub args: Vec<String>,
+}
+
+#[cfg(windows)]
+pub fn get_terminal_provider() -> Option<TerminalConfig> {
+    use crate::clipboard::provider::command::exists;
+
+    if exists("wt") {
+        return Some(TerminalConfig {
+            command: "wt".to_string(),
+            args: vec![
+                "new-tab".to_string(),
+                "--title".to_string(),
+                "DEBUG".to_string(),
+                "cmd".to_string(),
+                "/C".to_string(),
+            ],
+        });
+    }
+
+    return Some(TerminalConfig {
+        command: "conhost".to_string(),
+        args: vec!["cmd".to_string(), "/C".to_string()],
+    });
+}
+
+#[cfg(not(any(windows, target_os = "wasm32")))]
+pub fn get_terminal_provider() -> Option<TerminalConfig> {
+    use crate::clipboard::provider::command::{env_var_is_set, exists};
+
+    if env_var_is_set("TMUX") && exists("tmux") {
+        return Some(TerminalConfig {
+            command: "tmux".to_string(),
+            args: vec!["split-window".to_string()],
+        });
+    }
+
+    None
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -497,6 +544,7 @@ impl Default for Config {
             true_color: false,
             search: SearchConfig::default(),
             lsp: LspConfig::default(),
+            terminal: get_terminal_provider(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
             indent_guides: IndentGuidesConfig::default(),
