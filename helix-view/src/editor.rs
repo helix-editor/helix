@@ -1095,36 +1095,12 @@ impl Editor {
         self.tree.focus_next();
     }
 
-    pub fn focus_right(&mut self) {
-        self.tree.focus_direction(tree::Direction::Right);
+    pub fn focus_direction(&mut self, direction: tree::Direction) {
+        self.tree.focus_direction(direction);
     }
 
-    pub fn focus_left(&mut self) {
-        self.tree.focus_direction(tree::Direction::Left);
-    }
-
-    pub fn focus_up(&mut self) {
-        self.tree.focus_direction(tree::Direction::Up);
-    }
-
-    pub fn focus_down(&mut self) {
-        self.tree.focus_direction(tree::Direction::Down);
-    }
-
-    pub fn swap_right(&mut self) {
-        self.tree.swap_split_in_direction(tree::Direction::Right);
-    }
-
-    pub fn swap_left(&mut self) {
-        self.tree.swap_split_in_direction(tree::Direction::Left);
-    }
-
-    pub fn swap_up(&mut self) {
-        self.tree.swap_split_in_direction(tree::Direction::Up);
-    }
-
-    pub fn swap_down(&mut self) {
-        self.tree.swap_split_in_direction(tree::Direction::Down);
+    pub fn swap_split_in_direction(&mut self, direction: tree::Direction) {
+        self.tree.swap_split_in_direction(direction);
     }
 
     pub fn transpose_view(&mut self) {
