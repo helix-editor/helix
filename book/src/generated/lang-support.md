@@ -112,5 +112,6 @@
 | verilog | ✓ | ✓ |  | `svlangserver` |
 | vue | ✓ |  |  | `vls` |
 | wgsl | ✓ |  |  | `wgsl_analyzer` |
+| xit | ✓ |  |  |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |
 | zig | ✓ |  | ✓ | `zls` |
