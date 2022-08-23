@@ -1773,13 +1773,15 @@ fn global_search(cx: &mut Context) {
         path: PathBuf,
         /// 0 indexed lines
         line_num: usize,
+        text: String,
     }
 
     impl FileResult {
-        fn new(path: &Path, line_num: usize) -> Self {
+        fn new(path: &Path, line_num: usize, text: String) -> Self {
             Self {
                 path: path.to_path_buf(),
                 line_num,
+                text,
             }
         }
     }
@@ -1796,9 +1798,9 @@ fn global_search(cx: &mut Context) {
                 .map(|p| p == &self.path)
                 .unwrap_or(false)
             {
-                format!("{} (*)", relative_path).into()
+                format!("{} (*): {}", relative_path, self.text).into()
             } else {
-                relative_path.into()
+                format!("{}: {}", relative_path, self.text).into()
             }
         }
     }
@@ -1865,9 +1867,13 @@ fn global_search(cx: &mut Context) {
                             let result = searcher.search_path(
                                 &matcher,
                                 entry.path(),
-                                sinks::UTF8(|line_num, _| {
+                                sinks::UTF8(|line_num, text| {
                                     all_matches_sx
-                                        .send(FileResult::new(entry.path(), line_num as usize - 1))
+                                        .send(FileResult::new(
+                                            entry.path(),
+                                            line_num as usize - 1,
+                                            text.to_owned(),
+                                        ))
                                         .unwrap();
 
                                     Ok(true)
@@ -1906,7 +1912,13 @@ fn global_search(cx: &mut Context) {
                 let picker = FilePicker::new(
                     all_matches,
                     current_path,
-                    move |cx, FileResult { path, line_num }, action| {
+                    move |cx,
+                          FileResult {
+                              path,
+                              line_num,
+                              text: _,
+                          },
+                          action| {
                         match cx.editor.open(path, action) {
                             Ok(_) => {}
                             Err(e) => {
@@ -1928,9 +1940,12 @@ fn global_search(cx: &mut Context) {
                         doc.set_selection(view.id, Selection::single(start, end));
                         align_view(doc, view, Align::Center);
                     },
-                    |_editor, FileResult { path, line_num }| {
-                        Some((path.clone(), Some((*line_num, *line_num))))
-                    },
+                    |_editor,
+                     FileResult {
+                         path,
+                         line_num,
+                         text: _,
+                     }| { Some((path.clone(), Some((*line_num, *line_num)))) },
                 );
                 compositor.push(Box::new(overlayed(picker)));
             });
