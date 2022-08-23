@@ -13,6 +13,7 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
+use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use tokio::sync::Mutex;
@@ -662,7 +663,16 @@ impl Document {
         let save_req = if block {
             rx.recv().await
         } else {
-            rx.try_recv().ok()
+            let msg = rx.try_recv();
+
+            if let Err(err) = msg {
+                match err {
+                    TryRecvError::Empty => return None,
+                    TryRecvError::Disconnected => None,
+                }
+            } else {
+                msg.ok()
+            }
         };
 
         let save = match save_req {
