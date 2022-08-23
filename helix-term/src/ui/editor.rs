@@ -976,16 +976,15 @@ impl EditorView {
                         doc.set_selection(view_id, Selection::point(pos));
                     }
 
-                    editor.tree.focus = view_id;
+                    editor.focus(view_id);
 
                     return EventResult::Consumed(None);
                 }
 
                 if let Some((coords, view_id)) = gutter_coords_and_view(editor, row, column) {
-                    editor.tree.focus = view_id;
+                    editor.focus(view_id);
 
-                    let view = editor.tree.get(view_id);
-                    let doc = editor.documents.get_mut(&view.doc).unwrap();
+                    let (view, doc) = current!(cxt.editor);
 
                     let path = match doc.path() {
                         Some(path) => path.clone(),
@@ -1064,10 +1063,9 @@ impl EditorView {
 
             MouseEventKind::Up(MouseButton::Right) => {
                 if let Some((coords, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
-                    cxt.editor.tree.focus = view_id;
+                    cxt.editor.focus(view_id);
 
-                    let view = cxt.editor.tree.get(view_id);
-                    let doc = cxt.editor.documents.get_mut(&view.doc).unwrap();
+                    let (view, doc) = current!(cxt.editor);
                     let line = coords.row + view.offset.row;
                     if let Ok(pos) = doc.text().try_line_to_char(line) {
                         doc.set_selection(view_id, Selection::point(pos));
@@ -1100,7 +1098,7 @@ impl EditorView {
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
                     let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
                     doc.set_selection(view_id, Selection::point(pos));
-                    editor.tree.focus = view_id;
+                    cxt.editor.focus(view_id);
                     commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
 
                     return EventResult::Consumed(None);

@@ -1091,12 +1091,33 @@ impl Editor {
         };
     }
 
+    pub fn focus(&mut self, view_id: ViewId) {
+        let prev_id = std::mem::replace(&mut self.tree.focus, view_id);
+
+        // if leaving the view: mode should reset
+        if prev_id != view_id {
+            let doc_id = self.tree.get(prev_id).doc;
+            self.documents.get_mut(&doc_id).unwrap().mode = Mode::Normal;
+        }
+    }
+
     pub fn focus_next(&mut self) {
+        let prev_id = self.tree.focus;
         self.tree.focus_next();
+        let id = self.tree.focus;
+
+        // if leaving the view: mode should reset
+        if prev_id != id {
+            let doc_id = self.tree.get(prev_id).doc;
+            self.documents.get_mut(&doc_id).unwrap().mode = Mode::Normal;
+        }
     }
 
     pub fn focus_direction(&mut self, direction: tree::Direction) {
-        self.tree.focus_direction(direction);
+        let current_view = self.tree.focus;
+        if let Some(id) = self.tree.find_split_in_direction(current_view, direction) {
+            self.focus(id)
+        }
     }
 
     pub fn swap_split_in_direction(&mut self, direction: tree::Direction) {
