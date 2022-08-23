@@ -33,6 +33,7 @@ use helix_view::{
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
+    tree,
     view::View,
     Document, DocumentId, Editor, ViewId,
 };
@@ -4080,35 +4081,35 @@ fn rotate_view(cx: &mut Context) {
 }
 
 fn jump_view_right(cx: &mut Context) {
-    cx.editor.focus_right()
+    cx.editor.focus_direction(tree::Direction::Right)
 }
 
 fn jump_view_left(cx: &mut Context) {
-    cx.editor.focus_left()
+    cx.editor.focus_direction(tree::Direction::Left)
 }
 
 fn jump_view_up(cx: &mut Context) {
-    cx.editor.focus_up()
+    cx.editor.focus_direction(tree::Direction::Up)
 }
 
 fn jump_view_down(cx: &mut Context) {
-    cx.editor.focus_down()
+    cx.editor.focus_direction(tree::Direction::Down)
 }
 
 fn swap_view_right(cx: &mut Context) {
-    cx.editor.swap_right()
+    cx.editor.swap_split_in_direction(tree::Direction::Right)
 }
 
 fn swap_view_left(cx: &mut Context) {
-    cx.editor.swap_left()
+    cx.editor.swap_split_in_direction(tree::Direction::Left)
 }
 
 fn swap_view_up(cx: &mut Context) {
-    cx.editor.swap_up()
+    cx.editor.swap_split_in_direction(tree::Direction::Up)
 }
 
 fn swap_view_down(cx: &mut Context) {
-    cx.editor.swap_down()
+    cx.editor.swap_split_in_direction(tree::Direction::Down)
 }
 
 fn transpose_view(cx: &mut Context) {
