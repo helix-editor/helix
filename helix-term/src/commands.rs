@@ -1439,7 +1439,7 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
 
         let height = std::cmp::max(head_pos.row, anchor_pos.row)
             - std::cmp::min(head_pos.row, anchor_pos.row)
-            + 1max
+            + 1;
 
         if is_primary {
             primary_index = ranges.len();
@@ -2664,7 +2664,7 @@ fn goto_line_impl(editor: &mut Editor, count: Option<NonZeroUsize>) {
             doc.text().len_lines() - 1
         };
         let line_idx = std::cmp::min(count.get() - 1, max_line);
-        let text = doc.text().slimax(..);
+        let text = doc.text().slice(..);
         let pos = doc.text().line_to_char(line_idx);
         let selection = doc
             .selection(view.id)
