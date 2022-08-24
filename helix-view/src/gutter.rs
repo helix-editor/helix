@@ -33,10 +33,10 @@ impl GutterType {
         }
     }
 
-    pub fn width(self, view: &View) -> usize {
+    pub fn width(self, view: &View, doc: &Document) -> usize {
         match self {
             GutterType::Diagnostics => 1,
-            GutterType::LineNumbers => line_numbers_width(view),
+            GutterType::LineNumbers => line_numbers_width(view, doc),
             GutterType::Spacer => 1,
         }
     }
@@ -91,7 +91,7 @@ pub fn line_numbers<'doc>(
 ) -> GutterFn<'doc> {
     let text = doc.text().slice(..);
     let last_line = view.last_line(doc);
-    let width = line_numbers_width(view);
+    let width = line_numbers_width(view, doc);
 
     // Whether to draw the line number for the last line of the
     // document or not.  We only draw it if it's not an empty line.
@@ -139,11 +139,8 @@ pub fn line_numbers<'doc>(
     })
 }
 
-pub fn line_numbers_width(view: &View) -> usize {
-    // TODO: allow gutter widths to be dependent on Document. Currently the
-    // width is based on full View height, not visible line numbers.
-    let last_view_line = view.offset.row + view.area.bottom() as usize;
-    count_digits(last_view_line)
+pub fn line_numbers_width(_view: &View, doc: &Document) -> usize {
+    count_digits(doc.text().len_lines() - 1)
 }
 
 pub fn padding<'doc>(

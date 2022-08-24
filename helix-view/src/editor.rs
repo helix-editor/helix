@@ -814,7 +814,7 @@ impl Editor {
             .primary()
             .cursor(doc.text().slice(..));
         let line = doc.text().char_to_line(pos);
-        view.offset.row = line.saturating_sub(view.inner_area().height as usize / 2);
+        view.offset.row = line.saturating_sub(view.inner_area(doc).height as usize / 2);
     }
 
     pub fn switch(&mut self, id: DocumentId, action: Action) {
@@ -1131,7 +1131,7 @@ impl Editor {
             .primary()
             .cursor(doc.text().slice(..));
         if let Some(mut pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
-            let inner = view.inner_area();
+            let inner = view.inner_area(doc);
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
             let cursorkind = config.cursor_shape.from_mode(doc.mode());

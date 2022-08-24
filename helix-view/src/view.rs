@@ -112,18 +112,18 @@ impl View {
         self.docs_access_history.push(id);
     }
 
-    pub fn inner_area(&self) -> Rect {
-        self.area.clip_left(self.gutter_offset()).clip_bottom(1) // -1 for statusline
+    pub fn inner_area(&self, doc: &Document) -> Rect {
+        self.area.clip_left(self.gutter_offset(doc)).clip_bottom(1) // -1 for statusline
     }
 
     pub fn gutters(&self) -> &[GutterType] {
         &self.gutters
     }
 
-    pub fn gutter_offset(&self) -> u16 {
+    pub fn gutter_offset(&self, doc: &Document) -> u16 {
         let mut offset = 0;
         for gutter in self.gutters.iter() {
-            offset += gutter.width(self) as u16
+            offset += gutter.width(self, doc) as u16
         }
         if offset > 0 {
             offset += 1
@@ -145,7 +145,7 @@ impl View {
         let Position { col, row: line } =
             visual_coords_at_pos(doc.text().slice(..), cursor, doc.tab_width());
 
-        let inner_area = self.inner_area();
+        let inner_area = self.inner_area(doc);
         let last_line = (self.offset.row + inner_area.height as usize).saturating_sub(1);
 
         // - 1 so we have at least one gap in the middle.
@@ -195,7 +195,7 @@ impl View {
     /// Calculates the last visible line on screen
     #[inline]
     pub fn last_line(&self, doc: &Document) -> usize {
-        let height = self.inner_area().height;
+        let height = self.inner_area(doc).height;
         std::cmp::min(
             // Saturating subs to make it inclusive zero indexing.
             (self.offset.row + height as usize).saturating_sub(1),
@@ -232,12 +232,13 @@ impl View {
 
     pub fn text_pos_at_screen_coords(
         &self,
-        text: &RopeSlice,
+        doc: &Document,
         row: u16,
         column: u16,
         tab_width: usize,
     ) -> Option<usize> {
-        let inner = self.inner_area();
+        let text = doc.text().slice(..);
+        let inner = self.inner_area(doc);
         // 1 for status
         if row < inner.top() || row >= inner.bottom() {
             return None;
@@ -255,7 +256,7 @@ impl View {
         let text_col = (column - inner.x) as usize + self.offset.col;
 
         Some(pos_at_visual_coords(
-            *text,
+            text,
             Position {
                 row: text_row,
                 col: text_col,
@@ -267,7 +268,7 @@ impl View {
     /// Translates a screen position to position in the text document.
     /// Returns a usize typed position in bounds of the text if found in this view, None if out of view.
     pub fn pos_at_screen_coords(&self, doc: &Document, row: u16, column: u16) -> Option<usize> {
-        self.text_pos_at_screen_coords(&doc.text().slice(..), row, column, doc.tab_width())
+        self.text_pos_at_screen_coords(doc, row, column, doc.tab_width())
     }
 
     /// Translates screen coordinates into coordinates on the gutter of the view.
@@ -320,9 +321,10 @@ impl View {
 mod tests {
     use super::*;
     use helix_core::Rope;
-    const OFFSET: u16 = 4; // 1 diagnostic + 2 linenr (based on view height digits "40") + 1 gutter
+    const OFFSET: u16 = 3; // 1 diagnostic + 1 linenr (< 10 lines) + 1 gutter
     const OFFSET_WITHOUT_LINE_NUMBERS: u16 = 2; // 1 diagnostic + 1 gutter
                                                 // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
+    use crate::document::Document;
     use crate::editor::GutterType;
 
     #[test]
@@ -333,45 +335,45 @@ mod tests {
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
-        let text = rope.slice(..);
+        let doc = Document::from(rope, None);
 
-        assert_eq!(view.text_pos_at_screen_coords(&text, 40, 2, 4), None);
+        assert_eq!(view.text_pos_at_screen_coords(&doc, 40, 2, 4), None);
 
-        assert_eq!(view.text_pos_at_screen_coords(&text, 40, 41, 4), None);
+        assert_eq!(view.text_pos_at_screen_coords(&doc, 40, 41, 4), None);
 
-        assert_eq!(view.text_pos_at_screen_coords(&text, 0, 2, 4), None);
+        assert_eq!(view.text_pos_at_screen_coords(&doc, 0, 2, 4), None);
 
-        assert_eq!(view.text_pos_at_screen_coords(&text, 0, 49, 4), None);
+        assert_eq!(view.text_pos_at_screen_coords(&doc, 0, 49, 4), None);
 
-        assert_eq!(view.text_pos_at_screen_coords(&text, 0, 41, 4), None);
+        assert_eq!(view.text_pos_at_screen_coords(&doc, 0, 41, 4), None);
 
-        assert_eq!(view.text_pos_at_screen_coords(&text, 40, 81, 4), None);
+        assert_eq!(view.text_pos_at_screen_coords(&doc, 40, 81, 4), None);
 
-        assert_eq!(view.text_pos_at_screen_coords(&text, 78, 41, 4), None);
+        assert_eq!(view.text_pos_at_screen_coords(&doc, 78, 41, 4), None);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 3, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 3, 4),
             Some(3)
         );
 
-        assert_eq!(view.text_pos_at_screen_coords(&text, 40, 80, 4), Some(3));
+        assert_eq!(view.text_pos_at_screen_coords(&doc, 40, 80, 4), Some(3));
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 41, 40 + OFFSET + 1, 4),
+            view.text_pos_at_screen_coords(&doc, 41, 40 + OFFSET + 1, 4),
             Some(4)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 41, 40 + OFFSET + 4, 4),
+            view.text_pos_at_screen_coords(&doc, 41, 40 + OFFSET + 4, 4),
             Some(5)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 41, 40 + OFFSET + 7, 4),
+            view.text_pos_at_screen_coords(&doc, 41, 40 + OFFSET + 7, 4),
             Some(8)
         );
 
-        assert_eq!(view.text_pos_at_screen_coords(&text, 41, 80, 4), Some(8));
+        assert_eq!(view.text_pos_at_screen_coords(&doc, 41, 80, 4), Some(8));
     }
 
     #[test]
@@ -379,9 +381,9 @@ mod tests {
         let mut view = View::new(DocumentId::default(), vec![GutterType::Diagnostics]);
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
-        let text = rope.slice(..);
+        let doc = Document::from(rope, None);
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 41, 40 + OFFSET_WITHOUT_LINE_NUMBERS + 1, 4),
+            view.text_pos_at_screen_coords(&doc, 41, 40 + OFFSET_WITHOUT_LINE_NUMBERS + 1, 4),
             Some(4)
         );
     }
@@ -391,11 +393,8 @@ mod tests {
         let mut view = View::new(DocumentId::default(), vec![]);
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
-        let text = rope.slice(..);
-        assert_eq!(
-            view.text_pos_at_screen_coords(&text, 41, 40 + 1, 4),
-            Some(4)
-        );
+        let doc = Document::from(rope, None);
+        assert_eq!(view.text_pos_at_screen_coords(&doc, 41, 40 + 1, 4), Some(4));
     }
 
     #[test]
@@ -406,34 +405,34 @@ mod tests {
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
-        let text = rope.slice(..);
+        let doc = Document::from(rope, None);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET, 4),
             Some(0)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 4, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 4, 4),
             Some(4)
         );
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 5, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 5, 4),
             Some(4)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 6, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 6, 4),
             Some(5)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 7, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 7, 4),
             Some(5)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 8, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 8, 4),
             Some(6)
         );
     }
@@ -446,30 +445,30 @@ mod tests {
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");
-        let text = rope.slice(..);
+        let doc = Document::from(rope, None);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET, 4),
             Some(0)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 1, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 1, 4),
             Some(1)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 2, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 2, 4),
             Some(3)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 3, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 3, 4),
             Some(5)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 4, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 4, 4),
             Some(7)
         );
     }

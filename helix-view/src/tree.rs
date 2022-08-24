@@ -482,7 +482,7 @@ impl Tree {
                     // in a vertical container (and already correct based on previous search)
                     child_id = *container.children.iter().min_by_key(|id| {
                         let x = match &self.nodes[**id].content {
-                            Content::View(view) => view.inner_area().left(),
+                            Content::View(view) => view.area.left(),
                             Content::Container(container) => container.area.left(),
                         };
                         (current_x as i16 - x as i16).abs()
@@ -493,7 +493,7 @@ impl Tree {
                     // in a horizontal container (and already correct based on previous search)
                     child_id = *container.children.iter().min_by_key(|id| {
                         let y = match &self.nodes[**id].content {
-                            Content::View(view) => view.inner_area().top(),
+                            Content::View(view) => view.area.top(),
                             Content::Container(container) => container.area.top(),
                         };
                         (current_y as i16 - y as i16).abs()

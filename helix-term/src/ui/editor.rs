@@ -76,7 +76,7 @@ impl EditorView {
         surface: &mut Surface,
         is_focused: bool,
     ) {
-        let inner = view.inner_area();
+        let inner = view.inner_area(doc);
         let area = view.area;
         let theme = &editor.theme;
 
@@ -640,7 +640,7 @@ impl EditorView {
 
         for gutter_type in view.gutters() {
             let gutter = gutter_type.row_styler(editor, doc, view, theme, is_focused);
-            let width = gutter_type.width(view);
+            let width = gutter_type.width(view, doc);
             text.reserve(width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
                 let selected = cursors.contains(&line);

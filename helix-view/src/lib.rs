@@ -53,7 +53,7 @@ pub fn align_view(doc: &Document, view: &mut View, align: Align) {
         .cursor(doc.text().slice(..));
     let line = doc.text().char_to_line(pos);
 
-    let height = view.inner_area().height as usize;
+    let height = view.inner_area(doc).height as usize;
 
     let relative = match align {
         Align::Center => height / 2,
