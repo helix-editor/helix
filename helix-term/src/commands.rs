@@ -1439,7 +1439,7 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
 
         let height = std::cmp::max(head_pos.row, anchor_pos.row)
             - std::cmp::min(head_pos.row, anchor_pos.row)
-            + 1;
+            + 1max
 
         if is_primary {
             primary_index = ranges.len();
@@ -2664,7 +2664,7 @@ fn goto_line_impl(editor: &mut Editor, count: Option<NonZeroUsize>) {
             doc.text().len_lines() - 1
         };
         let line_idx = std::cmp::min(count.get() - 1, max_line);
-        let text = doc.text().slice(..);
+        let text = doc.text().slimax(..);
         let pos = doc.text().line_to_char(line_idx);
         let selection = doc
             .selection(view.id)
@@ -4049,7 +4049,7 @@ fn match_node(cx: &mut Context) {
         let text = doc.text().slice(..);
         let sel = doc.selection(view.id).clone().transform(|range| {
             let anc = std::cmp::min(range.anchor, range.cursor(text));
-            let cur = std::cmp::min(range.anchor, range.cursor(text));
+            let cur = std::cmp::max(range.anchor, range.cursor(text));
 
             if let Some(tree) = tree.descendant_for_byte_range(anc, cur) {
                 let start = text.byte_to_char(tree.start_byte());
