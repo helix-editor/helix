@@ -389,6 +389,7 @@ impl MappableCommand {
         scroll_up, "Scroll view up",
         scroll_down, "Scroll view down",
         match_brackets, "Goto matching bracket",
+        match_node, "Match smallest selected node",
         surround_add, "Surround add",
         surround_replace, "Surround replace",
         surround_delete, "Surround delete",
@@ -4038,6 +4039,47 @@ fn match_brackets(cx: &mut Context) {
         });
         doc.set_selection(view.id, selection);
     }
+}
+
+fn match_node(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    let text = doc.text().slice(..);
+
+    let textobject_node = |range: Range| -> Range {
+        let (_lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
+            Some(t) => t,
+            None => return range,
+        };
+
+        let node = syntax.tree().root_node();
+
+        if range.anchor <= range.cursor(text) {
+            if let Some(node) = node.descendant_for_byte_range(range.anchor, range.cursor(text)) {
+                let start = text.byte_to_char(node.start_byte());
+                let end = text.byte_to_char(node.end_byte());
+
+                Range::new(start, end)
+            } else {
+                range
+            }
+        } else {
+            if let Some(node) = node.descendant_for_byte_range(range.cursor(text), range.anchor) {
+                let start = text.byte_to_char(node.start_byte());
+                let end = text.byte_to_char(node.end_byte());
+
+                Range::new(start, end)
+            } else {
+                range
+            }
+        }
+    };
+
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .transform(|range| textobject_node(range));
+    doc.set_selection(view.id, selection);
 }
 
 //

@@ -90,6 +90,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "A-x" => shrink_to_line_bounds,
 
         "m" => { "Match"
+            "n" => match_node,
             "m" => match_brackets,
             "s" => surround_add,
             "r" => surround_replace,
