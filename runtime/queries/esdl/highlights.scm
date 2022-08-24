@@ -27,17 +27,13 @@
 (comment) @comment
 
 ; Properties
-(property) @property
-(link) @property
+(property) @variable.other.member
+(link) @variable.other.member
+(annotation) @variable.other.member
 
-; Links
 (identifier) @variable
 (string) @string
 (edgeql_fragment) @string
-
-; Annotations
-; (annotation) @property
-
 ; Builtins
 
 (type) @type
