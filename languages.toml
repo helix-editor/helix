@@ -1665,5 +1665,4 @@ roots = ["edgedb.toml"]
 
 [[grammar]]
 name ="esdl"
-# source = { git = "https://github.com/greym0uth/tree-sitter-esdl", rev = "9b7fa6c7f59738f6aa9e11ee18feb71b00045ea6" }
-source = { path = "/Users/grey/Development/oss/tree-sitter-esdl" }
+source = { git = "https://github.com/greym0uth/tree-sitter-esdl", rev = "b840c8a8028127e0a7c6e6c45141adade2bd75cf" }
