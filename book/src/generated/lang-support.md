@@ -1,5 +1,6 @@
 | Language | Syntax Highlighting | Treesitter Textobjects | Auto Indent | Default LSP |
 | --- | --- | --- | --- | --- |
+| awk | ✓ | ✓ |  | `awk-language-server` |
 | bash | ✓ |  |  | `bash-language-server` |
 | beancount | ✓ |  |  |  |
 | c | ✓ | ✓ | ✓ | `clangd` |
