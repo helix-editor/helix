@@ -923,7 +923,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "dart"
-source = { git = "https://github.com/UserNobody14/tree-sitter-dart", rev = "6a25376685d1d47968c2cef06d4db8d84a70025e" }
+source = { git = "https://github.com/UserNobody14/tree-sitter-dart", rev = "2d7f66651c9319c1a0e4dda226cc2628fbb66528" }
 
 [[language]]
 name = "scala"
@@ -1493,7 +1493,6 @@ indent = { tab-width = 2, unit = "  " }
 name = "jsdoc"
 source = { git = "https://github.com/tree-sitter/tree-sitter-jsdoc", rev = "189a6a4829beb9cdbe837260653b4a3dfb0cc3db" }
 
-
 [[language]]
 name = "openscad"
 scope = "source.openscad"
@@ -1653,6 +1652,18 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "task"
 source = { git = "https://github.com/alexanderbrevig/tree-sitter-task", rev = "f2cb435c5dbf3ee19493e224485d977cb2d36d8b" }
+
+[[language]]
+name = "xit"
+scope = "source.xit"
+injection-regex = "xit"
+file-types = ["xit"]
+roots = []
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "xit"
+source = { git = "https://github.com/synaptiko/tree-sitter-xit", rev = "7d7902456061bc2ad21c64c44054f67b5515734c" }
 
 [[language]]
 name = "esdl"
