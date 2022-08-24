@@ -29,7 +29,10 @@ use std::{
 use anyhow::{Context, Error};
 
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture, Event as CrosstermEvent},
+    event::{
+        DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
+        Event as CrosstermEvent,
+    },
     execute, terminal,
     tty::IsTty,
 };
@@ -425,14 +428,13 @@ impl Application {
             scroll: None,
         };
         // Handle key events
-        let should_redraw = match event {
-            Ok(CrosstermEvent::Resize(width, height)) => {
+        let should_redraw = match event.unwrap() {
+            CrosstermEvent::Resize(width, height) => {
                 self.compositor.resize(width, height);
                 self.compositor
-                    .handle_event(Event::Resize(width, height), &mut cx)
+                    .handle_event(&Event::Resize(width, height), &mut cx)
             }
-            Ok(event) => self.compositor.handle_event(event.into(), &mut cx),
-            Err(x) => panic!("{}", x),
+            event => self.compositor.handle_event(&event.into(), &mut cx),
         };
 
         if should_redraw && !self.editor.should_close() {
@@ -788,7 +790,7 @@ impl Application {
     async fn claim_term(&mut self) -> Result<(), Error> {
         terminal::enable_raw_mode()?;
         let mut stdout = stdout();
-        execute!(stdout, terminal::EnterAlternateScreen)?;
+        execute!(stdout, terminal::EnterAlternateScreen, EnableBracketedPaste)?;
         execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
         if self.config.load().editor.mouse {
             execute!(stdout, EnableMouseCapture)?;
@@ -821,7 +823,11 @@ impl Application {
             // probably not a good idea to `unwrap()` inside a panic handler.
             // So we just ignore the `Result`s.
             let _ = execute!(std::io::stdout(), DisableMouseCapture);
-            let _ = execute!(std::io::stdout(), terminal::LeaveAlternateScreen);
+            let _ = execute!(
+                std::io::stdout(),
+                terminal::LeaveAlternateScreen,
+                DisableBracketedPaste
+            );
             let _ = terminal::disable_raw_mode();
             hook(info);
         }));

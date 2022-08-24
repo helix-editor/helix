@@ -61,7 +61,7 @@ impl<T: Component + 'static> Component for Overlay<T> {
         Some((width, height))
     }
 
-    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
         self.content.handle_event(event, ctx)
     }
 

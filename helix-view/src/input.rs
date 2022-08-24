@@ -6,12 +6,13 @@ use std::fmt;
 
 pub use crate::keyboard::{KeyCode, KeyModifiers};
 
-#[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Hash)]
 pub enum Event {
     FocusGained,
     FocusLost,
     Key(KeyEvent),
     Mouse(MouseEvent),
+    Paste(String),
     Resize(u16, u16),
 }
 
@@ -276,9 +277,7 @@ impl From<crossterm::event::Event> for Event {
             crossterm::event::Event::Resize(w, h) => Self::Resize(w, h),
             crossterm::event::Event::FocusGained => Self::FocusGained,
             crossterm::event::Event::FocusLost => Self::FocusLost,
-            crossterm::event::Event::Paste(_) => {
-                unreachable!("crossterm shouldn't emit Paste events without them being enabled")
-            }
+            crossterm::event::Event::Paste(s) => Self::Paste(s),
         }
     }
 }
