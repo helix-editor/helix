@@ -276,9 +276,6 @@ impl From<crossterm::event::Event> for Event {
             crossterm::event::Event::Resize(w, h) => Self::Resize(w, h),
             crossterm::event::Event::FocusGained => Self::FocusGained,
             crossterm::event::Event::FocusLost => Self::FocusLost,
-            crossterm::event::Event::Paste(_) => {
-                unreachable!("crossterm shouldn't emit Paste events without them being enabled")
-            }
         }
     }
 }
