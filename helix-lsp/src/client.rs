@@ -611,6 +611,7 @@ impl Client {
                 // Supported(false)
                 _ => return None,
             },
+            Some(lsp::TextDocumentSyncCapability::Kind(lsp::TextDocumentSyncKind::FULL)) => true,
             // unsupported
             _ => return None,
         };
