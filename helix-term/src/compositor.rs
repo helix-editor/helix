@@ -29,17 +29,17 @@ pub struct Context<'a> {
 
 impl<'a> Context<'a> {
     /// Waits on all pending jobs, and then tries to flush all pending write
-    /// operations for the current document.
+    /// operations for all documents.
     pub fn block_try_flush_writes(&mut self) -> anyhow::Result<()> {
         tokio::task::block_in_place(|| {
             helix_lsp::block_on(self.jobs.finish(Some(self.editor), None))
         })?;
 
-        let doc = doc_mut!(self.editor);
-
-        tokio::task::block_in_place(|| helix_lsp::block_on(doc.try_flush_saves()))
-            .map(|result| result.map(|_| ()))
-            .unwrap_or(Ok(()))?;
+        for doc in &mut self.editor.documents.values_mut() {
+            tokio::task::block_in_place(|| helix_lsp::block_on(doc.try_flush_saves()))
+                .map(|result| result.map(|_| ()))
+                .unwrap_or(Ok(()))?;
+        }
 
         Ok(())
     }

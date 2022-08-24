@@ -1,10 +1,15 @@
-use std::{io::Write, path::PathBuf, time::Duration};
+use std::{
+    fs::File,
+    io::{Read, Write},
+    path::PathBuf,
+    time::Duration,
+};
 
 use anyhow::bail;
 use crossterm::event::{Event, KeyEvent};
-use helix_core::{test, Selection, Transaction};
+use helix_core::{diagnostic::Severity, test, Selection, Transaction};
 use helix_term::{application::Application, args::Args, config::Config};
-use helix_view::{doc, input::parse_macro};
+use helix_view::{doc, input::parse_macro, Editor};
 use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -212,4 +217,21 @@ pub fn app_with_file<P: Into<PathBuf>>(path: P) -> anyhow::Result<Application> {
         },
         Config::default(),
     )
+}
+
+pub fn assert_file_has_content(file: &mut File, content: &str) -> anyhow::Result<()> {
+    file.flush()?;
+    file.sync_all()?;
+
+    let mut file_content = String::new();
+    file.read_to_string(&mut file_content)?;
+    assert_eq!(content, file_content);
+
+    Ok(())
+}
+
+pub fn assert_status_not_error(editor: &Editor) {
+    if let Some((_, sev)) = editor.get_status() {
+        assert_ne!(&Severity::Error, sev);
+    }
 }

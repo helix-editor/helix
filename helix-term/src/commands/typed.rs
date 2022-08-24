@@ -573,13 +573,20 @@ fn write_all_impl(
         return Ok(());
     }
 
-    let mut errors = String::new();
+    let mut errors: Option<String> = None;
     let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
+
     // save all documents
     for doc in &mut cx.editor.documents.values_mut() {
         if doc.path().is_none() {
-            errors.push_str("cannot write a buffer without a filename\n");
+            errors = errors
+                .or_else(|| Some(String::new()))
+                .map(|mut errs: String| {
+                    errs.push_str("cannot write a buffer without a filename\n");
+                    errs
+                });
+
             continue;
         }
 
@@ -591,7 +598,7 @@ fn write_all_impl(
             doc.auto_format().map(|fmt| {
                 let callback =
                     make_format_callback(doc.id(), doc.version(), fmt, Some((None, force)));
-                jobs.callback(callback);
+                jobs.add(Job::with_callback(callback).wait_before_exiting());
             })
         } else {
             None
@@ -603,11 +610,11 @@ fn write_all_impl(
     }
 
     if quit {
+        cx.block_try_flush_writes()?;
+
         if !force {
             buffers_remaining_impl(cx.editor)?;
         }
-
-        cx.block_try_flush_writes()?;
 
         // close all views
         let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
@@ -616,7 +623,13 @@ fn write_all_impl(
         }
     }
 
-    bail!(errors)
+    if let Some(errs) = errors {
+        if !force {
+            bail!(errs);
+        }
+    }
+
+    Ok(())
 }
 
 fn write_all(

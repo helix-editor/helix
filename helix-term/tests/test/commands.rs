@@ -1,7 +1,4 @@
-use std::{
-    io::{Read, Write},
-    ops::RangeInclusive,
-};
+use std::ops::RangeInclusive;
 
 use helix_core::diagnostic::Severity;
 use helix_term::application::Application;
@@ -86,12 +83,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     )
     .await?;
 
-    file.as_file_mut().flush()?;
-    file.as_file_mut().sync_all()?;
-
-    let mut file_content = String::new();
-    file.as_file_mut().read_to_string(&mut file_content)?;
-    assert_eq!(RANGE.end().to_string(), file_content);
+    helpers::assert_file_has_content(file.as_file_mut(), &RANGE.end().to_string())?;
 
     Ok(())
 }
