@@ -1,18 +1,17 @@
 (
   (source_file
-    (
-      (string_literal) @injection.content
-      [
-        (module_definition)
-        (function_definition)
-        (macro_definition)
-        (primitive_definition)
-        (abstract_definition)
-        (struct_definition)
-        (assignment_expression)
-        (const_statement)
-      ]
-    ))
+    (string_literal) @injection.content
+    .
+    [
+      (module_definition)
+      (function_definition)
+      (macro_definition)
+      (primitive_definition)
+      (abstract_definition)
+      (struct_definition)
+      (assignment_expression)
+      (const_statement)
+    ])
   (#set! injection.language "markdown"))
 
 (
