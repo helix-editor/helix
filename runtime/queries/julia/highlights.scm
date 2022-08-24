@@ -85,8 +85,11 @@
 ; Function definition
 ; -------------------
 
-(function_definition
-  name: (identifier) @function)
+(
+  (function_definition
+    name: (identifier) @function)
+  ; prevent constructors (PascalCase) to be highlighted as functions
+  (#match? @function "^[^A-Z]"))
 
 (parameter_list
   (identifier) @variable.parameter)
@@ -108,17 +111,26 @@
 ; Functions calls
 ; ---------------
 
-(call_expression
-  (identifier) @function)
+(
+  (call_expression
+    (identifier) @function)
+  ; prevent constructors (PascalCase) to be highlighted as functions
+  (#match? @function "^[^A-Z]"))
 
-(broadcast_call_expression
-  (identifier) @function)
+(
+  (broadcast_call_expression
+    (identifier) @function)
+  (#match? @function "^[^A-Z]"))
 
-(call_expression
-  (field_expression (identifier) @function .))
+(
+  (call_expression
+    (field_expression (identifier) @function .))
+  (#match? @function "^[^A-Z]"))
 
-(broadcast_call_expression
-  (field_expression (identifier) @function .))
+(
+  (broadcast_call_expression
+    (field_expression (identifier) @function .))
+  (#match? @function "^[^A-Z]"))
 
 ; ------
 ; Macros
@@ -228,19 +240,25 @@
 ; Remaining identifiers
 ; ---------------------
 
-; could also be namespace but this should cover the majority
-(field_expression
-  . (_)
-  (identifier) @variable.other.member)
-
 (const_statement
   (variable_declaration
     . (identifier) @constant))
 
-((identifier) @type
-  (match? @type "([A-Z][a-z0-9]+)+$"))
+; SCREAMING_SNAKE_CASE
+(
+  (identifier) @constant
+  (match? @constant "^[A-Z][A-Z0-9_]*$"))
 
-((identifier) @constant
-  (match? @constant "^[A-Z][A-Z0-9_]+$"))
+; remaining identifiers that start with capital letters should be types (PascalCase)
+(
+  (identifier) @type
+  (match? @type "^[A-Z]"))
+
+; Field expressions are either module content or struct fields.
+; Module types and constants should already be captured, so this
+; assumes the remaining identifiers to be struct fields.
+(field_expression
+  (_)
+  (identifier) @variable.other.member)
 
 (identifier) @variable
