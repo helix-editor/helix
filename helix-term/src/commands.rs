@@ -4044,42 +4044,23 @@ fn match_brackets(cx: &mut Context) {
 fn match_node(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
-    let text = doc.text().slice(..);
+    if let Some((_lang_config, syntax)) = doc.language_config().zip(doc.syntax()) {
+        let tree = syntax.tree().root_node();
+        let text = doc.text().slice(..);
+        let sel = doc.selection(view.id).clone().transform(|range| {
+            let anc = std::cmp::min(range.anchor, range.cursor(text));
+            let cur = std::cmp::min(range.anchor, range.cursor(text));
 
-    let textobject_node = |range: Range| -> Range {
-        let (_lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
-            Some(t) => t,
-            None => return range,
-        };
-
-        let node = syntax.tree().root_node();
-
-        if range.anchor <= range.cursor(text) {
-            if let Some(node) = node.descendant_for_byte_range(range.anchor, range.cursor(text)) {
-                let start = text.byte_to_char(node.start_byte());
-                let end = text.byte_to_char(node.end_byte());
-
+            if let Some(tree) = tree.descendant_for_byte_range(anc, cur) {
+                let start = text.byte_to_char(tree.start_byte());
+                let end = text.byte_to_char(tree.end_byte());
                 Range::new(start, end)
             } else {
                 range
             }
-        } else {
-            if let Some(node) = node.descendant_for_byte_range(range.cursor(text), range.anchor) {
-                let start = text.byte_to_char(node.start_byte());
-                let end = text.byte_to_char(node.end_byte());
-
-                Range::new(start, end)
-            } else {
-                range
-            }
-        }
-    };
-
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| textobject_node(range));
-    doc.set_selection(view.id, selection);
+        });
+        doc.set_selection(view.id, sel);
+    }
 }
 
 //
