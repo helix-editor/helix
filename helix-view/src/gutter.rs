@@ -33,10 +33,10 @@ impl GutterType {
         }
     }
 
-    pub fn width(self, view: &View, doc: &Document) -> usize {
+    pub fn width(self, _view: &View, doc: &Document) -> usize {
         match self {
             GutterType::Diagnostics => 1,
-            GutterType::LineNumbers => line_numbers_width(view, doc),
+            GutterType::LineNumbers => line_numbers_width(_view, doc),
             GutterType::Spacer => 1,
         }
     }
@@ -91,7 +91,7 @@ pub fn line_numbers<'doc>(
 ) -> GutterFn<'doc> {
     let text = doc.text().slice(..);
     let last_line = view.last_line(doc);
-    let width = line_numbers_width(view, doc);
+    let width = GutterType::LineNumbers.width(view, doc);
 
     // Whether to draw the line number for the last line of the
     // document or not.  We only draw it if it's not an empty line.
@@ -131,16 +131,20 @@ pub fn line_numbers<'doc>(
                 linenr
             };
 
-            // if line number overflows maximum alotted width, truncate start
             write!(out, "{:>1$}", display_num, width).unwrap();
-
             Some(style)
         }
     })
 }
 
-pub fn line_numbers_width(_view: &View, doc: &Document) -> usize {
-    count_digits(doc.text().len_lines() - 1)
+pub fn line_numbers_width<'doc>(_view: &View, doc: &'doc Document) -> usize {
+    let text = doc.text();
+    let last_line = text.len_lines().saturating_sub(1);
+    let draw_last = text.line_to_byte(last_line) < text.len_bytes();
+    let last_drawn = if draw_last { last_line + 1 } else { last_line };
+
+    // set a lower bound to 2-chars to minimize ambiguous relative line numbers
+    std::cmp::max(count_digits(last_drawn), 2)
 }
 
 pub fn padding<'doc>(
