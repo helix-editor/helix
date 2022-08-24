@@ -67,6 +67,20 @@ name = "toml"
 source = { git = "https://github.com/ikatyang/tree-sitter-toml", rev = "7cff70bbcbbc62001b465603ca1ea88edd668704" }
 
 [[language]]
+name = "awk"
+scope = "source.awk"
+injection-regex = "awk"
+file-types = ["awk", "gawk", "nawk", "mawk"]
+roots = []
+comment-token = "#"
+language-server = { command = "awk-language-server" }
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "awk"
+source = { git = "https://github.com/Beaglefoot/tree-sitter-awk", rev = "a799bc5da7c2a84bc9a06ba5f3540cf1191e4ee3" }
+
+[[language]]
 name = "protobuf"
 scope = "source.proto"
 injection-regex = "protobuf"
