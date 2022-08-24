@@ -1653,3 +1653,16 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "task"
 source = { git = "https://github.com/alexanderbrevig/tree-sitter-task", rev = "f2cb435c5dbf3ee19493e224485d977cb2d36d8b" }
+
+[[language]]
+name = "esdl"
+scope = "source.esdl"
+injection-regex = "esdl"
+file-types = ["esdl"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+roots = ["edgedb.toml"]
+
+[[grammar]]
+name ="esdl"
+source = { git = "https://github.com/greym0uth/tree-sitter-esdl", rev = "b840c8a8028127e0a7c6e6c45141adade2bd75cf" }
