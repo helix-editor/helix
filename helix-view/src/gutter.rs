@@ -137,7 +137,7 @@ pub fn line_numbers<'doc>(
     })
 }
 
-pub fn line_numbers_width<'doc>(_view: &View, doc: &'doc Document) -> usize {
+pub fn line_numbers_width(_view: &View, doc: &Document) -> usize {
     let text = doc.text();
     let last_line = text.len_lines().saturating_sub(1);
     let draw_last = text.line_to_byte(last_line) < text.len_bytes();
