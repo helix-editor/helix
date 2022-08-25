@@ -399,34 +399,33 @@ impl LanguageConfiguration {
 
     pub fn indent_query(&self) -> Option<&Query> {
         self.indent_query
-            .get_or_init(|| {
-                let lang_name = self.language_id.to_ascii_lowercase();
-                let query_text = read_query(&lang_name, "indents.scm");
-                if query_text.is_empty() {
-                    return None;
-                }
-                let lang = self.highlight_config.get()?.as_ref()?.language;
-                Query::new(lang, &query_text).ok()
-            })
+            .get_or_init(|| self.load_query("indents.scm"))
             .as_ref()
     }
 
     pub fn textobject_query(&self) -> Option<&TextObjectQuery> {
         self.textobject_query
-            .get_or_init(|| -> Option<TextObjectQuery> {
-                let lang_name = self.language_id.to_ascii_lowercase();
-                let query_text = read_query(&lang_name, "textobjects.scm");
-                let lang = self.highlight_config.get()?.as_ref()?.language;
-                let query = Query::new(lang, &query_text)
-                    .map_err(|e| log::error!("Failed to parse textobjects.scm queries: {}", e))
-                    .ok()?;
-                Some(TextObjectQuery { query })
+            .get_or_init(|| {
+                self.load_query("textobjects.scm")
+                    .map(|query| TextObjectQuery { query })
             })
             .as_ref()
     }
 
     pub fn scope(&self) -> &str {
         &self.scope
+    }
+
+    fn load_query(&self, kind: &str) -> Option<Query> {
+        let lang_name = self.language_id.to_ascii_lowercase();
+        let query_text = read_query(&lang_name, kind);
+        if query_text.is_empty() {
+            return None;
+        }
+        let lang = self.highlight_config.get()?.as_ref()?.language;
+        Query::new(lang, &query_text)
+            .map_err(|e| log::error!("Failed to parse {} queries for {}: {}", kind, lang_name, e))
+            .ok()
     }
 }
 
