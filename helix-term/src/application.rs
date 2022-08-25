@@ -445,14 +445,17 @@ impl Application {
             signal::SIGTSTP => {
                 self.restore_term().unwrap();
 
-                // A pid of 0 sends the signal to the entire process group, allowing the user to
-                // regain control of their terminal if the editor was spawned under another process
-                // (e.g. when running `git commit`).
-                nix::sys::signal::kill(
-                    nix::unistd::Pid::from_raw(0),
-                    Some(nix::sys::signal::SIGSTOP),
-                )
-                .unwrap();
+                let res = unsafe {
+                    // A pid of 0 sends the signal to the entire process group, allowing the user to
+                    // regain control of their terminal if the editor was spawned under another process
+                    // (e.g. when running `git commit`).
+                    libc::kill(0, signal::SIGSTOP)
+                };
+
+                if res != 0 {
+                    eprintln!("{}", std::io::Error::from_raw_os_error(res));
+                    std::process::exit(res);
+                }
             }
             signal::SIGCONT => {
                 self.claim_term().await.unwrap();
