@@ -260,10 +260,4 @@ You can check compliance to spec with
 cargo xtask themelint onedark # replace onedark with <name>
 ```
 
-Find all themes with issues with
-
-```shell
-cargo xtask themelint 2> /dev/null | jq 'keys'
-```
-
 [editor-section]: ./configuration.md#editor-section

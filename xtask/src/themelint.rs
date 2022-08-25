@@ -1,18 +1,36 @@
 use crate::path;
 use crate::DynError;
+use helix_view::theme::Modifier;
 use helix_view::Theme;
 
 struct Rule {
     fg: Option<String>,
     bg: Option<String>,
+    check_both: bool,
 }
 
 // Placed in an fn here, so it's the first thing you see
 fn get_rules() -> Vec<Rule> {
     vec![
+        // Check for ui.selection, which is required
+        Rule::has_either("ui.selection".into()),
+        // Check for planned readable text
         Rule::has_fg_bg("ui.text".into(), "ui.background".into()),
+        // Check for complete editor.statusline bare minimum
         Rule::has_both("ui.statusline".into()),
+        // Check for editor.color-modes
+        Rule::has_either("ui.statusline.insert".into()),
+        Rule::has_either("ui.statusline.normal".into()),
+        Rule::has_either("ui.statusline.select".into()),
+        // Check for editor.cursorline
+        Rule::has_bg("ui.cursorline".into()),
+        // Check for editor.rulers
         Rule::has_bg("ui.virtual.ruler".into()),
+        // Check for menus and prompts
+        Rule::has_both("ui.menu".into()),
+        // Check for visible cursor
+        Rule::has_bg("ui.cursor.primary".into()),
+        Rule::has_bg("ui.cursor.match".into()),
     ]
 }
 
@@ -21,29 +39,64 @@ impl Rule {
         Rule {
             fg: Some(fg),
             bg: Some(bg),
+            check_both: true,
         }
     }
     fn has_bg(bg: String) -> Rule {
         Rule {
             fg: None,
             bg: Some(bg),
+            check_both: true,
+        }
+    }
+    fn has_fg(fg: String) -> Rule {
+        Rule {
+            fg: Some(fg),
+            bg: None,
+            check_both: true,
+        }
+    }
+    fn has_either(item: String) -> Rule {
+        Rule {
+            fg: Some(item.clone()),
+            bg: Some(item),
+            check_both: false,
         }
     }
     fn has_both(item: String) -> Rule {
         Rule {
             fg: Some(item.clone()),
             bg: Some(item),
+            check_both: true,
         }
     }
     fn validate(&self, theme: &Theme, messages: &mut Vec<String>) {
+        let mut found_fg = true;
+        let mut found_bg = true;
+        let mut fg_name = "";
+        let mut bg_name = "";
         if let Some(fg) = &self.fg {
-            if theme.get(fg).fg.is_none() {
-                messages.push(format!("{}.fg", fg.clone()));
+            fg_name = fg;
+            if theme.get(fg).fg.is_none() && theme.get(fg).add_modifier == Modifier::empty() {
+                found_fg = false;
             }
         }
         if let Some(bg) = &self.bg {
-            if theme.get(bg).bg.is_none() {
-                messages.push(format!("{}.bg", bg.clone()));
+            bg_name = bg;
+            if theme.get(bg).bg.is_none() && theme.get(bg).add_modifier == Modifier::empty() {
+                found_bg = false;
+            }
+        }
+        if self.check_both {
+            if !found_fg {
+                messages.push(format!("{}.fg", fg_name.clone()));
+            }
+            if !found_bg {
+                messages.push(format!("{}.bg", bg_name.clone()));
+            }
+        } else {
+            if !found_fg && !found_bg {
+                messages.push(format!("{}", fg_name))
             }
         }
     }
@@ -60,7 +113,7 @@ pub fn lint(file: String) -> Result<(), DynError> {
         .for_each(|rule| rule.validate(&theme, &mut messages));
 
     if messages.len() > 0 {
-        Err(messages
+        let message: String = messages
             .iter()
             .map(|m| {
                 let mut msg = file.clone();
@@ -70,7 +123,9 @@ pub fn lint(file: String) -> Result<(), DynError> {
             })
             .collect::<Vec<String>>()
             .join(" ")
-            .into())
+            .into();
+        println!("{}", message.replace(" ", "\n"));
+        Err(messages.len().to_string().into())
     } else {
         Ok(())
     }
@@ -95,18 +150,14 @@ pub fn lint_all() -> Result<(), DynError> {
         .into_iter()
         .for_each(|path| match lint(path.replace(".toml", "")) {
             Err(err) => {
-                let errs: String = err.to_string();
+                let errs: i32 = err.to_string().parse().expect("Errors must be integral");
                 errors.push(errs)
             }
             _ => return,
         });
-    println!(
-        "\"status\":\"{} of {} themes had issues\"}}",
-        errors.len(),
-        files_count
-    );
+    println!("{} of {} themes had issues", errors.len(), files_count);
     if errors.len() > 0 {
-        Err(errors.join(" ").into())
+        Err(errors.iter().sum::<i32>().to_string().into())
     } else {
         Ok(())
     }
