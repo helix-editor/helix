@@ -667,7 +667,7 @@ language-server = { command = "lua-language-server", args = [] }
 
 [[grammar]]
 name = "lua"
-source = { git = "https://github.com/nvim-treesitter/tree-sitter-lua", rev = "6f5d40190ec8a0aa8c8410699353d820f4f7d7a6" }
+source = { git = "https://github.com/MunifTanjim/tree-sitter-lua", rev = "887dfd4e83c469300c279314ff1619b1d0b85b91" }
 
 [[language]]
 name = "svelte"
