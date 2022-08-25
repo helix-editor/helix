@@ -2587,6 +2587,8 @@ fn normal_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     if doc.mode == Mode::Normal {
+        // escape out of current selection if any
+        doc.set_selection(view.id, doc.selection(view.id).clone().into_point());
         return;
     }
 

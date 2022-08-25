@@ -483,6 +483,11 @@ impl Selection {
         Self::single(pos, pos)
     }
 
+    /// Converts selection to point
+    pub fn into_point(self) -> Self {
+        Self::single(self.ranges[0].anchor, self.ranges[0].anchor)
+    }
+
     /// Normalizes a `Selection`.
     fn normalize(mut self) -> Self {
         let primary = self.ranges[self.primary_index];
