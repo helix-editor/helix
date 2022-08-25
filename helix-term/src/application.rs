@@ -40,10 +40,7 @@ use anyhow::{Context, Error};
 
 use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 #[cfg(not(windows))]
-use {
-    signal_hook::{consts::signal, low_level},
-    signal_hook_tokio::Signals,
-};
+use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
@@ -447,7 +444,15 @@ impl Application {
         match signal {
             signal::SIGTSTP => {
                 self.restore_term().unwrap();
-                low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
+
+                // A pid of 0 sends the signal to the entire process group, allowing the user to
+                // regain control of their terminal if the editor was spawned under another process
+                // (e.g. when running `git commit`).
+                nix::sys::signal::kill(
+                    nix::unistd::Pid::from_raw(0),
+                    Some(nix::sys::signal::SIGSTOP),
+                )
+                .unwrap();
             }
             signal::SIGCONT => {
                 self.claim_term().await.unwrap();

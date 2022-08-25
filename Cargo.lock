@@ -854,7 +854,7 @@ checksum = "a20cebf73229debaa82574c4fd20dcaf00fa8d4bfce823a862c4e990d7a0b5b4"
 dependencies = [
  "gix-command",
  "gix-config-value",
- "nix",
+ "nix 0.26.1",
  "parking_lot",
  "thiserror",
 ]
@@ -1178,6 +1178,7 @@ dependencies = [
  "ignore",
  "indoc",
  "log",
+ "nix 0.25.1",
  "once_cell",
  "pulldown-cmark",
  "serde",
@@ -1506,6 +1507,18 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys 0.42.0",
+]
+
+[[package]]
+name = "nix"
+version = "0.25.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f346ff70e7dbfd675fe90590b92d59ef2de15a8779ae305ebcbfd3f0caf59be4"
+dependencies = [
+ "autocfg",
+ "bitflags",
+ "cfg-if",
+ "libc",
 ]
 
 [[package]]
