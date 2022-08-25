@@ -76,6 +76,7 @@
 | odin | ✓ |  |  | `ols` |
 | openscad | ✓ |  |  | `openscad-language-server` |
 | org | ✓ |  |  |  |
+| pascal | ✓ | ✓ |  | `pasls` |
 | perl | ✓ | ✓ | ✓ |  |
 | php | ✓ | ✓ | ✓ | `intelephense` |
 | prisma | ✓ |  |  | `prisma-language-server` |
