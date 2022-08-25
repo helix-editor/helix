@@ -1475,6 +1475,7 @@ name = "xtask"
 version = "0.6.0"
 dependencies = [
  "helix-core",
+ "helix-loader",
  "helix-term",
  "toml",
 ]
