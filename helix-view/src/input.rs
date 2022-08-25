@@ -4,14 +4,62 @@ use helix_core::unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidth
 use serde::de::{self, Deserialize, Deserializer};
 use std::fmt;
 
-use crate::keyboard::{KeyCode, KeyModifiers};
+pub use crate::keyboard::{KeyCode, KeyModifiers};
 
+#[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum Event {
+    FocusGained,
+    FocusLost,
+    Key(KeyEvent),
+    Mouse(MouseEvent),
+    Resize(u16, u16),
+}
+
+#[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct MouseEvent {
+    /// The kind of mouse event that was caused.
+    pub kind: MouseEventKind,
+    /// The column that the event occurred on.
+    pub column: u16,
+    /// The row that the event occurred on.
+    pub row: u16,
+    /// The key modifiers active when the event occurred.
+    pub modifiers: KeyModifiers,
+}
+
+#[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum MouseEventKind {
+    /// Pressed mouse button. Contains the button that was pressed.
+    Down(MouseButton),
+    /// Released mouse button. Contains the button that was released.
+    Up(MouseButton),
+    /// Moved the mouse cursor while pressing the contained mouse button.
+    Drag(MouseButton),
+    /// Moved the mouse cursor while not pressing a mouse button.
+    Moved,
+    /// Scrolled mouse wheel downwards (towards the user).
+    ScrollDown,
+    /// Scrolled mouse wheel upwards (away from the user).
+    ScrollUp,
+}
+
+/// Represents a mouse button.
+#[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum MouseButton {
+    /// Left mouse button.
+    Left,
+    /// Right mouse button.
+    Right,
+    /// Middle mouse button.
+    Middle,
+}
 /// Represents a key event.
 // We use a newtype here because we want to customize Deserialize and Display.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub struct KeyEvent {
     pub code: KeyCode,
     pub modifiers: KeyModifiers,
+    // TODO: crossterm now supports kind & state if terminal supports kitty's extended protocol
 }
 
 impl KeyEvent {
@@ -220,8 +268,72 @@ impl<'de> Deserialize<'de> for KeyEvent {
 }
 
 #[cfg(feature = "term")]
+impl From<crossterm::event::Event> for Event {
+    fn from(event: crossterm::event::Event) -> Self {
+        match event {
+            crossterm::event::Event::Key(key) => Self::Key(key.into()),
+            crossterm::event::Event::Mouse(mouse) => Self::Mouse(mouse.into()),
+            crossterm::event::Event::Resize(w, h) => Self::Resize(w, h),
+            crossterm::event::Event::FocusGained => Self::FocusGained,
+            crossterm::event::Event::FocusLost => Self::FocusLost,
+            crossterm::event::Event::Paste(_) => {
+                unreachable!("crossterm shouldn't emit Paste events without them being enabled")
+            }
+        }
+    }
+}
+
+#[cfg(feature = "term")]
+impl From<crossterm::event::MouseEvent> for MouseEvent {
+    fn from(
+        crossterm::event::MouseEvent {
+            kind,
+            column,
+            row,
+            modifiers,
+        }: crossterm::event::MouseEvent,
+    ) -> Self {
+        Self {
+            kind: kind.into(),
+            column,
+            row,
+            modifiers: modifiers.into(),
+        }
+    }
+}
+
+#[cfg(feature = "term")]
+impl From<crossterm::event::MouseEventKind> for MouseEventKind {
+    fn from(kind: crossterm::event::MouseEventKind) -> Self {
+        match kind {
+            crossterm::event::MouseEventKind::Down(button) => Self::Down(button.into()),
+            crossterm::event::MouseEventKind::Up(button) => Self::Down(button.into()),
+            crossterm::event::MouseEventKind::Drag(button) => Self::Drag(button.into()),
+            crossterm::event::MouseEventKind::Moved => Self::Moved,
+            crossterm::event::MouseEventKind::ScrollDown => Self::ScrollDown,
+            crossterm::event::MouseEventKind::ScrollUp => Self::ScrollUp,
+        }
+    }
+}
+
+#[cfg(feature = "term")]
+impl From<crossterm::event::MouseButton> for MouseButton {
+    fn from(button: crossterm::event::MouseButton) -> Self {
+        match button {
+            crossterm::event::MouseButton::Left => MouseButton::Left,
+            crossterm::event::MouseButton::Right => MouseButton::Right,
+            crossterm::event::MouseButton::Middle => MouseButton::Middle,
+        }
+    }
+}
+
+#[cfg(feature = "term")]
 impl From<crossterm::event::KeyEvent> for KeyEvent {
-    fn from(crossterm::event::KeyEvent { code, modifiers }: crossterm::event::KeyEvent) -> Self {
+    fn from(
+        crossterm::event::KeyEvent {
+            code, modifiers, ..
+        }: crossterm::event::KeyEvent,
+    ) -> Self {
         if code == crossterm::event::KeyCode::BackTab {
             // special case for BackTab -> Shift-Tab
             let mut modifiers: KeyModifiers = modifiers.into();
@@ -249,11 +361,15 @@ impl From<KeyEvent> for crossterm::event::KeyEvent {
             crossterm::event::KeyEvent {
                 code: crossterm::event::KeyCode::BackTab,
                 modifiers: modifiers.into(),
+                kind: crossterm::event::KeyEventKind::Press,
+                state: crossterm::event::KeyEventState::NONE,
             }
         } else {
             crossterm::event::KeyEvent {
                 code: code.into(),
                 modifiers: modifiers.into(),
+                kind: crossterm::event::KeyEventKind::Press,
+                state: crossterm::event::KeyEventState::NONE,
             }
         }
     }

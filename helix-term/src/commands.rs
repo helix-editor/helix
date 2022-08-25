@@ -28,11 +28,12 @@ use helix_core::{
 };
 use helix_view::{
     clipboard::ClipboardType,
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
+    tree,
     view::View,
     Document, DocumentId, Editor, ViewId,
 };
@@ -766,7 +767,7 @@ fn trim_selections(cx: &mut Context) {
         .selection(view.id)
         .iter()
         .filter_map(|range| {
-            if range.is_empty() || range.fragment(text).chars().all(|ch| ch.is_whitespace()) {
+            if range.is_empty() || range.slice(text).chars().all(|ch| ch.is_whitespace()) {
                 return None;
             }
             let mut start = range.from();
@@ -875,8 +876,8 @@ fn goto_window(cx: &mut Context, align: Align) {
     let last_line = view.last_line(doc);
 
     let line = match align {
-        Align::Top => (view.offset.row + scrolloff + count),
-        Align::Center => (view.offset.row + ((last_line - view.offset.row) / 2)),
+        Align::Top => view.offset.row + scrolloff + count,
+        Align::Center => view.offset.row + ((last_line - view.offset.row) / 2),
         Align::Bottom => last_line.saturating_sub(scrolloff + count),
     }
     .max(view.offset.row + scrolloff)
@@ -1289,12 +1290,12 @@ fn replace(cx: &mut Context) {
 
 fn switch_case_impl<F>(cx: &mut Context, change_fn: F)
 where
-    F: Fn(Cow<str>) -> Tendril,
+    F: Fn(RopeSlice) -> Tendril,
 {
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        let text: Tendril = change_fn(range.fragment(doc.text().slice(..)));
+        let text: Tendril = change_fn(range.slice(doc.text().slice(..)));
 
         (range.from(), range.to(), Some(text))
     });
@@ -1320,11 +1321,15 @@ fn switch_case(cx: &mut Context) {
 }
 
 fn switch_to_uppercase(cx: &mut Context) {
-    switch_case_impl(cx, |string| string.to_uppercase().into());
+    switch_case_impl(cx, |string| {
+        string.chunks().map(|chunk| chunk.to_uppercase()).collect()
+    });
 }
 
 fn switch_to_lowercase(cx: &mut Context) {
-    switch_case_impl(cx, |string| string.to_lowercase().into());
+    switch_case_impl(cx, |string| {
+        string.chunks().map(|chunk| chunk.to_lowercase()).collect()
+    });
 }
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
@@ -2471,14 +2476,14 @@ async fn make_format_callback(
     doc_id: DocumentId,
     doc_version: i32,
     modified: Modified,
-    format: impl Future<Output = helix_lsp::util::LspFormatting> + Send + 'static,
+    format: impl Future<Output = Result<Transaction, FormatterError>> + Send + 'static,
 ) -> anyhow::Result<job::Callback> {
-    let format = format.await;
+    let format = format.await?;
     let call: job::Callback = Box::new(move |editor, _compositor| {
         let view_id = view!(editor).id;
         if let Some(doc) = editor.document_mut(doc_id) {
             if doc.version() == doc_version {
-                doc.apply(&Transaction::from(format), view_id);
+                doc.apply(&format, view_id);
                 doc.append_changes_to_history(view_id);
                 doc.detect_indent_and_line_ending();
                 if let Modified::SetUnmodified = modified {
@@ -3903,8 +3908,8 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
 
     let selection = doc.selection(view.id);
     let mut fragments: Vec<_> = selection
-        .fragments(text)
-        .map(|fragment| Tendril::from(fragment.as_ref()))
+        .slices(text)
+        .map(|fragment| fragment.chunks().collect())
         .collect();
 
     let group = count
@@ -4076,35 +4081,35 @@ fn rotate_view(cx: &mut Context) {
 }
 
 fn jump_view_right(cx: &mut Context) {
-    cx.editor.focus_right()
+    cx.editor.focus_direction(tree::Direction::Right)
 }
 
 fn jump_view_left(cx: &mut Context) {
-    cx.editor.focus_left()
+    cx.editor.focus_direction(tree::Direction::Left)
 }
 
 fn jump_view_up(cx: &mut Context) {
-    cx.editor.focus_up()
+    cx.editor.focus_direction(tree::Direction::Up)
 }
 
 fn jump_view_down(cx: &mut Context) {
-    cx.editor.focus_down()
+    cx.editor.focus_direction(tree::Direction::Down)
 }
 
 fn swap_view_right(cx: &mut Context) {
-    cx.editor.swap_right()
+    cx.editor.swap_split_in_direction(tree::Direction::Right)
 }
 
 fn swap_view_left(cx: &mut Context) {
-    cx.editor.swap_left()
+    cx.editor.swap_split_in_direction(tree::Direction::Left)
 }
 
 fn swap_view_up(cx: &mut Context) {
-    cx.editor.swap_up()
+    cx.editor.swap_split_in_direction(tree::Direction::Up)
 }
 
 fn swap_view_down(cx: &mut Context) {
-    cx.editor.swap_down()
+    cx.editor.swap_split_in_direction(tree::Direction::Down)
 }
 
 fn transpose_view(cx: &mut Context) {
@@ -4328,10 +4333,12 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'o' => textobject_treesitter("comment", range),
                         't' => textobject_treesitter("test", range),
                         'p' => textobject::textobject_paragraph(text, range, objtype, count),
-                        'm' => textobject::textobject_surround_closest(text, range, objtype, count),
+                        'm' => textobject::textobject_pair_surround_closest(
+                            text, range, objtype, count,
+                        ),
                         // TODO: cancel new ranges if inconsistent surround matches across lines
                         ch if !ch.is_ascii_alphanumeric() => {
-                            textobject::textobject_surround(text, range, objtype, ch, count)
+                            textobject::textobject_pair_surround(text, range, objtype, ch, count)
                         }
                         _ => range,
                     }
@@ -4357,7 +4364,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
             ("a", "Argument/parameter (tree-sitter)"),
             ("o", "Comment (tree-sitter)"),
             ("t", "Test (tree-sitter)"),
-            ("m", "Matching delimiter under cursor"),
+            ("m", "Closest surrounding pair to cursor"),
             (" ", "... or any character acting as a pair"),
         ];
 
@@ -4510,8 +4517,8 @@ fn shell_keep_pipe(cx: &mut Context) {
             let text = doc.text().slice(..);
 
             for (i, range) in selection.ranges().iter().enumerate() {
-                let fragment = range.fragment(text);
-                let (_output, success) = match shell_impl(shell, input, Some(fragment.as_bytes())) {
+                let fragment = range.slice(text);
+                let (_output, success) = match shell_impl(shell, input, Some(fragment)) {
                     Ok(result) => result,
                     Err(err) => {
                         cx.editor.set_error(err.to_string());
@@ -4542,20 +4549,24 @@ fn shell_keep_pipe(cx: &mut Context) {
 fn shell_impl(
     shell: &[String],
     cmd: &str,
-    input: Option<&[u8]>,
+    input: Option<RopeSlice>,
 ) -> anyhow::Result<(Tendril, bool)> {
     use std::io::Write;
     use std::process::{Command, Stdio};
     ensure!(!shell.is_empty(), "No shell set");
 
-    let mut process = match Command::new(&shell[0])
+    let mut process = Command::new(&shell[0]);
+    process
         .args(&shell[1..])
         .arg(cmd)
-        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-    {
+        .stderr(Stdio::piped());
+
+    if input.is_some() || cfg!(windows) {
+        process.stdin(Stdio::piped());
+    }
+
+    let mut process = match process.spawn() {
         Ok(process) => process,
         Err(e) => {
             log::error!("Failed to start shell: {}", e);
@@ -4564,7 +4575,9 @@ fn shell_impl(
     };
     if let Some(input) = input {
         let mut stdin = process.stdin.take().unwrap();
-        stdin.write_all(input)?;
+        for chunk in input.chunks() {
+            stdin.write_all(chunk.as_bytes())?;
+        }
     }
     let output = process.wait_with_output()?;
 
@@ -4593,8 +4606,8 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let text = doc.text().slice(..);
 
     for range in selection.ranges() {
-        let fragment = range.fragment(text);
-        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment.as_bytes())) {
+        let fragment = range.slice(text);
+        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment)) {
             Ok(result) => result,
             Err(err) => {
                 cx.editor.set_error(err.to_string());
@@ -4836,7 +4849,7 @@ fn replay_macro(cx: &mut Context) {
     cx.callback = Some(Box::new(move |compositor, cx| {
         for _ in 0..count {
             for &key in keys.iter() {
-                compositor.handle_event(crossterm::event::Event::Key(key.into()), cx);
+                compositor.handle_event(compositor::Event::Key(key), cx);
             }
         }
         // The macro under replay is cleared at the end of the callback, not in the

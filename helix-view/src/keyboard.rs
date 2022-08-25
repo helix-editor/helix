@@ -55,7 +55,6 @@ impl From<crossterm::event::KeyModifiers> for KeyModifiers {
 
 /// Represents a key.
 #[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum KeyCode {
     /// Backspace key.
     Backspace,
@@ -148,6 +147,17 @@ impl From<crossterm::event::KeyCode> for KeyCode {
             CKeyCode::Char(character) => KeyCode::Char(character),
             CKeyCode::Null => KeyCode::Null,
             CKeyCode::Esc => KeyCode::Esc,
+            CKeyCode::CapsLock
+            | CKeyCode::ScrollLock
+            | CKeyCode::NumLock
+            | CKeyCode::PrintScreen
+            | CKeyCode::Pause
+            | CKeyCode::Menu
+            | CKeyCode::KeypadBegin
+            | CKeyCode::Media(_)
+            | CKeyCode::Modifier(_) => unreachable!(
+                "Shouldn't get this key without enabling DISAMBIGUATE_ESCAPE_CODES in crossterm"
+            ),
         }
     }
 }

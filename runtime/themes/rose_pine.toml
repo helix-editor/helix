@@ -22,11 +22,10 @@
 "variable" = "text"
 "constant.numeric" = "iris"
 "constant" = "gold"
-"attributes" = "gold" 
+"attribute" = "gold" 
 "type" = "foam"
 "ui.cursor.match" = { fg = "gold", modifiers = ["underlined"] }
 "string"  = "gold"
-"property" = "foam"
 "constant.character.escape" = "subtle"
 "function" = "rose"
 "function.builtin" = "rose"
@@ -40,7 +39,7 @@
 "ui.popup.info" = { bg = "surface" }
 "ui.window" = { bg = "base" }
 "ui.help" = { bg = "overlay", fg = "foam" }
-"text" = "text"
+"ui.text" = "text"
 "diff.plus" = "foam"
 "diff.delta" = "rose"
 "diff.minus" = "love"

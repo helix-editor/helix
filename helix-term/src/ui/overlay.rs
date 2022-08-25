@@ -1,4 +1,3 @@
-use crossterm::event::Event;
 use helix_core::Position;
 use helix_view::{
     graphics::{CursorKind, Rect},
@@ -6,7 +5,7 @@ use helix_view::{
 };
 use tui::buffer::Buffer;
 
-use crate::compositor::{Component, Context, EventResult};
+use crate::compositor::{Component, Context, Event, EventResult};
 
 /// Contains a component placed in the center of the parent component
 pub struct Overlay<T> {
