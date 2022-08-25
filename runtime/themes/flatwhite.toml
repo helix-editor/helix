@@ -13,7 +13,6 @@
 "label" = { modifiers = ["bold"] }
 "namespace" = { fg = "teal_text", bg = "teal_bg" }
 "operator" = { fg = "base1", bg = "base7" }
-"property" = { fg = "blue_text", bg = "blue_bg" }
 "punctuation.bracket" = { modifiers = ["bold"] }
 "special" = { fg = "blue_text", bg = "blue_bg" }
 "string" = { fg = "green_text", bg = "green_bg" }

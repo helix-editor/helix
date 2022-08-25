@@ -1,6 +1,6 @@
 # Author: Joseph Harrison-Lim <josephharrisonlim@gmail.com>
 
-"attributes" = { fg = "#7060eb", modifiers = ["bold"] }
+"attribute" = { fg = "#7060eb", modifiers = ["bold"] }
 "comment" = { fg = "base03", modifiers = ["italic"] }
 "comment.block.documentation" = { fg = "base06", modifiers = ["italic"] }
 "constant" = "base09"

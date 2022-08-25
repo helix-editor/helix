@@ -19,7 +19,7 @@
 "variable" = "base08"
 "constant.numeric" = "base09"
 "constant" = "base09"
-"attributes" = "base09"
+"attribute" = "base09"
 "type" = "base0A"
 "ui.cursor.match" = { fg = "base0A", modifiers = ["underlined"] }
 "string"  = "base0B"

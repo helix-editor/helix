@@ -14,6 +14,7 @@ pub struct Args {
     pub build_grammars: bool,
     pub split: Option<Layout>,
     pub verbosity: u64,
+    pub config_file: Option<PathBuf>,
     pub files: Vec<(PathBuf, Position)>,
 }
 
@@ -42,6 +43,10 @@ impl Args {
                     _ => {
                         anyhow::bail!("--grammar must be followed by either 'fetch' or 'build'")
                     }
+                },
+                "-c" | "--config" => match argv.next().as_deref() {
+                    Some(path) => args.config_file = Some(path.into()),
+                    None => anyhow::bail!("--config must specify a path to read"),
                 },
                 arg if arg.starts_with("--") => {
                     anyhow::bail!("unexpected double dash argument: {}", arg)

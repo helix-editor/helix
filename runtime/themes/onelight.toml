@@ -27,7 +27,6 @@
 "label" = { fg = "cyan" }
 "namespace" = { fg = "red" }
 "operator" = { fg = "red" }
-"property" = { fg = "red" }
 "special" = { fg = "purple" }
 "string" = { fg = "green" }
 "module" = { fg = "cyan" }

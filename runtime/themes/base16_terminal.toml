@@ -17,7 +17,7 @@
 "variable" = "light-red"
 "constant.numeric" = "yellow"
 "constant" = "yellow"
-"attributes" = "yellow"
+"attribute" = "yellow"
 "type" = "light-yellow"
 "ui.cursor.match" = { fg = "light-yellow", modifiers = ["underlined"] }
 "string"  = "light-green"

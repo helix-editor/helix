@@ -79,6 +79,9 @@ pub struct LanguageConfiguration {
     #[serde(default)]
     pub auto_format: bool,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub formatter: Option<FormatterConfiguration>,
+
     #[serde(default)]
     pub diagnostic_severity: Severity,
 
@@ -124,6 +127,15 @@ pub struct LanguageServerConfiguration {
     #[serde(default = "default_timeout")]
     pub timeout: u64,
     pub language_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct FormatterConfiguration {
+    pub command: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub args: Vec<String>,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -752,7 +764,7 @@ impl Syntax {
                 );
                 let mut injections = Vec::new();
                 for mat in matches {
-                    let (language_name, content_node, include_children) = injection_for_match(
+                    let (language_name, content_node, included_children) = injection_for_match(
                         &layer.config,
                         &layer.config.injections_query,
                         &mat,
@@ -769,7 +781,7 @@ impl Syntax {
                     {
                         if let Some(config) = (injection_callback)(&language_name) {
                             let ranges =
-                                intersect_ranges(&layer.ranges, &[content_node], include_children);
+                                intersect_ranges(&layer.ranges, &[content_node], included_children);
 
                             if !ranges.is_empty() {
                                 injections.push((config, ranges));
@@ -781,7 +793,10 @@ impl Syntax {
                 // Process combined injections.
                 if let Some(combined_injections_query) = &layer.config.combined_injections_query {
                     let mut injections_by_pattern_index =
-                        vec![(None, Vec::new(), false); combined_injections_query.pattern_count()];
+                        vec![
+                            (None, Vec::new(), IncludedChildren::default());
+                            combined_injections_query.pattern_count()
+                        ];
                     let matches = cursor.matches(
                         combined_injections_query,
                         layer.tree().root_node(),
@@ -789,7 +804,7 @@ impl Syntax {
                     );
                     for mat in matches {
                         let entry = &mut injections_by_pattern_index[mat.pattern_index];
-                        let (language_name, content_node, include_children) = injection_for_match(
+                        let (language_name, content_node, included_children) = injection_for_match(
                             &layer.config,
                             combined_injections_query,
                             &mat,
@@ -801,16 +816,16 @@ impl Syntax {
                         if let Some(content_node) = content_node {
                             entry.1.push(content_node);
                         }
-                        entry.2 = include_children;
+                        entry.2 = included_children;
                     }
-                    for (lang_name, content_nodes, includes_children) in injections_by_pattern_index
+                    for (lang_name, content_nodes, included_children) in injections_by_pattern_index
                     {
                         if let (Some(lang_name), false) = (lang_name, content_nodes.is_empty()) {
                             if let Some(config) = (injection_callback)(&lang_name) {
                                 let ranges = intersect_ranges(
                                     &layer.ranges,
                                     &content_nodes,
-                                    includes_children,
+                                    included_children,
                                 );
                                 if !ranges.is_empty() {
                                     injections.push((config, ranges));
@@ -1341,8 +1356,8 @@ impl HighlightConfiguration {
     /// Tree-sitter syntax-highlighting queries specify highlights in the form of dot-separated
     /// highlight names like `punctuation.bracket` and `function.method.builtin`. Consumers of
     /// these queries can choose to recognize highlights with different levels of specificity.
-    /// For example, the string `function.builtin` will match against `function.method.builtin`
-    /// and `function.builtin.constructor`, but will not match `function.method`.
+    /// For example, the string `function.builtin` will match against `function.builtin.constructor`
+    /// but will not match `function.method.builtin` and `function.method`.
     ///
     /// When highlighting, results are returned as `Highlight` values, which contain the index
     /// of the matched highlight this list of highlight names.
@@ -1362,11 +1377,13 @@ impl HighlightConfiguration {
                     let recognized_name = recognized_name;
                     let mut len = 0;
                     let mut matches = true;
-                    for part in recognized_name.split('.') {
-                        len += 1;
-                        if !capture_parts.contains(&part) {
-                            matches = false;
-                            break;
+                    for (i, part) in recognized_name.split('.').enumerate() {
+                        match capture_parts.get(i) {
+                            Some(capture_part) if *capture_part == part => len += 1,
+                            _ => {
+                                matches = false;
+                                break;
+                            }
                         }
                     }
                     if matches && len > best_match_len {
@@ -1408,6 +1425,19 @@ impl<'a> HighlightIterLayer<'a> {
     }
 }
 
+#[derive(Clone)]
+enum IncludedChildren {
+    None,
+    All,
+    Unnamed,
+}
+
+impl Default for IncludedChildren {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
 // Compute the ranges that should be included when parsing an injection.
 // This takes into account three things:
 // * `parent_ranges` - The ranges must all fall within the *current* layer's ranges.
@@ -1420,7 +1450,7 @@ impl<'a> HighlightIterLayer<'a> {
 fn intersect_ranges(
     parent_ranges: &[Range],
     nodes: &[Node],
-    includes_children: bool,
+    included_children: IncludedChildren,
 ) -> Vec<Range> {
     let mut cursor = nodes[0].walk();
     let mut result = Vec::new();
@@ -1444,11 +1474,15 @@ fn intersect_ranges(
 
         for excluded_range in node
             .children(&mut cursor)
-            .filter_map(|child| {
-                if includes_children {
-                    None
-                } else {
-                    Some(child.range())
+            .filter_map(|child| match included_children {
+                IncludedChildren::None => Some(child.range()),
+                IncludedChildren::All => None,
+                IncludedChildren::Unnamed => {
+                    if child.is_named() {
+                        Some(child.range())
+                    } else {
+                        None
+                    }
                 }
             })
             .chain([following_range].iter().cloned())
@@ -1777,7 +1811,7 @@ fn injection_for_match<'a>(
     query: &'a Query,
     query_match: &QueryMatch<'a, 'a>,
     source: RopeSlice<'a>,
-) -> (Option<Cow<'a, str>>, Option<Node<'a>>, bool) {
+) -> (Option<Cow<'a, str>>, Option<Node<'a>>, IncludedChildren) {
     let content_capture_index = config.injection_content_capture_index;
     let language_capture_index = config.injection_language_capture_index;
 
@@ -1793,7 +1827,7 @@ fn injection_for_match<'a>(
         }
     }
 
-    let mut include_children = false;
+    let mut included_children = IncludedChildren::default();
     for prop in query.property_settings(query_match.pattern_index) {
         match prop.key.as_ref() {
             // In addition to specifying the language name via the text of a
@@ -1809,12 +1843,17 @@ fn injection_for_match<'a>(
             // `injection.content` node - only the ranges that belong to the
             // node itself. This can be changed using a `#set!` predicate that
             // sets the `injection.include-children` key.
-            "injection.include-children" => include_children = true,
+            "injection.include-children" => included_children = IncludedChildren::All,
+
+            // Some queries might only exclude named children but include unnamed
+            // children in their `injection.content` node. This can be enabled using
+            // a `#set!` predicate that sets the `injection.include-unnamed-children` key.
+            "injection.include-unnamed-children" => included_children = IncludedChildren::Unnamed,
             _ => {}
         }
     }
 
-    (language_name, content_node, include_children)
+    (language_name, content_node, included_children)
 }
 
 pub struct Merge<I> {

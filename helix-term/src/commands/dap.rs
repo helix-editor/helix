@@ -216,6 +216,8 @@ pub fn dap_start_impl(
         }
     }
 
+    args.insert("cwd", to_value(std::env::current_dir().unwrap())?);
+
     let args = to_value(args).unwrap();
 
     let callback = |_editor: &mut Editor, _compositor: &mut Compositor, _response: Value| {

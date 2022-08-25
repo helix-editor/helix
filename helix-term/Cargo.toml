@@ -10,6 +10,7 @@ repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 include = ["src/**/*", "README.md"]
 default-run = "hx"
+rust-version = "1.57"
 
 [package.metadata.nix]
 build = true
@@ -37,11 +38,11 @@ which = "4.2"
 
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
 tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = ["crossterm"] }
-crossterm = { version = "0.24", features = ["event-stream"] }
+crossterm = { version = "0.25", features = ["event-stream"] }
 signal-hook = "0.3"
 tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
-arc-swap = { version = "1.5.0" }
+arc-swap = { version = "1.5.1" }
 
 # Logging
 fern = "0.6"

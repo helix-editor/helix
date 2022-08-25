@@ -213,22 +213,6 @@ pub mod util {
             }),
         )
     }
-
-    /// The result of asking the language server to format the document. This can be turned into a
-    /// `Transaction`, but the advantage of not doing that straight away is that this one is
-    /// `Send` and `Sync`.
-    #[derive(Clone, Debug)]
-    pub struct LspFormatting {
-        pub doc: Rope,
-        pub edits: Vec<lsp::TextEdit>,
-        pub offset_encoding: OffsetEncoding,
-    }
-
-    impl From<LspFormatting> for Transaction {
-        fn from(fmt: LspFormatting) -> Transaction {
-            generate_transaction_from_edits(&fmt.doc, fmt.edits, fmt.offset_encoding)
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
