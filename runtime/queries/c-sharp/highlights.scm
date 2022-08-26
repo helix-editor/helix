@@ -1,5 +1,35 @@
 ;; Methods
-(method_declaration (identifier) @type (identifier) @function)
+(method_declaration
+  name: (identifier) @function)
+
+(method_declaration
+  type: [(identifier) (qualified_name)] @type)
+
+(invocation_expression
+  (member_access_expression
+    name: (identifier) @function))
+
+(invocation_expression
+  (member_access_expression
+    expression: (identifier) @variable))
+
+(invocation_expression
+  function: (conditional_access_expression
+    (member_binding_expression
+      name: (identifier) @function)))
+
+(invocation_expression
+      [(identifier) (qualified_name)] @function)
+
+; Generic Method invocation with generic type
+(invocation_expression
+  function: (generic_name
+              . (identifier) @function))
+
+;; Namespaces
+
+(namespace_declaration
+  name: [(identifier) (qualified_name)] @namespace)
 
 ;; Types
 (interface_declaration name: (identifier) @type)
@@ -7,11 +37,11 @@
 (enum_declaration name: (identifier) @type)
 (struct_declaration (identifier) @type)
 (record_declaration (identifier) @type)
-(record_struct_declaration (identifier) @type)
 (namespace_declaration name: (identifier) @type)
-
+(using_directive (_) @namespace)
 (constructor_declaration name: (identifier) @type)
-(destructor_declaration name: (identifier) @type)
+(object_creation_expression [(identifier) (qualified_name)] @type)
+(type_parameter_list (type_parameter) @type)
 
 [
   (implicit_type)
@@ -21,17 +51,42 @@
   (predefined_type)
 ] @type.builtin
 
+;; Generic Types
+(type_of_expression
+  (generic_name
+    (identifier) @type))
+
+(base_list
+  (generic_name
+    (identifier) @type))
+
+(type_constraint
+  (generic_name
+    (identifier) @type))
+
+(object_creation_expression
+  (generic_name
+   (identifier) @type))
+
+(property_declaration
+  (generic_name
+    (identifier) @type))
+
+(_
+  type: (generic_name
+   (identifier) @type))
+
 ;; Enum
-(enum_member_declaration (identifier) @property.definition)
+(enum_member_declaration (identifier) @variable.other.member)
 
 ;; Literals
 [
   (real_literal)
   (integer_literal)
-] @number
+] @constant.numeric.integer
 
+(character_literal) @constant.character
 [
-  (character_literal)
   (string_literal)
   (verbatim_string_literal)
   (interpolated_string_text)
@@ -42,8 +97,8 @@
   "$@\""
  ] @string
 
+(boolean_literal) @constant.builtin.boolean
 [
-  (boolean_literal)
   (null_literal)
   (void_keyword)
 ] @constant.builtin
@@ -68,24 +123,37 @@
   "++"
   "+="
   "<"
+  "<="
   "<<"
+  "<<="
   "="
   "=="
   "!"
   "!="
   "=>"
   ">"
+  ">="
   ">>"
+  ">>="
   "|"
   "||"
+  "|="
   "?"
   "??"
   "^"
+  "^="
   "~"
   "*"
+  "*="
   "/"
+  "/="
   "%"
+  "%="
   ":"
+  ".."
+  "&="
+  "->"
+  "??="
 ] @operator
 
 [
@@ -100,7 +168,7 @@
 ;; Keywords
 (modifier) @keyword
 (this_expression) @keyword
-(escape_sequence) @keyword
+(escape_sequence) @constant.character.escape
 
 [
   "as"
@@ -133,6 +201,7 @@
   "return"
   "sizeof"
   "stackalloc"
+  "static"
   "struct"
   "switch"
   "throw"
@@ -159,6 +228,19 @@
   "let"
 ] @keyword
 
+(nullable_directive) @keyword.directive
+(define_directive) @keyword.directive
+(undef_directive) @keyword.directive
+(if_directive) @keyword.directive
+(else_directive) @keyword.directive
+(elif_directive) @keyword.directive
+(endif_directive) @keyword.directive
+(region_directive) @keyword.directive
+(endregion_directive) @keyword.directive
+(error_directive) @keyword.directive
+(warning_directive) @keyword.directive
+(line_directive) @keyword.directive
+(pragma_directive) @keyword.directive
 
 ;; Linq
 (from_clause (identifier) @variable)
@@ -174,13 +256,13 @@
       (identifier) @variable)))
 
 ;; Exprs
-(binary_expression (identifier) @variable (identifier) @variable)
-(binary_expression (identifier)* @variable)
-(conditional_expression (identifier) @variable)
-(prefix_unary_expression (identifier) @variable)
-(postfix_unary_expression (identifier)* @variable)
-(assignment_expression (identifier) @variable)
-(cast_expression (identifier) @type (identifier) @variable)
+(binary_expression [(identifier) (qualified_name)] @variable [(identifier) (qualified_name)] @variable)
+(binary_expression [(identifier) (qualified_name)]* @variable)
+(conditional_expression [(identifier) (qualified_name)] @variable)
+(prefix_unary_expression [(identifier) (qualified_name)] @variable)
+(postfix_unary_expression [(identifier) (qualified_name)]* @variable)
+(assignment_expression [(identifier) (qualified_name)] @variable)
+(cast_expression [(identifier) (qualified_name)] @type [(identifier) (qualified_name)] @variable)
 
 ;; Class
 (base_list (identifier) @type)
@@ -194,6 +276,10 @@
 (property_declaration
   type: (identifier) @type
   name: (identifier) @variable)
+  
+;; Delegate
+
+(delegate_declaration (identifier) @type)
 
 ;; Lambda
 (lambda_expression) @variable
@@ -208,12 +294,20 @@
 (parameter (identifier) @variable.parameter)
 (parameter_modifier) @keyword
 
+(parameter_list
+  (parameter
+   name: (identifier) @parameter))
+
+(parameter_list
+  (parameter
+   type: [(identifier) (qualified_name)] @type))
+
 ;; Typeof
-(type_of_expression (identifier) @type)
+(type_of_expression [(identifier) (qualified_name)] @type)
 
 ;; Variable
-(variable_declaration (identifier) @type)
-(variable_declarator (identifier) @variable)
+(variable_declaration [(identifier) (qualified_name)] @type)
+(variable_declarator [(identifier) (qualified_name)] @variable)
 
 ;; Return
 (return_statement (identifier) @variable)
@@ -221,11 +315,11 @@
 
 ;; Type
 (generic_name (identifier) @type)
-(type_parameter (identifier) @property.definition)
-(type_argument_list (identifier) @type)
+(type_parameter [(identifier) (qualified_name)] @variable.parameter)
+(type_argument_list [(identifier) (qualified_name)] @type)
 
 ;; Type constraints
-(type_parameter_constraints_clause (identifier) @property.definition)
+(type_parameter_constraints_clause (identifier) @variable.parameter)
 (type_constraint (identifier) @type)
 
 ;; Exception
@@ -238,3 +332,16 @@
 
 ;; Lock statement
 (lock_statement (identifier) @variable)
+
+;; Rest
+(member_access_expression) @variable
+(element_access_expression (identifier) @variable)
+(argument (identifier) @variable)
+(for_statement (identifier) @variable)
+(for_each_statement (identifier) @variable)
+(expression_statement (identifier) @variable)
+(member_access_expression expression: (identifier) @variable)
+(member_access_expression name: (identifier) @variable)
+(conditional_access_expression [(identifier) (qualified_name)] @variable)
+((identifier) @comment.unused
+ (#eq? @comment.unused "_"))
