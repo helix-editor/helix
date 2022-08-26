@@ -3729,9 +3729,18 @@ fn join_selections(cx: &mut Context) {
     // TODO: joining multiple empty lines should be replaced by a single space.
     // need to merge change ranges that touch
 
+    // select inserted spaces
+    let ranges: SmallVec<_> = changes
+        .iter()
+        .scan(0, |offset, change| {
+            let range = Range::point(change.0 - *offset);
+            *offset += change.1 - change.0 - 1; // -1 because cursor is 0-sized
+            Some(range)
+        })
+        .collect();
+    let selection = Selection::new(ranges, 0);
     let transaction = Transaction::change(doc.text(), changes.into_iter());
-    // TODO: select inserted spaces
-    // .with_selection(selection);
+    let transaction = transaction.with_selection(selection);
 
     doc.apply(&transaction, view.id);
 }
