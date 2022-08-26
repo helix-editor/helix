@@ -445,6 +445,11 @@ impl Application {
             signal::SIGTSTP => {
                 self.restore_term().unwrap();
 
+                // SAFETY:
+                //
+                // - helix must have permissions to send signals to all processes in its signal
+                //   group, either by already having the requisite permission, or by having the
+                //   user's UID / EUID / SUID match that of the receiving process(es).
                 let res = unsafe {
                     // A pid of 0 sends the signal to the entire process group, allowing the user to
                     // regain control of their terminal if the editor was spawned under another process
