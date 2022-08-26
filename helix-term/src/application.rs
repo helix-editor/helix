@@ -458,7 +458,9 @@ impl Application {
                 };
 
                 if res != 0 {
-                    eprintln!("{}", std::io::Error::from_raw_os_error(res));
+                    let err = std::io::Error::last_os_error();
+                    eprintln!("{}", err);
+                    let res = err.raw_os_error().unwrap_or(1);
                     std::process::exit(res);
                 }
             }
