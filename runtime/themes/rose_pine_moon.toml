@@ -11,6 +11,7 @@
 "ui.liner.selected" = "highlightOverlay"
 "ui.selection" = { bg = "highlight" }
 "comment" = "subtle"
+"ui.cursorline" = {bg = "dimBase" }
 "ui.statusline" = {fg = "foam", bg = "surface" }
 "ui.statusline.insert" = {fg = "base", bg = "foam", modifiers = ["bold"]}
 "ui.statusline.normal" = {fg = "base", bg = "rose", modifiers = ["bold"]}
@@ -21,6 +22,7 @@
 "ui.text.focus" = { fg = "foam", modifiers = ["bold"]}
 "ui.text.info" = {fg = "pine", modifiers = ["bold"]}
 "ui.virtual.whitespace" = "highlight"
+"ui.virtual.ruler" = {bg = "dimBase" }
 "operator" = "rose"
 "variable" = "text"
 "constant.numeric" = "iris"
@@ -42,7 +44,6 @@
 "ui.popup.info" = { bg = "surface" }
 "ui.window" = { bg = "base" }
 "ui.help" = { bg = "overlay", fg = "foam" }
-"ui.text" = "text"
 "diff.plus" = "foam"
 "diff.delta" = "rose"
 "diff.minus" = "love"
@@ -69,6 +70,7 @@
 "markup.raw" = { fg = "foam" }
 
 [palette]
+dimBase  = "#201e30" 
 base     = "#232136" 
 surface  = "#2a273f" 
 overlay  = "#393552"
