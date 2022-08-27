@@ -555,8 +555,6 @@ mod test {
 
     #[test]
     fn parsing_unsupported_named_keys() {
-        assert!(str::parse::<KeyEvent>("lt").is_err());
-        assert!(str::parse::<KeyEvent>("gt").is_err());
         assert!(str::parse::<KeyEvent>("plus").is_err());
         assert!(str::parse::<KeyEvent>("percent").is_err());
         assert!(str::parse::<KeyEvent>("semicolon").is_err());
