@@ -4,13 +4,18 @@
 "ui.background" = {bg="background"}
 "ui.text" = "foreground"
 "ui.selection" = {bg="selection_background", fg="selection_foreground"}
+"ui.cursorline" = {bg="cursorline_background"}
 "ui.statusline" = {bg="paper_bar_bg", fg="regular0"}
 "ui.statusline.inactive" = {bg="background", fg="bright2"}
 "ui.virtual" = "indent"
 "ui.virtual.whitespace" = { fg = "regular5" }
+"ui.virtual.ruler" = {bg="cursorline_background"}
 "ui.cursor.match" = {bg = "foreground", fg = "regular4"}
 "ui.cursor" = {bg = "foreground", fg = "background"}
 "ui.window" = {bg = "background", fg = "bright3"}
+"ui.help" = {bg = "background", fg = "bright3"}
+"ui.popup" = {bg = "background", fg = "bright3"}
+"ui.menu" = {bg = "background", fg = "bright3"}
 "ui.menu.selected" = {bg = "selection_background"}
 
 "markup.heading" = { fg = "bright2", modifiers = ["bold"] }
@@ -80,6 +85,7 @@ bright6="#4c7a5d"
 bright7="#005faf"
 selection_foreground="#eeeeee"
 selection_background="#0087af"
+cursorline_background="#fdfdfd"
 paper_bar_bg="#005F87"
 black="#eeeeee"
 red="#d70000"
