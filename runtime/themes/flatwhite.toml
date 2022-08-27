@@ -57,6 +57,7 @@
 "ui.linenr.selected" = { bg = "base6", modifiers = ["reversed"] }
 
 "ui.statusline" = { fg = "base7", bg = "base1", modifiers = ["bold"] }
+"ui.statusline.inactive" = { fg = "base7", bg = "base3" }
 "ui.statusline.normal" = { fg = "base7", bg = "base1", modifiers = ["bold"] }
 "ui.statusline.insert" = { fg = "purple_text", bg = "purple_bg", modifiers = [
   "bold",
