@@ -144,6 +144,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "<" => unindent,
         "=" => format_selections,
         "J" => join_selections,
+        "A-J" => join_selections_space,
         "K" => keep_selections,
         "A-K" => remove_selections,
 
