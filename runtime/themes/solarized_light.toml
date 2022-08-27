@@ -48,6 +48,8 @@
 # 当前行号栏
 # current line number column
 "ui.linenr.selected" = { fg = "blue", modifiers = ["bold"] }
+# cursorline
+"ui.cursorline" = { bg = "base0" }
 
 # 状态栏
 # status bar
