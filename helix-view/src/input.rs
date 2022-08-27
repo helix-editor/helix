@@ -115,6 +115,8 @@ pub(crate) mod keys {
     pub(crate) const ESC: &str = "esc";
     pub(crate) const SPACE: &str = "space";
     pub(crate) const MINUS: &str = "minus";
+    pub(crate) const LESS_THAN: &str = "lt";
+    pub(crate) const GREATER_THAN: &str = "gt";
 }
 
 impl fmt::Display for KeyEvent {
@@ -155,6 +157,8 @@ impl fmt::Display for KeyEvent {
             KeyCode::Esc => f.write_str(keys::ESC)?,
             KeyCode::Char(' ') => f.write_str(keys::SPACE)?,
             KeyCode::Char('-') => f.write_str(keys::MINUS)?,
+            KeyCode::Char('<') => f.write_str(keys::LESS_THAN)?,
+            KeyCode::Char('>') => f.write_str(keys::GREATER_THAN)?,
             KeyCode::F(i) => f.write_fmt(format_args!("F{}", i))?,
             KeyCode::Char(c) => f.write_fmt(format_args!("{}", c))?,
         };
@@ -227,6 +231,8 @@ impl std::str::FromStr for KeyEvent {
             keys::ESC => KeyCode::Esc,
             keys::SPACE => KeyCode::Char(' '),
             keys::MINUS => KeyCode::Char('-'),
+            keys::LESS_THAN => KeyCode::Char('<'),
+            keys::GREATER_THAN => KeyCode::Char('>'),
             single if single.chars().count() == 1 => KeyCode::Char(single.chars().next().unwrap()),
             function if function.len() > 1 && function.starts_with('F') => {
                 let function: String = function.chars().skip(1).collect();
