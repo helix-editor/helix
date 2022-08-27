@@ -38,16 +38,17 @@
 "ui.cursor.match" = { fg = "orange" }
 "ui.linenr" = { fg = "dark_gray" }
 "ui.linenr.selected" = { fg = "orange" }
-"ui.statusline" = { bg = "black" }
-"ui.popup" = { bg = "black" }
+"ui.statusline" = { fg = "foreground", bg = "black" }
+"ui.cursorline" = { bg = "black" }
+"ui.popup" = { fg = "#7B91b3", bg = "black" }
 "ui.window" = { fg = "dark_gray" }
-"ui.help" = { bg = "black" }
+"ui.help" = { fg = "#7B91b3", bg = "black" }
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { bg = "dark_gray", fg = "foreground" }
 "ui.text.info" = { fg = "foreground" }
 "ui.virtual.whitespace" = { fg = "dark_gray" }
 "ui.virtual.ruler" = { bg = "black" }
-"ui.menu" = { bg = "black" }
+"ui.menu" = { fg = "foreground", bg = "black" }
 "ui.menu.selected" = { bg = "orange", fg = "background" }
 "ui.selection" = { bg = "dark_gray" }
 "warning" = { fg = "yellow" }
