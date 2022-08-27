@@ -4,7 +4,7 @@
 | bash | ✓ |  |  | `bash-language-server` |
 | beancount | ✓ |  |  |  |
 | c | ✓ | ✓ | ✓ | `clangd` |
-| c-sharp | ✓ |  |  | `OmniSharp` |
+| c-sharp | ✓ | ✓ |  | `OmniSharp` |
 | cairo | ✓ |  |  |  |
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |

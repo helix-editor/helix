@@ -235,7 +235,7 @@ language-server = { command = "OmniSharp", args = [ "--languageserver" ] }
 
 [[grammar]]
 name = "c-sharp"
-source = { git = "https://github.com/tree-sitter/tree-sitter-c-sharp", rev = "53a65a908167d6556e1fcdb67f1ee62aac101dda" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-c-sharp", rev = "9c494a503c8e2044bfffce57f70b480c01a82f03" }
 
 [[language]]
 name = "go"
