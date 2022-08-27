@@ -64,6 +64,7 @@
 "ui.linenr" = { fg = "surface1" }
 "ui.linenr.selected" = { fg = "lavender" }
 
+"ui.cursorline" = { bg = "surface0" }
 "ui.statusline" = { fg = "overlay1", bg = "surface0" }
 "ui.statusline.inactive" = { fg = "overlay1", bg = "mantle" }
 "ui.statusline.normal" = { fg = "surface0", bg = "lavender", modifiers = ["bold"] }
