@@ -18,19 +18,23 @@ fn get_rules() -> Vec<Rule> {
         Rule::has_fg_bg("ui.text".into(), "ui.background".into()),
         // Check for complete editor.statusline bare minimum
         Rule::has_both("ui.statusline".into()),
+        Rule::has_both("ui.statusline.inactive".into()),
         // Check for editor.color-modes
         Rule::has_either("ui.statusline.insert".into()),
         Rule::has_either("ui.statusline.normal".into()),
         Rule::has_either("ui.statusline.select".into()),
         // Check for editor.cursorline
-        Rule::has_bg("ui.cursorline".into()),
+        Rule::has_bg("ui.cursorline.primary".into()),
         // Check for editor.rulers
-        Rule::has_bg("ui.virtual.ruler".into()),
+        Rule::has_either("ui.virtual.ruler".into()),
         // Check for menus and prompts
         Rule::has_both("ui.menu".into()),
+        Rule::has_bg("ui.help".into()),
+        Rule::has_bg("ui.popup".into()),
+        Rule::has_either("ui.window".into()),
         // Check for visible cursor
         Rule::has_bg("ui.cursor.primary".into()),
-        Rule::has_bg("ui.cursor.match".into()),
+        Rule::has_either("ui.cursor.match".into()),
     ]
 }
 
@@ -103,6 +107,10 @@ impl Rule {
 }
 
 pub fn lint(file: String) -> Result<(), DynError> {
+    if file.contains("base16") {
+        println!("Skipping base16: {}", file);
+        return Ok(());
+    }
     let path = path::themes().join(file.clone() + ".toml");
     let theme = std::fs::read(&path).unwrap();
     let theme: Theme = toml::from_slice(&theme).expect("Failed to parse theme");
