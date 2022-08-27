@@ -34,6 +34,7 @@
 "ui.cursor.insert" = { fg = "berry", bg = "mint" }
 "ui.linenr" = { fg = "berry_desaturated" }
 "ui.linenr.selected" = { fg = "lilac" }
+"ui.cursorline" = { fg = "lilac", bg = "berry_saturated" }
 "ui.statusline" = { fg = "lilac", bg = "berry_saturated" }
 "ui.statusline.inactive" = { fg = "berry_desaturated", bg = "berry_saturated" }
 "ui.popup" = { fg = "lilac", bg = "berry_saturated" }
