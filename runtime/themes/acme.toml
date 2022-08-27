@@ -3,14 +3,20 @@
 "ui.background" = {bg="acme_bg"}
 "ui.text" = "black"
 "ui.selection" = {bg="selected"}
-"ui.statusline" = {bg="acme_bar_bg"}
-"ui.statusline.inactive" = {bg="acme_bar_inactive"}
+"ui.cursorline" = {bg="acme_bar_bg"}
+"ui.statusline" = {fg="black", bg="acme_bar_bg"}
+"ui.statusline.inactive" = {fg="black", bg="acme_bar_inactive"}
 "ui.virtual" = "indent"
+"ui.virtual.ruler" = { bg = "acme_bar_bg" }
 "ui.cursor.match" = {bg="acme_bar_bg"}
 "ui.cursor" = {bg="cursor", fg="white"}
 "string" = "red"
 "comment" = "green"
+"ui.help" = {fg="black", bg="acme_bg"}
+"ui.popup" = {fg="black", bg="acme_bg"}
+"ui.menu" = {fg="black", bg="acme_bg"}
 "ui.menu.selected" = {bg="selected"}
+"ui.window" = {bg="acme_bg"}
 "diagnostic.error" = {bg="white", modifiers=["bold"]}
 "diagnostic.warning" = {bg="white", modifiers=["bold"]}
 "diagnostic.hint" = {bg="white", modifiers=["bold"]}
