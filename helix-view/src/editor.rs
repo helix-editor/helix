@@ -905,8 +905,7 @@ impl Editor {
                         view.remove_document(&id);
                     }
                 } else {
-                    let jump = (view.doc, doc.selection(view.id).clone());
-                    view.jumps.push(jump);
+                    view.jumps.push(doc, doc.selection(view.id).clone());
                     // Set last accessed doc if it is a different document
                     if doc.id != id {
                         view.add_to_history(view.doc);

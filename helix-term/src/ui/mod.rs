@@ -69,7 +69,6 @@ pub fn regex_prompt(
     fun: impl Fn(&mut View, &mut Document, Regex, PromptEvent) + 'static,
 ) {
     let (view, doc) = current!(cx.editor);
-    let doc_id = view.doc;
     let snapshot = doc.selection(view.id).clone();
     let offset_snapshot = view.offset;
     let config = cx.editor.config();
@@ -109,8 +108,7 @@ pub fn regex_prompt(
                             doc.set_selection(view.id, snapshot.clone());
 
                             if event == PromptEvent::Validate {
-                                // Equivalent to push_jump to store selection just before jump
-                                view.jumps.push((doc_id, snapshot.clone()));
+                                view.jumps.push(doc, snapshot.clone());
                             }
 
                             fun(view, doc, regex, event);

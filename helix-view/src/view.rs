@@ -5,9 +5,9 @@ use crate::{
 };
 use helix_core::{pos_at_visual_coords, visual_coords_at_pos, Position, RopeSlice, Selection};
 
-use std::fmt;
+use std::{cell::RefCell, fmt, rc::Rc};
 
-type Jump = (DocumentId, Selection);
+type Jump = (DocumentId, Rc<RefCell<Selection>>);
 
 #[derive(Debug, Clone)]
 pub struct JumpList {
@@ -23,7 +23,11 @@ impl JumpList {
         }
     }
 
-    pub fn push(&mut self, jump: Jump) {
+    pub fn push(&mut self, doc: &mut Document, selection: Selection) {
+        let selection = Rc::new(RefCell::new(selection));
+        let jump = (doc.id, selection.clone());
+        doc.push_jump_selection(selection);
+
         self.jumps.truncate(self.current);
         // don't push duplicates
         if self.jumps.last() != Some(&jump) {
@@ -45,8 +49,7 @@ impl JumpList {
     pub fn backward(&mut self, view_id: ViewId, doc: &mut Document, count: usize) -> Option<&Jump> {
         if let Some(current) = self.current.checked_sub(count) {
             if self.current == self.jumps.len() {
-                let jump = (doc.id(), doc.selection(view_id).clone());
-                self.push(jump);
+                self.push(doc, doc.selection(view_id).clone());
             }
             self.current = current;
             self.jumps.get(self.current)
@@ -126,7 +129,7 @@ impl View {
             doc,
             offset: Position::new(0, 0),
             area: Rect::default(), // will get calculated upon inserting into tree
-            jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
+            jumps: JumpList::new((doc, Rc::new(RefCell::new(Selection::point(0))))),
             docs_access_history: Vec::new(),
             last_modified_docs: [None, None],
             object_selections: Vec::new(),

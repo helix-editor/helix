@@ -5,11 +5,12 @@ use helix_core::auto_pairs::AutoPairs;
 use helix_core::Range;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -86,6 +87,7 @@ pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
     selections: HashMap<ViewId, Selection>,
+    jump_selections: Vec<Rc<RefCell<Selection>>>,
 
     path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
@@ -347,6 +349,7 @@ impl Document {
             encoding,
             text,
             selections: HashMap::default(),
+            jump_selections: vec![Rc::new(RefCell::new(Selection::point(0)))],
             indent_style: DEFAULT_INDENT,
             line_ending: DEFAULT_LINE_ENDING,
             mode: Mode::Normal,
@@ -744,6 +747,14 @@ impl Document {
             }
 
             self.modified_since_accessed = true;
+
+            for selection in &self.jump_selections {
+                let mut selection = selection.borrow_mut();
+                *selection = selection
+                    .clone()
+                    .map(transaction.changes())
+                    .ensure_invariants(self.text.slice(..));
+            }
         }
 
         if !transaction.changes().is_empty() {
@@ -1074,6 +1085,11 @@ impl Document {
             Some(lang) => lang.as_ref().auto_pairs.as_ref().or(global_config),
             None => global_config,
         }
+    }
+
+    #[inline]
+    pub fn push_jump_selection(&mut self, selection: Rc<RefCell<Selection>>) {
+        self.jump_selections.push(selection)
     }
 }
 

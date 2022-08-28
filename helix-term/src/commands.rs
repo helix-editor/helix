@@ -2346,7 +2346,7 @@ fn jumplist_picker(cx: &mut Context) {
                 view.jumps
                     .get()
                     .iter()
-                    .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
+                    .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.borrow().clone()))
             })
             .collect(),
         (),
@@ -2644,9 +2644,8 @@ fn try_restore_indent(doc: &mut Document, view_id: ViewId) {
 }
 
 // Store a jump on the jumplist.
-fn push_jump(view: &mut View, doc: &Document) {
-    let jump = (doc.id(), doc.selection(view.id).clone());
-    view.jumps.push(jump);
+fn push_jump(view: &mut View, doc: &mut Document) {
+    view.jumps.push(doc, doc.selection(view.id).clone());
 }
 
 fn goto_line(cx: &mut Context) {
@@ -4048,7 +4047,7 @@ fn jump_forward(cx: &mut Context) {
 
     if let Some((id, selection)) = view.jumps.forward(count) {
         view.doc = *id;
-        let selection = selection.clone();
+        let selection = selection.borrow().clone();
         let (view, doc) = current!(cx.editor); // refetch doc
         doc.set_selection(view.id, selection);
 
@@ -4062,7 +4061,7 @@ fn jump_backward(cx: &mut Context) {
 
     if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
         view.doc = *id;
-        let selection = selection.clone();
+        let selection = selection.borrow().clone();
         let (view, doc) = current!(cx.editor); // refetch doc
         doc.set_selection(view.id, selection);
 
