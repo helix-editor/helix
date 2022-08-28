@@ -64,6 +64,57 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn surround_by_character() -> anyhow::Result<()> {
+    // Only pairs matching the passed character count
+    test(("(so [many {go#[o|]#d} text] here)", "mi{", "(so [many {#[good|]#} text] here)")).await?;
+    test(("(so [many {go#[o|]#d} text] here)", "mi[", "(so [#[many {good} text|]#] here)")).await?;
+    test(("(so [many {go#[o|]#d} text] here)", "mi(", "(#[so [many {good} text] here|]#)")).await?;
+
+    // Works with characters that aren't pairs too
+    test(("'so 'many 'go#[o|]#d' text' here'", "mi'", "'so 'many '#[good|]#' text' here'")).await?;
+    test(("'so 'many 'go#[o|]#d' text' here'", "2mi'", "'so '#[many 'good' text|]#' here'")).await?;
+    test(("'so \"many 'go#[o|]#d' text\" here'", "mi\"", "'so \"#[many 'good' text|]#\" here'")).await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn surround_pair() -> anyhow::Result<()> {
+    // Inside a valid pair selects pair
+    test(("some (#[t|]#ext) here", "mim", "some (#[text|]#) here")).await?;
+
+    // On pair character selects pair
+    // Opening pair character is a known failure case that needs addressing
+    // test(("some #[(|]#text) here", "mim", "some (#[text|]#) here")).await?;
+    test(("some (text#[)|]# here", "mim", "some (#[text|]#) here")).await?;
+
+    // No valid pair does nothing
+    test(("so#[m|]#e (text) here", "mim", "so#[m|]#e (text) here")).await?;
+
+    // Count skips to outer pairs
+    test(("(so (many (go#[o|]#d) text) here)", "1mim", "(so (many (#[good|]#) text) here)")).await?;
+    test(("(so (many (go#[o|]#d) text) here)", "2mim", "(so (#[many (good) text|]#) here)")).await?;
+    test(("(so (many (go#[o|]#d) text) here)", "3mim", "(#[so (many (good) text) here|]#)")).await?;
+
+    // Matching paris outside selection don't match
+    test(("((so)((many) go#[o|]#d (text))(here))", "mim", "((so)(#[(many) good (text)|]#)(here))")).await?;
+    test(("((so)((many) go#[o|]#d (text))(here))", "2mim", "(#[(so)((many) good (text))(here)|]#)")).await?;
+
+    // Works with mixed braces
+    test(("(so [many {go#[o|]#d} text] here)", "mim", "(so [many {#[good|]#} text] here)")).await?;
+    test(("(so [many {go#[o|]#d} text] here)", "2mim", "(so [#[many {good} text|]#] here)")).await?;
+    test(("(so [many {go#[o|]#d} text] here)", "3mim", "(#[so [many {good} text] here|]#)")).await?;
+
+    // Only pairs outside of full selection range are considered
+    test(("(so (many (go#[od) |]#text) here)", "mim", "(so (#[many (good) text|]#) here)")).await?;
+    test(("(so (many#[ (go|]#od) text) here)", "mim", "(so (#[many (good) text|]#) here)")).await?;
+    test(("(so#[ (many (go|]#od) text) here)", "mim", "(#[so (many (good) text) here|]#)")).await?;
+    test(("(so (many (go#[od) text) |]#here)", "mim", "(#[so (many (good) text) here|]#)")).await?;
+
+    Ok(())
+}
+
 /// Ensure the very initial cursor in an opened file is the width of
 /// the first grapheme
 #[tokio::test(flavor = "multi_thread")]
