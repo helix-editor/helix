@@ -390,19 +390,23 @@ impl EditorView {
         // of times than it is to always call Rope::slice/get_slice (it will internally always hit RSEnum::Light).
         let text = doc.text().slice(..);
 
+        let characters = &whitespace.characters;
+
         let mut spans = Vec::new();
         let mut visual_x = 0u16;
         let mut line = 0u16;
         let tab_width = doc.tab_width();
         let tab = if whitespace.render.tab() == WhitespaceRenderValue::All {
-            (1..tab_width).fold(whitespace.characters.tab.to_string(), |s, _| s + " ")
+            std::iter::once(characters.tab)
+                .chain(std::iter::repeat(characters.tabpad).take(tab_width - 1))
+                .collect()
         } else {
             " ".repeat(tab_width)
         };
-        let space = whitespace.characters.space.to_string();
-        let nbsp = whitespace.characters.nbsp.to_string();
+        let space = characters.space.to_string();
+        let nbsp = characters.nbsp.to_string();
         let newline = if whitespace.render.newline() == WhitespaceRenderValue::All {
-            whitespace.characters.newline.to_string()
+            characters.newline.to_string()
         } else {
             " ".to_string()
         };
@@ -972,16 +976,15 @@ impl EditorView {
                         doc.set_selection(view_id, Selection::point(pos));
                     }
 
-                    editor.tree.focus = view_id;
+                    editor.focus(view_id);
 
                     return EventResult::Consumed(None);
                 }
 
                 if let Some((coords, view_id)) = gutter_coords_and_view(editor, row, column) {
-                    editor.tree.focus = view_id;
+                    editor.focus(view_id);
 
-                    let view = editor.tree.get(view_id);
-                    let doc = editor.documents.get_mut(&view.doc).unwrap();
+                    let (view, doc) = current!(cxt.editor);
 
                     let path = match doc.path() {
                         Some(path) => path.clone(),
@@ -1060,10 +1063,9 @@ impl EditorView {
 
             MouseEventKind::Up(MouseButton::Right) => {
                 if let Some((coords, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
-                    cxt.editor.tree.focus = view_id;
+                    cxt.editor.focus(view_id);
 
-                    let view = cxt.editor.tree.get(view_id);
-                    let doc = cxt.editor.documents.get_mut(&view.doc).unwrap();
+                    let (view, doc) = current!(cxt.editor);
                     let line = coords.row + view.offset.row;
                     if let Ok(pos) = doc.text().try_line_to_char(line) {
                         doc.set_selection(view_id, Selection::point(pos));
@@ -1096,7 +1098,7 @@ impl EditorView {
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
                     let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
                     doc.set_selection(view_id, Selection::point(pos));
-                    editor.tree.focus = view_id;
+                    cxt.editor.focus(view_id);
                     commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
 
                     return EventResult::Consumed(None);
@@ -1249,6 +1251,7 @@ impl Component for EditorView {
             }
 
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
+            Event::FocusGained | Event::FocusLost => EventResult::Ignored(None),
         }
     }
 

@@ -228,8 +228,19 @@
   "let"
 ] @keyword
 
-(preprocessor_call) @keyword.directive
-(preprocessor_call (_) @keyword.directive)
+(nullable_directive) @keyword.directive
+(define_directive) @keyword.directive
+(undef_directive) @keyword.directive
+(if_directive) @keyword.directive
+(else_directive) @keyword.directive
+(elif_directive) @keyword.directive
+(endif_directive) @keyword.directive
+(region_directive) @keyword.directive
+(endregion_directive) @keyword.directive
+(error_directive) @keyword.directive
+(warning_directive) @keyword.directive
+(line_directive) @keyword.directive
+(pragma_directive) @keyword.directive
 
 ;; Linq
 (from_clause (identifier) @variable)

@@ -1,9 +1,10 @@
 | Language | Syntax Highlighting | Treesitter Textobjects | Auto Indent | Default LSP |
 | --- | --- | --- | --- | --- |
+| awk | ✓ | ✓ |  | `awk-language-server` |
 | bash | ✓ |  |  | `bash-language-server` |
 | beancount | ✓ |  |  |  |
 | c | ✓ | ✓ | ✓ | `clangd` |
-| c-sharp | ✓ |  |  | `OmniSharp` |
+| c-sharp | ✓ | ✓ |  | `OmniSharp` |
 | cairo | ✓ |  |  |  |
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
@@ -24,6 +25,7 @@
 | elvish | ✓ |  |  | `elvish` |
 | erb | ✓ |  |  |  |
 | erlang | ✓ | ✓ |  | `erlang_ls` |
+| esdl | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |
 | fortran | ✓ |  | ✓ | `fortls` |
 | gdscript | ✓ |  | ✓ |  |
@@ -74,6 +76,7 @@
 | odin | ✓ |  |  | `ols` |
 | openscad | ✓ |  |  | `openscad-language-server` |
 | org | ✓ |  |  |  |
+| pascal | ✓ | ✓ |  | `pasls` |
 | perl | ✓ | ✓ | ✓ |  |
 | php | ✓ | ✓ | ✓ | `intelephense` |
 | prisma | ✓ |  |  | `prisma-language-server` |
@@ -99,6 +102,7 @@
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
+| task | ✓ |  |  |  |
 | tfvars |  |  |  | `terraform-ls` |
 | toml | ✓ |  |  | `taplo` |
 | tsq | ✓ |  |  |  |
@@ -111,5 +115,6 @@
 | verilog | ✓ | ✓ |  | `svlangserver` |
 | vue | ✓ |  |  | `vls` |
 | wgsl | ✓ |  |  | `wgsl_analyzer` |
+| xit | ✓ |  |  |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |
 | zig | ✓ |  | ✓ | `zls` |

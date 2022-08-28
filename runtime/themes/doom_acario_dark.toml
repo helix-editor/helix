@@ -2,38 +2,42 @@
 #
 # This was made based on
 # https://github.com/doomemacs/themes/blob/master/themes/doom-acario-dark-theme.el
-# I've done my best to make it work completely, but there's still some things that differ from the emacs version.
+# I've done my best to make it look like the Emacs theme, there are still things that looks different from the original.
+# But I've decided to keep it like that as I found it to be easier to read when there's a lot going on i.e lots of variables, strings and functions close to each other.
 
-type = { fg = 'blue' }
-constructor = { fg = 'red' }
-constant = { fg = 'magenta' }
-'constant.numeric' = { fg = 'orange' }
-string = { fg = 'green' }
-comment = { fg = 'gray', modifiers = ['italic'] }
+'attribute' = { fg = 'blue' }
+'comment' = { fg = 'gray', modifiers = ['italic'] }
 'comment.block' = { fg = 'green', modifiers = ['italic'] }
 'comment.block.documentation' = { fg = 'green', modifiers = ['italic'] }
-variable = { fg = 'cyan' }
-'variable.parameter' = { fg = 'blue' }
-label = { fg = 'green' }
-keyword = { fg = 'red' }
-operator = { fg = 'blue' }
-function = { fg = 'yellow' }
-tag = { fg = 'cyan' }
-attribute = { fg = 'blue' }
-attribute = { fg = 'blue' }
-namespace = { fg = 'red' }
+'constant' = { fg = 'magenta' }
+'constant.numeric' = { fg = 'orange' }
+'constructor' = { fg = 'red' }
+'function' = { fg = 'yellow' }
+'function.builtin' = { fg = 'blue' }
+'function.method' = { fg = 'white' }
+'keyword' = { fg = 'red' }
+'label' = { fg = 'green' }
+'namespace' = { fg = 'white' }
+'operator' = { fg = 'blue' }
+'punctuation.bracket' = { fg = 'blue' }
+'punctuation.delimiter' = { fg = 'white', modifiers = ['bold'] }
+'string' = { fg = 'green' }
+'tag' = { fg = 'cyan' }
+'type' = { fg = 'blue' }
+'variable' = { fg = 'cyan' }
+'variable.parameter' = { fg = 'white' }
 
+'markup.bold' = { fg = 'orange', modifiers = ['bold'] }
+'markup.italic' = { fg = 'magenta', modifiers = ['italic'] }
 'markup.heading' = { fg = 'red' }
-'markup.list' = { fg = 'red' }
-'markup.raw.inline' = { fg = 'green', bg = 'base4' }
-'markup.raw.block' = { fg = 'green', bg = 'base4' }
-'markup.link' = { fg = 'orange' } 
+'markup.link' = { fg = 'orange' }
 'markup.link.url' = { fg = 'magenta' }
 'markup.link.text' = { fg = 'orange' }
 'markup.link.label' = { fg = 'green' }
+'markup.list' = { fg = 'red' }
 'markup.quote' = { fg = 'green', modifiers = ['italic'] }
-'markup.bold' = { fg = 'orange', modifiers = ['bold'] }
-'markup.italic' = { fg = 'magenta', modifiers = ['italic'] }
+'markup.raw.block' = { fg = 'green', bg = 'base4' }
+'markup.raw.inline' = { fg = 'green', bg = 'base4' }
 
 'diff.plus' = { fg = 'green' }
 'diff.minus' = { fg = 'red' }
@@ -61,19 +65,20 @@ namespace = { fg = 'red' }
 'ui.menu.selected' = { bg = 'base3', fg = 'fg' }
 'ui.selection' = { bg = 'base2' }
 
-warning = { fg = 'orange' }
-error = { fg = 'red', modifiers = ['bold'] }
-info = { fg = 'blue', modifiers = ['bold'] }
-hint = { fg = 'blue', modifiers = ['bold'] }
+'warning' = { fg = 'orange' }
+'error' = { fg = 'red', modifiers = ['bold'] }
+'info' = { fg = 'blue', modifiers = ['bold'] }
+'hint' = { fg = 'blue', modifiers = ['bold'] }
 
 'diagnostic'= { fg = 'red', modifiers = ['underlined'] }
+'diagnostic.error'= { fg = 'red', modifiers = ['underlined'] }
 'diagnostic.info'= { fg = 'blue', modifiers = ['underlined'] }
 'diagnostic.warning'= { fg = 'yellow', modifiers = ['underlined'] }
-'diagnostic.error'= { fg = 'red', modifiers = ['underlined'] }
 
 'special' = { fg = 'orange' }
 
 [palette]
+white = '#ffffff'
 black = '#000000'
 red = '#D83441'
 green = '#79D836'

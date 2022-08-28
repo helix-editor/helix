@@ -504,12 +504,6 @@ impl Tree {
         Some(child_id)
     }
 
-    pub fn focus_direction(&mut self, direction: Direction) {
-        if let Some(id) = self.find_split_in_direction(self.focus, direction) {
-            self.focus = id;
-        }
-    }
-
     pub fn focus_next(&mut self) {
         // This function is very dumb, but that's because we don't store any parent links.
         // (we'd be able to go parent.next_sibling() recursively until we find something)
