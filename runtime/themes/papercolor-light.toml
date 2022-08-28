@@ -22,7 +22,7 @@
 "ui.menu" = {bg = "#D0D0D0", fg = "bright7"}
 "ui.menu.selected" = {bg = "selection_background", fg="selection_foreground"}
 
-"markup.heading" = { fg = "bright2", modifiers = ["bold"] }
+"markup.heading" = { fg = "bright7", modifiers = ["bold"] }
 "markup.heading.1" = { fg = "bright2", modifiers = ["bold"] }
 "markup.heading.2" = { fg = "bright4", modifiers = ["bold"] }
 "markup.heading.3" = { fg = "bright3", modifiers = ["bold"] }
