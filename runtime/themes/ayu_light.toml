@@ -48,7 +48,7 @@
 "ui.text.info" = { fg = "foreground" }
 "ui.virtual.whitespace" = { fg = "dark_gray" }
 "ui.virtual.ruler" = { bg = "black" }
-"ui.menu" = { fg="foreground", bg = "black" }
+"ui.menu" = { fg = "foreground", bg = "black" }
 "ui.menu.selected" = { bg = "orange", fg = "background" }
 "ui.selection" = { bg = "dark_gray" }
 "warning" = { fg = "yellow" }
