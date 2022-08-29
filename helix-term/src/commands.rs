@@ -3369,13 +3369,7 @@ enum Paste {
     Cursor,
 }
 
-fn paste_impl(
-    values: &[String],
-    doc: &mut Document,
-    view: &View,
-    action: Paste,
-    count: usize,
-) -> Option<Transaction> {
+fn paste_impl(values: &[String], doc: &mut Document, view: &View, action: Paste, count: usize) {
     let repeat = std::iter::repeat(
         values
             .last()
@@ -3418,8 +3412,17 @@ fn paste_impl(
         };
         (pos, pos, values.next())
     });
+    doc.apply(&transaction, view.id);
+}
 
-    Some(transaction)
+pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let paste = match doc.mode {
+        Mode::Insert | Mode::Select => Paste::Cursor,
+        Mode::Normal => Paste::Before,
+    };
+    paste_impl(&[contents], doc, view, paste, count);
 }
 
 fn paste_clipboard_impl(
@@ -3429,18 +3432,11 @@ fn paste_clipboard_impl(
     count: usize,
 ) -> anyhow::Result<()> {
     let (view, doc) = current!(editor);
-
-    match editor
-        .clipboard_provider
-        .get_contents(clipboard_type)
-        .map(|contents| paste_impl(&[contents], doc, view, action, count))
-    {
-        Ok(Some(transaction)) => {
-            doc.apply(&transaction, view.id);
-            doc.append_changes_to_history(view.id);
+    match editor.clipboard_provider.get_contents(clipboard_type) {
+        Ok(contents) => {
+            paste_impl(&[contents], doc, view, action, count);
             Ok(())
         }
-        Ok(None) => Ok(()),
         Err(e) => Err(e.context("Couldn't get system clipboard contents")),
     }
 }
@@ -3553,11 +3549,8 @@ fn paste(cx: &mut Context, pos: Paste) {
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
 
-    if let Some(transaction) = registers
-        .read(reg_name)
-        .and_then(|values| paste_impl(values, doc, view, pos, count))
-    {
-        doc.apply(&transaction, view.id);
+    if let Some(values) = registers.read(reg_name) {
+        paste_impl(values, doc, view, pos, count);
     }
 }
 
@@ -4849,7 +4842,7 @@ fn replay_macro(cx: &mut Context) {
     cx.callback = Some(Box::new(move |compositor, cx| {
         for _ in 0..count {
             for &key in keys.iter() {
-                compositor.handle_event(compositor::Event::Key(key), cx);
+                compositor.handle_event(&compositor::Event::Key(key), cx);
             }
         }
         // The macro under replay is cleared at the end of the callback, not in the

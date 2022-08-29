@@ -260,7 +260,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         }
     }
 
-    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
         // TODO: keybinds for scrolling preview
         self.picker.handle_event(event, ctx)
     }
@@ -476,6 +476,14 @@ impl<T: Item> Picker<T> {
     pub fn toggle_preview(&mut self) {
         self.show_preview = !self.show_preview;
     }
+
+    fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+        if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
+            // TODO: recalculate only if pattern changed
+            self.score();
+        }
+        EventResult::Consumed(None)
+    }
 }
 
 // process:
@@ -489,9 +497,10 @@ impl<T: Item + 'static> Component for Picker<T> {
         Some(viewport)
     }
 
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let key_event = match event {
-            Event::Key(event) => event,
+            Event::Key(event) => *event,
+            Event::Paste(..) => return self.prompt_handle_event(event, cx),
             Event::Resize(..) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored(None),
         };
@@ -548,10 +557,7 @@ impl<T: Item + 'static> Component for Picker<T> {
                 self.toggle_preview();
             }
             _ => {
-                if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
-                    // TODO: recalculate only if pattern changed
-                    self.score();
-                }
+                self.prompt_handle_event(event, cx);
             }
         }
 

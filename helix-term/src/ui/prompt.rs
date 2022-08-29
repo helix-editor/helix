@@ -466,9 +466,13 @@ impl Prompt {
 }
 
 impl Component for Prompt {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let event = match event {
-            Event::Key(event) => event,
+            Event::Paste(data) => {
+                self.insert_str(data);
+                return EventResult::Consumed(None);
+            }
+            Event::Key(event) => *event,
             Event::Resize(..) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored(None),
         };
