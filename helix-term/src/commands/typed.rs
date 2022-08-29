@@ -270,7 +270,7 @@ fn write_impl(
 ) -> anyhow::Result<()> {
     let editor_auto_fmt = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
-    let doc = doc_mut!(cx.editor);
+    let (view, doc) = current!(cx.editor);
     let path = path.map(AsRef::as_ref);
 
     let fmt = if editor_auto_fmt {
@@ -278,6 +278,7 @@ fn write_impl(
             let callback = make_format_callback(
                 doc.id(),
                 doc.version(),
+                view.id,
                 fmt,
                 Some((path.map(Into::into), force)),
             );
@@ -343,9 +344,9 @@ fn format(
         return Ok(());
     }
 
-    let doc = doc!(cx.editor);
+    let (view, doc) = current!(cx.editor);
     if let Some(format) = doc.format() {
-        let callback = make_format_callback(doc.id(), doc.version(), format, None);
+        let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
         cx.jobs.callback(callback);
     }
 
@@ -573,12 +574,13 @@ fn write_all_impl(
     let mut errors: Vec<&'static str> = Vec::new();
     let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
+    let current_view = view!(cx.editor);
 
     // save all documents
     let saves: Vec<_> = cx
         .editor
         .documents
-        .values()
+        .values_mut()
         .filter_map(|doc| {
             if doc.path().is_none() {
                 errors.push("cannot write a buffer without a filename\n");
@@ -589,10 +591,30 @@ fn write_all_impl(
                 return None;
             }
 
+            // Look for a view to apply the formatting change to. If the document
+            // is in the current view, just use that. Otherwise, since we don't
+            // have any other metric available for better selection, just pick
+            // the first view arbitrarily so that we still commit the document
+            // state for undos. If somehow we have a document that has not been
+            // initialized with any view, initialize it with the current view.
+            let target_view = if doc.selections().contains_key(&current_view.id) {
+                current_view.id
+            } else if let Some(view) = doc.selections().keys().next() {
+                *view
+            } else {
+                doc.ensure_view_init(current_view.id);
+                current_view.id
+            };
+
             let fmt = if auto_format {
                 doc.auto_format().map(|fmt| {
-                    let callback =
-                        make_format_callback(doc.id(), doc.version(), fmt, Some((None, force)));
+                    let callback = make_format_callback(
+                        doc.id(),
+                        doc.version(),
+                        target_view,
+                        fmt,
+                        Some((None, force)),
+                    );
                     jobs.add(Job::with_callback(callback).wait_before_exiting());
                 })
             } else {
@@ -602,6 +624,7 @@ fn write_all_impl(
             if fmt.is_none() {
                 return Some(doc.id());
             }
+
             None
         })
         .collect();

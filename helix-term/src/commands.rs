@@ -2515,19 +2515,20 @@ fn insert_at_line_end(cx: &mut Context) {
 async fn make_format_callback(
     doc_id: DocumentId,
     doc_version: i32,
+    view_id: ViewId,
     format: impl Future<Output = Result<Transaction, FormatterError>> + Send + 'static,
     write: Option<(Option<PathBuf>, bool)>,
 ) -> anyhow::Result<job::Callback> {
     let format = format.await;
 
     let call: job::Callback = Callback::Editor(Box::new(move |editor| {
-        if !editor.documents.contains_key(&doc_id) {
+        if !editor.documents.contains_key(&doc_id) || !editor.tree.contains(view_id) {
             return;
         }
 
         let scrolloff = editor.config().scrolloff;
         let doc = doc_mut!(editor, &doc_id);
-        let view = view_mut!(editor);
+        let view = view_mut!(editor, view_id);
 
         if let Ok(format) = format {
             if doc.version() == doc_version {
