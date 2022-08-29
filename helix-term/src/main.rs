@@ -122,19 +122,7 @@ FLAGS:
 
     helix_loader::initialize_config_file(args.config_file.clone());
 
-    let config = match std::fs::read_to_string(helix_loader::config_file()) {
-        Ok(config) => toml::from_str(&config)
-            .map(helix_term::keymap::merge_keys)
-            .unwrap_or_else(|err| {
-                eprintln!("Bad config: {}", err);
-                eprintln!("Press <ENTER> to continue with default config");
-                use std::io::Read;
-                let _ = std::io::stdin().read(&mut []);
-                Config::default()
-            }),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
-        Err(err) => return Err(Error::new(err)),
-    };
+    let config: Config = Config::load_merged_config();
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config).context("unable to create new application")?;
