@@ -311,3 +311,70 @@ async fn test_undo_redo() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_append_marker() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+                #[foo|]#
+                bar
+                baz"
+        },
+        // * Save selection to maker: ^s
+        // * Move to #[bar|]#: jmiw
+        // * Append #[bar|]# to saved selection: ^Ca
+        // * Move to #[baz|]#: jmiw
+        // * Append ranges from register: ^ca
+        "^sjmiw^Cajmiw^ca",
+        indoc! {"\
+                #(foo|)#
+                #(bar|)#
+                #[baz|]#"
+        },
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_union_marker() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+                #[foo|]#
+                bar
+                baz"
+        },
+        // * Save selection to maker: ^s
+        // * Move to #[baz|]#: jjmiw
+        // * Union ranges from register: ^cu
+        "^sjjmiw^cu",
+        indoc! {"\
+                #[foo
+                bar
+                baz|]#"
+        },
+    ))
+    .await?;
+
+    // The reverse of the above.
+    test((
+        indoc! {"\
+                #[|foo]#
+                bar
+                baz"
+        },
+        // * Save selection to maker: ^s
+        // * Move to #[|baz]#: jjmiw<A-;>
+        // * Union ranges from register: ^cu
+        "^sjjmiw<A-;>^cu",
+        indoc! {"\
+                #[|foo
+                bar
+                baz]#"
+        },
+    ))
+    .await?;
+
+    Ok(())
+}

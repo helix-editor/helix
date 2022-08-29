@@ -98,6 +98,12 @@ pub struct DocumentSavedEvent {
 pub type DocumentSavedEventResult = Result<DocumentSavedEvent, anyhow::Error>;
 pub type DocumentSavedEventFuture = BoxFuture<'static, DocumentSavedEventResult>;
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum MarkerName {
+    Register(char),
+    // Snippet(?),
+}
+
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
@@ -138,6 +144,9 @@ pub struct Document {
     language_server: Option<Arc<helix_lsp::Client>>,
 
     diff_handle: Option<DiffHandle>,
+
+    /// Named selections within the document.
+    pub markers: HashMap<MarkerName, Selection>,
 }
 
 use std::{fmt, mem};
@@ -362,6 +371,7 @@ impl Document {
             encoding,
             text,
             selections: HashMap::default(),
+            markers: HashMap::default(),
             indent_style: DEFAULT_INDENT,
             line_ending: DEFAULT_LINE_ENDING,
             restore_cursor: false,
@@ -781,6 +791,15 @@ impl Document {
 
         if success {
             for selection in self.selections.values_mut() {
+                *selection = selection
+                    .clone()
+                    // Map through changes
+                    .map(transaction.changes())
+                    // Ensure all selections across all views still adhere to invariants.
+                    .ensure_invariants(self.text.slice(..));
+            }
+
+            for selection in self.markers.values_mut() {
                 *selection = selection
                     .clone()
                     // Map through changes

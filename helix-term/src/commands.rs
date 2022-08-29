@@ -30,7 +30,7 @@ use helix_core::{
 use helix_view::{
     apply_transaction,
     clipboard::ClipboardType,
-    document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
+    document::{FormatterError, MarkerName, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
     info::Info,
     input::KeyEvent,
@@ -44,6 +44,7 @@ use anyhow::{anyhow, bail, ensure, Context as _};
 use fuzzy_matcher::FuzzyMatcher;
 use insert::*;
 use movement::Movement;
+use range_combination::*;
 
 use crate::{
     args,
@@ -445,6 +446,22 @@ impl MappableCommand {
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
+        save_selection_to_register, "Save selection to register",
+        restore_selection, "Restore selection from register",
+        append_selection_from_register, "Append selections from register",
+        append_selection_to_register, "Append selections and save to register",
+        union_selection_from_register, "Union selection-pairs from register",
+        union_selection_to_register, "Union selection-pairs and save to register",
+        intersect_selection_from_register, "Intersect selection-pairs from register",
+        intersect_selection_to_register, "Intersect selection-pairs to register",
+        select_leftmost_cursor_selection_from_register, "Select selection with leftmost cursor for each pair from register",
+        select_leftmost_cursor_selection_to_register, "Select selection with leftmost cursor for each pair and save to register",
+        select_rightmost_cursor_selection_from_register, "Select selection with rightmost cursor for each pair from register",
+        select_rightmost_cursor_selection_to_register, "Select selection with rightmost cursor for each pair and save to register",
+        select_shortest_selection_from_register, "Select shortest selection for each pair from register",
+        select_shortest_selection_to_register, "Select shortest selection for each pair and save to register",
+        select_longest_selection_from_register, "Select longest selection for each pair from register",
+        select_longest_selection_to_register, "Select longest selection for each pair and save to register",
     );
 }
 
@@ -5189,7 +5206,7 @@ fn replay_macro(cx: &mut Context) {
             }
         }
     } else {
-        cx.editor.set_error(format!("Register [{}] empty", reg));
+        cx.editor.set_error(format!("Register [{}] is empty", reg));
         return;
     };
 
@@ -5209,4 +5226,204 @@ fn replay_macro(cx: &mut Context) {
         // replaying recursively.
         cx.editor.macro_replaying.pop();
     }));
+}
+
+fn save_selection_to_register(cx: &mut Context) {
+    let register = cx.register.unwrap_or('^');
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id).clone();
+    let range_count = selection.ranges().len();
+    doc.markers
+        .insert(MarkerName::Register(register), selection);
+    cx.editor.set_status(format!(
+        "Saved {} range{} to [{}]",
+        range_count,
+        if range_count == 1 { "" } else { "s" },
+        register
+    ));
+}
+
+fn restore_selection(cx: &mut Context) {
+    let register = cx.register.unwrap_or('^');
+    let (view, doc) = current!(cx.editor);
+
+    if let Some(selection) = doc.markers.get(&MarkerName::Register(register)) {
+        let selection = selection.clone();
+        let range_count = selection.ranges().len();
+        doc.set_selection(view.id, selection);
+
+        cx.editor.set_status(format!(
+            "Restored {} ranges{} from [{}]",
+            range_count,
+            if range_count == 1 { "" } else { "s" },
+            register
+        ));
+    } else {
+        cx.editor
+            .set_error(format!("Register [{}] is empty", register));
+    }
+}
+
+pub mod range_combination {
+    use super::*;
+    enum Destination {
+        Selection,
+        Register,
+    }
+    enum Action {
+        Append,
+        Union,
+        Intersect,
+        SelectLeftmostCursor,
+        SelectRightmostCursor,
+        SelectShortest,
+        SelectLongest,
+    }
+
+    pub fn append_selection_from_register(cx: &mut Context) {
+        combine_selection_impl(cx, Destination::Selection, Action::Append);
+    }
+
+    pub fn append_selection_to_register(cx: &mut Context) {
+        combine_selection_impl(cx, Destination::Register, Action::Append);
+    }
+
+    pub fn union_selection_from_register(cx: &mut Context) {
+        combine_selection_impl(cx, Destination::Selection, Action::Union);
+    }
+
+    pub fn union_selection_to_register(cx: &mut Context) {
+        combine_selection_impl(cx, Destination::Register, Action::Union);
+    }
+
+    pub fn intersect_selection_from_register(cx: &mut Context) {
+        combine_selection_impl(cx, Destination::Selection, Action::Intersect);
+    }
+
+    pub fn intersect_selection_to_register(cx: &mut Context) {
+        combine_selection_impl(cx, Destination::Register, Action::Intersect);
+    }
+
+    pub fn select_leftmost_cursor_selection_from_register(cx: &mut Context) {
+        combine_selection_impl(cx, Destination::Selection, Action::SelectLeftmostCursor);
+    }
+
+    pub fn select_leftmost_cursor_selection_to_register(cx: &mut Context) {
+        combine_selection_impl(cx, Destination::Register, Action::SelectLeftmostCursor);
+    }
+
+    pub fn select_rightmost_cursor_selection_from_register(cx: &mut Context) {
+        combine_selection_impl(cx, Destination::Selection, Action::SelectRightmostCursor);
+    }
+
+    pub fn select_rightmost_cursor_selection_to_register(cx: &mut Context) {
+        combine_selection_impl(cx, Destination::Register, Action::SelectRightmostCursor);
+    }
+
+    pub fn select_shortest_selection_from_register(cx: &mut Context) {
+        combine_selection_impl(cx, Destination::Selection, Action::SelectShortest);
+    }
+
+    pub fn select_shortest_selection_to_register(cx: &mut Context) {
+        combine_selection_impl(cx, Destination::Register, Action::SelectShortest);
+    }
+
+    pub fn select_longest_selection_from_register(cx: &mut Context) {
+        combine_selection_impl(cx, Destination::Selection, Action::SelectLongest);
+    }
+
+    pub fn select_longest_selection_to_register(cx: &mut Context) {
+        combine_selection_impl(cx, Destination::Register, Action::SelectLongest);
+    }
+
+    fn combine_selection_impl(cx: &mut Context, destination: Destination, action: Action) {
+        let register = cx.register.unwrap_or('^');
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+
+        let doc_selection = doc.selection(view.id).clone();
+        let saved_selection = match doc.markers.get(&MarkerName::Register(register)) {
+            Some(selection) => selection.clone(),
+            None => {
+                cx.editor
+                    .set_error(format!("Register [{}] is empty", register));
+                return;
+            }
+        };
+
+        let doc_ranges_count = doc_selection.ranges().len();
+        let saved_ranges_count = saved_selection.ranges().len();
+
+        let combined_selection = match action {
+            Action::Append => doc_selection.append(&saved_selection),
+            // The ramaining combinations require the selections to have the same
+            // number of ranges.
+            _ if doc_ranges_count != saved_ranges_count => {
+                cx.editor.set_error(format!(
+                    "The two selections have different range counts: {} vs {}",
+                    saved_ranges_count, doc_ranges_count,
+                ));
+                return;
+            }
+            Action::Union => doc_selection.merge_ranges(&saved_selection, |(s, o)| s.merge(*o)),
+            Action::Intersect => {
+                doc_selection.merge_ranges(&saved_selection, |(s, o)| s.intersect(*o))
+            }
+            Action::SelectLeftmostCursor => {
+                doc_selection.merge_ranges(&saved_selection, |(s, o)| {
+                    if s.cursor(text) <= o.cursor(text) {
+                        *s
+                    } else {
+                        *o
+                    }
+                })
+            }
+            Action::SelectRightmostCursor => {
+                doc_selection.merge_ranges(&saved_selection, |(s, o)| {
+                    if s.cursor(text) > o.cursor(text) {
+                        *s
+                    } else {
+                        *o
+                    }
+                })
+            }
+            Action::SelectShortest => doc_selection.merge_ranges(&saved_selection, |(s, o)| {
+                if s.width(text) <= o.width(text) {
+                    *s
+                } else {
+                    *o
+                }
+            }),
+            Action::SelectLongest => doc_selection.merge_ranges(&saved_selection, |(s, o)| {
+                if s.width(text) > o.width(text) {
+                    *s
+                } else {
+                    *o
+                }
+            }),
+        };
+
+        let combined_range_count = combined_selection.ranges().len();
+        match destination {
+            Destination::Selection => {
+                doc.set_selection(view.id, combined_selection);
+                cx.editor.set_status(format!(
+                    "Combined {} range{} from [{}]",
+                    combined_range_count,
+                    if combined_range_count == 1 { "" } else { "s" },
+                    register
+                ));
+            }
+            Destination::Register => {
+                doc.markers
+                    .insert(MarkerName::Register(register), combined_selection);
+                cx.editor.set_status(format!(
+                    "Combined {} range{} to [{}]",
+                    combined_range_count,
+                    if combined_range_count == 1 { "" } else { "s" },
+                    register
+                ));
+            }
+        }
+    }
 }
