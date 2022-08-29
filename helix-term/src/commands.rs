@@ -375,7 +375,7 @@ impl MappableCommand {
         select_prev_sibling, "Select previous sibling in syntax tree",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
-        save_selection, "Save current selection to jumplist",
+        push_selection, "Save current selection to jumplist",
         jump_view_right, "Jump to right split",
         jump_view_left, "Jump to left split",
         jump_view_up, "Jump to split above",
@@ -4298,7 +4298,7 @@ fn jump_backward(cx: &mut Context) {
     };
 }
 
-fn save_selection(cx: &mut Context) {
+fn push_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     push_jump(view, doc);
     cx.editor.set_status("Selection saved to jumplist");
