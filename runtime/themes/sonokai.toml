@@ -58,6 +58,7 @@
 "ui.selection" = { bg = "bg4" }
 "ui.linenr" = "grey"
 "ui.linenr.selected" = "fg"
+"ui.cursorline.primary" = { bg = "bg2" }
 "ui.statusline" = { fg = "fg", bg = "bg3" }
 "ui.statusline.inactive" = { fg = "grey", bg = "bg1" }
 "ui.popup" = { fg = "grey", bg = "bg2" }
