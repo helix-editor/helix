@@ -28,8 +28,10 @@ pub fn find_files(dir: &Path, filename: &str) -> Vec<PathBuf> {
             let path = entry.ok()?.path();
             if path.is_dir() {
                 Some(find_files(&path, filename))
+            } else if path.file_name()?.to_string_lossy() == filename {
+                Some(vec![path])
             } else {
-                (path.file_name()?.to_string_lossy() == filename).then(|| vec![path])
+                None
             }
         })
         .flatten()
