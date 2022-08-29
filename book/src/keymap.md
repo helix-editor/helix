@@ -274,6 +274,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `Y`     | Yank main selection to clipboard                                        | `yank_main_selection_to_clipboard`  |
 | `R`     | Replace selections by clipboard contents                                | `replace_selections_with_clipboard` |
 | `/`     | Global search in workspace folder                                       | `global_search`                     |
+| `l`     | Search lines in current buffer                                          | `line_search`                       |
 | `?`     | Open command palette                                                    | `command_palette`                   |
 
 > TIP: Global search displays results in a fuzzy picker, use `space + '` to bring it back up after opening a file.

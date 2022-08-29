@@ -247,6 +247,7 @@ impl MappableCommand {
         extend_search_prev, "Add previous search match to selection",
         search_selection, "Use current selection as search pattern",
         global_search, "Global search in workspace folder",
+        line_search, "Search lines in current buffer",
         extend_line, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
         extend_to_line_bounds, "Extend selection to line bounds",
@@ -1930,6 +1931,92 @@ fn global_search(cx: &mut Context) {
                     },
                     |_editor, FileResult { path, line_num }| {
                         Some((path.clone(), Some((*line_num, *line_num))))
+                    },
+                );
+                compositor.push(Box::new(overlayed(picker)));
+            });
+        Ok(call)
+    };
+    cx.jobs.callback(show_picker);
+}
+
+fn line_search(cx: &mut Context) {
+    #[derive(Debug)]
+    struct LineResult {
+        /// 0 indexed lines
+        line_num: usize,
+        text: String,
+    }
+
+    impl ui::menu::Item for LineResult {
+        type Data = ();
+
+        fn label(&self, _: &Self::Data) -> Spans {
+            self.text.as_str().into()
+        }
+    }
+
+    let (all_matches_sx, all_matches_rx) = tokio::sync::mpsc::unbounded_channel::<LineResult>();
+
+    let reg = cx.register.unwrap_or('/');
+
+    let completions = search_completions(cx, Some(reg));
+    ui::regex_prompt(
+        cx,
+        "line-search:".into(),
+        Some(reg),
+        move |_editor: &Editor, input: &str| {
+            completions
+                .iter()
+                .filter(|comp| comp.starts_with(input))
+                .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
+                .collect()
+        },
+        move |_view, doc, regex, event| {
+            if event != PromptEvent::Validate {
+                return;
+            }
+
+            for (num, line) in doc.text().lines().enumerate() {
+                if line.as_str().map_or(false, |l| regex.is_match(l)) {
+                    all_matches_sx
+                        .send(LineResult {
+                            line_num: num,
+                            text: line.as_str().map_or_else(String::new, |s| s.to_string()),
+                        })
+                        .unwrap();
+                }
+            }
+        },
+    );
+
+    let show_picker = async move {
+        let all_matches: Vec<LineResult> =
+            UnboundedReceiverStream::new(all_matches_rx).collect().await;
+        let call: job::Callback =
+            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                if all_matches.is_empty() {
+                    editor.set_status("No matches found");
+                    return;
+                }
+
+                let picker = FilePicker::new(
+                    all_matches,
+                    (),
+                    move |cx, LineResult { line_num, text: _ }, _action| {
+                        let line_num = *line_num;
+                        let (view, doc) = current!(cx.editor);
+                        let text = doc.text();
+                        let start = text.line_to_char(line_num);
+                        let end = text.line_to_char((line_num + 1).min(text.len_lines()));
+
+                        doc.set_selection(view.id, Selection::single(start, end));
+                        align_view(doc, view, Align::Center);
+                    },
+                    |editor, LineResult { line_num, text: _ }| {
+                        let current_path = doc!(editor).path().cloned();
+
+                        current_path.map(|p| (p, Some((*line_num, *line_num))))
                     },
                 );
                 compositor.push(Box::new(overlayed(picker)));
