@@ -330,6 +330,11 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let file_type = context.doc.language_id().unwrap_or("text");
+    let editor_config = context.editor.config();
+    let file_type = editor_config
+        .file_type_indicators
+        .get(file_type)
+        .map_or(file_type, String::as_str);
 
     write(context, format!(" {} ", file_type), None);
 }
