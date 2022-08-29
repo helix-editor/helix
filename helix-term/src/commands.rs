@@ -247,7 +247,8 @@ impl MappableCommand {
         extend_search_prev, "Add previous search match to selection",
         search_selection, "Use current selection as search pattern",
         global_search, "Global search in workspace folder",
-        extend_line, "Select current line, if already selected, extend to next line",
+        extend_line, "Select current line, if already selected, extend to another line based on the anchor",
+        extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
         extend_to_line_bounds, "Extend selection to line bounds",
         shrink_to_line_bounds, "Shrink selection to line bounds",
@@ -1945,6 +1946,15 @@ enum Extend {
 }
 
 fn extend_line(cx: &mut Context) {
+    let (view, doc) = current_ref!(cx.editor);
+    let extend = match doc.selection(view.id).primary().direction() {
+        Direction::Forward => Extend::Below,
+        Direction::Backward => Extend::Above,
+    };
+    extend_line_impl(cx, extend);
+}
+
+fn extend_line_below(cx: &mut Context) {
     extend_line_impl(cx, Extend::Below);
 }
 
@@ -1960,20 +1970,32 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
     let selection = doc.selection(view.id).clone().transform(|range| {
         let (start_line, end_line) = range.line_range(text.slice(..));
 
-        let start = text.line_to_char(start_line);
-        let end = text.line_to_char((end_line + count).min(text.len_lines()));
+        let start = text.line_to_char(match extend {
+            Extend::Above => start_line.saturating_sub(count),
+            Extend::Below => start_line,
+        });
+        let end = text.line_to_char(
+            match extend {
+                Extend::Above => end_line + 1, // the start of next line
+                Extend::Below => (end_line + count),
+            }
+            .min(text.len_lines()),
+        );
 
         // extend to previous/next line if current line is selected
         let (anchor, head) = if range.from() == start && range.to() == end {
             match extend {
-                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(1))),
+                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count + 1))),
                 Extend::Below => (
                     start,
                     text.line_to_char((end_line + count + 1).min(text.len_lines())),
                 ),
             }
         } else {
-            (start, end)
+            match extend {
+                Extend::Above => (end, start),
+                Extend::Below => (start, end),
+            }
         };
 
         Range::new(anchor, head)
