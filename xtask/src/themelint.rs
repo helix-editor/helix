@@ -4,8 +4,8 @@ use helix_view::theme::Modifier;
 use helix_view::Theme;
 
 struct Rule {
-    fg: Option<String>,
-    bg: Option<String>,
+    fg: Option<&'static str>,
+    bg: Option<&'static str>,
     check_both: bool,
 }
 
@@ -40,28 +40,28 @@ fn get_rules() -> Vec<Rule> {
 }
 
 impl Rule {
-    fn has_bg(bg: String) -> Rule {
+    fn has_bg(bg: &'static str) -> Rule {
         Rule {
             fg: None,
             bg: Some(bg),
             check_both: true,
         }
     }
-    fn has_fg(fg: String) -> Rule {
+    fn has_fg(fg: &'static str) -> Rule {
         Rule {
             fg: Some(fg),
             bg: None,
             check_both: true,
         }
     }
-    fn has_either(item: String) -> Rule {
+    fn has_either(item: &'static str) -> Rule {
         Rule {
             fg: Some(item.clone()),
             bg: Some(item),
             check_both: false,
         }
     }
-    fn has_both(item: String) -> Rule {
+    fn has_both(item: &'static str) -> Rule {
         Rule {
             fg: Some(item.clone()),
             bg: Some(item),
