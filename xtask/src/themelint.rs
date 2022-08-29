@@ -87,14 +87,14 @@ impl Rule {
         }
         if self.check_both {
             if !found_fg {
-                messages.push(format!("{}={{\"fg\"=\"missing\"}}", fg_name.clone()));
+                messages.push(format!("\"{}\"={{\"fg\"=\"missing\"}}", fg_name.clone()));
             }
             if !found_bg {
-                messages.push(format!("{}={{\"bg\"=\"missing\"}}", bg_name.clone()));
+                messages.push(format!("\"{}\"={{\"bg\"=\"missing\"}}", bg_name.clone()));
             }
         } else {
             if !found_fg && !found_bg {
-                messages.push(format!("{}=\"missing\"", fg_name))
+                messages.push(format!("\"{}\"=\"missing\"", fg_name))
             }
         }
     }
@@ -119,7 +119,7 @@ pub fn lint(file: String) -> Result<(), DynError> {
             .iter()
             .map(|m| {
                 let mut msg = file.clone();
-                msg.push_str(".");
+                msg.push_str(":");
                 msg.push_str(m);
                 msg
             })
