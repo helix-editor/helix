@@ -42,7 +42,7 @@
 "ui.statusline" = { fg = "foreground", bg = "black" }
 "ui.popup" = { bg = "black" }
 "ui.window" = { fg = "dark_gray" }
-"ui.help" = { fg="foreground", bg = "black" }
+"ui.help" = { fg  = "foreground", bg = "black" }
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { bg = "dark_gray", fg = "foreground" }
 "ui.text.info" = { fg = "foreground" }
