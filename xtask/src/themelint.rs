@@ -1,5 +1,6 @@
 use crate::path;
 use crate::DynError;
+use helix_view::theme::Loader;
 use helix_view::theme::Modifier;
 use helix_view::Theme;
 
@@ -134,18 +135,7 @@ pub fn lint(file: String) -> Result<(), DynError> {
 }
 
 pub fn lint_all() -> Result<(), DynError> {
-    let files = std::fs::read_dir(path::themes())
-        .unwrap()
-        .filter_map(|entry| {
-            let path = entry.ok()?.path();
-            let name = path.file_name()?.to_string_lossy().to_string();
-            if path.extension().unwrap() == "toml" {
-                Some(name)
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<String>>();
+    let files = Loader::read_names(path::themes().as_path());
     let mut errors = vec![];
     let files_count = files.len();
     files
