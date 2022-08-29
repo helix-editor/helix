@@ -15,7 +15,8 @@ fn get_rules() -> Vec<Rule> {
         // Check for ui.selection, which is required
         Rule::has_either("ui.selection".into()),
         // Check for planned readable text
-        Rule::has_fg_bg("ui.text".into(), "ui.background".into()),
+        Rule::has_fg("ui.text".into()),
+        Rule::has_bg("ui.background".into()),
         // Check for complete editor.statusline bare minimum
         Rule::has_both("ui.statusline".into()),
         Rule::has_both("ui.statusline.inactive".into()),
@@ -29,7 +30,7 @@ fn get_rules() -> Vec<Rule> {
         Rule::has_either("ui.virtual.ruler".into()),
         // Check for menus and prompts
         Rule::has_both("ui.menu".into()),
-        Rule::has_bg("ui.help".into()),
+        Rule::has_both("ui.help".into()),
         Rule::has_bg("ui.popup".into()),
         Rule::has_either("ui.window".into()),
         // Check for visible cursor
@@ -39,13 +40,6 @@ fn get_rules() -> Vec<Rule> {
 }
 
 impl Rule {
-    fn has_fg_bg(fg: String, bg: String) -> Rule {
-        Rule {
-            fg: Some(fg),
-            bg: Some(bg),
-            check_both: true,
-        }
-    }
     fn has_bg(bg: String) -> Rule {
         Rule {
             fg: None,
