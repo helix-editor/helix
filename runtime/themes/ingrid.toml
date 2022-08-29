@@ -44,7 +44,7 @@
 
 "ui.background" = { bg = "#FFFCFD" }
 "ui.linenr" = { fg = "#bbbbbb" }
-"ui.linenr.selected" = { fg = "#999999" }
+"ui.linenr.selected" = { fg = "#ED5466", modifiers = ["bold"] }
 "ui.cursorline" = { bg = "#F3EAE9" }
 "ui.statusline" = { fg = "#250E07", bg = "#F3EAE9" }
 "ui.statusline.inactive" = { fg = "#7b91b3", bg = "#F3EAE9" }
@@ -57,9 +57,9 @@
 "ui.virtual.whitespace" = "#A6B6CE"
 "ui.virtual.ruler" = { bg = "#F3EAE9" }
 
-"ui.selection" = { bg = "#540099" }
-"ui.cursor.primary" = { bg = "#7420b9" }
-"ui.cursor.match" = { bg = "#bbbbbb" }
+"ui.selection" = { bg = "#F3EAE9" }
+"ui.cursor.primary" = { bg = "#ED5466", fg = "#FFFCFD", modifiers = ["bold"] }
+"ui.cursor.match" = { bg = "#F3EAE9", fg = "#ED5466", modifiers = ["bold"] }
 "ui.menu" = { fg = "#7B91B3", bg = "#F3EAE9" }
 "ui.menu.selected" = { fg = "#D74E50", bg = "#F3EAE9" }
 
