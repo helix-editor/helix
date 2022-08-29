@@ -20,7 +20,7 @@
 "ui.statusline.inactive" = { fg = "base8", bg = "base8x0c" }
 "ui.popup" = { bg = "base3" }
 "ui.window" = { bg = "base3" }
-"ui.help" = { bg = "base3" }
+"ui.help" = { fg = "base8", bg = "base3" }
 
 # active line, highlighting
 "ui.selection" = { bg = "base4" }

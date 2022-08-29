@@ -27,7 +27,7 @@ diagnostic = { fg = 'greyT', bg = 'redD' }
 'ui.cursorline' = { bg = 'brownD' }
 'ui.statusline' = { fg = "greyT", bg = 'brownH' }
 'ui.statusline.inactive' = { fg = "greyT", bg = 'brownN' }
-'ui.help' = { bg = 'brownD' }
+'ui.help' = { fg = "greyT", bg = 'brownD' }
 'ui.highlight' = { bg = 'brownH' }
 'ui.virtual' = { fg = 'brownV' }
 'ui.virtual.ruler' = { bg = 'brownR' }

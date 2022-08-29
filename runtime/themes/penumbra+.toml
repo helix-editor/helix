@@ -72,7 +72,7 @@ diagnostic = { modifiers = ["underlined"] }
 "ui.popup.info" = { bg = "shade" }
 
 "ui.window" = "sky"
-"ui.help" = { bg = "shade-" }
+"ui.help" = { fg = "sky", bg = "shade-" }
 
 "ui.text" = "sky"
 "ui.text.focus" = "blue"

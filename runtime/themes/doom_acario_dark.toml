@@ -55,7 +55,7 @@
 'ui.statusline.select' = { bg = 'base3' }
 'ui.popup' = { bg = 'bg-alt' }
 'ui.window' = { fg = 'gray' }
-'ui.help' = { bg = 'base2' }
+'ui.help' = { fg = 'fg', bg = 'base2' }
 'ui.text' = { fg = 'fg' }
 'ui.text.focus' = { bg = 'bg-alt', fg = 'fg' }
 'ui.text.info' = { fg = 'fg' }

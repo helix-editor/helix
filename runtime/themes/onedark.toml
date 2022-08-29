@@ -71,7 +71,7 @@ diagnostic = { modifiers = ["underlined"] }
 "ui.text" = { fg = "white" }
 "ui.text.focus" = { fg = "white", bg = "light-black", modifiers = ["bold"] }
 
-"ui.help" = { bg = "gray" }
+"ui.help" = { fg = "white", bg = "gray" }
 "ui.popup" = { bg = "gray" }
 "ui.window" = { fg = "gray" }
 "ui.menu" = { fg = "white", bg = "gray" }
