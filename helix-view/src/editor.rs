@@ -211,6 +211,13 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
         });
     }
 
+    if env_var_is_set("WEZTERM_UNIX_SOCKET") && exists("wezterm") {
+        return Some(TerminalConfig {
+            command: "wezterm".to_string(),
+            args: vec!["cli".to_string(), "split-pane".to_string()],
+        });
+    }
+
     None
 }
 
