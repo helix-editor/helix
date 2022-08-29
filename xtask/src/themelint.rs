@@ -139,10 +139,10 @@ pub fn lint_all() -> Result<(), DynError> {
         .filter_map(|entry| {
             let path = entry.ok()?.path();
             let name = path.file_name()?.to_string_lossy().to_string();
-            if path.is_dir() || name.contains("README") {
-                None
-            } else {
+            if path.extension().unwrap() == "toml" {
                 Some(name)
+            } else {
+                None
             }
         })
         .collect::<Vec<String>>();
