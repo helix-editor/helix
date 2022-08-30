@@ -25,15 +25,12 @@ select = "underline"
 hidden = false
 ```
 
-<<<<<<< HEAD
 You may also specify a file to use for configuration with the `-c` or
-`--config` CLI argument: `hx -c path/to/custom-config.toml`.
-=======
-Editor configuration may also be overridden local to a project by creating
-a `config.toml` file under a `.helix` directory. Its settings will be merged
-with the configuration directory `config.toml` and the built-in configuration.
+`--config` CLI argument: `hx -c path/to/custom-config.toml`. 
 
->>>>>>> a4a8e122 (docs: add section about local config, written like the one for languages)
+Finally, you can have a `config.toml` local to a project by it under a `.helix` directory in your repository.
+Its settings will be merged with the configuration directory `config.toml` and the built-in configuration,
+if you have enabled the feature under `[editor.security]` in your global configuration.
 
 ## Editor
 
@@ -236,3 +233,13 @@ Example:
 render = true
 character = "╎"
 ```
+
+### `[editor.security]` Section
+
+Opt in to features that may put you at risk. 
+It is possible to write malicious TOML files, so we suggest you keep the `confirm_*` options to their default value of `true`.
+
+| Key                    | Description                                                                             | Default |
+| ---                    | ---                                                                                     | ---     |
+| `load_local_config`    | Load a `config.yaml` from `$PWD/.helix` that will merge with your global configuration. | `false` |
+| `confirm_local_config` | Prompt the user at launch in order to accept the loading of a found local `$PWD/.helix` | `true`  |
