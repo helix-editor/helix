@@ -5365,7 +5365,7 @@ pub mod range_combination {
                 ));
                 return;
             }
-            Action::Union => doc_selection.merge_ranges(&saved_selection, |(s, o)| s.merge(*o)),
+            Action::Union => doc_selection.merge_ranges(&saved_selection, |(s, o)| s.union(*o)),
             Action::Intersect => {
                 doc_selection.merge_ranges(&saved_selection, |(s, o)| s.intersect(*o))
             }

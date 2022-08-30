@@ -211,10 +211,14 @@ impl Range {
 
     /// Returns a range that encompasses both input ranges.
     ///
-    /// This is like `extend()`, but tries to negotiate the
-    /// anchor/head ordering between the two input ranges.
+    /// This is like `extend()`, but negotiates the anchor/head ordering
+    /// between the two input ranges. The returned range covers the area
+    /// of both input ranges and any space between them.
+    ///
+    /// The range is [Direction::Backward] if both input ranges are
+    /// [Direction::Backward], [Direction::Forward] otherwise.
     #[must_use]
-    pub fn merge(&self, other: Self) -> Self {
+    pub fn union(&self, other: Self) -> Self {
         if self.anchor > self.head && other.anchor > other.head {
             Range {
                 anchor: self.anchor.max(other.anchor),
@@ -533,7 +537,7 @@ impl Selection {
 
         self.ranges.dedup_by(|curr_range, prev_range| {
             if prev_range.overlaps(curr_range) {
-                let new_range = curr_range.merge(*prev_range);
+                let new_range = curr_range.union(*prev_range);
                 if prev_range == &primary || curr_range == &primary {
                     primary = new_range;
                 }
@@ -559,7 +563,7 @@ impl Selection {
 
         self.ranges.dedup_by(|curr_range, prev_range| {
             if prev_range.to() == curr_range.from() {
-                let new_range = curr_range.merge(*prev_range);
+                let new_range = curr_range.union(*prev_range);
                 if prev_range == &primary || curr_range == &primary {
                     primary = new_range;
                 }
