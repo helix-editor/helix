@@ -329,7 +329,7 @@ fn render_file_type<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let file_type = context.doc.language_id().unwrap_or("text");
+    let file_type = context.doc.language_name().unwrap_or("text");
 
     write(context, format!(" {} ", file_type), None);
 }

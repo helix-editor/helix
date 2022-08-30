@@ -324,10 +324,7 @@ impl Component for Completion {
             // option.documentation
 
             let (view, doc) = current!(cx.editor);
-            let language = doc
-                .language()
-                .and_then(|scope| scope.strip_prefix("source."))
-                .unwrap_or("");
+            let language = doc.language_name().unwrap_or("");
             let text = doc.text().slice(..);
             let cursor_pos = doc.selection(view.id).primary().cursor(text);
             let coords = helix_core::visual_coords_at_pos(text, cursor_pos, doc.tab_width());

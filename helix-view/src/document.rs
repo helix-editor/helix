@@ -926,22 +926,32 @@ impl Document {
     }
 
     /// Corresponding language scope name. Usually `source.<lang>`.
-    pub fn language(&self) -> Option<&str> {
+    pub fn language_scope(&self) -> Option<&str> {
         self.language
             .as_ref()
             .map(|language| language.scope.as_str())
+    }
+
+    /// Language name for the document. Corresponds to the `name` key in
+    /// `languages.toml` configuration.
+    pub fn language_name(&self) -> Option<&str> {
+        self.language
+            .as_ref()
+            .map(|language| language.language_id.as_str())
     }
 
     /// Language ID for the document. Either the `language-id` from the
     /// `language-server` configuration, or the document language if no
     /// `language-id` has been specified.
     pub fn language_id(&self) -> Option<&str> {
-        self.language_config()?
+        let language_config = self.language.as_deref()?;
+
+        language_config
             .language_server
             .as_ref()?
             .language_id
             .as_deref()
-            .or_else(|| Some(self.language()?.rsplit_once('.')?.1))
+            .or(Some(language_config.language_id.as_str()))
     }
 
     /// Corresponding [`LanguageConfiguration`].
