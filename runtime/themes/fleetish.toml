@@ -10,7 +10,7 @@
 "constant.numeric" = { fg = "yellow" } # .integer / .float
 "string" = { fg = "pink" } # .regexp
 # "string.special" = {} #.path / .url / .symbol
-"string.special" = { modifier = ["underline"] } #.path / .url / .symbol
+"string.special" = { modifiers = ["underlined"] } #.path / .url / .symbol
 "comment" = { fg = "dark_gray" } # .line
 # "comment.block" = {} # .documentation
 "variable" = { fg = "light" } # .builtin / .parameter
@@ -102,6 +102,7 @@ blue_accent = "#2197F3"
 pink_accent = "#E44C7A"
 green_accent = "#00AF99"
 orange_accent = "#EE7F25"
+yellow_accent = "#DEA407"
 
 # variables intended for future updates
 checkmark = "#44B254"
