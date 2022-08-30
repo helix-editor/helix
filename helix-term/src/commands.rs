@@ -4596,8 +4596,18 @@ fn shell_impl(
     }
     let output = process.wait_with_output()?;
 
-    if !output.stderr.is_empty() {
-        log::error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
+    if !output.status.success() {
+        if !output.stderr.is_empty() {
+            let err = String::from_utf8_lossy(&output.stderr).to_string();
+            log::error!("Shell error: {}", err);
+            bail!("Shell error: {}", err);
+        }
+        bail!("Shell command failed");
+    } else if !output.stderr.is_empty() {
+        log::debug!(
+            "Command printed to stderr: {}",
+            String::from_utf8_lossy(&output.stderr).to_string()
+        );
     }
 
     let str = std::str::from_utf8(&output.stdout)

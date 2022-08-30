@@ -440,17 +440,22 @@ impl Document {
                     .await
                     .map_err(|_| FormatterError::WaitForOutputFailed)?;
 
-                if !output.stderr.is_empty() {
-                    return Err(FormatterError::Stderr(
-                        String::from_utf8_lossy(&output.stderr).to_string(),
-                    ));
-                }
-
                 if !output.status.success() {
-                    return Err(FormatterError::NonZeroExitStatus);
+                    if !output.stderr.is_empty() {
+                        let err = String::from_utf8_lossy(&output.stderr).to_string();
+                        log::error!("Formatter error: {}", err);
+                        return Err(FormatterError::NonZeroExitStatus(Some(err)));
+                    }
+
+                    return Err(FormatterError::NonZeroExitStatus(None));
+                } else if !output.stderr.is_empty() {
+                    log::debug!(
+                        "Formatter printed to stderr: {}",
+                        String::from_utf8_lossy(&output.stderr).to_string()
+                    );
                 }
 
-                let str = String::from_utf8(output.stdout)
+                let str = std::str::from_utf8(&output.stdout)
                     .map_err(|_| FormatterError::InvalidUtf8Output)?;
 
                 Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
@@ -1102,10 +1107,9 @@ pub enum FormatterError {
     },
     BrokenStdin,
     WaitForOutputFailed,
-    Stderr(String),
     InvalidUtf8Output,
     DiskReloadError(String),
-    NonZeroExitStatus,
+    NonZeroExitStatus(Option<String>),
 }
 
 impl std::error::Error for FormatterError {}
@@ -1118,10 +1122,12 @@ impl Display for FormatterError {
             }
             Self::BrokenStdin => write!(f, "Could not write to formatter stdin"),
             Self::WaitForOutputFailed => write!(f, "Waiting for formatter output failed"),
-            Self::Stderr(output) => write!(f, "Formatter error: {}", output),
             Self::InvalidUtf8Output => write!(f, "Invalid UTF-8 formatter output"),
             Self::DiskReloadError(error) => write!(f, "Error reloading file from disk: {}", error),
-            Self::NonZeroExitStatus => write!(f, "Formatter exited with non zero exit status:"),
+            Self::NonZeroExitStatus(Some(output)) => write!(f, "Formatter error: {}", output),
+            Self::NonZeroExitStatus(None) => {
+                write!(f, "Formatter exited with non zero exit status")
+            }
         }
     }
 }
