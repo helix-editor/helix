@@ -122,7 +122,7 @@ FLAGS:
 
     helix_loader::initialize_config_file(args.config_file.clone());
 
-    let config: Config = Config::load_merged_config();
+    let config = Config::load_merged_config();
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config).context("unable to create new application")?;

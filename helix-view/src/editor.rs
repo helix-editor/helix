@@ -156,6 +156,9 @@ pub struct Config {
     /// Search configuration.
     #[serde(default)]
     pub search: SearchConfig,
+    /// Security settings (i.e. loading TOML files from $PWD/.helix)
+    #[serde(default)]
+    pub security: SecurityConfig,
     pub lsp: LspConfig,
     pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Default to `[]`, meaning no rulers.
@@ -166,6 +169,26 @@ pub struct Config {
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct SecurityConfig {
+    pub load_local_config: bool,
+    pub confirm_local_config: bool,
+    //pub load_local_languages: bool, //TODO: implement
+    //pub confirm_local_languages: bool, //TODO: implement
+}
+
+impl Default for SecurityConfig {
+    fn default() -> Self {
+        Self {
+            load_local_config: false,
+            confirm_local_config: true,
+            //load_local_languages: false,
+            //confirm_local_languages: true,
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -550,6 +573,7 @@ impl Default for Config {
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             search: SearchConfig::default(),
+            security: SecurityConfig::default(),
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
