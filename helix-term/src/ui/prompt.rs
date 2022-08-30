@@ -470,6 +470,7 @@ impl Component for Prompt {
         let event = match event {
             Event::Paste(data) => {
                 self.insert_str(data);
+                self.recalculate_completion(cx.editor);
                 return EventResult::Consumed(None);
             }
             Event::Key(event) => *event,
