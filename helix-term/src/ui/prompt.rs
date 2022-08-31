@@ -472,7 +472,7 @@ impl Component for Prompt {
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let event = match event {
             Event::Paste(data) => {
-                self.insert_str(data);
+                self.insert_str(data, cx.editor);
                 self.recalculate_completion(cx.editor);
                 return EventResult::Consumed(None);
             }
