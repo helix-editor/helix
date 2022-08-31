@@ -466,7 +466,7 @@ impl<T: Item> Picker<T> {
             .map(|(index, _score)| &self.options[*index])
     }
 
-    pub fn save_filter(&mut self, cx: &mut Context) {
+    pub fn save_filter(&mut self, cx: &Context) {
         self.filters.clear();
         self.filters
             .extend(self.matches.iter().map(|(index, _)| *index));
