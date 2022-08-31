@@ -45,6 +45,7 @@
 "diff.minus" = "red"
 
 "ui.background" = { bg = "bg0" }
+"ui.cursorline.primary" = { bg = "bg0" }
 "ui.cursor" = { fg = "bg0", bg = "fg" }
 "ui.cursor.match" = { fg = "orange", bg = "bg_yellow" }
 "ui.cursor.insert" = { fg = "bg0", bg = "grey1" }
