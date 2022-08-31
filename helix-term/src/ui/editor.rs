@@ -138,7 +138,7 @@ impl EditorView {
             highlights,
             &editor.config(),
         );
-        Self::render_gutter(editor, doc, view, area, surface, theme, is_focused);
+        Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
         if is_focused {
