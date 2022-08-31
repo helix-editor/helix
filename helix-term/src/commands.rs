@@ -355,8 +355,8 @@ impl MappableCommand {
         indent, "Indent selection",
         unindent, "Unindent selection",
         format_selections, "Format selection",
-        join_selections, "Join lines inside selection",
-        join_selections_space, "Join lines inside selection and select spaces",
+        join_lines, "Join lines inside selection",
+        join_lines_space, "Join lines inside selection and select spaces",
         keep_selections, "Keep selections matching regex",
         remove_selections, "Remove selections matching regex",
         align_selections, "Align selections in column",
@@ -3900,7 +3900,7 @@ fn format_selections(cx: &mut Context) {
     apply_transaction(&transaction, doc, view);
 }
 
-fn join_selections_impl(cx: &mut Context, select_space: bool) {
+fn join_lines_inner(cx: &mut Context, select_space: bool) {
     use movement::skip_while;
     let (view, doc) = current!(cx.editor);
     let text = doc.text();
@@ -3978,12 +3978,12 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
     )
 }
 
-fn join_selections(cx: &mut Context) {
-    join_selections_impl(cx, false)
+fn join_lines(cx: &mut Context) {
+    join_lines_inner(cx, false)
 }
 
-fn join_selections_space(cx: &mut Context) {
-    join_selections_impl(cx, true)
+fn join_lines_space(cx: &mut Context) {
+    join_lines_inner(cx, true)
 }
 
 fn keep_selections(cx: &mut Context) {
