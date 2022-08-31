@@ -312,7 +312,7 @@ impl From<crossterm::event::MouseEventKind> for MouseEventKind {
     fn from(kind: crossterm::event::MouseEventKind) -> Self {
         match kind {
             crossterm::event::MouseEventKind::Down(button) => Self::Down(button.into()),
-            crossterm::event::MouseEventKind::Up(button) => Self::Down(button.into()),
+            crossterm::event::MouseEventKind::Up(button) => Self::Up(button.into()),
             crossterm::event::MouseEventKind::Drag(button) => Self::Drag(button.into()),
             crossterm::event::MouseEventKind::Moved => Self::Moved,
             crossterm::event::MouseEventKind::ScrollDown => Self::ScrollDown,
