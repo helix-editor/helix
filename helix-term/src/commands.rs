@@ -4060,13 +4060,18 @@ fn match_brackets(cx: &mut Context) {
 fn jump_forward(cx: &mut Context) {
     let count = cx.count();
     let view = view_mut!(cx.editor);
+    let doc_id = view.doc;
 
     if let Some((id, selection)) = view.jumps.forward(count) {
         view.doc = *id;
         let selection = selection.clone();
         let (view, doc) = current!(cx.editor); // refetch doc
-        doc.set_selection(view.id, selection);
 
+        if doc.id() != doc_id {
+            view.add_to_history(doc_id);
+        }
+
+        doc.set_selection(view.id, selection);
         align_view(doc, view, Align::Center);
     };
 }
@@ -4074,13 +4079,18 @@ fn jump_forward(cx: &mut Context) {
 fn jump_backward(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
+    let doc_id = doc.id();
 
     if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
         view.doc = *id;
         let selection = selection.clone();
         let (view, doc) = current!(cx.editor); // refetch doc
-        doc.set_selection(view.id, selection);
 
+        if doc.id() != doc_id {
+            view.add_to_history(doc_id);
+        }
+
+        doc.set_selection(view.id, selection);
         align_view(doc, view, Align::Center);
     };
 }
