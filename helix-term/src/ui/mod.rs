@@ -35,10 +35,10 @@ pub fn prompt(
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
-    show_prompt(
-        cx,
-        Prompt::new(prompt, history_register, completion_fn, callback_fn),
-    );
+    let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
+    // Calculate the initial completion
+    prompt.recalculate_completion(cx.editor);
+    cx.push_layer(Box::new(prompt));
 }
 
 pub fn prompt_with_input(
@@ -49,15 +49,8 @@ pub fn prompt_with_input(
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
-    show_prompt(
-        cx,
-        Prompt::new(prompt, history_register, completion_fn, callback_fn).with_line(input),
-    );
-}
-
-fn show_prompt(cx: &mut crate::commands::Context, mut prompt: Prompt) {
-    // Calculate initial completion
-    prompt.recalculate_completion(cx.editor);
+    let prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn)
+        .with_line(input, cx.editor);
     cx.push_layer(Box::new(prompt));
 }
 

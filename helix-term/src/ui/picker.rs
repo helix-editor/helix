@@ -470,7 +470,7 @@ impl<T: Item> Picker<T> {
         self.filters
             .extend(self.matches.iter().map(|(index, _)| *index));
         self.filters.sort_unstable(); // used for binary search later
-        self.prompt.clear(cx);
+        self.prompt.clear(cx.editor);
     }
 
     pub fn toggle_preview(&mut self) {

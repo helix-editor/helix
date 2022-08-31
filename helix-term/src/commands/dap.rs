@@ -582,7 +582,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
             None => return,
         };
         let callback = Box::pin(async move {
-            let call: Callback = Box::new(move |_editor, compositor| {
+            let call: Callback = Box::new(move |editor, compositor| {
                 let mut prompt = Prompt::new(
                     "condition:".into(),
                     None,
@@ -607,7 +607,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
                     },
                 );
                 if let Some(condition) = breakpoint.condition {
-                    prompt.insert_str(&condition)
+                    prompt.insert_str(&condition, editor)
                 }
                 compositor.push(Box::new(prompt));
             });
@@ -624,7 +624,7 @@ pub fn dap_edit_log(cx: &mut Context) {
             None => return,
         };
         let callback = Box::pin(async move {
-            let call: Callback = Box::new(move |_editor, compositor| {
+            let call: Callback = Box::new(move |editor, compositor| {
                 let mut prompt = Prompt::new(
                     "log-message:".into(),
                     None,
@@ -648,7 +648,7 @@ pub fn dap_edit_log(cx: &mut Context) {
                     },
                 );
                 if let Some(log_message) = breakpoint.log_message {
-                    prompt.insert_str(&log_message);
+                    prompt.insert_str(&log_message, editor);
                 }
                 compositor.push(Box::new(prompt));
             });
