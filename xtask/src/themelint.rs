@@ -14,29 +14,29 @@ struct Rule {
 fn get_rules() -> Vec<Rule> {
     vec![
         // Check for ui.selection, which is required
-        Rule::has_either("ui.selection".into()),
+        Rule::has_either("ui.selection"),
         // Check for planned readable text
-        Rule::has_fg("ui.text".into()),
-        Rule::has_bg("ui.background".into()),
+        Rule::has_fg("ui.text"),
+        Rule::has_bg("ui.background"),
         // Check for complete editor.statusline bare minimum
-        Rule::has_both("ui.statusline".into()),
-        Rule::has_both("ui.statusline.inactive".into()),
+        Rule::has_both("ui.statusline"),
+        Rule::has_both("ui.statusline.inactive"),
         // Check for editor.color-modes
-        Rule::has_either("ui.statusline.insert".into()),
-        Rule::has_either("ui.statusline.normal".into()),
-        Rule::has_either("ui.statusline.select".into()),
+        Rule::has_either("ui.statusline.insert"),
+        Rule::has_either("ui.statusline.normal"),
+        Rule::has_either("ui.statusline.select"),
         // Check for editor.cursorline
-        Rule::has_bg("ui.cursorline.primary".into()),
+        Rule::has_bg("ui.cursorline.primary"),
         // Check for editor.rulers
-        Rule::has_either("ui.virtual.ruler".into()),
+        Rule::has_either("ui.virtual.ruler"),
         // Check for menus and prompts
-        Rule::has_both("ui.menu".into()),
-        Rule::has_both("ui.help".into()),
-        Rule::has_bg("ui.popup".into()),
-        Rule::has_either("ui.window".into()),
+        Rule::has_both("ui.menu"),
+        Rule::has_both("ui.help"),
+        Rule::has_bg("ui.popup"),
+        Rule::has_either("ui.window"),
         // Check for visible cursor
-        Rule::has_bg("ui.cursor.primary".into()),
-        Rule::has_either("ui.cursor.match".into()),
+        Rule::has_bg("ui.cursor.primary"),
+        Rule::has_either("ui.cursor.match"),
     ]
 }
 
@@ -57,14 +57,14 @@ impl Rule {
     }
     fn has_either(item: &'static str) -> Rule {
         Rule {
-            fg: Some(item.clone()),
+            fg: Some(item),
             bg: Some(item),
             check_both: false,
         }
     }
     fn has_both(item: &'static str) -> Rule {
         Rule {
-            fg: Some(item.clone()),
+            fg: Some(item),
             bg: Some(item),
             check_both: true,
         }
@@ -88,10 +88,10 @@ impl Rule {
         }
         if self.check_both {
             if !found_fg {
-                messages.push(format!("\"{}\"={{\"fg\"=\"missing\"}}", fg_name.clone()));
+                messages.push(format!("\"{}\"={{\"fg\"=\"missing\"}}", fg_name));
             }
             if !found_bg {
-                messages.push(format!("\"{}\"={{\"bg\"=\"missing\"}}", bg_name.clone()));
+                messages.push(format!("\"{}\"={{\"bg\"=\"missing\"}}", bg_name));
             }
         } else {
             if !found_fg && !found_bg {
