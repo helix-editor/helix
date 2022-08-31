@@ -89,14 +89,14 @@ impl Serialize for Mode {
 
 /// A snapshot of the text of a document that we want to write out to disk
 #[derive(Debug, Clone)]
-pub struct DocumentSaveEvent {
+pub struct DocumentSavedEvent {
     pub revision: usize,
     pub doc_id: DocumentId,
     pub path: PathBuf,
 }
 
-pub type DocumentSaveEventResult = Result<DocumentSaveEvent, anyhow::Error>;
-pub type DocumentSaveEventFuture = BoxFuture<'static, DocumentSaveEventResult>;
+pub type DocumentSavedEventResult = Result<DocumentSavedEvent, anyhow::Error>;
+pub type DocumentSavedEventFuture = BoxFuture<'static, DocumentSavedEventResult>;
 
 pub struct Document {
     pub(crate) id: DocumentId,
@@ -133,9 +133,9 @@ pub struct Document {
     last_saved_revision: usize,
     version: i32, // should be usize?
     pub(crate) modified_since_accessed: bool,
-    save_sender: Option<UnboundedSender<DocumentSaveEventFuture>>,
-    save_receiver: Option<UnboundedReceiver<DocumentSaveEventFuture>>,
-    current_save: Arc<Mutex<Option<DocumentSaveEventFuture>>>,
+    save_sender: Option<UnboundedSender<DocumentSavedEventFuture>>,
+    save_receiver: Option<UnboundedReceiver<DocumentSavedEventFuture>>,
+    current_save: Arc<Mutex<Option<DocumentSavedEventFuture>>>,
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
@@ -616,7 +616,7 @@ impl Document {
             let mut file = File::create(&path).await?;
             to_writer(&mut file, encoding, &text).await?;
 
-            let event = DocumentSaveEvent {
+            let event = DocumentSavedEvent {
                 revision: current_rev,
                 doc_id,
                 path,
@@ -643,11 +643,11 @@ impl Document {
             .map_err(|err| anyhow!("failed to send save event: {}", err))
     }
 
-    pub async fn await_save(&mut self) -> Option<DocumentSaveEventResult> {
+    pub async fn await_save(&mut self) -> Option<DocumentSavedEventResult> {
         self.await_save_impl(true).await
     }
 
-    async fn await_save_impl(&mut self, block: bool) -> Option<DocumentSaveEventResult> {
+    async fn await_save_impl(&mut self, block: bool) -> Option<DocumentSavedEventResult> {
         let mut current_save = self.current_save.lock().await;
         if let Some(ref mut save) = *current_save {
             log::trace!("reawaiting save of '{:?}'", self.path());
@@ -698,11 +698,11 @@ impl Document {
 
     /// Flushes the queue of pending writes. If any fail,
     /// it stops early before emptying the rest of the queue.
-    pub async fn try_flush_saves(&mut self) -> Option<DocumentSaveEventResult> {
+    pub async fn try_flush_saves(&mut self) -> Option<DocumentSavedEventResult> {
         self.flush_saves_impl(false).await
     }
 
-    async fn flush_saves_impl(&mut self, block: bool) -> Option<DocumentSaveEventResult> {
+    async fn flush_saves_impl(&mut self, block: bool) -> Option<DocumentSavedEventResult> {
         let mut final_result = None;
 
         while let Some(save_event) = self.await_save_impl(block).await {
@@ -734,7 +734,7 @@ impl Document {
     /// Prepares the Document for being closed by stopping any new writes
     /// and flushing through the queue of pending writes. If any fail,
     /// it stops early before emptying the rest of the queue.
-    pub async fn close(&mut self) -> Option<DocumentSaveEventResult> {
+    pub async fn close(&mut self) -> Option<DocumentSavedEventResult> {
         if self.save_sender.is_some() {
             self.save_sender.take();
         }

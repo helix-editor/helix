@@ -107,6 +107,7 @@ impl Jobs {
     ) -> anyhow::Result<()> {
         log::debug!("waiting on jobs...");
         let mut wait_futures = std::mem::take(&mut self.wait_futures);
+
         while let (Some(job), tail) = wait_futures.into_future().await {
             match job {
                 Ok(callback) => {

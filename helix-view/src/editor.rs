@@ -1,6 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::{DocumentSaveEventResult, Mode},
+    document::{DocumentSavedEventResult, Mode},
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
@@ -691,7 +691,7 @@ pub struct Editor {
 
 #[derive(Debug)]
 pub enum EditorEvent {
-    DocumentSave(DocumentSaveEventResult),
+    DocumentSaved(DocumentSavedEventResult),
     ConfigEvent(ConfigEvent),
     LanguageServerMessage((usize, Call)),
     DebuggerEvent(dap::Payload),
@@ -1317,7 +1317,7 @@ impl Editor {
             biased;
 
             Some(Some(event)) = saves.next() => {
-                EditorEvent::DocumentSave(event)
+                EditorEvent::DocumentSaved(event)
             }
             Some(config_event) = self.config_events.1.recv() => {
                 EditorEvent::ConfigEvent(config_event)

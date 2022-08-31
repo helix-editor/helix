@@ -9,7 +9,7 @@ use helix_core::{
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{
     align_view,
-    document::DocumentSaveEventResult,
+    document::DocumentSavedEventResult,
     editor::{ConfigEvent, EditorEvent},
     theme,
     tree::Layout,
@@ -431,7 +431,7 @@ impl Application {
         }
     }
 
-    pub fn handle_document_write(&mut self, doc_save_event: DocumentSaveEventResult) {
+    pub fn handle_document_write(&mut self, doc_save_event: DocumentSavedEventResult) {
         if let Err(err) = doc_save_event {
             self.editor.set_error(err.to_string());
             return;
@@ -485,7 +485,7 @@ impl Application {
         log::debug!("received editor event: {:?}", event);
 
         match event {
-            EditorEvent::DocumentSave(event) => {
+            EditorEvent::DocumentSaved(event) => {
                 self.handle_document_write(event);
                 self.render();
             }
