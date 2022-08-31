@@ -56,9 +56,9 @@
 "ui.background" = { fg = "light_gray", bg = "dark_gray2" }
 
 "ui.window" = { bg = "widget" }
-"ui.popup" = { bg = "widget" }
-"ui.help" = { bg = "widget" }
-"ui.menu" = { bg = "widget" }
+"ui.popup" = { fg = "text", bg = "widget" }
+"ui.help" = { fg = "text", bg = "widget" }
+"ui.menu" = { fg = "text", bg = "widget" }
 "ui.menu.selected" = { bg = "dark_blue2" }
 
 # TODO: Alternate bg colour for `ui.cursor.match` and `ui.selection`.
