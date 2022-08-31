@@ -606,14 +606,16 @@ impl EditorView {
         let bufferline_active = editor
             .theme
             .try_get("ui.bufferline.active")
-            .unwrap_or_else(|| editor.theme.get("ui.background"));
+            .unwrap_or_else(|| editor.theme.get("ui.statusline.active"));
 
         let bufferline_inactive = editor
             .theme
             .try_get("ui.bufferline")
-            .unwrap_or_else(|| editor.theme.get("ui.statusline"));
+            .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
 
         let mut x = viewport.x;
+        let current_doc = view!(editor).doc;
+
         for doc in editor.documents() {
             let fname = doc
                 .path()
@@ -623,7 +625,7 @@ impl EditorView {
                 .to_str()
                 .unwrap_or_default();
 
-            let style = if view!(editor).doc == doc.id() {
+            let style = if current_doc == doc.id() {
                 bufferline_active
             } else {
                 bufferline_inactive
