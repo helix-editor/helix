@@ -462,6 +462,7 @@ impl MappableCommand {
         select_shortest_selection_to_register, "Select shortest selection for each pair and save to register",
         select_longest_selection_from_register, "Select longest selection for each pair from register",
         select_longest_selection_to_register, "Select longest selection for each pair and save to register",
+        join_selections, "Join all selections into one",
     );
 }
 
@@ -5426,4 +5427,19 @@ pub mod range_combination {
             }
         }
     }
+}
+
+fn join_selections(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let doc_selection = doc.selection(view.id);
+    let range_count = doc_selection.ranges().len();
+
+    let selection = doc_selection.join_ranges();
+
+    doc.set_selection(view.id, selection);
+    cx.editor.set_status(format!(
+        "Joined {} range{}",
+        range_count,
+        if range_count == 1 { "" } else { "s" }
+    ));
 }

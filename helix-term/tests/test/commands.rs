@@ -378,3 +378,23 @@ async fn test_union_marker() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_join_selections() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+                #(foo|)#
+                bar
+                #[baz|]#"
+        },
+        "^j",
+        indoc! {"\
+                #[foo
+                bar
+                baz|]#"
+        },
+    ))
+    .await?;
+
+    Ok(())
+}

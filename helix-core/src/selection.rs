@@ -713,6 +713,19 @@ impl Selection {
 
         Selection::new(ranges, self.primary_index)
     }
+
+    /// Creates a new selection in which all ranges are merged into one.
+    ///
+    /// The new range covers from the lowest [Range::from] to the highest
+    /// [Range::to].
+    pub fn join_ranges(&self) -> Selection {
+        // SAFETY: selections created with Selection::new are asserted to have
+        // non-empty range vectors.
+        let first = self.ranges.first().unwrap();
+        let last = self.ranges.last().unwrap();
+
+        Selection::new(smallvec![first.union(*last)], 0)
+    }
 }
 
 impl<'a> IntoIterator for &'a Selection {

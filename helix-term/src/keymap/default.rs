@@ -134,7 +134,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "^" => { "Selections"
             "s" => save_selection_to_register,
             "S" => restore_selection,
-            // "j" => join_selections,
+            "j" => join_selections,
             "c" => { "Combine selection from register"
                 "a" => append_selection_from_register,
                 "u" => union_selection_from_register,
