@@ -781,7 +781,10 @@ impl EditorView {
 
         let mut execute_command = |command: &commands::MappableCommand| {
             command.execute(cxt);
-            let doc = cxt.editor.documents.get_mut(&doc_id).unwrap();
+            let doc = match cxt.editor.documents.get(&doc_id) {
+                Some(doc) => doc,
+                None => return,
+            };
             let current_mode = doc.mode();
             match (last_mode, current_mode) {
                 (Mode::Normal, Mode::Insert) => {
