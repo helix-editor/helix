@@ -129,6 +129,52 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+
+    test_key_sequence(
+        &mut Application::new(Args::default(), Config::default())?,
+        Some(format!("ihello<esc>:w {}<ret>", file.path().to_string_lossy()).as_ref()),
+        Some(&|app| {
+            assert!(!app.editor.is_err());
+
+            let mut docs: Vec<_> = app.editor.documents().collect();
+            assert_eq!(1, docs.len());
+
+            let doc = docs.pop().unwrap();
+            assert_eq!(Some(&file.path().to_path_buf()), doc.path());
+        }),
+        false,
+    )
+    .await?;
+
+    helpers::assert_file_has_content(file.as_file_mut(), &helpers::platform_line("hello"))?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_write_scratch_no_path_fails() -> anyhow::Result<()> {
+    helpers::test_key_sequence_with_input_text(
+        None,
+        ("#[\n|]#", "ihello<esc>:w<ret>", "hello#[\n|]#"),
+        &|app| {
+            assert!(app.editor.is_err());
+
+            let mut docs: Vec<_> = app.editor.documents().collect();
+            assert_eq!(1, docs.len());
+
+            let doc = docs.pop().unwrap();
+            assert_eq!(None, doc.path());
+        },
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_write_new_path() -> anyhow::Result<()> {
     let mut file1 = tempfile::NamedTempFile::new().unwrap();
     let mut file2 = tempfile::NamedTempFile::new().unwrap();
@@ -164,24 +210,15 @@ async fn test_write_new_path() -> anyhow::Result<()> {
     )
     .await?;
 
-    file1.as_file_mut().flush()?;
-    file1.as_file_mut().sync_all()?;
-    file2.as_file_mut().flush()?;
-    file2.as_file_mut().sync_all()?;
+    helpers::assert_file_has_content(
+        file1.as_file_mut(),
+        &helpers::platform_line("i can eat glass, it will not hurt me\n"),
+    )?;
 
-    let mut file1_content = String::new();
-    file1.as_file_mut().read_to_string(&mut file1_content)?;
-    assert_eq!(
-        helpers::platform_line("i can eat glass, it will not hurt me\n"),
-        file1_content
-    );
-
-    let mut file2_content = String::new();
-    file2.as_file_mut().read_to_string(&mut file2_content)?;
-    assert_eq!(
-        helpers::platform_line("i can eat glass, it will not hurt me\n"),
-        file2_content
-    );
+    helpers::assert_file_has_content(
+        file2.as_file_mut(),
+        &helpers::platform_line("i can eat glass, it will not hurt me\n"),
+    )?;
 
     Ok(())
 }

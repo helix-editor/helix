@@ -273,10 +273,6 @@ fn write_impl(
     let doc = doc_mut!(cx.editor);
     let path = path.map(AsRef::as_ref);
 
-    if doc.path().is_none() {
-        bail!("cannot write a buffer without a filename");
-    }
-
     let fmt = if editor_auto_fmt {
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(

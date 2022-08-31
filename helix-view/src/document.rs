@@ -574,7 +574,12 @@ impl Document {
             }
         };
 
-        let identifier = self.identifier();
+        let identifier = if self.path().is_some() {
+            Some(self.identifier())
+        } else {
+            None
+        };
+
         let language_server = self.language_server.clone();
 
         // mark changes up to now as saved
@@ -628,10 +633,13 @@ impl Document {
                 if !language_server.is_initialized() {
                     return Ok(event);
                 }
-                if let Some(notification) =
-                    language_server.text_document_did_save(identifier, &text)
-                {
-                    notification.await?;
+
+                if let Some(identifier) = identifier {
+                    if let Some(notification) =
+                        language_server.text_document_did_save(identifier, &text)
+                    {
+                        notification.await?;
+                    }
                 }
             }
 
