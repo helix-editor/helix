@@ -6,10 +6,9 @@ We provide pre-built binaries on the [GitHub Releases page](https://github.com/h
 
 ## OSX
 
-A Homebrew tap is available:
+Helix is available in homebrew-core:
 
 ```
-brew tap helix-editor/helix
 brew install helix
 ```
 

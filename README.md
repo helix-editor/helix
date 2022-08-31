@@ -70,10 +70,9 @@ for a language.
 
 ## MacOS
 
-Helix can be installed on MacOS through homebrew via:
+Helix can be installed on MacOS through homebrew:
 
 ```
-brew tap helix-editor/helix
 brew install helix
 ```
 
