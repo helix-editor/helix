@@ -459,8 +459,8 @@ impl Application {
 
         doc.set_last_saved_revision(doc_save_event.revision);
 
-        let lines = doc.text().len_lines();
-        let bytes = doc.text().len_bytes();
+        let lines = doc_save_event.text.len_lines();
+        let bytes = doc_save_event.text.len_bytes();
 
         if let Err(err) = doc.set_path(Some(&doc_save_event.path)) {
             log::error!(

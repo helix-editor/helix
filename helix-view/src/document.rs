@@ -93,6 +93,7 @@ pub struct DocumentSavedEvent {
     pub revision: usize,
     pub doc_id: DocumentId,
     pub path: PathBuf,
+    pub text: Rope,
 }
 
 pub type DocumentSavedEventResult = Result<DocumentSavedEvent, anyhow::Error>;
@@ -620,6 +621,7 @@ impl Document {
                 revision: current_rev,
                 doc_id,
                 path,
+                text: text.clone(),
             };
 
             if let Some(language_server) = language_server {
