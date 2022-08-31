@@ -152,12 +152,13 @@
 <li><code>&quot;md</code> - Store the selection in register <code>m</code> and delete it.</li>
 </ul>
 <h3 id="special-registers"><a class="header" href="#special-registers">Special Registers</a></h3>
-<table><thead><tr><th>Register character</th><th>Contains</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Register character</th><th>Contains</th></tr></thead><tbody>
 <tr><td><code>/</code></td><td>Last search</td></tr>
 <tr><td><code>:</code></td><td>Last executed command</td></tr>
 <tr><td><code>&quot;</code></td><td>Last yanked text</td></tr>
 <tr><td><code>_</code></td><td>Black hole</td></tr>
 </tbody></table>
+</div>
 <blockquote>
 <p>There is no special register for copying to system clipboard, instead special commands and keybindings are provided. See the <a href="keymap.html#space-mode">keymap</a> for the specifics.
 The black hole register works as a no-op register, meaning no data will be written to / read from it.</p>
@@ -239,7 +240,7 @@ will move the selection over to the &quot;func&quot; <code>identifier</code>.</p
 <li><code>ma</code> - Select around the object (<code>va</code> in vim, <code>&lt;alt-a&gt;</code> in kakoune)</li>
 <li><code>mi</code> - Select inside the object (<code>vi</code> in vim, <code>&lt;alt-i&gt;</code> in kakoune)</li>
 </ul>
-<table><thead><tr><th>Key after <code>mi</code> or <code>ma</code></th><th>Textobject selected</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key after <code>mi</code> or <code>ma</code></th><th>Textobject selected</th></tr></thead><tbody>
 <tr><td><code>w</code></td><td>Word</td></tr>
 <tr><td><code>W</code></td><td>WORD</td></tr>
 <tr><td><code>(</code>, <code>[</code>, <code>'</code>, etc</td><td>Specified surround pairs</td></tr>
@@ -248,7 +249,9 @@ will move the selection over to the &quot;func&quot; <code>identifier</code>.</p
 <tr><td><code>c</code></td><td>Class</td></tr>
 <tr><td><code>a</code></td><td>Argument/parameter</td></tr>
 <tr><td><code>o</code></td><td>Comment</td></tr>
+<tr><td><code>t</code></td><td>Test</td></tr>
 </tbody></table>
+</div>
 <blockquote>
 <p>NOTE: <code>f</code>, <code>c</code>, etc need a tree-sitter grammar active for the current
 document and a special tree-sitter query file to work properly. <a href="./lang-support.html">Only

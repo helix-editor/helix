@@ -149,15 +149,18 @@ when contributing. Note that to test the query files locally you should put
 them under your local runtime directory (<code>~/.config/helix/runtime</code> on Linux
 for example).</p>
 <p>The following <a href="https://tree-sitter.github.io/tree-sitter/using-parsers#capturing-nodes">captures</a> are recognized:</p>
-<table><thead><tr><th>Capture Name</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Capture Name</th></tr></thead><tbody>
 <tr><td><code>function.inside</code></td></tr>
 <tr><td><code>function.around</code></td></tr>
 <tr><td><code>class.inside</code></td></tr>
 <tr><td><code>class.around</code></td></tr>
+<tr><td><code>test.inside</code></td></tr>
+<tr><td><code>test.around</code></td></tr>
 <tr><td><code>parameter.inside</code></td></tr>
 <tr><td><code>comment.inside</code></td></tr>
 <tr><td><code>comment.around</code></td></tr>
 </tbody></table>
+</div>
 <p><a href="https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+filename%3Atextobjects.scm&amp;type=Code&amp;ref=advsearch&amp;l=&amp;l=">Example query files</a> can be found in the helix GitHub repository.</p>
 <h2 id="queries-for-textobject-based-navigation"><a class="header" href="#queries-for-textobject-based-navigation">Queries for Textobject Based Navigation</a></h2>
 <p><a href="../usage.html#tree-sitter-textobject-based-navigation">Tree-sitter based navigation</a> is done using captures in the

@@ -161,16 +161,19 @@ select = &quot;underline&quot;
 [editor.file-picker]
 hidden = false
 </code></pre>
+<p>You may also specify a file to use for configuration with the <code>-c</code> or
+<code>--config</code> CLI argument: <code>hx -c path/to/custom-config.toml</code>.</p>
 <h2 id="editor"><a class="header" href="#editor">Editor</a></h2>
 <h3 id="editor-section"><a class="header" href="#editor-section"><code>[editor]</code> Section</a></h3>
-<table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>scrolloff</code></td><td>Number of lines of padding around the edge of the screen when scrolling.</td><td><code>3</code></td></tr>
 <tr><td><code>mouse</code></td><td>Enable mouse mode.</td><td><code>true</code></td></tr>
 <tr><td><code>middle-click-paste</code></td><td>Middle click paste support.</td><td><code>true</code></td></tr>
 <tr><td><code>scroll-lines</code></td><td>Number of lines to scroll per scroll wheel step.</td><td><code>3</code></td></tr>
 <tr><td><code>shell</code></td><td>Shell to use when running external commands.</td><td>Unix: <code>[&quot;sh&quot;, &quot;-c&quot;]</code><br/>Windows: <code>[&quot;cmd&quot;, &quot;/C&quot;]</code></td></tr>
 <tr><td><code>line-number</code></td><td>Line number display: <code>absolute</code> simply shows each line's number, while <code>relative</code> shows the distance from the current line. When unfocused or in insert mode, <code>relative</code> will still show absolute line numbers.</td><td><code>absolute</code></td></tr>
-<tr><td><code>gutters</code></td><td>Gutters to display: Available are <code>diagnostics</code> and <code>line-numbers</code>, note that <code>diagnostics</code> also includes other features like breakpoints</td><td><code>[&quot;diagnostics&quot;, &quot;line-numbers&quot;]</code></td></tr>
+<tr><td><code>cursorline</code></td><td>Highlight all lines with a cursor.</td><td><code>false</code></td></tr>
+<tr><td><code>gutters</code></td><td>Gutters to display: Available are <code>diagnostics</code> and <code>line-numbers</code> and <code>spacer</code>, note that <code>diagnostics</code> also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty</td><td><code>[&quot;diagnostics&quot;, &quot;line-numbers&quot;]</code></td></tr>
 <tr><td><code>auto-completion</code></td><td>Enable automatic pop up of auto-completion.</td><td><code>true</code></td></tr>
 <tr><td><code>auto-format</code></td><td>Enable automatic formatting on save.</td><td><code>true</code></td></tr>
 <tr><td><code>idle-timeout</code></td><td>Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant.</td><td><code>400</code></td></tr>
@@ -178,30 +181,64 @@ hidden = false
 <tr><td><code>auto-info</code></td><td>Whether to display infoboxes</td><td><code>true</code></td></tr>
 <tr><td><code>true-color</code></td><td>Set to <code>true</code> to override automatic detection of terminal truecolor support in the event of a false negative.</td><td><code>false</code></td></tr>
 <tr><td><code>rulers</code></td><td>List of column positions at which to display the rulers. Can be overridden by language specific <code>rulers</code> in <code>languages.toml</code> file.</td><td><code>[]</code></td></tr>
+<tr><td><code>color-modes</code></td><td>Whether to color the mode indicator with different colors depending on the mode itself</td><td><code>false</code></td></tr>
 </tbody></table>
+</div>
+<h3 id="editorstatusline-section"><a class="header" href="#editorstatusline-section"><code>[editor.statusline]</code> Section</a></h3>
+<p>Allows configuring the statusline at the bottom of the editor.</p>
+<p>The configuration distinguishes between three areas of the status line:</p>
+<p><code>[ ... ... LEFT ... ... | ... ... ... ... CENTER ... ... ... ... | ... ... RIGHT ... ... ]</code></p>
+<p>Statusline elements can be defined as follows:</p>
+<pre><code class="language-toml">[editor.statusline]
+left = [&quot;mode&quot;, &quot;spinner&quot;]
+center = [&quot;file-name&quot;]
+right = [&quot;diagnostics&quot;, &quot;selections&quot;, &quot;position&quot;, &quot;file-encoding&quot;, &quot;file-line-ending&quot;, &quot;file-type&quot;]
+separator = &quot;│&quot;
+</code></pre>
+<p>The following elements can be configured:</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>mode</code></td><td>The current editor mode (<code>NOR</code>/<code>INS</code>/<code>SEL</code>)</td></tr>
+<tr><td><code>spinner</code></td><td>A progress spinner indicating LSP activity</td></tr>
+<tr><td><code>file-name</code></td><td>The path/name of the opened file</td></tr>
+<tr><td><code>file-encoding</code></td><td>The encoding of the opened file if it differs from UTF-8</td></tr>
+<tr><td><code>file-line-ending</code></td><td>The file line endings (CRLF or LF)</td></tr>
+<tr><td><code>file-type</code></td><td>The type of the opened file</td></tr>
+<tr><td><code>diagnostics</code></td><td>The number of warnings and/or errors</td></tr>
+<tr><td><code>selections</code></td><td>The number of active selections</td></tr>
+<tr><td><code>position</code></td><td>The cursor position</td></tr>
+<tr><td><code>position-percentage</code></td><td>The cursor position as a percentage of the total number of lines</td></tr>
+<tr><td><code>separator</code></td><td>The string defined in <code>editor.statusline.separator</code> (defaults to <code>&quot;│&quot;</code>)</td></tr>
+<tr><td><code>spacer</code></td><td>Inserts a space between elements (multiple/contiguous spacers may be specified)</td></tr>
+</tbody></table>
+</div>
 <h3 id="editorlsp-section"><a class="header" href="#editorlsp-section"><code>[editor.lsp]</code> Section</a></h3>
-<table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>display-messages</code></td><td>Display LSP progress messages below statusline<sup class="footnote-reference"><a href="#1">1</a></sup></td><td><code>false</code></td></tr>
+<tr><td><code>auto-signature-help</code></td><td>Enable automatic popup of signature help (parameter hints)</td><td><code>true</code></td></tr>
+<tr><td><code>display-signature-help-docs</code></td><td>Display docs under signature help popup</td><td><code>true</code></td></tr>
 </tbody></table>
+</div>
 <div class="footnote-definition" id="1"><sup class="footnote-definition-label">1</sup>
-<p>A progress spinner is always shown in the statusline beside the file path.</p>
+<p>By default, a progress spinner is shown in the statusline beside the file path.</p>
 </div>
 <h3 id="editorcursor-shape-section"><a class="header" href="#editorcursor-shape-section"><code>[editor.cursor-shape]</code> Section</a></h3>
 <p>Defines the shape of cursor in each mode. Note that due to limitations
 of the terminal environment, only the primary cursor can change shape.
-Valid values for these options are <code>block</code>, <code>bar</code>, <code>underline</code>, or <code>none</code>.</p>
-<table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+Valid values for these options are <code>block</code>, <code>bar</code>, <code>underline</code>, or <code>hidden</code>.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>normal</code></td><td>Cursor shape in <a href="./keymap.html#normal-mode">normal mode</a></td><td><code>block</code></td></tr>
 <tr><td><code>insert</code></td><td>Cursor shape in <a href="./keymap.html#insert-mode">insert mode</a></td><td><code>block</code></td></tr>
 <tr><td><code>select</code></td><td>Cursor shape in <a href="./keymap.html#select--extend-mode">select mode</a></td><td><code>block</code></td></tr>
 </tbody></table>
+</div>
 <h3 id="editorfile-picker-section"><a class="header" href="#editorfile-picker-section"><code>[editor.file-picker]</code> Section</a></h3>
 <p>Sets options for file picker and global search. All but the last key listed in
 the default file-picker configuration below are IgnoreOptions: whether hidden
 files and files listed within ignore files are ignored by (not visible in) the
 helix file picker and global search. There is also one other key, <code>max-depth</code>
 available, which is not defined by default.</p>
-<table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<p>All git related options are only enabled in a git repository.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>hidden</code></td><td>Enables ignoring hidden files.</td><td>true</td></tr>
 <tr><td><code>parents</code></td><td>Enables reading ignore files from parent directories.</td><td>true</td></tr>
 <tr><td><code>ignore</code></td><td>Enables reading <code>.ignore</code> files.</td><td>true</td></tr>
@@ -210,6 +247,7 @@ available, which is not defined by default.</p>
 <tr><td><code>git-exclude</code></td><td>Enables reading <code>.git/info/exclude</code> files.</td><td>true</td></tr>
 <tr><td><code>max-depth</code></td><td>Set with an integer value for maximum depth to recurse.</td><td>Defaults to <code>None</code>.</td></tr>
 </tbody></table>
+</div>
 <h3 id="editorauto-pairs-section"><a class="header" href="#editorauto-pairs-section"><code>[editor.auto-pairs]</code> Section</a></h3>
 <p>Enables automatic insertion of pairs to parentheses, brackets, etc. Can be a
 simple boolean value, or a specific mapping of pairs of single characters.</p>
@@ -244,16 +282,18 @@ name = &quot;rust&quot;
 </code></pre>
 <h3 id="editorsearch-section"><a class="header" href="#editorsearch-section"><code>[editor.search]</code> Section</a></h3>
 <p>Search specific options.</p>
-<table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>smart-case</code></td><td>Enable smart case regex searching (case insensitive unless pattern contains upper case characters)</td><td><code>true</code></td></tr>
 <tr><td><code>wrap-around</code></td><td>Whether the search should wrap after depleting the matches</td><td><code>true</code></td></tr>
 </tbody></table>
+</div>
 <h3 id="editorwhitespace-section"><a class="header" href="#editorwhitespace-section"><code>[editor.whitespace]</code> Section</a></h3>
 <p>Options for rendering whitespace with visible characters. Use <code>:set whitespace.render all</code> to temporarily enable visible whitespace.</p>
-<table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>render</code></td><td>Whether to render whitespace. May either be <code>&quot;all&quot;</code> or <code>&quot;none&quot;</code>, or a table with sub-keys <code>space</code>, <code>tab</code>, and <code>newline</code>.</td><td><code>&quot;none&quot;</code></td></tr>
-<tr><td><code>characters</code></td><td>Literal characters to use when rendering whitespace. Sub-keys may be any of <code>tab</code>, <code>space</code>, <code>nbsp</code> or <code>newline</code></td><td>See example below</td></tr>
+<tr><td><code>characters</code></td><td>Literal characters to use when rendering whitespace. Sub-keys may be any of <code>tab</code>, <code>space</code>, <code>nbsp</code>, <code>newline</code> or <code>tabpad</code></td><td>See example below</td></tr>
 </tbody></table>
+</div>
 <p>Example</p>
 <pre><code class="language-toml">[editor.whitespace]
 render = &quot;all&quot;
@@ -268,6 +308,19 @@ space = &quot;·&quot;
 nbsp = &quot;⍽&quot;
 tab = &quot;→&quot;
 newline = &quot;⏎&quot;
+tabpad = &quot;·&quot; # Tabs will look like &quot;→···&quot; (depending on tab width)
+</code></pre>
+<h3 id="editorindent-guides-section"><a class="header" href="#editorindent-guides-section"><code>[editor.indent-guides]</code> Section</a></h3>
+<p>Options for rendering vertical indent guides.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>render</code></td><td>Whether to render indent guides.</td><td><code>false</code></td></tr>
+<tr><td><code>character</code></td><td>Literal character to use for rendering the indent guide</td><td><code>│</code></td></tr>
+</tbody></table>
+</div>
+<p>Example:</p>
+<pre><code class="language-toml">[editor.indent-guides]
+render = true
+character = &quot;╎&quot;
 </code></pre>
 
                     </main>
