@@ -85,6 +85,22 @@ fn setup_integration_logging() {
         .apply();
 }
 
+fn restore_term() -> Result<(), Error> {
+    let mut stdout = stdout();
+    // reset cursor shape
+    write!(stdout, "\x1B[0 q")?;
+    // Ignore errors on disabling, this might trigger on windows if we call
+    // disable without calling enable previously
+    let _ = execute!(stdout, DisableMouseCapture);
+    execute!(
+        stdout,
+        DisableBracketedPaste,
+        terminal::LeaveAlternateScreen
+    )?;
+    terminal::disable_raw_mode()?;
+    Ok(())
+}
+
 impl Application {
     pub fn new(args: Args, config: Config) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
@@ -389,7 +405,7 @@ impl Application {
         match signal {
             signal::SIGTSTP => {
                 self.compositor.save_cursor();
-                self.restore_term().unwrap();
+                restore_term().unwrap();
                 low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
             }
             signal::SIGCONT => {
@@ -803,18 +819,6 @@ impl Application {
         Ok(())
     }
 
-    fn restore_term(&mut self) -> Result<(), Error> {
-        let mut stdout = stdout();
-        // reset cursor shape
-        write!(stdout, "\x1B[0 q")?;
-        // Ignore errors on disabling, this might trigger on windows if we call
-        // disable without calling enable previously
-        let _ = execute!(stdout, DisableMouseCapture);
-        execute!(stdout, terminal::LeaveAlternateScreen)?;
-        terminal::disable_raw_mode()?;
-        Ok(())
-    }
-
     pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
     where
         S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
@@ -826,20 +830,14 @@ impl Application {
         std::panic::set_hook(Box::new(move |info| {
             // We can't handle errors properly inside this closure.  And it's
             // probably not a good idea to `unwrap()` inside a panic handler.
-            // So we just ignore the `Result`s.
-            let _ = execute!(std::io::stdout(), DisableMouseCapture);
-            let _ = execute!(
-                std::io::stdout(),
-                terminal::LeaveAlternateScreen,
-                DisableBracketedPaste
-            );
-            let _ = terminal::disable_raw_mode();
+            // So we just ignore the `Result`.
+            let _ = restore_term();
             hook(info);
         }));
 
         self.event_loop(input_stream).await;
         self.close().await?;
-        self.restore_term()?;
+        restore_term()?;
 
         Ok(self.editor.exit_code)
     }
