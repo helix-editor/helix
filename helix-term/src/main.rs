@@ -62,7 +62,8 @@ FLAGS:
     -h, --help                     Prints help information
     --tutor                        Loads the tutorial
     --health [CATEGORY]            Checks for potential errors in editor setup
-                                   CATEGORY can be a language or one of 'clipboard' or 'all'
+                                   CATEGORY can be a language or one of 'clipboard', 'languages'
+                                   or 'all'. 'all' is the default if not specified.
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
     -c, --config <file>            Specifies a file to use for configuration
     -v                             Increases logging verbosity each use for up to 3 times
