@@ -771,15 +771,55 @@ impl EditorView {
         cxt: &mut commands::Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
+        let mut last_mode = mode;
         let key_result = self.keymaps.get(mode, event);
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
+        // Track the currently open doc
+        let view = view!(cxt.editor);
+        let doc_id = view.doc;
+
+        let mut execute_command = |command: &commands::MappableCommand| {
+            command.execute(cxt);
+            let doc = cxt.editor.documents.get_mut(&doc_id).unwrap();
+            let current_mode = doc.mode();
+            match (last_mode, current_mode) {
+                (Mode::Normal, Mode::Insert) => {
+                    // HAXX: if we just entered insert mode from normal, clear key buf
+                    // and record the command that got us into this mode.
+
+                    // how we entered insert mode is important, and we should track that so
+                    // we can repeat the side effect.
+                    self.last_insert.0 = command.clone();
+                    self.last_insert.1.clear();
+
+                    commands::signature_help_impl(cxt, commands::SignatureHelpInvoked::Automatic);
+                }
+                (Mode::Insert, Mode::Normal) => {
+                    // if exiting insert mode, remove completion
+                    self.completion = None;
+
+                    // TODO: Use an on_mode_change hook to remove signature help
+                    cxt.jobs.callback(async {
+                        let call: job::Callback = Box::new(|_editor, compositor| {
+                            compositor.remove(SignatureHelp::ID);
+                        });
+                        Ok(call)
+                    });
+                }
+                _ => (),
+            }
+            last_mode = current_mode;
+        };
+
         match &key_result {
-            KeymapResult::Matched(command) => command.execute(cxt),
+            KeymapResult::Matched(command) => {
+                execute_command(command);
+            }
             KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
             KeymapResult::MatchedSequence(commands) => {
                 for command in commands {
-                    command.execute(cxt);
+                    execute_command(command);
                 }
             }
             KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
@@ -1231,40 +1271,6 @@ impl Component for EditorView {
                 // committing changes when leaving insert mode.
                 if doc.mode() != Mode::Insert {
                     doc.append_changes_to_history(view.id);
-                }
-
-                // mode transitions
-                match (mode, doc.mode()) {
-                    (Mode::Normal, Mode::Insert) => {
-                        // HAXX: if we just entered insert mode from normal, clear key buf
-                        // and record the command that got us into this mode.
-
-                        // how we entered insert mode is important, and we should track that so
-                        // we can repeat the side effect.
-
-                        self.last_insert.0 = match self.keymaps.get(mode, key) {
-                            KeymapResult::Matched(command) => command,
-                            // FIXME: insert mode can only be entered through single KeyCodes
-                            _ => unimplemented!(),
-                        };
-                        self.last_insert.1.clear();
-                        commands::signature_help_impl(
-                            &mut cx,
-                            commands::SignatureHelpInvoked::Automatic,
-                        );
-                    }
-                    (Mode::Insert, Mode::Normal) => {
-                        // if exiting insert mode, remove completion
-                        self.completion = None;
-                        // TODO: Use an on_mode_change hook to remove signature help
-                        context.jobs.callback(async {
-                            let call: job::Callback = Box::new(|_editor, compositor| {
-                                compositor.remove(SignatureHelp::ID);
-                            });
-                            Ok(call)
-                        });
-                    }
-                    _ => (),
                 }
 
                 EventResult::Consumed(callback)
