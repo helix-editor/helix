@@ -49,6 +49,7 @@ You may also specify a file to use for configuration with the `-c` or
 | `auto-info` | Whether to display infoboxes | `true` |
 | `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. | `false` |
 | `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file. | `[]` |
+| `file-modification-indicator` | The string to be displayed in the statusbar when the file has been modified. | `"[+]"` |
 | `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
 
 ### `[editor.statusline]` Section

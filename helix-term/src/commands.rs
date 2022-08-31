@@ -68,6 +68,8 @@ use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+const DEFAULT_CURRENT_BUFFER_INDICATOR: &str = "*";
+
 pub struct Context<'a> {
     pub register: Option<char>,
     pub count: Option<NonZeroUsize>,
@@ -2243,6 +2245,8 @@ fn buffer_picker(cx: &mut Context) {
         path: Option<PathBuf>,
         is_modified: bool,
         is_current: bool,
+        modified_indicator: String,
+        current_indicator: String,
     }
 
     impl ui::menu::Item for BufferMeta {
@@ -2260,10 +2264,10 @@ fn buffer_picker(cx: &mut Context) {
 
             let mut flags = Vec::new();
             if self.is_modified {
-                flags.push("+");
+                flags.push(self.modified_indicator.to_string());
             }
             if self.is_current {
-                flags.push("*");
+                flags.push(self.current_indicator.to_string());
             }
 
             let flag = if flags.is_empty() {
@@ -2280,6 +2284,8 @@ fn buffer_picker(cx: &mut Context) {
         path: doc.path().cloned(),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
+        modified_indicator: cx.editor.config().file_modification_indicator.clone(),
+        current_indicator: DEFAULT_CURRENT_BUFFER_INDICATOR.to_string(),
     };
 
     let picker = FilePicker::new(
