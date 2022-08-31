@@ -257,7 +257,7 @@ These scopes are used for theming the editor interface.
 You can check compliance to spec with
 
 ```shell
-cargo xtask themelint onedark # replace onedark with <name>
+cargo xtask themelint onedark  # replace onedark with <name>
 ```
 
 [editor-section]: ./configuration.md#editor-section
