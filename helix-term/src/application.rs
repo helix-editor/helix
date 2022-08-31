@@ -512,7 +512,12 @@ impl Application {
                                     use helix_core::diagnostic::{Diagnostic, Range, Severity::*};
                                     use lsp::DiagnosticSeverity;
 
-                                    let language_server = doc.language_server().unwrap();
+                                    let language_server = if let Some(language_server) = doc.language_server() {
+                                        language_server
+                                    } else {
+                                        log::warn!("Discarding diagnostic because language server is not initialized: {:?}", diagnostic);
+                                        return None;
+                                    };
 
                                     // TODO: convert inside server
                                     let start = if let Some(start) = lsp_pos_to_pos(
