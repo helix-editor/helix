@@ -1263,17 +1263,20 @@ impl Component for EditorView {
                 if cx.editor.should_close() {
                     return EventResult::Ignored(None);
                 }
-                let config = cx.editor.config();
-                let mode = cx.editor.mode();
-                let view = cx.editor.tree.get_mut(focus);
-                let doc = cx.editor.documents.get_mut(&view.doc).unwrap();
+                // if the focused view still exists and wasn't closed
+                if cx.editor.tree.contains(focus) {
+                    let config = cx.editor.config();
+                    let mode = cx.editor.mode();
+                    let view = cx.editor.tree.get_mut(focus);
+                    let doc = cx.editor.documents.get_mut(&view.doc).unwrap();
 
-                view.ensure_cursor_in_view(doc, config.scrolloff);
+                    view.ensure_cursor_in_view(doc, config.scrolloff);
 
-                // Store a history state if not in insert mode. This also takes care of
-                // committing changes when leaving insert mode.
-                if mode != Mode::Insert {
-                    doc.append_changes_to_history(view.id);
+                    // Store a history state if not in insert mode. This also takes care of
+                    // committing changes when leaving insert mode.
+                    if mode != Mode::Insert {
+                        doc.append_changes_to_history(view.id);
+                    }
                 }
 
                 EventResult::Consumed(callback)
