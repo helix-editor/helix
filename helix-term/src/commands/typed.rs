@@ -1412,6 +1412,19 @@ fn open_config(
     Ok(())
 }
 
+fn show_version(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    cx.editor.set_status(env!("VERSION_AND_GIT_HASH"));
+    Ok(())
+}
+
 fn open_log(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1965,6 +1978,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Open the helix log file.",
             fun: open_log,
+            completer: None,
+        },
+        TypableCommand {
+            name: "version",
+            aliases: &[],
+            doc: "Show build version in status bar.",
+            fun: show_version,
             completer: None,
         },
         TypableCommand {
