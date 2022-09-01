@@ -75,14 +75,9 @@ impl Config {
             .filter_map(|file| Config::load_config_toml_values(&root_config, file));
 
         // Merge configs and return, or alert user of error and load default
-        match local_config_values
-            .fold(toml::Value::Table(toml::value::Table::default()), |a, b| {
-                helix_loader::merge_toml_values(b, a, 3)
-            })
-            .try_into()
-        {
-            Ok(conf) => conf,
-            Err(_) => root_config,
+        match local_config_values.reduce(|a, b| helix_loader::merge_toml_values(b, a, 3)) {
+            Some(conf) => conf.try_into().unwrap_or_default(),
+            None => root_config,
         }
     }
 
