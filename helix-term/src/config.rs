@@ -87,7 +87,9 @@ impl Config {
         root_config: &Config,
         config_path: std::path::PathBuf,
     ) -> Option<toml::Value> {
-        if config_path.exists() {
+        if !config_path.exists() {
+            return None;
+        } else {
             let mut confirmed = true;
             if config_path != helix_loader::config_file() {
                 if root_config.editor.security.load_local_config {
@@ -131,7 +133,6 @@ impl Config {
                 return None;
             }
         }
-        None
     }
 
     fn halt_and_confirm(config_type: &'static str) {
