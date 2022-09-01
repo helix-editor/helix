@@ -32,6 +32,42 @@ const DEFAULT_INDENT: IndentStyle = IndentStyle::Tabs;
 
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 
+//TODO: move me
+pub struct Env {
+    path: Option<PathBuf>,
+}
+impl Env {
+    pub fn for_document(doc: &Document) -> Self {
+        Env {
+            path: doc.path.clone(),
+        }
+    }
+    pub fn for_path(path: Option<PathBuf>) -> Self {
+        Env { path }
+    }
+    pub fn inject_into<T>(&self, strs: T) -> Vec<String>
+    where
+        T: Iterator,
+        <T as Iterator>::Item: Display,
+    {
+        let mut vec = vec![];
+        strs.into_iter().for_each(|s| {
+            vec.push(
+                s.to_string().replace(
+                    "$file",
+                    self.path
+                        .clone()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or_default(),
+                ),
+            );
+        });
+        log::debug!("injected: {:#?}", vec);
+        vec
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal = 0,
@@ -412,7 +448,7 @@ impl Document {
             let text = self.text().clone();
             let mut process = tokio::process::Command::new(&formatter.command);
             process
-                .args(&formatter.args)
+                .args(&Env::for_document(self).inject_into(formatter.args.iter()))
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
@@ -636,6 +672,10 @@ impl Document {
         self.path = path;
 
         Ok(())
+    }
+
+    pub fn get_path(&self) -> Option<PathBuf> {
+        self.path.clone()
     }
 
     /// Set the programming language for the file and load associated data (e.g. highlighting)

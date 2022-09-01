@@ -1462,7 +1462,12 @@ fn insert_output(
     }
 
     ensure!(!args.is_empty(), "Shell command required");
-    shell(cx, &args.join(" "), &ShellBehavior::Insert);
+    let (_, doc) = current!(cx.editor);
+    let path = doc.get_path();
+    let parsed_args = helix_view::document::Env::for_path(path)
+        .inject_into(args.iter())
+        .join(" ");
+    shell(cx, parsed_args.as_str(), &ShellBehavior::Insert);
     Ok(())
 }
 
