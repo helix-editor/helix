@@ -122,7 +122,13 @@ impl EditorView {
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
-                Self::doc_selection_highlights(doc, view, theme, &editor.config().cursor_shape),
+                Self::doc_selection_highlights(
+                    editor.mode(),
+                    doc,
+                    view,
+                    theme,
+                    &editor.config().cursor_shape,
+                ),
             ))
         } else {
             Box::new(highlights)
@@ -297,6 +303,7 @@ impl EditorView {
 
     /// Get highlight spans for selections in a document view.
     pub fn doc_selection_highlights(
+        mode: Mode,
         doc: &Document,
         view: &View,
         theme: &Theme,
@@ -306,7 +313,6 @@ impl EditorView {
         let selection = doc.selection(view.id);
         let primary_idx = selection.primary_index();
 
-        let mode = doc.mode();
         let cursorkind = cursor_shape_config.from_mode(mode);
         let cursor_is_block = cursorkind == CursorKind::Block;
 
@@ -775,17 +781,9 @@ impl EditorView {
         let key_result = self.keymaps.get(mode, event);
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
-        // Track the currently open doc
-        let view = view!(cxt.editor);
-        let doc_id = view.doc;
-
         let mut execute_command = |command: &commands::MappableCommand| {
             command.execute(cxt);
-            let doc = match cxt.editor.documents.get(&doc_id) {
-                Some(doc) => doc,
-                None => return,
-            };
-            let current_mode = doc.mode();
+            let current_mode = cxt.editor.mode();
             match (last_mode, current_mode) {
                 (Mode::Normal, Mode::Insert) => {
                     // HAXX: if we just entered insert mode from normal, clear key buf
@@ -956,8 +954,8 @@ impl EditorView {
 
     pub fn handle_idle_timeout(&mut self, cx: &mut crate::compositor::Context) -> EventResult {
         if self.completion.is_some()
+            || cx.editor.mode != Mode::Insert
             || !cx.editor.config().auto_completion
-            || doc!(cx.editor).mode != Mode::Insert
         {
             return EventResult::Ignored(None);
         }
@@ -1177,12 +1175,13 @@ impl Component for EditorView {
                 cx.editor.count = None;
 
                 let config = cx.editor.config();
+                let mode = cx.editor.mode();
                 let (view, doc) = current!(cx.editor);
                 view.ensure_cursor_in_view(doc, config.scrolloff);
 
                 // Store a history state if not in insert mode. Otherwise wait till we exit insert
                 // to include any edits to the paste in the history state.
-                if doc.mode() != Mode::Insert {
+                if mode != Mode::Insert {
                     doc.append_changes_to_history(view.id);
                 }
 
@@ -1200,9 +1199,9 @@ impl Component for EditorView {
                 // clear status
                 cx.editor.status_msg = None;
 
-                let (view, doc) = current!(cx.editor);
+                let mode = cx.editor.mode();
+                let (view, _) = current!(cx.editor);
                 let focus = view.id;
-                let mode = doc.mode();
 
                 if let Some(on_next_key) = self.on_next_key.take() {
                     // if there's a command waiting input, do that first
@@ -1265,6 +1264,7 @@ impl Component for EditorView {
                     return EventResult::Ignored(None);
                 }
                 let config = cx.editor.config();
+                let mode = cx.editor.mode();
                 let view = cx.editor.tree.get_mut(focus);
                 let doc = cx.editor.documents.get_mut(&view.doc).unwrap();
 
@@ -1272,7 +1272,7 @@ impl Component for EditorView {
 
                 // Store a history state if not in insert mode. This also takes care of
                 // committing changes when leaving insert mode.
-                if doc.mode() != Mode::Insert {
+                if mode != Mode::Insert {
                     doc.append_changes_to_history(view.id);
                 }
 

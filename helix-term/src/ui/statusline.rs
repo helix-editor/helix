@@ -160,7 +160,7 @@ where
         format!(
             " {} ",
             if visible {
-                match context.doc.mode() {
+                match context.editor.mode() {
                     Mode::Insert => "INS",
                     Mode::Select => "SEL",
                     Mode::Normal => "NOR",
@@ -171,7 +171,7 @@ where
             }
         ),
         if visible && context.editor.config().color_modes {
-            match context.doc.mode() {
+            match context.editor.mode() {
                 Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
                 Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
                 Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
