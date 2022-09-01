@@ -1263,6 +1263,7 @@ impl Component for EditorView {
                 if cx.editor.should_close() {
                     return EventResult::Ignored(None);
                 }
+                // if the focused view still exists and wasn't closed
                 if cx.editor.tree.contains(focus) {
                     let config = cx.editor.config();
                     let mode = cx.editor.mode();
