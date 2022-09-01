@@ -1265,6 +1265,11 @@ impl Component for EditorView {
                 }
                 let config = cx.editor.config();
                 let mode = cx.editor.mode();
+                let focus = if cx.editor.tree.views().count() == 1 {
+                    cx.editor.tree.focus
+                } else {
+                    focus
+                };
                 let view = cx.editor.tree.get_mut(focus);
                 let doc = cx.editor.documents.get_mut(&view.doc).unwrap();
 
