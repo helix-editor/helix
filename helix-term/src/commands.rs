@@ -1977,7 +1977,7 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
         let end = text.line_to_char(
             match extend {
                 Extend::Above => end_line + 1, // the start of next line
-                Extend::Below => (end_line + count),
+                Extend::Below => end_line + count,
             }
             .min(text.len_lines()),
         );
