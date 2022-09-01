@@ -88,7 +88,7 @@ impl Config {
         config_path: std::path::PathBuf,
     ) -> Option<toml::Value> {
         if !config_path.exists() {
-            return None;
+            None
         } else {
             let mut confirmed = true;
             if config_path != helix_loader::config_file() {
@@ -128,9 +128,9 @@ impl Config {
                         None
                     }
                 };
-                return cfg;
+                cfg
             } else {
-                return None;
+                None
             }
         }
     }
