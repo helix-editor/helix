@@ -94,32 +94,27 @@ impl Rule {
     }
 
     fn validate(&self, theme: &Theme, messages: &mut Vec<String>) {
-        let mut missing = vec![];
-
         let found_fg = self.found_fg(theme);
         let found_bg = self.found_bg(theme);
-        if self.check_both {
+
+        if !found_fg || !found_bg {
+            let mut missing = vec![];
             if !found_fg {
                 missing.push("`fg`");
             }
             if !found_bg {
                 missing.push("`bg`");
             }
-            if !found_fg || !found_bg {
-                messages.push(format!(
-                    "$THEME: missing {} for `{}`",
-                    missing.join(" and "),
-                    self.rule_name()
-                ));
-            }
-        } else {
-            if !found_fg && !found_bg {
-                messages.push(format!(
-                    "$THEME: missing {} for `{}`",
-                    "entry",
-                    self.rule_name()
-                ))
-            }
+            let entry = if !self.check_both && !found_fg && !found_bg {
+                missing.join(" or ")
+            } else {
+                missing.join(" and ")
+            };
+            messages.push(format!(
+                "$THEME: missing {} for `{}`",
+                entry,
+                self.rule_name()
+            ))
         }
     }
 }
