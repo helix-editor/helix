@@ -8,8 +8,9 @@ use std::{env, error::Error};
 type DynError = Box<dyn Error>;
 
 pub mod tasks {
-    use crate::docgen::*;
-    use crate::themelint::*;
+    use crate::docgen::{lang_features, typable_commands, write};
+    use crate::docgen::{LANG_SUPPORT_MD_OUTPUT, TYPABLE_COMMANDS_MD_OUTPUT};
+    use crate::themelint::{lint, lint_all};
     use crate::DynError;
 
     pub fn docgen() -> Result<(), DynError> {
