@@ -122,7 +122,13 @@ impl EditorView {
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
-                Self::doc_selection_highlights(doc, view, theme, &editor.config().cursor_shape),
+                Self::doc_selection_highlights(
+                    editor.mode(),
+                    doc,
+                    view,
+                    theme,
+                    &editor.config().cursor_shape,
+                ),
             ))
         } else {
             Box::new(highlights)
@@ -297,6 +303,7 @@ impl EditorView {
 
     /// Get highlight spans for selections in a document view.
     pub fn doc_selection_highlights(
+        mode: Mode,
         doc: &Document,
         view: &View,
         theme: &Theme,
@@ -306,7 +313,6 @@ impl EditorView {
         let selection = doc.selection(view.id);
         let primary_idx = selection.primary_index();
 
-        let mode = doc.mode();
         let cursorkind = cursor_shape_config.from_mode(mode);
         let cursor_is_block = cursorkind == CursorKind::Block;
 
@@ -390,19 +396,23 @@ impl EditorView {
         // of times than it is to always call Rope::slice/get_slice (it will internally always hit RSEnum::Light).
         let text = doc.text().slice(..);
 
+        let characters = &whitespace.characters;
+
         let mut spans = Vec::new();
         let mut visual_x = 0u16;
         let mut line = 0u16;
         let tab_width = doc.tab_width();
         let tab = if whitespace.render.tab() == WhitespaceRenderValue::All {
-            (1..tab_width).fold(whitespace.characters.tab.to_string(), |s, _| s + " ")
+            std::iter::once(characters.tab)
+                .chain(std::iter::repeat(characters.tabpad).take(tab_width - 1))
+                .collect()
         } else {
             " ".repeat(tab_width)
         };
-        let space = whitespace.characters.space.to_string();
-        let nbsp = whitespace.characters.nbsp.to_string();
+        let space = characters.space.to_string();
+        let nbsp = characters.nbsp.to_string();
         let newline = if whitespace.render.newline() == WhitespaceRenderValue::All {
-            whitespace.characters.newline.to_string()
+            characters.newline.to_string()
         } else {
             " ".to_string()
         };
@@ -767,15 +777,50 @@ impl EditorView {
         cxt: &mut commands::Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
+        let mut last_mode = mode;
         let key_result = self.keymaps.get(mode, event);
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
+        let mut execute_command = |command: &commands::MappableCommand| {
+            command.execute(cxt);
+            let current_mode = cxt.editor.mode();
+            match (last_mode, current_mode) {
+                (Mode::Normal, Mode::Insert) => {
+                    // HAXX: if we just entered insert mode from normal, clear key buf
+                    // and record the command that got us into this mode.
+
+                    // how we entered insert mode is important, and we should track that so
+                    // we can repeat the side effect.
+                    self.last_insert.0 = command.clone();
+                    self.last_insert.1.clear();
+
+                    commands::signature_help_impl(cxt, commands::SignatureHelpInvoked::Automatic);
+                }
+                (Mode::Insert, Mode::Normal) => {
+                    // if exiting insert mode, remove completion
+                    self.completion = None;
+
+                    // TODO: Use an on_mode_change hook to remove signature help
+                    cxt.jobs.callback(async {
+                        let call: job::Callback = Box::new(|_editor, compositor| {
+                            compositor.remove(SignatureHelp::ID);
+                        });
+                        Ok(call)
+                    });
+                }
+                _ => (),
+            }
+            last_mode = current_mode;
+        };
+
         match &key_result {
-            KeymapResult::Matched(command) => command.execute(cxt),
+            KeymapResult::Matched(command) => {
+                execute_command(command);
+            }
             KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
             KeymapResult::MatchedSequence(commands) => {
                 for command in commands {
-                    command.execute(cxt);
+                    execute_command(command);
                 }
             }
             KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
@@ -909,8 +954,8 @@ impl EditorView {
 
     pub fn handle_idle_timeout(&mut self, cx: &mut crate::compositor::Context) -> EventResult {
         if self.completion.is_some()
+            || cx.editor.mode != Mode::Insert
             || !cx.editor.config().auto_completion
-            || doc!(cx.editor).mode != Mode::Insert
         {
             return EventResult::Ignored(None);
         }
@@ -932,7 +977,7 @@ impl EditorView {
 impl EditorView {
     fn handle_mouse_event(
         &mut self,
-        event: MouseEvent,
+        event: &MouseEvent,
         cxt: &mut commands::Context,
     ) -> EventResult {
         let config = cxt.editor.config();
@@ -942,7 +987,7 @@ impl EditorView {
             column,
             modifiers,
             ..
-        } = event;
+        } = *event;
 
         let pos_and_view = |editor: &Editor, row, column| {
             editor.tree.views().find_map(|(view, _focus)| {
@@ -972,16 +1017,15 @@ impl EditorView {
                         doc.set_selection(view_id, Selection::point(pos));
                     }
 
-                    editor.tree.focus = view_id;
+                    editor.focus(view_id);
 
                     return EventResult::Consumed(None);
                 }
 
                 if let Some((coords, view_id)) = gutter_coords_and_view(editor, row, column) {
-                    editor.tree.focus = view_id;
+                    editor.focus(view_id);
 
-                    let view = editor.tree.get(view_id);
-                    let doc = editor.documents.get_mut(&view.doc).unwrap();
+                    let (view, doc) = current!(cxt.editor);
 
                     let path = match doc.path() {
                         Some(path) => path.clone(),
@@ -1060,10 +1104,9 @@ impl EditorView {
 
             MouseEventKind::Up(MouseButton::Right) => {
                 if let Some((coords, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
-                    cxt.editor.tree.focus = view_id;
+                    cxt.editor.focus(view_id);
 
-                    let view = cxt.editor.tree.get(view_id);
-                    let doc = cxt.editor.documents.get_mut(&view.doc).unwrap();
+                    let (view, doc) = current!(cxt.editor);
                     let line = coords.row + view.offset.row;
                     if let Ok(pos) = doc.text().try_line_to_char(line) {
                         doc.set_selection(view_id, Selection::point(pos));
@@ -1096,7 +1139,7 @@ impl EditorView {
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
                     let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
                     doc.set_selection(view_id, Selection::point(pos));
-                    editor.tree.focus = view_id;
+                    cxt.editor.focus(view_id);
                     commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
 
                     return EventResult::Consumed(None);
@@ -1113,7 +1156,7 @@ impl EditorView {
 impl Component for EditorView {
     fn handle_event(
         &mut self,
-        event: Event,
+        event: &Event,
         context: &mut crate::compositor::Context,
     ) -> EventResult {
         let mut cx = commands::Context {
@@ -1126,6 +1169,24 @@ impl Component for EditorView {
         };
 
         match event {
+            Event::Paste(contents) => {
+                cx.count = cx.editor.count;
+                commands::paste_bracketed_value(&mut cx, contents.clone());
+                cx.editor.count = None;
+
+                let config = cx.editor.config();
+                let mode = cx.editor.mode();
+                let (view, doc) = current!(cx.editor);
+                view.ensure_cursor_in_view(doc, config.scrolloff);
+
+                // Store a history state if not in insert mode. Otherwise wait till we exit insert
+                // to include any edits to the paste in the history state.
+                if mode != Mode::Insert {
+                    doc.append_changes_to_history(view.id);
+                }
+
+                EventResult::Consumed(None)
+            }
             Event::Resize(_width, _height) => {
                 // Ignore this event, we handle resizing just before rendering to screen.
                 // Handling it here but not re-rendering will cause flashing
@@ -1138,8 +1199,9 @@ impl Component for EditorView {
                 // clear status
                 cx.editor.status_msg = None;
 
-                let doc = doc!(cx.editor);
-                let mode = doc.mode();
+                let mode = cx.editor.mode();
+                let (view, _) = current!(cx.editor);
+                let focus = view.id;
 
                 if let Some(on_next_key) = self.on_next_key.take() {
                     // if there's a command waiting input, do that first
@@ -1202,53 +1264,23 @@ impl Component for EditorView {
                     return EventResult::Ignored(None);
                 }
                 let config = cx.editor.config();
-                let (view, doc) = current!(cx.editor);
+                let mode = cx.editor.mode();
+                let view = cx.editor.tree.get_mut(focus);
+                let doc = cx.editor.documents.get_mut(&view.doc).unwrap();
+
                 view.ensure_cursor_in_view(doc, config.scrolloff);
 
                 // Store a history state if not in insert mode. This also takes care of
                 // committing changes when leaving insert mode.
-                if doc.mode() != Mode::Insert {
+                if mode != Mode::Insert {
                     doc.append_changes_to_history(view.id);
-                }
-
-                // mode transitions
-                match (mode, doc.mode()) {
-                    (Mode::Normal, Mode::Insert) => {
-                        // HAXX: if we just entered insert mode from normal, clear key buf
-                        // and record the command that got us into this mode.
-
-                        // how we entered insert mode is important, and we should track that so
-                        // we can repeat the side effect.
-
-                        self.last_insert.0 = match self.keymaps.get(mode, key) {
-                            KeymapResult::Matched(command) => command,
-                            // FIXME: insert mode can only be entered through single KeyCodes
-                            _ => unimplemented!(),
-                        };
-                        self.last_insert.1.clear();
-                        commands::signature_help_impl(
-                            &mut cx,
-                            commands::SignatureHelpInvoked::Automatic,
-                        );
-                    }
-                    (Mode::Insert, Mode::Normal) => {
-                        // if exiting insert mode, remove completion
-                        self.completion = None;
-                        // TODO: Use an on_mode_change hook to remove signature help
-                        context.jobs.callback(async {
-                            let call: job::Callback = Box::new(|_editor, compositor| {
-                                compositor.remove(SignatureHelp::ID);
-                            });
-                            Ok(call)
-                        });
-                    }
-                    _ => (),
                 }
 
                 EventResult::Consumed(callback)
             }
 
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
+            Event::FocusGained | Event::FocusLost => EventResult::Ignored(None),
         }
     }
 

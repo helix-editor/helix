@@ -229,10 +229,7 @@ impl Markdown {
                 Event::End(tag) => {
                     tags.pop();
                     match tag {
-                        Tag::Heading(_, _, _)
-                        | Tag::Paragraph
-                        | Tag::CodeBlock(CodeBlockKind::Fenced(_))
-                        | Tag::Item => {
+                        Tag::Heading(_, _, _) | Tag::Paragraph | Tag::CodeBlock(_) | Tag::Item => {
                             push_line(&mut spans, &mut lines);
                         }
                         _ => (),
@@ -240,17 +237,18 @@ impl Markdown {
 
                     // whenever heading, code block or paragraph closes, empty line
                     match tag {
-                        Tag::Heading(_, _, _)
-                        | Tag::Paragraph
-                        | Tag::CodeBlock(CodeBlockKind::Fenced(_)) => {
+                        Tag::Heading(_, _, _) | Tag::Paragraph | Tag::CodeBlock(_) => {
                             lines.push(Spans::default());
                         }
                         _ => (),
                     }
                 }
                 Event::Text(text) => {
-                    // TODO: temp workaround
-                    if let Some(Tag::CodeBlock(CodeBlockKind::Fenced(language))) = tags.last() {
+                    if let Some(Tag::CodeBlock(kind)) = tags.last() {
+                        let language = match kind {
+                            CodeBlockKind::Fenced(language) => language,
+                            CodeBlockKind::Indented => "",
+                        };
                         let tui_text = highlighted_code_block(
                             text.to_string(),
                             language,

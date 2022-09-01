@@ -18,7 +18,6 @@
 "namespace" = { fg = "blue" }
 "operator" = { fg = "purple" }
 "keyword.operator" = { fg = "purple" }
-"property" = { fg = "red" }
 "special" = { fg = "blue" }
 "string" = { fg = "green" }
 "type" = { fg = "yellow" }
@@ -72,7 +71,7 @@ diagnostic = { modifiers = ["underlined"] }
 "ui.text" = { fg = "white" }
 "ui.text.focus" = { fg = "white", bg = "light-black", modifiers = ["bold"] }
 
-"ui.help" = { bg = "gray" }
+"ui.help" = { fg = "white", bg = "gray" }
 "ui.popup" = { bg = "gray" }
 "ui.window" = { fg = "gray" }
 "ui.menu" = { fg = "white", bg = "gray" }

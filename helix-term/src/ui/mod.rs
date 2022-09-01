@@ -35,10 +35,10 @@ pub fn prompt(
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
-    show_prompt(
-        cx,
-        Prompt::new(prompt, history_register, completion_fn, callback_fn),
-    );
+    let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
+    // Calculate the initial completion
+    prompt.recalculate_completion(cx.editor);
+    cx.push_layer(Box::new(prompt));
 }
 
 pub fn prompt_with_input(
@@ -49,15 +49,8 @@ pub fn prompt_with_input(
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
-    show_prompt(
-        cx,
-        Prompt::new(prompt, history_register, completion_fn, callback_fn).with_line(input),
-    );
-}
-
-fn show_prompt(cx: &mut crate::commands::Context, mut prompt: Prompt) {
-    // Calculate initial completion
-    prompt.recalculate_completion(cx.editor);
+    let prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn)
+        .with_line(input, cx.editor);
     cx.push_layer(Box::new(prompt));
 }
 
@@ -260,6 +253,7 @@ pub mod completers {
         names.push("default".into());
         names.push("base16_default".into());
         names.sort();
+        names.dedup();
 
         let mut names: Vec<_> = names
             .into_iter()
@@ -380,7 +374,7 @@ pub mod completers {
     }
 
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
-    fn filename_impl<F>(editor: &Editor, input: &str, filter_fn: F) -> Vec<Completion>
+    fn filename_impl<F>(_editor: &Editor, input: &str, filter_fn: F) -> Vec<Completion>
     where
         F: Fn(&ignore::DirEntry) -> FileMatch,
     {
@@ -412,7 +406,7 @@ pub mod completers {
 
         let mut files: Vec<_> = WalkBuilder::new(&dir)
             .hidden(false)
-            .follow_links(editor.config().file_picker.follow_symlinks)
+            .follow_links(false) // We're scanning over depth 1
             .max_depth(Some(1))
             .build()
             .filter_map(|file| {

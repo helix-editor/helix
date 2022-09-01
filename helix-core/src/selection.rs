@@ -659,7 +659,13 @@ pub fn select_on_matches(
 
             let start = text.byte_to_char(start_byte + mat.start());
             let end = text.byte_to_char(start_byte + mat.end());
-            result.push(Range::new(start, end));
+
+            let range = Range::new(start, end);
+            // Make sure the match is not right outside of the selection.
+            // These invalid matches can come from using RegEx anchors like `^`, `$`
+            if range != Range::point(sel.to()) {
+                result.push(range);
+            }
         }
     }
 
@@ -927,6 +933,76 @@ mod test {
         assert_eq!(Range::new(4, 3).min_width_1(s), Range::new(4, 3));
         assert_eq!(Range::new(5, 4).min_width_1(s), Range::new(5, 4));
         assert_eq!(Range::new(6, 5).min_width_1(s), Range::new(6, 5));
+    }
+
+    #[test]
+    fn test_select_on_matches() {
+        use crate::regex::{Regex, RegexBuilder};
+
+        let r = Rope::from_str("Nobody expects the Spanish inquisition");
+        let s = r.slice(..);
+
+        let selection = Selection::single(0, r.len_chars());
+        assert_eq!(
+            select_on_matches(s, &selection, &Regex::new(r"[A-Z][a-z]*").unwrap()),
+            Some(Selection::new(
+                smallvec![Range::new(0, 6), Range::new(19, 26)],
+                0
+            ))
+        );
+
+        let r = Rope::from_str("This\nString\n\ncontains multiple\nlines");
+        let s = r.slice(..);
+
+        let start_of_line = RegexBuilder::new(r"^").multi_line(true).build().unwrap();
+        let end_of_line = RegexBuilder::new(r"$").multi_line(true).build().unwrap();
+
+        // line without ending
+        assert_eq!(
+            select_on_matches(s, &Selection::single(0, 4), &start_of_line),
+            Some(Selection::single(0, 0))
+        );
+        assert_eq!(
+            select_on_matches(s, &Selection::single(0, 4), &end_of_line),
+            None
+        );
+        // line with ending
+        assert_eq!(
+            select_on_matches(s, &Selection::single(0, 5), &start_of_line),
+            Some(Selection::single(0, 0))
+        );
+        assert_eq!(
+            select_on_matches(s, &Selection::single(0, 5), &end_of_line),
+            Some(Selection::single(4, 4))
+        );
+        // line with start of next line
+        assert_eq!(
+            select_on_matches(s, &Selection::single(0, 6), &start_of_line),
+            Some(Selection::new(
+                smallvec![Range::point(0), Range::point(5)],
+                0
+            ))
+        );
+        assert_eq!(
+            select_on_matches(s, &Selection::single(0, 6), &end_of_line),
+            Some(Selection::single(4, 4))
+        );
+
+        // multiple lines
+        assert_eq!(
+            select_on_matches(
+                s,
+                &Selection::single(0, s.len_chars()),
+                &RegexBuilder::new(r"^[a-z ]*$")
+                    .multi_line(true)
+                    .build()
+                    .unwrap()
+            ),
+            Some(Selection::new(
+                smallvec![Range::point(12), Range::new(13, 30), Range::new(31, 36)],
+                0
+            ))
+        );
     }
 
     #[test]

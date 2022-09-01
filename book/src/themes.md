@@ -103,6 +103,8 @@ We use a similar set of scopes as
 [SublimeText](https://www.sublimetext.com/docs/scope_naming.html). See also
 [TextMate](https://macromates.com/manual/en/language_grammars) scopes.
 
+- `attribute` - Class attributes, html tag attributes
+
 - `type` - Types
   - `builtin` - Primitive types provided by the language (`int`, `usize`)
 - `constructor`
@@ -133,13 +135,13 @@ We use a similar set of scopes as
   - `parameter` - Function parameters
   - `other`
     - `member` - Fields of composite data types (e.g. structs, unions)
-  - `function` (TODO: ?)
 
 - `label`
 
 - `punctuation`
   - `delimiter` - Commas, colons
   - `bracket` - Parentheses, angle brackets, etc.
+  - `special` - String interpolation brackets.
 
 - `keyword`
   - `control`

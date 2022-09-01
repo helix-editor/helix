@@ -13,7 +13,6 @@
 "label" = { modifiers = ["bold"] }
 "namespace" = { fg = "teal_text", bg = "teal_bg" }
 "operator" = { fg = "base1", bg = "base7" }
-"property" = { fg = "blue_text", bg = "blue_bg" }
 "punctuation.bracket" = { modifiers = ["bold"] }
 "special" = { fg = "blue_text", bg = "blue_bg" }
 "string" = { fg = "green_text", bg = "green_bg" }
@@ -58,6 +57,7 @@
 "ui.linenr.selected" = { bg = "base6", modifiers = ["reversed"] }
 
 "ui.statusline" = { fg = "base7", bg = "base1", modifiers = ["bold"] }
+"ui.statusline.inactive" = { fg = "base7", bg = "base3" }
 "ui.statusline.normal" = { fg = "base7", bg = "base1", modifiers = ["bold"] }
 "ui.statusline.insert" = { fg = "purple_text", bg = "purple_bg", modifiers = [
   "bold",
