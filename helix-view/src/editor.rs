@@ -151,6 +151,8 @@ pub struct Config {
     pub statusline: StatusLineConfig,
     /// Shape for cursor in each mode
     pub cursor_shape: CursorShapeConfig,
+    /// Sync with the system clipboard when running in tmux. Defaults to `true`.
+    pub tmux_system_clipboard: bool,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
     pub true_color: bool,
     /// Search configuration.
@@ -548,6 +550,7 @@ impl Default for Config {
             file_picker: FilePickerConfig::default(),
             statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
+            tmux_system_clipboard: true,
             true_color: false,
             search: SearchConfig::default(),
             lsp: LspConfig::default(),
@@ -697,7 +700,7 @@ impl Editor {
             theme_loader,
             last_theme: None,
             registers: Registers::default(),
-            clipboard_provider: get_clipboard_provider(),
+            clipboard_provider: get_clipboard_provider(&*conf),
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),

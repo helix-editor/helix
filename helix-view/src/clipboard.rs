@@ -3,6 +3,8 @@
 use anyhow::Result;
 use std::borrow::Cow;
 
+use crate::editor::Config;
+
 pub enum ClipboardType {
     Clipboard,
     Selection,
@@ -66,12 +68,12 @@ macro_rules! command_provider {
 }
 
 #[cfg(windows)]
-pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
+pub fn get_clipboard_provider(_: &Config) -> Box<dyn ClipboardProvider> {
     Box::new(provider::WindowsProvider::default())
 }
 
 #[cfg(target_os = "macos")]
-pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
+pub fn get_clipboard_provider(_: &Config) -> Box<dyn ClipboardProvider> {
     use provider::command::exists;
 
     if exists("pbcopy") && exists("pbpaste") {
@@ -85,13 +87,13 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
 }
 
 #[cfg(target_os = "wasm32")]
-pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
+pub fn get_clipboard_provider(_: &Config) -> Box<dyn ClipboardProvider> {
     // TODO:
     Box::new(provider::NopProvider::new())
 }
 
 #[cfg(not(any(windows, target_os = "wasm32", target_os = "macos")))]
-pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
+pub fn get_clipboard_provider(config: &Config) -> Box<dyn ClipboardProvider> {
     use provider::command::{env_var_is_set, exists, is_exit_success};
     // TODO: support for user-defined provider, probably when we have plugin support by setting a
     // variable?
@@ -130,9 +132,17 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
             copy => "termux-clipboard-set";
         }
     } else if env_var_is_set("TMUX") && exists("tmux") {
-        command_provider! {
-            paste => "tmux", "save-buffer", "-";
-            copy => "tmux", "load-buffer", "-";
+        if config.tmux_system_clipboard {
+            command_provider! {
+                // Refresh tmux clipboard, wait a bit for it to be updated and paste it
+                paste => "sh", "-c", "tmux refresh-client -l; sleep 0.1; tmux save-buffer -";
+                copy => "tmux", "load-buffer", "-w", "-";
+            }
+        } else {
+            command_provider! {
+                paste => "tmux", "save-buffer", "-";
+                copy => "tmux", "load-buffer", "-";
+            }
         }
     } else {
         Box::new(provider::NopProvider::new())
