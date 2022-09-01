@@ -69,33 +69,56 @@ impl Rule {
             check_both: true,
         }
     }
-    fn validate(&self, theme: &Theme, messages: &mut Vec<String>) {
-        let mut found_fg = true;
-        let mut found_bg = true;
-        let mut fg_name = "";
-        let mut bg_name = "";
-        if let Some(fg) = &self.fg {
-            fg_name = fg;
+    fn found_impl(theme: &Theme, find: Option<&'static str>) -> bool {
+        if let Some(fg) = &find {
             if theme.get(fg).fg.is_none() && theme.get(fg).add_modifier == Modifier::empty() {
-                found_fg = false;
+                return false;
             }
         }
-        if let Some(bg) = &self.bg {
-            bg_name = bg;
-            if theme.get(bg).bg.is_none() && theme.get(bg).add_modifier == Modifier::empty() {
-                found_bg = false;
-            }
+        return true;
+    }
+    fn found_fg(&self, theme: &Theme) -> bool {
+        return Rule::found_impl(theme, self.fg);
+    }
+    fn found_bg(&self, theme: &Theme) -> bool {
+        return Rule::found_impl(theme, self.bg);
+    }
+    fn rule_name(&self) -> &'static str {
+        if self.fg.is_some() {
+            self.fg.unwrap()
+        } else if self.bg.is_some() {
+            self.bg.unwrap()
+        } else {
+            "LINTER_ERROR_NO_RULE"
         }
+    }
+
+    fn validate(&self, theme: &Theme, messages: &mut Vec<String>) {
+        let mut missing = vec![];
+
+        let found_fg = self.found_fg(theme);
+        let found_bg = self.found_bg(theme);
         if self.check_both {
             if !found_fg {
-                messages.push(format!("\"{}\"={{\"fg\"=\"missing\"}}", fg_name));
+                missing.push("`fg`");
             }
             if !found_bg {
-                messages.push(format!("\"{}\"={{\"bg\"=\"missing\"}}", bg_name));
+                missing.push("`bg`");
+            }
+            if !found_fg || !found_bg {
+                messages.push(format!(
+                    "$THEME: missing {} for `{}`",
+                    missing.join(" and "),
+                    self.rule_name()
+                ));
             }
         } else {
             if !found_fg && !found_bg {
-                messages.push(format!("\"{}\"=\"missing\"", fg_name))
+                messages.push(format!(
+                    "$THEME: missing {} for `{}`",
+                    "entry",
+                    self.rule_name()
+                ))
             }
         }
     }
@@ -116,18 +139,11 @@ pub fn lint(file: String) -> Result<(), DynError> {
         .for_each(|rule| rule.validate(&theme, &mut messages));
 
     if messages.len() > 0 {
-        let message: String = messages
-            .iter()
-            .map(|m| {
-                let mut msg = file.clone();
-                msg.push_str(":");
-                msg.push_str(m);
-                msg
-            })
-            .collect::<Vec<String>>()
-            .join(" ")
-            .into();
-        println!("{}", message.replace(" ", "\n"));
+        messages.iter().for_each(|m| {
+            let theme = file.clone();
+            let message = m.replace("$THEME", theme.as_str());
+            println!("{}", message);
+        });
         Err(messages.len().to_string().into())
     } else {
         Ok(())
