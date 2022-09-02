@@ -735,10 +735,9 @@ language-server = { command = "zls" }
 indent = { tab-width = 4, unit = "    " }
 formatter = { command = "zig" , args = ["fmt", "--stdin"] }
 
-
 [[grammar]]
 name = "zig"
-source = { git = "https://github.com/maxxnino/tree-sitter-zig", rev = "93331b8bd8b4ebee2b575490b2758f16ad4e9f30" }
+source = { git = "https://github.com/maxxnino/tree-sitter-zig", rev = "8d3224c3bd0890fe08358886ebf54fca2ed448a6" }
 
 [[language]]
 name = "prolog"
