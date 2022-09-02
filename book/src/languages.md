@@ -62,12 +62,6 @@ These configuration keys are available:
 | `grammar`             | The tree-sitter grammar to use (defaults to the value of `name`) |
 | `formatter`           | The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout |
 
-Additionnaly, entries in `file-types` are matched accoding to different strategies, in the following order :
-
-1. File name is an exact match -- example: `.zshrc`
-2. File extension is an exact match -- example: `toml`
-3. File path contains the value as a suffix -- example: `.git/config`
-
 ### Language Server configuration
 
 The `language-server` field takes the following keys:
