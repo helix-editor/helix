@@ -43,15 +43,48 @@
             else clang;
         crateOverrides = common: _: {
           helix-term = prev: {
+            src = builtins.path {
+              name = "helix-source";
+              path = toString ./.;
+              # filter out unneeded stuff that cause rebuilds
+              filter = path: type:
+                lib.all
+                (n: builtins.baseNameOf path != n)
+                [
+                  ".envrc"
+                  ".ignore"
+                  ".github"
+                  "runtime"
+                  "screenshot.png"
+                  "book"
+                  "contrib"
+                  "docs"
+                  "README.md"
+                  "shell.nix"
+                  "default.nix"
+                  "grammars.nix"
+                  "flake.nix"
+                  "flake.lock"
+                ];
+            };
+
             # disable fetching and building of tree-sitter grammars in the helix-term build.rs
             HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
-            # link languages and theme toml files since helix-term expects them (for tests)
-            preConfigure =
-              lib.concatMapStringsSep
-              "\n"
-              (path: "ln -sf ${mkRootPath path} ..")
-              ["languages.toml" "theme.toml" "base16_theme.toml"];
+
             buildInputs = (prev.buildInputs or []) ++ [common.cCompiler.cc.lib];
+
+            # link languages and theme toml files since helix-term expects them (for tests)
+            preConfigure = ''
+              ${prev.preConfigure or ""}
+              ${
+                lib.concatMapStringsSep
+                "\n"
+                (path: "ln -sf ${mkRootPath path} ..")
+                ["languages.toml" "theme.toml" "base16_theme.toml"]
+              }
+            '';
+
+            meta.mainProgram = "hx";
           };
         };
         shell = common: prev: {
@@ -96,13 +129,15 @@
       helix-wrapped =
         pkgs.runCommand "${old.name}-wrapped"
         {
+          inherit (old) pname version meta;
+
           nativeBuildInputs = [pkgs.makeWrapper];
           makeWrapperArgs = config.makeWrapperArgs or [];
-          meta.mainProgram = "hx";
         }
         ''
           mkdir -p $out
-          cp -r ${old}/* $out/
+          cp -r --no-preserve=mode,ownership ${old}/* $out/
+          chmod +x $out/bin/*
           wrapProgram "$out/bin/hx" ''${makeWrapperArgs[@]} --set HELIX_RUNTIME "${runtimeDir}"
         '';
     in
