@@ -160,7 +160,7 @@ where
         format!(
             " {} ",
             if visible {
-                match context.doc.mode() {
+                match context.editor.mode() {
                     Mode::Insert => &modenames.insert,
                     Mode::Select => &modenames.select,
                     Mode::Normal => &modenames.normal,
