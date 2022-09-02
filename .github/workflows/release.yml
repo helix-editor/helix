@@ -49,11 +49,11 @@ jobs:
           rust: stable
           target: x86_64-unknown-linux-gnu
           cross: false
-        # - build: aarch64-linux
-        #   os: ubuntu-20.04
-        #   rust: stable
-        #   target: aarch64-unknown-linux-gnu
-        #   cross: true
+        - build: aarch64-linux
+          os: ubuntu-20.04
+          rust: stable
+          target: aarch64-unknown-linux-gnu
+          cross: true
         - build: x86_64-macos
           os: macos-latest
           rust: stable
