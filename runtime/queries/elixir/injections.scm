@@ -1,6 +1,8 @@
+; Elixir Comments
 ((comment) @injection.content
  (#set! injection.language "comment"))
 
+; Elixir Regular Expressions
 ((sigil
   (sigil_name) @_sigil_name
   (quoted_content) @injection.content)
@@ -8,13 +10,7 @@
  (#set! injection.language "regex")
  (#set! injection.combined))
 
-((sigil
-  (sigil_name) @_sigil_name
-  (quoted_content) @injection.content)
- (#eq? @_sigil_name "H")
- (#set! injection.language "heex")
- (#set! injection.combined))
-
+; Elixir Documentation
 (unary_operator
   operator: "@"
   operand: (call
@@ -23,3 +19,25 @@
       (string (quoted_content) @injection.content)
       (sigil (quoted_content) @injection.content)
   ])) (#set! injection.language "markdown"))
+
+; Phoenix Live View HEEx Sigils
+((sigil
+  (sigil_name) @_sigil_name
+  (quoted_content) @injection.content)
+ (#eq? @_sigil_name "H")
+ (#set! injection.language "heex")
+ (#set! injection.combined))
+
+; Phoenix Live View Component Macros
+(call 
+  (identifier) @_identifier
+  (arguments
+    (atom)+
+    (keywords (pair 
+      (keyword) 
+      [
+        (string (quoted_content) @injection.content)
+        (sigil (quoted_content) @injection.content)
+      ]))
+  (#match? @_identifier "^(attr|slot)$")
+  (#set! injection.language "markdown")))
