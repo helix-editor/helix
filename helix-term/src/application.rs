@@ -462,22 +462,34 @@ impl Application {
         let lines = doc_save_event.text.len_lines();
         let bytes = doc_save_event.text.len_bytes();
 
-        if let Err(err) = doc.set_path(Some(&doc_save_event.path)) {
-            log::error!(
-                "error setting path for doc '{:?}': {}",
-                doc.path(),
-                err.to_string(),
-            );
-            self.editor.set_error(err.to_string());
-        } else {
-            // TODO: fix being overwritten by lsp
-            self.editor.set_status(format!(
-                "'{}' written, {}L {}B",
-                get_relative_path(&doc_save_event.path).to_string_lossy(),
-                lines,
-                bytes
-            ));
+        if doc.path() != Some(&doc_save_event.path) {
+            if let Err(err) = doc.set_path(Some(&doc_save_event.path)) {
+                log::error!(
+                    "error setting path for doc '{:?}': {}",
+                    doc.path(),
+                    err.to_string(),
+                );
+
+                self.editor.set_error(err.to_string());
+                return;
+            }
+
+            let loader = self.editor.syn_loader.clone();
+
+            // borrowing the same doc again to get around the borrow checker
+            let doc = self.editor.document_mut(doc_save_event.doc_id).unwrap();
+            let id = doc.id();
+            doc.detect_language(loader);
+            let _ = self.editor.refresh_language_server(id);
         }
+
+        // TODO: fix being overwritten by lsp
+        self.editor.set_status(format!(
+            "'{}' written, {}L {}B",
+            get_relative_path(&doc_save_event.path).to_string_lossy(),
+            lines,
+            bytes
+        ));
     }
 
     #[inline(always)]
