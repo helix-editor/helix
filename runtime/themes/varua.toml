@@ -1,15 +1,8 @@
-# Everforest (Dark Hard)
-# Author: CptPotato
-
-# Original Author:
-# URL: https://github.com/sainnhe/everforest
-# Filename: autoload/everforest.vim
-# Author: sainnhe
-# Email: sainnhe@gmail.com
-# License: MIT License
+# Varua: an easy on the eyes color palette based on Gruvbox Material and Everforest by sainnhe.
+# Author : Kamek <b.kamek@gmail.com>
 
 "constant.character.escape" = "orange"
-"type" = "yellow"
+"type" = "blue"
 "constant" = "purple"
 "constant.numeric" = "purple"
 "string" = "green"
@@ -22,7 +15,7 @@
 "punctuation" = "grey2"
 "punctuation.delimiter" = "grey2"
 "punctuation.bracket" = "fg"
-"keyword" = "red"
+"keyword" = "purple"
 "operator" = "orange"
 "function" = "green"
 "function.builtin" = "blue"
@@ -30,7 +23,7 @@
 "tag" = "yellow"
 "namespace" = "aqua"
 "attribute" = "aqua"
-"constructor" = "yellow"
+"constructor" = "aqua"
 "module" = "blue"
 "special" = "orange"
 
@@ -42,8 +35,6 @@
 "markup.heading.5" = { fg = "blue", modifiers = ["bold"] }
 "markup.heading.6" = { fg = "fg", modifiers = ["bold"] }
 "markup.list" = "red"
-"markup.bold" = { modifiers = ["bold"] }
-"markup.italic" = { modifiers = ["italic"] }
 "markup.link.url" = { fg = "blue", modifiers = ["underlined"] }
 "markup.link.text" = "purple"
 "markup.quote" = "grey2"
@@ -54,25 +45,24 @@
 "diff.minus" = "red"
 
 "ui.background" = { bg = "bg0" }
+"ui.cursorline.primary" = { bg = "bg2" }
 "ui.cursor" = { fg = "bg0", bg = "fg" }
 "ui.cursor.match" = { fg = "orange", bg = "bg_yellow" }
 "ui.cursor.insert" = { fg = "bg0", bg = "grey1" }
 "ui.cursor.select" = { fg = "bg0", bg = "blue" }
 "ui.linenr" = "grey0"
 "ui.linenr.selected" = "fg"
-"ui.cursorline" = { bg = "bg1" }
-"ui.statusline" = { fg = "grey2", bg = "bg2" }
+"ui.statusline" = { fg = "fg", bg = "bg2" }
 "ui.statusline.inactive" = { fg = "grey0", bg = "bg1" }
-"ui.popup" = { fg = "grey2", bg = "bg1" }
-"ui.window" = { fg = "grey2", bg = "bg1" }
+"ui.popup" = { fg = "grey0", bg = "bg2" }
+"ui.window" = { fg = "grey0", bg = "bg1" }
 "ui.help" = { fg = "fg", bg = "bg1" }
 "ui.text" = "fg"
 "ui.text.focus" = "fg"
 "ui.menu" = { fg = "fg", bg = "bg2" }
-"ui.menu.selected" = { fg = "bg0", bg = "green" }
+"ui.menu.selected" = { fg = "fg", bg = "bg1" }
 "ui.selection" = { bg = "bg3" }
 "ui.virtual.whitespace" = "grey0"
-"ui.virtual.ruler" = { bg = "bg1" }
 
 "hint" = "blue"
 "info" = "aqua"
@@ -80,29 +70,27 @@
 "error" = "red"
 "diagnostic" = { modifiers = ["underlined"] }
 
-
 [palette]
+bg0 = "#282828"
+bg1 = "#45403d"
+bg2 = "#32302f"
+bg3 = "#3c3836"
+bg4 = "#4c555b"
+bg5 = "#53605c"
+bg_visual = "#503946"
+bg_red = "#4e3e43"
+bg_green = "#404d44"
+bg_blue = "#394f5a"
+bg_yellow = "#4a4940"
 
-bg0 = "#fff9e8"
-bg1 = "#f7f4e0"
-bg2 = "#f0eed9"
-bg3 = "#e9e8d2"
-bg4 = "#e1ddcb"
-bg5 = "#bec5b2"
-bg_visual = "#edf0cd"
-bg_red = "#fce5dc"
-bg_green = "#f1f3d4"
-bg_blue = "#eaf2eb"
-bg_yellow = "#fbefd0"
-
-fg = "#5c6a72"
-red = "#f85552"
-orange = "#f57d26"
-yellow = "#dfa000"
-green = "#8da101"
-aqua = "#35a77c"
-blue = "#3a94c5"
-purple = "#df69ba"
-grey0 = "#a6b0a0"
-grey1 = "#939f91"
-grey2 = "#829181"
+fg = "#dfbf8e"
+red = "#e67e80"
+orange = "#e69875"
+yellow = "#dbbc7f"
+green = "#a7c080"
+aqua = "#83c092"
+blue = "#7fbbb3"
+purple = "#d699b6"
+grey0 = "#928374"
+grey1 = "#859289"
+grey2 = "#9da9a0"

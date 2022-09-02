@@ -67,6 +67,7 @@
   "]"
   "{"
   "}"
+  "#"
 ] @punctuation.bracket
 (type_arguments
   [

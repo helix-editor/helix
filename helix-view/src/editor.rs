@@ -162,6 +162,8 @@ pub struct Config {
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
+    /// Persistently display open buffers along the top
+    pub bufferline: BufferLine,
     /// Vertical indent width guides.
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
@@ -208,6 +210,13 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
         return Some(TerminalConfig {
             command: "tmux".to_string(),
             args: vec!["split-window".to_string()],
+        });
+    }
+
+    if env_var_is_set("WEZTERM_UNIX_SOCKET") && exists("wezterm") {
+        return Some(TerminalConfig {
+            command: "wezterm".to_string(),
+            args: vec!["cli".to_string(), "split-pane".to_string()],
         });
     }
 
@@ -357,6 +366,24 @@ impl std::ops::Deref for CursorShapeConfig {
 impl Default for CursorShapeConfig {
     fn default() -> Self {
         Self([CursorKind::Block; 3])
+    }
+}
+
+/// bufferline render modes
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BufferLine {
+    /// Don't render bufferline
+    Never,
+    /// Always render
+    Always,
+    /// Only if multiple buffers are open
+    Multiple,
+}
+
+impl Default for BufferLine {
+    fn default() -> Self {
+        BufferLine::Never
     }
 }
 
@@ -547,6 +574,7 @@ impl Default for Config {
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
+            bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
         }
@@ -588,6 +616,8 @@ pub struct Breakpoint {
 }
 
 pub struct Editor {
+    /// Current editing mode.
+    pub mode: Mode,
     pub tree: Tree,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
@@ -670,6 +700,7 @@ impl Editor {
         area.height -= 1;
 
         Self {
+            mode: Mode::Normal,
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
@@ -699,6 +730,11 @@ impl Editor {
             exit_code: 0,
             config_events: unbounded_channel(),
         }
+    }
+
+    /// Current editing mode for the [`Editor`].
+    pub fn mode(&self) -> Mode {
+        self.mode
     }
 
     pub fn config(&self) -> DynGuard<Config> {
@@ -1096,8 +1132,7 @@ impl Editor {
 
         // if leaving the view: mode should reset
         if prev_id != view_id {
-            let doc_id = self.tree.get(prev_id).doc;
-            self.documents.get_mut(&doc_id).unwrap().mode = Mode::Normal;
+            self.mode = Mode::Normal;
         }
     }
 
@@ -1108,8 +1143,7 @@ impl Editor {
 
         // if leaving the view: mode should reset
         if prev_id != id {
-            let doc_id = self.tree.get(prev_id).doc;
-            self.documents.get_mut(&doc_id).unwrap().mode = Mode::Normal;
+            self.mode = Mode::Normal;
         }
     }
 
@@ -1180,7 +1214,7 @@ impl Editor {
             let inner = view.inner_area();
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            let cursorkind = config.cursor_shape.from_mode(doc.mode());
+            let cursorkind = config.cursor_shape.from_mode(self.mode);
             (Some(pos), cursorkind)
         } else {
             (None, CursorKind::default())

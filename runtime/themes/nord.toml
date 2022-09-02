@@ -6,6 +6,7 @@
 "ui.menu" = { fg = "nord6", bg = "#232d38" }
 "ui.menu.selected" = { fg = "nord8", bg = "nord2" }
 "ui.virtual.whitespace" = "gray"
+"ui.virtual.ruler" = { bg = "nord1" }
 
 "info" = "nord8"
 "hint" = "nord8"

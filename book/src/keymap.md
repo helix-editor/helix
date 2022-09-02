@@ -125,7 +125,7 @@
 | `Alt-(`               | Rotate selection contents backward                                | `rotate_selection_contents_backward` |
 | `Alt-)`               | Rotate selection contents forward                                 | `rotate_selection_contents_forward`  |
 | `%`                   | Select entire file                                                | `select_all`                         |
-| `x`                   | Select current line, if already selected, extend to next line     | `extend_line`                        |
+| `x`                   | Select current line, if already selected, extend to next line     | `extend_line_below`                  |
 | `X`                   | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
 | `Alt-x`               | Shrink selection to line bounds (line-wise selection)             | `shrink_to_line_bounds`              |
 | `J`                   | Join lines inside selection                                       | `join_selections`                    |

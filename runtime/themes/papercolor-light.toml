@@ -1,19 +1,34 @@
 # Palette based on https://github.com/NLKNguyen/papercolor-theme
 # Author: Soc Virnyl Estela <socvirnyl.estela@gmail.com>
 
+"ui.linenr.selected" = { fg = "linenr_fg_selected" }
 "ui.background" = {bg="background"}
 "ui.text" = "foreground"
+"ui.text.focus" = { fg = "selection_background", modifiers = ["bold"]}
 "ui.selection" = {bg="selection_background", fg="selection_foreground"}
+"ui.cursorline" = {bg="cursorline_background"}
 "ui.statusline" = {bg="paper_bar_bg", fg="regular0"}
-"ui.statusline.inactive" = {bg="background", fg="bright2"}
+"ui.statusline.select" = {bg="background", fg="bright7"}
+"ui.statusline.normal" = {bg="background", fg="bright3"}
+"ui.statusline.inactive" = {bg="background", fg="bright0"}
 "ui.virtual" = "indent"
 "ui.virtual.whitespace" = { fg = "regular5" }
-"ui.cursor.match" = {bg = "foreground", fg = "regular4"}
-"ui.cursor" = {bg = "foreground", fg = "background"}
-"ui.window" = {bg = "background", fg = "bright3"}
-"ui.menu.selected" = {bg = "selection_background"}
+"ui.virtual.ruler" = {bg="cursorline_background"}
+"ui.cursor.match" = {bg = "regular5", fg = "regular0"}
+"ui.cursor" = {bg = "regular5", fg = "background"}
+"ui.window" = {bg = "#D0D0D0", fg = "bright2"}
+"ui.help" = {bg = "background", fg = "bright2"}
+"ui.popup" = {bg = "#D0D0D0", fg = "bright7"}
+"ui.menu" = {bg = "#D0D0D0", fg = "bright7"}
+"ui.menu.selected" = {bg = "selection_background", fg="selection_foreground"}
 
-"markup.heading" = { fg = "bright2", modifiers = ["bold"] }
+"markup.heading" = { fg = "bright7", modifiers = ["bold"] }
+"markup.heading.1" = { fg = "bright2", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "bright4", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "bright3", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "bright4", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "bright4", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "bright4", modifiers = ["bold"] }
 "markup.list" = "regular4"
 "markup.bold" = { fg = "foreground", modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
@@ -40,6 +55,7 @@
 "function.builtin" = { fg = "regular4", modifiers = ["bold"]}
 "function.macro" = { fg = "regular1" }
 "comment" = { fg = "bright0", modifiers = ["dim"] }
+"ui.linenr" = { fg = "bright0" }
 "module" = "#af0000"
 "constant" = "#5f8700"
 "constant.builtin" = "#5f8700"
@@ -80,6 +96,7 @@ bright6="#4c7a5d"
 bright7="#005faf"
 selection_foreground="#eeeeee"
 selection_background="#0087af"
+cursorline_background="#fdfdfd"
 paper_bar_bg="#005F87"
 black="#eeeeee"
 red="#d70000"
@@ -97,3 +114,4 @@ light-magenta="#d75f00"
 light-cyan="#4c7a4d"
 light-gray="#005faf"
 white="#444444"
+linenr_fg_selected="#AF634D"

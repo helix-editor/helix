@@ -453,7 +453,7 @@ _________________________________________________________________
  Like the select command, searching also uses regex.
 
  Note: To search backwards, type ? (shift-/).
- Note: Unlike Vim, N doesn't change the search direction.
+ Note: Unlike Vim, ? doesn't change the search direction.
        N always goes backwards and n always goes forwards.
 
 
