@@ -293,6 +293,7 @@ impl Prompt {
         register: char,
         direction: CompletionDirection,
     ) {
+        (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
         let register = cx.editor.registers.get_mut(register).read();
 
         if register.is_empty() {
@@ -314,6 +315,7 @@ impl Prompt {
         self.history_pos = Some(index);
 
         self.move_end();
+        (self.callback_fn)(cx, &self.line, PromptEvent::Update);
         self.recalculate_completion(cx.editor);
     }
 
@@ -564,13 +566,11 @@ impl Component for Prompt {
             ctrl!('p') | key!(Up) => {
                 if let Some(register) = self.history_register {
                     self.change_history(cx, register, CompletionDirection::Backward);
-                    (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
             ctrl!('n') | key!(Down) => {
                 if let Some(register) = self.history_register {
                     self.change_history(cx, register, CompletionDirection::Forward);
-                    (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
             key!(Tab) => {
