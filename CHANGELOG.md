@@ -1,4 +1,8 @@
-# 22.08 (2022-08-02)
+# 22.08.1 (2022-09-01)
+
+This is a patch release that fixes a panic caused by closing splits or buffers. ([#3633](https://github.com/helix-editor/helix/pull/3633))
+
+# 22.08 (2022-08-31)
 
 A big _thank you_ to our contributors! This release had 87 contributors.
 

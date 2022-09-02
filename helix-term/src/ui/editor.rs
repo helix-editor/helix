@@ -16,14 +16,14 @@ use helix_core::{
     LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
-    document::Mode,
+    document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::borrow::Cow;
+use std::{borrow::Cow, path::PathBuf};
 
 use tui::buffer::Buffer as Surface;
 
@@ -615,6 +615,59 @@ impl EditorView {
                     surface[(viewport.x + pos.col as u16, viewport.y + pos.row as u16)]
                         .set_style(style);
                 }
+            }
+        }
+    }
+
+    /// Render bufferline at the top
+    pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
+        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
+        surface.clear_with(
+            viewport,
+            editor
+                .theme
+                .try_get("ui.bufferline.background")
+                .unwrap_or_else(|| editor.theme.get("ui.statusline")),
+        );
+
+        let bufferline_active = editor
+            .theme
+            .try_get("ui.bufferline.active")
+            .unwrap_or_else(|| editor.theme.get("ui.statusline.active"));
+
+        let bufferline_inactive = editor
+            .theme
+            .try_get("ui.bufferline")
+            .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
+
+        let mut x = viewport.x;
+        let current_doc = view!(editor).doc;
+
+        for doc in editor.documents() {
+            let fname = doc
+                .path()
+                .unwrap_or(&scratch)
+                .file_name()
+                .unwrap_or_default()
+                .to_str()
+                .unwrap_or_default();
+
+            let style = if current_doc == doc.id() {
+                bufferline_active
+            } else {
+                bufferline_inactive
+            };
+
+            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
+            let used_width = viewport.x.saturating_sub(x);
+            let rem_width = surface.area.width.saturating_sub(used_width);
+
+            x = surface
+                .set_stringn(x, viewport.y, text, rem_width as usize, style)
+                .0;
+
+            if x >= surface.area.right() {
+                break;
             }
         }
     }
@@ -1263,17 +1316,20 @@ impl Component for EditorView {
                 if cx.editor.should_close() {
                     return EventResult::Ignored(None);
                 }
-                let config = cx.editor.config();
-                let mode = cx.editor.mode();
-                let view = cx.editor.tree.get_mut(focus);
-                let doc = cx.editor.documents.get_mut(&view.doc).unwrap();
+                // if the focused view still exists and wasn't closed
+                if cx.editor.tree.contains(focus) {
+                    let config = cx.editor.config();
+                    let mode = cx.editor.mode();
+                    let view = cx.editor.tree.get_mut(focus);
+                    let doc = cx.editor.documents.get_mut(&view.doc).unwrap();
 
-                view.ensure_cursor_in_view(doc, config.scrolloff);
+                    view.ensure_cursor_in_view(doc, config.scrolloff);
 
-                // Store a history state if not in insert mode. This also takes care of
-                // committing changes when leaving insert mode.
-                if mode != Mode::Insert {
-                    doc.append_changes_to_history(view.id);
+                    // Store a history state if not in insert mode. This also takes care of
+                    // committing changes when leaving insert mode.
+                    if mode != Mode::Insert {
+                        doc.append_changes_to_history(view.id);
+                    }
                 }
 
                 EventResult::Consumed(callback)
@@ -1288,8 +1344,27 @@ impl Component for EditorView {
         // clear with background color
         surface.set_style(area, cx.editor.theme.get("ui.background"));
         let config = cx.editor.config();
+
+        // check if bufferline should be rendered
+        use helix_view::editor::BufferLine;
+        let use_bufferline = match config.bufferline {
+            BufferLine::Always => true,
+            BufferLine::Multiple if cx.editor.documents.len() > 1 => true,
+            _ => false,
+        };
+
+        // -1 for commandline and -1 for bufferline
+        let mut editor_area = area.clip_bottom(1);
+        if use_bufferline {
+            editor_area = editor_area.clip_top(1);
+        }
+
         // if the terminal size suddenly changed, we need to trigger a resize
-        cx.editor.resize(area.clip_bottom(1)); // -1 from bottom for commandline
+        cx.editor.resize(editor_area);
+
+        if use_bufferline {
+            Self::render_bufferline(cx.editor, area.with_height(1), surface);
+        }
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
