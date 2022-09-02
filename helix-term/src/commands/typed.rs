@@ -716,6 +716,7 @@ fn theme(
         }
         PromptEvent::Update => {
             if args.is_empty() {
+                // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview();
             } else if let Some(theme_name) = args.first() {
                 if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
