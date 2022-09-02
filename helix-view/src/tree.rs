@@ -273,7 +273,7 @@ impl Tree {
     /// Get reference to a [`view`] by index.
     /// # Panics
     ///
-    /// Panics if `index` is not in self.nodes, or if the node's content is not [`Content::View`] . This can be checked with [`contains`]
+    /// Panics if `index` is not in self.nodes, or if the node's content is not [`Content::View`]. This can be checked with [`Self::contains`].
     pub fn get(&self, index: ViewId) -> &View {
         self.try_get(index).unwrap()
     }
@@ -295,7 +295,7 @@ impl Tree {
     /// Get a mutable reference to a [`view`] by index.
     /// # Panics
     ///
-    /// Panics if `index` is not in self.nodes, or if the node's content is not [`Content::View`] . This can be checked with [`Self::contains`]
+    /// Panics if `index` is not in self.nodes, or if the node's content is not [`Content::View`]. This can be checked with [`Self::contains`].
     pub fn get_mut(&mut self, index: ViewId) -> &mut View {
         match &mut self.nodes[index] {
             Node {
