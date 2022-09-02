@@ -1254,6 +1254,7 @@ fn language(
 
     let doc = doc_mut!(cx.editor);
     doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone());
+    doc.detect_indent_and_line_ending();
 
     let id = doc.id();
     cx.editor.refresh_language_server(id);
@@ -1291,8 +1292,8 @@ fn sort_impl(
     let selection = doc.selection(view.id);
 
     let mut fragments: Vec<_> = selection
-        .fragments(text)
-        .map(|fragment| Tendril::from(fragment.as_ref()))
+        .slices(text)
+        .map(|fragment| fragment.chunks().collect())
         .collect();
 
     fragments.sort_by(match reverse {

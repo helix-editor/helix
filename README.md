@@ -50,8 +50,8 @@ config directory (for example `~/.config/helix/runtime` on Linux/macOS, or `%App
 
 | OS                   | Command                                      |
 | -------------------- | -------------------------------------------- |
-| Windows (cmd.exe)    | `xcopy runtime %AppData%\helix\runtime`      |
-| Windows (PowerShell) | `xcopy runtime $Env:AppData\helix\runtime`   |
+| Windows (cmd.exe)    | `xcopy /e runtime %AppData%\helix\runtime`      |
+| Windows (PowerShell) | `xcopy /e runtime $Env:AppData\helix\runtime`   |
 | Linux/macOS          | `ln -s $PWD/runtime ~/.config/helix/runtime` |
 
 This location can be overridden via the `HELIX_RUNTIME` environment variable.
@@ -70,10 +70,9 @@ for a language.
 
 ## MacOS
 
-Helix can be installed on MacOS through homebrew via:
+Helix can be installed on MacOS through homebrew:
 
 ```
-brew tap helix-editor/helix
 brew install helix
 ```
 

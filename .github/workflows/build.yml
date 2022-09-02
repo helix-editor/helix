@@ -131,3 +131,23 @@ jobs:
             || (echo "Run 'cargo xtask docgen', commit the changes and push again" \
             && exit 1)
 
+  queries:
+    name: Tree-sitter queries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install stable toolchain
+        uses: helix-editor/rust-toolchain@v1
+        with:
+          profile: minimal
+          override: true
+
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Generate docs
+        uses: actions-rs/cargo@v1
+        with:
+          command: xtask
+          args: query-check

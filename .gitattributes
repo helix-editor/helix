@@ -1,0 +1,11 @@
+# Auto detect text files and perform normalization
+*          text=auto
+
+*.rs       text diff=rust
+*.toml     text diff=toml
+
+*.scm      text diff=scheme
+*.md       text diff=markdown
+
+book/theme/highlight.js linguist-vendored
+Cargo.lock text

@@ -1,6 +1,6 @@
 use crate::{
     commands,
-    compositor::{Component, Context, EventResult},
+    compositor::{Component, Context, Event, EventResult},
     job, key,
     keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
@@ -16,16 +16,15 @@ use helix_core::{
     LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
-    document::Mode,
+    document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
-    input::KeyEvent,
+    input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::borrow::Cow;
+use std::{borrow::Cow, path::PathBuf};
 
-use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
 
 use super::lsp::SignatureHelp;
@@ -123,7 +122,13 @@ impl EditorView {
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
-                Self::doc_selection_highlights(doc, view, theme, &editor.config().cursor_shape),
+                Self::doc_selection_highlights(
+                    editor.mode(),
+                    doc,
+                    view,
+                    theme,
+                    &editor.config().cursor_shape,
+                ),
             ))
         } else {
             Box::new(highlights)
@@ -298,6 +303,7 @@ impl EditorView {
 
     /// Get highlight spans for selections in a document view.
     pub fn doc_selection_highlights(
+        mode: Mode,
         doc: &Document,
         view: &View,
         theme: &Theme,
@@ -307,7 +313,6 @@ impl EditorView {
         let selection = doc.selection(view.id);
         let primary_idx = selection.primary_index();
 
-        let mode = doc.mode();
         let cursorkind = cursor_shape_config.from_mode(mode);
         let cursor_is_block = cursorkind == CursorKind::Block;
 
@@ -391,19 +396,23 @@ impl EditorView {
         // of times than it is to always call Rope::slice/get_slice (it will internally always hit RSEnum::Light).
         let text = doc.text().slice(..);
 
+        let characters = &whitespace.characters;
+
         let mut spans = Vec::new();
         let mut visual_x = 0u16;
         let mut line = 0u16;
         let tab_width = doc.tab_width();
         let tab = if whitespace.render.tab() == WhitespaceRenderValue::All {
-            (1..tab_width).fold(whitespace.characters.tab.to_string(), |s, _| s + " ")
+            std::iter::once(characters.tab)
+                .chain(std::iter::repeat(characters.tabpad).take(tab_width - 1))
+                .collect()
         } else {
             " ".repeat(tab_width)
         };
-        let space = whitespace.characters.space.to_string();
-        let nbsp = whitespace.characters.nbsp.to_string();
+        let space = characters.space.to_string();
+        let nbsp = characters.nbsp.to_string();
         let newline = if whitespace.render.newline() == WhitespaceRenderValue::All {
-            whitespace.characters.newline.to_string()
+            characters.newline.to_string()
         } else {
             " ".to_string()
         };
@@ -414,7 +423,13 @@ impl EditorView {
 
         let mut is_in_indent_area = true;
         let mut last_line_indent_level = 0;
-        let indent_style = theme.get("ui.virtual.indent-guide");
+
+        // use whitespace style as fallback for indent-guide
+        let indent_guide_style = text_style.patch(
+            theme
+                .try_get("ui.virtual.indent-guide")
+                .unwrap_or_else(|| theme.get("ui.virtual.whitespace")),
+        );
 
         let draw_indent_guides = |indent_level, line, surface: &mut Surface| {
             if !config.indent_guides.render {
@@ -430,7 +445,7 @@ impl EditorView {
                     viewport.x + (i * tab_width as u16) - offset.col as u16,
                     viewport.y + line,
                     &indent_guide_char,
-                    indent_style,
+                    indent_guide_style,
                 );
             }
         };
@@ -487,14 +502,7 @@ impl EditorView {
                                 );
                             }
 
-                            // This is an empty line; draw indent guides at previous line's
-                            // indent level to avoid breaking the guides on blank lines.
-                            if visual_x == 0 {
-                                draw_indent_guides(last_line_indent_level, line, surface);
-                            } else if is_in_indent_area {
-                                // A line with whitespace only
-                                draw_indent_guides(visual_x, line, surface);
-                            }
+                            draw_indent_guides(last_line_indent_level, line, surface);
 
                             visual_x = 0;
                             line += 1;
@@ -530,6 +538,8 @@ impl EditorView {
                                 (grapheme.as_ref(), width)
                             };
 
+                            let cut_off_start = offset.col.saturating_sub(visual_x as usize);
+
                             if !out_of_bounds {
                                 // if we're offscreen just keep going until we hit a new line
                                 surface.set_string(
@@ -542,7 +552,24 @@ impl EditorView {
                                         style
                                     },
                                 );
+                            } else if cut_off_start != 0 && cut_off_start < width {
+                                // partially on screen
+                                let rect = Rect::new(
+                                    viewport.x as u16,
+                                    viewport.y + line,
+                                    (width - cut_off_start) as u16,
+                                    1,
+                                );
+                                surface.set_style(
+                                    rect,
+                                    if is_whitespace {
+                                        style.patch(whitespace_style)
+                                    } else {
+                                        style
+                                    },
+                                );
                             }
+
                             if is_in_indent_area && !(grapheme == " " || grapheme == "\t") {
                                 draw_indent_guides(visual_x, line, surface);
                                 is_in_indent_area = false;
@@ -588,6 +615,59 @@ impl EditorView {
                     surface[(viewport.x + pos.col as u16, viewport.y + pos.row as u16)]
                         .set_style(style);
                 }
+            }
+        }
+    }
+
+    /// Render bufferline at the top
+    pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
+        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
+        surface.clear_with(
+            viewport,
+            editor
+                .theme
+                .try_get("ui.bufferline.background")
+                .unwrap_or_else(|| editor.theme.get("ui.statusline")),
+        );
+
+        let bufferline_active = editor
+            .theme
+            .try_get("ui.bufferline.active")
+            .unwrap_or_else(|| editor.theme.get("ui.statusline.active"));
+
+        let bufferline_inactive = editor
+            .theme
+            .try_get("ui.bufferline")
+            .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
+
+        let mut x = viewport.x;
+        let current_doc = view!(editor).doc;
+
+        for doc in editor.documents() {
+            let fname = doc
+                .path()
+                .unwrap_or(&scratch)
+                .file_name()
+                .unwrap_or_default()
+                .to_str()
+                .unwrap_or_default();
+
+            let style = if current_doc == doc.id() {
+                bufferline_active
+            } else {
+                bufferline_inactive
+            };
+
+            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
+            let used_width = viewport.x.saturating_sub(x);
+            let rem_width = surface.area.width.saturating_sub(used_width);
+
+            x = surface
+                .set_stringn(x, viewport.y, text, rem_width as usize, style)
+                .0;
+
+            if x >= surface.area.right() {
+                break;
             }
         }
     }
@@ -750,15 +830,50 @@ impl EditorView {
         cxt: &mut commands::Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
+        let mut last_mode = mode;
         let key_result = self.keymaps.get(mode, event);
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
+        let mut execute_command = |command: &commands::MappableCommand| {
+            command.execute(cxt);
+            let current_mode = cxt.editor.mode();
+            match (last_mode, current_mode) {
+                (Mode::Normal, Mode::Insert) => {
+                    // HAXX: if we just entered insert mode from normal, clear key buf
+                    // and record the command that got us into this mode.
+
+                    // how we entered insert mode is important, and we should track that so
+                    // we can repeat the side effect.
+                    self.last_insert.0 = command.clone();
+                    self.last_insert.1.clear();
+
+                    commands::signature_help_impl(cxt, commands::SignatureHelpInvoked::Automatic);
+                }
+                (Mode::Insert, Mode::Normal) => {
+                    // if exiting insert mode, remove completion
+                    self.completion = None;
+
+                    // TODO: Use an on_mode_change hook to remove signature help
+                    cxt.jobs.callback(async {
+                        let call: job::Callback = Box::new(|_editor, compositor| {
+                            compositor.remove(SignatureHelp::ID);
+                        });
+                        Ok(call)
+                    });
+                }
+                _ => (),
+            }
+            last_mode = current_mode;
+        };
+
         match &key_result {
-            KeymapResult::Matched(command) => command.execute(cxt),
+            KeymapResult::Matched(command) => {
+                execute_command(command);
+            }
             KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
             KeymapResult::MatchedSequence(commands) => {
                 for command in commands {
-                    command.execute(cxt);
+                    execute_command(command);
                 }
             }
             KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
@@ -892,8 +1007,8 @@ impl EditorView {
 
     pub fn handle_idle_timeout(&mut self, cx: &mut crate::compositor::Context) -> EventResult {
         if self.completion.is_some()
+            || cx.editor.mode != Mode::Insert
             || !cx.editor.config().auto_completion
-            || doc!(cx.editor).mode != Mode::Insert
         {
             return EventResult::Ignored(None);
         }
@@ -915,7 +1030,7 @@ impl EditorView {
 impl EditorView {
     fn handle_mouse_event(
         &mut self,
-        event: MouseEvent,
+        event: &MouseEvent,
         cxt: &mut commands::Context,
     ) -> EventResult {
         let config = cxt.editor.config();
@@ -925,7 +1040,7 @@ impl EditorView {
             column,
             modifiers,
             ..
-        } = event;
+        } = *event;
 
         let pos_and_view = |editor: &Editor, row, column| {
             editor.tree.views().find_map(|(view, _focus)| {
@@ -948,23 +1063,22 @@ impl EditorView {
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
                     let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
 
-                    if modifiers == crossterm::event::KeyModifiers::ALT {
+                    if modifiers == KeyModifiers::ALT {
                         let selection = doc.selection(view_id).clone();
                         doc.set_selection(view_id, selection.push(Range::point(pos)));
                     } else {
                         doc.set_selection(view_id, Selection::point(pos));
                     }
 
-                    editor.tree.focus = view_id;
+                    editor.focus(view_id);
 
                     return EventResult::Consumed(None);
                 }
 
                 if let Some((coords, view_id)) = gutter_coords_and_view(editor, row, column) {
-                    editor.tree.focus = view_id;
+                    editor.focus(view_id);
 
-                    let view = editor.tree.get(view_id);
-                    let doc = editor.documents.get_mut(&view.doc).unwrap();
+                    let (view, doc) = current!(cxt.editor);
 
                     let path = match doc.path() {
                         Some(path) => path.clone(),
@@ -1011,7 +1125,7 @@ impl EditorView {
                     None => return EventResult::Ignored(None),
                 }
 
-                let offset = config.scroll_lines.abs() as usize;
+                let offset = config.scroll_lines.unsigned_abs();
                 commands::scroll(cxt, offset, direction);
 
                 cxt.editor.tree.focus = current_view;
@@ -1029,8 +1143,8 @@ impl EditorView {
                 if doc
                     .selection(view.id)
                     .primary()
-                    .fragment(doc.text().slice(..))
-                    .width()
+                    .slice(doc.text().slice(..))
+                    .len_chars()
                     <= 1
                 {
                     return EventResult::Ignored(None);
@@ -1043,14 +1157,13 @@ impl EditorView {
 
             MouseEventKind::Up(MouseButton::Right) => {
                 if let Some((coords, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
-                    cxt.editor.tree.focus = view_id;
+                    cxt.editor.focus(view_id);
 
-                    let view = cxt.editor.tree.get(view_id);
-                    let doc = cxt.editor.documents.get_mut(&view.doc).unwrap();
+                    let (view, doc) = current!(cxt.editor);
                     let line = coords.row + view.offset.row;
                     if let Ok(pos) = doc.text().try_line_to_char(line) {
                         doc.set_selection(view_id, Selection::point(pos));
-                        if modifiers == crossterm::event::KeyModifiers::ALT {
+                        if modifiers == KeyModifiers::ALT {
                             commands::MappableCommand::dap_edit_log.execute(cxt);
                         } else {
                             commands::MappableCommand::dap_edit_condition.execute(cxt);
@@ -1069,7 +1182,7 @@ impl EditorView {
                     return EventResult::Ignored(None);
                 }
 
-                if modifiers == crossterm::event::KeyModifiers::ALT {
+                if modifiers == KeyModifiers::ALT {
                     commands::MappableCommand::replace_selections_with_primary_clipboard
                         .execute(cxt);
 
@@ -1079,7 +1192,7 @@ impl EditorView {
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
                     let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
                     doc.set_selection(view_id, Selection::point(pos));
-                    editor.tree.focus = view_id;
+                    cxt.editor.focus(view_id);
                     commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
 
                     return EventResult::Consumed(None);
@@ -1096,7 +1209,7 @@ impl EditorView {
 impl Component for EditorView {
     fn handle_event(
         &mut self,
-        event: Event,
+        event: &Event,
         context: &mut crate::compositor::Context,
     ) -> EventResult {
         let mut cx = commands::Context {
@@ -1109,21 +1222,39 @@ impl Component for EditorView {
         };
 
         match event {
+            Event::Paste(contents) => {
+                cx.count = cx.editor.count;
+                commands::paste_bracketed_value(&mut cx, contents.clone());
+                cx.editor.count = None;
+
+                let config = cx.editor.config();
+                let mode = cx.editor.mode();
+                let (view, doc) = current!(cx.editor);
+                view.ensure_cursor_in_view(doc, config.scrolloff);
+
+                // Store a history state if not in insert mode. Otherwise wait till we exit insert
+                // to include any edits to the paste in the history state.
+                if mode != Mode::Insert {
+                    doc.append_changes_to_history(view.id);
+                }
+
+                EventResult::Consumed(None)
+            }
             Event::Resize(_width, _height) => {
                 // Ignore this event, we handle resizing just before rendering to screen.
                 // Handling it here but not re-rendering will cause flashing
                 EventResult::Consumed(None)
             }
-            Event::Key(key) => {
+            Event::Key(mut key) => {
                 cx.editor.reset_idle_timer();
-                let mut key = KeyEvent::from(key);
                 canonicalize_key(&mut key);
 
                 // clear status
                 cx.editor.status_msg = None;
 
-                let doc = doc!(cx.editor);
-                let mode = doc.mode();
+                let mode = cx.editor.mode();
+                let (view, _) = current!(cx.editor);
+                let focus = view.id;
 
                 if let Some(on_next_key) = self.on_next_key.take() {
                     // if there's a command waiting input, do that first
@@ -1185,54 +1316,27 @@ impl Component for EditorView {
                 if cx.editor.should_close() {
                     return EventResult::Ignored(None);
                 }
-                let config = cx.editor.config();
-                let (view, doc) = current!(cx.editor);
-                view.ensure_cursor_in_view(doc, config.scrolloff);
+                // if the focused view still exists and wasn't closed
+                if cx.editor.tree.contains(focus) {
+                    let config = cx.editor.config();
+                    let mode = cx.editor.mode();
+                    let view = cx.editor.tree.get_mut(focus);
+                    let doc = cx.editor.documents.get_mut(&view.doc).unwrap();
 
-                // Store a history state if not in insert mode. This also takes care of
-                // committing changes when leaving insert mode.
-                if doc.mode() != Mode::Insert {
-                    doc.append_changes_to_history(view.id);
-                }
+                    view.ensure_cursor_in_view(doc, config.scrolloff);
 
-                // mode transitions
-                match (mode, doc.mode()) {
-                    (Mode::Normal, Mode::Insert) => {
-                        // HAXX: if we just entered insert mode from normal, clear key buf
-                        // and record the command that got us into this mode.
-
-                        // how we entered insert mode is important, and we should track that so
-                        // we can repeat the side effect.
-
-                        self.last_insert.0 = match self.keymaps.get(mode, key) {
-                            KeymapResult::Matched(command) => command,
-                            // FIXME: insert mode can only be entered through single KeyCodes
-                            _ => unimplemented!(),
-                        };
-                        self.last_insert.1.clear();
-                        commands::signature_help_impl(
-                            &mut cx,
-                            commands::SignatureHelpInvoked::Automatic,
-                        );
+                    // Store a history state if not in insert mode. This also takes care of
+                    // committing changes when leaving insert mode.
+                    if mode != Mode::Insert {
+                        doc.append_changes_to_history(view.id);
                     }
-                    (Mode::Insert, Mode::Normal) => {
-                        // if exiting insert mode, remove completion
-                        self.completion = None;
-                        // TODO: Use an on_mode_change hook to remove signature help
-                        context.jobs.callback(async {
-                            let call: job::Callback = Box::new(|_editor, compositor| {
-                                compositor.remove(SignatureHelp::ID);
-                            });
-                            Ok(call)
-                        });
-                    }
-                    _ => (),
                 }
 
                 EventResult::Consumed(callback)
             }
 
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
+            Event::FocusGained | Event::FocusLost => EventResult::Ignored(None),
         }
     }
 
@@ -1240,8 +1344,27 @@ impl Component for EditorView {
         // clear with background color
         surface.set_style(area, cx.editor.theme.get("ui.background"));
         let config = cx.editor.config();
+
+        // check if bufferline should be rendered
+        use helix_view::editor::BufferLine;
+        let use_bufferline = match config.bufferline {
+            BufferLine::Always => true,
+            BufferLine::Multiple if cx.editor.documents.len() > 1 => true,
+            _ => false,
+        };
+
+        // -1 for commandline and -1 for bufferline
+        let mut editor_area = area.clip_bottom(1);
+        if use_bufferline {
+            editor_area = editor_area.clip_top(1);
+        }
+
         // if the terminal size suddenly changed, we need to trigger a resize
-        cx.editor.resize(area.clip_bottom(1)); // -1 from bottom for commandline
+        cx.editor.resize(editor_area);
+
+        if use_bufferline {
+            Self::render_bufferline(cx.editor, area.with_height(1), surface);
+        }
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();

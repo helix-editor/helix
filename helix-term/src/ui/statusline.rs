@@ -161,7 +161,7 @@ where
         format!(
             " {} ",
             if visible {
-                match context.doc.mode() {
+                match context.editor.mode() {
                     Mode::Insert => "INS",
                     Mode::Select => "SEL",
                     Mode::Normal => "NOR",
@@ -172,7 +172,7 @@ where
             }
         ),
         if visible && context.editor.config().color_modes {
-            match context.doc.mode() {
+            match context.editor.mode() {
                 Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
                 Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
                 Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
@@ -330,7 +330,7 @@ fn render_file_type<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let file_type = context.doc.language_id().unwrap_or("text");
+    let file_type = context.doc.language_name().unwrap_or("text");
 
     write(context, format!(" {} ", file_type), None);
 }
