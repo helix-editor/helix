@@ -478,6 +478,8 @@ roots = []
 comment-token = "#"
 language-server = { command = "rnix-lsp" }
 indent = { tab-width = 2, unit = "  " }
+auto-format = true
+formatter = { command = "alejandra", args = ["-q"] }
 
 [[grammar]]
 name = "nix"
