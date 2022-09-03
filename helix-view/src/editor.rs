@@ -13,6 +13,8 @@ use futures_util::future;
 use futures_util::stream::select_all::SelectAll;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+pub const BRAILLE_SPINNER_STRINGS: [&str; 8] = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
+
 use std::{
     borrow::Cow,
     collections::{BTreeMap, HashMap},
@@ -162,6 +164,10 @@ pub struct Config {
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
+    /// Vector of Strings of custom spinner frames, one per element
+    pub spinner_frames: Vec<String>,
+    /// Interval (in ms) for spinner frame change
+    pub spinner_interval: u64,
     /// Persistently display open buffers along the top
     pub bufferline: BufferLine,
     /// Vertical indent width guides.
@@ -574,6 +580,11 @@ impl Default for Config {
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
+            spinner_frames: BRAILLE_SPINNER_STRINGS
+                .into_iter()
+                .map(String::from)
+                .collect(),
+            spinner_interval: 80,
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
