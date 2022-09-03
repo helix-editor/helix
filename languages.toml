@@ -331,7 +331,7 @@ source = { git = "https://github.com/omertuc/tree-sitter-go-work", rev = "6dd9dd
 [[language]]
 name = "javascript"
 scope = "source.js"
-injection-regex = "^(js|javascript)$"
+injection-regex = "(js|javascript)"
 file-types = ["js", "jsx", "mjs", "cjs"]
 shebangs = ["node"]
 roots = []
@@ -370,7 +370,7 @@ grammar = "javascript"
 [[language]]
 name = "typescript"
 scope = "source.ts"
-injection-regex = "^(ts|typescript)$"
+injection-regex = "(ts|typescript)"
 file-types = ["ts"]
 shebangs = []
 roots = []
@@ -385,7 +385,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = 
 [[language]]
 name = "tsx"
 scope = "source.tsx"
-injection-regex = "^(tsx)$" # |typescript
+injection-regex = "(tsx)" # |typescript
 file-types = ["tsx"]
 roots = []
 # TODO: highlights-params
@@ -1183,7 +1183,7 @@ source = { git = "https://github.com/milisims/tree-sitter-org", rev = "698bb1a34
 [[language]]
 name = "solidity"
 scope = "source.sol"
-injection-regex = "^(sol|solidity)$"
+injection-regex = "(sol|solidity)"
 file-types = ["sol"]
 roots = []
 comment-token = "//"
@@ -1400,7 +1400,7 @@ source = { git = "https://github.com/archseer/tree-sitter-cairo", rev = "5155c6e
 [[language]]
 name = "cpon"
 scope = "scope.cpon"
-injection-regex = "^cpon$"
+injection-regex = "cpon"
 file-types = ["cpon", "cp"]
 roots = []
 auto-format = true
