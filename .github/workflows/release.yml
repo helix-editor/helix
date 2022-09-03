@@ -138,7 +138,7 @@ jobs:
 
       - name: Build AppImage
         shell: bash
-        if: matrix.build == 'x86_64-linux'
+        if: matrix.build == 'aarch64-linux' || matrix.build == 'x86_64-linux'
         run: |
           mkdir dist
 
@@ -147,8 +147,10 @@ jobs:
             name=${GITHUB_REF:10}
           fi
 
+          build="${{ matrix.build }}"
+
           export VERSION="$name"
-          export ARCH=x86_64
+          export ARCH=${build%-linux}
           export APP=helix
           export OUTPUT="helix-$VERSION-$ARCH.AppImage"
           export UPDATE_INFORMATION="gh-releases-zsync|$GITHUB_REPOSITORY_OWNER|helix|latest|$APP-*-$ARCH.AppImage.zsync"
@@ -245,7 +247,7 @@ jobs:
               mv bins-$platform/hx$exe $pkgname
               chmod +x $pkgname/hx$exe
 
-              if [[ "$platform" = "x86_64-linux" ]]; then
+              if [[ "$platform" = "aarch64-linux" || "$platform" = "x86_64-linux" ]]; then
                   mv bins-$platform/helix-*.AppImage* dist/
               fi
 
