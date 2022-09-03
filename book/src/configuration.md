@@ -49,6 +49,7 @@ You may also specify a file to use for configuration with the `-c` or
 | `auto-info` | Whether to display infoboxes | `true` |
 | `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. | `false` |
 | `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file. | `[]` |
+| `read-only-indicator` | String to display next to filename in statusbar when configured and if file is read-only. Set to `""` to disable. | `"[RO]"` |
 | `bufferline` | Renders a line at the top of the editor displaying open buffers. Can be `always`, `never` or `multiple` (only shown if more than one buffer is in use) | `never` |
 | `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
 
@@ -64,8 +65,8 @@ Statusline elements can be defined as follows:
 
 ```toml
 [editor.statusline]
-left = ["mode", "spinner"]
-center = ["file-name"]
+left = ["mode", "spinner", "file-name", "read-only-indicator"]
+center = []
 right = ["diagnostics", "selections", "position", "file-encoding", "file-line-ending", "file-type"]
 separator = "│"
 ```
@@ -77,6 +78,7 @@ The following elements can be configured:
 | `mode` | The current editor mode (`NOR`/`INS`/`SEL`) |
 | `spinner` | A progress spinner indicating LSP activity |
 | `file-name` | The path/name of the opened file |
+| `read-only-indicator` | When configured, indicates whether the file is read-only. |
 | `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
 | `file-line-ending` | The file line endings (CRLF or LF) |
 | `file-type` | The type of the opened file |

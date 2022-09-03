@@ -39,6 +39,13 @@ pub enum Mode {
     Insert = 2,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize)]
+pub enum WritePermission {
+    Writable,
+    ReadOnly,
+    Unknown,
+}
+
 impl Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -120,9 +127,11 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
+    /// Write permissions of the file - read-only, writable, or unknown.
+    pub write_permission: WritePermission,
 }
 
-use std::{fmt, mem};
+use std::{fmt, fs, mem};
 impl fmt::Debug for Document {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Document")
@@ -141,6 +150,7 @@ impl fmt::Debug for Document {
             .field("version", &self.version)
             .field("modified_since_accessed", &self.modified_since_accessed)
             .field("diagnostics", &self.diagnostics)
+            .field("write_permission", &self.write_permission)
             // .field("language_server", &self.language_server)
             .finish()
     }
@@ -358,6 +368,7 @@ impl Document {
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_server: None,
+            write_permission: WritePermission::Unknown,
         }
     }
 
@@ -388,6 +399,15 @@ impl Document {
         }
 
         doc.detect_indent_and_line_ending();
+        // this seems overly complex but should make it easier
+        // to extend doc.file_stat with more information in the future.
+        doc.write_permission = fs::metadata(path).map_or(WritePermission::Unknown, |f| {
+            if f.permissions().readonly() {
+                WritePermission::ReadOnly
+            } else {
+                WritePermission::Writable
+            }
+        });
 
         Ok(doc)
     }

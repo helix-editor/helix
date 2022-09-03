@@ -45,6 +45,8 @@ use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer}
 
 use arc_swap::access::{DynAccess, DynGuard};
 
+const DEFAULT_READ_ONLY_INDICATOR: &str = "[RO]";
+
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -166,6 +168,8 @@ pub struct Config {
     pub bufferline: BufferLine,
     /// Vertical indent width guides.
     pub indent_guides: IndentGuidesConfig,
+    /// String indicating whether a file is read-only. Defaults to `"[RO]"`
+    pub read_only_indicator: String,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
 }
@@ -267,7 +271,7 @@ impl Default for StatusLineConfig {
         use StatusLineElement as E;
 
         Self {
-            left: vec![E::Mode, E::Spinner, E::FileName],
+            left: vec![E::Mode, E::Spinner, E::FileName, E::ReadOnlyIndicator],
             center: vec![],
             right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
             separator: String::from("│"),
@@ -304,6 +308,9 @@ pub enum StatusLineElement {
 
     /// The cursor position
     Position,
+
+    /// The read-only indicator
+    ReadOnlyIndicator,
 
     /// The separator string
     Separator,
@@ -576,6 +583,7 @@ impl Default for Config {
             whitespace: WhitespaceConfig::default(),
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
+            read_only_indicator: DEFAULT_READ_ONLY_INDICATOR.to_string(),
             color_modes: false,
         }
     }
