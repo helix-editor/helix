@@ -14,7 +14,7 @@ macro_rules! current {
     ($editor:expr) => {{
         let view = $crate::view_mut!($editor);
         let id = view.doc;
-        let doc = $editor.documents.get_mut(&id).unwrap();
+        let doc = $crate::doc_mut!($editor, &id);
         (view, doc)
     }};
 }
@@ -32,6 +32,9 @@ macro_rules! current_ref {
 /// Returns `&mut Document`
 #[macro_export]
 macro_rules! doc_mut {
+    ($editor:expr, $id:expr) => {{
+        $editor.documents.get_mut($id).unwrap()
+    }};
     ($editor:expr) => {{
         $crate::current!($editor).1
     }};
@@ -41,6 +44,9 @@ macro_rules! doc_mut {
 /// Returns `&mut View`
 #[macro_export]
 macro_rules! view_mut {
+    ($editor:expr, $id:expr) => {{
+        $editor.tree.get_mut($id)
+    }};
     ($editor:expr) => {{
         $editor.tree.get_mut($editor.tree.focus)
     }};
@@ -50,6 +56,9 @@ macro_rules! view_mut {
 /// Returns `&View`
 #[macro_export]
 macro_rules! view {
+    ($editor:expr, $id:expr) => {{
+        $editor.tree.get($id)
+    }};
     ($editor:expr) => {{
         $editor.tree.get($editor.tree.focus)
     }};
@@ -57,6 +66,9 @@ macro_rules! view {
 
 #[macro_export]
 macro_rules! doc {
+    ($editor:expr, $id:expr) => {{
+        $editor.documents[$id]
+    }};
     ($editor:expr) => {{
         $crate::current_ref!($editor).1
     }};
