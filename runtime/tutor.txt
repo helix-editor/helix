@@ -670,8 +670,8 @@ _________________________________________________________________
  3. Try using A-. with f and t, to select multiple sentences for
     instance.
 
- This is some text for you to repeat things. You can repeat
- insertions like changing words, or repeat selections like f/t.
+ --> This is some text for you to repeat things. You can repeat
+     insertions like changing words, or repeat selections like f/t.
 
 
 
@@ -911,7 +911,7 @@ lines.
  1. Move the cursor to the line below marked -->.
  2. Select the first "bat" and type * to set it to search.
  3. Type v to enter select mode.
- 4. Type n to select the othe "bat".
+ 4. Type n to select the other "bat".
  5. Use c or r to change the "bat"s to "cat".
 
  --> Everybody wants to be a bat,
