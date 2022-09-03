@@ -1,4 +1,4 @@
-; Elixir Comments
+; Elixir Code Comments
 ((comment) @injection.content
  (#set! injection.language "comment"))
 
@@ -6,11 +6,11 @@
 ((sigil
   (sigil_name) @_sigil_name
   (quoted_content) @injection.content)
- (#match? @_sigil_name "^(r|R)$")
+ (#match? @_sigil_name "^(R|r)$")
  (#set! injection.language "regex")
  (#set! injection.combined))
 
-; Elixir Documentation
+; Elixir Markdown Documentation
 (unary_operator
   operator: "@"
   operand: (call
@@ -19,6 +19,22 @@
       (string (quoted_content) @injection.content)
       (sigil (quoted_content) @injection.content)
   ])) (#set! injection.language "markdown"))
+
+; Zigler Sigils
+((sigil
+  (sigil_name) @_sigil_name
+  (quoted_content) @injection.content)
+ (#match? @_sigil_name "^(Z|z)$")
+ (#set! injection.language "zig")
+ (#set! injection.combined))
+
+; Jason Sigils
+((sigil
+  (sigil_name) @_sigil_name
+  (quoted_content) @injection.content)
+ (#match? @_sigil_name "^(J|j)$")
+ (#set! injection.language "json")
+ (#set! injection.combined))
 
 ; Phoenix Live View HEEx Sigils
 ((sigil
@@ -34,7 +50,7 @@
   (arguments
     (atom)+
     (keywords (pair 
-      (keyword) 
+      ((keyword) @_keyword (#eq? @_keyword "doc: "))
       [
         (string (quoted_content) @injection.content)
         (sigil (quoted_content) @injection.content)
