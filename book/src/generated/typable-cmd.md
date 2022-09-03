@@ -72,3 +72,4 @@
 | `:append-output` | Run shell command, appending output after each selection. |
 | `:pipe` | Pipe each selection to the shell command. |
 | `:run-shell-command`, `:sh` | Run a shell command |
+| `:trim` | Trim trailing whitespace. Args: 'all' (default), 'spaces', 'lines' |

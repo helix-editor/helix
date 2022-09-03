@@ -1783,6 +1783,64 @@ fn run_shell_command(
     Ok(())
 }
 
+fn trim(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    use helix_core::line_ending;
+
+    // Possible modes: "all", "spaces", "lines".
+    let mode = args.get(0).unwrap_or(&Cow::Borrowed("all"));
+    let (view, doc) = current!(cx.editor);
+
+    if mode == "all" || mode == "spaces" {
+        let mut pos = 0;
+        let transaction = Transaction::change(
+            doc.text(),
+            doc.text().lines().filter_map(|line| {
+                // The index of the last non-whitespace character in the line.
+                let start = pos
+                    + movement::backwards_skip_while(
+                        line,
+                        line_ending::rope_end_without_line_ending(&line),
+                        |x| x.is_whitespace(),
+                    )
+                    .unwrap_or(0);
+
+                // The index of the last character in the line, excluding the line ending.
+                let end = pos + line_ending::rope_end_without_line_ending(&line);
+                pos += line.len_chars();
+                (start != end).then(|| (start, end, None))
+            }),
+        );
+        doc.apply(&transaction, view.id);
+    }
+
+    if mode == "all" || mode == "lines" {
+        let mut lines = doc.text().lines_at(doc.text().len_lines()).reversed();
+        let mut pos = doc.text().len_chars();
+
+        // The last non-empty line char index.
+        let start = lines
+            .find_map(|line| {
+                if line_ending::rope_end_without_line_ending(&line) != 0 {
+                    Some(pos)
+                } else {
+                    pos -= line.len_chars();
+                    None
+                }
+            })
+            .unwrap_or(0);
+        let end = doc.text().len_chars();
+        let transaction = Transaction::change(doc.text(), [(start, end, None)].into_iter());
+        doc.apply(&transaction, view.id);
+    }
+
+    doc.append_changes_to_history(view.id);
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2290,6 +2348,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run a shell command",
             fun: run_shell_command,
             completer: Some(completers::directory),
+        },
+        TypableCommand {
+            name: "trim",
+            aliases: &[],
+            doc: "Trim trailing whitespace. Args: 'all' (default), 'spaces', 'lines'",
+            fun: trim,
+            completer: None,
         },
     ];
 
