@@ -945,9 +945,10 @@ impl EditorView {
 
                     // TODO: Use an on_mode_change hook to remove signature help
                     cxt.jobs.callback(async {
-                        let call: job::Callback = Callback::Compositor(Box::new(|compositor| {
-                            compositor.remove(SignatureHelp::ID);
-                        }));
+                        let call: job::Callback =
+                            Callback::EditorCompositor(Box::new(|_editor, compositor| {
+                                compositor.remove(SignatureHelp::ID);
+                            }));
                         Ok(call)
                     });
                 }

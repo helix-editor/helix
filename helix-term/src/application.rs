@@ -991,7 +991,7 @@ impl Application {
 
         let mut result = match self
             .jobs
-            .finish(Some(&mut self.editor), Some(&mut self.compositor))
+            .finish(&mut self.editor, Some(&mut self.compositor))
             .await
         {
             Ok(_) => Ok(()),

@@ -277,10 +277,11 @@ pub fn dap_launch(cx: &mut Context) {
             let completions = template.completion.clone();
             let name = template.name.clone();
             let callback = Box::pin(async move {
-                let call: Callback = Callback::Compositor(Box::new(move |compositor| {
-                    let prompt = debug_parameter_prompt(completions, name, Vec::new());
-                    compositor.push(Box::new(prompt));
-                }));
+                let call: Callback =
+                    Callback::EditorCompositor(Box::new(move |_editor, compositor| {
+                        let prompt = debug_parameter_prompt(completions, name, Vec::new());
+                        compositor.push(Box::new(prompt));
+                    }));
                 Ok(call)
             });
             cx.jobs.callback(callback);
@@ -335,10 +336,11 @@ fn debug_parameter_prompt(
                 let config_name = config_name.clone();
                 let params = params.clone();
                 let callback = Box::pin(async move {
-                    let call: Callback = Callback::Compositor(Box::new(move |compositor| {
-                        let prompt = debug_parameter_prompt(completions, config_name, params);
-                        compositor.push(Box::new(prompt));
-                    }));
+                    let call: Callback =
+                        Callback::EditorCompositor(Box::new(move |_editor, compositor| {
+                            let prompt = debug_parameter_prompt(completions, config_name, params);
+                            compositor.push(Box::new(prompt));
+                        }));
                     Ok(call)
                 });
                 cx.jobs.callback(callback);
