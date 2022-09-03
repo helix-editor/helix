@@ -441,7 +441,7 @@ fn query_indents(
 ///   - The scope `all` if this node is not the first node on its line.
 /// Intuitively, `all` applies to everything contained in this node while `tail` applies to everything except for the first line of the node.
 /// The indents from different nodes for the same line are then combined.
-/// The [Indentation] is simply the sum of the [Indentation] for all lines.
+/// The result [Indentation] is simply the sum of the [Indentation] for all lines.
 ///
 /// Specifying which line exactly an [Indentation] applies to is important because indents on the same line combine differently than indents on different lines:
 /// ```ignore
