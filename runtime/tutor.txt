@@ -670,7 +670,7 @@ _________________________________________________________________
  3. Try using A-. with f and t, to select multiple sentences for
     instance.
 
- This is some text for you to repeat things. You can repeat
+ --> This is some text for you to repeat things. You can repeat
  insertions like changing words, or repeat selections like f/t.
 
 
