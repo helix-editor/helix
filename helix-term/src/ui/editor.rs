@@ -47,18 +47,18 @@ pub enum InsertEvent {
 
 impl Default for EditorView {
     fn default() -> Self {
-        Self::new(Keymaps::default())
+        Self::new(Keymaps::default(), ProgressSpinners::default())
     }
 }
 
 impl EditorView {
-    pub fn new(keymaps: Keymaps) -> Self {
+    pub fn new(keymaps: Keymaps, spinners: ProgressSpinners) -> Self {
         Self {
             keymaps,
             on_next_key: None,
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
-            spinners: ProgressSpinners::default(),
+            spinners,
         }
     }
 

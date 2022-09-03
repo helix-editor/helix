@@ -200,7 +200,7 @@ where
             // Even if there's no spinner; reserve its space to avoid elements frequently shifting.
             .unwrap_or(" ")
             .to_string(),
-        None,
+        Some(context.editor.theme.get("ui.spinner")),
     );
 }
 
