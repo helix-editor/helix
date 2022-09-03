@@ -356,7 +356,11 @@ impl Registry {
                         .await;
 
                     if let Err(e) = value {
-                        log::error!("failed to initialize language server: {}", e);
+                        if let Error::LspNotDefined = e {
+                            // Skip logging "lsp not defined"
+                        } else {
+                            log::error!("failed to initialize language server: {}", e);
+                        }
                         return;
                     }
 
