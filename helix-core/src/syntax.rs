@@ -1859,137 +1859,355 @@ fn injection_for_match<'a>(
     (language_name, content_node, included_children)
 }
 
-pub struct Merge<I> {
-    iter: I,
-    spans: Box<dyn Iterator<Item = (usize, std::ops::Range<usize>)>>,
+struct Merge<L: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>> {
+    left: iter::Peekable<L>,
+    right: iter::Peekable<R>,
 
-    next_event: Option<HighlightEvent>,
-    next_span: Option<(usize, std::ops::Range<usize>)>,
+    left_queue: Vec<HighlightEvent>,
+    right_queue: Vec<HighlightEvent>,
 
-    queue: Vec<HighlightEvent>,
+    merge_queue: VecDeque<HighlightEvent>,
 }
 
-/// Merge a list of spans into the highlight event stream.
-pub fn merge<I: Iterator<Item = HighlightEvent>>(
-    iter: I,
-    spans: Vec<(usize, std::ops::Range<usize>)>,
-) -> Merge<I> {
-    let spans = Box::new(spans.into_iter());
-    let mut merge = Merge {
-        iter,
-        spans,
-        next_event: None,
-        next_span: None,
-        queue: Vec::new(),
-    };
-    merge.next_event = merge.iter.next();
-    merge.next_span = merge.spans.next();
-    merge
+/// Merges two HighlightEvent iterators.
+///
+/// Highlights from `right` overlay highlights from `left`.
+/// Any `Source` events in `right` which preceed the first `Source`
+/// in `left` are truncated or discarded. The final `Source` in `right`
+/// which extends beyond the final `Source` in `left` is not truncated
+/// or discarded: this is a special case made for the trailing character
+/// when the cursor rests past the end-of-file.
+///
+/// If all of the following invariants are satisfied for both event streams
+/// `left` and `right` individually, then the invariants hold for the
+/// resulting merged iterator as well.
+///
+/// - `Source` events are sorted by `start` monotonically increasing, and are
+///   non-overlapping. Ignoring `HighlightStart` and `HighlightEnd` events, for
+///   all consecutive `a` and `b`, `a.start < b.start` (monotonically
+///   increasing) and `a.end <= b.start` (non-overlapping).
+/// - For all `Source` events, `start != end`.
+/// - `Source` events may not be consecutive with any other `Source` event.
+///
+/// # Panics
+///
+/// The Iterator produced by this function may panic if any of the above
+/// invariants or assumptions are not met.
+pub fn merge<L: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>>(
+    left: L,
+    right: R,
+) -> impl Iterator<Item = HighlightEvent> {
+    Merge {
+        left: left.peekable(),
+        right: right.peekable(),
+        left_queue: Vec::new(),
+        right_queue: Vec::new(),
+        merge_queue: VecDeque::new(),
+    }
 }
 
-impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
+impl<I: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>> Iterator
+    for Merge<I, R>
+{
     type Item = HighlightEvent;
+
     fn next(&mut self) -> Option<Self::Item> {
         use HighlightEvent::*;
-        if let Some(event) = self.queue.pop() {
+
+        // Emit any queued events.
+        if let Some(event) = self.merge_queue.pop_front() {
             return Some(event);
         }
 
         loop {
-            match (self.next_event, &self.next_span) {
-                // this happens when range is partially or fully offscreen
-                (Some(Source { start, .. }), Some((span, range))) if start > range.start => {
-                    if start > range.end {
-                        self.next_span = self.spans.next();
-                    } else {
-                        self.next_span = Some((*span, start..range.end));
+            match (self.left.peek_mut(), self.right.peek_mut()) {
+                // Left starts before right.
+                (
+                    Some(Source {
+                        start: left_start,
+                        end: left_end,
+                    }),
+                    Some(Source {
+                        start: right_start,
+                        end: _right_end,
+                    }),
+                ) if *left_start < *right_start => {
+                    let intersect = *(right_start.min(left_end));
+                    let event = Source {
+                        start: *left_start,
+                        end: intersect,
                     };
+
+                    self.merge_queue.extend(self.left_queue.drain(..));
+                    self.merge_queue.push_back(event);
+
+                    // If left ends before right starts, complete left.
+                    // Otherwise, subslice left and continue.
+                    if *left_end == intersect {
+                        self.left.next();
+                        while let Some(HighlightEnd) = self.left.peek() {
+                            self.merge_queue.push_back(self.left.next().unwrap());
+                        }
+                    } else {
+                        *left_start = intersect;
+                    };
+
+                    return self.merge_queue.pop_front();
                 }
-                _ => break,
+
+                // Left and right start at the same point.
+                (
+                    Some(Source {
+                        start: left_start,
+                        end: left_end,
+                    }),
+                    Some(Source {
+                        start: right_start,
+                        end: right_end,
+                    }),
+                ) if left_start == right_start => {
+                    let intersect = *(right_end.min(left_end));
+                    let event = Source {
+                        start: *left_start,
+                        end: intersect,
+                    };
+
+                    if intersect == *left_end && intersect == *right_end {
+                        // If they end at the same point too, push both
+                        // HighlightStart queues, a single Source for both,
+                        // then the HighlightEnds for both.
+                        self.left.next();
+                        self.right.next();
+
+                        self.merge_queue.extend(self.left_queue.drain(..));
+                        self.merge_queue.extend(self.right_queue.drain(..));
+                        self.merge_queue.push_back(event);
+
+                        while let Some(HighlightEnd) = self.left.peek() {
+                            self.merge_queue.push_back(self.left.next().unwrap());
+                        }
+                        while let Some(HighlightEnd) = self.right.peek() {
+                            self.merge_queue.push_back(self.right.next().unwrap());
+                        }
+                    } else if *left_end == intersect {
+                        // Right is longer than left. Complete left and subslice
+                        // right. When completing left and subslicing right, we
+                        // need to pop all of right's HighlightEnd events and then
+                        // re-emit the HighlightStarts since right's highlights are
+                        // layered on top of left's.
+                        self.left.next();
+
+                        self.merge_queue.extend(self.left_queue.drain(..));
+                        self.merge_queue.extend(self.right_queue.clone());
+                        self.merge_queue.push_back(event);
+                        for _ in 0..self.right_queue.len() {
+                            self.merge_queue.push_back(HighlightEnd);
+                        }
+                        while let Some(HighlightEnd) = self.left.peek() {
+                            self.merge_queue.push_back(self.left.next().unwrap());
+                        }
+                        *right_start = intersect;
+                    } else {
+                        // Left is longer than right. Complete right and subslice left.
+                        self.right.next();
+
+                        self.merge_queue.extend(self.left_queue.drain(..));
+                        self.merge_queue.extend(self.right_queue.drain(..));
+                        self.merge_queue.push_back(event);
+                        while let Some(HighlightEnd) = self.right.peek() {
+                            self.merge_queue.push_back(self.right.next().unwrap());
+                        }
+                        *left_start = intersect;
+                    }
+
+                    return self.merge_queue.pop_front();
+                }
+
+                // Any `Source`s in `right` that come before `left` are truncated or discarded.
+                (
+                    Some(Source {
+                        start: left_start,
+                        end: _left_end,
+                    }),
+                    Some(Source {
+                        start: right_start,
+                        end: right_end,
+                    }),
+                ) if *left_start > *right_start => {
+                    if left_start > right_end {
+                        // Discard
+                        self.right.next();
+                    } else {
+                        // Truncate
+                        *right_start = *left_start;
+                    }
+                }
+
+                // Queue any HighlightStart events.
+                (Some(left @ HighlightStart(_)), Some(_)) => {
+                    self.left_queue.push(*left);
+                    self.left.next();
+                }
+                (Some(_), Some(right @ HighlightStart(_))) => {
+                    self.right_queue.push(*right);
+                    self.right.next();
+                }
+                // These next two patterns are possible when a `HighlightEnd`
+                // immediately follows a `HighlightStart` with no `Source` in between.
+                // These branches are otherwise unreachable since the branches
+                // above that match on `Source`s consume `HighlightEnd`s eagerly.
+                (Some(HighlightEnd), Some(_)) => {
+                    assert!(self.left_queue.pop().is_some());
+                    self.left.next();
+                }
+                (Some(_), Some(HighlightEnd)) => {
+                    assert!(self.right_queue.pop().is_some());
+                    self.right.next();
+                }
+
+                // If `right` finishes before `left` and `left` has been drained,
+                // let `left` run itself out.
+                (Some(_), None) if self.left_queue.is_empty() => return self.left.next(),
+                (Some(Source { start, end }), None) => {
+                    // Right is finished. Any queued events must be drained before emitting
+                    // more events from `left`.
+                    self.merge_queue.extend(self.left_queue.drain(..));
+                    self.merge_queue.push_back(Source {
+                        start: *start,
+                        end: *end,
+                    });
+                    return self.merge_queue.pop_front();
+                }
+                // If `left` is finished and `right` has been drained, any remaining
+                // spans in `right` are past all `spans` in left and should be
+                // discarded.
+                (None, Some(_)) if self.right_queue.is_empty() => return None,
+                (None, Some(Source { start, end })) => {
+                    // Left is finished. This is a special case which allows a trailing
+                    // cursor to be merged in by the selection highlights: the last
+                    // `Source` in `right` is emitted and not truncated or discarded.
+                    let ends = self.right_queue.len();
+                    self.merge_queue.extend(self.right_queue.drain(..));
+                    self.merge_queue.push_back(Source {
+                        start: *start,
+                        end: *end,
+                    });
+                    for _ in 0..ends {
+                        self.merge_queue.push_back(HighlightEnd);
+                    }
+                    return self.merge_queue.pop_front();
+                }
+                (None, None) => return None,
+                (left, right) => unreachable!(
+                    "Impossible pattern in highlight event stream merge: ({:?}, {:?})",
+                    left, right
+                ),
+            };
+        }
+    }
+}
+
+struct SpanIter<I: Iterator<Item = (usize, std::ops::Range<usize>)>> {
+    spans: I,
+    event_queue: VecDeque<HighlightEvent>,
+    range_ends: Vec<usize>,
+    cursor: usize,
+    next: Option<(usize, std::ops::Range<usize>)>,
+}
+
+/// Creates an iterator of [HighlightEvent]s from a [Vec] of spans - pairs
+/// of the highlight and range.
+///
+/// Spans may overlap. In the produced [HighlightEvent] iterator, all
+/// `HighlightEvent::Source` events will be sorted by `start` and will not
+/// overlap.
+///
+/// `spans` is assumed to be sorted by range in lexiographical order.
+pub fn span_iter(
+    spans: Vec<(usize, std::ops::Range<usize>)>,
+) -> impl Iterator<Item = HighlightEvent> {
+    SpanIter {
+        spans: spans.into_iter(),
+        event_queue: VecDeque::new(),
+        range_ends: Vec::new(),
+        cursor: 0,
+        next: None,
+    }
+}
+
+impl<I: Iterator<Item = (usize, std::ops::Range<usize>)>> Iterator for SpanIter<I> {
+    type Item = HighlightEvent;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        use HighlightEvent::*;
+
+        // Emit any queued highlight events
+        if let Some(event) = self.event_queue.pop_front() {
+            return Some(event);
+        }
+
+        // Note: this could be a peekable and this call could be
+        // replaced with a `self.spans.peek()` but it would require
+        // more bookkeeping in the `range_ends.retain` below.
+        match self.next.take().or_else(|| self.spans.next()) {
+            None => {
+                // There are no more spans. Emit Sources and HighlightEnds
+                // for any ranges which have not been terminated yet.
+                for end in self.range_ends.drain(..) {
+                    if self.cursor != end {
+                        self.event_queue.push_back(Source {
+                            start: self.cursor,
+                            end,
+                        });
+                    }
+                    self.event_queue.push_back(HighlightEnd);
+                    self.cursor = end;
+                }
+            }
+            Some((highlight, range)) => {
+                let mut range = range.start..range.end;
+
+                self.range_ends.retain(|end| {
+                    // The new range is past the end of this in-progres range.
+                    // Complete the in-progress range by emitting a Source,
+                    // if necessary, and a HighlightEnd and advance the cursor.
+                    if range.start >= *end {
+                        if self.cursor != *end {
+                            self.event_queue.push_back(Source {
+                                start: self.cursor,
+                                end: *end,
+                            });
+                        }
+                        self.event_queue.push_back(HighlightEnd);
+                        self.cursor = *end;
+                        false
+                    } else if range.end > *end {
+                        // If the new range is longer than this in-progress range,
+                        // we need to subslice this range.
+                        self.next = Some((highlight, *end..range.end));
+                        range.end = *end;
+                        true
+                    } else {
+                        true
+                    }
+                });
+
+                // Emit a Source event between consecutive HighlightStart events
+                if range.start != self.cursor && !self.range_ends.is_empty() {
+                    self.event_queue.push_back(Source {
+                        start: self.cursor,
+                        end: range.start,
+                    });
+                }
+                self.cursor = range.start;
+                self.event_queue
+                    .push_back(HighlightStart(Highlight(highlight)));
+                self.range_ends.push(range.end);
+                self.range_ends.sort_unstable();
             }
         }
 
-        match (self.next_event, &self.next_span) {
-            (Some(HighlightStart(i)), _) => {
-                self.next_event = self.iter.next();
-                Some(HighlightStart(i))
-            }
-            (Some(HighlightEnd), _) => {
-                self.next_event = self.iter.next();
-                Some(HighlightEnd)
-            }
-            (Some(Source { start, end }), Some((_, range))) if start < range.start => {
-                let intersect = range.start.min(end);
-                let event = Source {
-                    start,
-                    end: intersect,
-                };
-
-                if end == intersect {
-                    // the event is complete
-                    self.next_event = self.iter.next();
-                } else {
-                    // subslice the event
-                    self.next_event = Some(Source {
-                        start: intersect,
-                        end,
-                    });
-                };
-
-                Some(event)
-            }
-            (Some(Source { start, end }), Some((span, range))) if start == range.start => {
-                let intersect = range.end.min(end);
-                let event = HighlightStart(Highlight(*span));
-
-                // enqueue in reverse order
-                self.queue.push(HighlightEnd);
-                self.queue.push(Source {
-                    start,
-                    end: intersect,
-                });
-
-                if end == intersect {
-                    // the event is complete
-                    self.next_event = self.iter.next();
-                } else {
-                    // subslice the event
-                    self.next_event = Some(Source {
-                        start: intersect,
-                        end,
-                    });
-                };
-
-                if intersect == range.end {
-                    self.next_span = self.spans.next();
-                } else {
-                    self.next_span = Some((*span, intersect..range.end));
-                }
-
-                Some(event)
-            }
-            (Some(event), None) => {
-                self.next_event = self.iter.next();
-                Some(event)
-            }
-            // Can happen if cursor at EOF and/or diagnostic reaches past the end.
-            // We need to actually emit events for the cursor-at-EOF situation,
-            // even though the range is past the end of the text.  This needs to be
-            // handled appropriately by the drawing code by not assuming that
-            // all `Source` events point to valid indices in the rope.
-            (None, Some((span, range))) => {
-                let event = HighlightStart(Highlight(*span));
-                self.queue.push(HighlightEnd);
-                self.queue.push(Source {
-                    start: range.start,
-                    end: range.end,
-                });
-                self.next_span = self.spans.next();
-                Some(event)
-            }
-            (None, None) => None,
-            e => unreachable!("{:?}", e),
-        }
+        self.event_queue.pop_front()
     }
 }
 
