@@ -1545,12 +1545,30 @@ fn split_selection(cx: &mut Context) {
 
 fn split_selection_on_newline(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-    // only compile the regex once
-    #[allow(clippy::trivial_regex)]
-    static REGEX: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r"\r\n|[\n\r\u{000B}\u{000C}\u{0085}\u{2028}\u{2029}]").unwrap());
-    let selection = selection::split_on_matches(text, doc.selection(view.id), &REGEX);
+    let mut result = SmallVec::with_capacity(doc.selection(view.id).len());
+    for sel in doc.selection(view.id) {
+        // Special case: zero-width selection.
+        if sel.from() == sel.to() {
+            result.push(*sel);
+            continue;
+        }
+
+        // Create a new selection for each line in the sliced text.
+        let text = sel.slice(doc.text().slice(..));
+        let mut pos = sel.from();
+        for line in text.lines().take(text.len_lines() - 1) {
+            let start = pos;
+            let end = pos + line.len_chars();
+            pos = end;
+            result.push(Range::new(start, end));
+        }
+
+        // Account for the remaining text in the selection.
+        if pos < sel.to() {
+            result.push(Range::new(pos, sel.to()));
+        }
+    }
+    let selection = Selection::new(result, 0);
     doc.set_selection(view.id, selection);
 }
 
