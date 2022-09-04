@@ -1712,3 +1712,15 @@ language-server = { command = "pasls", args = [] }
 [[grammar]]
 name = "pascal"
 source = { git = "https://github.com/Isopod/tree-sitter-pascal", rev = "2fd40f477d3e2794af152618ccfac8d92eb72a66" }
+
+[[language]]
+name = "sml"
+scope = "source.sml"
+injection-regex = "sml"
+file-types = ["sml"]
+comment-token = "(*"
+roots = []
+
+[[grammar]]
+name = "sml"
+source = { git = "https://github.com/Giorbo/tree-sitter-sml", rev = "bd4055d5554614520d4a0706b34dc0c317c6b608" }
