@@ -1142,7 +1142,7 @@ pub enum Error {
 }
 
 /// Represents a single step in rendering a syntax-highlighted document.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum HighlightEvent {
     Source { start: usize, end: usize },
     HighlightStart(Highlight),
@@ -2390,5 +2390,340 @@ mod test {
 
         let results = load_runtime_file("rust", "does-not-exist");
         assert!(results.is_err());
+    }
+
+    #[test]
+    fn test_non_overlapping_span_iter_events() {
+        use HighlightEvent::*;
+        let input = vec![(1, 0..5), (2, 6..10)];
+        let output: Vec<_> = span_iter(input).collect();
+        assert_eq!(
+            output,
+            &[
+                HighlightStart(Highlight(1)),
+                Source { start: 0, end: 5 },
+                HighlightEnd, // ends 1
+                HighlightStart(Highlight(2)),
+                Source { start: 6, end: 10 },
+                HighlightEnd, // ends 2
+            ],
+        );
+    }
+
+    #[test]
+    fn test_simple_overlapping_span_iter_events() {
+        use HighlightEvent::*;
+
+        let input = vec![(1, 0..10), (2, 3..6)];
+        let output: Vec<_> = span_iter(input).collect();
+        assert_eq!(
+            output,
+            &[
+                HighlightStart(Highlight(1)),
+                Source { start: 0, end: 3 },
+                HighlightStart(Highlight(2)),
+                Source { start: 3, end: 6 },
+                HighlightEnd, // ends 2
+                Source { start: 6, end: 10 },
+                HighlightEnd, // ends 1
+            ],
+        );
+    }
+
+    #[test]
+    fn test_many_overlapping_span_iter_events() {
+        use HighlightEvent::*;
+
+        /*
+        Input:
+
+                                                                    5
+                                                                |-------|
+                                                                   4
+                                                             |----------|
+                                                  3
+                                    |---------------------------|
+                        2
+                |---------------|
+                                1
+            |---------------------------------------|
+
+            |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
+        */
+        let input = vec![(1, 0..10), (2, 1..5), (3, 6..13), (4, 12..15), (5, 13..15)];
+
+        /*
+        Output:
+
+                        2                  3                  4     5
+                |---------------|   |---------------|       |---|-------|
+
+                                1                         3         4
+            |---------------------------------------|-----------|-------|
+
+            |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
+        */
+        let output: Vec<_> = span_iter(input).collect();
+
+        assert_eq!(
+            output,
+            &[
+                HighlightStart(Highlight(1)),
+                Source { start: 0, end: 1 },
+                HighlightStart(Highlight(2)),
+                Source { start: 1, end: 5 },
+                HighlightEnd, // ends 2
+                Source { start: 5, end: 6 },
+                HighlightStart(Highlight(3)),
+                Source { start: 6, end: 10 },
+                HighlightEnd, // ends 3
+                HighlightEnd, // ends 1
+                HighlightStart(Highlight(3)),
+                Source { start: 10, end: 12 },
+                HighlightStart(Highlight(4)),
+                Source { start: 12, end: 13 },
+                HighlightEnd, // ends 4
+                HighlightEnd, // ends 3
+                HighlightStart(Highlight(4)),
+                HighlightStart(Highlight(5)),
+                Source { start: 13, end: 15 },
+                HighlightEnd, // ends 5
+                HighlightEnd, // ends 4
+            ],
+        );
+    }
+
+    #[test]
+    fn test_sample_highlight_event_stream_merge() {
+        use HighlightEvent::*;
+
+        /*
+        Left:
+                              2          3
+                       |-----------|-----------|
+
+                                    1
+            |-----------------------------------------------|
+
+            |---|---|---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9  10  11  12
+        */
+        let left = vec![
+            HighlightStart(Highlight(1)),
+            Source { start: 0, end: 3 },
+            HighlightStart(Highlight(2)),
+            Source { start: 3, end: 6 },
+            HighlightEnd, // ends 2
+            HighlightStart(Highlight(3)),
+            Source { start: 6, end: 9 },
+            HighlightEnd, // ends 3
+            Source { start: 9, end: 12 },
+            HighlightEnd, // ends 1
+        ]
+        .into_iter();
+
+        /*
+        Right:
+                       100            200
+                    |-------|   |---------------|
+
+            |---|---|---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9  10  11  12
+        */
+        let right = Box::new(
+            vec![
+                HighlightStart(Highlight(100)),
+                Source { start: 2, end: 4 },
+                HighlightEnd, // ends 100
+                HighlightStart(Highlight(200)),
+                Source { start: 5, end: 9 },
+                HighlightEnd, // ends 200
+            ]
+            .into_iter(),
+        );
+
+        /*
+        Output:
+                         100          200
+                        |---|   |---------------|
+
+                     100      2          3
+                    |---|-----------|-----------|
+
+                                    1
+            |-----------------------------------------------|
+
+            |---|---|---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9  10  11  12
+        */
+        let output: Vec<_> = merge(left, right).collect();
+
+        assert_eq!(
+            output,
+            &[
+                HighlightStart(Highlight(1)),
+                Source { start: 0, end: 2 },
+                HighlightStart(Highlight(100)),
+                Source { start: 2, end: 3 },
+                HighlightEnd, // ends 100
+                HighlightStart(Highlight(2)),
+                HighlightStart(Highlight(100)),
+                Source { start: 3, end: 4 },
+                HighlightEnd, // ends 100
+                Source { start: 4, end: 5 },
+                HighlightStart(Highlight(200)),
+                Source { start: 5, end: 6 },
+                HighlightEnd, // ends 200
+                HighlightEnd, // ends 2
+                HighlightStart(Highlight(3)),
+                HighlightStart(Highlight(200)),
+                Source { start: 6, end: 9 },
+                HighlightEnd, // ends 200
+                HighlightEnd, // ends 3
+                Source { start: 9, end: 12 },
+                HighlightEnd // ends 1
+            ],
+        );
+    }
+
+    #[test]
+    fn test_highlight_event_stream_merge_overlapping() {
+        use HighlightEvent::*;
+
+        /*
+        Left:
+                   1, 2, 3
+            |-------------------|
+
+            |---|---|---|---|---|
+            0   1   2   3   4   5
+        */
+        let left = vec![
+            HighlightStart(Highlight(1)),
+            HighlightStart(Highlight(2)),
+            HighlightStart(Highlight(3)),
+            Source { start: 0, end: 5 },
+            HighlightEnd, // ends 3
+            HighlightEnd, // ends 2
+            HighlightEnd, // ends 1
+        ]
+        .into_iter();
+
+        /*
+        Right:
+                      4
+            |-------------------|
+
+            |---|---|---|---|---|
+            0   1   2   3   4   5
+        */
+        let right = Box::new(
+            vec![
+                HighlightStart(Highlight(4)),
+                Source { start: 0, end: 5 },
+                HighlightEnd, // ends 4
+            ]
+            .into_iter(),
+        );
+
+        /*
+        Output:
+                  1, 2, 3, 4
+            |-------------------|
+
+            |---|---|---|---|---|
+            0   1   2   3   4   5
+        */
+        let output: Vec<_> = merge(left, right).collect();
+
+        assert_eq!(
+            output,
+            &[
+                HighlightStart(Highlight(1)),
+                HighlightStart(Highlight(2)),
+                HighlightStart(Highlight(3)),
+                HighlightStart(Highlight(4)),
+                Source { start: 0, end: 5 },
+                HighlightEnd, // ends 4
+                HighlightEnd, // ends 3
+                HighlightEnd, // ends 2
+                HighlightEnd, // ends 1
+            ],
+        );
+    }
+
+    #[test]
+    fn test_highlight_event_stream_merge_right_is_truncated() {
+        use HighlightEvent::*;
+        // This can happen when there are selections outside of the
+        // viewport. `left` is the syntax highlight event stream and
+        // `right` is the `span_iter` of selections/cursors.
+
+        /*
+        Left:
+                              1
+                    |-------------------|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9   10
+        */
+        let left = vec![
+            HighlightStart(Highlight(1)),
+            Source { start: 2, end: 7 },
+            HighlightEnd, // ends 1
+        ]
+        .into_iter();
+
+        /*
+        Right:
+              2                 3                 4
+            |---|-------------------------------|---|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9   10
+        */
+        let right = Box::new(
+            vec![
+                HighlightStart(Highlight(2)),
+                Source { start: 0, end: 1 },
+                HighlightEnd, // ends 2
+                HighlightStart(Highlight(3)),
+                Source { start: 1, end: 9 },
+                HighlightEnd, // ends 3
+                HighlightStart(Highlight(4)),
+                Source { start: 9, end: 10 },
+                HighlightEnd, // ends 4
+            ]
+            .into_iter(),
+        );
+
+        // 2 and 4 are out of range and are discarded. 3 is truncated at the
+        // beginning but allowed to finish after the `left`. This is a special
+        // case for the trailing space from selection highlights.
+        /*
+        Output:
+                             1, 3           3
+                    |-------------------|-------|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9   10
+        */
+        let output: Vec<_> = merge(left, right).collect();
+
+        assert_eq!(
+            output,
+            &[
+                HighlightStart(Highlight(1)),
+                HighlightStart(Highlight(3)),
+                Source { start: 2, end: 7 },
+                HighlightEnd, // ends 3
+                HighlightEnd, // ends 1
+                HighlightStart(Highlight(3)),
+                Source { start: 7, end: 9 },
+                HighlightEnd, // ends 3
+            ],
+        );
     }
 }
