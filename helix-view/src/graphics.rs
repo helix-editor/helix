@@ -405,6 +405,7 @@ impl FromStr for Modifier {
 ///         fg: Some(Color::Yellow),
 ///         bg: Some(Color::Red),
 ///         add_modifier: Modifier::BOLD,
+///         underline: Some(Color::Reset),
 ///         sub_modifier: Modifier::empty(),
 ///     },
 ///     buffer[(0, 0)].style(),
@@ -429,6 +430,7 @@ impl FromStr for Modifier {
 ///     Style {
 ///         fg: Some(Color::Yellow),
 ///         bg: Some(Color::Reset),
+///         underline: Some(Color::Reset),
 ///         add_modifier: Modifier::empty(),
 ///         sub_modifier: Modifier::empty(),
 ///     },

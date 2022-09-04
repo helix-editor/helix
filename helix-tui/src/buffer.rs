@@ -57,7 +57,7 @@ impl Cell {
         Style::default()
             .fg(self.fg)
             .bg(self.bg)
-            .underline(self.bg)
+            .underline(self.underline)
             .add_modifier(self.modifier)
     }
 
@@ -104,7 +104,8 @@ impl Default for Cell {
 ///     symbol: String::from("r"),
 ///     fg: Color::Red,
 ///     bg: Color::White,
-///     modifier: Modifier::empty()
+///     underline: Color::Reset,
+///     modifier: Modifier::empty(),
 /// });
 /// buf[(5, 0)].set_char('x');
 /// assert_eq!(buf[(5, 0)].symbol, "x");
