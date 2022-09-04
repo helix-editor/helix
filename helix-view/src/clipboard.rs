@@ -94,7 +94,9 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
 #[cfg(not(any(windows, target_os = "wasm32", target_os = "macos")))]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     use crate::env::{binary_exists, env_var_is_set};
+    use helix_lsp::block_on;
     use provider::command::is_exit_success;
+    use tokio::task::block_in_place;
     // TODO: support for user-defined provider, probably when we have plugin support by setting a
     // variable?
 
@@ -114,9 +116,8 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
         }
     } else if env_var_is_set("DISPLAY")
         && binary_exists("xsel")
-        && is_exit_success("xsel", &["-o", "-b"])
+        && block_in_place(|| block_on(is_exit_success("xsel", &["-o", "-b"])))
     {
-        // FIXME: check performance of is_exit_success
         command_provider! {
             paste => "xsel", "-o", "-b";
             copy => "xsel", "-i", "-b";
@@ -253,13 +254,24 @@ pub mod provider {
         use anyhow::{bail, Context as _, Result};
 
         #[cfg(not(any(windows, target_os = "macos")))]
-        pub fn is_exit_success(program: &str, args: &[&str]) -> bool {
-            std::process::Command::new(program)
-                .args(args)
-                .output()
-                .ok()
-                .and_then(|out| out.status.success().then(|| ())) // TODO: use then_some when stabilized
-                .is_some()
+        pub async fn is_exit_success(program: &str, args: &[&str]) -> bool {
+            let result = tokio::time::timeout(
+                std::time::Duration::from_secs(1),
+                tokio::process::Command::new(program)
+                    .args(args)
+                    .kill_on_drop(true)
+                    .output(),
+            )
+            .await;
+
+            match result {
+                Ok(Ok(output)) => output.status.success(),
+                Err(_) => {
+                    log::info!("Timed out waiting for {}", program);
+                    false
+                }
+                _ => false,
+            }
         }
 
         #[derive(Debug)]
