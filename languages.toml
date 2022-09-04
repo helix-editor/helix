@@ -1076,6 +1076,7 @@ roots = ["elm.json"]
 auto-format = true
 comment-token = "--"
 language-server = { command = "elm-language-server" }
+formatter = { command = "elm-format", args = ["--stdin"] }
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
