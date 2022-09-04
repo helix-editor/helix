@@ -50,8 +50,8 @@ config directory (for example `~/.config/helix/runtime` on Linux/macOS, or `%App
 
 | OS                   | Command                                      |
 | -------------------- | -------------------------------------------- |
-| Windows (cmd.exe)    | `xcopy /e runtime %AppData%\helix\runtime`      |
-| Windows (PowerShell) | `xcopy /e runtime $Env:AppData\helix\runtime`   |
+| Windows (cmd.exe)    | `xcopy /e /i runtime %AppData%\helix\runtime`      |
+| Windows (PowerShell) | `xcopy /e /i runtime $Env:AppData\helix\runtime`   |
 | Linux/macOS          | `ln -s $PWD/runtime ~/.config/helix/runtime` |
 
 This location can be overridden via the `HELIX_RUNTIME` environment variable.
