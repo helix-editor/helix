@@ -407,7 +407,11 @@ impl Document {
     // We can't use anyhow::Result here since the output of the future has to be
     // clonable to be used as shared future. So use a custom error type.
     pub fn format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
-        if let Some(formatter) = self.language_config().and_then(|c| c.formatter.clone()) {
+        if let Some(formatter) = self
+            .language_config()
+            .and_then(|c| c.formatter.clone())
+            .filter(|formatter| which::which(&formatter.command).is_ok())
+        {
             use std::process::Stdio;
             let text = self.text().clone();
             let mut process = tokio::process::Command::new(&formatter.command);
