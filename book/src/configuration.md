@@ -79,7 +79,7 @@ The following elements can be configured:
 | `file-name` | The path/name of the opened file |
 | `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
 | `file-line-ending` | The file line endings (CRLF or LF) |
-| `file-type` | The type of the opened file |
+| `file-type` | The type of the opened file (see `editor.file-type-indicators` below) |
 | `diagnostics` | The number of warnings and/or errors |
 | `selections` | The number of active selections |
 | `position` | The cursor position |
@@ -230,3 +230,20 @@ Example:
 render = true
 character = "╎"
 ```
+
+### `[editor.file-type-indicators]` Section
+
+Remaps / overrides the standard file type strings to custom strings. If a file type is
+defined in this section, the string value assigned will be used instead of the default.
+Any file types not defined in this section will use the default file type string.
+Example:
+
+```toml
+[editor.file-type-indicators]
+"rust" = "rs"
+"typescript" = "ts"
+```
+In the above example, Rust and TypeScript files will use "rs" and "ts" as their respective
+file type indicators, while JavaScript and others not defined will use the Helix default.
+Currently, the file type indicator string is used only by the `file-type` statusline element.
+

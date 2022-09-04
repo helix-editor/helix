@@ -168,6 +168,8 @@ pub struct Config {
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
+    /// File type icon/string map for overriding file type.
+    pub file_type_indicators: HashMap<String, String>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -577,6 +579,7 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
+            file_type_indicators: HashMap::new(),
         }
     }
 }
