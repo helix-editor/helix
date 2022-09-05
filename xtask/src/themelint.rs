@@ -35,7 +35,7 @@ fn get_rules() -> Vec<Require> {
         // Check for editor.cursorline
         Require::Existence(Rule::has_bg("ui.cursorline.primary")),
         // Check for editor.whitespace
-        Require::Existence(Rule::has_both("ui.virtual.whitespace")),
+        Require::Existence(Rule::has_fg("ui.virtual.whitespace")),
         // Check fir rulers
         Require::Existence(Rule::has_either("ui.virtual.indent-guide")),
         // Check for editor.rulers
@@ -110,6 +110,9 @@ impl Rule {
         let found_fg = self.found_fg(theme);
         let found_bg = self.found_bg(theme);
 
+        if !self.check_both && (found_fg || found_bg) {
+            return;
+        }
         if !found_fg || !found_bg {
             let mut missing = vec![];
             if !found_fg {
