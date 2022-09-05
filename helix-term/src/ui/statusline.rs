@@ -346,7 +346,7 @@ where
             .map(|p| p.to_string_lossy())
             .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
         format!(
-            " {}{} ",
+            "{}{}",
             path,
             if context.doc.is_modified() { "[+]" } else { "" }
         )
