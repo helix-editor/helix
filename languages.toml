@@ -1192,7 +1192,7 @@ language-server = { command = "solc", args = ["--lsp"] }
 
 [[grammar]]
 name = "solidity"
-source = { git = "https://github.com/slinlee/tree-sitter-solidity", rev = "f3a002274744e859bf64cf3524985f8c31ea84fd" }
+source = { git = "https://github.com/JoranHonig/tree-sitter-solidity", rev = "9004b86531cb424bd379424cf7266a4585f2af7d" }
 
 [[language]]
 name = "gleam"
