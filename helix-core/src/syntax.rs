@@ -1867,6 +1867,10 @@ struct Merge<L: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEve
     right_queue: Vec<HighlightEvent>,
 
     merge_queue: VecDeque<HighlightEvent>,
+
+    // These fields are only used to assert the invariants in debug builds.
+    prior_left: Option<std::ops::Range<usize>>,
+    prior_right: Option<std::ops::Range<usize>>,
 }
 
 /// Merges two HighlightEvent iterators.
@@ -1903,6 +1907,47 @@ pub fn merge<L: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEve
         left_queue: Vec::new(),
         right_queue: Vec::new(),
         merge_queue: VecDeque::new(),
+        prior_left: None,
+        prior_right: None,
+    }
+}
+
+impl<L: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>> Merge<L, R> {
+    /// Checks the invariants for the highlight event streams in `left` and `right`.
+    /// See the documentation for [merge] above.
+    fn check_invariants(&mut self) -> (bool, bool, bool, bool, bool, bool) {
+        let (left_min_width_1, left_monotonically_increasing, left_non_overlapping) =
+            match self.left.peek() {
+                Some(HighlightEvent::Source { start, end }) => match self.prior_left.take() {
+                    Some(prior) => {
+                        self.prior_left = Some(*start..*end);
+                        (start != end, *start > prior.start, *start >= prior.end)
+                    }
+                    None => (true, true, true),
+                },
+                _ => (true, true, true),
+            };
+
+        let (right_min_width_1, right_monotonically_increasing, right_non_overlapping) =
+            match self.right.peek() {
+                Some(HighlightEvent::Source { start, end }) => match self.prior_right.take() {
+                    Some(prior) => {
+                        self.prior_right = Some(*start..*end);
+                        (start != end, *start > prior.start, *start >= prior.end)
+                    }
+                    None => (start != end, true, true),
+                },
+                _ => (true, true, true),
+            };
+
+        (
+            left_min_width_1,
+            left_monotonically_increasing,
+            left_non_overlapping,
+            right_min_width_1,
+            right_monotonically_increasing,
+            right_non_overlapping,
+        )
     }
 }
 
@@ -1920,6 +1965,11 @@ impl<I: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>> Ite
         }
 
         loop {
+            debug_assert_eq!(
+                (true, true, true, true, true, true),
+                self.check_invariants()
+            );
+
             match (self.left.peek_mut(), self.right.peek_mut()) {
                 // Left starts before right.
                 (
