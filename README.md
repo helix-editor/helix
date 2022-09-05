@@ -1,5 +1,8 @@
 # Helix
 
+edit from branch features
+
+
 [![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
 
 ![Screenshot](./screenshot.png)
