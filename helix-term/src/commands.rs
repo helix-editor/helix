@@ -4142,12 +4142,16 @@ fn split(cx: &mut Context, action: Action) {
     let (view, doc) = current!(cx.editor);
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
+    let offset = view.offset;
 
     cx.editor.switch(id, action);
 
     // match the selection in the previous view
     let (view, doc) = current!(cx.editor);
     doc.set_selection(view.id, selection);
+    // match the view scroll offset (switch doesn't handle this fully
+    // since the selection is only matched after the split)
+    view.offset = offset;
 }
 
 fn hsplit(cx: &mut Context) {
