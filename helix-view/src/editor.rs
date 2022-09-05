@@ -45,6 +45,8 @@ use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer}
 
 use arc_swap::access::{DynAccess, DynGuard};
 
+const DEFAULT_FILE_MODIFICATION_INDICATOR: &str = "[+]";
+
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -162,6 +164,8 @@ pub struct Config {
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
+    /// String for file modification indicator
+    pub file_modification_indicator: String,
     /// Persistently display open buffers along the top
     pub bufferline: BufferLine,
     /// Vertical indent width guides.
@@ -574,6 +578,7 @@ impl Default for Config {
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
+            file_modification_indicator: DEFAULT_FILE_MODIFICATION_INDICATOR.to_string(),
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
