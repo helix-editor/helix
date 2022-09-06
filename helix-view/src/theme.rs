@@ -46,9 +46,7 @@ impl Loader {
             return Ok(self.base16_default());
         }
 
-        let theme_toml = self.load_theme(name, name, false)?;
-
-        Ok(Theme::from(theme_toml))
+        self.load_theme(name, name, false).map(Theme::from)
     }
 
     // load the theme and its parent recursively and merge them
