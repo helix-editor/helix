@@ -2126,6 +2126,7 @@ impl<I: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>> Ite
                         start: *start,
                         end: *end,
                     });
+                    self.left.next();
                     return self.merge_queue.pop_front();
                 }
                 // If `left` is finished and `right` has been drained, any remaining
@@ -2145,6 +2146,7 @@ impl<I: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>> Ite
                     for _ in 0..ends {
                         self.merge_queue.push_back(HighlightEnd);
                     }
+                    self.right.next();
                     return self.merge_queue.pop_front();
                 }
                 (None, None) => return None,
@@ -2775,5 +2777,45 @@ mod test {
                 HighlightEnd, // ends 3
             ],
         );
+    }
+
+    #[test]
+    fn test_highlight_event_stream_right_ends_before_left_starts() {
+        use HighlightEvent::*;
+
+        /*
+        Left:
+                                          1
+                                |-------------------|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9   10
+        */
+        let left = vec![
+            HighlightStart(Highlight(1)),
+            Source { start: 5, end: 10 },
+            HighlightEnd, // ends 1
+        ];
+
+        /*
+        Right:
+                    2
+            |---------------|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9   10
+        */
+        let right = Box::new(
+            vec![
+                HighlightStart(Highlight(2)),
+                Source { start: 0, end: 4 },
+                HighlightEnd, // ends 2
+            ]
+            .into_iter(),
+        );
+
+        // Left starts after right ends. Right is discarded.
+        let output: Vec<_> = merge(left.clone().into_iter(), right).collect();
+        assert_eq!(output, left);
     }
 }
