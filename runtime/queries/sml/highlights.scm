@@ -47,7 +47,9 @@
 ;; Constants
 ;; *******************************************************************
 
-[(integer_scon) (word_scon) (real_scon)] @number
+(integer_scon) @constant.numeric.integer
+(real_scon) @constant.numeric.float
+(word_scon) @constant.numeric
 [(string_scon) (char_scon)] @string
 
 ;; *******************************************************************
