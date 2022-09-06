@@ -2084,9 +2084,13 @@ impl<I: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>> Ite
                         end: right_end,
                     }),
                 ) if *left_start > *right_start => {
-                    if left_start > right_end {
+                    if left_start >= right_end {
                         // Discard
+                        self.right_queue.clear();
                         self.right.next();
+                        while let Some(HighlightEnd) = self.right.peek() {
+                            self.right.next();
+                        }
                     } else {
                         // Truncate
                         *right_start = *left_start;
@@ -2815,6 +2819,46 @@ mod test {
         );
 
         // Left starts after right ends. Right is discarded.
+        let output: Vec<_> = merge(left.clone().into_iter(), right).collect();
+        assert_eq!(output, left);
+    }
+
+    #[test]
+    fn test_highlight_event_stream_right_ends_as_left_starts() {
+        use HighlightEvent::*;
+
+        /*
+        Left:
+                                          1
+                                |-------------------|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9   10
+        */
+        let left = vec![
+            HighlightStart(Highlight(1)),
+            Source { start: 5, end: 10 },
+            HighlightEnd, // ends 1
+        ];
+
+        /*
+        Right:
+                      2
+            |-------------------|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9   10
+        */
+        let right = Box::new(
+            vec![
+                HighlightStart(Highlight(2)),
+                Source { start: 0, end: 5 },
+                HighlightEnd, // ends 2
+            ]
+            .into_iter(),
+        );
+
+        // Right is discarded if the range ends in the same place as left starts.
         let output: Vec<_> = merge(left.clone().into_iter(), right).collect();
         assert_eq!(output, left);
     }
