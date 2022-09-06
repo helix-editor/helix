@@ -1868,6 +1868,13 @@ struct Merge<L: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEve
 
     merge_queue: VecDeque<HighlightEvent>,
 
+    // These fields track the number of open HighlightStart events emitted by each
+    // side. `right` may be terminated early and this count is used to balance the
+    // number of HighlightStart and HighlightEnd events. `left` is also tracked in
+    // order to check invariants.
+    left_highlights: usize,
+    right_highlights: usize,
+
     // These fields are only used to assert the invariants in debug builds.
     prior_left: Option<std::ops::Range<usize>>,
     prior_right: Option<std::ops::Range<usize>>,
@@ -1891,6 +1898,7 @@ struct Merge<L: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEve
 ///   all consecutive `a` and `b`, `a.start < b.start` (monotonically
 ///   increasing) and `a.end <= b.start` (non-overlapping).
 /// - For all `Source` events, `start != end`.
+/// - There are equal numbers of `HighlightStart` and `HighlightEnd` events.
 /// - `Source` events may not be consecutive with any other `Source` event.
 ///
 /// # Panics
@@ -1907,6 +1915,8 @@ pub fn merge<L: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEve
         left_queue: Vec::new(),
         right_queue: Vec::new(),
         merge_queue: VecDeque::new(),
+        left_highlights: 0,
+        right_highlights: 0,
         prior_left: None,
         prior_right: None,
     }
@@ -2034,9 +2044,15 @@ impl<I: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>> Ite
                         self.merge_queue.push_back(event);
 
                         while let Some(HighlightEnd) = self.left.peek() {
+                            debug_assert!(self.left_highlights != 0);
+                            self.left_highlights =
+                                self.left_highlights.checked_sub(1).unwrap_or_default();
                             self.merge_queue.push_back(self.left.next().unwrap());
                         }
                         while let Some(HighlightEnd) = self.right.peek() {
+                            debug_assert!(self.right_highlights != 0);
+                            self.right_highlights =
+                                self.right_highlights.checked_sub(1).unwrap_or_default();
                             self.merge_queue.push_back(self.right.next().unwrap());
                         }
                     } else if *left_end == intersect {
@@ -2054,6 +2070,9 @@ impl<I: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>> Ite
                             self.merge_queue.push_back(HighlightEnd);
                         }
                         while let Some(HighlightEnd) = self.left.peek() {
+                            debug_assert!(self.left_highlights != 0);
+                            self.left_highlights =
+                                self.left_highlights.checked_sub(1).unwrap_or_default();
                             self.merge_queue.push_back(self.left.next().unwrap());
                         }
                         *right_start = intersect;
@@ -2065,6 +2084,9 @@ impl<I: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>> Ite
                         self.merge_queue.extend(self.right_queue.drain(..));
                         self.merge_queue.push_back(event);
                         while let Some(HighlightEnd) = self.right.peek() {
+                            debug_assert!(self.right_highlights != 0);
+                            self.right_highlights =
+                                self.right_highlights.checked_sub(1).unwrap_or_default();
                             self.merge_queue.push_back(self.right.next().unwrap());
                         }
                         *left_start = intersect;
@@ -2086,9 +2108,13 @@ impl<I: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>> Ite
                 ) if *left_start > *right_start => {
                     if left_start >= right_end {
                         // Discard
-                        self.right_queue.clear();
                         self.right.next();
                         while let Some(HighlightEnd) = self.right.peek() {
+                            debug_assert!(self.right_highlights != 0);
+                            self.right_highlights =
+                                self.right_highlights.checked_sub(1).unwrap_or_default();
+                            let highlight_start = self.right_queue.pop();
+                            debug_assert!(highlight_start.is_some());
                             self.right.next();
                         }
                     } else {
@@ -2099,10 +2125,12 @@ impl<I: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>> Ite
 
                 // Queue any HighlightStart events.
                 (Some(left @ HighlightStart(_)), Some(_)) => {
+                    self.left_highlights += 1;
                     self.left_queue.push(*left);
                     self.left.next();
                 }
                 (Some(_), Some(right @ HighlightStart(_))) => {
+                    self.right_highlights += 1;
                     self.right_queue.push(*right);
                     self.right.next();
                 }
@@ -2111,10 +2139,15 @@ impl<I: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>> Ite
                 // These branches are otherwise unreachable since the branches
                 // above that match on `Source`s consume `HighlightEnd`s eagerly.
                 (Some(HighlightEnd), Some(_)) => {
+                    debug_assert!(self.left_highlights != 0);
+                    self.left_highlights = self.left_highlights.checked_sub(1).unwrap_or_default();
                     assert!(self.left_queue.pop().is_some());
                     self.left.next();
                 }
                 (Some(_), Some(HighlightEnd)) => {
+                    debug_assert!(self.right_highlights != 0);
+                    self.right_highlights =
+                        self.right_highlights.checked_sub(1).unwrap_or_default();
                     assert!(self.right_queue.pop().is_some());
                     self.right.next();
                 }
@@ -2136,27 +2169,37 @@ impl<I: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>> Ite
                 // If `left` is finished and `right` has been drained, any remaining
                 // spans in `right` are past all `spans` in left and should be
                 // discarded.
-                (None, Some(_)) if self.right_queue.is_empty() => return None,
-                (None, Some(Source { start, end })) => {
-                    // Left is finished. This is a special case which allows a trailing
-                    // cursor to be merged in by the selection highlights: the last
-                    // `Source` in `right` is emitted and not truncated or discarded.
-                    let ends = self.right_queue.len();
+                (None, Some(_)) if self.right_highlights == 0 => return None,
+                (None, Some(event)) => {
+                    // Left is finished. Drain any outstanding HighlightStart
+                    // and HighlightEnd events in right, then finish right (the
+                    // above clause).
                     self.merge_queue.extend(self.right_queue.drain(..));
-                    self.merge_queue.push_back(Source {
-                        start: *start,
-                        end: *end,
-                    });
-                    for _ in 0..ends {
+
+                    if let Source { start, end } = event {
+                        // This is a special case which allows a trailing cursor
+                        // to be merged in by the selection highlights: the last
+                        // `Source` in `right` is emitted and not truncated or
+                        // discarded.
+                        self.merge_queue.push_back(Source {
+                            start: *start,
+                            end: *end,
+                        });
+                    }
+
+                    for _ in 0..self.right_highlights {
+                        debug_assert!(self.right_highlights != 0);
+                        self.right_highlights =
+                            self.right_highlights.checked_sub(1).unwrap_or_default();
                         self.merge_queue.push_back(HighlightEnd);
                     }
                     self.right.next();
                     return self.merge_queue.pop_front();
                 }
                 (None, None) => return None,
-                (left, right) => unreachable!(
-                    "Impossible pattern in highlight event stream merge: ({:?}, {:?})",
-                    left, right
+                pattern => unreachable!(
+                    "Impossible pattern in highlight event stream merge: {:?}",
+                    pattern
                 ),
             };
         }
@@ -2861,5 +2904,143 @@ mod test {
         // Right is discarded if the range ends in the same place as left starts.
         let output: Vec<_> = merge(left.clone().into_iter(), right).collect();
         assert_eq!(output, left);
+    }
+
+    #[test]
+    fn test_highlight_event_stream_merge_layered_overlapping() {
+        use HighlightEvent::*;
+
+        /*
+        Left:
+                              1
+                        |-----------|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9   10
+        */
+        let left = vec![
+            HighlightStart(Highlight(1)),
+            Source { start: 3, end: 6 },
+            HighlightEnd, // ends 1
+        ]
+        .into_iter();
+
+        /*
+        Right:
+                              3     4 (0-width)
+                        |-----------|
+
+                                2
+                |-------------------------------|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9   10
+        */
+        let right = Box::new(
+            vec![
+                HighlightStart(Highlight(2)),
+                Source { start: 1, end: 3 },
+                HighlightStart(Highlight(3)),
+                Source { start: 3, end: 6 },
+                HighlightEnd, // ends 3
+                HighlightStart(Highlight(4)),
+                // Trimmed zero-width Source.
+                HighlightEnd, // ends 4
+                Source { start: 6, end: 9 },
+                HighlightEnd, // ends 2
+            ]
+            .into_iter(),
+        );
+
+        /*
+        Output:
+                            1,2,3
+                        |-----------|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9   10
+        */
+        let output: Vec<_> = merge(left, right).collect();
+
+        assert_eq!(
+            output,
+            &[
+                HighlightStart(Highlight(1)),
+                HighlightStart(Highlight(2)),
+                HighlightStart(Highlight(3)),
+                Source { start: 3, end: 6 },
+                HighlightEnd, // ends 3
+                HighlightEnd, // ends 2
+                HighlightEnd, // ends 1
+            ],
+        );
+    }
+
+    #[test]
+    fn test_highlight_event_stream_merge_double_zero_width_span() {
+        use HighlightEvent::*;
+        // This is possible when merging two syntax highlight iterators.
+        // Syntax highlight iterators may produce a HighlightStart
+        // immediately followed by a HighlightEnd.
+
+        /*
+        Left:
+                              1     2 (0-width)
+                        |-----------|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9   10
+        */
+        let left = vec![
+            HighlightStart(Highlight(1)),
+            Source { start: 3, end: 6 },
+            HighlightEnd, // ends 1
+            HighlightStart(Highlight(2)),
+            HighlightEnd, // ends 2
+        ]
+        .into_iter();
+
+        /*
+        Right:
+                              3     4 (0-width)
+                        |-----------|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9   10
+        */
+        let right = Box::new(
+            vec![
+                HighlightStart(Highlight(3)),
+                Source { start: 3, end: 6 },
+                HighlightEnd, // ends 3
+                HighlightStart(Highlight(4)),
+                HighlightEnd, // ends 4
+            ]
+            .into_iter(),
+        );
+
+        /*
+        Output:
+                             1,3
+                        |-----------|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9   10
+        */
+        let output: Vec<_> = merge(left, right).collect();
+
+        assert_eq!(
+            output,
+            &[
+                HighlightStart(Highlight(1)),
+                HighlightStart(Highlight(3)),
+                Source { start: 3, end: 6 },
+                HighlightEnd, // ends 3
+                HighlightEnd, // ends 1
+                HighlightStart(Highlight(4)),
+                // Zero-width Source span.
+                HighlightEnd, // ends 4
+            ],
+        );
     }
 }
