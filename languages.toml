@@ -978,7 +978,7 @@ name = "git-commit"
 source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "318dd72abfaa7b8044c1d1fbeabcd06deaaf038f" }
 
 [[language]]
-name = "git-diff"
+name = "diff"
 scope = "source.diff"
 roots = []
 file-types = ["diff"]
@@ -987,8 +987,8 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
-name = "git-diff"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-git-diff", rev = "c12e6ecb54485f764250556ffd7ccb18f8e2942b" }
+name = "diff"
+source = { git = "https://github.com/the-mikedavis/tree-sitter-diff", rev = "fd74c78fa88a20085dbc7bbeaba066f4d1692b63" }
 
 [[language]]
 name = "git-rebase"
