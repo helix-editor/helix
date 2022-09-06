@@ -366,30 +366,33 @@ impl Application {
         self.editor.refresh_config();
     }
 
+    /// Refresh theme after config change
+    fn refresh_theme(&mut self, config: &Config) {
+        if let Some(theme) = config.theme.clone() {
+            let true_color = self.true_color();
+            match self.theme_loader.load(&theme) {
+                Ok(theme) => {
+                    if true_color || theme.is_16_color() {
+                        self.editor.set_theme(theme);
+                    } else {
+                        self.editor
+                            .set_error("theme requires truecolor support, which is not available");
+                    }
+                }
+                Err(err) => {
+                    let err_string = format!("failed to load theme `{}` - {}", theme, err);
+                    self.editor.set_error(err_string);
+                }
+            }
+        }
+    }
+
     fn refresh_config(&mut self) {
         match Config::load_default() {
             Ok(config) => {
-                // Refresh theme
-                if let Some(theme) = config.theme.clone() {
-                    let true_color = self.true_color();
-                    match self.theme_loader.load(&theme) {
-                        Ok(theme) => {
-                            if true_color || theme.is_16_color() {
-                                self.editor.set_theme(theme);
-                            } else {
-                                self.editor.set_error(
-                                    "theme requires truecolor support, which is not available",
-                                );
-                            }
-                        }
-                        Err(err) => {
-                            let err_string = format!("failed to load theme `{}` - {}", theme, err);
-                            self.editor.set_error(err_string);
-                        }
-                    }
-                }
+                self.refresh_theme(&config);
 
-                // Refresh config
+                // Store new config
                 self.config.store(Arc::new(config));
             }
             Err(err) => {
