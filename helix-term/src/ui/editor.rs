@@ -150,6 +150,11 @@ impl EditorView {
         };
 
         Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights, &config);
+
+        if editor.config().lsp.context {
+            Self::render_context(editor, doc, view, surface, theme);
+        }
+
         Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
@@ -401,6 +406,84 @@ impl EditorView {
         }
 
         spans
+    }
+
+    pub fn render_context(
+        editor: &Editor,
+        doc: &Document,
+        view: &View,
+        surface: &mut Surface,
+        theme: &Theme,
+    ) {
+        if let Some(syntax) = doc.syntax() {
+            let text = doc.text().slice(..);
+            let tree = syntax.tree();
+            let byte = doc.selection(view.id).primary().cursor(text);
+
+            let mut parent = tree
+                .root_node()
+                .descendant_for_byte_range(byte, byte)
+                .and_then(|n| n.parent());
+
+            // context is list of numbers of lines that should be rendered in the LSP context
+            let mut context: Vec<usize> = Vec::new();
+
+            while let Some(curr) = parent {
+                let line = text.byte_to_line(curr.start_byte());
+
+                // if parent of previous node is still on the same line, use the parent node
+                if let Some(&prev_line) = context.last() {
+                    if prev_line == line {
+                        context.pop();
+                    }
+                }
+
+                context.push(line);
+                parent = curr.parent();
+            }
+
+            // we render from top most (last in the list)
+            context.reverse();
+
+            // TODO: this probably needs it's own style, although it seems to work well even with cursorline
+            let context_style = theme.get("ui.cursorline.primary");
+            let mut context_area = view.inner_area();
+            context_area.height = 1;
+
+            let mut last_line = 0;
+            for line_num in context {
+                if line_num > view.offset.row {
+                    continue;
+                }
+                surface.clear_with(context_area, context_style);
+
+                let offset = Position::new(line_num, 0);
+                let highlights = Self::doc_syntax_highlights(doc, offset, 1, theme);
+                Self::render_text_highlights(
+                    doc,
+                    offset,
+                    context_area,
+                    surface,
+                    theme,
+                    highlights,
+                    &editor.config(),
+                );
+
+                context_area.y += 1;
+                last_line = line_num;
+            }
+
+            surface.clear_with(context_area, context_style);
+            let text_style = theme.get("ui.text");
+            let last_line = text.get_line(last_line).unwrap();
+            let padding = last_line.chars().take_while(|&c| c == ' ').count();
+            surface.set_string(
+                context_area.x,
+                context_area.y,
+                format!("{}    context ----", " ".repeat(padding)),
+                text_style,
+            );
+        }
     }
 
     pub fn render_text_highlights<H: Iterator<Item = HighlightEvent>>(
