@@ -1,5 +1,4 @@
-use crate::compositor::{Component, Context, EventResult};
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crate::compositor::{Component, Context, Event, EventResult};
 use helix_view::editor::CompleteAction;
 use tui::buffer::Buffer as Surface;
 use tui::text::Spans;
@@ -7,7 +6,11 @@ use tui::text::Spans;
 use std::borrow::Cow;
 
 use helix_core::{Change, Transaction};
-use helix_view::{graphics::Rect, Document, Editor};
+use helix_view::{
+    graphics::Rect,
+    input::{KeyCode, KeyEvent},
+    Document, Editor,
+};
 
 use crate::commands;
 use crate::ui::{
@@ -306,7 +309,7 @@ impl Completion {
 }
 
 impl Component for Completion {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         // let the Editor handle Esc instead
         if let Event::Key(KeyEvent {
             code: KeyCode::Esc, ..
@@ -332,10 +335,7 @@ impl Component for Completion {
             // option.documentation
 
             let (view, doc) = current!(cx.editor);
-            let language = doc
-                .language()
-                .and_then(|scope| scope.strip_prefix("source."))
-                .unwrap_or("");
+            let language = doc.language_name().unwrap_or("");
             let text = doc.text().slice(..);
             let cursor_pos = doc.selection(view.id).primary().cursor(text);
             let coords = helix_core::visual_coords_at_pos(text, cursor_pos, doc.tab_width());

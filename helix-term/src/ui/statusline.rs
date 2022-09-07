@@ -144,6 +144,7 @@ where
         helix_view::editor::StatusLineElement::Selections => render_selections,
         helix_view::editor::StatusLineElement::Position => render_position,
         helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
+        helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
     }
 }
@@ -159,7 +160,7 @@ where
         format!(
             " {} ",
             if visible {
-                match context.doc.mode() {
+                match context.editor.mode() {
                     Mode::Insert => "INS",
                     Mode::Select => "SEL",
                     Mode::Normal => "NOR",
@@ -170,7 +171,7 @@ where
             }
         ),
         if visible && context.editor.config().color_modes {
-            match context.doc.mode() {
+            match context.editor.mode() {
                 Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
                 Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
                 Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
@@ -328,7 +329,7 @@ fn render_file_type<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let file_type = context.doc.language_id().unwrap_or("text");
+    let file_type = context.doc.language_name().unwrap_or("text");
 
     write(context, format!(" {} ", file_type), None);
 }
@@ -351,6 +352,19 @@ where
     };
 
     write(context, title, None);
+}
+
+fn render_separator<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let sep = &context.editor.config().statusline.separator;
+
+    write(
+        context,
+        sep.to_string(),
+        Some(context.editor.theme.get("ui.statusline.separator")),
+    );
 }
 
 fn render_spacer<F>(context: &mut RenderContext, write: F)

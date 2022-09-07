@@ -21,5 +21,6 @@ mod test {
     mod auto_pairs;
     mod commands;
     mod movement;
+    mod prompt;
     mod write;
 }

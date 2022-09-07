@@ -89,11 +89,102 @@ pub fn fetch_grammars() -> Result<()> {
     let mut grammars = get_grammar_configs()?;
     grammars.retain(|grammar| !matches!(grammar.source, GrammarSource::Local { .. }));
 
-    run_parallel(grammars, fetch_grammar, "fetch")
+    println!("Fetching {} grammars", grammars.len());
+    let results = run_parallel(grammars, fetch_grammar);
+
+    let mut errors = Vec::new();
+    let mut git_updated = Vec::new();
+    let mut git_up_to_date = 0;
+    let mut non_git = Vec::new();
+
+    for res in results {
+        match res {
+            Ok(FetchStatus::GitUpToDate) => git_up_to_date += 1,
+            Ok(FetchStatus::GitUpdated {
+                grammar_id,
+                revision,
+            }) => git_updated.push((grammar_id, revision)),
+            Ok(FetchStatus::NonGit { grammar_id }) => non_git.push(grammar_id),
+            Err(e) => errors.push(e),
+        }
+    }
+
+    non_git.sort_unstable();
+    git_updated.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+
+    if git_up_to_date != 0 {
+        println!("{} up to date git grammars", git_up_to_date);
+    }
+
+    if !non_git.is_empty() {
+        println!("{} non git grammars", non_git.len());
+        println!("\t{:?}", non_git);
+    }
+
+    if !git_updated.is_empty() {
+        println!("{} updated grammars", git_updated.len());
+        // We checked the vec is not empty, unwrapping will not panic
+        let longest_id = git_updated.iter().map(|x| x.0.len()).max().unwrap();
+        for (id, rev) in git_updated {
+            println!(
+                "\t{id:width$} now on {rev}",
+                id = id,
+                width = longest_id,
+                rev = rev
+            );
+        }
+    }
+
+    if !errors.is_empty() {
+        let len = errors.len();
+        println!("{} grammars failed to fetch", len);
+        for (i, error) in errors.into_iter().enumerate() {
+            println!("\tFailure {}/{}: {}", i, len, error);
+        }
+    }
+
+    Ok(())
 }
 
-pub fn build_grammars() -> Result<()> {
-    run_parallel(get_grammar_configs()?, build_grammar, "build")
+pub fn build_grammars(target: Option<String>) -> Result<()> {
+    let grammars = get_grammar_configs()?;
+    println!("Building {} grammars", grammars.len());
+    let results = run_parallel(grammars, move |grammar| {
+        build_grammar(grammar, target.as_deref())
+    });
+
+    let mut errors = Vec::new();
+    let mut already_built = 0;
+    let mut built = Vec::new();
+
+    for res in results {
+        match res {
+            Ok(BuildStatus::AlreadyBuilt) => already_built += 1,
+            Ok(BuildStatus::Built { grammar_id }) => built.push(grammar_id),
+            Err(e) => errors.push(e),
+        }
+    }
+
+    built.sort_unstable();
+
+    if already_built != 0 {
+        println!("{} grammars already built", already_built);
+    }
+
+    if !built.is_empty() {
+        println!("{} grammars built now", built.len());
+        println!("\t{:?}", built);
+    }
+
+    if !errors.is_empty() {
+        let len = errors.len();
+        println!("{} grammars failed to build", len);
+        for (i, error) in errors.into_iter().enumerate() {
+            println!("\tFailure {}/{}: {}", i, len, error);
+        }
+    }
+
+    Ok(())
 }
 
 // Returns the set of grammar configurations the user requests.
@@ -122,15 +213,17 @@ fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
     Ok(grammars)
 }
 
-fn run_parallel<F>(grammars: Vec<GrammarConfiguration>, job: F, action: &'static str) -> Result<()>
+fn run_parallel<F, Res>(grammars: Vec<GrammarConfiguration>, job: F) -> Vec<Result<Res>>
 where
-    F: Fn(GrammarConfiguration) -> Result<()> + std::marker::Send + 'static + Copy,
+    F: Fn(GrammarConfiguration) -> Result<Res> + Send + 'static + Clone,
+    Res: Send + 'static,
 {
     let pool = threadpool::Builder::new().build();
     let (tx, rx) = channel();
 
     for grammar in grammars {
         let tx = tx.clone();
+        let job = job.clone();
 
         pool.execute(move || {
             // Ignore any SendErrors, if any job in another thread has encountered an
@@ -141,14 +234,21 @@ where
 
     drop(tx);
 
-    // TODO: print all failures instead of the first one found.
-    rx.iter()
-        .find(|result| result.is_err())
-        .map(|err| err.with_context(|| format!("Failed to {} some grammar(s)", action)))
-        .unwrap_or(Ok(()))
+    rx.iter().collect()
 }
 
-fn fetch_grammar(grammar: GrammarConfiguration) -> Result<()> {
+enum FetchStatus {
+    GitUpToDate,
+    GitUpdated {
+        grammar_id: String,
+        revision: String,
+    },
+    NonGit {
+        grammar_id: String,
+    },
+}
+
+fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
     if let GrammarSource::Git {
         remote, revision, ..
     } = grammar.source
@@ -184,16 +284,18 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<()> {
             )?;
             git(&grammar_dir, ["checkout", &revision])?;
 
-            println!(
-                "Grammar '{}' checked out at '{}'.",
-                grammar.grammar_id, revision
-            );
+            Ok(FetchStatus::GitUpdated {
+                grammar_id: grammar.grammar_id,
+                revision,
+            })
         } else {
-            println!("Grammar '{}' is already up to date.", grammar.grammar_id);
+            Ok(FetchStatus::GitUpToDate)
         }
+    } else {
+        Ok(FetchStatus::NonGit {
+            grammar_id: grammar.grammar_id,
+        })
     }
-
-    Ok(())
 }
 
 // Sets the remote for a repository to the given URL, creating the remote if
@@ -240,7 +342,12 @@ where
     }
 }
 
-fn build_grammar(grammar: GrammarConfiguration) -> Result<()> {
+enum BuildStatus {
+    AlreadyBuilt,
+    Built { grammar_id: String },
+}
+
+fn build_grammar(grammar: GrammarConfiguration, target: Option<&str>) -> Result<BuildStatus> {
     let grammar_dir = if let GrammarSource::Local { path } = &grammar.source {
         PathBuf::from(&path)
     } else {
@@ -273,10 +380,14 @@ fn build_grammar(grammar: GrammarConfiguration) -> Result<()> {
     }
     .join("src");
 
-    build_tree_sitter_library(&path, grammar)
+    build_tree_sitter_library(&path, grammar, target)
 }
 
-fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> Result<()> {
+fn build_tree_sitter_library(
+    src_path: &Path,
+    grammar: GrammarConfiguration,
+    target: Option<&str>,
+) -> Result<BuildStatus> {
     let header_path = src_path;
     let parser_path = src_path.join("parser.c");
     let mut scanner_path = src_path.join("scanner.c");
@@ -299,11 +410,8 @@ fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> 
         .context("Failed to compare source and binary timestamps")?;
 
     if !recompile {
-        println!("Grammar '{}' is already built.", grammar.grammar_id);
-        return Ok(());
+        return Ok(BuildStatus::AlreadyBuilt);
     }
-
-    println!("Building grammar '{}'", grammar.grammar_id);
 
     let mut config = cc::Build::new();
     config
@@ -311,13 +419,14 @@ fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> 
         .opt_level(3)
         .cargo_metadata(false)
         .host(BUILD_TARGET)
-        .target(BUILD_TARGET);
+        .target(target.unwrap_or(BUILD_TARGET));
     let compiler = config.get_compiler();
     let mut command = Command::new(compiler.path());
     command.current_dir(src_path);
     for (key, value) in compiler.env() {
         command.env(key, value);
     }
+    command.args(compiler.args());
 
     if cfg!(all(windows, target_env = "msvc")) {
         command
@@ -371,7 +480,9 @@ fn build_tree_sitter_library(src_path: &Path, grammar: GrammarConfiguration) -> 
         ));
     }
 
-    Ok(())
+    Ok(BuildStatus::Built {
+        grammar_id: grammar.grammar_id,
+    })
 }
 
 fn needs_recompile(

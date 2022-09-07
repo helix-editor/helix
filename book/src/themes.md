@@ -103,6 +103,8 @@ We use a similar set of scopes as
 [SublimeText](https://www.sublimetext.com/docs/scope_naming.html). See also
 [TextMate](https://macromates.com/manual/en/language_grammars) scopes.
 
+- `attribute` - Class attributes, html tag attributes
+
 - `type` - Types
   - `builtin` - Primitive types provided by the language (`int`, `usize`)
 - `constructor`
@@ -133,13 +135,13 @@ We use a similar set of scopes as
   - `parameter` - Function parameters
   - `other`
     - `member` - Fields of composite data types (e.g. structs, unions)
-  - `function` (TODO: ?)
 
 - `label`
 
 - `punctuation`
   - `delimiter` - Commas, colons
   - `bracket` - Parentheses, angle brackets, etc.
+  - `special` - String interpolation brackets.
 
 - `keyword`
   - `control`
@@ -224,6 +226,7 @@ These scopes are used for theming the editor interface.
 | `ui.statusline.normal`    | Statusline mode during normal mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.insert`    | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.select`    | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
+| `ui.statusline.separator` | Separator character in statusline              |
 | `ui.popup`                | Documentation popups (e.g space-k)             |
 | `ui.popup.info`           | Prompt for multiple key options                |
 | `ui.window`               | Border lines separating splits                 |

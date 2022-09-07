@@ -18,7 +18,7 @@
     .
     [(atom) @type (macro)]
     [
-      (tuple (atom) @variable.other.member)
+      (tuple (atom)? @variable.other.member)
       (tuple
         (binary_operator
           left: (atom) @variable.other.member

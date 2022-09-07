@@ -869,10 +869,7 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
                 }
             };
             let doc = doc!(editor);
-            let language = doc
-                .language()
-                .and_then(|scope| scope.strip_prefix("source."))
-                .unwrap_or("");
+            let language = doc.language_name().unwrap_or("");
 
             let signature = match response
                 .signatures
@@ -910,7 +907,12 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
                         Some((start, start + string.len()))
                     }
                     lsp::ParameterLabel::LabelOffsets([start, end]) => {
-                        Some((*start as usize, *end as usize))
+                        // LS sends offsets based on utf-16 based string representation
+                        // but highlighting in helix is done using byte offset.
+                        use helix_core::str_utils::char_to_byte_idx;
+                        let from = char_to_byte_idx(&signature.label, *start as usize);
+                        let to = char_to_byte_idx(&signature.label, *end as usize);
+                        Some((from, to))
                     }
                 }
             };

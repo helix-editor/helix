@@ -6,10 +6,9 @@ We provide pre-built binaries on the [GitHub Releases page](https://github.com/h
 
 ## OSX
 
-A Homebrew tap is available:
+Helix is available in homebrew-core:
 
 ```
-brew tap helix-editor/helix
 brew install helix
 ```
 
@@ -67,8 +66,8 @@ via the `HELIX_RUNTIME` environment variable.
 
 | OS                | command   |
 |-------------------|-----------|
-|windows(cmd.exe)   |`xcopy runtime %AppData%/helix/runtime`     |
-|windows(powershell)|`xcopy runtime $Env:AppData\helix\runtime`  |
+|windows(cmd.exe)   |`xcopy /e /i runtime %AppData%/helix/runtime`     |
+|windows(powershell)|`xcopy /e /i runtime $Env:AppData\helix\runtime`  |
 |linux/macos        |`ln -s $PWD/runtime ~/.config/helix/runtime`|
 
 ## Finishing up the installation 

@@ -67,6 +67,7 @@
   "]"
   "{"
   "}"
+  "#"
 ] @punctuation.bracket
 (type_arguments
   [
@@ -78,6 +79,8 @@
     "<"
     ">"
   ] @punctuation.bracket)
+(closure_parameters
+  "|" @punctuation.bracket)
 
 ; ---
 ; Variables
@@ -255,6 +258,9 @@
 ; ---
 (meta_item
   (identifier) @function.macro)
+(attr_item
+  (identifier) @function.macro
+  (token_tree (identifier) @function.macro)?)
 
 (inner_attribute_item) @attribute
 

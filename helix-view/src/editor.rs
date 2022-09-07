@@ -157,14 +157,70 @@ pub struct Config {
     #[serde(default)]
     pub search: SearchConfig,
     pub lsp: LspConfig,
+    pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Default to `[]`, meaning no rulers.
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
+    /// Persistently display open buffers along the top
+    pub bufferline: BufferLine,
     /// Vertical indent width guides.
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct TerminalConfig {
+    pub command: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub args: Vec<String>,
+}
+
+#[cfg(windows)]
+pub fn get_terminal_provider() -> Option<TerminalConfig> {
+    use crate::clipboard::provider::command::exists;
+
+    if exists("wt") {
+        return Some(TerminalConfig {
+            command: "wt".to_string(),
+            args: vec![
+                "new-tab".to_string(),
+                "--title".to_string(),
+                "DEBUG".to_string(),
+                "cmd".to_string(),
+                "/C".to_string(),
+            ],
+        });
+    }
+
+    return Some(TerminalConfig {
+        command: "conhost".to_string(),
+        args: vec!["cmd".to_string(), "/C".to_string()],
+    });
+}
+
+#[cfg(not(any(windows, target_os = "wasm32")))]
+pub fn get_terminal_provider() -> Option<TerminalConfig> {
+    use crate::clipboard::provider::command::{env_var_is_set, exists};
+
+    if env_var_is_set("TMUX") && exists("tmux") {
+        return Some(TerminalConfig {
+            command: "tmux".to_string(),
+            args: vec!["split-window".to_string()],
+        });
+    }
+
+    if env_var_is_set("WEZTERM_UNIX_SOCKET") && exists("wezterm") {
+        return Some(TerminalConfig {
+            command: "wezterm".to_string(),
+            args: vec!["cli".to_string(), "split-pane".to_string()],
+        });
+    }
+
+    None
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -203,6 +259,7 @@ pub struct StatusLineConfig {
     pub left: Vec<StatusLineElement>,
     pub center: Vec<StatusLineElement>,
     pub right: Vec<StatusLineElement>,
+    pub separator: String,
 }
 
 impl Default for StatusLineConfig {
@@ -213,6 +270,7 @@ impl Default for StatusLineConfig {
             left: vec![E::Mode, E::Spinner, E::FileName],
             center: vec![],
             right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
+            separator: String::from("│"),
         }
     }
 }
@@ -247,8 +305,12 @@ pub enum StatusLineElement {
     /// The cursor position
     Position,
 
+    /// The separator string
+    Separator,
+
     /// The cursor position as a percent of the total file
     PositionPercentage,
+
     /// A single space
     Spacer,
 }
@@ -304,6 +366,24 @@ impl std::ops::Deref for CursorShapeConfig {
 impl Default for CursorShapeConfig {
     fn default() -> Self {
         Self([CursorKind::Block; 3])
+    }
+}
+
+/// bufferline render modes
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BufferLine {
+    /// Don't render bufferline
+    Never,
+    /// Always render
+    Always,
+    /// Only if multiple buffers are open
+    Multiple,
+}
+
+impl Default for BufferLine {
+    fn default() -> Self {
+        BufferLine::Never
     }
 }
 
@@ -432,6 +512,7 @@ pub struct WhitespaceCharacters {
     pub space: char,
     pub nbsp: char,
     pub tab: char,
+    pub tabpad: char,
     pub newline: char,
 }
 
@@ -442,6 +523,7 @@ impl Default for WhitespaceCharacters {
             nbsp: '⍽',    // U+237D
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
+            tabpad: ' ',
         }
     }
 }
@@ -489,8 +571,10 @@ impl Default for Config {
             true_color: false,
             search: SearchConfig::default(),
             lsp: LspConfig::default(),
+            terminal: get_terminal_provider(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
+            bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
         }
@@ -532,6 +616,8 @@ pub struct Breakpoint {
 }
 
 pub struct Editor {
+    /// Current editing mode.
+    pub mode: Mode,
     pub tree: Tree,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
@@ -607,7 +693,6 @@ impl Editor {
         syn_loader: Arc<syntax::Loader>,
         config: Box<dyn DynAccess<Config>>,
     ) -> Self {
-        let language_servers = helix_lsp::Registry::new();
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
 
@@ -615,6 +700,7 @@ impl Editor {
         area.height -= 1;
 
         Self {
+            mode: Mode::Normal,
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
@@ -623,7 +709,7 @@ impl Editor {
             macro_recording: None,
             macro_replaying: Vec::new(),
             theme: theme_loader.default(),
-            language_servers,
+            language_servers: helix_lsp::Registry::new(),
             diagnostics: BTreeMap::new(),
             debugger: None,
             debugger_events: SelectAll::new(),
@@ -644,6 +730,11 @@ impl Editor {
             exit_code: 0,
             config_events: unbounded_channel(),
         }
+    }
+
+    /// Current editing mode for the [`Editor`].
+    pub fn mode(&self) -> Mode {
+        self.mode
     }
 
     pub fn config(&self) -> DynGuard<Config> {
@@ -762,6 +853,7 @@ impl Editor {
                     )
                 })
                 .ok()
+                .flatten()
         });
         if let Some(language_server) = language_server {
             // only spawn a new lang server if the servers aren't the same
@@ -799,7 +891,7 @@ impl Editor {
         view.doc = doc_id;
         view.offset = Position::default();
 
-        let doc = self.documents.get_mut(&doc_id).unwrap();
+        let doc = doc_mut!(self, &doc_id);
         doc.ensure_view_init(view.id);
 
         // TODO: reuse align_view
@@ -870,7 +962,7 @@ impl Editor {
             }
             Action::Load => {
                 let view_id = view!(self).id;
-                let doc = self.documents.get_mut(&id).unwrap();
+                let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
                 return;
             }
@@ -891,7 +983,7 @@ impl Editor {
                     },
                 );
                 // initialize selection for view
-                let doc = self.documents.get_mut(&id).unwrap();
+                let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
             }
         }
@@ -945,9 +1037,9 @@ impl Editor {
     }
 
     pub fn close(&mut self, id: ViewId) {
-        let view = self.tree.get(self.tree.focus);
+        let (_view, doc) = current!(self);
         // remove selection
-        self.documents.get_mut(&view.doc).unwrap().remove_view(id);
+        doc.remove_view(id);
         self.tree.remove(id);
         self._refresh();
     }
@@ -1021,7 +1113,7 @@ impl Editor {
                 .unwrap_or_else(|| self.new_document(Document::default()));
             let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
-            let doc = self.documents.get_mut(&doc_id).unwrap();
+            let doc = doc_mut!(self, &doc_id);
             doc.ensure_view_init(view_id);
         }
 
@@ -1036,40 +1128,35 @@ impl Editor {
         };
     }
 
+    pub fn focus(&mut self, view_id: ViewId) {
+        let prev_id = std::mem::replace(&mut self.tree.focus, view_id);
+
+        // if leaving the view: mode should reset
+        if prev_id != view_id {
+            self.mode = Mode::Normal;
+        }
+    }
+
     pub fn focus_next(&mut self) {
+        let prev_id = self.tree.focus;
         self.tree.focus_next();
+        let id = self.tree.focus;
+
+        // if leaving the view: mode should reset
+        if prev_id != id {
+            self.mode = Mode::Normal;
+        }
     }
 
-    pub fn focus_right(&mut self) {
-        self.tree.focus_direction(tree::Direction::Right);
+    pub fn focus_direction(&mut self, direction: tree::Direction) {
+        let current_view = self.tree.focus;
+        if let Some(id) = self.tree.find_split_in_direction(current_view, direction) {
+            self.focus(id)
+        }
     }
 
-    pub fn focus_left(&mut self) {
-        self.tree.focus_direction(tree::Direction::Left);
-    }
-
-    pub fn focus_up(&mut self) {
-        self.tree.focus_direction(tree::Direction::Up);
-    }
-
-    pub fn focus_down(&mut self) {
-        self.tree.focus_direction(tree::Direction::Down);
-    }
-
-    pub fn swap_right(&mut self) {
-        self.tree.swap_split_in_direction(tree::Direction::Right);
-    }
-
-    pub fn swap_left(&mut self) {
-        self.tree.swap_split_in_direction(tree::Direction::Left);
-    }
-
-    pub fn swap_up(&mut self) {
-        self.tree.swap_split_in_direction(tree::Direction::Up);
-    }
-
-    pub fn swap_down(&mut self) {
-        self.tree.swap_split_in_direction(tree::Direction::Down);
+    pub fn swap_split_in_direction(&mut self, direction: tree::Direction) {
+        self.tree.swap_split_in_direction(direction);
     }
 
     pub fn transpose_view(&mut self) {
@@ -1128,7 +1215,7 @@ impl Editor {
             let inner = view.inner_area();
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            let cursorkind = config.cursor_shape.from_mode(doc.mode());
+            let cursorkind = config.cursor_shape.from_mode(self.mode);
             (Some(pos), cursorkind)
         } else {
             (None, CursorKind::default())

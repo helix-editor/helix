@@ -1,0 +1,88 @@
+# Author: RayGervais<raygervais@hotmail.ca>
+# Author: ChrisHa<chunghha@users.noreply.github.com>
+# Author: ATahaBaki<atahabaki@pm.me>
+# This theme is based on rose_pine theme. I just converted their
+# rose_pine theme.
+
+"ui.background" = { bg = "base" }
+"ui.menu" = { fg = "text", bg = "overlay" }
+"ui.menu.selected" = { fg = "iris", bg = "surface" }
+"ui.linenr" = {fg = "subtle" }
+"ui.liner.selected" = "highlightOverlay"
+"ui.selection" = { bg = "highlight" }
+"comment" = "subtle"
+"ui.cursorline" = {bg = "dimBase" }
+"ui.statusline" = {fg = "foam", bg = "surface" }
+"ui.statusline.insert" = {fg = "base", bg = "foam", modifiers = ["bold"]}
+"ui.statusline.normal" = {fg = "base", bg = "rose", modifiers = ["bold"]}
+"ui.statusline.select" = {fg = "base", bg = "iris", modifiers = ["bold"]}
+"ui.statusline.inactive" = { fg = "iris", bg = "surface" }
+"ui.cursor" = { fg = "rose", modifiers = ["reversed"] }
+"ui.text" = { fg = "text" }
+"ui.text.focus" = { fg = "foam", modifiers = ["bold"]}
+"ui.text.info" = {fg = "pine", modifiers = ["bold"]}
+"ui.virtual.whitespace" = "highlight"
+"ui.virtual.ruler" = {bg = "dimBase" }
+"operator" = "rose"
+"variable" = "text"
+"constant.numeric" = "iris"
+"constant" = "gold"
+"attribute" = "gold" 
+"type" = "foam"
+"ui.cursor.match" = { fg = "gold", modifiers = ["underlined"] }
+"string"  = "gold"
+"constant.character.escape" = "subtle"
+"function" = "rose"
+"function.builtin" = "rose"
+"function.method"  = "foam"
+"constructor" = "gold"
+"special" = "gold"
+"keyword" = "pine"
+"label" = "iris"
+"namespace" = "pine"
+"ui.popup" = { bg = "surface" }
+"ui.popup.info" = { bg = "surface" }
+"ui.window" = { bg = "base" }
+"ui.help" = { bg = "overlay", fg = "foam" }
+"diff.plus" = "foam"
+"diff.delta" = "rose"
+"diff.minus" = "love"
+
+"info" = "gold"
+"hint" = "gold"
+"debug" = "rose"
+"diagnostic" = "rose"
+"error" = "love"
+
+"markup.heading.marker" = "subtle"
+"markup.heading.1" = { fg = "love", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "gold", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "rose", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "pine", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "foam", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "iris", modifiers = ["bold"] }
+"markup.list" = { fg = "love" }
+"markup.bold" = { fg = "gold", modifiers = ["bold"] }
+"markup.italic" = { fg = "iris", modifiers = ["italic"] }
+"markup.link.url" = { fg = "pine", modifiers = ["underlined"]}
+"markup.link.text" = { fg = "foam" }
+"markup.quote" = { fg = "rose" }
+"markup.raw" = { fg = "foam" }
+
+[palette]
+dimBase  = "#201e30" 
+base     = "#232136" 
+surface  = "#2a273f" 
+overlay  = "#393552"
+inactive = "#6e6a86"
+subtle   = "#908caa"
+text     = "#e0def4"
+love     = "#eb6f92"
+gold     = "#f6c177"
+rose     = "#ea9a97"
+pine     = "#3e8fb0"
+foam     = "#9ccfd8"
+iris     = "#c4a7e7"
+highlight = "#2a283e"
+highlightInactive = "#44415a"
+highlightOverlay = "#56526e"
