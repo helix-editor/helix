@@ -1,4 +1,4 @@
-["if" "then" "else"] @keyword.control.conditional
+["if" "then" "else"] @conditional
 [
   (local)
   "function"
@@ -6,16 +6,15 @@
 (comment) @comment
 
 (string) @string
-(number) @constant.numeric
+(number) @number
 [
   (true)
   (false)
-] @constant.builtin.boolean
+] @boolean
 
 (binaryop) @operator
 (unaryop) @operator
 
-(id) @variable
 (param identifier: (id) @variable.parameter)
 (bind function: (id) @function)
 (fieldname) @string.special
@@ -25,3 +24,15 @@
   "{"
   "}"
 ] @punctuation.bracket
+"for" @keyword.control.repeat
+"in" @keyword.operator
+[(self) (dollar)] @variable.builtin
+"assert" @keyword
+(null) @constant.builtin
+[
+  ":"
+  "::"
+  ";"
+  "="
+] @punctuation.delimiter
+(id) @variable
