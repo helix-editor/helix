@@ -1,4 +1,4 @@
-"if" @keyword.control.conditional
+["if" "then" "else"] @keyword.control.conditional
 [
   (local)
   "function"
