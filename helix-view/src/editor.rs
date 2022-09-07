@@ -853,6 +853,7 @@ impl Editor {
                     )
                 })
                 .ok()
+                .flatten()
         });
         if let Some(language_server) = language_server {
             // only spawn a new lang server if the servers aren't the same

@@ -38,8 +38,6 @@ pub enum Error {
     Timeout,
     #[error("server closed the stream")]
     StreamClosed,
-    #[error("LSP not defined")]
-    LspNotDefined,
     #[error("Unhandled")]
     Unhandled,
     #[error(transparent)]
@@ -320,14 +318,14 @@ impl Registry {
             .map(|(_, client)| client.as_ref())
     }
 
-    pub fn get(&mut self, language_config: &LanguageConfiguration) -> Result<Arc<Client>> {
+    pub fn get(&mut self, language_config: &LanguageConfiguration) -> Result<Option<Arc<Client>>> {
         let config = match &language_config.language_server {
             Some(config) => config,
-            None => return Err(Error::LspNotDefined),
+            None => return Ok(None),
         };
 
         match self.inner.entry(language_config.scope.clone()) {
-            Entry::Occupied(entry) => Ok(entry.get().1.clone()),
+            Entry::Occupied(entry) => Ok(Some(entry.get().1.clone())),
             Entry::Vacant(entry) => {
                 // initialize a new client
                 let id = self.counter.fetch_add(1, Ordering::Relaxed);
@@ -356,11 +354,7 @@ impl Registry {
                         .await;
 
                     if let Err(e) = value {
-                        if let Error::LspNotDefined = e {
-                            // Skip logging "lsp not defined"
-                        } else {
-                            log::error!("failed to initialize language server: {}", e);
-                        }
+                        log::error!("failed to initialize language server: {}", e);
                         return;
                     }
 
@@ -374,7 +368,7 @@ impl Registry {
                 });
 
                 entry.insert((id, client.clone()));
-                Ok(client)
+                Ok(Some(client))
             }
         }
     }
