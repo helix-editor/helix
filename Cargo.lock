@@ -177,6 +177,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "cxterminfo"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da92c5e3aaf2cc1fea346d9b3bac0c59c6ffc1d1d46f18d991d449912a3e6f07"
+
+[[package]]
 name = "dirs-next"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -506,6 +512,7 @@ dependencies = [
  "bitflags",
  "cassowary",
  "crossterm",
+ "cxterminfo",
  "helix-core",
  "helix-view",
  "serde",
