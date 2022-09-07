@@ -11,8 +11,38 @@ use crossterm::{
 use helix_view::graphics::{Color, CursorKind, Modifier, Rect};
 use std::io::{self, Write};
 
+fn vte_version() -> Option<usize> {
+    std::env::var("VTE_VERSION").ok()?.parse().ok()
+}
+
+/// Describes terminal capabilities like extended underline, truecolor, etc.
+#[derive(Copy, Clone, Debug, Default)]
+struct Capabilities {
+    /// Support for undercurled, underdashed, etc.
+    has_extended_underlines: bool,
+}
+
+impl Capabilities {
+    /// Detect capabilities from the terminfo database located based
+    /// on the $TERM environment variable. If detection fails, returns
+    /// a default value where no capability is supported.
+    pub fn from_env_or_default() -> Self {
+        match cxterminfo::terminfo::TermInfo::from_env() {
+            Err(_) => Capabilities::default(),
+            Ok(t) => Capabilities {
+                // Smulx, VTE: https://unix.stackexchange.com/a/696253/246284
+                // Su (used by kitty): https://sw.kovidgoyal.net/kitty/underlines
+                has_extended_underlines: t.get_ext_string("Smulx").is_some()
+                    || *t.get_ext_bool("Su").unwrap_or(&false)
+                    || vte_version() >= Some(5102),
+            },
+        }
+    }
+}
+
 pub struct CrosstermBackend<W: Write> {
     buffer: W,
+    capabilities: Capabilities,
 }
 
 impl<W> CrosstermBackend<W>
@@ -20,7 +50,10 @@ where
     W: Write,
 {
     pub fn new(buffer: W) -> CrosstermBackend<W> {
-        CrosstermBackend { buffer }
+        CrosstermBackend {
+            buffer,
+            capabilities: Capabilities::from_env_or_default(),
+        }
     }
 }
 
@@ -61,7 +94,7 @@ where
                     from: modifier,
                     to: cell.modifier,
                 };
-                diff.queue(&mut self.buffer)?;
+                diff.queue(&mut self.buffer, self.capabilities)?;
                 modifier = cell.modifier;
             }
             if cell.fg != fg {
@@ -141,7 +174,7 @@ struct ModifierDiff {
 }
 
 impl ModifierDiff {
-    fn queue<W>(&self, mut w: W) -> io::Result<()>
+    fn queue<W>(&self, mut w: W, caps: Capabilities) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -172,6 +205,14 @@ impl ModifierDiff {
             map_error(queue!(w, SetAttribute(CAttribute::NoBlink)))?;
         }
 
+        let queue_styled_underline = |styled_underline, w: &mut W| -> io::Result<()> {
+            let underline = match caps.has_extended_underlines {
+                true => styled_underline,
+                false => CAttribute::Underlined,
+            };
+            map_error(queue!(w, SetAttribute(underline)))
+        };
+
         let added = self.to - self.from;
         if added.contains(Modifier::REVERSED) {
             map_error(queue!(w, SetAttribute(CAttribute::Reverse)))?;
@@ -186,16 +227,16 @@ impl ModifierDiff {
             map_error(queue!(w, SetAttribute(CAttribute::Underlined)))?;
         }
         if added.contains(Modifier::UNDERCURLED) {
-            map_error(queue!(w, SetAttribute(CAttribute::Undercurled)))?;
+            queue_styled_underline(CAttribute::Undercurled, &mut w)?;
         }
         if added.contains(Modifier::UNDERDOTTED) {
-            map_error(queue!(w, SetAttribute(CAttribute::Underdotted)))?;
+            queue_styled_underline(CAttribute::Underdotted, &mut w)?;
         }
         if added.contains(Modifier::UNDERDASHED) {
-            map_error(queue!(w, SetAttribute(CAttribute::Underdashed)))?;
+            queue_styled_underline(CAttribute::Underdashed, &mut w)?;
         }
         if added.contains(Modifier::DOUBLE_UNDERLINED) {
-            map_error(queue!(w, SetAttribute(CAttribute::DoubleUnderlined)))?;
+            queue_styled_underline(CAttribute::DoubleUnderlined, &mut w)?;
         }
         if added.contains(Modifier::DIM) {
             map_error(queue!(w, SetAttribute(CAttribute::Dim)))?;
