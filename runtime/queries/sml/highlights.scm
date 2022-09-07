@@ -76,8 +76,6 @@
 ;; Assume value identifiers starting with capital letter are constructors
 ((vid) @constructor
  (#match? @constructor "^[A-Z].*"))
-(longvid ((vid) @vid
-          (#match? @vid "^[A-Z].*"))) @constructor
 
 ((vid) @constant.builtin (#eq? @constant.builtin "nil"))
 ((vid) @constant.builtin.boolean
