@@ -543,12 +543,19 @@ impl Document {
             }
 
             if let Some(fmt) = formatting {
-                let transaction = fmt.await?;
-                let success = transaction.changes().apply(&mut text);
-                if !success {
-                    // This shouldn't happen, because the transaction changes were generated
-                    // from the same text we're saving.
-                    log::error!("failed to apply format changes before saving");
+                match fmt.await {
+                    Ok(transaction) => {
+                        let success = transaction.changes().apply(&mut text);
+                        if !success {
+                            // This shouldn't happen, because the transaction changes were generated
+                            // from the same text we're saving.
+                            log::error!("failed to apply format changes before saving");
+                        }
+                    }
+                    Err(err) => {
+                        // formatting failed: report error, and save file without modifications
+                        log::error!("{}", err);
+                    }
                 }
             }
 
