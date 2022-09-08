@@ -1,4 +1,4 @@
-["if" "then" "else"] @conditional
+["if" "then" "else"] @keyword.control.conditional
 [
   (local)
   "function"
@@ -6,11 +6,11 @@
 (comment) @comment
 
 (string) @string
-(number) @number
+(number) @constant.numeric
 [
   (true)
   (false)
-] @boolean
+] @constant.builtin.boolean
 
 (binaryop) @operator
 (unaryop) @operator
