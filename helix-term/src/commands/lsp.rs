@@ -973,10 +973,19 @@ pub fn hover(cx: &mut Context) {
 }
 
 pub fn idle_hover(cx: &mut Context) {
-    let (_, doc) = current!(cx.editor);
+    let (view, doc) = current!(cx.editor);
     if doc.language_server().is_none() {
         return;
     }
+
+    let text = doc.text().slice(..);
+    let cursor = doc.selection(view.id).primary().cursor(text);
+
+    use helix_core::chars::char_is_word;
+    if !char_is_word(text.char(cursor)) {
+        return;
+    }
+
     hover(cx)
 }
 
