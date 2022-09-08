@@ -11,7 +11,6 @@
 "ui.statusline.select" = {bg="background", fg="bright7"}
 "ui.statusline.normal" = {bg="background", fg="bright3"}
 "ui.statusline.inactive" = {bg="background", fg="bright0"}
-"ui.virtual" = "indent"
 "ui.virtual.whitespace" = { fg = "regular5" }
 "ui.virtual.ruler" = {bg="cursorline_background"}
 "ui.cursor.match" = {bg = "regular5", fg = "regular0"}
