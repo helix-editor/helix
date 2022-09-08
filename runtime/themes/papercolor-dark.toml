@@ -56,7 +56,7 @@
 "constructor" = "regular4"
 "function.builtin" = { fg = "foreground", modifiers = ["bold"]}
 "function.macro" = { fg = "regular4", modifiers = ["bold"] }
-"comment" = { fg = "#484848", modifiers = ["dim"] }
+"comment" = { fg = "#686868", modifiers = ["dim"] }
 "ui.linenr" = { fg = "bright0" }
 "module" = "regular4"
 "constant" = "bright5"
