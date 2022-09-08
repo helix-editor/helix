@@ -1006,13 +1006,7 @@ impl EditorView {
     }
 
     pub fn handle_idle_timeout(&mut self, cx: &mut crate::compositor::Context) -> EventResult {
-        if self.completion.is_some()
-            || cx.editor.mode != Mode::Insert
-            || !cx.editor.config().auto_completion
-        {
-            return EventResult::Ignored(None);
-        }
-
+        let mut result = EventResult::Ignored(None);
         let mut cx = commands::Context {
             register: None,
             editor: cx.editor,
@@ -1021,9 +1015,21 @@ impl EditorView {
             callback: None,
             on_next_key_callback: None,
         };
-        crate::commands::insert::idle_completion(&mut cx);
 
-        EventResult::Consumed(None)
+        if self.completion.is_none()
+            && cx.editor.mode == Mode::Insert
+            && cx.editor.config().auto_completion
+        {
+            result = EventResult::Consumed(None);
+            crate::commands::insert::idle_completion(&mut cx);
+        }
+
+        if cx.editor.mode == Mode::Normal && cx.editor.config().auto_hover {
+            result = EventResult::Consumed(None);
+            crate::commands::lsp::idle_hover(&mut cx);
+        }
+
+        result
     }
 }
 

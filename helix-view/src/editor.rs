@@ -134,6 +134,8 @@ pub struct Config {
     pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
+    /// Automatic hover, automatically pop up window without user trigger. Defaults to false.
+    pub auto_hover: bool,
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
     /// Time in milliseconds since last keypress before idle timers trigger.
@@ -561,6 +563,7 @@ impl Default for Config {
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
+            auto_hover: false,
             auto_format: true,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
