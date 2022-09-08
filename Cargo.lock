@@ -461,6 +461,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "helix-spell"
+version = "0.1.0"
+dependencies = [
+ "helix-core",
+ "ispell",
+]
+
+[[package]]
 name = "helix-term"
 version = "0.6.0"
 dependencies = [
@@ -603,6 +611,12 @@ checksum = "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c"
 dependencies = [
  "cfg-if",
 ]
+
+[[package]]
+name = "ispell"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1cbac553db0de22941d218bc20d2e121c960e6226f7a1b66ea195958db05f2da"
 
 [[package]]
 name = "itoa"
