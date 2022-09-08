@@ -139,7 +139,7 @@ pub struct Config {
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
     /// Time in milliseconds since last keypress before idle timers trigger.
-    /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
+    /// Used for autocompletion and auto-hover, set to 0 for instant. Defaults to 400ms.
     #[serde(
         serialize_with = "serialize_duration_millis",
         deserialize_with = "deserialize_duration_millis"
