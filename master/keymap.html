@@ -442,35 +442,34 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 </tbody></table>
 </div>
 <h2 id="insert-mode"><a class="header" href="#insert-mode">Insert Mode</a></h2>
-<p>We support many readline/emacs style bindings in insert mode for
-convenience. These can be helpful for making simple modifications
-without escaping to normal mode, but beware that you will not have an
-undo-able &quot;save point&quot; until you return to normal mode.</p>
+<p>Insert mode bindings are somewhat minimal by default. Helix is designed to
+be a modal editor, and this is reflected in the user experience and internal
+mechanics. For example, changes to the text are only saved for undos when
+escaping from insert mode to normal mode. For this reason, new users are
+strongly encouraged to learn the modal editing paradigm to get the smoothest
+experience.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>Escape</code></td><td>Switch to normal mode</td><td><code>normal_mode</code></td></tr>
 <tr><td><code>Ctrl-x</code></td><td>Autocomplete</td><td><code>completion</code></td></tr>
 <tr><td><code>Ctrl-r</code></td><td>Insert a register content</td><td><code>insert_register</code></td></tr>
 <tr><td><code>Ctrl-w</code>, <code>Alt-Backspace</code>, <code>Ctrl-Backspace</code></td><td>Delete previous word</td><td><code>delete_word_backward</code></td></tr>
 <tr><td><code>Alt-d</code>, <code>Alt-Delete</code>, <code>Ctrl-Delete</code></td><td>Delete next word</td><td><code>delete_word_forward</code></td></tr>
-<tr><td><code>Alt-b</code>, <code>Ctrl-Left</code></td><td>Backward a word</td><td><code>move_prev_word_end</code></td></tr>
-<tr><td><code>Ctrl-b</code>, <code>Left</code></td><td>Backward a char</td><td><code>move_char_left</code></td></tr>
-<tr><td><code>Alt-f</code>, <code>Ctrl-Right</code></td><td>Forward a word</td><td><code>move_next_word_start</code></td></tr>
-<tr><td><code>Ctrl-f</code>, <code>Right</code></td><td>Forward a char</td><td><code>move_char_right</code></td></tr>
-<tr><td><code>Ctrl-e</code>, <code>End</code></td><td>Move to line end</td><td><code>goto_line_end_newline</code></td></tr>
-<tr><td><code>Ctrl-a</code>, <code>Home</code></td><td>Move to line start</td><td><code>goto_line_start</code></td></tr>
 <tr><td><code>Ctrl-u</code></td><td>Delete to start of line</td><td><code>kill_to_line_start</code></td></tr>
 <tr><td><code>Ctrl-k</code></td><td>Delete to end of line</td><td><code>kill_to_line_end</code></td></tr>
 <tr><td><code>Ctrl-j</code>, <code>Enter</code></td><td>Insert new line</td><td><code>insert_newline</code></td></tr>
 <tr><td><code>Backspace</code>, <code>Ctrl-h</code></td><td>Delete previous char</td><td><code>delete_char_backward</code></td></tr>
 <tr><td><code>Delete</code>, <code>Ctrl-d</code></td><td>Delete next char</td><td><code>delete_char_forward</code></td></tr>
-<tr><td><code>Ctrl-p</code>, <code>Up</code></td><td>Move to previous line</td><td><code>move_line_up</code></td></tr>
-<tr><td><code>Ctrl-n</code>, <code>Down</code></td><td>Move to next line</td><td><code>move_line_down</code></td></tr>
-<tr><td><code>PageUp</code></td><td>Move one page up</td><td><code>page_up</code></td></tr>
-<tr><td><code>PageDown</code></td><td>Move one page down</td><td><code>page_down</code></td></tr>
-<tr><td><code>Alt-&gt;</code></td><td>Go to end of buffer</td><td><code>goto_file_end</code></td></tr>
-<tr><td><code>Alt-&lt;</code></td><td>Go to start of buffer</td><td><code>goto_file_start</code></td></tr>
 </tbody></table>
 </div>
+<p>However, if you really want navigation in insert mode, this is supported. An
+example config that gives the ability to use arrow keys while still in insert
+mode:</p>
+<pre><code class="language-toml">[keys.insert]
+up = &quot;move_line_up&quot;
+down = &quot;move_line_down&quot;
+left = &quot;move_char_left&quot;
+right = &quot;move_char_right&quot;
+</code></pre>
 <h2 id="select--extend-mode"><a class="header" href="#select--extend-mode">Select / extend mode</a></h2>
 <p>This mode echoes Normal mode, but changes any movements to extend
 selections rather than replace them. Goto motions are also changed to
