@@ -1731,10 +1731,10 @@ source = { git = "https://github.com/Giorbo/tree-sitter-sml", rev = "bd4055d5554
 name = "jsonnet"
 scope = "source.jsonnet"
 file-types = ["libsonnet", "jsonnet"]
-roots = []
+roots = ["jsonnetfile.json"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
-language-server = { command = "jsonnet-language-server", args= ["-t"] }
+language-server = { command = "jsonnet-language-server", args= ["-t", "--lint"] }
 
 [[grammar]]
 name = "jsonnet"
