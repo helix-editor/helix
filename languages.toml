@@ -1734,6 +1734,7 @@ file-types = ["libsonnet", "jsonnet"]
 roots = []
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
+language-server = { command = "jsonnet-language-server", args= ["-t"] }
 
 [[grammar]]
 name = "jsonnet"
