@@ -274,7 +274,7 @@ impl MappableCommand {
         workspace_diagnostics_picker, "Open workspace diagnostic picker",
         last_picker, "Open last picker",
         prepend_to_line, "Insert at start of line",
-        append_to_line, "Append to end of line",
+        insert_at_line_end, "Insert at end of line",
         open_below, "Open new line below selection",
         open_above, "Open new line above selection",
         normal_mode, "Enter normal mode",
@@ -2468,7 +2468,7 @@ fn prepend_to_line(cx: &mut Context) {
 }
 
 // A inserts at the end of each line with a selection
-fn append_to_line(cx: &mut Context) {
+fn insert_at_line_end(cx: &mut Context) {
     enter_insert_mode(cx);
     let (view, doc) = current!(cx.editor);
 

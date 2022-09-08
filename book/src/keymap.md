@@ -69,7 +69,7 @@
 | `i`         | Insert before selection                                              | `insert_mode`             |
 | `a`         | Insert after selection (append)                                      | `append_mode`             |
 | `I`         | Insert at the start of the line                                      | `prepend_to_line`         |
-| `A`         | Insert at the end of the line                                        | `append_to_line`          |
+| `A`         | Insert at the end of the line                                        | `insert_at_line_end`      |
 | `o`         | Open new line below selection                                        | `open_below`              |
 | `O`         | Open new line above selection                                        | `open_above`              |
 | `.`         | Repeat last insert                                                   | N/A                       |
