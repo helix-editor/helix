@@ -17,7 +17,7 @@
 
 (param identifier: (id) @variable.parameter)
 (bind function: (id) @function)
-(fieldname) @string.special
+(fieldname (id) @variable.other.member)
 [
   "["
   "]"
