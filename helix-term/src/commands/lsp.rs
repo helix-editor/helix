@@ -974,7 +974,7 @@ pub fn hover(cx: &mut Context) {
 
 pub fn idle_hover(cx: &mut Context) {
     // TODO: let this have a different timeout than idle_complete
-    let (view, doc) = current!(cx.editor);
+    let (_, doc) = current!(cx.editor);
     if doc.language_server().is_none() {
         return;
     }
