@@ -421,6 +421,10 @@ impl Application {
     }
 
     pub fn handle_idle_timeout(&mut self) {
+        if self.compositor.has_overlay() {
+            return;
+        }
+
         use crate::compositor::EventResult;
         let editor_view = self
             .compositor

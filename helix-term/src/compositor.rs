@@ -243,6 +243,10 @@ impl Compositor {
             .find(|component| component.id() == Some(id))
             .and_then(|component| component.as_any_mut().downcast_mut())
     }
+
+    pub fn has_overlay(&self) -> bool {
+        self.layers.len() > 1
+    }
 }
 
 // View casting, taken straight from Cursive
