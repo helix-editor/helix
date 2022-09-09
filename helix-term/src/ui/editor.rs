@@ -6,6 +6,8 @@ use crate::{
     ui::{Completion, ProgressSpinners},
 };
 
+use helix_plugin::plugin::Plugins;
+
 use helix_core::{
     graphemes::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
@@ -145,6 +147,7 @@ impl EditorView {
         );
         Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
         Self::render_rulers(editor, doc, view, inner, surface, theme);
+        Plugins::render_extras(editor, doc, view, inner, surface, theme);
 
         if is_focused {
             Self::render_focused_view_elements(view, doc, inner, theme, surface);

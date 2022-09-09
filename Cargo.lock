@@ -462,6 +462,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "helix-plugin"
+version = "0.6.0"
+dependencies = [
+ "helix-core",
+ "helix-tui",
+ "helix-view",
+]
+
+[[package]]
 name = "helix-term"
 version = "0.6.0"
 dependencies = [
@@ -479,6 +488,7 @@ dependencies = [
  "helix-dap",
  "helix-loader",
  "helix-lsp",
+ "helix-plugin",
  "helix-tui",
  "helix-view",
  "ignore",
