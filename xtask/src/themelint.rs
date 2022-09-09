@@ -106,11 +106,24 @@ impl Rule {
         }
     }
 
-    fn validate(&self, theme: &Theme, messages: &mut Vec<String>) {
-        let found_fg = self.found_fg(theme);
-        let found_bg = self.found_bg(theme);
+    fn check_difference(
+        theme: &Theme,
+        a: &'static str,
+        b: &'static str,
+        messages: &mut Vec<String>,
+    ) {
+        let theme_a = theme.get(a);
+        let theme_b = theme.get(b);
+        if theme_a == theme_b {
+            messages.push(format!("$THEME: `{}` and `{}` cannot be equal", a, b));
+        }
+    }
 
-        if !self.check_both && (found_fg || found_bg) {
+    fn check_existence(rule: &Rule, theme: &Theme, messages: &mut Vec<String>) {
+        let found_fg = rule.found_fg(theme);
+        let found_bg = rule.found_bg(theme);
+
+        if !rule.check_both && (found_fg || found_bg) {
             return;
         }
         if !found_fg || !found_bg {
@@ -121,7 +134,7 @@ impl Rule {
             if !found_bg {
                 missing.push("`bg`");
             }
-            let entry = if !self.check_both && !found_fg && !found_bg {
+            let entry = if !rule.check_both && !found_fg && !found_bg {
                 missing.join(" or ")
             } else {
                 missing.join(" and ")
@@ -129,7 +142,7 @@ impl Rule {
             messages.push(format!(
                 "$THEME: missing {} for `{}`",
                 entry,
-                self.rule_name()
+                rule.rule_name()
             ))
         }
     }
@@ -146,14 +159,8 @@ pub fn lint(file: String) -> Result<(), DynError> {
 
     let mut messages: Vec<String> = vec![];
     get_rules().iter().for_each(|lint| match lint {
-        Require::Existence(rule) => rule.validate(&theme, &mut messages),
-        Require::Difference(a, b) => {
-            let theme_a = theme.get(a);
-            let theme_b = theme.get(b);
-            if theme_a == theme_b {
-                messages.push(format!("$THEME: `{}` and `{}` cannot be equal", a, b));
-            }
-        }
+        Require::Existence(rule) => Rule::check_existence(&rule, &theme, &mut messages),
+        Require::Difference(a, b) => Rule::check_difference(&theme, a, b, &mut messages),
     });
 
     if messages.len() > 0 {
