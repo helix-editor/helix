@@ -86,7 +86,7 @@ impl Rule {
                 return false;
             }
         }
-        return true;
+        true
     }
     fn found_bg(&self, theme: &Theme) -> bool {
         if let Some(bg) = &self.bg {
@@ -94,7 +94,7 @@ impl Rule {
                 return false;
             }
         }
-        return true;
+        true
     }
     fn rule_name(&self) -> &'static str {
         if self.fg.is_some() {
@@ -159,11 +159,11 @@ pub fn lint(file: String) -> Result<(), DynError> {
 
     let mut messages: Vec<String> = vec![];
     get_rules().iter().for_each(|lint| match lint {
-        Require::Existence(rule) => Rule::check_existence(&rule, &theme, &mut messages),
+        Require::Existence(rule) => Rule::check_existence(rule, &theme, &mut messages),
         Require::Difference(a, b) => Rule::check_difference(&theme, a, b, &mut messages),
     });
 
-    if messages.len() > 0 {
+    if !messages.is_empty() {
         messages.iter().for_each(|m| {
             let theme = file.clone();
             let message = m.replace("$THEME", theme.as_str());
@@ -179,17 +179,14 @@ pub fn lint_all() -> Result<(), DynError> {
     let files = Loader::read_names(path::themes().as_path());
     let mut errors = vec![];
     let files_count = files.len();
-    files
-        .into_iter()
-        .for_each(|path| match lint(path.replace(".toml", "")) {
-            Err(err) => {
-                let errs: i32 = err.to_string().parse().expect("Errors must be integral");
-                errors.push(errs)
-            }
-            _ => return,
-        });
+    files.into_iter().for_each(|path| {
+        if let Err(err) = lint(path.replace(".toml", "")) {
+            let errs: i32 = err.to_string().parse().expect("Errors must be integral");
+            errors.push(errs)
+        }
+    });
     println!("{} of {} themes had issues", errors.len(), files_count);
-    if errors.len() > 0 {
+    if !errors.is_empty() {
         Err(errors.iter().sum::<i32>().to_string().into())
     } else {
         Ok(())
