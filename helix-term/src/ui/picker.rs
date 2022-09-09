@@ -12,7 +12,7 @@ use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 use tui::widgets::Widget;
 
-use std::time::Instant;
+use std::{borrow::Borrow, time::Instant};
 use std::{
     cmp::Reverse,
     collections::HashMap,
@@ -31,6 +31,7 @@ use helix_view::{
 use super::menu::Item;
 
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
+pub const MIN_AREA_HEIGHT_FOR_PREVIEW: u16 = 30;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
@@ -165,34 +166,48 @@ impl<T: Item> FilePicker<T> {
 
 impl<T: Item + 'static> Component for FilePicker<T> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        // +---------+ +---------+
-        // |prompt   | |preview  |
-        // +---------+ |         |
-        // |picker   | |         |
-        // |         | |         |
-        // +---------+ +---------+
+        use helix_view::editor::FilePickerLayoutDirection::*;
 
-        let render_preview = self.picker.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+        let layout_direction = cx.editor.config().borrow().file_picker.layout_direction;
+        // Horizontal layout:         Vertical layout:
+        // +---------+ +---------+    +---------------------+
+        // |prompt   | |preview  |    | prompt              |
+        // +---------+ |         |    +---------------------+
+        // |         | |         |    | picker              |
+        // |picker   | |         |    +---------------------+
+        // |         | |         |    +---------------------+
+        // |         | |         |    | preview             |
+        // +---------+ +---------+    +---------------------+
+
+        let render_preview = if layout_direction == Horizontal {
+            self.picker.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW
+        } else {
+            self.picker.show_preview && area.height > MIN_AREA_HEIGHT_FOR_PREVIEW
+        };
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
         let text = cx.editor.theme.get("ui.text");
         surface.clear_with(area, background);
 
-        let picker_width = if render_preview {
-            area.width / 2
+        let picker_area = if layout_direction == Horizontal {
+            let picker_width = area.width / 2;
+            area.with_width(picker_width)
         } else {
-            area.width
+            let picker_height = area.height / 3;
+            area.with_height(picker_height)
         };
-
-        let picker_area = area.with_width(picker_width);
         self.picker.render(picker_area, surface, cx);
 
         if !render_preview {
             return;
         }
 
-        let preview_area = area.clip_left(picker_width);
+        let preview_area = if layout_direction == Horizontal {
+            area.clip_left(picker_area.width)
+        } else {
+            area.clip_top(picker_area.height)
+        };
 
         // don't like this but the lifetime sucks
         let block = Block::default().borders(Borders::ALL);

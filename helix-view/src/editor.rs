@@ -65,6 +65,13 @@ where
     )
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub enum FilePickerLayoutDirection {
+    Horizontal,
+    Vertical,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
@@ -92,6 +99,9 @@ pub struct FilePickerConfig {
     /// WalkBuilder options
     /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
     pub max_depth: Option<usize>,
+    /// The direction in which to lay out the file picker. Possible values are `horizontal` or
+    /// `vertical`.
+    pub layout_direction: FilePickerLayoutDirection,
 }
 
 impl Default for FilePickerConfig {
@@ -105,6 +115,7 @@ impl Default for FilePickerConfig {
             git_global: true,
             git_exclude: true,
             max_depth: None,
+            layout_direction: FilePickerLayoutDirection::Horizontal,
         }
     }
 }
