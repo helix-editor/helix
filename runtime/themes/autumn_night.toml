@@ -16,6 +16,7 @@
 "ui.linenr.selected" = { fg = "my_gray6", bg = "my_gray1"}
 "ui.selection" = { bg = "my_gray3" }
 "comment" = { fg = "my_gray4", modifiers = ["italic"] }
+"ui.cursorline" = { bg = "my_gray2" }
 "ui.statusline" = { fg = "my_gray6", bg = "my_gray2" }
 "ui.statusline.inactive" = { fg = 'my_gray4', bg = 'my_gray2' }
 "ui.statusline.insert" = {fg = "my_black", bg = "my_gray5", modifiers = ["bold"]}

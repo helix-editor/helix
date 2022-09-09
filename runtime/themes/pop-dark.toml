@@ -24,15 +24,16 @@ diagnostic = { fg = 'greyT', bg = 'redD' }
 'ui.selection.primary' = { bg = 'blueD', fg = 'white' }
 'ui.linenr' = { bg = "brownN", fg = 'greyL' }
 'ui.linenr.selected' = { bg = 'brownH', fg = 'orangeH' }
-'ui.statusline' = { bg = 'brownH' }
-'ui.statusline.inactive' = { bg = 'brownN' }
-'ui.help' = { bg = 'brownD' }
+'ui.cursorline' = { bg = 'brownD' }
+'ui.statusline' = { fg = "greyT", bg = 'brownH' }
+'ui.statusline.inactive' = { fg = "greyT", bg = 'brownN' }
+'ui.help' = { fg = "greyT", bg = 'brownD' }
 'ui.highlight' = { bg = 'brownH' }
 'ui.virtual' = { fg = 'brownV' }
 'ui.virtual.ruler' = { bg = 'brownR' }
 'ui.virtual.whitespace' = { fg = 'brownV' }
 'ui.virtual.indent-guide' = { fg = 'brownR' }
-'ui.menu' = { bg = 'brownD' }
+'ui.menu' = { fg = "greyT", bg = 'brownD' }
 'ui.menu.selected' = { fg = 'orangeH', bg = 'brownH' }
 'ui.popup' = { bg = 'brownD' }
 'ui.popup.info' = { bg = 'brownH', fg = 'greyT' }

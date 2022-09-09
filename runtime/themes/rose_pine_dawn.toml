@@ -8,6 +8,7 @@
 "ui.liner.selected" = "highlightOverlay"
 "ui.selection" = { bg = "highlight" }
 "comment" = "subtle"
+"ui.cursorline" = {bg = "base" }
 "ui.statusline" = {fg = "foam", bg = "surface" }
 "ui.statusline.inactive" = { fg = "iris", bg = "surface" }
 "ui.cursor" = { fg = "rose", modifiers = ["reversed"] }
@@ -15,6 +16,7 @@
 "ui.text.focus" = { fg = "foam", modifiers = ["bold"]}
 "ui.text.info" = {fg = "pine", modifiers = ["bold"]}
 "ui.virtual.whitespace" = "highlight"
+"ui.virtual.ruler" = { bg = "base" }
 "operator" = "rose"
 "variable" = "text"
 "number" = "iris"
@@ -36,7 +38,6 @@
 "ui.popup.info" = { bg = "surface" }
 "ui.window" = { bg = "base" }
 "ui.help" = { bg = "overlay", fg = "foam" }
-"ui.text" = "text"
 "diff.plus" = "foam"
 "diff.delta" = "rose"
 "diff.minus" = "love"

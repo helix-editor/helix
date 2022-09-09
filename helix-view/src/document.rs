@@ -90,8 +90,6 @@ pub struct Document {
     path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
 
-    /// Current editing mode.
-    pub mode: Mode,
     pub restore_cursor: bool,
 
     /// Current indent style.
@@ -133,7 +131,6 @@ impl fmt::Debug for Document {
             .field("selections", &self.selections)
             .field("path", &self.path)
             .field("encoding", &self.encoding)
-            .field("mode", &self.mode)
             .field("restore_cursor", &self.restore_cursor)
             .field("syntax", &self.syntax)
             .field("language", &self.language)
@@ -349,7 +346,6 @@ impl Document {
             selections: HashMap::default(),
             indent_style: DEFAULT_INDENT,
             line_ending: DEFAULT_LINE_ENDING,
-            mode: Mode::Normal,
             restore_cursor: false,
             syntax: None,
             language: None,
@@ -411,7 +407,11 @@ impl Document {
     // We can't use anyhow::Result here since the output of the future has to be
     // clonable to be used as shared future. So use a custom error type.
     pub fn format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
-        if let Some(formatter) = self.language_config().and_then(|c| c.formatter.clone()) {
+        if let Some(formatter) = self
+            .language_config()
+            .and_then(|c| c.formatter.clone())
+            .filter(|formatter| which::which(&formatter.command).is_ok())
+        {
             use std::process::Stdio;
             let text = self.text().clone();
             let mut process = tokio::process::Command::new(&formatter.command);
@@ -440,17 +440,22 @@ impl Document {
                     .await
                     .map_err(|_| FormatterError::WaitForOutputFailed)?;
 
-                if !output.stderr.is_empty() {
-                    return Err(FormatterError::Stderr(
-                        String::from_utf8_lossy(&output.stderr).to_string(),
-                    ));
-                }
-
                 if !output.status.success() {
-                    return Err(FormatterError::NonZeroExitStatus);
+                    if !output.stderr.is_empty() {
+                        let err = String::from_utf8_lossy(&output.stderr).to_string();
+                        log::error!("Formatter error: {}", err);
+                        return Err(FormatterError::NonZeroExitStatus(Some(err)));
+                    }
+
+                    return Err(FormatterError::NonZeroExitStatus(None));
+                } else if !output.stderr.is_empty() {
+                    log::debug!(
+                        "Formatter printed to stderr: {}",
+                        String::from_utf8_lossy(&output.stderr).to_string()
+                    );
                 }
 
-                let str = String::from_utf8(output.stdout)
+                let str = std::str::from_utf8(&output.stdout)
                     .map_err(|_| FormatterError::InvalidUtf8Output)?;
 
                 Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
@@ -538,12 +543,19 @@ impl Document {
             }
 
             if let Some(fmt) = formatting {
-                let transaction = fmt.await?;
-                let success = transaction.changes().apply(&mut text);
-                if !success {
-                    // This shouldn't happen, because the transaction changes were generated
-                    // from the same text we're saving.
-                    log::error!("failed to apply format changes before saving");
+                match fmt.await {
+                    Ok(transaction) => {
+                        let success = transaction.changes().apply(&mut text);
+                        if !success {
+                            // This shouldn't happen, because the transaction changes were generated
+                            // from the same text we're saving.
+                            log::error!("failed to apply format changes before saving");
+                        }
+                    }
+                    Err(err) => {
+                        // formatting failed: report error, and save file without modifications
+                        log::error!("{}", err);
+                    }
                 }
             }
 
@@ -920,28 +932,33 @@ impl Document {
         self.last_saved_revision = current_revision;
     }
 
-    /// Current editing mode for the [`Document`].
-    pub fn mode(&self) -> Mode {
-        self.mode
-    }
-
     /// Corresponding language scope name. Usually `source.<lang>`.
-    pub fn language(&self) -> Option<&str> {
+    pub fn language_scope(&self) -> Option<&str> {
         self.language
             .as_ref()
             .map(|language| language.scope.as_str())
+    }
+
+    /// Language name for the document. Corresponds to the `name` key in
+    /// `languages.toml` configuration.
+    pub fn language_name(&self) -> Option<&str> {
+        self.language
+            .as_ref()
+            .map(|language| language.language_id.as_str())
     }
 
     /// Language ID for the document. Either the `language-id` from the
     /// `language-server` configuration, or the document language if no
     /// `language-id` has been specified.
     pub fn language_id(&self) -> Option<&str> {
-        self.language_config()?
+        let language_config = self.language.as_deref()?;
+
+        language_config
             .language_server
             .as_ref()?
             .language_id
             .as_deref()
-            .or_else(|| Some(self.language()?.rsplit_once('.')?.1))
+            .or(Some(language_config.language_id.as_str()))
     }
 
     /// Corresponding [`LanguageConfiguration`].
@@ -1092,10 +1109,9 @@ pub enum FormatterError {
     },
     BrokenStdin,
     WaitForOutputFailed,
-    Stderr(String),
     InvalidUtf8Output,
     DiskReloadError(String),
-    NonZeroExitStatus,
+    NonZeroExitStatus(Option<String>),
 }
 
 impl std::error::Error for FormatterError {}
@@ -1108,10 +1124,12 @@ impl Display for FormatterError {
             }
             Self::BrokenStdin => write!(f, "Could not write to formatter stdin"),
             Self::WaitForOutputFailed => write!(f, "Waiting for formatter output failed"),
-            Self::Stderr(output) => write!(f, "Formatter error: {}", output),
             Self::InvalidUtf8Output => write!(f, "Invalid UTF-8 formatter output"),
             Self::DiskReloadError(error) => write!(f, "Error reloading file from disk: {}", error),
-            Self::NonZeroExitStatus => write!(f, "Formatter exited with non zero exit status:"),
+            Self::NonZeroExitStatus(Some(output)) => write!(f, "Formatter error: {}", output),
+            Self::NonZeroExitStatus(None) => {
+                write!(f, "Formatter exited with non zero exit status")
+            }
         }
     }
 }

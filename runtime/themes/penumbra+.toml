@@ -45,7 +45,7 @@ error = "red"
 
 diagnostic = { modifiers = ["underlined"] }
 
-"ui.background" = "sky+"
+"ui.background" = { bg = "shade" }
 "ui.background.separator" = "sky"
 
 "ui.cursor" = { modifiers = ["reversed"] }
@@ -72,13 +72,13 @@ diagnostic = { modifiers = ["underlined"] }
 "ui.popup.info" = { bg = "shade" }
 
 "ui.window" = "sky"
-"ui.help" = "sky"
+"ui.help" = { fg = "sky", bg = "shade-" }
 
 "ui.text" = "sky"
 "ui.text.focus" = "blue"
 "ui.text.info" = "sky"
 
-"ui.virtual.ruler" = { bg = "shade+" }
+"ui.virtual.ruler" = { bg = "shade-" }
 "ui.virtual.whitespace" = "sky-"
 "ui.virtual.indent-guide" = "shade+"
 

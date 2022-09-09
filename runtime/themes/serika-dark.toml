@@ -39,6 +39,7 @@
 "ui.cursor.select" = { fg = "bg0", bg = "bg_yellow" }
 "ui.linenr" = "yellow"
 "ui.linenr.selected" = { fg = "fg", modifiers = ["bold", "underlined"] }
+"ui.cursorline" = { fg = "grey1", bg = "bg2" }
 "ui.statusline" = { fg = "grey1", bg = "bg2" }
 "ui.statusline.inactive" = { fg = "grey2", bg = "bg1" }
 "ui.popup" = { fg = "grey2", bg = "bg1" }
@@ -49,13 +50,14 @@
 "ui.menu" = { fg = "fg", bg = "bg2" }
 "ui.menu.selected" = { fg = "bg0", bg = "bg_yellow" }
 "ui.selection" = { bg = "bg3" }
-"ui.virtual.whitespace" = "grey2"
+"ui.virtual.whitespace" = "bg2"
+"ui.virtual.ruler" = { bg = "grey2" } 
 
 "hint" = "blue"
 "info" = "aqua"
 "warning" = "yellow"
 "error" = "nasty-red"
-"diagnostic" = { fg = "dark-red", modifiers = ["underlined"] }
+"diagnostic" = { fg = "nasty-red", modifiers = ["underlined"] }
 
 "diff.plus" = { fg = "green" }
 "diff.delta" = { fg = "orange" }

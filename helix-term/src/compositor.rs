@@ -29,7 +29,7 @@ pub struct Context<'a> {
 
 pub trait Component: Any + AnyComponent {
     /// Process input events, return true if handled.
-    fn handle_event(&mut self, _event: Event, _ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, _event: &Event, _ctx: &mut Context) -> EventResult {
         EventResult::Ignored(None)
     }
     // , args: ()
@@ -157,10 +157,10 @@ impl Compositor {
         Some(self.layers.remove(idx))
     }
 
-    pub fn handle_event(&mut self, event: Event, cx: &mut Context) -> bool {
+    pub fn handle_event(&mut self, event: &Event, cx: &mut Context) -> bool {
         // If it is a key event and a macro is being recorded, push the key event to the recording.
         if let (Event::Key(key), Some((_, keys))) = (event, &mut cx.editor.macro_recording) {
-            keys.push(key);
+            keys.push(*key);
         }
 
         let mut callbacks = Vec::new();

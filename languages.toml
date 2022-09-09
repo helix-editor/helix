@@ -50,7 +50,7 @@ args = { attachCommands = [ "platform select remote-gdb-server", "platform conne
 
 [[grammar]]
 name = "rust"
-source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "a360da0a29a19c281d08295a35ecd0544d2da211" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "41e23b454f503e6fe63ec4b6d9f7f2cf7788ab8e" }
 
 [[language]]
 name = "toml"
@@ -121,7 +121,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "fish"
-source = { git = "https://github.com/ram02z/tree-sitter-fish", rev = "04e54ab6585dfd4fee6ddfe5849af56f101b6d4f" }
+source = { git = "https://github.com/ram02z/tree-sitter-fish", rev = "84436cf24c2b3176bfbb220922a0fdbd0141e406" }
 
 [[language]]
 name = "mint"
@@ -235,7 +235,7 @@ language-server = { command = "OmniSharp", args = [ "--languageserver" ] }
 
 [[grammar]]
 name = "c-sharp"
-source = { git = "https://github.com/tree-sitter/tree-sitter-c-sharp", rev = "53a65a908167d6556e1fcdb67f1ee62aac101dda" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-c-sharp", rev = "9c494a503c8e2044bfffce57f70b480c01a82f03" }
 
 [[language]]
 name = "go"
@@ -331,7 +331,7 @@ source = { git = "https://github.com/omertuc/tree-sitter-go-work", rev = "6dd9dd
 [[language]]
 name = "javascript"
 scope = "source.js"
-injection-regex = "^(js|javascript)$"
+injection-regex = "(js|javascript)"
 file-types = ["js", "jsx", "mjs", "cjs"]
 shebangs = ["node"]
 roots = []
@@ -370,7 +370,7 @@ grammar = "javascript"
 [[language]]
 name = "typescript"
 scope = "source.ts"
-injection-regex = "^(ts|typescript)$"
+injection-regex = "(ts|typescript)"
 file-types = ["ts"]
 shebangs = []
 roots = []
@@ -385,7 +385,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = 
 [[language]]
 name = "tsx"
 scope = "source.tsx"
-injection-regex = "^(tsx)$" # |typescript
+injection-regex = "(tsx)" # |typescript
 file-types = ["tsx"]
 roots = []
 # TODO: highlights-params
@@ -735,10 +735,9 @@ language-server = { command = "zls" }
 indent = { tab-width = 4, unit = "    " }
 formatter = { command = "zig" , args = ["fmt", "--stdin"] }
 
-
 [[grammar]]
 name = "zig"
-source = { git = "https://github.com/maxxnino/tree-sitter-zig", rev = "93331b8bd8b4ebee2b575490b2758f16ad4e9f30" }
+source = { git = "https://github.com/maxxnino/tree-sitter-zig", rev = "8d3224c3bd0890fe08358886ebf54fca2ed448a6" }
 
 [[language]]
 name = "prolog"
@@ -905,7 +904,7 @@ source = { git = "https://github.com/Flakebi/tree-sitter-tablegen", rev = "568dd
 name = "markdown"
 scope = "source.md"
 injection-regex = "md|markdown"
-file-types = ["md"]
+file-types = ["md", "markdown"]
 roots = []
 indent = { tab-width = 2, unit = "  " }
 
@@ -973,13 +972,15 @@ roots = []
 file-types = ["COMMIT_EDITMSG"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
+rulers = [50, 72]
+max-line-length = 72
 
 [[grammar]]
 name = "git-commit"
 source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "318dd72abfaa7b8044c1d1fbeabcd06deaaf038f" }
 
 [[language]]
-name = "git-diff"
+name = "diff"
 scope = "source.diff"
 roots = []
 file-types = ["diff"]
@@ -988,8 +989,8 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
-name = "git-diff"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-git-diff", rev = "c12e6ecb54485f764250556ffd7ccb18f8e2942b" }
+name = "diff"
+source = { git = "https://github.com/the-mikedavis/tree-sitter-diff", rev = "fd74c78fa88a20085dbc7bbeaba066f4d1692b63" }
 
 [[language]]
 name = "git-rebase"
@@ -1118,6 +1119,14 @@ comment-token = "%%"
 indent = { tab-width = 4, unit = "    " }
 language-server = { command = "erlang_ls" }
 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+"'" = "'"
+'`' = "'"
+
 [[grammar]]
 name = "erlang"
 source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "0e7d677d11a7379686c53c616825714ccb728059" }
@@ -1176,7 +1185,7 @@ source = { git = "https://github.com/milisims/tree-sitter-org", rev = "698bb1a34
 [[language]]
 name = "solidity"
 scope = "source.sol"
-injection-regex = "^(sol|solidity)$"
+injection-regex = "(sol|solidity)"
 file-types = ["sol"]
 roots = []
 comment-token = "//"
@@ -1185,7 +1194,7 @@ language-server = { command = "solc", args = ["--lsp"] }
 
 [[grammar]]
 name = "solidity"
-source = { git = "https://github.com/slinlee/tree-sitter-solidity", rev = "f3a002274744e859bf64cf3524985f8c31ea84fd" }
+source = { git = "https://github.com/JoranHonig/tree-sitter-solidity", rev = "9004b86531cb424bd379424cf7266a4585f2af7d" }
 
 [[language]]
 name = "gleam"
@@ -1393,7 +1402,7 @@ source = { git = "https://github.com/archseer/tree-sitter-cairo", rev = "5155c6e
 [[language]]
 name = "cpon"
 scope = "scope.cpon"
-injection-regex = "^cpon$"
+injection-regex = "cpon"
 file-types = ["cpon", "cp"]
 roots = []
 auto-format = true
@@ -1514,7 +1523,7 @@ injection-regex = "openscad"
 file-types = ["scad"]
 roots = []
 comment-token = "//"
-language-server = { command = "openscad-language-server" }
+language-server = { command = "openscad-lsp", args = ["--stdio"] }
 indent = { tab-width = 2, unit = "\t" }
 
 [[grammar]]
@@ -1691,3 +1700,42 @@ roots = ["edgedb.toml"]
 [[grammar]]
 name ="esdl"
 source = { git = "https://github.com/greym0uth/tree-sitter-esdl", rev = "b840c8a8028127e0a7c6e6c45141adade2bd75cf" }
+
+[[language]]
+name = "pascal"
+scope = "source.pascal"
+injection-regex = "pascal"
+file-types = ["pas", "pp", "inc", "lpr", "lfm"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "pasls", args = [] }
+
+[[grammar]]
+name = "pascal"
+source = { git = "https://github.com/Isopod/tree-sitter-pascal", rev = "2fd40f477d3e2794af152618ccfac8d92eb72a66" }
+
+[[language]]
+name = "sml"
+scope = "source.sml"
+injection-regex = "sml"
+file-types = ["sml"]
+comment-token = "(*"
+roots = []
+
+[[grammar]]
+name = "sml"
+source = { git = "https://github.com/Giorbo/tree-sitter-sml", rev = "bd4055d5554614520d4a0706b34dc0c317c6b608" }
+
+[[language]]
+name = "jsonnet"
+scope = "source.jsonnet"
+file-types = ["libsonnet", "jsonnet"]
+roots = ["jsonnetfile.json"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "jsonnet-language-server", args= ["-t", "--lint"] }
+
+[[grammar]]
+name = "jsonnet"
+source = { git = "https://github.com/sourcegraph/tree-sitter-jsonnet", rev = "0475a5017ad7dc84845d1d33187f2321abcb261d" }

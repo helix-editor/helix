@@ -49,19 +49,19 @@
 'ui.cursorline' = { bg = 'bg-alt' }
 'ui.linenr' = { fg = 'base4' }
 'ui.linenr.selected' = { fg = 'orange', bg = 'bg-alt', modifiers = ['bold'] }
-'ui.statusline' = { bg = 'base3' }
+'ui.statusline' = { fg = 'fg', bg = 'base3' }
 'ui.statusline.normal' = { bg = 'base3' }
 'ui.statusline.insert' = { bg = 'base3' }
 'ui.statusline.select' = { bg = 'base3' }
 'ui.popup' = { bg = 'bg-alt' }
 'ui.window' = { fg = 'gray' }
-'ui.help' = { bg = 'base2' }
+'ui.help' = { fg = 'fg', bg = 'base2' }
 'ui.text' = { fg = 'fg' }
 'ui.text.focus' = { bg = 'bg-alt', fg = 'fg' }
 'ui.text.info' = { fg = 'fg' }
 'ui.virtual.whitespace' = { fg = 'base2' }
 'ui.virtual.ruler' = { bg = 'black' }
-'ui.menu' = { bg = 'bg-alt' }
+'ui.menu' = { fg = 'fg', bg = 'bg-alt' }
 'ui.menu.selected' = { bg = 'base3', fg = 'fg' }
 'ui.selection' = { bg = 'base2' }
 

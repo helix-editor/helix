@@ -1324,6 +1324,7 @@ fn reflow(
         return Ok(());
     }
 
+    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
 
     const DEFAULT_MAX_LEN: usize = 79;
@@ -1354,6 +1355,7 @@ fn reflow(
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view.id);
+    view.ensure_cursor_in_view(doc, scrolloff);
 
     Ok(())
 }
