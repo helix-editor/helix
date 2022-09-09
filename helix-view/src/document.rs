@@ -3,7 +3,6 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::Range;
-use helix_spell::client::Misspelling;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::cell::Cell;
@@ -15,13 +14,13 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use helix_core::{
-    encoding,
+    diagnostic, encoding,
     history::{History, UndoKind},
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
     syntax::{self, LanguageConfiguration},
-    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, State, Syntax, Transaction,
-    DEFAULT_LINE_ENDING,
+    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, RopeGraphemes, RopeSlice, Selection,
+    State, Syntax, Transaction, DEFAULT_LINE_ENDING,
 };
 
 use crate::{DocumentId, Editor, ViewId};
@@ -121,7 +120,6 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
-    misspellings: Vec<Misspelling>,
 }
 
 use std::{fmt, mem};
@@ -332,6 +330,7 @@ where
 }
 
 use helix_lsp::lsp;
+use helix_spell;
 use url::Url;
 
 impl Document {
@@ -354,7 +353,6 @@ impl Document {
             changes,
             old_state,
             diagnostics: Vec::new(),
-            misspellings: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
             savepoint: None,
@@ -393,6 +391,44 @@ impl Document {
         doc.detect_indent_and_line_ending();
 
         Ok(doc)
+    }
+
+    pub fn spell_check(&mut self) {
+        // TODO: make this async
+        let doc_text = self.text();
+        let mut spell_checker = helix_spell::Client::new();
+        let mut position = 0;
+        let diagnostics: Vec<Diagnostic> = doc_text
+            .lines()
+            .enumerate()
+            .flat_map(|(lnum, line)| {
+                let text = line.to_string();
+                let spell_errors = spell_checker.check(&text);
+
+                let diagnostics: Vec<Diagnostic> = spell_errors
+                    .iter()
+                    .map(|error| {
+                        let word = error.misspelled.to_owned();
+                        let len = RopeGraphemes::new(RopeSlice::from(word.as_str())).count();
+                        Diagnostic {
+                            line: lnum + 1,
+                            message: error.suggestions.join("\n"),
+                            code: None,
+                            severity: None,
+                            range: diagnostic::Range {
+                                start: position + error.position,
+                                end: position + error.position + len,
+                            },
+                        }
+                    })
+                    .collect();
+
+                position += line.len_chars();
+                diagnostics
+            })
+            .collect();
+
+        self.set_diagnostics(diagnostics);
     }
 
     /// The same as [`format`], but only returns formatting changes if auto-formatting
@@ -624,6 +660,7 @@ impl Document {
         self.reset_modified();
 
         self.detect_indent_and_line_ending();
+        self.spell_check();
 
         Ok(())
     }
@@ -1077,15 +1114,6 @@ impl Document {
         self.diagnostics = diagnostics;
         self.diagnostics
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
-    }
-    
-    #[inline]
-    pub fn misspellings(&self) -> &[Misspelling] {
-        &self.misspellings
-    }
-
-    pub fn set_misspellings(&mut self, misspellings: Vec<Misspelling>) {
-        self.misspellings = misspellings;
     }
 
     /// Get the document's auto pairs. If the document has a recognized

@@ -886,11 +886,6 @@ impl Editor {
         for (view, _) in self.tree.views_mut() {
             let doc = doc_mut!(self, &view.doc);
             view.ensure_cursor_in_view(doc, config.scrolloff);
-            let misspellings = self.spell_checker.check(doc.text().to_string().as_str());
-            doc.set_misspellings(misspellings);
-            doc.misspellings()
-                .iter()
-                .for_each(|misspelling| log::warn!("Misspelling: {}", misspelling.word))
         }
     }
 
