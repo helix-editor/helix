@@ -140,19 +140,6 @@ jobs:
           command: build
           args: --release --locked --target ${{ matrix.target }}
 
-      - name: Strip release binary (linux and macos)
-        if: matrix.build == 'x86_64-linux' || endsWith(matrix.build, 'macos')
-        run: strip "target/${{ matrix.target }}/release/hx"
-
-      - name: Strip release binary (arm)
-        if: matrix.build == 'aarch64-linux'
-        run: |
-          docker run --rm -v \
-            "$PWD/target:/target:Z" \
-            rustembedded/cross:${{ matrix.target }} \
-            aarch64-linux-gnu-strip \
-            /target/${{ matrix.target }}/release/hx
-
       - name: Build AppImage
         shell: bash
         if: matrix.build == 'aarch64-linux' || matrix.build == 'x86_64-linux'
