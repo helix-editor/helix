@@ -3,6 +3,7 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::Range;
+use helix_spell::client::Misspelling;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::cell::Cell;
@@ -120,6 +121,7 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
+    misspellings: Vec<Misspelling>,
 }
 
 use std::{fmt, mem};
@@ -352,6 +354,7 @@ impl Document {
             changes,
             old_state,
             diagnostics: Vec::new(),
+            misspellings: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
             savepoint: None,
@@ -1074,6 +1077,15 @@ impl Document {
         self.diagnostics = diagnostics;
         self.diagnostics
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
+    }
+    
+    #[inline]
+    pub fn misspellings(&self) -> &[Misspelling] {
+        &self.misspellings
+    }
+
+    pub fn set_misspellings(&mut self, misspellings: Vec<Misspelling>) {
+        self.misspellings = misspellings;
     }
 
     /// Get the document's auto pairs. If the document has a recognized

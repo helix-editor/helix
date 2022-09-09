@@ -40,6 +40,7 @@ use helix_core::{
 };
 use helix_dap as dap;
 use helix_lsp::lsp;
+use helix_spell as spell;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -632,6 +633,7 @@ pub struct Editor {
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
+    pub spell_checker: spell::Client,
 
     pub clipboard_provider: Box<dyn ClipboardProvider>,
 
@@ -714,6 +716,7 @@ impl Editor {
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
+            spell_checker: spell::Client::new(),
             syn_loader,
             theme_loader,
             last_theme: None,
@@ -881,8 +884,13 @@ impl Editor {
     fn _refresh(&mut self) {
         let config = self.config();
         for (view, _) in self.tree.views_mut() {
-            let doc = &self.documents[&view.doc];
-            view.ensure_cursor_in_view(doc, config.scrolloff)
+            let doc = doc_mut!(self, &view.doc);
+            view.ensure_cursor_in_view(doc, config.scrolloff);
+            let misspellings = self.spell_checker.check(doc.text().to_string().as_str());
+            doc.set_misspellings(misspellings);
+            doc.misspellings()
+                .iter()
+                .for_each(|misspelling| log::warn!("Misspelling: {}", misspelling.word))
         }
     }
 
