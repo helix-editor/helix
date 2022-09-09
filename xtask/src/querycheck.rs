@@ -19,19 +19,16 @@ pub fn query_check() -> Result<(), DynError> {
         for query_file in query_files {
             let language = get_language(&grammar_name);
             let query_text = read_query(&language_name, query_file);
-            match language {
-                Ok(lang) => {
-                    if !query_text.is_empty() {
-                        if let Err(reason) = Query::new(lang, &query_text) {
-                            return Err(format!(
-                                "Failed to parse {} queries for {}: {}",
-                                query_file, language_name, reason
-                            )
-                            .into());
-                        }
+            if let Ok(lang) = language {
+                if !query_text.is_empty() {
+                    if let Err(reason) = Query::new(lang, &query_text) {
+                        return Err(format!(
+                            "Failed to parse {} queries for {}: {}",
+                            query_file, language_name, reason
+                        )
+                        .into());
                     }
                 }
-                Err(e) => return Err(e.into()),
             }
         }
     }
