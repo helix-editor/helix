@@ -4,7 +4,7 @@
 | bash | ✓ |  |  | `bash-language-server` |
 | beancount | ✓ |  |  |  |
 | c | ✓ | ✓ | ✓ | `clangd` |
-| c-sharp | ✓ |  |  | `OmniSharp` |
+| c-sharp | ✓ | ✓ |  | `OmniSharp` |
 | cairo | ✓ |  |  |  |
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
@@ -14,7 +14,8 @@
 | css | ✓ |  |  | `vscode-css-language-server` |
 | cue | ✓ |  |  | `cuelsp` |
 | dart | ✓ |  | ✓ | `dart` |
-| devicetree | ✓ |  | ✓ |  |
+| devicetree | ✓ |  |  |  |
+| diff | ✓ |  |  |  |
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | dot | ✓ |  |  | `dot-language-server` |
 | edoc | ✓ |  |  |  |
@@ -28,11 +29,10 @@
 | esdl | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |
 | fortran | ✓ |  | ✓ | `fortls` |
-| gdscript | ✓ |  | ✓ |  |
+| gdscript | ✓ |  |  |  |
 | git-attributes | ✓ |  |  |  |
 | git-commit | ✓ |  |  |  |
 | git-config | ✓ |  |  |  |
-| git-diff | ✓ |  |  |  |
 | git-ignore | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |
 | gleam | ✓ | ✓ |  | `gleam` |
@@ -42,7 +42,7 @@
 | gotmpl | ✓ |  |  | `gopls` |
 | gowork | ✓ |  |  | `gopls` |
 | graphql | ✓ |  |  |  |
-| hare | ✓ |  | ✓ |  |
+| hare | ✓ |  |  |  |
 | haskell | ✓ |  |  | `haskell-language-server-wrapper` |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ | ✓ |  |  |
@@ -53,6 +53,7 @@
 | javascript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | jsdoc | ✓ |  |  |  |
 | json | ✓ |  | ✓ | `vscode-json-language-server` |
+| jsonnet | ✓ |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ |  |  | `julia` |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
@@ -69,12 +70,12 @@
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
 | nickel | ✓ |  | ✓ | `nls` |
-| nix | ✓ |  | ✓ | `rnix-lsp` |
+| nix | ✓ |  |  | `rnix-lsp` |
 | nu | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |
 | odin | ✓ |  |  | `ols` |
-| openscad | ✓ |  |  | `openscad-language-server` |
+| openscad | ✓ |  |  | `openscad-lsp` |
 | org | ✓ |  |  |  |
 | pascal | ✓ | ✓ |  | `pasls` |
 | perl | ✓ | ✓ | ✓ |  |
@@ -95,11 +96,12 @@
 | scheme | ✓ |  |  |  |
 | scss | ✓ |  |  | `vscode-css-language-server` |
 | slint | ✓ |  | ✓ | `slint-lsp` |
+| sml | ✓ |  |  |  |
 | solidity | ✓ |  |  | `solc` |
 | sql | ✓ |  |  |  |
 | sshclientconfig | ✓ |  |  |  |
 | starlark | ✓ | ✓ |  |  |
-| svelte | ✓ |  | ✓ | `svelteserver` |
+| svelte | ✓ |  |  | `svelteserver` |
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
 | task | ✓ |  |  |  |
