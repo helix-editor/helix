@@ -1327,7 +1327,7 @@ shebangs = []
 roots = ["project.godot"]
 auto-format = true
 comment-token = "#"
-indent = { tab-width = 4, unit = "    " }
+indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "gdscript"
