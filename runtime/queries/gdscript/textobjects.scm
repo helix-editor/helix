@@ -5,10 +5,13 @@
 (function_definition
   (body) @function.inside) @function.around
 
-(parameters
-  (typed_parameter 
-    (identifier) @parameter.inside
-  ) @parameter.around)
+(parameters 
+  [
+    (identifier)
+    (typed_parameter)
+    (default_parameter)    
+    (typed_default_parameter)  
+  ] @parameter.inside @parameter.around)
 
 (comment) @comment.inside
 (comment)+ @comment.around
