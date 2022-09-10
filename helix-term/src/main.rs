@@ -114,8 +114,6 @@ FLAGS:
         return Ok(0);
     }
 
-    setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
-
     let config_dir = helix_loader::config_dir();
     if !config_dir.exists() {
         std::fs::create_dir_all(&config_dir).ok();
@@ -136,6 +134,10 @@ FLAGS:
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
         Err(err) => return Err(Error::new(err)),
     };
+
+    if config.editor.log {
+        setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
+    }
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config).context("unable to create new application")?;
