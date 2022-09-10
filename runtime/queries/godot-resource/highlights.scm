@@ -1,7 +1,7 @@
 (section (identifier) @type.builtin)
 
 (attribute (identifier) @attribute)
-(property (path) @attribute)
+(property (path) @variable.other.member)
 (constructor (identifier) @constructor)
 
 (string) @string
