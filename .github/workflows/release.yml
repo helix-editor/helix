@@ -289,7 +289,7 @@ jobs:
           overwrite: true
       
       - name: Upload binaries as artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         if: env.preview == 'true'
         with:
           name: release
