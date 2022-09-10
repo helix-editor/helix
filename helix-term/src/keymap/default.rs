@@ -59,7 +59,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         ":" => command_mode,
 
         "i" => insert_mode,
-        "I" => prepend_to_line,
+        "I" => insert_at_line_start,
         "a" => append_mode,
         "A" => insert_at_line_end,
         "o" => open_below,
