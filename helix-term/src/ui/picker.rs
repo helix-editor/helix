@@ -556,6 +556,22 @@ impl<T: Item + 'static> Component for Picker<T> {
             ctrl!('t') => {
                 self.toggle_preview();
             }
+            ctrl!('y') => {
+                if let Some(contents) = self.selection() {
+                    let contents = contents.sort_text(&self.editor_data).to_string();
+                    if let Err(e) = cx
+                        .editor
+                        .clipboard_provider
+                        .set_contents(contents, helix_view::clipboard::ClipboardType::Clipboard)
+                    {
+                        cx.editor
+                            .set_status(format!("Couldn't set system clipboard content: {}", e))
+                    } else {
+                        cx.editor
+                            .set_status("yanked picker selection to system clipboard");
+                    }
+                }
+            }
             _ => {
                 self.prompt_handle_event(event, cx);
             }
