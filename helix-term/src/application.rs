@@ -366,29 +366,39 @@ impl Application {
         self.editor.refresh_config();
     }
 
-    fn refresh_config(&mut self) {
-        let config = Config::load_default().unwrap_or_else(|err| {
-            self.editor.set_error(err.to_string());
-            Config::default()
-        });
-
-        // Refresh theme
+    /// Refresh theme after config change
+    fn refresh_theme(&mut self, config: &Config) {
         if let Some(theme) = config.theme.clone() {
             let true_color = self.true_color();
-            self.editor.set_theme(
-                self.theme_loader
-                    .load(&theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
-                    .unwrap_or_else(|| self.theme_loader.default_theme(true_color)),
-            );
+            match self.theme_loader.load(&theme) {
+                Ok(theme) => {
+                    if true_color || theme.is_16_color() {
+                        self.editor.set_theme(theme);
+                    } else {
+                        self.editor
+                            .set_error("theme requires truecolor support, which is not available");
+                    }
+                }
+                Err(err) => {
+                    let err_string = format!("failed to load theme `{}` - {}", theme, err);
+                    self.editor.set_error(err_string);
+                }
+            }
         }
+    }
 
-        self.config.store(Arc::new(config));
+    fn refresh_config(&mut self) {
+        match Config::load_default() {
+            Ok(config) => {
+                self.refresh_theme(&config);
+
+                // Store new config
+                self.config.store(Arc::new(config));
+            }
+            Err(err) => {
+                self.editor.set_error(err.to_string());
+            }
+        }
     }
 
     fn true_color(&self) -> bool {
