@@ -394,6 +394,16 @@ impl Component for Completion {
                     height = rel_height.min(height);
                 }
                 Rect::new(x, y, width, height)
+            } else if popup_x > 30 {
+                let mut height = area.height.saturating_sub(popup_y);
+                let mut width = popup_x;
+                if let Some((rel_width, rel_height)) = markdown_doc.required_size((width, height)) {
+                    width = rel_width.min(width);
+                    height = rel_height.min(height);
+                }
+                let x = popup_x - width;
+                let y = popup_y;
+                Rect::new(x, y, width, height)
             } else {
                 let half = area.height / 2;
                 let height = 15.min(half);

@@ -112,7 +112,7 @@ pub struct Document {
     // be more troublesome.
     pub history: Cell<History>,
 
-    pub savepoint: Option<Transaction>,
+    pub savepoint: Option<(i32, Transaction)>,
 
     last_saved_revision: usize,
     version: i32, // should be usize?
@@ -768,7 +768,8 @@ impl Document {
             if self.savepoint.is_some() {
                 take_with(&mut self.savepoint, |prev_revert| {
                     let revert = transaction.invert(&old_doc);
-                    Some(revert.compose(prev_revert.unwrap()))
+                    let (version, prev_revert) = prev_revert.unwrap();
+                    Some((version, revert.compose(prev_revert)))
                 });
             }
 
@@ -856,11 +857,11 @@ impl Document {
     }
 
     pub fn savepoint(&mut self) {
-        self.savepoint = Some(Transaction::new(self.text()));
+        self.savepoint = Some((self.version, Transaction::new(self.text())));
     }
 
     pub fn restore(&mut self, view_id: ViewId) {
-        if let Some(revert) = self.savepoint.take() {
+        if let Some((_, revert)) = self.savepoint.take() {
             self.apply(&revert, view_id);
         }
     }

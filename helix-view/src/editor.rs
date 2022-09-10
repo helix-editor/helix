@@ -763,6 +763,10 @@ impl Editor {
             .reset(Instant::now() + config.idle_timeout);
     }
 
+    pub fn reset_idle_timer_zero(&mut self) {
+        self.idle_timer.as_mut().reset(Instant::now());
+    }
+
     pub fn clear_status(&mut self) {
         self.status_msg = None;
     }
