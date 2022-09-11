@@ -2,7 +2,7 @@
 
 (Currently not fully documented, see the [keymappings](./keymap.md) list for more.)
 
-See [tutor.txt](https://github.com/helix-editor/helix/blob/master/runtime/tutor.txt) (accessible via `hx --tutor` or `:tutor`) for a vimtutor-like introduction.
+See [tutor](https://github.com/helix-editor/helix/blob/master/runtime/tutor) (accessible via `hx --tutor` or `:tutor`) for a vimtutor-like introduction.
 
 ## Registers
 

@@ -157,7 +157,7 @@ impl Application {
         compositor.push(editor_view);
 
         if args.load_tutor {
-            let path = helix_loader::runtime_dir().join("tutor.txt");
+            let path = helix_loader::runtime_dir().join("tutor");
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
