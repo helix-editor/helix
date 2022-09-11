@@ -118,6 +118,8 @@ pub struct Config {
     pub scroll_lines: isize,
     /// Mouse support. Defaults to true.
     pub mouse: bool,
+    /// Which modes mouse support is enabled in.
+    pub mouse_in: MouseIn,
     /// Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise.
     pub shell: Vec<String>,
     /// Line number mode.
@@ -388,6 +390,34 @@ impl Default for BufferLine {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct MouseIn {
+    normal: bool,
+    select: bool,
+    insert: bool,
+}
+
+impl MouseIn {
+    pub fn contains(&self, mode: Mode) -> bool {
+        match mode {
+            Mode::Normal => self.normal,
+            Mode::Select => self.select,
+            Mode::Insert => self.insert,
+        }
+    }
+}
+
+impl Default for MouseIn {
+    fn default() -> Self {
+        MouseIn {
+            normal: true,
+            select: true,
+            insert: true,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LineNumber {
     /// Show absolute line number
@@ -550,6 +580,7 @@ impl Default for Config {
             scrolloff: 5,
             scroll_lines: 3,
             mouse: true,
+            mouse_in: MouseIn::default(),
             shell: if cfg!(windows) {
                 vec!["cmd".to_owned(), "/C".to_owned()]
             } else {

@@ -1336,7 +1336,17 @@ impl Component for EditorView {
                 EventResult::Consumed(callback)
             }
 
-            Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
+            Event::Mouse(event) => {
+                let config = cx.editor.config();
+                let mode = cx.editor.mode();
+
+                if config.mouse_in.contains(mode) {
+                    self.handle_mouse_event(event, &mut cx)
+                } else {
+                    EventResult::Ignored(None)
+                }
+            }
+
             Event::FocusGained | Event::FocusLost => EventResult::Ignored(None),
         }
     }
