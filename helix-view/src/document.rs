@@ -18,6 +18,7 @@ use helix_core::{
     history::{History, UndoKind},
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
+    spellcheck,
     syntax::{self, LanguageConfiguration},
     ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, RopeGraphemes, RopeSlice, Selection,
     State, Syntax, Transaction, DEFAULT_LINE_ENDING,
@@ -330,7 +331,6 @@ where
 }
 
 use helix_lsp::lsp;
-use helix_spell;
 use url::Url;
 
 impl Document {
@@ -393,46 +393,43 @@ impl Document {
         Ok(doc)
     }
 
-    pub fn spell_check(&mut self) {
-        // TODO: make this async
-        let doc_text = self.text();
-        let mut spell_checker = helix_spell::Client::new();
-        let mut position = 0;
-        let diagnostics: Vec<Diagnostic> = doc_text
-            .lines()
-            .enumerate()
-            .flat_map(|(lnum, line)| {
-                let text = line.to_string();
-                let spell_errors = spell_checker.check(&text);
-
-                let diagnostics: Vec<Diagnostic> = spell_errors
-                    .iter()
-                    .map(|error| {
-                        let word = error.misspelled.to_owned();
-                        let len = RopeGraphemes::new(RopeSlice::from(word.as_str())).count();
-                        Diagnostic {
-                            line: lnum + 1,
-                            message: error.suggestions.join("\n"),
-                            code: None,
-                            severity: None,
+    pub fn spell_check(&mut self) -> Vec<Diagnostic> {
+        let mut diagnostics = Vec::new();
+        if let Some(node) = self.syntax() {
+            let mut spell_checker = helix_spell::Client::new();
+            let doc_slice = self.text.slice(..);
+            if let Some(ranges) = spellcheck::spellcheck_treesitter(
+                node.tree().root_node(),
+                doc_slice,
+                self.language_config().unwrap(),
+            ) {
+                for range in ranges {
+                    let slice = range.slice(doc_slice);
+                    let (start_line, _end_line) = range.line_range(doc_slice);
+                    let errors = spell_checker.check(&slice.to_string());
+                    for error in errors {
+                        let word_grapheme_count =
+                            RopeGraphemes::new(RopeSlice::from(error.misspelled.as_str())).count();
+                        let diagnostic = Diagnostic {
+                            line: start_line + 1,
                             range: diagnostic::Range {
-                                start: position + error.position,
-                                end: position + error.position + len,
+                                start: range.from() + error.position,
+                                end: range.from() + error.position + word_grapheme_count,
                             },
-                        }
-                    })
-                    .collect();
-
-                position += line.len_chars();
-                diagnostics
-            })
-            .collect();
-
-        self.set_diagnostics(diagnostics);
+                            message: error.misspelled,
+                            severity: None,
+                            code: None,
+                        };
+                        diagnostics.push(diagnostic);
+                    }
+                }
+                // log::warn!("Diagnostic: {:#?}", diagnostics);
+                self.set_diagnostics(diagnostics.to_owned());
+            };
+        };
+        diagnostics
     }
 
-    /// The same as [`format`], but only returns formatting changes if auto-formatting
-    /// is configured.
     pub fn auto_format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         if self.language_config()?.auto_format {
             self.format()
@@ -658,7 +655,6 @@ impl Document {
         self.apply(&transaction, view_id);
         self.append_changes_to_history(view_id);
         self.reset_modified();
-
         self.detect_indent_and_line_ending();
         self.spell_check();
 
