@@ -185,9 +185,9 @@ pub fn lint_all() -> Result<(), DynError> {
             errors.push(errs)
         }
     });
-    println!("{} of {} themes had issues", errors.len(), files_count);
+
     if !errors.is_empty() {
-        Err(errors.iter().sum::<i32>().to_string().into())
+        Err(format!("{} of {} themes had issues", errors.len(), files_count).into())
     } else {
         Ok(())
     }
