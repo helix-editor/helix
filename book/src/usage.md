@@ -125,8 +125,6 @@ will move the selection over to the "func" `identifier`.
 
 ## Textobjects
 
-Currently supported: `word`, `surround`, `function`, `class`, `parameter`.
-
 ![textobject-demo](https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif)
 ![textobject-treesitter-demo](https://user-images.githubusercontent.com/23398472/132537398-2a2e0a54-582b-44ab-a77f-eb818942203d.gif)
 
@@ -137,6 +135,7 @@ Currently supported: `word`, `surround`, `function`, `class`, `parameter`.
 | ---                    | ---                      |
 | `w`                    | Word                     |
 | `W`                    | WORD                     |
+| `p`                    | Paragraph                |
 | `(`, `[`, `'`, etc     | Specified surround pairs |
 | `m`                    | Closest surround pair    |
 | `f`                    | Function                 |
