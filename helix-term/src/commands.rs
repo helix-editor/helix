@@ -4939,7 +4939,11 @@ fn jump_mode(cx: &mut Context) {
         // the number of jumps accessible within two keystrokes
         let sep_idx = JUMP_KEYS.len() - {
             let k = JUMP_KEYS.len() as f32;
+            // Clamp input to the domain (0, (k^2 + 2k + 1) / 4].
             let n = (jump_locations.len() as f32).min((k.powi(2) + 2.0 * k + 1.0) / 4.0);
+            // Within the domain (0, (k^2 + 2k + 1) / 4], this function returns values
+            // in the range (-1, k/2]. As such, when `.ceil()` is called on the output,
+            // the result is in the range [0, k/2].
             ((k - 1.0 - (k.powi(2) + 2.0 * k - 4.0 * n + 1.0).sqrt()) / 2.0).ceil() as usize
         };
 
