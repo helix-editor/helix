@@ -30,6 +30,7 @@ use helix_view::{
     clipboard::ClipboardType,
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
+    env::Env,
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -4546,7 +4547,14 @@ fn shell_keep_pipe(cx: &mut Context) {
 
             for (i, range) in selection.ranges().iter().enumerate() {
                 let fragment = range.slice(text);
-                let (_output, success) = match shell_impl(shell, input, Some(fragment)) {
+                let inp = input
+                    .split(' ')
+                    .collect::<Vec<&str>>()
+                    .iter()
+                    .map(|a| Cow::from(*a))
+                    .collect::<Vec<Cow<str>>>();
+
+                let (_output, success) = match shell_impl(doc, shell, &inp, Some(fragment)) {
                     Ok(result) => result,
                     Err(err) => {
                         cx.editor.set_error(err.to_string());
@@ -4575,13 +4583,16 @@ fn shell_keep_pipe(cx: &mut Context) {
 }
 
 fn shell_impl(
+    doc: &Document,
     shell: &[String],
-    cmd: &str,
+    args: &[Cow<str>],
     input: Option<RopeSlice>,
 ) -> anyhow::Result<(Tendril, bool)> {
     use std::io::Write;
     use std::process::{Command, Stdio};
     ensure!(!shell.is_empty(), "No shell set");
+
+    let cmd = Env::for_document(doc).inject_into(args.iter()).join(" ");
 
     let mut process = Command::new(&shell[0]);
     process
@@ -4629,7 +4640,7 @@ fn shell_impl(
     Ok((tendril, output.status.success()))
 }
 
-fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
+fn shell(cx: &mut compositor::Context, cmd: &[Cow<str>], behavior: &ShellBehavior) {
     let pipe = match behavior {
         ShellBehavior::Replace | ShellBehavior::Ignore => true,
         ShellBehavior::Insert | ShellBehavior::Append => false,
@@ -4645,7 +4656,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
 
     for range in selection.ranges() {
         let fragment = range.slice(text);
-        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment)) {
+        let (output, success) = match shell_impl(doc, shell, cmd, pipe.then(|| fragment)) {
             Ok(result) => result,
             Err(err) => {
                 cx.editor.set_error(err.to_string());
@@ -4692,7 +4703,13 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
                 return;
             }
 
-            shell(cx, input, &behavior);
+            let inp = input
+                .split(' ')
+                .collect::<Vec<&str>>()
+                .iter()
+                .map(|a| Cow::from(*a))
+                .collect::<Vec<Cow<str>>>();
+            shell(cx, &inp, &behavior);
         },
     );
 }

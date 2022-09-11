@@ -1448,7 +1448,7 @@ fn append_output(
     }
 
     ensure!(!args.is_empty(), "Shell command required");
-    shell(cx, &args.join(" "), &ShellBehavior::Append);
+    shell(cx, args, &ShellBehavior::Append);
     Ok(())
 }
 
@@ -1462,12 +1462,7 @@ fn insert_output(
     }
 
     ensure!(!args.is_empty(), "Shell command required");
-    let (_, doc) = current!(cx.editor);
-    let path = doc.get_path();
-    let parsed_args = helix_view::document::Env::for_path(path)
-        .inject_into(args.iter())
-        .join(" ");
-    shell(cx, parsed_args.as_str(), &ShellBehavior::Insert);
+    shell(cx, args, &ShellBehavior::Insert);
     Ok(())
 }
 
@@ -1477,7 +1472,7 @@ fn pipe(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     }
 
     ensure!(!args.is_empty(), "Shell command required");
-    shell(cx, &args.join(" "), &ShellBehavior::Replace);
+    shell(cx, args, &ShellBehavior::Replace);
     Ok(())
 }
 
@@ -1489,9 +1484,10 @@ fn run_shell_command(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     let shell = &cx.editor.config().shell;
-    let (output, success) = shell_impl(shell, &args.join(" "), None)?;
+    let (_, doc) = current!(cx.editor);
+
+    let (output, success) = shell_impl(doc, shell, args, None)?;
     if success {
         cx.editor.set_status("Command succeed");
     } else {

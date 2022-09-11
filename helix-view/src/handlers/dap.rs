@@ -1,4 +1,5 @@
 use crate::editor::{Action, Breakpoint};
+use crate::env::Env;
 use crate::{align_view, Align, Editor};
 use helix_core::Selection;
 use helix_dap::{self as dap, Client, Payload, Request, ThreadId};
@@ -300,8 +301,9 @@ impl Editor {
                         None => return false,
                     };
 
+                    let (_, doc) = current!(self);
                     let process = match std::process::Command::new(config.command)
-                        .args(config.args)
+                        .args(&Env::for_document(doc).inject_into(config.args.iter()))
                         .arg(arguments.args.join(" "))
                         .spawn()
                     {

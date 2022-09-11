@@ -23,6 +23,7 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
+use crate::env::Env;
 use crate::{DocumentId, Editor, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -31,42 +32,6 @@ const BUF_SIZE: usize = 8192;
 const DEFAULT_INDENT: IndentStyle = IndentStyle::Tabs;
 
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
-
-//TODO: move me
-pub struct Env {
-    path: Option<PathBuf>,
-}
-impl Env {
-    pub fn for_document(doc: &Document) -> Self {
-        Env {
-            path: doc.path.clone(),
-        }
-    }
-    pub fn for_path(path: Option<PathBuf>) -> Self {
-        Env { path }
-    }
-    pub fn inject_into<T>(&self, strs: T) -> Vec<String>
-    where
-        T: Iterator,
-        <T as Iterator>::Item: Display,
-    {
-        let mut vec = vec![];
-        strs.into_iter().for_each(|s| {
-            vec.push(
-                s.to_string().replace(
-                    "$file",
-                    self.path
-                        .clone()
-                        .unwrap_or_default()
-                        .to_str()
-                        .unwrap_or_default(),
-                ),
-            );
-        });
-        log::debug!("injected: {:#?}", vec);
-        vec
-    }
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
