@@ -4911,36 +4911,55 @@ fn replay_macro(cx: &mut Context) {
 fn jump_mode_word(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
-    let mut jump_locations = Vec::new();
-
     let text = doc.text().slice(..);
     let range = doc.selection(view.id).primary();
 
+    let mut fwd_jump_locations = Vec::new();
     for n in 1.. {
-        let transformed = movement::move_next_word_start(text, range, n);
+        let next = movement::move_next_word_start(text, range, n);
         // Check that the cursor is within the file before attempting further operations.
-        if transformed.cursor(text) > text.len_bytes() - 1 {
+        if next.cursor(text) > text.len_bytes() - 1 {
             break;
         }
         // Use a `b` operation to position the cursor at the first character of words,
         // rather than in between them.
-        let transformed = movement::move_prev_word_start(text, transformed, 1);
-        let cursor_pos = transformed.cursor(text);
+        let next = movement::move_prev_word_start(text, next, 1);
+        let cursor_pos = next.cursor(text);
         if !view.is_cursor_in_view(cursor_pos, doc, 0) {
             break;
         }
         // Avoid adjacent jump locations
-        if jump_locations
+        if fwd_jump_locations
             .last()
             .map(|(pos, _)| cursor_pos - pos <= 1)
             .unwrap_or(false)
         {
             continue;
         }
-        jump_locations.push((cursor_pos, transformed.anchor));
+        fwd_jump_locations.push((cursor_pos, next.anchor));
     }
 
-    jump_mode_impl(cx, jump_locations);
+    let mut bck_jump_locations = Vec::new();
+    for n in 1.. {
+        let next = movement::move_prev_word_start(text, range, n);
+        let cursor_pos = next.cursor(text);
+        if !view.is_cursor_in_view(cursor_pos, doc, 0) {
+            break;
+        }
+        if bck_jump_locations
+            .last()
+            .map(|(pos, _)| pos - cursor_pos <= 1)
+            .unwrap_or(false)
+        {
+            continue;
+        }
+        bck_jump_locations.push((cursor_pos, next.anchor));
+        if cursor_pos == 0 {
+            break;
+        }
+    }
+
+    jump_mode_impl(cx, (fwd_jump_locations, bck_jump_locations));
 }
 
 fn jump_mode_search(cx: &mut Context) {
@@ -4987,27 +5006,29 @@ fn jump_mode_search_impl(cx: &mut Context, extend: bool) {
             }
         }
 
-        let jump_locations = fwd_jump_locations
-            .into_iter()
-            .map(Some)
-            .chain(std::iter::repeat(None))
-            .zip(
-                bck_jump_locations
-                    .into_iter()
-                    .map(Some)
-                    .chain(std::iter::repeat(None)),
-            )
-            .take_while(|tup| *tup != (None, None))
-            .flat_map(|(fwd, bck)| [fwd, bck])
-            .flatten()
-            .collect();
-
-        jump_mode_impl(cx, jump_locations);
+        jump_mode_impl(cx, (fwd_jump_locations, bck_jump_locations));
     });
 }
 
-fn jump_mode_impl(cx: &mut Context, jump_locations: Vec<(usize, usize)>) {
+fn jump_mode_impl(cx: &mut Context, jump_locations: (Vec<(usize, usize)>, Vec<(usize, usize)>)) {
     const JUMP_KEYS: &[u8] = b"asdghklqwertyuiopzxcvbnmfj;";
+
+    let jump_locations = jump_locations
+        .0
+        .into_iter()
+        .map(Some)
+        .chain(std::iter::repeat(None))
+        .zip(
+            jump_locations
+                .1
+                .into_iter()
+                .map(Some)
+                .chain(std::iter::repeat(None)),
+        )
+        .take_while(|tup| *tup != (None, None))
+        .flat_map(|(fwd, bck)| [fwd, bck])
+        .flatten()
+        .collect::<Vec<_>>();
 
     if jump_locations.is_empty() {
         return;
