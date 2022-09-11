@@ -4907,7 +4907,7 @@ fn replay_macro(cx: &mut Context) {
 }
 
 fn jump_mode(cx: &mut Context) {
-    const JUMP_KEYS: &[u8] = b"asdghklqwertyuiopzxcvbfj;nm";
+    const JUMP_KEYS: &[u8] = b"asdghklqwertyuiopzxcvbnmfj;";
 
     cx.on_next_key(move |cx, event| {
         let c = match event.char() {
