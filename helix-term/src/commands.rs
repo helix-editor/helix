@@ -4907,8 +4907,7 @@ fn replay_macro(cx: &mut Context) {
 }
 
 fn jump_mode(cx: &mut Context) {
-    const JUMP_KEYS: &[u8] = b"asdghklqwertyuiopzxcvb";
-    const MULTI_JUMP_KEYS: &[u8] = b"fj;nm";
+    const JUMP_KEYS: &[u8] = b"asdghklqwertyuiopzxcvbfj;nm";
 
     cx.on_next_key(move |cx, event| {
         let c = match event.char() {
@@ -4936,12 +4935,20 @@ fn jump_mode(cx: &mut Context) {
             return;
         }
 
+        // Optimize the quantity of keys to use for multikey jumps to maximize
+        // the number of jumps accessible within two keystrokes
+        let sep_idx = JUMP_KEYS.len() - {
+            let k = JUMP_KEYS.len() as f32;
+            let n = (jump_locations.len() as f32).min((k.powi(2) + 2.0 * k + 1.0) / 4.0);
+            ((k - 1.0 - (k.powi(2) + 2.0 * k - 4.0 * n + 1.0).sqrt()) / 2.0).ceil() as usize
+        };
+
         enum Jump {
             Final(usize),
             Multi(HashMap<u8, Jump>),
         }
 
-        let mut jump_seqs = JUMP_KEYS
+        let mut jump_seqs = JUMP_KEYS[..sep_idx]
             .iter()
             .copied()
             .map(|b| vec![b])
@@ -4952,7 +4959,7 @@ fn jump_mode(cx: &mut Context) {
             }
             jump_seqs.append(
                 &mut std::iter::repeat(jump_seqs.iter().cloned())
-                    .zip(MULTI_JUMP_KEYS.iter().copied())
+                    .zip(JUMP_KEYS[sep_idx..].iter().copied())
                     .flat_map(|(iter, k)| {
                         iter.map(move |mut seq| {
                             seq.insert(0, k);
