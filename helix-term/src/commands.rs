@@ -4907,10 +4907,8 @@ fn replay_macro(cx: &mut Context) {
 }
 
 fn jump_mode(cx: &mut Context) {
-    const JUMP_KEYS: &[u8] = b"asdghklqwertyuiopzxcvbfj;n";
-    // TODO: Implement multiple multi jump keys.
-    // const MULTI_JUMP_KEYS: &[u8] = b"fj;nm";
-    const MULTI_JUMP_KEY: u8 = b'm';
+    const JUMP_KEYS: &[u8] = b"asdghklqwertyuiopzxcvb";
+    const MULTI_JUMP_KEYS: &[u8] = b"fj;nm";
 
     cx.on_next_key(move |cx, event| {
         let c = match event.char() {
@@ -4943,27 +4941,41 @@ fn jump_mode(cx: &mut Context) {
             Multi(HashMap<u8, Jump>),
         }
 
-        let mut jumps = HashMap::new();
-        let mut current = &mut jumps;
+        let mut jump_seqs = JUMP_KEYS
+            .iter()
+            .copied()
+            .map(|b| vec![b])
+            .collect::<Vec<_>>();
         loop {
-            JUMP_KEYS
-                .iter()
-                .copied()
-                .zip(
-                    jump_locations
-                        .drain(..JUMP_KEYS.len().min(jump_locations.len()))
-                        .map(Jump::Final),
-                )
-                .for_each(|(k, v)| drop(current.insert(k, v)));
-            if jump_locations.is_empty() {
+            if jump_seqs.len() >= jump_locations.len() {
                 break;
-            } else {
-                current.insert(MULTI_JUMP_KEY, Jump::Multi(HashMap::new()));
-                current = match current.get_mut(&MULTI_JUMP_KEY) {
-                    Some(Jump::Multi(map)) => map,
-                    _ => unreachable!(),
-                };
             }
+            jump_seqs.append(
+                &mut std::iter::repeat(jump_seqs.iter().cloned())
+                    .zip(MULTI_JUMP_KEYS.iter().copied())
+                    .flat_map(|(iter, k)| {
+                        iter.map(move |mut seq| {
+                            seq.insert(0, k);
+                            seq
+                        })
+                    })
+                    .collect(),
+            );
+        }
+
+        let mut jumps = HashMap::new();
+        for (seq, pos) in jump_seqs.into_iter().zip(jump_locations) {
+            let mut current = &mut jumps;
+            for &k in &seq[..seq.len() - 1] {
+                current = match current
+                    .entry(k)
+                    .or_insert_with(|| Jump::Multi(HashMap::new()))
+                {
+                    Jump::Multi(map) => map,
+                    _ => unreachable!(),
+                }
+            }
+            current.insert(*seq.last().unwrap(), Jump::Final(pos));
         }
 
         use helix_view::decorations::{TextAnnotation, TextAnnotationKind};
