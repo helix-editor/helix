@@ -4916,8 +4916,8 @@ fn jump_mode_word(cx: &mut Context) {
     let text = doc.text().slice(..);
     let range = doc.selection(view.id).primary();
 
-    for i in 1.. {
-        let transformed = movement::move_next_word_start(text, range, i);
+    for n in 1.. {
+        let transformed = movement::move_next_word_start(text, range, n);
         // Check that the cursor is within the file before attempting further operations.
         if transformed.cursor(text) > text.len_bytes() - 1 {
             break;
