@@ -70,9 +70,11 @@ pub mod md_gen {
     use crate::path;
     use helix_term::commands::TYPABLE_COMMAND_LIST;
     use helix_term::health::TsFeature;
+    use helix_term::keymap::MappableCommand;
     use std::fs;
 
     pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
+    pub const COMMANDS_MD_OUTPUT: &str = "static-cmd.md";
     pub const LANG_SUPPORT_MD_OUTPUT: &str = "lang-support.md";
 
     fn md_table_heading(cols: &[String]) -> String {
@@ -109,6 +111,25 @@ pub mod md_gen {
             let doc = cmd.doc.replace('\n', "<br>");
 
             md.push_str(&md_table_row(&[names.to_owned(), doc.to_owned()]));
+        }
+
+        Ok(md)
+    }
+
+    pub fn commands() -> Result<String, DynError> {
+        let mut md = String::new();
+        md.push_str(&md_table_heading(&[
+            "Name".to_owned(),
+            "Description".to_owned(),
+        ]));
+
+        for cmd in MappableCommand::STATIC_COMMAND_LIST {
+            match cmd {
+                MappableCommand::Typable { .. } => unreachable!(),
+                MappableCommand::Static { name, fun: _, doc } => {
+                    md.push_str(&md_table_row(&[name.to_string(), doc.to_string()]));
+                }
+            }
         }
 
         Ok(md)
@@ -213,6 +234,7 @@ pub mod tasks {
     pub fn docgen() -> Result<(), DynError> {
         use md_gen::*;
         write(TYPABLE_COMMANDS_MD_OUTPUT, &typable_commands()?);
+        write(COMMANDS_MD_OUTPUT, &commands()?);
         write(LANG_SUPPORT_MD_OUTPUT, &lang_features()?);
         Ok(())
     }
