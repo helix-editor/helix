@@ -137,6 +137,7 @@ Currently supported: `word`, `surround`, `function`, `class`, `parameter`.
 | ---                    | ---                      |
 | `w`                    | Word                     |
 | `W`                    | WORD                     |
+| `p`                    | Paragraph                |
 | `(`, `[`, `'`, etc     | Specified surround pairs |
 | `m`                    | Closest surround pair    |
 | `f`                    | Function                 |
