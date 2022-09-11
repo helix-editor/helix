@@ -4959,7 +4959,7 @@ fn jump_mode_word(cx: &mut Context) {
         }
     }
 
-    jump_mode_impl(cx, (fwd_jump_locations, bck_jump_locations));
+    jump_mode_impl(cx, [fwd_jump_locations, bck_jump_locations]);
 }
 
 fn jump_mode_search(cx: &mut Context) {
@@ -5006,21 +5006,19 @@ fn jump_mode_search_impl(cx: &mut Context, extend: bool) {
             }
         }
 
-        jump_mode_impl(cx, (fwd_jump_locations, bck_jump_locations));
+        jump_mode_impl(cx, [fwd_jump_locations, bck_jump_locations]);
     });
 }
 
-fn jump_mode_impl(cx: &mut Context, jump_locations: (Vec<(usize, usize)>, Vec<(usize, usize)>)) {
+fn jump_mode_impl(cx: &mut Context, [fwd_jumps, bck_jumps]: [Vec<(usize, usize)>; 2]) {
     const JUMP_KEYS: &[u8] = b"asdghklqwertyuiopzxcvbnmfj;";
 
-    let jump_locations = jump_locations
-        .0
+    let jump_locations = fwd_jumps
         .into_iter()
         .map(Some)
         .chain(std::iter::repeat(None))
         .zip(
-            jump_locations
-                .1
+            bck_jumps
                 .into_iter()
                 .map(Some)
                 .chain(std::iter::repeat(None)),
