@@ -4988,8 +4988,9 @@ fn jump_mode_impl(cx: &mut Context, jump_locations: Vec<(usize, usize)>) {
         return;
     }
 
-    // Optimize the quantity of keys to use for multikey jumps to maximize
-    // the number of jumps accessible within two keystrokes
+    // Optimize the quantity of keys to use for multikey jumps to maximize the
+    // number of jumps accessible within one keystroke without compromising on
+    // making enough jumps accessible within two keystrokes.
     let sep_idx = JUMP_KEYS.len() - {
         let k = JUMP_KEYS.len() as f32;
         // Clamp input to the domain (0, (k^2 + 2k + 1) / 4].
