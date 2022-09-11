@@ -4960,22 +4960,47 @@ fn jump_mode_search_impl(cx: &mut Context, extend: bool) {
 
         let (view, doc) = current!(cx.editor);
 
-        let mut jump_locations = Vec::new();
-
         let text = doc.text().slice(..);
         let (cursor, anchor) = {
             let range = doc.selection(view.id).primary();
             (range.cursor(text), range.anchor)
         };
+
+        let mut fwd_jump_locations = Vec::new();
         for n in 1.. {
             let next = search::find_nth_next(text, c, cursor + 1, n);
             match next {
                 Some(pos) if view.is_cursor_in_view(pos, doc, 0) => {
-                    jump_locations.push((pos, if extend { anchor } else { pos }));
+                    fwd_jump_locations.push((pos, if extend { anchor } else { pos }));
                 }
                 _ => break,
             }
         }
+        let mut bck_jump_locations = Vec::new();
+        for n in 1.. {
+            let next = search::find_nth_prev(text, c, cursor, n);
+            match next {
+                Some(pos) if view.is_cursor_in_view(pos, doc, 0) => {
+                    bck_jump_locations.push((pos, if extend { anchor } else { pos }));
+                }
+                _ => break,
+            }
+        }
+
+        let jump_locations = fwd_jump_locations
+            .into_iter()
+            .map(Some)
+            .chain(std::iter::repeat(None))
+            .zip(
+                bck_jump_locations
+                    .into_iter()
+                    .map(Some)
+                    .chain(std::iter::repeat(None)),
+            )
+            .take_while(|tup| *tup != (None, None))
+            .flat_map(|(fwd, bck)| [fwd, bck])
+            .flatten()
+            .collect();
 
         jump_mode_impl(cx, jump_locations);
     });
