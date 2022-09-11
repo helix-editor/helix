@@ -67,6 +67,7 @@ FLAGS:
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
     -c, --config <file>            Specifies a file to use for configuration
     -v                             Increases logging verbosity each use for up to 3 times
+    --log                          Specifies a file to use for logging
                                    (default file: {})
     -V, --version                  Prints version information
     --vsplit                       Splits all given files vertically into different windows
@@ -114,6 +115,7 @@ FLAGS:
         return Ok(0);
     }
 
+    let logpath = args.log_file.as_ref().cloned().unwrap_or(logpath);
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 
     let config_dir = helix_loader::config_dir();
