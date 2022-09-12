@@ -301,7 +301,7 @@ impl Editor {
                         None => return false,
                     };
 
-                    let (_, doc) = current!(self);
+                    let doc = doc!(self);
                     let process = match std::process::Command::new(config.command)
                         .args(&Env::for_document(doc).inject_into(config.args.iter()))
                         .arg(arguments.args.join(" "))
