@@ -7,7 +7,7 @@ pub struct Env {
 impl Env {
     pub fn for_document(doc: &Document) -> Self {
         Env {
-            path: doc.get_path(),
+            path: doc.path().cloned(),
         }
     }
     pub fn for_path(path: Option<PathBuf>) -> Self {

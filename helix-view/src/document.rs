@@ -639,10 +639,6 @@ impl Document {
         Ok(())
     }
 
-    pub fn path(&self) -> Option<&PathBuf> {
-        self.path.as_ref()
-    }
-
     /// Set the programming language for the file and load associated data (e.g. highlighting)
     /// if it exists.
     pub fn set_language(
