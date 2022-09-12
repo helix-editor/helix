@@ -63,9 +63,6 @@
 | -----       | -----------                                                          | -------                   |
 | `r`         | Replace with a character                                             | `replace`                 |
 | `R`         | Replace with yanked text                                             | `replace_with_yanked`     |
-| `~`         | Switch case of the selected text                                     | `switch_case`             |
-| `` ` ``     | Set the selected text to lower case                                  | `switch_to_lowercase`     |
-| `` Alt-` `` | Set the selected text to upper case                                  | `switch_to_uppercase`     |
 | `i`         | Insert before selection                                              | `insert_mode`             |
 | `a`         | Insert after selection (append)                                      | `append_mode`             |
 | `I`         | Insert at the start of the line                                      | `prepend_to_line`         |
@@ -224,6 +221,9 @@ and [textobject](./usage.md#textobject) usage.
 | `d` `<char>`     | Delete surround character `<char>`              | `surround_delete`          |
 | `a` `<object>`   | Select around textobject                        | `select_textobject_around` |
 | `i` `<object>`   | Select inside textobject                        | `select_textobject_inner`  |
+| `t`              | Toggle case of the selected text                | `switch_case`              |
+| `l`              | Make the selected text lower case               | `switch_to_lowercase`      |
+| `u`              | Make the selected text upper case               | `switch_to_uppercase`      |
 
 TODO: Mappings for selecting syntax nodes (a superset of `[`).
 

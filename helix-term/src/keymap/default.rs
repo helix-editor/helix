@@ -19,10 +19,6 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "R" => replace_with_yanked,
         "A-." =>  repeat_last_motion,
 
-        "~" => switch_case,
-        "`" => switch_to_lowercase,
-        "A-`" => switch_to_uppercase,
-
         "home" => goto_line_start,
         "end" => goto_line_end,
 
@@ -96,6 +92,9 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "d" => surround_delete,
             "a" => select_textobject_around,
             "i" => select_textobject_inner,
+            "t" => switch_case,
+            "l" => switch_to_lowercase,
+            "u" => switch_to_uppercase,
         },
         "[" => { "Left bracket"
             "d" => goto_prev_diag,
