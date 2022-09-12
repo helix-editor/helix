@@ -1485,7 +1485,7 @@ fn run_shell_command(
         return Ok(());
     }
     let shell = &cx.editor.config().shell;
-    let (_, doc) = current!(cx.editor);
+    let doc = doc!(cx.editor);
 
     let (output, success) = shell_impl(doc, shell, args, None)?;
     if success {
