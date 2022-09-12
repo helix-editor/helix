@@ -102,11 +102,11 @@ _________________________________________________________________
  --> Th stce misg so.
      This sentence is missing some text.
 
- Note: If you want to move the cursor while in Insert mode,
-       you may use the arrow keys instead of exiting and
-       reentering Insert mode.
  Note: The status bar will display your current mode.
        Notice that when you type i, 'NOR' changes to 'INS'.
+
+
+
 
 =================================================================
 =                      1.5 SAVING A FILE                        =
