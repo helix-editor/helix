@@ -341,10 +341,25 @@ mode:
 
 ```toml
 [keys.insert]
-up = "move_line_up"
-down = "move_line_down"
-left = "move_char_left"
-right = "move_char_right"
+"up" = "move_line_up"
+"down" = "move_line_down"
+"left" = "move_char_left"
+"right" = "move_char_right"
+"C-b" = "move_char_left"
+"C-f" = "move_char_right"
+"A-b" = "move_prev_word_end"
+"C-left" = "move_prev_word_end"
+"A-f" = "move_next_word_start"
+"C-right" = "move_next_word_start"
+"A-<" = "goto_file_start"
+"A->" = "goto_file_end"
+"pageup" = "page_up"
+"pagedown" = "page_down"
+"home" = "goto_line_start"
+"C-a" = "goto_line_start"
+"end" = "goto_line_end_newline"
+"C-e" = "goto_line_end_newline"
+"A-left" = "goto_line_start"
 ```
 
 ## Select / extend mode
