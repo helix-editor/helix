@@ -4703,13 +4703,8 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
                 return;
             }
 
-            let inp = input
-                .split(' ')
-                .collect::<Vec<&str>>()
-                .iter()
-                .map(|a| Cow::from(*a))
-                .collect::<Vec<Cow<str>>>();
-            shell(cx, &inp, &behavior);
+            let input = input.split(' ').map(Cow::from).collect::<Vec<_>>();
+            shell(cx, &input, &behavior);
         },
     );
 }
