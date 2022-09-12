@@ -18,20 +18,12 @@ impl Env {
         T: Iterator,
         <T as Iterator>::Item: Display,
     {
-        let mut vec = vec![];
-        strs.into_iter().for_each(|s| {
-            vec.push(
-                s.to_string().replace(
-                    "$file",
-                    self.path
-                        .clone()
-                        .unwrap_or_default()
-                        .to_str()
-                        .unwrap_or_default(),
-                ),
-            );
-        });
-        log::debug!("injected: {:#?}", vec);
-        vec
+        let path = self
+            .path
+            .as_ref()
+            .and_then(|p| p.to_str())
+            .unwrap_or_default();
+
+        strs.map(|s| s.to_string().replace("$file", path)).collect()
     }
 }
