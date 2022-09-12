@@ -417,6 +417,7 @@ impl EditorView {
             " ".to_string()
         };
         let indent_guide_char = config.indent_guides.character.to_string();
+        let skip_first_indent_guide = config.indent_guides.skip_first;
 
         let text_style = theme.get("ui.text");
         let whitespace_style = theme.get("ui.virtual.whitespace");
@@ -436,7 +437,10 @@ impl EditorView {
                 return;
             }
 
-            let starting_indent = (offset.col / tab_width) as u16;
+            let mut starting_indent = (offset.col / tab_width) as u16;
+            if skip_first_indent_guide {
+                starting_indent += 1
+            }
             // TODO: limit to a max indent level too. It doesn't cause visual artifacts but it would avoid some
             // extra loops if the code is deeply nested.
 
