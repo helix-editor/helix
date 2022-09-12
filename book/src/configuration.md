@@ -72,7 +72,7 @@ mode.normal = "NORMAL"
 mode.insert = "INSERT"
 mode.select = "SELECT"
 ```
-The `[editor.statusline]` key takes the following sub-keys
+The `[editor.statusline]` key takes the following sub-keys:
 
 | Key           | Description | Default |
 | ---           | ---         | ---     |
@@ -84,7 +84,7 @@ The `[editor.statusline]` key takes the following sub-keys
 | `mode.insert` | The text shown in the `mode` element for insert mode | `"INS"` |
 | `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
 
-The following statusline elements can be configured as follows:
+The following statusline elements can be configured:
 
 | Key    | Description |
 | ------ | ----------- |
