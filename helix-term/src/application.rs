@@ -157,7 +157,7 @@ impl Application {
         compositor.push(editor_view);
 
         if args.load_tutor {
-            let path = helix_loader::runtime_dir().join("tutor.txt");
+            let path = helix_loader::runtime_dir().join("tutor");
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
@@ -195,7 +195,7 @@ impl Application {
                         // `--vsplit` or `--hsplit` are used, the file which is
                         // opened last is focused on.
                         let view_id = editor.tree.focus;
-                        let doc = editor.document_mut(doc_id).unwrap();
+                        let doc = doc_mut!(editor, &doc_id);
                         let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
                         doc.set_selection(view_id, pos);
                     }
@@ -366,29 +366,39 @@ impl Application {
         self.editor.refresh_config();
     }
 
-    fn refresh_config(&mut self) {
-        let config = Config::load_default().unwrap_or_else(|err| {
-            self.editor.set_error(err.to_string());
-            Config::default()
-        });
-
-        // Refresh theme
+    /// Refresh theme after config change
+    fn refresh_theme(&mut self, config: &Config) {
         if let Some(theme) = config.theme.clone() {
             let true_color = self.true_color();
-            self.editor.set_theme(
-                self.theme_loader
-                    .load(&theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
-                    .unwrap_or_else(|| self.theme_loader.default_theme(true_color)),
-            );
+            match self.theme_loader.load(&theme) {
+                Ok(theme) => {
+                    if true_color || theme.is_16_color() {
+                        self.editor.set_theme(theme);
+                    } else {
+                        self.editor
+                            .set_error("theme requires truecolor support, which is not available");
+                    }
+                }
+                Err(err) => {
+                    let err_string = format!("failed to load theme `{}` - {}", theme, err);
+                    self.editor.set_error(err_string);
+                }
+            }
         }
+    }
 
-        self.config.store(Arc::new(config));
+    fn refresh_config(&mut self) {
+        match Config::load_default() {
+            Ok(config) => {
+                self.refresh_theme(&config);
+
+                // Store new config
+                self.config.store(Arc::new(config));
+            }
+            Err(err) => {
+                self.editor.set_error(err.to_string());
+            }
+        }
     }
 
     fn true_color(&self) -> bool {
@@ -505,8 +515,13 @@ impl Application {
                             let language_id =
                                 doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
+                            let url = match doc.url() {
+                                Some(url) => url,
+                                None => continue, // skip documents with no path
+                            };
+
                             tokio::spawn(language_server.text_document_did_open(
-                                doc.url().unwrap(),
+                                url,
                                 doc.version(),
                                 doc.text(),
                                 language_id,

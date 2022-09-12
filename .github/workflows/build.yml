@@ -103,6 +103,14 @@ jobs:
           command: clippy
           args: --all-targets -- -D warnings
 
+      - name: Run cargo doc
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --no-deps --workspace --document-private-items
+        env:
+          RUSTDOCFLAGS: -D warnings
+
   docs:
     name: Docs
     runs-on: ubuntu-latest

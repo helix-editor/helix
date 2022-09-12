@@ -139,7 +139,7 @@ pub fn fetch_grammars() -> Result<()> {
         let len = errors.len();
         println!("{} grammars failed to fetch", len);
         for (i, error) in errors.into_iter().enumerate() {
-            println!("\tFailure {}/{}: {}", i, len, error);
+            println!("\tFailure {}/{}: {}", i + 1, len, error);
         }
     }
 
