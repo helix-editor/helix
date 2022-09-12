@@ -393,7 +393,7 @@ impl Document {
         Ok(doc)
     }
 
-    pub fn spell_check(&mut self) -> Vec<Diagnostic> {
+    pub fn spell_check(&mut self) {
         let mut diagnostics = Vec::new();
         if let Some(node) = self.syntax() {
             let mut spell_checker = helix_spell::Client::new();
@@ -408,7 +408,6 @@ impl Document {
                     let (start_line, _end_line) = range.line_range(doc_slice);
                     let mut position = range.from();
                     for (i, line) in slice.lines().enumerate() {
-                        log::warn!("Line slice: {}", line);
                         let errors = spell_checker.check(&line.to_string());
                         for error in errors {
                             let word_count = error.misspelled.chars().count();
@@ -418,8 +417,8 @@ impl Document {
                                     start: position + error.position,
                                     end: position + error.position + word_count,
                                 },
-                                message: error.misspelled,
-                                severity: None,
+                                message: error.suggestions.join("\n"),
+                                severity: Some(diagnostic::Severity::Hint),
                                 code: None,
                             };
                             diagnostics.push(diagnostic);
@@ -427,10 +426,9 @@ impl Document {
                         position += line.len_chars();
                     }
                 }
-                log::warn!("Diagnostics: {:#?}", diagnostics);
             };
         };
-        diagnostics
+        self.add_diagnostics(diagnostics.as_mut());
     }
 
     pub fn auto_format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
@@ -1108,13 +1106,14 @@ impl Document {
         &self.diagnostics
     }
 
-    pub fn set_diagnostics(&mut self, mut diagnostics: Vec<Diagnostic>) {
-        // TODO: figure out somewhere else to call this
-        // this only works on the initial diagnostics capture so far
-        diagnostics.append(&mut self.spell_check());
+    pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
         self.diagnostics = diagnostics;
         self.diagnostics
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
+    }
+
+    pub fn add_diagnostics(&mut self, diagnostics: &mut Vec<Diagnostic>) {
+        self.diagnostics.append(diagnostics);
     }
 
     /// Get the document's auto pairs. If the document has a recognized

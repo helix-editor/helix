@@ -331,6 +331,21 @@ fn format(
 
     Ok(())
 }
+
+fn spell_check(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let doc = doc_mut!(cx.editor);
+    // TODO: make this async via a Job?
+    doc.spell_check();
+    Ok(())
+}
+
 fn set_indent_style(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1663,6 +1678,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["fmt"],
             doc: "Format the file using the LSP formatter.",
             fun: format,
+            completer: None,
+        },
+        TypableCommand {
+            name: "spell-check",
+            aliases: &["sc"],
+            doc: "Check spelling with aspell.",
+            fun: spell_check,
             completer: None,
         },
         TypableCommand {

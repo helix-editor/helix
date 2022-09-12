@@ -13,7 +13,6 @@ pub fn spellcheck_treesitter(
         .spellcheck_query()?
         .capture_nodes("spell", doc_tree, doc_slice, &mut cursor)?
         .map(|node| {
-            log::warn!("Node: {:#?}", node); 
             let start_char = doc_slice.byte_to_char(node.start_byte());
             let end_char = doc_slice.byte_to_char(node.end_byte());
             Range::new(start_char, end_char)
