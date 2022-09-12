@@ -20,8 +20,8 @@ use helix_core::{
     line_ending::auto_detect_line_ending,
     spellcheck,
     syntax::{self, LanguageConfiguration},
-    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, RopeGraphemes, RopeSlice, Selection,
-    State, Syntax, Transaction, DEFAULT_LINE_ENDING,
+    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, State, Syntax, Transaction,
+    DEFAULT_LINE_ENDING,
 };
 
 use crate::{DocumentId, Editor, ViewId};
@@ -406,25 +406,28 @@ impl Document {
                 for range in ranges {
                     let slice = range.slice(doc_slice);
                     let (start_line, _end_line) = range.line_range(doc_slice);
-                    let errors = spell_checker.check(&slice.to_string());
-                    for error in errors {
-                        let word_grapheme_count =
-                            RopeGraphemes::new(RopeSlice::from(error.misspelled.as_str())).count();
-                        let diagnostic = Diagnostic {
-                            line: start_line + 1,
-                            range: diagnostic::Range {
-                                start: range.from() + error.position,
-                                end: range.from() + error.position + word_grapheme_count,
-                            },
-                            message: error.misspelled,
-                            severity: None,
-                            code: None,
-                        };
-                        diagnostics.push(diagnostic);
+                    let mut position = range.from();
+                    for (i, line) in slice.lines().enumerate() {
+                        log::warn!("Line slice: {}", line);
+                        let errors = spell_checker.check(&line.to_string());
+                        for error in errors {
+                            let word_count = error.misspelled.chars().count();
+                            let diagnostic = Diagnostic {
+                                line: start_line + i + 1,
+                                range: diagnostic::Range {
+                                    start: position + error.position,
+                                    end: position + error.position + word_count,
+                                },
+                                message: error.misspelled,
+                                severity: None,
+                                code: None,
+                            };
+                            diagnostics.push(diagnostic);
+                        }
+                        position += line.len_chars();
                     }
                 }
-                // log::warn!("Diagnostic: {:#?}", diagnostics);
-                self.set_diagnostics(diagnostics.to_owned());
+                log::warn!("Diagnostics: {:#?}", diagnostics);
             };
         };
         diagnostics
@@ -656,7 +659,6 @@ impl Document {
         self.append_changes_to_history(view_id);
         self.reset_modified();
         self.detect_indent_and_line_ending();
-        self.spell_check();
 
         Ok(())
     }
@@ -1106,7 +1108,10 @@ impl Document {
         &self.diagnostics
     }
 
-    pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
+    pub fn set_diagnostics(&mut self, mut diagnostics: Vec<Diagnostic>) {
+        // TODO: figure out somewhere else to call this
+        // this only works on the initial diagnostics capture so far
+        diagnostics.append(&mut self.spell_check());
         self.diagnostics = diagnostics;
         self.diagnostics
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
