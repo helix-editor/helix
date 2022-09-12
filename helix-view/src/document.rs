@@ -23,7 +23,7 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
-use crate::env::Env;
+use crate::env::inject_into_with;
 use crate::{DocumentId, Editor, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -413,7 +413,7 @@ impl Document {
             let text = self.text().clone();
             let mut process = tokio::process::Command::new(&formatter.command);
             process
-                .args(&Env::for_document(self).inject_into(formatter.args.iter()))
+                .args(inject_into_with(formatter.args.iter(), self))
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());

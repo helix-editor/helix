@@ -30,7 +30,7 @@ use helix_view::{
     clipboard::ClipboardType,
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
-    env::Env,
+    env::inject_into_with,
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -4586,7 +4586,7 @@ fn shell_impl(
     use std::process::{Command, Stdio};
     ensure!(!shell.is_empty(), "No shell set");
 
-    let cmd = Env::for_document(doc).inject_into(args.iter()).join(" ");
+    let cmd = inject_into_with(args.iter(), doc).join(" ");
 
     let mut process = Command::new(&shell[0]);
     process
