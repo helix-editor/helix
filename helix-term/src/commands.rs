@@ -4547,14 +4547,8 @@ fn shell_keep_pipe(cx: &mut Context) {
 
             for (i, range) in selection.ranges().iter().enumerate() {
                 let fragment = range.slice(text);
-                let inp = input
-                    .split(' ')
-                    .collect::<Vec<&str>>()
-                    .iter()
-                    .map(|a| Cow::from(*a))
-                    .collect::<Vec<Cow<str>>>();
-
-                let (_output, success) = match shell_impl(doc, shell, &inp, Some(fragment)) {
+                let input = input.split(' ').map(Cow::from).collect::<Vec<_>>();
+                let (_output, success) = match shell_impl(doc, shell, &input, Some(fragment)) {
                     Ok(result) => result,
                     Err(err) => {
                         cx.editor.set_error(err.to_string());
