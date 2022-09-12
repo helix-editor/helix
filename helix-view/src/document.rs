@@ -639,8 +639,8 @@ impl Document {
         Ok(())
     }
 
-    pub fn get_path(&self) -> Option<PathBuf> {
-        self.path.clone()
+    pub fn path(&self) -> Option<&PathBuf> {
+        self.path.as_ref()
     }
 
     /// Set the programming language for the file and load associated data (e.g. highlighting)
