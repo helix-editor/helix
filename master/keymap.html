@@ -465,10 +465,25 @@ experience.</p>
 example config that gives the ability to use arrow keys while still in insert
 mode:</p>
 <pre><code class="language-toml">[keys.insert]
-up = &quot;move_line_up&quot;
-down = &quot;move_line_down&quot;
-left = &quot;move_char_left&quot;
-right = &quot;move_char_right&quot;
+&quot;up&quot; = &quot;move_line_up&quot;
+&quot;down&quot; = &quot;move_line_down&quot;
+&quot;left&quot; = &quot;move_char_left&quot;
+&quot;right&quot; = &quot;move_char_right&quot;
+&quot;C-b&quot; = &quot;move_char_left&quot;
+&quot;C-f&quot; = &quot;move_char_right&quot;
+&quot;A-b&quot; = &quot;move_prev_word_end&quot;
+&quot;C-left&quot; = &quot;move_prev_word_end&quot;
+&quot;A-f&quot; = &quot;move_next_word_start&quot;
+&quot;C-right&quot; = &quot;move_next_word_start&quot;
+&quot;A-&lt;&quot; = &quot;goto_file_start&quot;
+&quot;A-&gt;&quot; = &quot;goto_file_end&quot;
+&quot;pageup&quot; = &quot;page_up&quot;
+&quot;pagedown&quot; = &quot;page_down&quot;
+&quot;home&quot; = &quot;goto_line_start&quot;
+&quot;C-a&quot; = &quot;goto_line_start&quot;
+&quot;end&quot; = &quot;goto_line_end_newline&quot;
+&quot;C-e&quot; = &quot;goto_line_end_newline&quot;
+&quot;A-left&quot; = &quot;goto_line_start&quot;
 </code></pre>
 <h2 id="select--extend-mode"><a class="header" href="#select--extend-mode">Select / extend mode</a></h2>
 <p>This mode echoes Normal mode, but changes any movements to extend
