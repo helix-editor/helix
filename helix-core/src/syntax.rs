@@ -54,6 +54,10 @@ fn default_timeout() -> u64 {
     20
 }
 
+fn default_append_error_node() -> bool {
+    true
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
@@ -115,6 +119,9 @@ pub struct LanguageConfiguration {
     pub auto_pairs: Option<AutoPairs>,
 
     pub rulers: Option<Vec<u16>>, // if set, override editor's rulers
+
+    #[serde(default = "default_append_error_node")]
+    pub append_error_node: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -355,9 +362,11 @@ impl LanguageConfiguration {
     fn initialize_highlight(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
         let language = self.language_id.to_ascii_lowercase();
 
-        let highlights_query = read_query(&language, "highlights.scm");
-        // always highlight syntax errors
-        // highlights_query += "\n(ERROR) @error";
+        let mut highlights_query = read_query(&language, "highlights.scm");
+
+        if self.append_error_node {
+            highlights_query += "\n(ERROR) @error";
+        }
 
         let injections_query = read_query(&language, "injections.scm");
         let locals_query = read_query(&language, "locals.scm");
