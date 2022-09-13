@@ -531,9 +531,9 @@ impl Default for WhitespaceCharacters {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
 pub struct IndentGuidesConfig {
-    pub skip_first: bool,
     pub render: bool,
     pub character: char,
+    pub skip_first: bool,
 }
 
 impl Default for IndentGuidesConfig {
