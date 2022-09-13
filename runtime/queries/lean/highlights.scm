@@ -211,7 +211,6 @@
 (sorry) @error
 
 ;; Error
-(ERROR) @error
 
 ; Variables
 (identifier) @variable

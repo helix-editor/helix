@@ -24,5 +24,3 @@
 ] @punctuation.bracket
 
 "=" @operator
-
-(ERROR) @error

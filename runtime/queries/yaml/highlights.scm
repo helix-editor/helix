@@ -22,7 +22,6 @@
 (alias_name) @type
 (tag) @type
 (yaml_directive) @keyword
-(ERROR) @error
 
 [
 ","

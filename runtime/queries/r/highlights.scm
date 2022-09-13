@@ -125,4 +125,3 @@
 (identifier) @variable
 
 ; Error
-(ERROR) @error

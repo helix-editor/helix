@@ -233,5 +233,4 @@
  (#match? @variable.builtin "^(abstract|as|covariant|deferred|dynamic|export|external|factory|Function|get|implements|import|interface|library|operator|mixin|part|set|static|typedef)$"))
 
 ; Error
-(ERROR) @error
 

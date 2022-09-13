@@ -152,7 +152,6 @@
 
 [(comment) (line_number_directive) (directive) (shebang)] @comment
 
-(ERROR) @error
 
 ; Blanket highlights
 ; ------------------

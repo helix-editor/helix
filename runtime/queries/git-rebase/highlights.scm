@@ -8,4 +8,3 @@
 "#" @punctuation.delimiter
 (comment) @comment
 
-(ERROR) @error

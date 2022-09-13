@@ -87,4 +87,3 @@
   "defm"
 ] @namespace
 
-(ERROR) @error

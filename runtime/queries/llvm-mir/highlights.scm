@@ -133,4 +133,3 @@
   (float_keyword)
 ] @keyword
 
-(ERROR) @error

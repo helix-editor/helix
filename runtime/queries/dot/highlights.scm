@@ -38,6 +38,5 @@
   (preproc)
 ] @comment
 
-(ERROR) @error
 
 (identifier) @variable

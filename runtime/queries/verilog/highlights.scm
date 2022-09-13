@@ -308,4 +308,3 @@
   ")"
 ] @punctuation.bracket
 
-(ERROR) @error

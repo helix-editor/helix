@@ -155,4 +155,3 @@
   "zeroinitializer"
 ] @constant.builtin
 
-(ERROR) @error
