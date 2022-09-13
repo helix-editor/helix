@@ -491,8 +491,7 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup =
-                Popup::new("code-action", picker).margin(helix_view::graphics::Margin::all(1));
+            let popup = Popup::new("code-action", picker);
             compositor.replace_or_push("code-action", popup);
         },
     )
