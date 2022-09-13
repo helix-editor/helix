@@ -119,6 +119,7 @@ pub struct Document {
     version: i32, // should be usize?
     pub(crate) modified_since_accessed: bool,
 
+    // TODO: add a seperate spell diagnostics list decoupled from the language server?
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
 }
@@ -393,7 +394,7 @@ impl Document {
         Ok(doc)
     }
 
-    pub fn spell_check(&mut self) {
+    pub fn spell_check(&mut self) -> Vec<Diagnostic> {
         let mut diagnostics = Vec::new();
         if let Some(node) = self.syntax() {
             let mut spell_checker = helix_spell::Client::new();
@@ -418,17 +419,19 @@ impl Document {
                                     end: position + error.position + word_count,
                                 },
                                 message: error.suggestions.join("\n"),
-                                severity: Some(diagnostic::Severity::Hint),
+                                severity: Some(diagnostic::Severity::Warning),
                                 code: None,
                             };
                             diagnostics.push(diagnostic);
+                            // TODO: don't set doc diagnostics here, simply return the Vec<Diagnostic> instead
+                            // and have the caller decide how to handle it
                         }
                         position += line.len_chars();
                     }
                 }
             };
         };
-        self.add_diagnostics(diagnostics.as_mut());
+        diagnostics
     }
 
     pub fn auto_format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {

@@ -8,13 +8,14 @@ pub struct Client {
 
 impl Client {
     pub fn new() -> Self {
+        // TODO: accept lang as an argument, configurable by the user
         let lang = "en_US";
         let checker = SpellLauncher::new()
             .aspell()
             .dictionary(lang)
             .launch()
+            // TODO: instead of unwrap (which panics), figure out proper error handling
             .unwrap();
-        // TODO: instead of unwrap (which panics), figure out proper error handling
         Self { checker, lang }
     }
     pub fn check(&mut self, string: &str) -> Vec<IspellError> {
@@ -22,6 +23,4 @@ impl Client {
     }
 }
 
-// TODO: use helix_core::Diagnostic to represent a mispelling
-// note: Range start is the location of total characters, regardless of "lines"
-// thus, we can probably send the entire string to aspell and things should work alright
+// TODO: expose the ability to add words to a user's dictionary, which the ispell crate supports

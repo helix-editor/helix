@@ -341,8 +341,8 @@ fn spell_check(
         return Ok(());
     }
     let doc = doc_mut!(cx.editor);
-    // TODO: make this async via a Job?
-    doc.spell_check();
+    let mut diagnostics = doc.spell_check();
+    doc.add_diagnostics(diagnostics.as_mut());
     Ok(())
 }
 

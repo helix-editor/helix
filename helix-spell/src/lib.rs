@@ -18,8 +18,8 @@ mod tests {
         let word = "This sentence contains a misssspelled word";
         let errors = client.check(word);
         let error = errors.first().unwrap();
-        assert_eq!(error.word, "misssspelled");
-        assert_eq!(error.pos, 25);
+        assert_eq!(error.misspelled, "misssspelled");
+        assert_eq!(error.position, 25);
     }
 
     #[test]
