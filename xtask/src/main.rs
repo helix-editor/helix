@@ -68,14 +68,20 @@ pub mod md_gen {
 
     use crate::helpers;
     use crate::path;
+    use helix_term::commands::Req;
     use helix_term::commands::TYPABLE_COMMAND_LIST;
     use helix_term::health::TsFeature;
-    use helix_term::keymap::MappableCommand;
+    use helix_term::keymap::{self, MappableCommand};
+    use helix_view::document::Mode;
     use std::fs;
 
     pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
     pub const COMMANDS_MD_OUTPUT: &str = "static-cmd.md";
     pub const LANG_SUPPORT_MD_OUTPUT: &str = "lang-support.md";
+
+    fn md_escape(string: &str) -> String {
+        string.replace("`", r"\`").replace("|", r"\|")
+    }
 
     fn md_table_heading(cols: &[String]) -> String {
         let mut header = String::new();
@@ -84,12 +90,26 @@ pub mod md_gen {
         header
     }
 
+    fn md_heading(heading: &str, level: usize) -> String {
+        let mut string = "#".repeat(level);
+        string += " ";
+        string += heading;
+        string += "\n";
+        string
+    }
+
     fn md_table_row(cols: &[String]) -> String {
         format!("| {} |\n", cols.join(" | "))
     }
 
     fn md_mono(s: &str) -> String {
-        format!("`{}`", s)
+        if s.contains("`") {
+            format!("`` {} ``", s)
+        } else if s.contains("|") {
+            format!("<code>{}</code>", s.replace("|", "&#124;"))
+        } else {
+            format!("`{}`", s)
+        }
     }
 
     pub fn typable_commands() -> Result<String, DynError> {
@@ -119,15 +139,69 @@ pub mod md_gen {
     pub fn commands() -> Result<String, DynError> {
         let mut md = String::new();
         md.push_str(&md_table_heading(&[
+            "Normal".to_owned(),
+            "Insert".to_owned(),
+            "Select".to_owned(),
             "Name".to_owned(),
             "Description".to_owned(),
         ]));
 
+        let default_keymap = keymap::default::default();
+        let modes = [Mode::Normal, Mode::Insert, Mode::Select];
+        let reverses = modes.map(|m| default_keymap.get(&m).unwrap().reverse_map());
+
         for cmd in MappableCommand::STATIC_COMMAND_LIST {
             match cmd {
                 MappableCommand::Typable { .. } => unreachable!(),
-                MappableCommand::Static { name, fun: _, doc } => {
-                    md.push_str(&md_table_row(&[name.to_string(), doc.to_string()]));
+                MappableCommand::Static {
+                    name,
+                    fun: _,
+                    doc,
+                    requirements,
+                } => {
+                    let mut description = doc.trim().to_string();
+                    for req in *requirements {
+                        let str = match req {
+                            Req::Lsp => " (**LSP**)",
+                            Req::TreeSitter => " (**TS**)",
+                            Req::Dap => " (**DAP**)",
+                        };
+
+                        description.push_str(str)
+                    }
+
+                    let default_keys = reverses
+                        .iter()
+                        .map(|rev| match rev.get(*name) {
+                            Some(keybindings) => {
+                                let mut keybindings = keybindings.clone();
+                                keybindings.sort();
+
+                                let mut string = String::new();
+                                string += &keybindings
+                                    .iter()
+                                    .map(|keys| {
+                                        md_mono(
+                                            &keys
+                                                .iter()
+                                                .map(|k| k.to_string())
+                                                .collect::<Vec<_>>()
+                                                .join(" "),
+                                        )
+                                    })
+                                    .collect::<Vec<_>>()
+                                    .join(", ");
+                                string
+                            }
+                            None => "-".to_owned(),
+                        })
+                        .collect::<Vec<_>>();
+
+                    let mut row = default_keys;
+                    row.push(md_mono(name));
+                    row.push(description);
+
+                    md.push_str(&md_table_row(&row));
                 }
             }
         }

@@ -7,6 +7,7 @@
   - [Keymap](./keymap.md)
   - [Commands](./commands.md)
   - [Language Support](./lang-support.md)
+  - [Full Command list](./all-commands.md)
 - [Migrating from Vim](./from-vim.md)
 - [Configuration](./configuration.md)
   - [Themes](./themes.md)
