@@ -533,13 +533,13 @@ impl Default for WhitespaceCharacters {
 pub struct IndentGuidesConfig {
     pub render: bool,
     pub character: char,
-    pub skip_first: bool,
+    pub skip: u16,
 }
 
 impl Default for IndentGuidesConfig {
     fn default() -> Self {
         Self {
-            skip_first: false,
+            skip: 0,
             render: false,
             character: '│',
         }
