@@ -985,7 +985,9 @@ impl LanguageLayer {
     }
 
     fn parse(&mut self, parser: &mut Parser, source: &Rope) -> Result<(), Error> {
-        parser.set_included_ranges(&self.ranges).unwrap();
+        parser
+            .set_included_ranges(&self.ranges)
+            .map_err(|_| Error::InvalidRanges)?;
 
         parser
             .set_language(self.config.language)
@@ -1135,6 +1137,7 @@ pub struct Highlight(pub usize);
 pub enum Error {
     Cancelled,
     InvalidLanguage,
+    InvalidRanges,
     Unknown,
 }
 
