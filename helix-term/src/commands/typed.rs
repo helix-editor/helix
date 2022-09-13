@@ -340,10 +340,21 @@ fn spell_check(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    let doc = doc_mut!(cx.editor);
-    let mut diagnostics = doc.spell_check();
-    doc.add_diagnostics(diagnostics.as_mut());
+    let doc = doc!(cx.editor);
+    // TODO: could probably just be a job?
+    let callback = make_spell_check_callback(doc.id());
+    cx.jobs.callback(callback);
     Ok(())
+}
+
+async fn make_spell_check_callback(doc_id: DocumentId) -> anyhow::Result<job::Callback> {
+    let call: job::Callback = Box::new(move |editor, _compositor| {
+        if let Some(doc) = editor.document_mut(doc_id) {
+            let mut diagnostics = doc.spell_check();
+            doc.add_diagnostics(diagnostics.as_mut());
+        };
+    });
+    Ok(call)
 }
 
 fn set_indent_style(

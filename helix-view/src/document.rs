@@ -1117,6 +1117,8 @@ impl Document {
 
     pub fn add_diagnostics(&mut self, diagnostics: &mut Vec<Diagnostic>) {
         self.diagnostics.append(diagnostics);
+        self.diagnostics
+            .sort_unstable_by_key(|diagnostic| diagnostic.range);
     }
 
     /// Get the document's auto pairs. If the document has a recognized

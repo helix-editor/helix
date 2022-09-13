@@ -328,7 +328,7 @@ impl Application {
                     self.handle_idle_timeout();
                     // HACK: force rendering until I can figure out how
                     // async jobs work
-                    self.render();
+                    // self.render();
 
                     #[cfg(feature = "integration")]
                     {
