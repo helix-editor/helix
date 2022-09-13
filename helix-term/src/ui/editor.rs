@@ -437,7 +437,7 @@ impl EditorView {
             }
 
             let mut starting_indent = (offset.col / tab_width) as u16;
-            starting_indent += config.indent_guides.skip;
+            starting_indent += config.indent_guides.skip_levels;
             // TODO: limit to a max indent level too. It doesn't cause visual artifacts but it would avoid some
             // extra loops if the code is deeply nested.
 
