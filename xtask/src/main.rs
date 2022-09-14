@@ -175,7 +175,12 @@ pub mod md_gen {
         }
     }
 
-    fn gen_keymap(keymap: &KeyTrieNode, name: &str, level: usize) -> String {
+    fn gen_keymap(
+        keymap: &KeyTrieNode,
+        name: &str,
+        level: usize,
+        commands_handled: &mut HashSet<String>,
+    ) -> String {
         let mut md = String::new();
         let table_heading = md_table_heading(&[
             "Key".to_owned(),
@@ -191,7 +196,10 @@ pub mod md_gen {
 
         for (keys, trie) in items {
             let (description, command) = match trie {
-                KeyTrie::Leaf(command) => (md_description(command), md_mono(command.name())),
+                KeyTrie::Leaf(command) => {
+                    commands_handled.insert(command.name().to_owned());
+                    (md_description(command), md_mono(command.name()))
+                }
                 KeyTrie::Sequence(_) => unreachable!(),
                 KeyTrie::Node(node) => {
                     sub_modes.push(node);
@@ -201,7 +209,7 @@ pub mod md_gen {
             md.push_str(&md_table_row(&[md_keys(&keys), description, command]));
         }
         for mode in sub_modes {
-            let text = gen_keymap(mode, mode.name(), level + 1);
+            let text = gen_keymap(mode, mode.name(), level + 1, commands_handled);
             md.push_str(&text);
         }
 
@@ -220,10 +228,25 @@ pub mod md_gen {
             (Mode::Select, "Select"),
         ];
 
+        let mut mapped = HashSet::new();
         for mode in modes {
             let keymap = default_keymap.get(&mode.0).unwrap();
-            let text = gen_keymap(keymap, mode.1, 0);
+            let text = gen_keymap(keymap, mode.1, 0, &mut mapped);
             md.push_str(&text);
+        }
+
+        md.push_str(&md_heading("Unmapped Commands", 2));
+        md.push_str(&md_table_heading(&[
+            "Command".to_owned(),
+            "Description".to_owned(),
+        ]));
+        for command in MappableCommand::STATIC_COMMAND_LIST {
+            if !mapped.contains(command.name()) {
+                md.push_str(&md_table_row(&[
+                    md_mono(command.name()),
+                    md_description(command),
+                ]))
+            }
         }
 
         Ok(md)

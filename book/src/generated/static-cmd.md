@@ -563,3 +563,19 @@
 | `?` | Reverse search for regex pattern | `rsearch` |
 | `n` | Select next search match | `search_next` |
 | `N` | Select previous search match | `search_prev` |
+## Unmapped Commands
+| Command | Description |
+| --- | --- |
+| `no_op` | Do nothing |
+| `move_prev_word_end` | Move to end of previous word |
+| `extend_line` | Select current line, if already selected, extend to another line based on the anchor |
+| `extend_line_above` | Select current line, if already selected, extend to previous line |
+| `goto_file_end` | Goto file end |
+| `goto_line_end_newline` | Goto line end |
+| `extend_to_line_end_newline` | Extend to line end |
+| `signature_help` | Show signature help |
+| `yank_joined_to_primary_clipboard` | Join and yank selections to primary clipboard |
+| `yank_main_selection_to_primary_clipboard` | Yank main selection to primary clipboard |
+| `replace_selections_with_primary_clipboard` | Replace selections by primary clipboard |
+| `paste_primary_clipboard_after` | Paste primary clipboard after selections |
+| `paste_primary_clipboard_before` | Paste primary clipboard before selections |
