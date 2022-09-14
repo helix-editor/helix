@@ -1,8 +1,38 @@
 use std::collections::HashMap;
 
 use super::macros::keymap;
-use super::{Keymap, Mode};
+use super::{KeyTrie, Keymap, Mode};
 use helix_core::hashmap;
+
+pub fn select_changes() -> KeyTrie {
+    keymap!({ "Select mode"
+        "h" | "left" => extend_char_left,
+        "j" | "down" => extend_line_down,
+        "k" | "up" => extend_line_up,
+        "l" | "right" => extend_char_right,
+
+        "w" => extend_next_word_start,
+        "b" => extend_prev_word_start,
+        "e" => extend_next_word_end,
+        "W" => extend_next_long_word_start,
+        "B" => extend_prev_long_word_start,
+        "E" => extend_next_long_word_end,
+
+        "n" => extend_search_next,
+        "N" => extend_search_prev,
+
+        "t" => extend_till_char,
+        "f" => extend_next_char,
+        "T" => extend_till_prev_char,
+        "F" => extend_prev_char,
+
+        "home" => extend_to_line_start,
+        "end" => extend_to_line_end,
+        "esc" => exit_select_mode,
+
+        "v" => normal_mode,
+    })
+}
 
 pub fn default() -> HashMap<Mode, Keymap> {
     let normal = keymap!({ "Normal mode"
@@ -312,33 +342,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "C-x" => decrement,
     });
     let mut select = normal.clone();
-    select.merge_nodes(keymap!({ "Select mode"
-        "h" | "left" => extend_char_left,
-        "j" | "down" => extend_line_down,
-        "k" | "up" => extend_line_up,
-        "l" | "right" => extend_char_right,
+    select.merge_nodes(select_changes());
 
-        "w" => extend_next_word_start,
-        "b" => extend_prev_word_start,
-        "e" => extend_next_word_end,
-        "W" => extend_next_long_word_start,
-        "B" => extend_prev_long_word_start,
-        "E" => extend_next_long_word_end,
-
-        "n" => extend_search_next,
-        "N" => extend_search_prev,
-
-        "t" => extend_till_char,
-        "f" => extend_next_char,
-        "T" => extend_till_prev_char,
-        "F" => extend_prev_char,
-
-        "home" => extend_to_line_start,
-        "end" => extend_to_line_end,
-        "esc" => exit_select_mode,
-
-        "v" => normal_mode,
-    }));
     let insert = keymap!({ "Insert mode"
         "esc" => normal_mode,
 

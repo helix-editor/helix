@@ -74,6 +74,7 @@ pub mod md_gen {
     use helix_term::keymap;
     use helix_term::keymap::KeyTrie;
     use helix_term::keymap::KeyTrieNode;
+    use helix_term::keymap::Keymap;
     use helix_term::keymap::MappableCommand;
     use helix_view::document::Mode;
     use helix_view::input::KeyEvent;
@@ -223,15 +224,14 @@ pub mod md_gen {
 
         // TODO only show differences from normal in select mode
         let modes = [
-            (Mode::Normal, "Normal"),
-            (Mode::Insert, "Insert"),
-            (Mode::Select, "Select"),
+            (default_keymap.get(&Mode::Normal).unwrap(), "Normal"),
+            (default_keymap.get(&Mode::Insert).unwrap(), "Insert"),
+            (&Keymap::new(keymap::default::select_changes()), "Select"),
         ];
 
         let mut mapped = HashSet::new();
         for mode in modes {
-            let keymap = default_keymap.get(&mode.0).unwrap();
-            let text = gen_keymap(keymap, mode.1, 0, &mut mapped);
+            let text = gen_keymap(mode.0, mode.1, 0, &mut mapped);
             md.push_str(&text);
         }
 
