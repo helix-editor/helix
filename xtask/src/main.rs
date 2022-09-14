@@ -177,6 +177,7 @@ pub mod md_gen {
             MappableCommand::Static {
                 name: _,
                 fun: _,
+                category: _,
                 doc,
                 requirements,
             } => {
