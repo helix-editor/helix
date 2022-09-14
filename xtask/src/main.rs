@@ -68,11 +68,13 @@ pub mod md_gen {
 
     use crate::helpers;
     use crate::path;
+    use helix_term::commands::Req;
     use helix_term::commands::TYPABLE_COMMAND_LIST;
     use helix_term::health::TsFeature;
     use helix_term::keymap;
     use helix_term::keymap::KeyTrie;
     use helix_term::keymap::KeyTrieNode;
+    use helix_term::keymap::MappableCommand;
     use helix_view::document::Mode;
     use helix_view::input::KeyEvent;
     use std::collections::HashSet;
@@ -140,13 +142,37 @@ pub mod md_gen {
     }
 
     fn md_keys(keys: &[KeyEvent]) -> String {
-        keys.iter().map(md_key).collect::<Vec<_>>().join(",")
+        keys.iter().map(md_key).collect::<Vec<_>>().join(", ")
     }
 
     fn md_enter_mode(name: &str) -> String {
         let lower = name.to_ascii_lowercase();
         let link = lower.replace(" ", "-").replace("(", "").replace(")", "");
         format!("Enter [{} mode](#{})", lower, link)
+    }
+
+    fn md_description(command: &MappableCommand) -> String {
+        match command {
+            MappableCommand::Typable { .. } => unreachable!(),
+            MappableCommand::Static {
+                name: _,
+                fun: _,
+                doc,
+                requirements,
+            } => {
+                let mut description = doc.trim().to_string();
+                for req in *requirements {
+                    let str = match req {
+                        Req::Lsp => " (**LSP**)",
+                        Req::TreeSitter => " (**TS**)",
+                        Req::Dap => " (**DAP**)",
+                    };
+
+                    description.push_str(str)
+                }
+                description
+            }
+        }
     }
 
     fn gen_keymap(keymap: &KeyTrieNode, name: &str, level: usize) -> String {
@@ -165,7 +191,7 @@ pub mod md_gen {
 
         for (keys, trie) in items {
             let (description, command) = match trie {
-                KeyTrie::Leaf(command) => (command.doc().to_string(), md_mono(command.name())),
+                KeyTrie::Leaf(command) => (md_description(command), md_mono(command.name())),
                 KeyTrie::Sequence(_) => unreachable!(),
                 KeyTrie::Node(node) => {
                     sub_modes.push(node);
