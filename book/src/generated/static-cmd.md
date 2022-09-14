@@ -96,7 +96,8 @@ ANCHOR: all
 | `C-o` | Jump backward on jumplist | `jump_backward` |
 | `C-s` | Save current selection to jumplist | `save_selection` |
 | `space` | Enter [space mode](#space) |  |
-| `z`, `Z` | Enter [view mode](#view) |  |
+| `z` | Enter [view mode](#view) |  |
+| `Z` | Enter sticky [view mode](#view) |  |
 | `"` | Select register | `select_register` |
 | <code>&#124;</code> | Pipe selections through shell command | `shell_pipe` |
 | <code>A-&#124;</code> | Pipe selections into shell command ignoring output | `shell_pipe_to` |
@@ -198,7 +199,7 @@ ANCHOR: all
 | `G` | Open workspace diagnostic picker (**LSP**) | `workspace_diagnostics_picker` |
 | `a` | Perform code action (**LSP**) | `code_action` |
 | `'` | Open last picker | `last_picker` |
-| `d` | Enter [debug (experimental) mode](#debug-experimental) |  |
+| `d` | Enter sticky [debug (experimental) mode](#debug-experimental) |  |
 | `w` | Enter [window mode](#window) |  |
 | `y` | Join and yank selections to clipboard | `yank_joined_to_clipboard` |
 | `Y` | Yank main selection to clipboard | `yank_main_selection_to_clipboard` |

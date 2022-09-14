@@ -156,10 +156,14 @@ pub mod md_gen {
         format!("[{}](#{})", name, link)
     }
 
-    fn md_enter_mode(name: &str) -> String {
+    fn md_enter_mode(node: &KeyTrieNode) -> String {
+        let name = node.name();
         let lower = name.to_ascii_lowercase();
         let link = lower.replace(" ", "-").replace("(", "").replace(")", "");
-        format!("Enter [{} mode](#{})", lower, link)
+        match node.is_sticky {
+            true => format!("Enter sticky [{} mode](#{})", lower, link),
+            false => format!("Enter [{} mode](#{})", lower, link),
+        }
     }
 
     fn md_description(command: &MappableCommand) -> String {
@@ -231,7 +235,7 @@ pub mod md_gen {
                 KeyTrie::Sequence(_) => unreachable!(),
                 KeyTrie::Node(node) => {
                     sub_modes.push(node);
-                    (md_enter_mode(node.name()), "".to_string())
+                    (md_enter_mode(node), "".to_string())
                 }
             };
             md.push_str(&md_table_row(&[md_keys(&keys), description, command]));
