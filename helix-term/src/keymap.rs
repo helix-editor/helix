@@ -126,7 +126,7 @@ impl Default for KeyTrieNode {
 
 impl PartialEq for KeyTrieNode {
     fn eq(&self, other: &Self) -> bool {
-        self.map == other.map && self.is_sticky == other.is_sticky
+        self.map == other.map
     }
 }
 

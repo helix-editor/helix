@@ -356,6 +356,14 @@ pub mod md_gen {
                 for j in i + 1..num_keys {
                     let other = keymap.get(&keys[j]).unwrap();
                     if other == value {
+                        if let KeyTrie::Node(node) = value {
+                            if let KeyTrie::Node(other_node) = other {
+                                if other_node.is_sticky != node.is_sticky {
+                                    // Don't unify keys if their nodes have different stickyness
+                                    continue;
+                                }
+                            }
+                        }
                         handled_indexes.insert(j);
                         v.push(keys[j]);
                     }
