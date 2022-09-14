@@ -1,30 +1,30 @@
-# Author: Alexander Brevig <alexanderbrevig@gmail.com>
+# Author: Alexander Brevig <alexanderbrevig@gmail.com>, krfl <kr.fl@outlook.com>
 # Adopted from https://github.com/biletskyy/flatwhite-syntax
 
 "attribute" = { fg = "blue_text", bg = "blue_bg" }
-"comment" = { fg = "base3", bg = "base7", modifiers = ["italic"] }
+"comment" = { fg = "base3", modifiers = ["italic"] }
 "comment.line" = {}
 "comment.block" = {}
 "comment.block.documentation" = { fg = "base2" }
 "constant" = { fg = "blue_text", bg = "blue_bg" }
-"constructor" = { fg = "base1", bg = "base7" }
-"function" = { fg = "base1", bg = "base7", modifiers = ["bold"] }
+"constructor" = { fg = "base1" }
+"function" = { fg = "base1", modifiers = ["bold"] }
 "keyword" = { fg = "purple_text", bg = "purple_bg" }
 "label" = { modifiers = ["bold"] }
 "namespace" = { fg = "teal_text", bg = "teal_bg" }
-"operator" = { fg = "base1", bg = "base7" }
+"operator" = { fg = "base1" }
 "punctuation.bracket" = { modifiers = ["bold"] }
 "special" = { fg = "blue_text", bg = "blue_bg" }
 "string" = { fg = "green_text", bg = "green_bg" }
-"type" = { fg = "base1", bg = "base7" }
-"variable" = { fg = "base1", bg = "base7" }
+"type" = { fg = "base1" }
+"variable" = { fg = "base1" }
 "variable.parameter" = { fg = "blue_text", bg = "blue_bg" }
 
 "diagnostic" = { modifiers = ["underlined"] }
 "info" = { fg = "orange_text", bg = "orange_bg" }
 "hint" = { modifiers = ["bold"] }
 "warning" = { fg = "orange_text", bg = "orange_bg" }
-"error" = { fg = "diff_delete", bg = "base7" }
+"error" = { fg = "diff_delete" }
 
 "markup.heading" = { fg = "purple_text", bg = "purple_bg", modifiers = [
   "bold",
@@ -47,11 +47,12 @@
 "ui.cursor" = { fg = "base1", bg = "base7", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "base1", bg = "base7", modifiers = ["reversed"] }
 "ui.cursor.match" = { fg = "base5", bg = "base3", modifiers = ["reversed"] }
-"ui.selection" = { bg = "base3" }
-"ui.selection.primary" = { fg = "base5", bg = "base3" }
+"ui.selection" = { bg = "base4" }
+"ui.selection.primary" = { fg = "base6", bg = "base2" }
 
-"ui.virtual" = { bg = "base6" }
-"ui.virtual.whitespace" = { bg = "base7" }
+"ui.virtual" = { fg = "base5", bg = "base6" }
+"ui.virtual.whitespace" = { fg = "base5" }
+"ui.virtual.ruler" = { bg = "base6" }
 
 "ui.linenr" = { bg = "base6" }
 "ui.linenr.selected" = { bg = "base6", modifiers = ["reversed"] }
@@ -66,15 +67,15 @@
   "bold",
 ] }
 
-"ui.text" = { fg = "base1", bg = "base7" }
-"ui.text.focus" = { fg = "base1", bg = "base6", modifiers = ["bold"] }
+"ui.text" = { fg = "base1" }
+"ui.text.focus" = { fg = "base1", modifiers = ["bold"] }
 
 "ui.menu" = { fg = "base1", bg = "base6" }
 "ui.menu.selected" = { fg = "base1", bg = "base6", modifiers = ["reversed"] }
 "ui.menu.scroll" = { fg = "base1", bg = "base6" }
-"ui.help" = { fg = "base1", bg = "base7" }
-"ui.popup" = { fg = "base1", bg = "base7" }
-"ui.window" = { fg = "base1", bg = "base7" }
+"ui.help" = { fg = "base1", bg = "base6" }
+"ui.popup" = { fg = "base1", bg = "base6" }
+"ui.window" = { fg = "base1", bg = "base6" }
 
 "diff.plus" = { bg = "diff_add" }
 "diff.delta" = { bg = "diff_change" }
