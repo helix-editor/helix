@@ -3,6 +3,7 @@
 | astro | ✓ |  |  |  |
 | awk | ✓ | ✓ |  | `awk-language-server` |
 | bash | ✓ |  |  | `bash-language-server` |
+| bass | ✓ |  |  | `bass` |
 | beancount | ✓ |  |  |  |
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | `OmniSharp` |
