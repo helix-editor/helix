@@ -20,6 +20,8 @@ fn get_rules() -> Vec<Require> {
     vec![
         // Check for ui.selection, which is required
         Require::Existence(Rule::has_either("ui.selection")),
+        Require::Existence(Rule::has_either("ui.selection.primary")),
+        Require::Difference("ui.selection", "ui.selection.primary"),
         // Check for planned readable text
         Require::Existence(Rule::has_fg("ui.text")),
         Require::Existence(Rule::has_bg("ui.background")),
