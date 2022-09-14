@@ -146,6 +146,12 @@ pub mod md_gen {
         keys.iter().map(md_key).collect::<Vec<_>>().join(", ")
     }
 
+    fn md_link(name: &str) -> String {
+        let lower = name.to_ascii_lowercase();
+        let link = lower.replace(" ", "-").replace("(", "").replace(")", "");
+        format!("[{}](#{})", name, link)
+    }
+
     fn md_enter_mode(name: &str) -> String {
         let lower = name.to_ascii_lowercase();
         let link = lower.replace(" ", "-").replace("(", "").replace(")", "");
@@ -176,12 +182,29 @@ pub mod md_gen {
         }
     }
 
+    /// Markdown table of contents
+    fn md_toc(table: &Vec<(String, usize)>) -> String {
+        let mut md = String::new();
+        for (name, depth) in table {
+            let mut line = "  ".repeat(*depth);
+            line.push_str("- ");
+            line.push_str(&md_link(name));
+            line.push('\n');
+            md.push_str(&line);
+        }
+
+        md
+    }
+
     fn gen_keymap(
         keymap: &KeyTrieNode,
         name: &str,
         level: usize,
         commands_handled: &mut HashSet<String>,
+        table: &mut Vec<(String, usize)>,
     ) -> String {
+        table.push((name.to_owned(), level));
+
         let mut md = String::new();
         let table_heading = md_table_heading(&[
             "Key".to_owned(),
@@ -210,7 +233,7 @@ pub mod md_gen {
             md.push_str(&md_table_row(&[md_keys(&keys), description, command]));
         }
         for mode in sub_modes {
-            let text = gen_keymap(mode, mode.name(), level + 1, commands_handled);
+            let text = gen_keymap(mode, mode.name(), level + 1, commands_handled, table);
             md.push_str(&text);
         }
 
@@ -222,7 +245,6 @@ pub mod md_gen {
 
         let default_keymap = keymap::default::default();
 
-        // TODO only show differences from normal in select mode
         let modes = [
             (default_keymap.get(&Mode::Normal).unwrap(), "Normal"),
             (default_keymap.get(&Mode::Insert).unwrap(), "Insert"),
@@ -230,12 +252,17 @@ pub mod md_gen {
         ];
 
         let mut mapped = HashSet::new();
+        // table of contents
+        let mut table = Vec::new();
         for mode in modes {
-            let text = gen_keymap(mode.0, mode.1, 0, &mut mapped);
+            let text = gen_keymap(mode.0, mode.1, 0, &mut mapped, &mut table);
             md.push_str(&text);
         }
 
-        md.push_str(&md_heading("Unmapped Commands", 2));
+        let unmapped_label = "Unmapped Commands";
+        table.push((unmapped_label.to_owned(), 0));
+
+        md.push_str(&md_heading(unmapped_label, 2));
         md.push_str(&md_table_heading(&[
             "Command".to_owned(),
             "Description".to_owned(),
@@ -248,6 +275,9 @@ pub mod md_gen {
                 ]))
             }
         }
+
+        let toc = md_toc(&table);
+        md.insert_str(0, &toc);
 
         Ok(md)
     }

@@ -1,3 +1,19 @@
+- [Normal](#normal)
+  - [Goto](#goto)
+  - [Match](#match)
+  - [Left bracket](#left-bracket)
+  - [Right bracket](#right-bracket)
+  - [Window](#window)
+    - [New split scratch buffer](#new-split-scratch-buffer)
+  - [Space](#space)
+    - [Debug (experimental)](#debug-experimental)
+      - [Switch](#switch)
+    - [Window](#window)
+      - [New split scratch buffer](#new-split-scratch-buffer)
+  - [View](#view)
+- [Insert](#insert)
+- [Select](#select)
+- [Unmapped Commands](#unmapped-commands)
 ## Normal
 | Key | Description | Command |
 | --- | --- | --- |
