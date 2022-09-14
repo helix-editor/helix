@@ -68,20 +68,19 @@ pub mod md_gen {
 
     use crate::helpers;
     use crate::path;
-    use helix_term::commands::Req;
     use helix_term::commands::TYPABLE_COMMAND_LIST;
     use helix_term::health::TsFeature;
-    use helix_term::keymap::{self, MappableCommand};
+    use helix_term::keymap;
+    use helix_term::keymap::KeyTrie;
+    use helix_term::keymap::KeyTrieNode;
     use helix_view::document::Mode;
+    use helix_view::input::KeyEvent;
+    use std::collections::HashSet;
     use std::fs;
 
     pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
     pub const COMMANDS_MD_OUTPUT: &str = "static-cmd.md";
     pub const LANG_SUPPORT_MD_OUTPUT: &str = "lang-support.md";
-
-    fn md_escape(string: &str) -> String {
-        string.replace("`", r"\`").replace("|", r"\|")
-    }
 
     fn md_table_heading(cols: &[String]) -> String {
         let mut header = String::new();
@@ -136,77 +135,98 @@ pub mod md_gen {
         Ok(md)
     }
 
+    fn md_key(key: &KeyEvent) -> String {
+        md_mono(&key.to_string())
+    }
+
+    fn md_keys(keys: &[KeyEvent]) -> String {
+        keys.iter().map(md_key).collect::<Vec<_>>().join(",")
+    }
+
+    fn md_enter_mode(name: &str) -> String {
+        let lower = name.to_ascii_lowercase();
+        let link = lower.replace(" ", "-").replace("(", "").replace(")", "");
+        format!("Enter [{} mode](#{})", lower, link)
+    }
+
+    fn gen_keymap(keymap: &KeyTrieNode, name: &str, level: usize) -> String {
+        let mut md = String::new();
+        let table_heading = md_table_heading(&[
+            "Key".to_owned(),
+            "Description".to_owned(),
+            "Command".to_owned(),
+        ]);
+        md.push_str(&md_heading(name, level + 2));
+        md.push_str(&table_heading);
+
+        let items = unify(keymap);
+
+        let mut sub_modes = Vec::new();
+
+        for (keys, trie) in items {
+            let (description, command) = match trie {
+                KeyTrie::Leaf(command) => (command.doc().to_string(), md_mono(command.name())),
+                KeyTrie::Sequence(_) => unreachable!(),
+                KeyTrie::Node(node) => {
+                    sub_modes.push(node);
+                    (md_enter_mode(node.name()), "".to_string())
+                }
+            };
+            md.push_str(&md_table_row(&[md_keys(&keys), description, command]));
+        }
+        for mode in sub_modes {
+            let text = gen_keymap(mode, mode.name(), level + 1);
+            md.push_str(&text);
+        }
+
+        md
+    }
+
     pub fn commands() -> Result<String, DynError> {
         let mut md = String::new();
-        md.push_str(&md_table_heading(&[
-            "Normal".to_owned(),
-            "Insert".to_owned(),
-            "Select".to_owned(),
-            "Name".to_owned(),
-            "Description".to_owned(),
-        ]));
 
         let default_keymap = keymap::default::default();
-        let modes = [Mode::Normal, Mode::Insert, Mode::Select];
-        let reverses = modes.map(|m| default_keymap.get(&m).unwrap().reverse_map());
 
-        for cmd in MappableCommand::STATIC_COMMAND_LIST {
-            match cmd {
-                MappableCommand::Typable { .. } => unreachable!(),
-                MappableCommand::Static {
-                    name,
-                    fun: _,
-                    doc,
-                    requirements,
-                } => {
-                    let mut description = doc.trim().to_string();
-                    for req in *requirements {
-                        let str = match req {
-                            Req::Lsp => " (**LSP**)",
-                            Req::TreeSitter => " (**TS**)",
-                            Req::Dap => " (**DAP**)",
-                        };
+        // TODO only show differences from normal in select mode
+        let modes = [
+            (Mode::Normal, "Normal"),
+            (Mode::Insert, "Insert"),
+            (Mode::Select, "Select"),
+        ];
 
-                        description.push_str(str)
-                    }
-
-                    let default_keys = reverses
-                        .iter()
-                        .map(|rev| match rev.get(*name) {
-                            Some(keybindings) => {
-                                let mut keybindings = keybindings.clone();
-                                keybindings.sort();
-
-                                let mut string = String::new();
-                                string += &keybindings
-                                    .iter()
-                                    .map(|keys| {
-                                        md_mono(
-                                            &keys
-                                                .iter()
-                                                .map(|k| k.to_string())
-                                                .collect::<Vec<_>>()
-                                                .join(" "),
-                                        )
-                                    })
-                                    .collect::<Vec<_>>()
-                                    .join(", ");
-                                string
-                            }
-                            None => "-".to_owned(),
-                        })
-                        .collect::<Vec<_>>();
-
-                    let mut row = default_keys;
-                    row.push(md_mono(name));
-                    row.push(description);
-
-                    md.push_str(&md_table_row(&row));
-                }
-            }
+        for mode in modes {
+            let keymap = default_keymap.get(&mode.0).unwrap();
+            let text = gen_keymap(keymap, mode.1, 0);
+            md.push_str(&text);
         }
 
         Ok(md)
+    }
+
+    /// Unify keys that have the same result
+    fn unify(keymap: &KeyTrieNode) -> Vec<(Vec<KeyEvent>, &KeyTrie)> {
+        let mut handled_indexes = HashSet::new();
+        let keys = keymap.order();
+        let num_keys = keymap.order().len();
+        let mut items = Vec::new();
+        for i in 0..num_keys {
+            if !handled_indexes.contains(&i) {
+                handled_indexes.insert(i);
+                let key = keys[i];
+                let mut v = vec![key];
+                let value = keymap.get(&key).unwrap();
+                for j in i + 1..num_keys {
+                    let other = keymap.get(&keys[j]).unwrap();
+                    if other == value {
+                        handled_indexes.insert(j);
+                        v.push(keys[j]);
+                    }
+                }
+
+                items.push((v, value));
+            }
+        }
+        items
     }
 
     pub fn lang_features() -> Result<String, DynError> {
