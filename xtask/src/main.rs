@@ -232,9 +232,13 @@ pub mod md_gen {
             };
             md.push_str(&md_table_row(&[md_keys(&keys), description, command]));
         }
+
         for mode in sub_modes {
-            let text = gen_keymap(mode, mode.name(), level + 1, commands_handled, table);
-            md.push_str(&text);
+            // If this mode wasn't added yet
+            if table.iter().find(|i| i.0 == mode.name()).is_none() {
+                let text = gen_keymap(mode, mode.name(), level + 1, commands_handled, table);
+                md.push_str(&text);
+            }
         }
 
         md

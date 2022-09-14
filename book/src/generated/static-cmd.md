@@ -8,8 +8,6 @@
   - [Space](#space)
     - [Debug (experimental)](#debug-experimental)
       - [Switch](#switch)
-    - [Window](#window)
-      - [New split scratch buffer](#new-split-scratch-buffer)
   - [View](#view)
 - [Insert](#insert)
 - [Select](#select)
@@ -247,31 +245,6 @@
 | --- | --- | --- |
 | `t` | Switch current thread (**DAP**) | `dap_switch_thread` |
 | `f` | Switch stack frame (**DAP**) | `dap_switch_stack_frame` |
-#### Window
-| Key | Description | Command |
-| --- | --- | --- |
-| `C-w`, `w` | Goto next window | `rotate_view` |
-| `C-s`, `s` | Horizontal bottom split | `hsplit` |
-| `C-v`, `v` | Vertical right split | `vsplit` |
-| `C-t`, `t` | Transpose splits | `transpose_view` |
-| `f` | Goto files in selection (hsplit) | `goto_file_hsplit` |
-| `F` | Goto files in selection (vsplit) | `goto_file_vsplit` |
-| `C-q`, `q` | Close window | `wclose` |
-| `C-o`, `o` | Close windows except current | `wonly` |
-| `C-h`, `h`, `left` | Jump to left split | `jump_view_left` |
-| `C-j`, `j`, `down` | Jump to split below | `jump_view_down` |
-| `C-k`, `k`, `up` | Jump to split above | `jump_view_up` |
-| `C-l`, `l`, `right` | Jump to right split | `jump_view_right` |
-| `H` | Swap with left split | `swap_view_left` |
-| `J` | Swap with split below | `swap_view_down` |
-| `K` | Swap with split above | `swap_view_up` |
-| `L` | Swap with right split | `swap_view_right` |
-| `n` | Enter [new split scratch buffer mode](#new-split-scratch-buffer) |  |
-##### New split scratch buffer
-| Key | Description | Command |
-| --- | --- | --- |
-| `C-s`, `s` | Horizontal bottom split scratch buffer | `hsplit_new` |
-| `C-v`, `v` | Vertical right split scratch buffer | `vsplit_new` |
 ### View
 | Key | Description | Command |
 | --- | --- | --- |
