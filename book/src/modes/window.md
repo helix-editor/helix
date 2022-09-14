@@ -1,0 +1,1 @@
+This layer is similar to vim keybindings as kakoune does not support window.

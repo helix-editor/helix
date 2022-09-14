@@ -108,6 +108,8 @@ ANCHOR: all
 | `C-a` | Increment item under cursor | `increment` |
 | `C-x` | Decrement item under cursor | `decrement` |
 ### Goto
+Jumps to various locations.
+
 | Key | Description | Command |
 | --- | --- | --- |
 | `g` | Goto line number <n> else file start | `goto_file_start` |
@@ -129,6 +131,10 @@ ANCHOR: all
 | `p` | Goto previous buffer | `goto_previous_buffer` |
 | `.` | Goto last modification | `goto_last_modification` |
 ### Match
+Enter this mode using `m` from normal mode. See the relevant section
+in [Usage](./usage.md) for an explanation about [surround](./usage.md#surround)
+and [textobject](./usage.md#textobject) usage.
+
 | Key | Description | Command |
 | --- | --- | --- |
 | `m` | Goto matching bracket (**TS**) | `match_brackets` |
@@ -137,6 +143,9 @@ ANCHOR: all
 | `d` | Surround delete | `surround_delete` |
 | `a` | Select around object | `select_textobject_around` |
 | `i` | Select inside object | `select_textobject_inner` |
+
+TODO: Mappings for selecting syntax nodes (a superset of `[`).
+
 ### Left bracket
 | Key | Description | Command |
 | --- | --- | --- |
@@ -162,6 +171,8 @@ ANCHOR: all
 | `p` | Goto next paragraph (**TS**) | `goto_next_paragraph` |
 | `space` | Add newline below | `add_newline_below` |
 ### Window
+This layer is similar to vim keybindings as kakoune does not support window.
+
 | Key | Description | Command |
 | --- | --- | --- |
 | `C-w`, `w` | Goto next window | `rotate_view` |
@@ -187,6 +198,8 @@ ANCHOR: all
 | `C-s`, `s` | Horizontal bottom split scratch buffer | `hsplit_new` |
 | `C-v`, `v` | Vertical right split scratch buffer | `vsplit_new` |
 ### Space
+This layer is a kludge of mappings, mostly pickers.
+
 | Key | Description | Command |
 | --- | --- | --- |
 | `f` | Open file picker | `file_picker` |
@@ -211,6 +224,9 @@ ANCHOR: all
 | `r` | Rename symbol (**LSP**) | `rename_symbol` |
 | `h` | Select symbol references (**LSP**) | `select_references_to_symbol_under_cursor` |
 | `?` | Open command palette | `command_palette` |
+
+> TIP: Global search displays results in a fuzzy picker, use `space + '` to bring it back up after opening a file.
+
 #### Debug (experimental)
 | Key | Description | Command |
 | --- | --- | --- |
@@ -234,6 +250,11 @@ ANCHOR: all
 | `t` | Switch current thread (**DAP**) | `dap_switch_thread` |
 | `f` | Switch stack frame (**DAP**) | `dap_switch_stack_frame` |
 ### View
+View mode is intended for scrolling and manipulating the view without changing
+the selection. The "sticky" variant of this mode is persistent; use the
+`Escape` key to return to normal mode after usage (useful when you're simply
+looking over text and not actively editing it).
+
 | Key | Description | Command |
 | --- | --- | --- |
 | `z`, `c` | Align view center | `align_view_center` |
@@ -251,6 +272,11 @@ ANCHOR: all
 | `n` | Select next search match | `search_next` |
 | `N` | Select previous search match | `search_prev` |
 ## Insert
+We support many readline/emacs style bindings in insert mode for convenience.
+These can be helpful for making simple modifications without escaping to normal
+mode, but beware that you will not have an undo-able "save point" until you
+return to normal mode.
+
 | Key | Description | Command |
 | --- | --- | --- |
 | `esc` | Enter normal mode | `normal_mode` |
@@ -266,6 +292,17 @@ ANCHOR: all
 | `C-x` | Invoke completion popup | `completion` |
 | `C-r` | Insert register | `insert_register` |
 ## Select
+This mode echoes Normal mode, but changes any movements to extend
+selections rather than replace them. Goto motions are also changed to
+extend, so that `vgl` for example extends the selection to the end of
+the line.
+
+Search is also affected. By default, `n` and `N` will remove the current
+selection and select the next instance of the search term. Toggling this
+mode before pressing `n` or `N` makes it possible to keep the current
+selection. Toggling it on and off during your iterative searching allows
+you to selectively add search terms to your selections.
+
 | Key | Description | Command |
 | --- | --- | --- |
 | `h`, `left` | Extend left | `extend_char_left` |
@@ -289,6 +326,12 @@ ANCHOR: all
 | `esc` | Exit selection mode | `exit_select_mode` |
 | `v` | Enter normal mode | `normal_mode` |
 ## Unmapped Commands
+Some commands exist but do not have a default keybinding. These commands
+may be quite niche, or simply alternatives to the standard commands. If you
+want to use them, simply map them in your configuration (see [remapping]).
+
+[remapping]: ./remapping.md
+
 | Command | Description |
 | --- | --- |
 | `no_op` | Do nothing |

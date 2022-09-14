@@ -80,6 +80,7 @@ pub mod md_gen {
     use helix_view::input::KeyEvent;
     use std::collections::HashSet;
     use std::fs;
+    use std::fs::read_to_string;
 
     pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
     pub const COMMANDS_MD_OUTPUT: &str = "static-cmd.md";
@@ -116,6 +117,10 @@ pub mod md_gen {
 
     fn md_anchor(md: &str, label: &str) -> String {
         format!("ANCHOR: {0}\n{1}\nANCHOR_END: {0}\n", label, md)
+    }
+
+    fn md_paragraph(md: &str) -> String {
+        format!("{}\n\n", md)
     }
 
     pub fn typable_commands() -> Result<String, DynError> {
@@ -204,6 +209,24 @@ pub mod md_gen {
         md
     }
 
+    fn get_mode_description(mode: &str) -> (Option<String>, Option<String>) {
+        let path = path::book_modes()
+            .join(mode.to_lowercase())
+            .with_extension("md");
+        dbg!(&path);
+
+        match read_to_string(path) {
+            Ok(string) => {
+                let mut split = string.splitn(2, "\n\n\n\n");
+                (
+                    split.next().map(|s| s.trim().to_owned()),
+                    split.next().map(|s| s.trim().to_owned()),
+                )
+            }
+            Err(_) => (None, None),
+        }
+    }
+
     fn gen_keymap(
         keymap: &KeyTrieNode,
         name: &str,
@@ -220,6 +243,12 @@ pub mod md_gen {
             "Command".to_owned(),
         ]);
         md.push_str(&md_heading(name, level + 2));
+
+        let (desc, tip) = get_mode_description(name);
+        if let Some(desc) = desc {
+            md.push_str(&md_paragraph(&desc));
+        }
+
         md.push_str(&table_heading);
 
         let items = unify(keymap);
@@ -239,6 +268,11 @@ pub mod md_gen {
                 }
             };
             md.push_str(&md_table_row(&[md_keys(&keys), description, command]));
+        }
+
+        if let Some(tip) = tip {
+            md.push_str("\n");
+            md.push_str(&md_paragraph(&tip));
         }
 
         for mode in sub_modes {
@@ -275,6 +309,12 @@ pub mod md_gen {
         table.push((unmapped_label.to_owned(), 0));
 
         md.push_str(&md_heading(unmapped_label, 2));
+
+        let (desc, tip) = get_mode_description("Unmapped");
+        if let Some(desc) = desc {
+            md.push_str(&md_paragraph(&desc));
+        }
+
         md.push_str(&md_table_heading(&[
             "Command".to_owned(),
             "Description".to_owned(),
@@ -286,6 +326,9 @@ pub mod md_gen {
                     md_description(command),
                 ]))
             }
+        }
+        if let Some(tip) = tip {
+            md.push_str(&md_paragraph(&tip));
         }
 
         let toc = md_toc(&table);
@@ -404,6 +447,10 @@ pub mod path {
 
     pub fn book_gen() -> PathBuf {
         project_root().join("book/src/generated/")
+    }
+
+    pub fn book_modes() -> PathBuf {
+        project_root().join("book/src/modes/")
     }
 
     pub fn ts_queries() -> PathBuf {
