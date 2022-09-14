@@ -169,7 +169,7 @@ pub fn lint(file: String) -> Result<(), DynError> {
             let message = m.replace("$THEME", theme.as_str());
             println!("{}", message);
         });
-        Err(messages.len().to_string().into())
+        Err(format!("{} has issues", file.clone().as_str()).into())
     } else {
         Ok(())
     }
@@ -177,17 +177,20 @@ pub fn lint(file: String) -> Result<(), DynError> {
 
 pub fn lint_all() -> Result<(), DynError> {
     let files = Loader::read_names(path::themes().as_path());
-    let mut errors = vec![];
     let files_count = files.len();
-    files.into_iter().for_each(|path| {
-        if let Err(err) = lint(path.replace(".toml", "")) {
-            let errs: i32 = err.to_string().parse().expect("Errors must be integral");
-            errors.push(errs)
-        }
-    });
+    let ok_files_count = files
+        .into_iter()
+        .filter_map(|path| lint(path.replace(".toml", "")).ok())
+        .collect::<Vec<()>>()
+        .len();
 
-    if !errors.is_empty() {
-        Err(format!("{} of {} themes had issues", errors.len(), files_count).into())
+    if files_count != ok_files_count {
+        Err(format!(
+            "{} of {} themes had issues",
+            files_count - ok_files_count,
+            files_count
+        )
+        .into())
     } else {
         Ok(())
     }
