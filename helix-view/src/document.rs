@@ -413,7 +413,7 @@ impl Document {
                         for error in errors {
                             let word_count = error.misspelled.chars().count();
                             let diagnostic = Diagnostic {
-                                line: start_line + i + 1,
+                                line: start_line + i,
                                 range: diagnostic::Range {
                                     start: position + error.position,
                                     end: position + error.position + word_count,

@@ -8,10 +8,11 @@ pub struct Client {
 
 impl Client {
     pub fn new() -> Self {
-        // TODO: accept lang as an argument, configurable by the user
+        // TODO: accept lang, mode as an argument, configurable by the user
         let lang = "en_US";
         let checker = SpellLauncher::new()
-            .aspell()
+            .hunspell()
+            // .aspell()
             .dictionary(lang)
             .launch()
             // TODO: instead of unwrap (which panics), figure out proper error handling
