@@ -222,7 +222,7 @@ Options for rendering vertical indent guides.
 | ---           | ---                                                     | ---     |
 | `render`      | Whether to render indent guides.                        | `false` |
 | `character`   | Literal character to use for rendering the indent guide | `│`     |
-| `skip-levels` | amount of indent levels to skip                         | `0`     |
+| `skip-levels` | Number of indent levels to skip                         | `0`     |
 
 Example:
 
