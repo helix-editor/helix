@@ -68,22 +68,18 @@ pub mod md_gen {
 
     use crate::helpers;
     use crate::path;
-    use helix_term::commands::Req;
-    use helix_term::commands::TYPABLE_COMMAND_LIST;
-    use helix_term::health::TsFeature;
-    use helix_term::keymap;
-    use helix_term::keymap::KeyTrie;
-    use helix_term::keymap::KeyTrieNode;
-    use helix_term::keymap::Keymap;
-    use helix_term::keymap::MappableCommand;
-    use helix_view::document::Mode;
-    use helix_view::input::KeyEvent;
+    use helix_term::{
+        commands::{Req, TYPABLE_COMMAND_LIST},
+        health::TsFeature,
+        keymap::{self, KeyTrie, KeyTrieNode, Keymap, MappableCommand},
+    };
+    use helix_view::{document::Mode, input::KeyEvent};
     use std::collections::HashSet;
     use std::fs;
     use std::fs::read_to_string;
 
     pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
-    pub const COMMANDS_MD_OUTPUT: &str = "static-cmd.md";
+    pub const COMMANDS_MD_OUTPUT: &str = "keymap.md";
     pub const LANG_SUPPORT_MD_OUTPUT: &str = "lang-support.md";
 
     fn md_table_heading(cols: &[String]) -> String {
@@ -105,6 +101,7 @@ pub mod md_gen {
         format!("| {} |\n", cols.join(" | "))
     }
 
+    /// Markdown monospace. Escapes ` and | to make sure it works for keys.
     fn md_mono(s: &str) -> String {
         if s.contains("`") {
             format!("`` {} ``", s)
@@ -115,6 +112,8 @@ pub mod md_gen {
         }
     }
 
+    /// Markdown anchors for partial imports.
+    /// See <https://rust-lang.github.io/mdBook/format/mdbook.html#including-portions-of-a-file>
     fn md_anchor(md: &str, label: &str) -> String {
         format!("ANCHOR: {0}\n{1}\nANCHOR_END: {0}\n", label, md)
     }
@@ -123,44 +122,24 @@ pub mod md_gen {
         format!("{}\n\n", md)
     }
 
-    pub fn typable_commands() -> Result<String, DynError> {
-        let mut md = String::new();
-        md.push_str(&md_table_heading(&[
-            "Name".to_owned(),
-            "Description".to_owned(),
-        ]));
-
-        let cmdify = |s: &str| format!("`:{}`", s);
-
-        for cmd in TYPABLE_COMMAND_LIST {
-            let names = std::iter::once(&cmd.name)
-                .chain(cmd.aliases.iter())
-                .map(|a| cmdify(a))
-                .collect::<Vec<_>>()
-                .join(", ");
-
-            let doc = cmd.doc.replace('\n', "<br>");
-
-            md.push_str(&md_table_row(&[names.to_owned(), doc.to_owned()]));
-        }
-
-        Ok(md)
-    }
-
+    /// Markdown representing a key event
     fn md_key(key: &KeyEvent) -> String {
         md_mono(&key.to_string())
     }
 
+    /// Markdown representing a list of key events
     fn md_keys(keys: &[KeyEvent]) -> String {
         keys.iter().map(md_key).collect::<Vec<_>>().join(", ")
     }
 
+    /// Markdown link to section in same doc
     fn md_link(name: &str) -> String {
         let lower = name.to_ascii_lowercase();
         let link = lower.replace(" ", "-").replace("(", "").replace(")", "");
         format!("[{}](#{})", name, link)
     }
 
+    /// Markdown description for entering a mode
     fn md_enter_mode(node: &KeyTrieNode) -> String {
         let name = node.name();
         let lower = name.to_ascii_lowercase();
@@ -171,6 +150,7 @@ pub mod md_gen {
         }
     }
 
+    /// Markdown string description of a command
     fn md_description(command: &MappableCommand) -> String {
         match command {
             MappableCommand::Typable { .. } => unreachable!(),
@@ -212,7 +192,7 @@ pub mod md_gen {
 
     fn get_mode_description(mode: &str) -> (Option<String>, Option<String>) {
         let path = path::book_modes()
-            .join(mode.to_lowercase())
+            .join(mode.to_lowercase().replace(" ", "_"))
             .with_extension("md");
         dbg!(&path);
 
@@ -228,6 +208,30 @@ pub mod md_gen {
         }
     }
 
+    fn keymap_section(
+        name: &str,
+        table: &mut Vec<(String, usize)>,
+        level: usize,
+        inner: &str,
+    ) -> String {
+        let mut md = String::new();
+        md.push_str(&md_heading(name, level + 2));
+        table.push((name.to_owned(), level));
+
+        let (desc, tip) = get_mode_description(name);
+        if let Some(desc) = desc {
+            md.push_str(&md_paragraph(&desc));
+        }
+
+        md.push_str(inner);
+
+        if let Some(tip) = tip {
+            md.push_str("\n");
+            md.push_str(&md_paragraph(&tip));
+        }
+        md
+    }
+
     fn gen_keymap(
         keymap: &KeyTrieNode,
         name: &str,
@@ -235,22 +239,13 @@ pub mod md_gen {
         commands_handled: &mut HashSet<String>,
         table: &mut Vec<(String, usize)>,
     ) -> String {
-        table.push((name.to_owned(), level));
+        let mut inner = String::new();
 
-        let mut md = String::new();
-        let table_heading = md_table_heading(&[
+        inner.push_str(&md_table_heading(&[
             "Key".to_owned(),
             "Description".to_owned(),
             "Command".to_owned(),
-        ]);
-        md.push_str(&md_heading(name, level + 2));
-
-        let (desc, tip) = get_mode_description(name);
-        if let Some(desc) = desc {
-            md.push_str(&md_paragraph(&desc));
-        }
-
-        md.push_str(&table_heading);
+        ]));
 
         let items = unify(keymap);
 
@@ -268,13 +263,9 @@ pub mod md_gen {
                     (md_enter_mode(node), "".to_string())
                 }
             };
-            md.push_str(&md_table_row(&[md_keys(&keys), description, command]));
+            inner.push_str(&md_table_row(&[md_keys(&keys), description, command]));
         }
-
-        if let Some(tip) = tip {
-            md.push_str("\n");
-            md.push_str(&md_paragraph(&tip));
-        }
+        let mut md = keymap_section(name, table, level, &inner);
 
         for mode in sub_modes {
             // If this mode wasn't added yet
@@ -285,60 +276,6 @@ pub mod md_gen {
         }
 
         md
-    }
-
-    pub fn commands() -> Result<String, DynError> {
-        let mut md = String::new();
-
-        let default_keymap = keymap::default::default();
-
-        let modes = [
-            (default_keymap.get(&Mode::Normal).unwrap(), "Normal"),
-            (default_keymap.get(&Mode::Insert).unwrap(), "Insert"),
-            (&Keymap::new(keymap::default::select_changes()), "Select"),
-        ];
-
-        let mut mapped = HashSet::new();
-        // table of contents
-        let mut table = Vec::new();
-        for mode in modes {
-            let text = gen_keymap(mode.0, mode.1, 0, &mut mapped, &mut table);
-            md.push_str(&text);
-        }
-
-        let unmapped_label = "Unmapped Commands";
-        table.push((unmapped_label.to_owned(), 0));
-
-        md.push_str(&md_heading(unmapped_label, 2));
-
-        let (desc, tip) = get_mode_description("Unmapped");
-        if let Some(desc) = desc {
-            md.push_str(&md_paragraph(&desc));
-        }
-
-        md.push_str(&md_table_heading(&[
-            "Command".to_owned(),
-            "Description".to_owned(),
-        ]));
-        for command in MappableCommand::STATIC_COMMAND_LIST {
-            if !mapped.contains(command.name()) {
-                md.push_str(&md_table_row(&[
-                    md_mono(command.name()),
-                    md_description(command),
-                ]))
-            }
-        }
-        if let Some(tip) = tip {
-            md.push_str(&md_paragraph(&tip));
-        }
-
-        let toc = md_toc(&table);
-        // md.insert_str(0, &toc);
-        let mut md = md_anchor(&md, "all");
-        let toc = md_anchor(&toc, "toc");
-        md.push_str(&toc);
-
-        Ok(md)
     }
 
     /// Unify keys that have the same result
@@ -373,6 +310,75 @@ pub mod md_gen {
             }
         }
         items
+    }
+
+    pub fn commands() -> Result<String, DynError> {
+        let mut md = String::new();
+
+        let default_keymap = keymap::default::default();
+
+        let modes = [
+            (default_keymap.get(&Mode::Normal).unwrap(), "Normal"),
+            (default_keymap.get(&Mode::Insert).unwrap(), "Insert"),
+            (&Keymap::new(keymap::default::select_changes()), "Select"),
+        ];
+
+        let mut mapped = HashSet::new();
+        // table of contents
+        let mut table = Vec::new();
+        for mode in modes {
+            let text = gen_keymap(mode.0, mode.1, 0, &mut mapped, &mut table);
+            md.push_str(&text);
+        }
+
+        let mut unmapped = String::new();
+        let name = "Unmapped Commands";
+
+        unmapped.push_str(&md_table_heading(&[
+            "Command".to_owned(),
+            "Description".to_owned(),
+        ]));
+        for command in MappableCommand::STATIC_COMMAND_LIST {
+            if !mapped.contains(command.name()) {
+                unmapped.push_str(&md_table_row(&[
+                    md_mono(command.name()),
+                    md_description(command),
+                ]))
+            }
+        }
+
+        md.push_str(&keymap_section(name, &mut table, 0, &unmapped));
+
+        let toc = md_toc(&table);
+        let mut md = md_anchor(&md, "all");
+        let toc = md_anchor(&toc, "toc");
+        md.push_str(&toc);
+
+        Ok(md)
+    }
+
+    pub fn typable_commands() -> Result<String, DynError> {
+        let mut md = String::new();
+        md.push_str(&md_table_heading(&[
+            "Name".to_owned(),
+            "Description".to_owned(),
+        ]));
+
+        let cmdify = |s: &str| format!("`:{}`", s);
+
+        for cmd in TYPABLE_COMMAND_LIST {
+            let names = std::iter::once(&cmd.name)
+                .chain(cmd.aliases.iter())
+                .map(|a| cmdify(a))
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            let doc = cmd.doc.replace('\n', "<br>");
+
+            md.push_str(&md_table_row(&[names.to_owned(), doc.to_owned()]));
+        }
+
+        Ok(md)
     }
 
     pub fn lang_features() -> Result<String, DynError> {

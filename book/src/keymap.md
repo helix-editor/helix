@@ -1,6 +1,6 @@
 # Keymap
 
-{{#include ./generated/static-cmd.md:toc}}
+{{#include ./generated/keymap.md:toc}}
 
 > 💡 Mappings marked (**LSP**) require an active language server for the file.
 >
@@ -8,4 +8,4 @@
 >
 > 💡 Mappings marked (**DAP**) require a debug adapter for the filetype.
 
-{{#include ./generated/static-cmd.md:all}}
+{{#include ./generated/keymap.md:all}}
