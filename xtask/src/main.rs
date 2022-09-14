@@ -114,6 +114,10 @@ pub mod md_gen {
         }
     }
 
+    fn md_anchor(md: &str, label: &str) -> String {
+        format!("ANCHOR: {0}\n{1}\nANCHOR_END: {0}\n", label, md)
+    }
+
     pub fn typable_commands() -> Result<String, DynError> {
         let mut md = String::new();
         md.push_str(&md_table_heading(&[
@@ -281,7 +285,10 @@ pub mod md_gen {
         }
 
         let toc = md_toc(&table);
-        md.insert_str(0, &toc);
+        // md.insert_str(0, &toc);
+        let mut md = md_anchor(&md, "all");
+        let toc = md_anchor(&toc, "toc");
+        md.push_str(&toc);
 
         Ok(md)
     }

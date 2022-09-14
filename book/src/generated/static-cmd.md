@@ -1,17 +1,4 @@
-- [Normal](#normal)
-  - [Goto](#goto)
-  - [Match](#match)
-  - [Left bracket](#left-bracket)
-  - [Right bracket](#right-bracket)
-  - [Window](#window)
-    - [New split scratch buffer](#new-split-scratch-buffer)
-  - [Space](#space)
-    - [Debug (experimental)](#debug-experimental)
-      - [Switch](#switch)
-  - [View](#view)
-- [Insert](#insert)
-- [Select](#select)
-- [Unmapped Commands](#unmapped-commands)
+ANCHOR: all
 ## Normal
 | Key | Description | Command |
 | --- | --- | --- |
@@ -316,3 +303,22 @@
 | `replace_selections_with_primary_clipboard` | Replace selections by primary clipboard |
 | `paste_primary_clipboard_after` | Paste primary clipboard after selections |
 | `paste_primary_clipboard_before` | Paste primary clipboard before selections |
+
+ANCHOR_END: all
+ANCHOR: toc
+- [Normal](#normal)
+  - [Goto](#goto)
+  - [Match](#match)
+  - [Left bracket](#left-bracket)
+  - [Right bracket](#right-bracket)
+  - [Window](#window)
+    - [New split scratch buffer](#new-split-scratch-buffer)
+  - [Space](#space)
+    - [Debug (experimental)](#debug-experimental)
+      - [Switch](#switch)
+  - [View](#view)
+- [Insert](#insert)
+- [Select](#select)
+- [Unmapped Commands](#unmapped-commands)
+
+ANCHOR_END: toc
