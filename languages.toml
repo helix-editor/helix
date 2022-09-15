@@ -124,6 +124,21 @@ name = "fish"
 source = { git = "https://github.com/ram02z/tree-sitter-fish", rev = "84436cf24c2b3176bfbb220922a0fdbd0141e406" }
 
 [[language]]
+name = "fennel"
+scope = "source.fnl"
+injection-regex = "(fennel|fnl)"
+file-types = ["fnl"]
+shebangs = ["fennel"]
+comment-token = ";"
+formatter = { command = "fnlfmt", args = ["-"] }
+indent = { tab-width = 2, unit = "  " }
+roots = []
+
+[[grammar]]
+name = "fennel"
+source = { git = "https://github.com/travonted/tree-sitter-fennel", rev = "517195970428aacca60891b050aa53eabf4ba78d"}
+
+[[language]]
 name = "mint"
 scope = "source.mint"
 injection-regex = "mint"
