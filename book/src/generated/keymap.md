@@ -118,6 +118,8 @@ and [textobject](./usage.md#textobject) usage.
 TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
 #### Left bracket
+Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
+
 | Key | Description | Command |
 | --- | --- | --- |
 | `d` | Goto previous diagnostic (**LSP**) | `goto_prev_diag` |
@@ -130,6 +132,8 @@ TODO: Mappings for selecting syntax nodes (a superset of `[`).
 | `p` | Goto previous paragraph (**TS**) | `goto_prev_paragraph` |
 | `space` | Add newline above | `add_newline_above` |
 #### Right bracket
+Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
+
 | Key | Description | Command |
 | --- | --- | --- |
 | `d` | Goto next diagnostic (**LSP**) | `goto_next_diag` |
