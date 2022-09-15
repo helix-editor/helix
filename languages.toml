@@ -332,7 +332,7 @@ source = { git = "https://github.com/omertuc/tree-sitter-go-work", rev = "6dd9dd
 name = "javascript"
 scope = "source.js"
 injection-regex = "(js|javascript)"
-file-types = ["js", "jsx", "mjs", "cjs"]
+file-types = ["js", "mjs", "cjs"]
 shebangs = ["node"]
 roots = []
 comment-token = "//"
@@ -363,7 +363,7 @@ injection-regex = "jsx"
 file-types = ["jsx"]
 roots = []
 comment-token = "//"
-language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "javascript" }
+language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "javascriptreact" }
 indent = { tab-width = 2, unit = "  " }
 grammar = "javascript"
 
