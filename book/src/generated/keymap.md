@@ -1,5 +1,8 @@
 ANCHOR: all
 ## Normal
+### Movement
+> NOTE: Unlike vim, `f`, `F`, `t` and `T` are not confined to the current line.
+
 | Key | Description | Command |
 | --- | --- | --- |
 | `h`, `left` | Move left | `move_char_left` |
@@ -10,12 +13,7 @@ ANCHOR: all
 | `f` | Move to next occurrence of char | `find_next_char` |
 | `T` | Move till previous occurrence of char | `till_prev_char` |
 | `F` | Move to previous occurrence of char | `find_prev_char` |
-| `r` | Replace with new char | `replace` |
-| `R` | Replace with yanked text | `replace_with_yanked` |
 | `A-.` | Repeat last motion | `repeat_last_motion` |
-| `~` | Switch (toggle) case | `switch_case` |
-| `` ` `` | Switch to lowercase | `switch_to_lowercase` |
-| `` A-` `` | Switch to uppercase | `switch_to_uppercase` |
 | `home` | Goto line start | `goto_line_start` |
 | `end` | Goto line end | `goto_line_end` |
 | `w` | Move to start of next word | `move_next_word_start` |
@@ -24,10 +22,22 @@ ANCHOR: all
 | `W` | Move to start of next long word | `move_next_long_word_start` |
 | `B` | Move to start of previous long word | `move_prev_long_word_start` |
 | `E` | Move to end of next long word | `move_next_long_word_end` |
-| `v` | Enter selection extend mode | `select_mode` |
 | `G` | Goto line | `goto_line` |
-| `g` | Enter [goto mode](#goto) |  |
-| `:` | Enter command mode | `command_mode` |
+| `C-b`, `pageup` | Move page up | `page_up` |
+| `C-f`, `pagedown` | Move page down | `page_down` |
+| `C-u` | Move half page up | `half_page_up` |
+| `C-d` | Move half page down | `half_page_down` |
+| `tab` | Jump forward on jumplist | `jump_forward` |
+| `C-o` | Jump backward on jumplist | `jump_backward` |
+| `C-s` | Save current selection to jumplist | `save_selection` |
+### Changes
+| Key | Description | Command |
+| --- | --- | --- |
+| `r` | Replace with new char | `replace` |
+| `R` | Replace with yanked text | `replace_with_yanked` |
+| `~` | Switch (toggle) case | `switch_case` |
+| `` ` `` | Switch to lowercase | `switch_to_lowercase` |
+| `` A-` `` | Switch to uppercase | `switch_to_uppercase` |
 | `i` | Insert before selection | `insert_mode` |
 | `I` | Insert at start of line | `prepend_to_line` |
 | `a` | Append after selection | `append_mode` |
@@ -38,29 +48,6 @@ ANCHOR: all
 | `A-d` | Delete selection without yanking | `delete_selection_noyank` |
 | `c` | Change selection | `change_selection` |
 | `A-c` | Change selection without yanking | `change_selection_noyank` |
-| `C` | Copy selection on next line | `copy_selection_on_next_line` |
-| `A-C` | Copy selection on previous line | `copy_selection_on_prev_line` |
-| `s` | Select all regex matches inside selections | `select_regex` |
-| `A-s` | Split selection on newlines | `split_selection_on_newline` |
-| `S` | Split selections on regex matches | `split_selection` |
-| `;` | Collapse selection into single cursor | `collapse_selection` |
-| `A-;` | Flip selection cursor and anchor | `flip_selections` |
-| `A-o`, `A-up` | Expand selection to parent syntax node (**TS**) | `expand_selection` |
-| `A-i`, `A-down` | Shrink selection to previously expanded syntax node (**TS**) | `shrink_selection` |
-| `A-p`, `A-left` | Select previous sibling in syntax tree (**TS**) | `select_prev_sibling` |
-| `A-n`, `A-right` | Select next sibling in syntax tree (**TS**) | `select_next_sibling` |
-| `%` | Select whole document | `select_all` |
-| `x` | Select current line, if already selected, extend to next line | `extend_line_below` |
-| `X` | Extend selection to line bounds | `extend_to_line_bounds` |
-| `A-x` | Shrink selection to line bounds | `shrink_to_line_bounds` |
-| `m` | Enter [match mode](#match) |  |
-| `[` | Enter [left bracket mode](#left-bracket) |  |
-| `]` | Enter [right bracket mode](#right-bracket) |  |
-| `/` | Search for regex pattern | `search` |
-| `?` | Reverse search for regex pattern | `rsearch` |
-| `n` | Select next search match | `search_next` |
-| `N` | Select previous search match | `search_prev` |
-| `*` | Use current selection as search pattern | `search_selection` |
 | `u` | Undo change | `undo` |
 | `U` | Redo change | `redo` |
 | `A-u` | Move backward in history | `earlier` |
@@ -73,41 +60,25 @@ ANCHOR: all
 | `gt` | Indent selection | `indent` |
 | `lt` | Unindent selection | `unindent` |
 | `=` | Format selection (**LSP**) | `format_selections` |
-| `J` | Join lines inside selection | `join_selections` |
-| `K` | Keep selections matching regex | `keep_selections` |
-| `A-K` | Remove selections matching regex | `remove_selections` |
-| `,` | Keep primary selection | `keep_primary_selection` |
-| `A-,` | Remove primary selection | `remove_primary_selection` |
-| `&` | Align selections in column | `align_selections` |
-| `_` | Trim whitespace from selections | `trim_selections` |
-| `(` | Rotate selections backward | `rotate_selections_backward` |
-| `)` | Rotate selections forward | `rotate_selections_forward` |
-| `A-(` | Rotate selections contents backward | `rotate_selection_contents_backward` |
-| `A-)` | Rotate selection contents forward | `rotate_selection_contents_forward` |
-| `A-:` | Ensure all selections face forward | `ensure_selections_forward` |
-| `esc` | Enter normal mode | `normal_mode` |
-| `C-b`, `pageup` | Move page up | `page_up` |
-| `C-f`, `pagedown` | Move page down | `page_down` |
-| `C-u` | Move half page up | `half_page_up` |
-| `C-d` | Move half page down | `half_page_down` |
+| `"` | Select register | `select_register` |
+| `C-a` | Increment item under cursor | `increment` |
+| `C-x` | Decrement item under cursor | `decrement` |
+### Minor Modes
+These sub-modes are accessible from normal mode and typically switch back to normal mode after a command.
+
+| Key | Description | Command |
+| --- | --- | --- |
+| `v` | Enter selection extend mode | `select_mode` |
+| `g` | Enter [goto mode](#goto) |  |
+| `:` | Enter command mode | `command_mode` |
+| `m` | Enter [match mode](#match) |  |
+| `[` | Enter [left bracket mode](#left-bracket) |  |
+| `]` | Enter [right bracket mode](#right-bracket) |  |
 | `C-w` | Enter [window mode](#window) |  |
-| `C-c` | Comment/uncomment selections | `toggle_comments` |
-| `tab` | Jump forward on jumplist | `jump_forward` |
-| `C-o` | Jump backward on jumplist | `jump_backward` |
-| `C-s` | Save current selection to jumplist | `save_selection` |
 | `space` | Enter [space mode](#space) |  |
 | `z` | Enter [view mode](#view) |  |
 | `Z` | Enter sticky [view mode](#view) |  |
-| `"` | Select register | `select_register` |
-| <code>&#124;</code> | Pipe selections through shell command | `shell_pipe` |
-| <code>A-&#124;</code> | Pipe selections into shell command ignoring output | `shell_pipe_to` |
-| `!` | Insert shell command output before selections | `shell_insert_output` |
-| `A-!` | Append shell command output after selections | `shell_append_output` |
-| `$` | Filter selections with shell predicate | `shell_keep_pipe` |
-| `C-z` | Suspend and return to shell | `suspend` |
-| `C-a` | Increment item under cursor | `increment` |
-| `C-x` | Decrement item under cursor | `decrement` |
-### Goto
+#### Goto
 Jumps to various locations.
 
 | Key | Description | Command |
@@ -130,7 +101,7 @@ Jumps to various locations.
 | `n` | Goto next buffer | `goto_next_buffer` |
 | `p` | Goto previous buffer | `goto_previous_buffer` |
 | `.` | Goto last modification | `goto_last_modification` |
-### Match
+#### Match
 Enter this mode using `m` from normal mode. See the relevant section
 in [Usage](./usage.md) for an explanation about [surround](./usage.md#surround)
 and [textobject](./usage.md#textobject) usage.
@@ -146,7 +117,7 @@ and [textobject](./usage.md#textobject) usage.
 
 TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
-### Left bracket
+#### Left bracket
 | Key | Description | Command |
 | --- | --- | --- |
 | `d` | Goto previous diagnostic (**LSP**) | `goto_prev_diag` |
@@ -158,7 +129,7 @@ TODO: Mappings for selecting syntax nodes (a superset of `[`).
 | `t` | Goto previous test (**TS**) | `goto_prev_test` |
 | `p` | Goto previous paragraph (**TS**) | `goto_prev_paragraph` |
 | `space` | Add newline above | `add_newline_above` |
-### Right bracket
+#### Right bracket
 | Key | Description | Command |
 | --- | --- | --- |
 | `d` | Goto next diagnostic (**LSP**) | `goto_next_diag` |
@@ -170,7 +141,7 @@ TODO: Mappings for selecting syntax nodes (a superset of `[`).
 | `t` | Goto next test (**TS**) | `goto_next_test` |
 | `p` | Goto next paragraph (**TS**) | `goto_next_paragraph` |
 | `space` | Add newline below | `add_newline_below` |
-### Window
+#### Window
 This layer is similar to vim keybindings as kakoune does not support window.
 
 | Key | Description | Command |
@@ -192,12 +163,12 @@ This layer is similar to vim keybindings as kakoune does not support window.
 | `H` | Swap with left split | `swap_view_left` |
 | `J` | Swap with split below | `swap_view_down` |
 | `n` | Enter [new split scratch buffer mode](#new-split-scratch-buffer) |  |
-#### New split scratch buffer
+##### New split scratch buffer
 | Key | Description | Command |
 | --- | --- | --- |
 | `C-s`, `s` | Horizontal bottom split scratch buffer | `hsplit_new` |
 | `C-v`, `v` | Vertical right split scratch buffer | `vsplit_new` |
-### Space
+#### Space
 This layer is a kludge of mappings, mostly pickers.
 
 | Key | Description | Command |
@@ -227,7 +198,7 @@ This layer is a kludge of mappings, mostly pickers.
 
 > TIP: Global search displays results in a fuzzy picker, use `space + '` to bring it back up after opening a file.
 
-#### Debug (experimental)
+##### Debug (experimental)
 | Key | Description | Command |
 | --- | --- | --- |
 | `l` | Launch debug target (**DAP**) | `dap_launch` |
@@ -244,12 +215,12 @@ This layer is a kludge of mappings, mostly pickers.
 | `s` | Enter [switch mode](#switch) |  |
 | `e` | Enable exception breakpoints (**DAP**) | `dap_enable_exceptions` |
 | `E` | Disable exception breakpoints (**DAP**) | `dap_disable_exceptions` |
-##### Switch
+###### Switch
 | Key | Description | Command |
 | --- | --- | --- |
 | `t` | Switch current thread (**DAP**) | `dap_switch_thread` |
 | `f` | Switch stack frame (**DAP**) | `dap_switch_stack_frame` |
-### View
+#### View
 View mode is intended for scrolling and manipulating the view without changing
 the selection. The "sticky" variant of this mode is persistent; use the
 `Escape` key to return to normal mode after usage (useful when you're simply
@@ -271,6 +242,56 @@ looking over text and not actively editing it).
 | `?` | Reverse search for regex pattern | `rsearch` |
 | `n` | Select next search match | `search_next` |
 | `N` | Select previous search match | `search_prev` |
+### Selection Manipulation
+| Key | Description | Command |
+| --- | --- | --- |
+| `C` | Copy selection on next line | `copy_selection_on_next_line` |
+| `A-C` | Copy selection on previous line | `copy_selection_on_prev_line` |
+| `s` | Select all regex matches inside selections | `select_regex` |
+| `A-s` | Split selection on newlines | `split_selection_on_newline` |
+| `S` | Split selections on regex matches | `split_selection` |
+| `;` | Collapse selection into single cursor | `collapse_selection` |
+| `A-;` | Flip selection cursor and anchor | `flip_selections` |
+| `A-o`, `A-up` | Expand selection to parent syntax node (**TS**) | `expand_selection` |
+| `A-i`, `A-down` | Shrink selection to previously expanded syntax node (**TS**) | `shrink_selection` |
+| `A-p`, `A-left` | Select previous sibling in syntax tree (**TS**) | `select_prev_sibling` |
+| `A-n`, `A-right` | Select next sibling in syntax tree (**TS**) | `select_next_sibling` |
+| `%` | Select whole document | `select_all` |
+| `x` | Select current line, if already selected, extend to next line | `extend_line_below` |
+| `X` | Extend selection to line bounds | `extend_to_line_bounds` |
+| `A-x` | Shrink selection to line bounds | `shrink_to_line_bounds` |
+| `J` | Join lines inside selection | `join_selections` |
+| `K` | Keep selections matching regex | `keep_selections` |
+| `A-K` | Remove selections matching regex | `remove_selections` |
+| `,` | Keep primary selection | `keep_primary_selection` |
+| `A-,` | Remove primary selection | `remove_primary_selection` |
+| `&` | Align selections in column | `align_selections` |
+| `_` | Trim whitespace from selections | `trim_selections` |
+| `(` | Rotate selections backward | `rotate_selections_backward` |
+| `)` | Rotate selections forward | `rotate_selections_forward` |
+| `A-(` | Rotate selections contents backward | `rotate_selection_contents_backward` |
+| `A-)` | Rotate selection contents forward | `rotate_selection_contents_forward` |
+| `A-:` | Ensure all selections face forward | `ensure_selections_forward` |
+| `C-c` | Comment/uncomment selections | `toggle_comments` |
+### Search
+Search commands all operate on the `/` register by default. Use `"<char>` to operate on a different one.
+
+| Key | Description | Command |
+| --- | --- | --- |
+| `/` | Search for regex pattern | `search` |
+| `?` | Reverse search for regex pattern | `rsearch` |
+| `n` | Select next search match | `search_next` |
+| `N` | Select previous search match | `search_prev` |
+| `*` | Use current selection as search pattern | `search_selection` |
+### Shell
+| Key | Description | Command |
+| --- | --- | --- |
+| <code>&#124;</code> | Pipe selections through shell command | `shell_pipe` |
+| <code>A-&#124;</code> | Pipe selections into shell command ignoring output | `shell_pipe_to` |
+| `!` | Insert shell command output before selections | `shell_insert_output` |
+| `A-!` | Append shell command output after selections | `shell_append_output` |
+| `$` | Filter selections with shell predicate | `shell_keep_pipe` |
+| `C-z` | Suspend and return to shell | `suspend` |
 ## Insert
 Insert mode bindings are somewhat minimal by default. Helix is designed to
 be a modal editor, and this is reflected in the user experience and internal
@@ -381,16 +402,22 @@ want to use them, simply map them in your configuration (see [remapping]).
 ANCHOR_END: all
 ANCHOR: toc
 - [Normal](#normal)
-  - [Goto](#goto)
-  - [Match](#match)
-  - [Left bracket](#left-bracket)
-  - [Right bracket](#right-bracket)
-  - [Window](#window)
-    - [New split scratch buffer](#new-split-scratch-buffer)
-  - [Space](#space)
-    - [Debug (experimental)](#debug-experimental)
-      - [Switch](#switch)
-  - [View](#view)
+  - [Movement](#movement)
+  - [Changes](#changes)
+  - [Minor Modes](#minor-modes)
+    - [Goto](#goto)
+    - [Match](#match)
+    - [Left bracket](#left-bracket)
+    - [Right bracket](#right-bracket)
+    - [Window](#window)
+      - [New split scratch buffer](#new-split-scratch-buffer)
+    - [Space](#space)
+      - [Debug (experimental)](#debug-experimental)
+        - [Switch](#switch)
+    - [View](#view)
+  - [Selection Manipulation](#selection-manipulation)
+  - [Search](#search)
+  - [Shell](#shell)
 - [Insert](#insert)
 - [Select](#select)
 - [Unmapped Commands](#unmapped-commands)

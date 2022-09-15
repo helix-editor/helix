@@ -68,6 +68,7 @@ pub mod md_gen {
 
     use crate::helpers;
     use crate::path;
+    use helix_term::commands::Category;
     use helix_term::{
         commands::{Req, TYPABLE_COMMAND_LIST},
         health::TsFeature,
@@ -194,7 +195,6 @@ pub mod md_gen {
         let path = path::book_modes()
             .join(mode.to_lowercase().replace(" ", "_"))
             .with_extension("md");
-        dbg!(&path);
 
         match read_to_string(path) {
             Ok(string) => {
@@ -208,7 +208,9 @@ pub mod md_gen {
         }
     }
 
-    fn keymap_section(
+    /// Generate markdown for keymap section, including headings description,
+    /// tips, and adding it to table of contents
+    fn md_keymap_section(
         name: &str,
         table: &mut Vec<(String, usize)>,
         level: usize,
@@ -238,44 +240,86 @@ pub mod md_gen {
         level: usize,
         commands_handled: &mut HashSet<String>,
         table: &mut Vec<(String, usize)>,
+        separate_categories: bool,
     ) -> String {
-        let mut inner = String::new();
+        let items = unify(keymap);
 
+        if separate_categories {
+            let categories = get_categories(&items);
+            let mut md = String::new();
+            md.push_str(&md_keymap_section(name, table, level, ""));
+            for category in categories {
+                let iterator = items.iter().filter(|i| i.1.category() == category);
+                let category_name = &category.to_string();
+                md.push_str(&keymap_section(
+                    iterator,
+                    category_name,
+                    commands_handled,
+                    table,
+                    level + 1,
+                ));
+            }
+            md
+        } else {
+            keymap_section(items.iter(), name, commands_handled, table, level)
+        }
+    }
+
+    fn keymap_section<'a>(
+        items: impl Iterator<Item = &'a (Vec<KeyEvent>, &'a KeyTrie)>,
+        name: &str,
+        commands_handled: &mut HashSet<String>,
+        table: &mut Vec<(String, usize)>,
+        level: usize,
+    ) -> String {
+        let mut md = String::new();
+        let mut sub_modes = Vec::new();
+        let mut inner = String::new();
         inner.push_str(&md_table_heading(&[
             "Key".to_owned(),
             "Description".to_owned(),
             "Command".to_owned(),
         ]));
-
-        let items = unify(keymap);
-
-        let mut sub_modes = Vec::new();
-
         for (keys, trie) in items {
             let (description, command) = match trie {
                 KeyTrie::Leaf(command) => {
                     commands_handled.insert(command.name().to_owned());
-                    (md_description(command), md_mono(command.name()))
+                    (md_description(&command), md_mono(command.name()))
                 }
                 KeyTrie::Sequence(_) => unreachable!(),
                 KeyTrie::Node(node) => {
                     sub_modes.push(node);
-                    (md_enter_mode(node), "".to_string())
+                    (md_enter_mode(&node), "".to_string())
                 }
             };
             inner.push_str(&md_table_row(&[md_keys(&keys), description, command]));
         }
-        let mut md = keymap_section(name, table, level, &inner);
+
+        md.push_str(&md_keymap_section(name, table, level, &inner));
 
         for mode in sub_modes {
             // If this mode wasn't added yet
             if table.iter().find(|i| i.0 == mode.name()).is_none() {
-                let text = gen_keymap(mode, mode.name(), level + 1, commands_handled, table);
+                let text = gen_keymap(mode, mode.name(), level + 1, commands_handled, table, false);
                 md.push_str(&text);
             }
         }
-
         md
+    }
+
+    /// Get categories present, in the order that they appear. Each category
+    /// will only appear once in the result.
+    fn get_categories(items: &Vec<(Vec<KeyEvent>, &KeyTrie)>) -> Vec<Category> {
+        let mut v = Vec::new();
+        let mut categories = HashSet::new();
+        for (_, trie) in items {
+            let category = trie.category();
+            let new = categories.insert(category);
+            if new {
+                v.push(category)
+            }
+        }
+        v
     }
 
     /// Unify keys that have the same result
@@ -318,16 +362,20 @@ pub mod md_gen {
         let default_keymap = keymap::default::default();
 
         let modes = [
-            (default_keymap.get(&Mode::Normal).unwrap(), "Normal"),
-            (default_keymap.get(&Mode::Insert).unwrap(), "Insert"),
-            (&Keymap::new(keymap::default::select_changes()), "Select"),
+            (default_keymap.get(&Mode::Normal).unwrap(), "Normal", true),
+            (default_keymap.get(&Mode::Insert).unwrap(), "Insert", false),
+            (
+                &Keymap::new(keymap::default::select_changes()),
+                "Select",
+                false,
+            ),
         ];
 
         let mut mapped = HashSet::new();
         // table of contents
         let mut table = Vec::new();
         for mode in modes {
-            let text = gen_keymap(mode.0, mode.1, 0, &mut mapped, &mut table);
+            let text = gen_keymap(mode.0, mode.1, 0, &mut mapped, &mut table, mode.2);
             md.push_str(&text);
         }
 
@@ -347,7 +395,7 @@ pub mod md_gen {
             }
         }
 
-        md.push_str(&keymap_section(name, &mut table, 0, &unmapped));
+        md.push_str(&md_keymap_section(name, &mut table, 0, &unmapped));
 
         let toc = md_toc(&table);
         let mut md = md_anchor(&md, "all");

@@ -193,7 +193,6 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "A-:" => ensure_selections_forward,
 
-        "esc" => normal_mode,
         "C-b" | "pageup" => page_up,
         "C-f" | "pagedown" => page_down,
         "C-u" => half_page_up,

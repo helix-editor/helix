@@ -151,7 +151,7 @@ pub enum Req {
     Dap,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 /// Category this command is related to
 pub enum Category {
     None,
@@ -160,6 +160,21 @@ pub enum Category {
     Shell,
     SelectionManipulation,
     Search,
+    MinorModes,
+}
+
+impl std::fmt::Display for Category {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Category::None => "Other",
+            Category::Movement => "Movement",
+            Category::Changes => "Changes",
+            Category::Shell => "Shell",
+            Category::SelectionManipulation => "Selection Manipulation",
+            Category::Search => "Search",
+            Category::MinorModes => "Minor Modes",
+        })
+    }
 }
 
 use Req::*;
@@ -217,6 +232,13 @@ impl MappableCommand {
         }
     }
 
+    pub fn category(&self) -> Category {
+        match &self {
+            MappableCommand::Typable { .. } => Category::None,
+            MappableCommand::Static { category, .. } => *category,
+        }
+    }
+
     #[rustfmt::skip]
     static_commands!(
         no_op, "Do nothing", [], None
@@ -264,10 +286,10 @@ impl MappableCommand {
         select_regex, "Select all regex matches inside selections", [], SelectionManipulation
         split_selection, "Split selections on regex matches", [], SelectionManipulation
         split_selection_on_newline, "Split selection on newlines", [], SelectionManipulation
-        search, "Search for regex pattern", [], Movement
-        rsearch, "Reverse search for regex pattern", [], Movement
-        search_next, "Select next search match", [], Movement
-        search_prev, "Select previous search match", [], Movement
+        search, "Search for regex pattern", [], Search
+        rsearch, "Reverse search for regex pattern", [], Search
+        search_next, "Select next search match", [], Search
+        search_prev, "Select previous search match", [], Search
         extend_search_next, "Add next search match to selection", [], None
         extend_search_prev, "Add previous search match to selection", [], None
         search_selection, "Use current selection as search pattern", [], Search
@@ -286,7 +308,7 @@ impl MappableCommand {
         ensure_selections_forward, "Ensure all selections face forward", [], SelectionManipulation
         insert_mode, "Insert before selection", [], Changes
         append_mode, "Append after selection", [], Changes
-        command_mode, "Enter command mode", [], None
+        command_mode, "Enter command mode", [], MinorModes
         file_picker, "Open file picker", [], None
         file_picker_in_current_directory, "Open file picker at current working directory", [], None
         code_action, "Perform code action", [Lsp], None
@@ -303,7 +325,7 @@ impl MappableCommand {
         open_below, "Open new line below selection", [], Changes
         open_above, "Open new line above selection", [], Changes
         normal_mode, "Enter normal mode", [], None
-        select_mode, "Enter selection extend mode", [], None
+        select_mode, "Enter selection extend mode", [], MinorModes
         exit_select_mode, "Exit selection mode", [], None
         add_newline_above, "Add newline above", [], None
         add_newline_below, "Add newline below", [], None
@@ -353,7 +375,7 @@ impl MappableCommand {
         earlier, "Move backward in history", [], Changes
         later, "Move forward in history", [], Changes
         commit_undo_checkpoint, "Commit changes to new checkpoint", [], None
-        yank, "Yank selection", [], None
+        yank, "Yank selection", [], Changes
         yank_joined_to_clipboard, "Join and yank selections to clipboard", [], None
         yank_main_selection_to_clipboard, "Yank main selection to clipboard", [], None
         yank_joined_to_primary_clipboard, "Join and yank selections to primary clipboard", [], None
@@ -385,7 +407,7 @@ impl MappableCommand {
         rotate_selection_contents_backward, "Rotate selections contents backward", [], SelectionManipulation
         expand_selection, "Expand selection to parent syntax node", [TreeSitter], SelectionManipulation
         shrink_selection, "Shrink selection to previously expanded syntax node", [TreeSitter], SelectionManipulation
-        select_next_sibling, "Select next sibling in syntax tree", [TreeSitter], None
+        select_next_sibling, "Select next sibling in syntax tree", [TreeSitter], SelectionManipulation
         select_prev_sibling, "Select previous sibling in syntax tree", [TreeSitter], SelectionManipulation
         jump_forward, "Jump forward on jumplist", [], Movement
         jump_backward, "Jump backward on jumplist", [], Movement
@@ -452,12 +474,12 @@ impl MappableCommand {
         shell_insert_output, "Insert shell command output before selections", [], Shell
         shell_append_output, "Append shell command output after selections", [], Shell
         shell_keep_pipe, "Filter selections with shell predicate", [], Shell
-        suspend, "Suspend and return to shell", [], None
+        suspend, "Suspend and return to shell", [], Shell
         rename_symbol, "Rename symbol", [Lsp], None
         increment, "Increment item under cursor", [], Changes
         decrement, "Decrement item under cursor", [], Changes
-        record_macro, "Record macro", [], None
-        replay_macro, "Replay macro", [], None
+        record_macro, "Record macro", [], Changes
+        replay_macro, "Replay macro", [], Changes
         command_palette, "Open command palette", [], None
     );
 }

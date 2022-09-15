@@ -2,7 +2,7 @@ pub mod default;
 pub mod macros;
 
 pub use crate::commands::MappableCommand;
-use crate::config::Config;
+use crate::{commands::Category, config::Config};
 use arc_swap::{
     access::{DynAccess, DynGuard},
     ArcSwap,
@@ -184,6 +184,14 @@ impl KeyTrie {
             }?
         }
         Some(trie)
+    }
+
+    pub fn category(&self) -> Category {
+        match self {
+            KeyTrie::Leaf(cmd) => cmd.category(),
+            KeyTrie::Node(_) => Category::MinorModes,
+            _ => Category::None,
+        }
     }
 }
 
