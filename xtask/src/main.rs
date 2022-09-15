@@ -104,10 +104,10 @@ pub mod md_gen {
 
     /// Markdown monospace. Escapes ` and | to make sure it works for keys.
     fn md_mono(s: &str) -> String {
-        if s.contains("`") {
+        if s.contains('`') {
             format!("`` {} ``", s)
-        } else if s.contains("|") {
-            format!("<code>{}</code>", s.replace("|", "&#124;"))
+        } else if s.contains('|') {
+            format!("<code>{}</code>", s.replace('|', "&#124;"))
         } else {
             format!("`{}`", s)
         }
@@ -136,7 +136,7 @@ pub mod md_gen {
     /// Markdown link to section in same doc
     fn md_link(name: &str) -> String {
         let lower = name.to_ascii_lowercase();
-        let link = lower.replace(" ", "-").replace("(", "").replace(")", "");
+        let link = lower.replace(' ', "-").replace('(', "").replace(')', "");
         format!("[{}](#{})", name, link)
     }
 
@@ -144,7 +144,7 @@ pub mod md_gen {
     fn md_enter_mode(node: &KeyTrieNode) -> String {
         let name = node.name();
         let lower = name.to_ascii_lowercase();
-        let link = lower.replace(" ", "-").replace("(", "").replace(")", "");
+        let link = lower.replace(' ', "-").replace('(', "").replace(')', "");
         match node.is_sticky {
             true => format!("Enter sticky [{} mode](#{})", lower, link),
             false => format!("Enter [{} mode](#{})", lower, link),
@@ -193,7 +193,7 @@ pub mod md_gen {
 
     fn get_mode_description(mode: &str) -> (Option<String>, Option<String>) {
         let path = path::book_modes()
-            .join(mode.to_lowercase().replace(" ", "_"))
+            .join(mode.to_lowercase().replace(' ', "_"))
             .with_extension("md");
 
         match read_to_string(path) {
@@ -228,7 +228,7 @@ pub mod md_gen {
         md.push_str(inner);
 
         if let Some(tip) = tip {
-            md.push_str("\n");
+            md.push('\n');
             md.push_str(&md_paragraph(&tip));
         }
         md
@@ -284,22 +284,22 @@ pub mod md_gen {
             let (description, command) = match trie {
                 KeyTrie::Leaf(command) => {
                     commands_handled.insert(command.name().to_owned());
-                    (md_description(&command), md_mono(command.name()))
+                    (md_description(command), md_mono(command.name()))
                 }
                 KeyTrie::Sequence(_) => unreachable!(),
                 KeyTrie::Node(node) => {
                     sub_modes.push(node);
-                    (md_enter_mode(&node), "".to_string())
+                    (md_enter_mode(node), "".to_string())
                 }
             };
-            inner.push_str(&md_table_row(&[md_keys(&keys), description, command]));
+            inner.push_str(&md_table_row(&[md_keys(keys), description, command]));
         }
 
         md.push_str(&md_keymap_section(name, table, level, &inner));
 
         for mode in sub_modes {
             // If this mode wasn't added yet
-            if table.iter().find(|i| i.0 == mode.name()).is_none() {
+            if !table.iter().any(|i| i.0 == mode.name()) {
                 let text = gen_keymap(mode, mode.name(), level + 1, commands_handled, table, false);
                 md.push_str(&text);
             }
@@ -326,7 +326,7 @@ pub mod md_gen {
     fn unify(keymap: &KeyTrieNode) -> Vec<(Vec<KeyEvent>, &KeyTrie)> {
         let mut handled_indexes = HashSet::new();
         let keys = keymap.order();
-        let num_keys = keymap.order().len();
+        let num_keys = keys.len();
         let mut items = Vec::new();
         for i in 0..num_keys {
             if !handled_indexes.contains(&i) {
@@ -334,8 +334,8 @@ pub mod md_gen {
                 let key = keys[i];
                 let mut v = vec![key];
                 let value = keymap.get(&key).unwrap();
-                for j in i + 1..num_keys {
-                    let other = keymap.get(&keys[j]).unwrap();
+                for (j, other_key) in keys.iter().enumerate().skip(i + 1) {
+                    let other = keymap.get(other_key).unwrap();
                     if other == value {
                         if let KeyTrie::Node(node) = value {
                             if let KeyTrie::Node(other_node) = other {
@@ -346,7 +346,7 @@ pub mod md_gen {
                             }
                         }
                         handled_indexes.insert(j);
-                        v.push(keys[j]);
+                        v.push(*other_key);
                     }
                 }
 
@@ -556,12 +556,14 @@ pub mod tasks {
             for query_file in query_files {
                 let language = get_language(&grammar_name);
                 let query_text = read_query(&language_name, query_file);
-                if !query_text.is_empty() && language.is_ok() {
-                    if let Err(reason) = Query::new(language.unwrap(), &query_text) {
-                        return Err(format!(
-                            "Failed to parse {} queries for {}: {}",
-                            query_file, language_name, reason
-                        ));
+                if !query_text.is_empty() {
+                    if let Ok(language) = language {
+                        if let Err(reason) = Query::new(language, &query_text) {
+                            return Err(format!(
+                                "Failed to parse {} queries for {}: {}",
+                                query_file, language_name, reason
+                            ));
+                        }
                     }
                 }
             }
