@@ -180,7 +180,7 @@ impl std::fmt::Display for Category {
 use Req::*;
 
 macro_rules! static_commands {
-    ( $($name:ident, $doc:literal,$req:expr,$cat:ident)* ) => {
+    ( $($name:ident,$req:expr,$cat:ident,$doc:literal,)* ) => {
         $(
             #[allow(non_upper_case_globals)]
             pub const $name: Self = Self::Static {
@@ -241,246 +241,246 @@ impl MappableCommand {
 
     #[rustfmt::skip]
     static_commands!(
-        no_op, "Do nothing", [], Other
-        move_char_left, "Move left", [], Movement
-        move_char_right, "Move right", [], Movement
-        move_line_up, "Move up", [], Movement
-        move_line_down, "Move down", [], Movement
-        extend_char_left, "Extend left", [], Other
-        extend_char_right, "Extend right", [], Other
-        extend_line_up, "Extend up", [], Other
-        extend_line_down, "Extend down", [], Other
-        copy_selection_on_next_line, "Copy selection on next line", [], SelectionManipulation
-        copy_selection_on_prev_line, "Copy selection on previous line", [], SelectionManipulation
-        move_next_word_start, "Move to start of next word", [], Movement
-        move_prev_word_start, "Move to start of previous word", [], Movement
-        move_prev_word_end, "Move to end of previous word", [], Other
-        move_next_word_end, "Move to end of next word", [], Movement
-        move_next_long_word_start, "Move to start of next long word", [], Movement
-        move_prev_long_word_start, "Move to start of previous long word", [], Movement
-        move_next_long_word_end, "Move to end of next long word", [], Movement
-        extend_next_word_start, "Extend to start of next word", [], Other
-        extend_prev_word_start, "Extend to start of previous word", [], Other
-        extend_next_long_word_start, "Extend to start of next long word", [], Other
-        extend_prev_long_word_start, "Extend to start of previous long word", [], Other
-        extend_next_long_word_end, "Extend to end of next long word", [], Other
-        extend_next_word_end, "Extend to end of next word", [], Other
-        find_till_char, "Move till next occurrence of char", [], Movement
-        find_next_char, "Move to next occurrence of char", [], Movement
-        extend_till_char, "Extend till next occurrence of char", [], Other
-        extend_next_char, "Extend to next occurrence of char", [], Other
-        till_prev_char, "Move till previous occurrence of char", [], Movement
-        find_prev_char, "Move to previous occurrence of char", [], Movement
-        extend_till_prev_char, "Extend till previous occurrence of char", [], Other
-        extend_prev_char, "Extend to previous occurrence of char", [], Other
-        repeat_last_motion, "Repeat last motion", [], Movement
-        replace, "Replace with new char", [], Changes
-        switch_case, "Switch (toggle) case", [], Changes
-        switch_to_uppercase, "Switch to uppercase", [], Changes
-        switch_to_lowercase, "Switch to lowercase", [], Changes
-        page_up, "Move page up", [], Movement
-        page_down, "Move page down", [], Movement
-        half_page_up, "Move half page up", [], Movement
-        half_page_down, "Move half page down", [], Movement
-        select_all, "Select whole document", [], SelectionManipulation
-        select_regex, "Select all regex matches inside selections", [], SelectionManipulation
-        split_selection, "Split selections on regex matches", [], SelectionManipulation
-        split_selection_on_newline, "Split selection on newlines", [], SelectionManipulation
-        search, "Search for regex pattern", [], Search
-        rsearch, "Reverse search for regex pattern", [], Search
-        search_next, "Select next search match", [], Search
-        search_prev, "Select previous search match", [], Search
-        extend_search_next, "Add next search match to selection", [], Other
-        extend_search_prev, "Add previous search match to selection", [], Other
-        search_selection, "Use current selection as search pattern", [], Search
-        global_search, "Global search in workspace folder", [], Other
-        extend_line, "Select current line, if already selected, extend to another line based on the anchor", [], Other
-        extend_line_below, "Select current line, if already selected, extend to next line", [], SelectionManipulation
-        extend_line_above, "Select current line, if already selected, extend to previous line", [], Other
-        extend_to_line_bounds, "Extend selection to line bounds", [], SelectionManipulation
-        shrink_to_line_bounds, "Shrink selection to line bounds", [], SelectionManipulation
-        delete_selection, "Delete selection", [], Changes
-        delete_selection_noyank, "Delete selection without yanking", [], Changes
-        change_selection, "Change selection", [], Changes
-        change_selection_noyank, "Change selection without yanking", [], Changes
-        collapse_selection, "Collapse selection into single cursor", [], SelectionManipulation
-        flip_selections, "Flip selection cursor and anchor", [], SelectionManipulation
-        ensure_selections_forward, "Ensure all selections face forward", [], SelectionManipulation
-        insert_mode, "Insert before selection", [], Changes
-        append_mode, "Append after selection", [], Changes
-        command_mode, "Enter command mode", [], MinorModes
-        file_picker, "Open file picker", [], Other
-        file_picker_in_current_directory, "Open file picker at current working directory", [], Other
-        code_action, "Perform code action", [Lsp], Other
-        buffer_picker, "Open buffer picker", [], Other
-        jumplist_picker, "Open jumplist picker", [], Other
-        symbol_picker, "Open symbol picker", [Lsp], Other
-        select_references_to_symbol_under_cursor, "Select symbol references", [Lsp], Other
-        workspace_symbol_picker, "Open workspace symbol picker", [Lsp], Other
-        diagnostics_picker, "Open diagnostic picker", [Lsp], Other
-        workspace_diagnostics_picker, "Open workspace diagnostic picker", [Lsp], Other
-        last_picker, "Open last picker", [], Other
-        prepend_to_line, "Insert at start of line", [], Changes
-        append_to_line, "Append to end of line", [], Changes
-        open_below, "Open new line below selection", [], Changes
-        open_above, "Open new line above selection", [], Changes
-        normal_mode, "Enter normal mode", [], Other
-        select_mode, "Enter selection extend mode", [], MinorModes
-        exit_select_mode, "Exit selection mode", [], Other
-        add_newline_above, "Add newline above", [], Other
-        add_newline_below, "Add newline below", [], Other
-        goto_definition, "Goto definition", [Lsp], Other
-        goto_type_definition, "Goto type definition", [Lsp], Other
-        goto_reference, "Goto references", [Lsp], Other
-        goto_implementation, "Goto implementation", [Lsp], Other
-        goto_file_start, "Goto line number <n> else file start", [], Other
-        goto_file_end, "Goto file end", [], Other
-        goto_file, "Goto files in selection", [], Other
-        goto_file_hsplit, "Goto files in selection (hsplit)", [], Other
-        goto_file_vsplit, "Goto files in selection (vsplit)", [], Other
-        goto_window_top, "Goto window top", [], Other
-        goto_window_center, "Goto window center", [], Other
-        goto_window_bottom, "Goto window bottom", [], Other
-        goto_last_accessed_file, "Goto last accessed file", [], Other
-        goto_last_modified_file, "Goto last modified file", [], Other
-        goto_last_modification, "Goto last modification", [], Other
-        goto_line, "Goto line", [], Movement
-        goto_last_line, "Goto last line", [], Other
-        goto_first_diag, "Goto first diagnostic", [Lsp], Other
-        goto_last_diag, "Goto last diagnostic", [Lsp], Other
-        goto_next_diag, "Goto next diagnostic", [Lsp], Other
-        goto_prev_diag, "Goto previous diagnostic", [Lsp], Other
-        goto_line_start, "Goto line start", [], Movement
-        goto_line_end, "Goto line end", [], Movement
-        goto_next_buffer, "Goto next buffer", [], Other
-        goto_previous_buffer, "Goto previous buffer", [], Other
-        // TODO: different description ?
-        goto_line_end_newline, "Goto line end", [], Other
-        goto_first_nonwhitespace, "Goto first non-blank in line", [], Other
-        trim_selections, "Trim whitespace from selections", [], SelectionManipulation
-        extend_to_line_start, "Extend to line start", [], Other
-        extend_to_line_end, "Extend to line end", [], Other
-        extend_to_line_end_newline, "Extend to line end", [], Other
-        signature_help, "Show signature help", [], Other
-        insert_tab, "Insert tab char", [], Other
-        insert_newline, "Insert newline char", [], Other
-        delete_char_backward, "Delete previous char", [], Other
-        delete_char_forward, "Delete next char", [], Other
-        delete_word_backward, "Delete previous word", [], Other
-        delete_word_forward, "Delete next word", [], Other
-        kill_to_line_start, "Delete till start of line", [], Other
-        kill_to_line_end, "Delete till end of line", [], Other
-        undo, "Undo change", [], Changes
-        redo, "Redo change", [], Changes
-        earlier, "Move backward in history", [], Changes
-        later, "Move forward in history", [], Changes
-        commit_undo_checkpoint, "Commit changes to new checkpoint", [], Other
-        yank, "Yank selection", [], Changes
-        yank_joined_to_clipboard, "Join and yank selections to clipboard", [], Other
-        yank_main_selection_to_clipboard, "Yank main selection to clipboard", [], Other
-        yank_joined_to_primary_clipboard, "Join and yank selections to primary clipboard", [], Other
-        yank_main_selection_to_primary_clipboard, "Yank main selection to primary clipboard", [], Other
-        replace_with_yanked, "Replace with yanked text", [], Changes
-        replace_selections_with_clipboard, "Replace selections by clipboard content", [], Other
-        replace_selections_with_primary_clipboard, "Replace selections by primary clipboard", [], Other
-        paste_after, "Paste after selection", [], Changes
-        paste_before, "Paste before selection", [], Changes
-        paste_clipboard_after, "Paste clipboard after selections", [], Other
-        paste_clipboard_before, "Paste clipboard before selections", [], Other
-        paste_primary_clipboard_after, "Paste primary clipboard after selections", [], Other
-        paste_primary_clipboard_before, "Paste primary clipboard before selections", [], Other
-        indent, "Indent selection", [], Changes
-        unindent, "Unindent selection", [], Changes
-        format_selections, "Format selection", [Lsp], Changes
-        join_selections, "Join lines inside selection", [], SelectionManipulation
-        keep_selections, "Keep selections matching regex", [], SelectionManipulation
-        remove_selections, "Remove selections matching regex", [], SelectionManipulation
-        align_selections, "Align selections in column", [], SelectionManipulation
-        keep_primary_selection, "Keep primary selection", [], SelectionManipulation
-        remove_primary_selection, "Remove primary selection", [], SelectionManipulation
-        completion, "Invoke completion popup", [], Other
-        hover, "Show docs for item under cursor", [Lsp], Other
-        toggle_comments, "Comment/uncomment selections", [], SelectionManipulation
-        rotate_selections_forward, "Rotate selections forward", [], SelectionManipulation
-        rotate_selections_backward, "Rotate selections backward", [], SelectionManipulation
-        rotate_selection_contents_forward, "Rotate selection contents forward", [], SelectionManipulation
-        rotate_selection_contents_backward, "Rotate selections contents backward", [], SelectionManipulation
-        expand_selection, "Expand selection to parent syntax node", [TreeSitter], SelectionManipulation
-        shrink_selection, "Shrink selection to previously expanded syntax node", [TreeSitter], SelectionManipulation
-        select_next_sibling, "Select next sibling in syntax tree", [TreeSitter], SelectionManipulation
-        select_prev_sibling, "Select previous sibling in syntax tree", [TreeSitter], SelectionManipulation
-        jump_forward, "Jump forward on jumplist", [], Movement
-        jump_backward, "Jump backward on jumplist", [], Movement
-        save_selection, "Save current selection to jumplist", [], Movement
-        jump_view_right, "Jump to right split", [], Other
-        jump_view_left, "Jump to left split", [], Other
-        jump_view_up, "Jump to split above", [], Other
-        jump_view_down, "Jump to split below", [], Other
-        swap_view_right, "Swap with right split", [], Other
-        swap_view_left, "Swap with left split", [], Other
-        swap_view_up, "Swap with split above", [], Other
-        swap_view_down, "Swap with split below", [], Other
-        transpose_view, "Transpose splits", [], Other
-        rotate_view, "Goto next window", [], Other
-        hsplit, "Horizontal bottom split", [], Other
-        hsplit_new, "Horizontal bottom split scratch buffer", [], Other
-        vsplit, "Vertical right split", [], Other
-        vsplit_new, "Vertical right split scratch buffer", [], Other
-        wclose, "Close window", [], Other
-        wonly, "Close windows except current", [], Other
-        select_register, "Select register", [], Changes
-        insert_register, "Insert register", [], Other
-        align_view_middle, "Align view middle", [], Other
-        align_view_top, "Align view top", [], Other
-        align_view_center, "Align view center", [], Other
-        align_view_bottom, "Align view bottom", [], Other
-        scroll_up, "Scroll view up", [], Other
-        scroll_down, "Scroll view down", [], Other
-        match_brackets, "Goto matching bracket", [TreeSitter], Other
-        surround_add, "Surround add", [], Other
-        surround_replace, "Surround replace", [], Other
-        surround_delete, "Surround delete", [], Other
-        select_textobject_around, "Select around object", [], Other
-        select_textobject_inner, "Select inside object", [], Other
-        goto_next_function, "Goto next function", [TreeSitter], Other
-        goto_prev_function, "Goto previous function", [TreeSitter], Other
-        goto_next_class, "Goto next class", [TreeSitter], Other
-        goto_prev_class, "Goto previous class", [TreeSitter], Other
-        goto_next_parameter, "Goto next parameter", [TreeSitter], Other
-        goto_prev_parameter, "Goto previous parameter", [TreeSitter], Other
-        goto_next_comment, "Goto next comment", [TreeSitter], Other
-        goto_prev_comment, "Goto previous comment", [TreeSitter], Other
-        goto_next_test, "Goto next test", [TreeSitter], Other
-        goto_prev_test, "Goto previous test", [TreeSitter], Other
-        goto_next_paragraph, "Goto next paragraph", [TreeSitter], Other
-        goto_prev_paragraph, "Goto previous paragraph", [TreeSitter], Other
-        dap_launch, "Launch debug target", [Dap], Other
-        dap_toggle_breakpoint, "Toggle breakpoint", [Dap], Other
-        dap_continue, "Continue program execution", [Dap], Other
-        dap_pause, "Pause program execution", [Dap], Other
-        dap_step_in, "Step in", [Dap], Other
-        dap_step_out, "Step out", [Dap], Other
-        dap_next, "Step to next", [Dap], Other
-        dap_variables, "List variables", [Dap], Other
-        dap_terminate, "End debug session", [Dap], Other
-        dap_edit_condition, "Edit breakpoint condition on current line", [Dap], Other
-        dap_edit_log, "Edit breakpoint log message on current line", [Dap], Other
-        dap_switch_thread, "Switch current thread", [Dap], Other
-        dap_switch_stack_frame, "Switch stack frame", [Dap], Other
-        dap_enable_exceptions, "Enable exception breakpoints", [Dap], Other
-        dap_disable_exceptions, "Disable exception breakpoints", [Dap], Other
-        shell_pipe, "Pipe selections through shell command", [], Shell
-        shell_pipe_to, "Pipe selections into shell command ignoring output", [], Shell
-        shell_insert_output, "Insert shell command output before selections", [], Shell
-        shell_append_output, "Append shell command output after selections", [], Shell
-        shell_keep_pipe, "Filter selections with shell predicate", [], Shell
-        suspend, "Suspend and return to shell", [], Shell
-        rename_symbol, "Rename symbol", [Lsp], Other
-        increment, "Increment item under cursor", [], Changes
-        decrement, "Decrement item under cursor", [], Changes
-        record_macro, "Record macro", [], Changes
-        replay_macro, "Replay macro", [], Changes
-        command_palette, "Open command palette", [], Other
+        no_op,                                     [],                  Other,                 "Do nothing",
+        move_char_left,                            [],                  Movement,              "Move left",
+        move_char_right,                           [],                  Movement,              "Move right",
+        move_line_up,                              [],                  Movement,              "Move up",
+        move_line_down,                            [],                  Movement,              "Move down",
+        extend_char_left,                          [],                  Other,                 "Extend left",
+        extend_char_right,                         [],                  Other,                 "Extend right",
+        extend_line_up,                            [],                  Other,                 "Extend up",
+        extend_line_down,                          [],                  Other,                 "Extend down",
+        copy_selection_on_next_line,               [],                  SelectionManipulation, "Copy selection on next line",
+        copy_selection_on_prev_line,               [],                  SelectionManipulation, "Copy selection on previous line",
+        move_next_word_start,                      [],                  Movement,              "Move to start of next word",
+        move_prev_word_start,                      [],                  Movement,              "Move to start of previous word",
+        move_prev_word_end,                        [],                  Other,                 "Move to end of previous word",
+        move_next_word_end,                        [],                  Movement,              "Move to end of next word",
+        move_next_long_word_start,                 [],                  Movement,              "Move to start of next long word",
+        move_prev_long_word_start,                 [],                  Movement,              "Move to start of previous long word",
+        move_next_long_word_end,                   [],                  Movement,              "Move to end of next long word",
+        extend_next_word_start,                    [],                  Other,                 "Extend to start of next word",
+        extend_prev_word_start,                    [],                  Other,                 "Extend to start of previous word",
+        extend_next_long_word_start,               [],                  Other,                 "Extend to start of next long word",
+        extend_prev_long_word_start,               [],                  Other,                 "Extend to start of previous long word",
+        extend_next_long_word_end,                 [],                  Other,                 "Extend to end of next long word",
+        extend_next_word_end,                      [],                  Other,                 "Extend to end of next word",
+        find_till_char,                            [],                  Movement,              "Move till next occurrence of char",
+        find_next_char,                            [],                  Movement,              "Move to next occurrence of char",
+        extend_till_char,                          [],                  Other,                 "Extend till next occurrence of char",
+        extend_next_char,                          [],                  Other,                 "Extend to next occurrence of char",
+        till_prev_char,                            [],                  Movement,              "Move till previous occurrence of char",
+        find_prev_char,                            [],                  Movement,              "Move to previous occurrence of char",
+        extend_till_prev_char,                     [],                  Other,                 "Extend till previous occurrence of char",
+        extend_prev_char,                          [],                  Other,                 "Extend to previous occurrence of char",
+        repeat_last_motion,                        [],                  Movement,              "Repeat last motion",
+        replace,                                   [],                  Changes,               "Replace with new char",
+        switch_case,                               [],                  Changes,               "Switch (toggle) case",
+        switch_to_uppercase,                       [],                  Changes,               "Switch to uppercase",
+        switch_to_lowercase,                       [],                  Changes,               "Switch to lowercase",
+        page_up,                                   [],                  Movement,              "Move page up",
+        page_down,                                 [],                  Movement,              "Move page down",
+        half_page_up,                              [],                  Movement,              "Move half page up",
+        half_page_down,                            [],                  Movement,              "Move half page down",
+        select_all,                                [],                  SelectionManipulation, "Select whole document",
+        select_regex,                              [],                  SelectionManipulation, "Select all regex matches inside selections",
+        split_selection,                           [],                  SelectionManipulation, "Split selections on regex matches",
+        split_selection_on_newline,                [],                  SelectionManipulation, "Split selection on newlines",
+        search,                                    [],                  Search,                "Search for regex pattern",
+        rsearch,                                   [],                  Search,                "Reverse search for regex pattern",
+        search_next,                               [],                  Search,                "Select next search match",
+        search_prev,                               [],                  Search,                "Select previous search match",
+        extend_search_next,                        [],                  Other,                 "Add next search match to selection",
+        extend_search_prev,                        [],                  Other,                 "Add previous search match to selection",
+        search_selection,                          [],                  Search,                "Use current selection as search pattern",
+        global_search,                             [],                  Other,                 "Global search in workspace folder",
+        extend_line,                               [],                  Other,                 "Select current line, if already selected, extend to another line based on the anchor",
+        extend_line_below,                         [],                  SelectionManipulation, "Select current line, if already selected, extend to next line",
+        extend_line_above,                         [],                  Other,                 "Select current line, if already selected, extend to previous line",
+        extend_to_line_bounds,                     [],                  SelectionManipulation, "Extend selection to line bounds",
+        shrink_to_line_bounds,                     [],                  SelectionManipulation, "Shrink selection to line bounds",
+        delete_selection,                          [],                  Changes,               "Delete selection",
+        delete_selection_noyank,                   [],                  Changes,               "Delete selection without yanking",
+        change_selection,                          [],                  Changes,               "Change selection",
+        change_selection_noyank,                   [],                  Changes,               "Change selection without yanking",
+        collapse_selection,                        [],                  SelectionManipulation, "Collapse selection into single cursor",
+        flip_selections,                           [],                  SelectionManipulation, "Flip selection cursor and anchor",
+        ensure_selections_forward,                 [],                  SelectionManipulation, "Ensure all selections face forward",
+        insert_mode,                               [],                  Changes,               "Insert before selection",
+        append_mode,                               [],                  Changes,               "Append after selection",
+        command_mode,                              [],                  MinorModes,            "Enter command mode",
+        file_picker,                               [],                  Other,                 "Open file picker",
+        file_picker_in_current_directory,          [],                  Other,                 "Open file picker at current working directory",
+        code_action,                               [Lsp],               Other,                 "Perform code action",
+        buffer_picker,                             [],                  Other,                 "Open buffer picker",
+        jumplist_picker,                           [],                  Other,                 "Open jumplist picker",
+        symbol_picker,                             [Lsp],               Other,                 "Open symbol picker",
+        select_references_to_symbol_under_cursor,  [Lsp],               Other,                 "Select symbol references",
+        workspace_symbol_picker,                   [Lsp],               Other,                 "Open workspace symbol picker",
+        diagnostics_picker,                        [Lsp],               Other,                 "Open diagnostic picker",
+        workspace_diagnostics_picker,              [Lsp],               Other,                 "Open workspace diagnostic picker",
+        last_picker,                               [],                  Other,                 "Open last picker",
+        prepend_to_line,                           [],                  Changes,               "Insert at start of line",
+        append_to_line,                            [],                  Changes,               "Append to end of line",
+        open_below,                                [],                  Changes,               "Open new line below selection",
+        open_above,                                [],                  Changes,               "Open new line above selection",
+        normal_mode,                               [],                  Other,                 "Enter normal mode",
+        select_mode,                               [],                  MinorModes,            "Enter selection extend mode",
+        exit_select_mode,                          [],                  Other,                 "Exit selection mode",
+        add_newline_above,                         [],                  Other,                 "Add newline above",
+        add_newline_below,                         [],                  Other,                 "Add newline below",
+        goto_definition,                           [Lsp],               Other,                 "Goto definition",
+        goto_type_definition,                      [Lsp],               Other,                 "Goto type definition",
+        goto_reference,                            [Lsp],               Other,                 "Goto references",
+        goto_implementation,                       [Lsp],               Other,                 "Goto implementation",
+        goto_file_start,                           [],                  Other,                 "Goto line number <n> else file start",
+        goto_file_end,                             [],                  Other,                 "Goto file end",
+        goto_file,                                 [],                  Other,                 "Goto files in selection",
+        goto_file_hsplit,                          [],                  Other,                 "Goto files in selection (hsplit)",
+        goto_file_vsplit,                          [],                  Other,                 "Goto files in selection (vsplit)",
+        goto_window_top,                           [],                  Other,                 "Goto window top",
+        goto_window_center,                        [],                  Other,                 "Goto window center",
+        goto_window_bottom,                        [],                  Other,                 "Goto window bottom",
+        goto_last_accessed_file,                   [],                  Other,                 "Goto last accessed file",
+        goto_last_modified_file,                   [],                  Other,                 "Goto last modified file",
+        goto_last_modification,                    [],                  Other,                 "Goto last modification",
+        goto_line,                                 [],                  Movement,              "Goto line",
+        goto_last_line,                            [],                  Other,                 "Goto last line",
+        goto_first_diag,                           [Lsp],               Other,                 "Goto first diagnostic",
+        goto_last_diag,                            [Lsp],               Other,                 "Goto last diagnostic",
+        goto_next_diag,                            [Lsp],               Other,                 "Goto next diagnostic",
+        goto_prev_diag,                            [Lsp],               Other,                 "Goto previous diagnostic",
+        goto_line_start,                           [],                  Movement,              "Goto line start",
+        goto_line_end,                             [],                  Movement,              "Goto line end",
+        goto_next_buffer,                          [],                  Other,                 "Goto next buffer",
+        goto_previous_buffer,                      [],                  Other,                 "Goto previous buffer",
+        // TODO: different description ?        
+        goto_line_end_newline,                     [],                  Other,                 "Goto line end",
+        goto_first_nonwhitespace,                  [],                  Other,                 "Goto first non-blank in line",
+        trim_selections,                           [],                  SelectionManipulation, "Trim whitespace from selections",
+        extend_to_line_start,                      [],                  Other,                 "Extend to line start",
+        extend_to_line_end,                        [],                  Other,                 "Extend to line end",
+        extend_to_line_end_newline,                [],                  Other,                 "Extend to line end",
+        signature_help,                            [],                  Other,                 "Show signature help",
+        insert_tab,                                [],                  Other,                 "Insert tab char",
+        insert_newline,                            [],                  Other,                 "Insert newline char",
+        delete_char_backward,                      [],                  Other,                 "Delete previous char",
+        delete_char_forward,                       [],                  Other,                 "Delete next char",
+        delete_word_backward,                      [],                  Other,                 "Delete previous word",
+        delete_word_forward,                       [],                  Other,                 "Delete next word",
+        kill_to_line_start,                        [],                  Other,                 "Delete till start of line",
+        kill_to_line_end,                          [],                  Other,                 "Delete till end of line",
+        undo,                                      [],                  Changes,               "Undo change",
+        redo,                                      [],                  Changes,               "Redo change",
+        earlier,                                   [],                  Changes,               "Move backward in history",
+        later,                                     [],                  Changes,               "Move forward in history",
+        commit_undo_checkpoint,                    [],                  Other,                 "Commit changes to new checkpoint",
+        yank,                                      [],                  Changes,               "Yank selection",
+        yank_joined_to_clipboard,                  [],                  Other,                 "Join and yank selections to clipboard",
+        yank_main_selection_to_clipboard,          [],                  Other,                 "Yank main selection to clipboard",
+        yank_joined_to_primary_clipboard,          [],                  Other,                 "Join and yank selections to primary clipboard",
+        yank_main_selection_to_primary_clipboard,  [],                  Other,                 "Yank main selection to primary clipboard",
+        replace_with_yanked,                       [],                  Changes,               "Replace with yanked text",
+        replace_selections_with_clipboard,         [],                  Other,                 "Replace selections by clipboard content",
+        replace_selections_with_primary_clipboard, [],                  Other,                 "Replace selections by primary clipboard",
+        paste_after,                               [],                  Changes,               "Paste after selection",
+        paste_before,                              [],                  Changes,               "Paste before selection",
+        paste_clipboard_after,                     [],                  Other,                 "Paste clipboard after selections",
+        paste_clipboard_before,                    [],                  Other,                 "Paste clipboard before selections",
+        paste_primary_clipboard_after,             [],                  Other,                 "Paste primary clipboard after selections",
+        paste_primary_clipboard_before,            [],                  Other,                 "Paste primary clipboard before selections",
+        indent,                                    [],                  Changes,               "Indent selection",
+        unindent,                                  [],                  Changes,               "Unindent selection",
+        format_selections,                         [Lsp],               Changes,               "Format selection",
+        join_selections,                           [],                  SelectionManipulation, "Join lines inside selection",
+        keep_selections,                           [],                  SelectionManipulation, "Keep selections matching regex",
+        remove_selections,                         [],                  SelectionManipulation, "Remove selections matching regex",
+        align_selections,                          [],                  SelectionManipulation, "Align selections in column",
+        keep_primary_selection,                    [],                  SelectionManipulation, "Keep primary selection",
+        remove_primary_selection,                  [],                  SelectionManipulation, "Remove primary selection",
+        completion,                                [],                  Other,                 "Invoke completion popup",
+        hover,                                     [Lsp],               Other,                 "Show docs for item under cursor",
+        toggle_comments,                           [],                  SelectionManipulation, "Comment/uncomment selections",
+        rotate_selections_forward,                 [],                  SelectionManipulation, "Rotate selections forward",
+        rotate_selections_backward,                [],                  SelectionManipulation, "Rotate selections backward",
+        rotate_selection_contents_forward,         [],                  SelectionManipulation, "Rotate selection contents forward",
+        rotate_selection_contents_backward,        [],                  SelectionManipulation, "Rotate selections contents backward",
+        expand_selection,                          [TreeSitter],        SelectionManipulation, "Expand selection to parent syntax node",
+        shrink_selection,                          [TreeSitter],        SelectionManipulation, "Shrink selection to previously expanded syntax node",
+        select_next_sibling,                       [TreeSitter],        SelectionManipulation, "Select next sibling in syntax tree",
+        select_prev_sibling,                       [TreeSitter],        SelectionManipulation, "Select previous sibling in syntax tree",
+        jump_forward,                              [],                  Movement,              "Jump forward on jumplist",
+        jump_backward,                             [],                  Movement,              "Jump backward on jumplist",
+        save_selection,                            [],                  Movement,              "Save current selection to jumplist",
+        jump_view_right,                           [],                  Other,                 "Jump to right split",
+        jump_view_left,                            [],                  Other,                 "Jump to left split",
+        jump_view_up,                              [],                  Other,                 "Jump to split above",
+        jump_view_down,                            [],                  Other,                 "Jump to split below",
+        swap_view_right,                           [],                  Other,                 "Swap with right split",
+        swap_view_left,                            [],                  Other,                 "Swap with left split",
+        swap_view_up,                              [],                  Other,                 "Swap with split above",
+        swap_view_down,                            [],                  Other,                 "Swap with split below",
+        transpose_view,                            [],                  Other,                 "Transpose splits",
+        rotate_view,                               [],                  Other,                 "Goto next window",
+        hsplit,                                    [],                  Other,                 "Horizontal bottom split",
+        hsplit_new,                                [],                  Other,                 "Horizontal bottom split scratch buffer",
+        vsplit,                                    [],                  Other,                 "Vertical right split",
+        vsplit_new,                                [],                  Other,                 "Vertical right split scratch buffer",
+        wclose,                                    [],                  Other,                 "Close window",
+        wonly,                                     [],                  Other,                 "Close windows except current",
+        select_register,                           [],                  Changes,               "Select register",
+        insert_register,                           [],                  Other,                 "Insert register",
+        align_view_middle,                         [],                  Other,                 "Align view middle",
+        align_view_top,                            [],                  Other,                 "Align view top",
+        align_view_center,                         [],                  Other,                 "Align view center",
+        align_view_bottom,                         [],                  Other,                 "Align view bottom",
+        scroll_up,                                 [],                  Other,                 "Scroll view up",
+        scroll_down,                               [],                  Other,                 "Scroll view down",
+        match_brackets,                            [TreeSitter],        Other,                 "Goto matching bracket",
+        surround_add,                              [],                  Other,                 "Surround add",
+        surround_replace,                          [],                  Other,                 "Surround replace",
+        surround_delete,                           [],                  Other,                 "Surround delete",
+        select_textobject_around,                  [],                  Other,                 "Select around object",
+        select_textobject_inner,                   [],                  Other,                 "Select inside object",
+        goto_next_function,                        [TreeSitter],        Other,                 "Goto next function",
+        goto_prev_function,                        [TreeSitter],        Other,                 "Goto previous function",
+        goto_next_class,                           [TreeSitter],        Other,                 "Goto next class",
+        goto_prev_class,                           [TreeSitter],        Other,                 "Goto previous class",
+        goto_next_parameter,                       [TreeSitter],        Other,                 "Goto next parameter",
+        goto_prev_parameter,                       [TreeSitter],        Other,                 "Goto previous parameter",
+        goto_next_comment,                         [TreeSitter],        Other,                 "Goto next comment",
+        goto_prev_comment,                         [TreeSitter],        Other,                 "Goto previous comment",
+        goto_next_test,                            [TreeSitter],        Other,                 "Goto next test",
+        goto_prev_test,                            [TreeSitter],        Other,                 "Goto previous test",
+        goto_next_paragraph,                       [TreeSitter],        Other,                 "Goto next paragraph",
+        goto_prev_paragraph,                       [TreeSitter],        Other,                 "Goto previous paragraph",
+        dap_launch,                                [Dap],               Other,                 "Launch debug target",
+        dap_toggle_breakpoint,                     [Dap],               Other,                 "Toggle breakpoint",
+        dap_continue,                              [Dap],               Other,                 "Continue program execution",
+        dap_pause,                                 [Dap],               Other,                 "Pause program execution",
+        dap_step_in,                               [Dap],               Other,                 "Step in",
+        dap_step_out,                              [Dap],               Other,                 "Step out",
+        dap_next,                                  [Dap],               Other,                 "Step to next",
+        dap_variables,                             [Dap],               Other,                 "List variables",
+        dap_terminate,                             [Dap],               Other,                 "End debug session",
+        dap_edit_condition,                        [Dap],               Other,                 "Edit breakpoint condition on current line",
+        dap_edit_log,                              [Dap],               Other,                 "Edit breakpoint log message on current line",
+        dap_switch_thread,                         [Dap],               Other,                 "Switch current thread",
+        dap_switch_stack_frame,                    [Dap],               Other,                 "Switch stack frame",
+        dap_enable_exceptions,                     [Dap],               Other,                 "Enable exception breakpoints",
+        dap_disable_exceptions,                    [Dap],               Other,                 "Disable exception breakpoints",
+        shell_pipe,                                [],                  Shell,                 "Pipe selections through shell command",
+        shell_pipe_to,                             [],                  Shell,                 "Pipe selections into shell command ignoring output",
+        shell_insert_output,                       [],                  Shell,                 "Insert shell command output before selections",
+        shell_append_output,                       [],                  Shell,                 "Append shell command output after selections",
+        shell_keep_pipe,                           [],                  Shell,                 "Filter selections with shell predicate",
+        suspend,                                   [],                  Shell,                 "Suspend and return to shell",
+        rename_symbol,                             [Lsp],               Other,                 "Rename symbol",
+        increment,                                 [],                  Changes,               "Increment item under cursor",
+        decrement,                                 [],                  Changes,               "Decrement item under cursor",
+        record_macro,                              [],                  Changes,               "Record macro",
+        replay_macro,                              [],                  Changes,               "Replay macro",
+        command_palette,                           [],                  Other,                 "Open command palette",
     );
 }
 
