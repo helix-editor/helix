@@ -64,11 +64,12 @@
 "ui.window" = { fg = "dark", bg = "darkest" }
 "ui.help" = { fg = "light", bg = "dark" }
 "ui.text" = { fg = "light" } # .focus / .info
-# "ui.virtual" = {} # .ruler / .whitespace
+"ui.virtual" = { fg = "dark" } # .ruler / .whitespace
 "ui.virtual.ruler" = { bg = "darker"}
 "ui.menu" = { fg = "light", bg = "dark" } # .selected
 "ui.menu.selected" = { fg = "lightest", bg = "blue_accent" } # .selected
-"ui.selection" = { bg = "select" } # .primary
+"ui.selection" = { bg = "darker" } # .primary
+"ui.selection.primary" = { bg = "select" } # .primary
 "hint" = { fg = "blue_accent"}
 "info" = { fg = "yellow_accent" }
 "warning" = { fg = "orange_accent" }
