@@ -556,14 +556,13 @@ pub mod tasks {
             for query_file in query_files {
                 let language = get_language(&grammar_name);
                 let query_text = read_query(&language_name, query_file);
-                if !query_text.is_empty() {
-                    if let Ok(language) = language {
-                        if let Err(reason) = Query::new(language, &query_text) {
-                            return Err(format!(
-                                "Failed to parse {} queries for {}: {}",
-                                query_file, language_name, reason
-                            ));
-                        }
+
+                if let (false, Ok(language)) = (query_text.is_empty(), language) {
+                    if let Err(reason) = Query::new(language, &query_text) {
+                        return Err(format!(
+                            "Failed to parse {} queries for {}: {}",
+                            query_file, language_name, reason
+                        ));
                     }
                 }
             }
