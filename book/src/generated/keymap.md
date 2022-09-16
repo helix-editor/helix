@@ -1,7 +1,7 @@
 ANCHOR: all
 ## Normal
 ### Movement
-> NOTE: Unlike vim, `f`, `F`, `t` and `T` are not confined to the current line.
+> NOTE: Unlike Vim, `f`, `F`, `t` and `T` are not confined to the current line.
 
 | Key | Description | Command |
 | --- | --- | --- |
@@ -146,7 +146,7 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `p` | Goto next paragraph (**TS**) | `goto_next_paragraph` |
 | `space` | Add newline below | `add_newline_below` |
 #### Window
-This layer is similar to vim keybindings as kakoune does not support window.
+This layer is similar to Vim keybindings as Kakoune does not support window.
 
 | Key | Description | Command |
 | --- | --- | --- |
