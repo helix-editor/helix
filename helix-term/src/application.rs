@@ -421,7 +421,10 @@ impl Application {
     }
 
     pub fn handle_idle_timeout(&mut self) {
-        if self.compositor.has_overlay() {
+        if self
+            .compositor
+            .has_component_by(|type_name| type_name.contains("Picker"))
+        {
             return;
         }
 
