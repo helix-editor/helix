@@ -190,7 +190,7 @@ impl KeyTrie {
         match self {
             KeyTrie::Leaf(cmd) => cmd.category(),
             KeyTrie::Node(_) => Category::MinorModes,
-            _ => Category::None,
+            _ => Category::Other,
         }
     }
 }
