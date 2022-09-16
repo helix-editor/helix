@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::Document;
 
-pub fn inject_into_with<T>(strs: T, doc: &Document) -> Vec<String>
+pub fn inject_environment<T>(strs: T, doc: &Document) -> Vec<String>
 where
     T: Iterator,
     <T as Iterator>::Item: Display,
