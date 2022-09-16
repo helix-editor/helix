@@ -380,6 +380,48 @@ you to selectively add search terms to your selections.
 | `end` | Extend to line end | `extend_to_line_end` |
 | `esc` | Exit selection mode | `exit_select_mode` |
 | `v` | Enter normal mode | `normal_mode` |
+## Picker
+Keys to use within picker. Remapping currently not supported.
+
+| Key                          | Description       |
+| -----                        | -------------     |
+| `Tab`, `Up`, `Ctrl-p`        | Previous entry    |
+| `PageUp`, `Ctrl-u`           | Page up           |
+| `Shift-tab`, `Down`, `Ctrl-n`| Next entry        |
+| `PageDown`, `Ctrl-d`         | Page down         |
+| `Home`                       | Go to first entry |
+| `End`                        | Go to last entry  |
+| `Ctrl-space`                 | Filter options    |
+| `Enter`                      | Open selected     |
+| `Ctrl-s`                     | Open horizontally |
+| `Ctrl-v`                     | Open vertically   |
+| `Ctrl-t`                     | Toggle preview    |
+| `Escape`, `Ctrl-c`           | Close picker      |
+## Prompt
+Keys to use within prompt, Remapping currently not supported.
+
+| Key                                         | Description                                                             |
+| -----                                       | -------------                                                           |
+| `Escape`, `Ctrl-c`                          | Close prompt                                                            |
+| `Alt-b`, `Ctrl-Left`                        | Backward a word                                                         |
+| `Ctrl-b`, `Left`                            | Backward a char                                                         |
+| `Alt-f`, `Ctrl-Right`                       | Forward a word                                                          |
+| `Ctrl-f`, `Right`                           | Forward a char                                                          |
+| `Ctrl-e`, `End`                             | Move prompt end                                                         |
+| `Ctrl-a`, `Home`                            | Move prompt start                                                       |
+| `Ctrl-w`, `Alt-Backspace`, `Ctrl-Backspace` | Delete previous word                                                    |
+| `Alt-d`, `Alt-Delete`, `Ctrl-Delete`        | Delete next word                                                        |
+| `Ctrl-u`                                    | Delete to start of line                                                 |
+| `Ctrl-k`                                    | Delete to end of line                                                   |
+| `backspace`, `Ctrl-h`                       | Delete previous char                                                    |
+| `delete`, `Ctrl-d`                          | Delete next char                                                        |
+| `Ctrl-s`                                    | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
+| `Ctrl-p`, `Up`                              | Select previous history                                                 |
+| `Ctrl-n`, `Down`                            | Select next history                                                     |
+| `Ctrl-r`                                    | Insert the content of the register selected by following input char     |
+| `Tab`                                       | Select next completion item                                             |
+| `BackTab`                                   | Select previous completion item                                         |
+| `Enter`                                     | Open selected                                                           |
 ## Unmapped Commands
 Some commands exist but do not have a default keybinding. These commands
 may be quite niche, or simply alternatives to the standard commands. If you
@@ -424,6 +466,8 @@ ANCHOR: toc
   - [Shell](#shell)
 - [Insert](#insert)
 - [Select](#select)
+- [Picker](#picker)
+- [Prompt](#prompt)
 - [Unmapped Commands](#unmapped-commands)
 
 ANCHOR_END: toc

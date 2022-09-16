@@ -356,7 +356,7 @@ pub mod md_gen {
         items
     }
 
-    pub fn commands() -> Result<String, DynError> {
+    pub fn keymap() -> Result<String, DynError> {
         let mut md = String::new();
 
         let default_keymap = keymap::default::default();
@@ -379,9 +379,39 @@ pub mod md_gen {
             md.push_str(&text);
         }
 
+        // TODO once picker and prompt are remappable and not hard-coded it
+        // would be nice to auto generate the config like for other modes.
+        let path = path::book_keymap();
+        let picker = md_keymap_section(
+            "Picker",
+            &mut table,
+            0,
+            &fs::read_to_string(path.join("picker.md")).unwrap(),
+        );
+        let prompt = md_keymap_section(
+            "Prompt",
+            &mut table,
+            0,
+            &fs::read_to_string(path.join("prompt.md")).unwrap(),
+        );
+
+        let unmapped = unmapped_section(mapped, &mut table);
+
+        md.push_str(&picker);
+        md.push_str(&prompt);
+        md.push_str(&unmapped);
+
+        let toc = md_toc(&table);
+        let mut md = md_anchor(&md, "all");
+        let toc = md_anchor(&toc, "toc");
+        md.push_str(&toc);
+
+        Ok(md)
+    }
+
+    fn unmapped_section(mapped: HashSet<String>, table: &mut Vec<(String, usize)>) -> String {
         let mut unmapped = String::new();
         let name = "Unmapped Commands";
-
         unmapped.push_str(&md_table_heading(&[
             "Command".to_owned(),
             "Description".to_owned(),
@@ -394,15 +424,7 @@ pub mod md_gen {
                 ]))
             }
         }
-
-        md.push_str(&md_keymap_section(name, &mut table, 0, &unmapped));
-
-        let toc = md_toc(&table);
-        let mut md = md_anchor(&md, "all");
-        let toc = md_anchor(&toc, "toc");
-        md.push_str(&toc);
-
-        Ok(md)
+        md_keymap_section(name, table, 0, &unmapped)
     }
 
     pub fn typable_commands() -> Result<String, DynError> {
@@ -513,7 +535,11 @@ pub mod path {
     }
 
     pub fn book_modes() -> PathBuf {
-        project_root().join("book/src/modes/")
+        project_root().join("book/src/keymap/modes/")
+    }
+
+    pub fn book_keymap() -> PathBuf {
+        project_root().join("book/src/keymap/")
     }
 
     pub fn ts_queries() -> PathBuf {
@@ -532,7 +558,7 @@ pub mod tasks {
     pub fn docgen() -> Result<(), DynError> {
         use md_gen::*;
         write(TYPABLE_COMMANDS_MD_OUTPUT, &typable_commands()?);
-        write(COMMANDS_MD_OUTPUT, &commands()?);
+        write(COMMANDS_MD_OUTPUT, &keymap()?);
         write(LANG_SUPPORT_MD_OUTPUT, &lang_features()?);
         Ok(())
     }
