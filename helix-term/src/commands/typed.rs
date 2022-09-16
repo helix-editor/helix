@@ -513,23 +513,33 @@ fn force_write_quit(
     force_quit(cx, &[], event)
 }
 
-/// Results an error if there are modified buffers remaining and sets editor error,
-/// otherwise returns `Ok(())`
+/// Results an error if there are modified buffers remaining and sets editor
+/// error, otherwise returns `Ok(())`. If the current document is unmodified,
+/// and there are modified documents, switches focus to one of them.
 pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> {
-    let modified: Vec<_> = editor
+    let (modified_ids, modified_names): (Vec<_>, Vec<_>) = editor
         .documents()
         .filter(|doc| doc.is_modified())
         .map(|doc| {
-            doc.relative_path()
-                .map(|path| path.to_string_lossy().to_string())
-                .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
+            (
+                doc.id(),
+                doc.relative_path()
+                    .map(|path| path.to_string_lossy().to_string())
+                    .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into()),
+            )
         })
-        .collect();
-    if !modified.is_empty() {
+        .unzip();
+    if let Some(first) = modified_ids.first() {
+        let current = doc!(editor);
+        // If the current document is unmodified, and there are modified
+        // documents, switch focus to the first modified doc.
+        if !modified_ids.contains(&current.id()) {
+            editor.switch(*first, Action::Replace);
+        }
         bail!(
             "{} unsaved buffer(s) remaining: {:?}",
-            modified.len(),
-            modified
+            modified_names.len(),
+            modified_names
         );
     }
     Ok(())
