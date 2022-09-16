@@ -128,8 +128,8 @@ will move the selection over to the "func" `identifier`.
 ![textobject-demo](https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif)
 ![textobject-treesitter-demo](https://user-images.githubusercontent.com/23398472/132537398-2a2e0a54-582b-44ab-a77f-eb818942203d.gif)
 
-- `ma` - Select around the object (`va` in vim, `<alt-a>` in kakoune)
-- `mi` - Select inside the object (`vi` in vim, `<alt-i>` in kakoune)
+- `ma` - Select around the object (`va` in Vim, `<alt-a>` in Kakoune)
+- `mi` - Select inside the object (`vi` in Vim, `<alt-i>` in Kakoune)
 
 | Key after `mi` or `ma` | Textobject selected      |
 | ---                    | ---                      |
