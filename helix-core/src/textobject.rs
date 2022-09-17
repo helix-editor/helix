@@ -437,7 +437,7 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection = selection
                 .transform(|r| textobject_paragraph(text.slice(..), r, TextObject::Inside, 1));
-            let actual = crate::test::plain(&s, selection);
+            let actual = crate::test::plain(&s, &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
@@ -460,7 +460,7 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection = selection
                 .transform(|r| textobject_paragraph(text.slice(..), r, TextObject::Inside, 2));
-            let actual = crate::test::plain(&s, selection);
+            let actual = crate::test::plain(&s, &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
@@ -491,7 +491,7 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection = selection
                 .transform(|r| textobject_paragraph(text.slice(..), r, TextObject::Around, 1));
-            let actual = crate::test::plain(&s, selection);
+            let actual = crate::test::plain(&s, &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }

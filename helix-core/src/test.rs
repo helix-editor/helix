@@ -2,6 +2,7 @@
 use crate::{Range, Selection};
 use smallvec::SmallVec;
 use std::cmp::Reverse;
+use unicode_segmentation::UnicodeSegmentation;
 
 /// Convert annotated test string to test string and selection.
 ///
@@ -9,6 +10,10 @@ use std::cmp::Reverse;
 /// `#(|` for secondary selection with head before anchor followed by `)#`.
 /// `#[` for primary selection with head after anchor followed by `|]#`.
 /// `#(` for secondary selection with head after anchor followed by `|)#`.
+///
+/// If the selection contains any LF or CRLF sequences, which are immediately
+/// followed by the same grapheme, then the subsequent one is removed. This is
+/// to allow representing having the cursor over the end of the line.
 ///
 /// # Examples
 ///
@@ -30,23 +35,23 @@ use std::cmp::Reverse;
 pub fn print(s: &str) -> (String, Selection) {
     let mut primary_idx = None;
     let mut ranges = SmallVec::new();
-    let mut iter = s.chars().peekable();
+    let mut iter = UnicodeSegmentation::graphemes(s, true).peekable();
     let mut left = String::with_capacity(s.len());
 
     'outer: while let Some(c) = iter.next() {
         let start = left.chars().count();
 
-        if c != '#' {
-            left.push(c);
+        if c != "#" {
+            left.push_str(c);
             continue;
         }
 
         let (is_primary, close_pair) = match iter.next() {
-            Some('[') => (true, ']'),
-            Some('(') => (false, ')'),
+            Some("[") => (true, "]"),
+            Some("(") => (false, ")"),
             Some(ch) => {
                 left.push('#');
-                left.push(ch);
+                left.push_str(ch);
                 continue;
             }
             None => break,
@@ -56,24 +61,45 @@ pub fn print(s: &str) -> (String, Selection) {
             panic!("primary `#[` already appeared {:?} {:?}", left, s);
         }
 
-        let head_at_beg = iter.next_if_eq(&'|').is_some();
+        let head_at_beg = iter.next_if_eq(&"|").is_some();
+        let last_grapheme = |s: &str| {
+            UnicodeSegmentation::graphemes(s, true)
+                .last()
+                .map(String::from)
+        };
 
         while let Some(c) = iter.next() {
-            if !(c == close_pair && iter.peek() == Some(&'#')) {
-                left.push(c);
+            let next = iter.peek();
+            let mut prev = last_grapheme(left.as_str());
+
+            if !(c == close_pair && next == Some(&"#")) {
+                left.push_str(c);
                 continue;
             }
 
             if !head_at_beg {
-                let prev = left.pop().unwrap();
-                if prev != '|' {
-                    left.push(prev);
-                    left.push(c);
-                    continue;
+                match &prev {
+                    Some(p) if p != "|" => {
+                        left.push_str(c);
+                        continue;
+                    }
+                    Some(p) if p == "|" => {
+                        left.pop().unwrap(); // pop the |
+                        prev = last_grapheme(left.as_str());
+                    }
+                    _ => (),
                 }
             }
 
             iter.next(); // skip "#"
+            let next = iter.peek();
+
+            // skip explicit line end inside selection
+            if (prev == Some(String::from("\r\n")) || prev == Some(String::from("\n")))
+                && next.map(|n| String::from(*n)) == prev
+            {
+                iter.next();
+            }
 
             if is_primary {
                 primary_idx = Some(ranges.len());
@@ -118,11 +144,11 @@ pub fn print(s: &str) -> (String, Selection) {
 /// use smallvec::smallvec;
 ///
 /// assert_eq!(
-///     plain("abc", Selection::new(smallvec![Range::new(0, 1), Range::new(3, 2)], 0)),
+///     plain("abc", &Selection::new(smallvec![Range::new(0, 1), Range::new(3, 2)], 0)),
 ///     "#[a|]#b#(|c)#".to_owned()
 /// );
 /// ```
-pub fn plain(s: &str, selection: Selection) -> String {
+pub fn plain(s: &str, selection: &Selection) -> String {
     let primary = selection.primary_index();
     let mut out = String::with_capacity(s.len() + 5 * selection.len());
     out.push_str(s);
@@ -147,6 +173,7 @@ pub fn plain(s: &str, selection: Selection) -> String {
     out
 }
 
+#[allow(clippy::module_inception)]
 #[cfg(test)]
 #[allow(clippy::module_inception)]
 mod test {
