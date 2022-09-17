@@ -2343,6 +2343,56 @@ impl Iterator for SpanIter {
     }
 }
 
+struct FlatSpanIter<I> {
+    iter: I,
+}
+
+/// Converts a Vec of spans into an [Iterator] over [HighlightEvent]s
+///
+/// This implementation does not resolve overlapping spans. Zero-width spans are
+/// eliminated but otherwise the ranges are trusted to not overlap.
+///
+/// This iterator has much less overhead than [span_iter] and is appropriate for
+/// cases where the input spans are known to satisfy all of [merge]'s assumptions
+/// and invariants, such as with selection highlights.
+///
+/// # Panics
+///
+/// Panics on debug builds when the input spans overlap or are not sorted.
+pub fn flat_span_iter(spans: Vec<Span>) -> impl Iterator<Item = HighlightEvent> {
+    use HighlightEvent::*;
+
+    // Consecutive items are sorted and non-overlapping
+    debug_assert!(spans.windows(2).all(|window| {
+        let a = &window[0];
+        let b = &window[1];
+        b.1.start >= a.1.end
+    }));
+
+    FlatSpanIter {
+        iter: spans
+            .into_iter()
+            .filter(|(_h, r)| r.start != r.end)
+            .flat_map(|(h, r)| {
+                [
+                    HighlightStart(Highlight(h)),
+                    Source {
+                        start: r.start,
+                        end: r.end,
+                    },
+                    HighlightEnd,
+                ]
+            }),
+    }
+}
+
+impl<I: Iterator<Item = HighlightEvent>> Iterator for FlatSpanIter<I> {
+    type Item = HighlightEvent;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
