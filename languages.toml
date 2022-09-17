@@ -1779,4 +1779,4 @@ language-server = { command = "bass", args = ["--lsp"] }
 
 [[grammar]]
 name = "bass"
-source = { git = "https://github.com/vito/tree-sitter-bass", rev = "333dc1365535d12d94f83d409304fb433c5e3800" }
+source = { git = "https://github.com/vito/tree-sitter-bass", rev = "501133e260d768ed4e1fd7374912ed5c86d6fd90" }

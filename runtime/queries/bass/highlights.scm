@@ -1,25 +1,47 @@
 ; GENERATED VIA https://github.com/vito/tree-sitter-bass
 
+;;; comments
+
 (comment) @comment.line
+
+;;; punctuation
 
 ["(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
-[(ignore) (null) (bool)] @constant.builtin
+;;; constants
 
-(int) @constant.numeric
+[(ignore) (null)] @constant.builtin
 
-(string (string_escape) @constant.character.escape)
+(bool) @constant.builtin.boolean
+
+(int) @constant.numeric.integer
+
+;;; strings
+
+;; string literals
 
 (string) @string
+(string (string_escape) @constant.character.escape)
 
-[(command) (path) (relpath)] @namespace
+;; keywords (symbol literals)
 
 (keyword) @string.special.symbol
 
+;; paths
 
-;;; specific queries take precedence
+(dot) @string.special.path
+(dotdot) @string.special.path
+(command) @string.special.path
+(subpath (symbol) @string.special.path)
 
-;; classification based highlighting
+; slashes in a path denote a combiner call
+(subpath (slash) @function)
+
+
+
+;;; specific highlighting for builtins & special forms
+
+;; symbol classification based highlighting
 
 (list . (symbol) @keyword.control.conditional (#match? @keyword.control.conditional "^(if|case|cond|when)$"))
 (cons . (symbol) @keyword.control.conditional (#match? @keyword.control.conditional "^(if|case|cond|when)$"))
@@ -67,7 +89,7 @@
   (_)
   (symbol) @function)
 
-;;; generic highlight rules
+;;; generic highlighting for all forms
 
 ; first symbol in a list form is a combiner call
 (list . (symbol) @function)
@@ -75,5 +97,5 @@
 ; highlight symbols as vars only when they're clearly vars
 (cons (symbol) @variable)
 (scope (symbol) @variable)
-(subpath form: (symbol) @variable)
-(subbind form: (symbol) @variable)
+(path form: (symbol) @variable)
+(symbind form: (symbol) @variable)
