@@ -520,32 +520,12 @@ impl Document {
         path: Option<P>,
         force: bool,
     ) -> Result<(), anyhow::Error> {
-        self.save_impl::<futures_util::future::Ready<_>, _>(None, path, force)
-    }
-
-    pub fn format_and_save<F, P>(
-        &mut self,
-        formatting: Option<F>,
-        path: Option<P>,
-        force: bool,
-    ) -> anyhow::Result<()>
-    where
-        F: Future<Output = Result<Transaction, FormatterError>> + 'static + Send,
-        P: Into<PathBuf>,
-    {
-        self.save_impl(formatting, path, force)
+        self.save_impl::<futures_util::future::Ready<_>, _>(path, force)
     }
 
     /// The `Document`'s text is encoded according to its encoding and written to the file located
     /// at its `path()`.
-    ///
-    /// If `formatting` is present, it supplies some changes that we apply to the text before saving.
-    fn save_impl<F, P>(
-        &mut self,
-        formatting: Option<F>,
-        path: Option<P>,
-        force: bool,
-    ) -> Result<(), anyhow::Error>
+    fn save_impl<F, P>(&mut self, path: Option<P>, force: bool) -> Result<(), anyhow::Error>
     where
         F: Future<Output = Result<Transaction, FormatterError>> + 'static + Send,
         P: Into<PathBuf>,
@@ -561,7 +541,7 @@ impl Document {
 
         // we clone and move text + path into the future so that we asynchronously save the current
         // state without blocking any further edits.
-        let mut text = self.text().clone();
+        let text = self.text().clone();
 
         let path = match path {
             Some(path) => helix_core::path::get_canonicalized_path(&path.into())?,
@@ -598,23 +578,6 @@ impl Document {
                         std::fs::DirBuilder::new().recursive(true).create(parent)?;
                     } else {
                         bail!("can't save file, parent directory does not exist");
-                    }
-                }
-            }
-
-            if let Some(fmt) = formatting {
-                match fmt.await {
-                    Ok(transaction) => {
-                        let success = transaction.changes().apply(&mut text);
-                        if !success {
-                            // This shouldn't happen, because the transaction changes were generated
-                            // from the same text we're saving.
-                            log::error!("failed to apply format changes before saving");
-                        }
-                    }
-                    Err(err) => {
-                        // formatting failed: report error, and save file without modifications
-                        log::error!("{}", err);
                     }
                 }
             }
