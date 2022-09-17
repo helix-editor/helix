@@ -54,10 +54,11 @@ for languages like Python, where for the purpose of indentation some nodes
 
 - `@stop-extend`:
 Prevents the first extension of an ancestor of this node. For example, in Python
-a return expression always ends the block that it is in. Note that this only prevents
-the next extension of one ancestor: If multiple ancestors can be extended (for example
-multiple nested conditional blocks in python), only the extension of the innermost
-ancestor is prevented.
+a return expression always ends the block that it is in. Note that this only stops the
+extension of the next `@extend-indented` capture. If multiple ancestors are captured,
+only the extension of the innermost one is prevented. All other ancestors are unaffected
+(regardless of whether the innermost ancestor would actually have been extended).
+
 
 ## Predicates
 
