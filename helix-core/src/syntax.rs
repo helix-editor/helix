@@ -2311,10 +2311,12 @@ impl Iterator for SpanIter {
         // Handle all spans that share this starting point. Either subslice
         // or fully consume the span.
         let mut i = self.index;
+        let mut subslices = 0;
         loop {
             match self.spans.get_mut(i) {
-                Some((h, r)) if r.start == self.cursor => {
-                    self.event_queue.push_back(HighlightStart(Highlight(*h)));
+                Some((highlight, range)) if range.start == self.cursor => {
+                    self.event_queue
+                        .push_back(HighlightStart(Highlight(*highlight)));
                     i += 1;
 
                     match subslice {
@@ -2322,11 +2324,12 @@ impl Iterator for SpanIter {
                             // If this span needs to be subsliced, consume the
                             // left part of the subslice and leave the right.
                             self.range_ends.push(intersect);
-                            r.start = intersect;
+                            range.start = intersect;
+                            subslices += 1;
                         }
                         None => {
                             // If there is no subslice, consume the span.
-                            self.range_ends.push(r.end);
+                            self.range_ends.push(range.end);
                             self.index = i;
                         }
                     }
@@ -2339,6 +2342,36 @@ impl Iterator for SpanIter {
         // same point may be in descending order because of the assumed
         // sort-order of input ranges.
         self.range_ends.sort_unstable();
+
+        // When spans are subsliced, the span Vec may need to be re-sorted
+        // because the `range.start` may now be greater than some `range.start`
+        // later in the Vec. This is not a classic "sort": we take several
+        // shortcuts to improve the runtime so that the sort may be done in
+        // time linear to the cardinality of the span Vec. Practically speaking
+        // the runtime is even better since we only scan from `self.index` to
+        // the first element of the Vec with a `range.start` after this range.
+        if let Some(intersect) = subslice {
+            let mut after = None;
+
+            // Find the index of the largest span smaller than the intersect point.
+            // `i` starts on the index after the last subsliced span.
+            loop {
+                match self.spans.get(i) {
+                    Some((_, range)) if range.start < intersect => {
+                        after = Some(i);
+                        i += 1;
+                    }
+                    _ => break,
+                }
+            }
+
+            // Rotate the subsliced spans so that they come after the spans that
+            // have smaller `range.start`s.
+            if let Some(after) = after {
+                self.spans[self.index..=after].rotate_left(subslices);
+            }
+        }
+
         self.event_queue.pop_front()
     }
 }
@@ -2732,6 +2765,68 @@ mod test {
                 HighlightEnd, // ends 5
                 Source { start: 8, end: 10 },
                 HighlightEnd, // ends 4
+                HighlightEnd, // ends 3
+            ],
+        );
+    }
+
+    #[test]
+    fn test_span_iter_events_where_ranges_must_be_sorted() {
+        use HighlightEvent::*;
+        // This case needs the span Vec to be re-sorted because
+        // span 3 is subsliced to 9..10, putting it after span 4
+        // in the ordering.
+
+        /*
+        Input:
+
+                                          4   5
+                                        |---|---|
+                        2                   3
+                |---------------|   |---------------|
+                              1
+            |-----------------------------------|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9  10
+        */
+        let input = vec![(1, 0..9), (2, 1..5), (3, 6..10), (4, 7..8), (5, 8..9)];
+
+        /*
+        Output:
+
+                                          4   5
+                                        |---|---|
+                        2                   3
+                |---------------|   |-----------|
+                              1                   3
+            |-----------------------------------|---|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9  10
+        */
+        let output: Vec<_> = span_iter(input).collect();
+        assert_eq!(
+            output,
+            &[
+                HighlightStart(Highlight(1)),
+                Source { start: 0, end: 1 },
+                HighlightStart(Highlight(2)),
+                Source { start: 1, end: 5 },
+                HighlightEnd, // ends 2
+                Source { start: 5, end: 6 },
+                HighlightStart(Highlight(3)),
+                Source { start: 6, end: 7 },
+                HighlightStart(Highlight(4)),
+                Source { start: 7, end: 8 },
+                HighlightEnd, // ends 4
+                HighlightStart(Highlight(5)),
+                Source { start: 8, end: 9 },
+                HighlightEnd, // ends 5
+                HighlightEnd, // ends 3
+                HighlightEnd, // ends 1
+                HighlightStart(Highlight(3)),
+                Source { start: 9, end: 10 },
                 HighlightEnd, // ends 3
             ],
         );
