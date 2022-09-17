@@ -2206,12 +2206,17 @@ impl<I: Iterator<Item = HighlightEvent>, R: Iterator<Item = HighlightEvent>> Ite
     }
 }
 
-struct SpanIter<I: Iterator<Item = (usize, std::ops::Range<usize>)>> {
-    spans: I,
+/// A pair of highlight index and range.
+///
+/// This corresponds to a HighlightStart, Source, and HighlightEnd.
+type Span = (usize, std::ops::Range<usize>);
+
+struct SpanIter {
+    spans: Vec<Span>,
+    index: usize,
     event_queue: VecDeque<HighlightEvent>,
     range_ends: Vec<usize>,
     cursor: usize,
-    next: Option<(usize, std::ops::Range<usize>)>,
 }
 
 /// Creates an iterator of [HighlightEvent]s from a [Vec] of spans - pairs
@@ -2226,15 +2231,15 @@ pub fn span_iter(
     spans: Vec<(usize, std::ops::Range<usize>)>,
 ) -> impl Iterator<Item = HighlightEvent> {
     SpanIter {
-        spans: spans.into_iter(),
+        spans,
+        index: 0,
         event_queue: VecDeque::new(),
         range_ends: Vec::new(),
         cursor: 0,
-        next: None,
     }
 }
 
-impl<I: Iterator<Item = (usize, std::ops::Range<usize>)>> Iterator for SpanIter<I> {
+impl Iterator for SpanIter {
     type Item = HighlightEvent;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -2245,67 +2250,95 @@ impl<I: Iterator<Item = (usize, std::ops::Range<usize>)>> Iterator for SpanIter<
             return Some(event);
         }
 
-        // Note: this could be a peekable and this call could be
-        // replaced with a `self.spans.peek()` but it would require
-        // more bookkeeping in the `range_ends.retain` below.
-        match self.next.take().or_else(|| self.spans.next()) {
-            None => {
-                // There are no more spans. Emit Sources and HighlightEnds
-                // for any ranges which have not been terminated yet.
-                for end in self.range_ends.drain(..) {
-                    if self.cursor != end {
-                        self.event_queue.push_back(Source {
-                            start: self.cursor,
-                            end,
-                        });
-                    }
-                    self.event_queue.push_back(HighlightEnd);
-                    self.cursor = end;
-                }
-            }
-            Some((highlight, range)) => {
-                let mut range = range.start..range.end;
-
-                self.range_ends.retain(|end| {
-                    // The new range is past the end of this in-progres range.
-                    // Complete the in-progress range by emitting a Source,
-                    // if necessary, and a HighlightEnd and advance the cursor.
-                    if range.start >= *end {
-                        if self.cursor != *end {
-                            self.event_queue.push_back(Source {
-                                start: self.cursor,
-                                end: *end,
-                            });
-                        }
-                        self.event_queue.push_back(HighlightEnd);
-                        self.cursor = *end;
-                        false
-                    } else if range.end > *end {
-                        // If the new range is longer than this in-progress range,
-                        // we need to subslice this range.
-                        self.next = Some((highlight, *end..range.end));
-                        range.end = *end;
-                        true
-                    } else {
-                        true
-                    }
-                });
-
-                // Emit a Source event between consecutive HighlightStart events
-                if range.start != self.cursor && !self.range_ends.is_empty() {
+        if self.index == self.spans.len() {
+            // There are no more spans. Emit Sources and HighlightEnds for
+            // any ranges which have not been terminated yet.
+            for end in self.range_ends.drain(..) {
+                if self.cursor != end {
+                    debug_assert!(self.cursor < end);
                     self.event_queue.push_back(Source {
                         start: self.cursor,
-                        end: range.start,
+                        end,
                     });
                 }
-                self.cursor = range.start;
-                self.event_queue
-                    .push_back(HighlightStart(Highlight(highlight)));
-                self.range_ends.push(range.end);
-                self.range_ends.sort_unstable();
+                self.event_queue.push_back(HighlightEnd);
+                self.cursor = end;
+            }
+            return self.event_queue.pop_front();
+        }
+
+        let range = self.spans[self.index].1.clone();
+        let mut subslice = None;
+
+        self.range_ends.retain(|end| {
+            if range.start >= *end {
+                // The new range is past the end of this in-progress range.
+                // Complete the in-progress range by emitting a Source,
+                // if necessary, and a HighlightEnd and advance the cursor.
+                if self.cursor != *end {
+                    debug_assert!(self.cursor < *end);
+                    self.event_queue.push_back(Source {
+                        start: self.cursor,
+                        end: *end,
+                    });
+                }
+                self.event_queue.push_back(HighlightEnd);
+                self.cursor = *end;
+                false
+            } else if range.end > *end && subslice.is_none() {
+                // If the new range is longer than some in-progress range,
+                // we need to subslice this range and any ranges with the
+                // same start. `subslice` is set to the smallest `end` for
+                // which `range.start < end < range.end`.
+                subslice = Some(*end);
+                true
+            } else {
+                true
+            }
+        });
+
+        // Emit a Source event between consecutive HighlightStart events
+        if range.start != self.cursor && !self.range_ends.is_empty() {
+            debug_assert!(self.cursor < range.start);
+            self.event_queue.push_back(Source {
+                start: self.cursor,
+                end: range.start,
+            });
+        }
+
+        self.cursor = range.start;
+
+        // Handle all spans that share this starting point. Either subslice
+        // or fully consume the span.
+        let mut i = self.index;
+        loop {
+            match self.spans.get_mut(i) {
+                Some((h, r)) if r.start == self.cursor => {
+                    self.event_queue.push_back(HighlightStart(Highlight(*h)));
+                    i += 1;
+
+                    match subslice {
+                        Some(intersect) => {
+                            // If this span needs to be subsliced, consume the
+                            // left part of the subslice and leave the right.
+                            self.range_ends.push(intersect);
+                            r.start = intersect;
+                        }
+                        None => {
+                            // If there is no subslice, consume the span.
+                            self.range_ends.push(r.end);
+                            self.index = i;
+                        }
+                    }
+                }
+                _ => break,
             }
         }
 
+        // Ensure range-ends are sorted ascending. Ranges which start at the
+        // same point may be in descending order because of the assumed
+        // sort-order of input ranges.
+        self.range_ends.sort_unstable();
         self.event_queue.pop_front()
     }
 }
@@ -2590,6 +2623,66 @@ mod test {
                 Source { start: 13, end: 15 },
                 HighlightEnd, // ends 5
                 HighlightEnd, // ends 4
+            ],
+        );
+    }
+
+    #[test]
+    fn test_multiple_duplicate_overlapping_span_iter_events() {
+        use HighlightEvent::*;
+        // This is based an a realistic case from rust-analyzer
+        // diagnostics. Spans may both overlap and duplicate one
+        // another at varying diagnostic levels.
+
+        /*
+        Input:
+
+                                    5
+                            |---------------|
+                                      3,4
+                            |-----------------------|
+                        1,2
+            |-----------------------|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9  10
+        */
+
+        let input = vec![(1, 0..6), (2, 0..6), (3, 4..10), (4, 4..10), (5, 4..8)];
+
+        /*
+        Output:
+
+                   1,2      1,2,3,4,5  3,4,5   3,4
+            |---------------|-------|-------|-------|
+
+            |---|---|---|---|---|---|---|---|---|---|
+            0   1   2   3   4   5   6   7   8   9  10
+        */
+        let output: Vec<_> = span_iter(input).collect();
+        assert_eq!(
+            output,
+            &[
+                HighlightStart(Highlight(1)),
+                HighlightStart(Highlight(2)),
+                Source { start: 0, end: 4 },
+                HighlightStart(Highlight(3)),
+                HighlightStart(Highlight(4)),
+                HighlightStart(Highlight(5)),
+                Source { start: 4, end: 6 },
+                HighlightEnd, // ends 5
+                HighlightEnd, // ends 4
+                HighlightEnd, // ends 3
+                HighlightEnd, // ends 2
+                HighlightEnd, // ends 1
+                HighlightStart(Highlight(3)),
+                HighlightStart(Highlight(4)),
+                HighlightStart(Highlight(5)),
+                Source { start: 6, end: 8 },
+                HighlightEnd, // ends 5
+                Source { start: 8, end: 10 },
+                HighlightEnd, // ends 4
+                HighlightEnd, // ends 3
             ],
         );
     }
