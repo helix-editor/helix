@@ -30,8 +30,6 @@ use helix_view::{
 
 use super::menu::Item;
 
-pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
-pub const MIN_AREA_HEIGHT_FOR_PREVIEW: u16 = 30;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
@@ -83,6 +81,49 @@ impl Preview<'_, '_> {
             },
         }
     }
+}
+
+fn layout_picker(area: &Rect, show_preview: bool, editor: &Editor) -> (Rect, Option<Rect>) {
+    use helix_view::editor::FilePickerLayoutDirection::*;
+
+    const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
+    const MIN_AREA_HEIGHT_FOR_PREVIEW: u16 = 18; // This leaves 12 lines for picker + preview
+
+    let layout_direction = editor.config().borrow().file_picker.layout_direction;
+    // Horizontal layout:         Vertical layout:
+    // +---------+ +---------+    +---------------------+
+    // |prompt   | |preview  |    | prompt              |
+    // +---------+ |         |    +---------------------+
+    // |         | |         |    | picker              |
+    // |picker   | |         |    +---------------------+
+    // |         | |         |    +---------------------+
+    // |         | |         |    | preview             |
+    // +---------+ +---------+    +---------------------+
+
+    let render_preview = if layout_direction == Horizontal {
+        show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW
+    } else {
+        show_preview && area.height > MIN_AREA_HEIGHT_FOR_PREVIEW
+    };
+
+    let picker_area = if layout_direction == Horizontal {
+        let picker_width = area.width / 2;
+        area.with_width(picker_width)
+    } else {
+        let picker_height = area.height / 3; // looks nicer than 2
+        area.with_height(picker_height)
+    };
+
+    let preview_area = if render_preview {
+        if layout_direction == Horizontal {
+            Some(area.clip_left(picker_area.width))
+        } else {
+            Some(area.clip_top(picker_area.height))
+        }
+    } else {
+        None
+    };
+    (picker_area, preview_area)
 }
 
 impl<T: Item> FilePicker<T> {
@@ -166,111 +207,80 @@ impl<T: Item> FilePicker<T> {
 
 impl<T: Item + 'static> Component for FilePicker<T> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        use helix_view::editor::FilePickerLayoutDirection::*;
-
-        let layout_direction = cx.editor.config().borrow().file_picker.layout_direction;
-        // Horizontal layout:         Vertical layout:
-        // +---------+ +---------+    +---------------------+
-        // |prompt   | |preview  |    | prompt              |
-        // +---------+ |         |    +---------------------+
-        // |         | |         |    | picker              |
-        // |picker   | |         |    +---------------------+
-        // |         | |         |    +---------------------+
-        // |         | |         |    | preview             |
-        // +---------+ +---------+    +---------------------+
-
-        let render_preview = if layout_direction == Horizontal {
-            self.picker.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW
-        } else {
-            self.picker.show_preview && area.height > MIN_AREA_HEIGHT_FOR_PREVIEW
-        };
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
         let text = cx.editor.theme.get("ui.text");
         surface.clear_with(area, background);
 
-        let picker_area = if layout_direction == Horizontal {
-            let picker_width = area.width / 2;
-            area.with_width(picker_width)
-        } else {
-            let picker_height = area.height / 3;
-            area.with_height(picker_height)
-        };
+        let (picker_area, preview_area) = layout_picker(&area, self.picker.show_preview, cx.editor);
+
         self.picker.render(picker_area, surface, cx);
 
-        if !render_preview {
-            return;
-        }
+        if let Some(preview_area) = preview_area {
+            // don't like this but the lifetime sucks
+            let block = Block::default().borders(Borders::ALL);
 
-        let preview_area = if layout_direction == Horizontal {
-            area.clip_left(picker_area.width)
-        } else {
-            area.clip_top(picker_area.height)
-        };
+            // calculate the inner area inside the box
+            let inner = block.inner(preview_area);
+            // 1 column gap on either side
+            let margin = Margin::horizontal(1);
+            let inner = inner.inner(&margin);
+            block.render(preview_area, surface);
 
-        // don't like this but the lifetime sucks
-        let block = Block::default().borders(Borders::ALL);
+            if let Some((path, range)) = self.current_file(cx.editor) {
+                let preview = self.get_preview(&path, cx.editor);
+                let doc = match preview.document() {
+                    Some(doc) => doc,
+                    None => {
+                        let alt_text = preview.placeholder();
+                        let x = inner.x + inner.width.saturating_sub(alt_text.len() as u16) / 2;
+                        let y = inner.y + inner.height / 2;
+                        surface.set_stringn(x, y, alt_text, inner.width as usize, text);
+                        return;
+                    }
+                };
 
-        // calculate the inner area inside the box
-        let inner = block.inner(preview_area);
-        // 1 column gap on either side
-        let margin = Margin::horizontal(1);
-        let inner = inner.inner(&margin);
-        block.render(preview_area, surface);
+                // align to middle
+                let first_line = range
+                    .map(|(start, end)| {
+                        let height = end.saturating_sub(start) + 1;
+                        let middle = start + (height.saturating_sub(1) / 2);
+                        middle.saturating_sub(inner.height as usize / 2).min(start)
+                    })
+                    .unwrap_or(0);
 
-        if let Some((path, range)) = self.current_file(cx.editor) {
-            let preview = self.get_preview(&path, cx.editor);
-            let doc = match preview.document() {
-                Some(doc) => doc,
-                None => {
-                    let alt_text = preview.placeholder();
-                    let x = inner.x + inner.width.saturating_sub(alt_text.len() as u16) / 2;
-                    let y = inner.y + inner.height / 2;
-                    surface.set_stringn(x, y, alt_text, inner.width as usize, text);
-                    return;
-                }
-            };
+                let offset = Position::new(first_line, 0);
 
-            // align to middle
-            let first_line = range
-                .map(|(start, end)| {
-                    let height = end.saturating_sub(start) + 1;
-                    let middle = start + (height.saturating_sub(1) / 2);
-                    middle.saturating_sub(inner.height as usize / 2).min(start)
-                })
-                .unwrap_or(0);
-
-            let offset = Position::new(first_line, 0);
-
-            let highlights =
-                EditorView::doc_syntax_highlights(doc, offset, area.height, &cx.editor.theme);
-            EditorView::render_text_highlights(
-                doc,
-                offset,
-                inner,
-                surface,
-                &cx.editor.theme,
-                highlights,
-                &cx.editor.config(),
-            );
-
-            // highlight the line
-            if let Some((start, end)) = range {
-                let offset = start.saturating_sub(first_line) as u16;
-                surface.set_style(
-                    Rect::new(
-                        inner.x,
-                        inner.y + offset,
-                        inner.width,
-                        (end.saturating_sub(start) as u16 + 1)
-                            .min(inner.height.saturating_sub(offset)),
-                    ),
-                    cx.editor
-                        .theme
-                        .try_get("ui.highlight")
-                        .unwrap_or_else(|| cx.editor.theme.get("ui.selection")),
+                let highlights =
+                    EditorView::doc_syntax_highlights(doc, offset, area.height, &cx.editor.theme);
+                EditorView::render_text_highlights(
+                    doc,
+                    offset,
+                    inner,
+                    surface,
+                    &cx.editor.theme,
+                    highlights,
+                    &cx.editor.config(),
                 );
+
+                // highlight the line
+                if let Some((start, end)) = range {
+                    let offset = start.saturating_sub(first_line) as u16;
+                    surface.set_style(
+                        Rect::new(
+                            inner.x,
+                            inner.y + offset,
+                            inner.width,
+                            (end.saturating_sub(start) as u16 + 1)
+                                .min(inner.height.saturating_sub(offset)),
+                        ),
+                        cx.editor
+                            .theme
+                            .try_get("ui.highlight")
+                            .unwrap_or_else(|| cx.editor.theme.get("ui.selection")),
+                    );
+                }
             }
         }
     }
@@ -281,17 +291,12 @@ impl<T: Item + 'static> Component for FilePicker<T> {
     }
 
     fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
-        self.picker.cursor(area, ctx)
+        let (picker_area, _) = layout_picker(&area, self.picker.show_preview, ctx);
+        self.picker.cursor(picker_area, ctx)
     }
 
     fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
-        let picker_width = if width > MIN_AREA_WIDTH_FOR_PREVIEW {
-            width / 2
-        } else {
-            width
-        };
-        self.picker.required_size((picker_width, height))?;
-        Some((width, height))
+        self.picker.required_size((width, height))
     }
 }
 
