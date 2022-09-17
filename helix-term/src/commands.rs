@@ -1971,7 +1971,7 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
         let (start_line, end_line) = range.line_range(text.slice(..));
 
         let start = text.line_to_char(match extend {
-            Extend::Above => start_line.saturating_sub(count),
+            Extend::Above => start_line.saturating_sub(count - 1),
             Extend::Below => start_line,
         });
         let end = text.line_to_char(
@@ -1985,7 +1985,7 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
         // extend to previous/next line if current line is selected
         let (anchor, head) = if range.from() == start && range.to() == end {
             match extend {
-                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count + 1))),
+                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count))),
                 Extend::Below => (
                     start,
                     text.line_to_char((end_line + count + 1).min(text.len_lines())),
@@ -4142,12 +4142,16 @@ fn split(cx: &mut Context, action: Action) {
     let (view, doc) = current!(cx.editor);
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
+    let offset = view.offset;
 
     cx.editor.switch(id, action);
 
     // match the selection in the previous view
     let (view, doc) = current!(cx.editor);
     doc.set_selection(view.id, selection);
+    // match the view scroll offset (switch doesn't handle this fully
+    // since the selection is only matched after the split)
+    view.offset = offset;
 }
 
 fn hsplit(cx: &mut Context) {

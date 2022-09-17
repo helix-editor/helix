@@ -30,13 +30,16 @@
 "ui.background" = { bg = "berry" }
 "ui.cursor" =  { fg = "berry", bg = "lilac" }
 "ui.cursor.match" = { fg = "berry", bg = "berry_desaturated" }
-"ui.cursor.select" = { fg = "berry", bg = "mint" }
+"ui.cursor.select" = { fg = "berry", bg = "violet" }
 "ui.cursor.insert" = { fg = "berry", bg = "mint" }
 "ui.linenr" = { fg = "berry_desaturated" }
 "ui.linenr.selected" = { fg = "lilac" }
 "ui.cursorline" = { fg = "lilac", bg = "berry_dim" }
 "ui.statusline" = { fg = "lilac", bg = "berry_saturated" }
 "ui.statusline.inactive" = { fg = "berry_desaturated", bg = "berry_saturated" }
+"ui.statusline.normal" = { fg = "berry_saturated", bg = "lilac" }
+"ui.statusline.insert" = { fg = "berry_saturated", bg = "mint" }
+"ui.statusline.select" = { fg = "berry_saturated", bg = "violet" }
 "ui.popup" = { fg = "lilac", bg = "berry_saturated" }
 "ui.window" = { fg = "berry_desaturated", bg = "berry" }
 "ui.help" = { fg = "lilac", bg = "berry_saturated" }
@@ -46,7 +49,8 @@
 "ui.menu.selected" = { fg = "mint", bg = "berry_saturated" }
 "ui.selection" = { bg = "berry_saturated" }
 "ui.virtual.whitespace" = { fg = "berry_desaturated" }
-"ui.virtual.ruler" = { bg ="berry_dim" }
+"ui.virtual.ruler" = { bg = "berry_dim" }
+"ui.virtual.indent-guide" = { fg = "berry_fade" }
 
 "diff.plus" = { fg = "mint" }
 "diff.delta" = { fg = "gold" }
@@ -60,6 +64,7 @@
 
 [palette]
 berry = "#3A2A4D"
+berry_fade = "#5A3D6E"
 berry_dim = "#47345E"
 berry_saturated = "#2B1C3D"
 berry_desaturated = "#886C9C"

@@ -27,7 +27,7 @@
 
 ### Movement
 
-> NOTE: Unlike vim, `f`, `F`, `t` and `T` are not confined to the current line.
+> NOTE: Unlike Vim, `f`, `F`, `t` and `T` are not confined to the current line.
 
 | Key                   | Description                                        | Command                     |
 | -----                 | -----------                                        | -------                     |
@@ -229,7 +229,7 @@ TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
 #### Window mode
 
-This layer is similar to vim keybindings as kakoune does not support window.
+This layer is similar to Vim keybindings as Kakoune does not support window.
 
 | Key                    | Description                                          | Command           |
 | -----                  | -------------                                        | -------           |
@@ -257,6 +257,7 @@ This layer is a kludge of mappings, mostly pickers.
 | Key     | Description                                                             | Command                             |
 | -----   | -----------                                                             | -------                             |
 | `f`     | Open file picker                                                        | `file_picker`                       |
+| `F`     | Open file picker at current working directory                           | `file_picker_in_current_directory`  |
 | `b`     | Open buffer picker                                                      | `buffer_picker`                     |
 | `j`     | Open jumplist picker                                                    | `jumplist_picker`                   |
 | `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                             |
@@ -314,10 +315,12 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 
 ## Insert Mode
 
-We support many readline/emacs style bindings in insert mode for
-convenience. These can be helpful for making simple modifications
-without escaping to normal mode, but beware that you will not have an
-undo-able "save point" until you return to normal mode.
+Insert mode bindings are somewhat minimal by default. Helix is designed to
+be a modal editor, and this is reflected in the user experience and internal
+mechanics. For example, changes to the text are only saved for undos when
+escaping from insert mode to normal mode. For this reason, new users are
+strongly encouraged to learn the modal editing paradigm to get the smoothest
+experience.
 
 | Key                                         | Description                 | Command                 |
 | -----                                       | -----------                 | -------                 |
@@ -326,23 +329,38 @@ undo-able "save point" until you return to normal mode.
 | `Ctrl-r`                                    | Insert a register content   | `insert_register`       |
 | `Ctrl-w`, `Alt-Backspace`, `Ctrl-Backspace` | Delete previous word        | `delete_word_backward`  |
 | `Alt-d`, `Alt-Delete`, `Ctrl-Delete`        | Delete next word            | `delete_word_forward`   |
-| `Alt-b`, `Ctrl-Left`                        | Backward a word             | `move_prev_word_end`    |
-| `Ctrl-b`, `Left`                            | Backward a char             | `move_char_left`        |
-| `Alt-f`, `Ctrl-Right`                       | Forward a word              | `move_next_word_start`  |
-| `Ctrl-f`, `Right`                           | Forward a char              | `move_char_right`       |
-| `Ctrl-e`, `End`                             | Move to line end            | `goto_line_end_newline` |
-| `Ctrl-a`, `Home`                            | Move to line start          | `goto_line_start`       |
 | `Ctrl-u`                                    | Delete to start of line     | `kill_to_line_start`    |
 | `Ctrl-k`                                    | Delete to end of line       | `kill_to_line_end`      |
 | `Ctrl-j`, `Enter`                           | Insert new line             | `insert_newline`        |
 | `Backspace`, `Ctrl-h`                       | Delete previous char        | `delete_char_backward`  |
 | `Delete`, `Ctrl-d`                          | Delete next char            | `delete_char_forward`   |
-| `Ctrl-p`, `Up`                              | Move to previous line       | `move_line_up`          |
-| `Ctrl-n`, `Down`                            | Move to next line           | `move_line_down`        |
-| `PageUp`                                    | Move one page up            | `page_up`               |
-| `PageDown`                                  | Move one page down          | `page_down`             |
-| `Alt->`                                     | Go to end of buffer         | `goto_file_end`         |
-| `Alt-<`                                     | Go to start of buffer       | `goto_file_start`       |
+
+However, if you really want navigation in insert mode, this is supported. An
+example config that gives the ability to use arrow keys while still in insert
+mode:
+
+```toml
+[keys.insert]
+"up" = "move_line_up"
+"down" = "move_line_down"
+"left" = "move_char_left"
+"right" = "move_char_right"
+"C-b" = "move_char_left"
+"C-f" = "move_char_right"
+"A-b" = "move_prev_word_end"
+"C-left" = "move_prev_word_end"
+"A-f" = "move_next_word_start"
+"C-right" = "move_next_word_start"
+"A-<" = "goto_file_start"
+"A->" = "goto_file_end"
+"pageup" = "page_up"
+"pagedown" = "page_down"
+"home" = "goto_line_start"
+"C-a" = "goto_line_start"
+"end" = "goto_line_end_newline"
+"C-e" = "goto_line_end_newline"
+"A-left" = "goto_line_start"
+```
 
 ## Select / extend mode
 

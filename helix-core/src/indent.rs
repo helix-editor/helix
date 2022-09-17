@@ -230,14 +230,14 @@ fn get_first_in_line(mut node: Node, byte_pos: usize, new_line: bool) -> Vec<boo
 /// - Successively add indent captures to get the (added) indent from a single line
 /// - Successively add the indent results for each line
 #[derive(Default)]
-struct Indentation {
+pub struct Indentation {
     /// The total indent (the number of indent levels) is defined as max(0, indent-outdent).
     /// The string that this results in depends on the indent style (spaces or tabs, etc.)
     indent: usize,
     outdent: usize,
 }
 impl Indentation {
-    /// Add some other [IndentResult] to this.
+    /// Add some other [Indentation] to this.
     /// The added indent should be the total added indent from one line
     fn add_line(&mut self, added: &Indentation) {
         if added.indent > 0 && added.outdent == 0 {
@@ -433,7 +433,7 @@ fn query_indents(
 ///     after pos were moved to a new line.
 ///
 /// The indentation is determined by traversing all the tree-sitter nodes containing the position.
-/// Each of these nodes produces some [AddedIndent] for:
+/// Each of these nodes produces some [Indentation] for:
 ///
 /// - The line of the (beginning of the) node. This is defined by the scope `all` if this is the first node on its line.
 /// - The line after the node. This is defined by:
@@ -441,9 +441,9 @@ fn query_indents(
 ///   - The scope `all` if this node is not the first node on its line.
 /// Intuitively, `all` applies to everything contained in this node while `tail` applies to everything except for the first line of the node.
 /// The indents from different nodes for the same line are then combined.
-/// The [IndentResult] is simply the sum of the [AddedIndent] for all lines.
+/// The result [Indentation] is simply the sum of the [Indentation] for all lines.
 ///
-/// Specifying which line exactly an [AddedIndent] applies to is important because indents on the same line combine differently than indents on different lines:
+/// Specifying which line exactly an [Indentation] applies to is important because indents on the same line combine differently than indents on different lines:
 /// ```ignore
 /// some_function(|| {
 ///     // Both the function parameters as well as the contained block should be indented.

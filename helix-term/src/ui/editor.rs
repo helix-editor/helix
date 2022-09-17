@@ -1061,7 +1061,7 @@ impl EditorView {
                 let editor = &mut cxt.editor;
 
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
-                    let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
+                    let doc = doc_mut!(editor, &view!(editor, view_id).doc);
 
                     if modifiers == KeyModifiers::ALT {
                         let selection = doc.selection(view_id).clone();
@@ -1190,7 +1190,7 @@ impl EditorView {
                 }
 
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
-                    let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
+                    let doc = doc_mut!(editor, &view!(editor, view_id).doc);
                     doc.set_selection(view_id, Selection::point(pos));
                     cxt.editor.focus(view_id);
                     commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
@@ -1316,12 +1316,13 @@ impl Component for EditorView {
                 if cx.editor.should_close() {
                     return EventResult::Ignored(None);
                 }
+
                 // if the focused view still exists and wasn't closed
                 if cx.editor.tree.contains(focus) {
                     let config = cx.editor.config();
                     let mode = cx.editor.mode();
-                    let view = cx.editor.tree.get_mut(focus);
-                    let doc = cx.editor.documents.get_mut(&view.doc).unwrap();
+                    let view = view_mut!(cx.editor, focus);
+                    let doc = doc_mut!(cx.editor, &view.doc);
 
                     view.ensure_cursor_in_view(doc, config.scrolloff);
 

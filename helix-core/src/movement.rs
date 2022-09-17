@@ -270,7 +270,7 @@ pub enum WordMotionTarget {
     NextWordEnd,
     PrevWordStart,
     PrevWordEnd,
-    // A "Long word" (also known as a WORD in vim/kakoune) is strictly
+    // A "Long word" (also known as a WORD in Vim/Kakoune) is strictly
     // delimited by whitespace, and can consist of punctuation as well
     // as alphanumerics.
     NextLongWordStart,
