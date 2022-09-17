@@ -456,6 +456,67 @@ fn query_indents(
     }
 }
 
+/// Handle extend queries. deepest_preceding is the deepest descendant of node that directly precedes the cursor position.
+/// Any ancestor of deepest_preceding which is also a descendant of node may be "extended". In that case, node will be updated,
+/// so that the indent computation starts with the correct syntax node.
+fn extend_nodes<'a>(
+    node: &mut Node<'a>,
+    deepest_preceding: Option<Node<'a>>,
+    extend_captures: &HashMap<usize, Vec<ExtendCapture>>,
+    text: RopeSlice,
+    line: usize,
+    tab_width: usize,
+) {
+    if let Some(mut deepest_preceding) = deepest_preceding {
+        let mut stop_extend = false;
+        while deepest_preceding != *node {
+            let mut extend_node = false;
+            if let Some(captures) = extend_captures.get(&deepest_preceding.id()) {
+                for capture in captures {
+                    match capture {
+                        ExtendCapture::StopExtend => {
+                            stop_extend = true;
+                        }
+                        ExtendCapture::ExtendIndented => {
+                            // We extend the node if
+                            // - the cursor is on the same line as the end of the node OR
+                            // - the line that the cursor is on is more indented than the
+                            //   first line of the node
+                            if deepest_preceding.end_position().row == line {
+                                extend_node = true;
+                            } else {
+                                let cursor_indent =
+                                    indent_level_for_line(text.line(line), tab_width);
+                                let node_indent = indent_level_for_line(
+                                    text.line(deepest_preceding.start_position().row),
+                                    tab_width,
+                                );
+                                if cursor_indent > node_indent {
+                                    extend_node = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // If we encountered some `StopExtend` capture before, we don't
+            // extend the node even if we otherwise would
+            match (extend_node, stop_extend) {
+                (true, true) => {
+                    stop_extend = false;
+                }
+                (true, false) => {
+                    *node = deepest_preceding;
+                    break;
+                }
+                _ => {}
+            };
+            // This parent always exists since node is an ancestor of deepest_preceding
+            deepest_preceding = deepest_preceding.parent().unwrap();
+        }
+    }
+}
+
 /// Use the syntax tree to determine the indentation for a given position.
 /// This can be used in 2 ways:
 ///
@@ -510,100 +571,54 @@ pub fn treesitter_indent_for_pos(
         .tree()
         .root_node()
         .descendant_for_byte_range(byte_pos, byte_pos)?;
-    let (query_result, prev_child) = crate::syntax::PARSER.with(|ts_parser| {
-        let mut ts_parser = ts_parser.borrow_mut();
-        let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
+    let (query_result, deepest_preceding) = {
         // The query range should intersect with all nodes directly preceding
         // the cursor in case one of them is extended.
-        // prev_child is the deepest such node.
-        let (query_range, prev_child) = {
-            // TODO Is there some way we can reuse this cursor?
-            let mut tree_cursor = node.walk();
-            let mut prev_child = None;
-            for child in node.children(&mut tree_cursor) {
-                if child.byte_range().end <= byte_pos {
-                    prev_child = Some(child);
-                }
+        let mut deepest_preceding = None; // The deepest node preceding the cursor
+        let mut tree_cursor = node.walk();
+        for child in node.children(&mut tree_cursor) {
+            if child.byte_range().end <= byte_pos {
+                deepest_preceding = Some(child);
             }
-            match prev_child {
-                Some(mut prev_child) => {
-                    // Get the deepest directly preceding node
-                    while prev_child.child_count() > 0 {
-                        prev_child = prev_child.child(prev_child.child_count() - 1).unwrap();
-                    }
-                    (
-                        prev_child.byte_range().end - 1..byte_pos + 1,
-                        Some(prev_child),
-                    )
-                }
-                None => (byte_pos..byte_pos + 1, None),
+        }
+        deepest_preceding = deepest_preceding.map(|mut prec| {
+            // Get the deepest directly preceding node
+            while prec.child_count() > 0 {
+                prec = prec.child(prec.child_count() - 1).unwrap();
             }
-        };
-        let query_result = query_indents(
-            query,
-            syntax,
-            &mut cursor,
-            text,
-            query_range,
-            new_line.then(|| (line, byte_pos)),
-        );
-        ts_parser.cursors.push(cursor);
-        (query_result, prev_child)
-    });
+            prec
+        });
+        let query_range = deepest_preceding
+            .map(|prec| prec.byte_range().end - 1..byte_pos + 1)
+            .unwrap_or(byte_pos..byte_pos + 1);
+
+        crate::syntax::PARSER.with(|ts_parser| {
+            let mut ts_parser = ts_parser.borrow_mut();
+            let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
+            let query_result = query_indents(
+                query,
+                syntax,
+                &mut cursor,
+                text,
+                query_range,
+                new_line.then(|| (line, byte_pos)),
+            );
+            ts_parser.cursors.push(cursor);
+            (query_result, deepest_preceding)
+        })
+    };
     let indent_captures = query_result.indent_captures;
     let extend_captures = query_result.extend_captures;
 
-    // Check for extend captures (starting with the deepest
-    // candidate node and then going up the syntax tree).
-    if let Some(mut prev_child) = prev_child {
-        let mut stop_extend = false;
-        while prev_child != node {
-            let mut extend_node = false;
-            if let Some(captures) = extend_captures.get(&prev_child.id()) {
-                for capture in captures {
-                    match capture {
-                        ExtendCapture::StopExtend => {
-                            stop_extend = true;
-                        }
-                        ExtendCapture::ExtendIndented => {
-                            // We extend the node if
-                            // - the cursor is on the same line as the end of the node OR
-                            // - the line that the cursor is on is more indented than the
-                            //   first line of the node
-                            if prev_child.end_position().row == line {
-                                extend_node = true;
-                            } else {
-                                let cursor_indent =
-                                    indent_level_for_line(text.line(line), tab_width);
-                                let node_indent = indent_level_for_line(
-                                    text.line(prev_child.start_position().row),
-                                    tab_width,
-                                );
-                                if cursor_indent > node_indent {
-                                    extend_node = true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            // If we encountered some `StopExtend` capture before, we don't
-            // extend the node even if we otherwise would
-            match (extend_node, stop_extend) {
-                (true, true) => {
-                    stop_extend = false;
-                }
-                (true, false) => {
-                    node = prev_child;
-                    break;
-                }
-                _ => {}
-            };
-            // This parent always exists since node is an ancestor of prev_child
-            prev_child = prev_child.parent().unwrap();
-        }
-    }
-
+    // Check for extend captures, potentially changing the node that the indent calculation starts with
+    extend_nodes(
+        &mut node,
+        deepest_preceding,
+        &extend_captures,
+        text,
+        line,
+        tab_width,
+    );
     let mut first_in_line = get_first_in_line(node, new_line.then(|| byte_pos));
 
     let mut result = Indentation::default();
