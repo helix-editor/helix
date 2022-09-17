@@ -1,16 +1,18 @@
 use std::ops::RangeInclusive;
 
 use helix_core::diagnostic::Severity;
-use helix_term::application::Application;
 
 use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_quit_fail() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
 
     test_key_sequence(
-        &mut helpers::app_with_file(file.path())?,
+        &mut app,
         Some("ihello<esc>:wq<ret>"),
         Some(&|app| {
             let mut docs: Vec<_> = app.editor.documents().collect();
@@ -30,7 +32,7 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     test_key_sequences(
-        &mut Application::new(Args::default(), Config::default())?,
+        &mut helpers::AppBuilder::new().build()?,
         vec![
             (
                 None,
@@ -70,8 +72,12 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
 
     command.push_str(":buffer<minus>close<ret>");
 
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+
     test_key_sequence(
-        &mut helpers::app_with_file(file.path())?,
+        &mut app,
         Some(&command),
         Some(&|app| {
             assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status());

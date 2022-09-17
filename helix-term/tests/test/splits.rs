@@ -6,8 +6,12 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
     let mut file2 = tempfile::NamedTempFile::new()?;
     let mut file3 = tempfile::NamedTempFile::new()?;
 
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file1.path(), None)
+        .build()?;
+
     test_key_sequences(
-        &mut helpers::app_with_file(file1.path())?,
+        &mut app,
         vec![
             (
                 Some(&format!(
@@ -66,9 +70,12 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_split_write_quit_same_file() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
 
     test_key_sequences(
-        &mut helpers::app_with_file(file.path())?,
+        &mut app,
         vec![
             (
                 Some("O<esc>ihello<esc>:sp<ret>ogoodbye<esc>"),

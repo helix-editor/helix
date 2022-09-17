@@ -1,7 +1,6 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
 use helix_core::{
-    config::{default_syntax_loader, user_syntax_loader},
     diagnostic::{DiagnosticTag, NumberOrString},
     path::get_relative_path,
     pos_at_coords, syntax, Selection,
@@ -110,7 +109,11 @@ fn restore_term() -> Result<(), Error> {
 }
 
 impl Application {
-    pub fn new(args: Args, config: Config) -> Result<Self, Error> {
+    pub fn new(
+        args: Args,
+        config: Config,
+        syn_loader_conf: syntax::Configuration,
+    ) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
         setup_integration_logging();
 
@@ -137,14 +140,6 @@ impl Application {
             })
             .unwrap_or_else(|| theme_loader.default_theme(true_color));
 
-        let syn_loader_conf = user_syntax_loader().unwrap_or_else(|err| {
-            eprintln!("Bad language config: {}", err);
-            eprintln!("Press <ENTER> to continue with default language config");
-            use std::io::Read;
-            // This waits for an enter press.
-            let _ = std::io::stdin().read(&mut []);
-            default_syntax_loader()
-        });
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         let mut compositor = Compositor::new().context("build compositor")?;

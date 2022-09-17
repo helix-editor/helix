@@ -8,6 +8,7 @@ async fn auto_indent_c() -> anyhow::Result<()> {
             ..Default::default()
         },
         Config::default(),
+        helpers::test_syntax_conf(None),
         // switches to append mode?
         (
             helpers::platform_line("void foo() {#[|}]#").as_ref(),

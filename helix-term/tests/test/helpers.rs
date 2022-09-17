@@ -108,7 +108,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     let test_case = test_case.into();
     let mut app = match app {
         Some(app) => app,
-        None => Application::new(Args::default(), Config::default())?,
+        None => Application::new(Args::default(), Config::default(), test_syntax_conf(None))?,
     };
 
     let (view, doc) = helix_view::current!(app.editor);
@@ -132,16 +132,30 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     .await
 }
 
+/// Generates language configs that merge in overrides, like a user language
+/// config. The argument string must be a raw TOML document.
+pub fn test_syntax_conf(overrides: Option<String>) -> helix_core::syntax::Configuration {
+    let mut lang = helix_loader::config::default_lang_config();
+
+    if let Some(overrides) = overrides {
+        let override_toml = toml::from_str(&overrides).unwrap();
+        lang = helix_loader::merge_toml_values(lang, override_toml, 3);
+    }
+
+    lang.try_into().unwrap()
+}
+
 /// Use this for very simple test cases where there is one input
 /// document, selection, and sequence of key presses, and you just
 /// want to verify the resulting document and selection.
 pub async fn test_with_config<T: Into<TestCase>>(
     args: Args,
     config: Config,
+    syn_conf: helix_core::syntax::Configuration,
     test_case: T,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
-    let app = Application::new(args, config)?;
+    let app = Application::new(args, config, syn_conf)?;
 
     test_key_sequence_with_input_text(
         Some(app),
@@ -162,7 +176,13 @@ pub async fn test_with_config<T: Into<TestCase>>(
 }
 
 pub async fn test<T: Into<TestCase>>(test_case: T) -> anyhow::Result<()> {
-    test_with_config(Args::default(), Config::default(), test_case).await
+    test_with_config(
+        Args::default(),
+        Config::default(),
+        test_syntax_conf(None),
+        test_case,
+    )
+    .await
 }
 
 pub fn temp_file_with_contents<S: AsRef<str>>(
@@ -207,16 +227,60 @@ pub fn new_readonly_tempfile() -> anyhow::Result<NamedTempFile> {
     Ok(file)
 }
 
-/// Creates a new Application with default config that opens the given file
-/// path
-pub fn app_with_file<P: Into<PathBuf>>(path: P) -> anyhow::Result<Application> {
-    Application::new(
-        Args {
-            files: vec![(path.into(), helix_core::Position::default())],
-            ..Default::default()
-        },
-        Config::default(),
-    )
+#[derive(Default)]
+pub struct AppBuilder {
+    args: Args,
+    config: Config,
+    syn_conf: helix_core::syntax::Configuration,
+    input: Option<(String, Selection)>,
+}
+
+impl AppBuilder {
+    pub fn new() -> Self {
+        AppBuilder::default()
+    }
+
+    pub fn with_file<P: Into<PathBuf>>(
+        mut self,
+        path: P,
+        pos: Option<helix_core::Position>,
+    ) -> Self {
+        self.args.files.push((path.into(), pos.unwrap_or_default()));
+        self
+    }
+
+    pub fn with_config(mut self, config: Config) -> Self {
+        self.config = config;
+        self
+    }
+
+    pub fn with_input_text<S: Into<String>>(mut self, input_text: S) -> Self {
+        self.input = Some(test::print(&input_text.into()));
+        self
+    }
+
+    pub fn with_lang_config(mut self, syn_conf: helix_core::syntax::Configuration) -> Self {
+        self.syn_conf = syn_conf;
+        self
+    }
+
+    pub fn build(self) -> anyhow::Result<Application> {
+        let mut app = Application::new(self.args, self.config, self.syn_conf)?;
+
+        if let Some((text, selection)) = self.input {
+            let (view, doc) = helix_view::current!(app.editor);
+            let sel = doc.selection(view.id).clone();
+            let trans = Transaction::change_by_selection(doc.text(), &sel, |_| {
+                (0, doc.text().len_chars(), Some((text.clone()).into()))
+            })
+            .with_selection(selection);
+
+            // replace the initial text with the input text
+            doc.apply(&trans, view.id);
+        }
+
+        Ok(app)
+    }
 }
 
 pub fn assert_file_has_content(file: &mut File, content: &str) -> anyhow::Result<()> {

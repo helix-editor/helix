@@ -70,7 +70,9 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
 async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
     let test = |content: &str, expected_sel: Selection| -> anyhow::Result<()> {
         let file = helpers::temp_file_with_contents(content)?;
-        let mut app = helpers::app_with_file(file.path())?;
+        let mut app = helpers::AppBuilder::new()
+            .with_file(file.path(), None)
+            .build()?;
 
         let (view, doc) = helix_view::current!(app.editor);
         let sel = doc.selection(view.id).clone();

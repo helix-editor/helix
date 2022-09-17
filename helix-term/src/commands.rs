@@ -2518,7 +2518,8 @@ async fn make_format_callback(
     format: impl Future<Output = Result<Transaction, FormatterError>> + Send + 'static,
     write: Option<(Option<PathBuf>, bool)>,
 ) -> anyhow::Result<job::Callback> {
-    let format = format.await?;
+    let format = format.await;
+
     let call: job::Callback = Callback::Editor(Box::new(move |editor| {
         if !editor.documents.contains_key(&doc_id) {
             return;
@@ -2528,19 +2529,21 @@ async fn make_format_callback(
         let doc = doc_mut!(editor, &doc_id);
         let view = view_mut!(editor);
 
-        if doc.version() == doc_version {
-            apply_transaction(&format, doc, view);
-            doc.append_changes_to_history(view.id);
-            doc.detect_indent_and_line_ending();
-            view.ensure_cursor_in_view(doc, scrolloff);
-
-            if let Some((path, force)) = write {
-                if let Err(err) = doc.save(path, force) {
-                    editor.set_error(format!("Error saving: {}", err));
-                }
+        if let Ok(format) = format {
+            if doc.version() == doc_version {
+                apply_transaction(&format, doc, view);
+                doc.append_changes_to_history(view.id);
+                doc.detect_indent_and_line_ending();
+                view.ensure_cursor_in_view(doc, scrolloff);
+            } else {
+                log::info!("discarded formatting changes because the document changed");
             }
-        } else {
-            log::info!("discarded formatting changes because the document changed");
+        }
+
+        if let Some((path, force)) = write {
+            if let Err(err) = doc.save(path, force) {
+                editor.set_error(format!("Error saving: {}", err));
+            }
         }
     }));
 
