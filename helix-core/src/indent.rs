@@ -471,6 +471,10 @@ fn extend_nodes<'a>(
         let mut stop_extend = false;
         while deepest_preceding != *node {
             let mut extend_node = false;
+            // This will be set to true if this node is captured, regardless of whether
+            // it actually will be extended (e.g. because the cursor isn't indented
+            // more than the node).
+            let mut node_captured = false;
             if let Some(captures) = extend_captures.get(&deepest_preceding.id()) {
                 for capture in captures {
                     match capture {
@@ -478,6 +482,7 @@ fn extend_nodes<'a>(
                             stop_extend = true;
                         }
                         ExtendCapture::ExtendIndented => {
+                            node_captured = true;
                             // We extend the node if
                             // - the cursor is on the same line as the end of the node OR
                             // - the line that the cursor is on is more indented than the
@@ -501,16 +506,12 @@ fn extend_nodes<'a>(
             }
             // If we encountered some `StopExtend` capture before, we don't
             // extend the node even if we otherwise would
-            match (extend_node, stop_extend) {
-                (true, true) => {
-                    stop_extend = false;
-                }
-                (true, false) => {
-                    *node = deepest_preceding;
-                    break;
-                }
-                _ => {}
-            };
+            if node_captured && stop_extend {
+                stop_extend = false;
+            } else if extend_node && !stop_extend {
+                *node = deepest_preceding;
+                break;
+            }
             // This parent always exists since node is an ancestor of deepest_preceding
             deepest_preceding = deepest_preceding.parent().unwrap();
         }
