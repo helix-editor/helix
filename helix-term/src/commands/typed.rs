@@ -513,7 +513,7 @@ fn force_write_quit(
     force_quit(cx, &[], event)
 }
 
-/// Results an error if there are modified buffers remaining and sets editor
+/// Results in an error if there are modified buffers remaining and sets editor
 /// error, otherwise returns `Ok(())`. If the current document is unmodified,
 /// and there are modified documents, switches focus to one of them.
 pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> {
