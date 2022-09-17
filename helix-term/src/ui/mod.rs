@@ -28,6 +28,8 @@ use helix_view::{Document, Editor, View};
 
 use std::path::PathBuf;
 
+use crate::file_info::FileInfo;
+
 pub fn prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
@@ -122,7 +124,7 @@ pub fn regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
+pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<FileInfo> {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time::Instant;
 
@@ -171,6 +173,8 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         }
     });
 
+    let files = files.map(FileInfo::from);
+
     // Cap the number of files if we aren't in a git project, preventing
     // hangs when using the picker in your home directory
     let files: Vec<_> = if root.join(".git").is_dir() {
@@ -185,8 +189,12 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     FilePicker::new(
         files,
-        root,
-        move |cx, path: &PathBuf, action| {
+        crate::file_info::FileInfoData {
+            root_path: root,
+            show_icons: config.file_picker.icons,
+        },
+        move |cx, file: &FileInfo, action| {
+            let path = file.path();
             if let Err(e) = cx.editor.open(path, action) {
                 let err = if let Some(err) = e.source() {
                     format!("{}", err)
@@ -196,7 +204,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
                 cx.editor.set_error(err);
             }
         },
-        |_editor, path| Some((path.clone(), None)),
+        |_editor, path| Some((path.path().clone(), None)),
     )
 }
 

@@ -77,6 +77,8 @@ pub struct FilePickerConfig {
     pub follow_symlinks: bool,
     /// Enables reading ignore files from parent directories. Defaults to true.
     pub parents: bool,
+    /// Whether to show icons. Defaults to false.
+    pub icons: bool,
     /// Enables reading `.ignore` files.
     /// Whether to hide files listed in .ignore in file picker and global search results. Defaults to true.
     pub ignore: bool,
@@ -105,6 +107,7 @@ impl Default for FilePickerConfig {
             git_global: true,
             git_exclude: true,
             max_depth: None,
+            icons: false,
         }
     }
 }
