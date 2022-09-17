@@ -684,7 +684,7 @@ Usability improvements and fixes:
 - File picker configuration ([#988](https://github.com/helix-editor/helix/pull/988))
 - Fix surround cursor position calculation ([#1183](https://github.com/helix-editor/helix/pull/1183))
 - Accept count for goto_window ([#1033](https://github.com/helix-editor/helix/pull/1033))
-- Make kill_to_line_end behave like emacs ([#1235](https://github.com/helix-editor/helix/pull/1235))
+- Make kill_to_line_end behave like Emacs ([#1235](https://github.com/helix-editor/helix/pull/1235))
 - Only use a single documentation popup ([#1241](https://github.com/helix-editor/helix/pull/1241))
 - ui: popup: Don't allow scrolling past the end of content ([`3307f44c`](https://github.com/helix-editor/helix/commit/3307f44c))
 - Open files with spaces in filename, allow opening multiple files ([#1231](https://github.com/helix-editor/helix/pull/1231))
@@ -922,7 +922,7 @@ to distinguish it in bug reports..
   on cargo run. `~/.config/helix/runtime` can also be used.
 - Registers can now be selected via " (for example `"ay`)
 - Support for Nix files was added
-- Movement is now fully tested and matches kakoune implementation
+- Movement is now fully tested and matches Kakoune implementation
 - A per-file LSP symbol picker was added to space+s
 - Selection can be replaced with yanked text via R
 
@@ -946,7 +946,7 @@ Keymaps:
 - The runtime/ can now optionally be embedded in the binary
 - Haskell syntax added
 - Window mode (ctrl-w) added
-- Show matching bracket (vim's matchbrackets)
+- Show matching bracket (Vim's matchbrackets)
 - Themes now support style modifiers
 - First user contributed theme
 - Create a document if it doesn't exist yet on save
