@@ -201,12 +201,12 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
         .as_str(),
         "|echo foo<ret>",
         platform_line(indoc! {"\
-            #[|foo
-            ]#
-            #(|foo
-            )#
-            #(|foo
-            )#
+            #[|foo\n]#
+            
+            #(|foo\n)#
+            
+            #(|foo\n)#
+            
             "})
         .as_str(),
     ))
@@ -222,12 +222,12 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
         .as_str(),
         "!echo foo<ret>",
         platform_line(indoc! {"\
-            #[|foo
-            ]#lorem
-            #(|foo
-            )#ipsum
-            #(|foo
-            )#dolor
+            #[|foo\n]#
+            lorem
+            #(|foo\n)#
+            ipsum
+            #(|foo\n)#
+            dolor
             "})
         .as_str(),
     ))
@@ -243,12 +243,12 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
         .as_str(),
         "<A-!>echo foo<ret>",
         platform_line(indoc! {"\
-            lorem#[|foo
-            ]#
-            ipsum#(|foo
-            )#
-            dolor#(|foo
-            )#
+            lorem#[|foo\n]#
+            
+            ipsum#(|foo\n)#
+            
+            dolor#(|foo\n)#
+            
             "})
         .as_str(),
     ))
@@ -300,8 +300,8 @@ async fn test_extend_line() -> anyhow::Result<()> {
         platform_line(indoc! {"\
             #[lorem
             ipsum
-            dolor
-            |]#
+            dolor\n|]#
+            
             "})
         .as_str(),
     ))
@@ -318,8 +318,8 @@ async fn test_extend_line() -> anyhow::Result<()> {
         "2x",
         platform_line(indoc! {"\
             #[lorem
-            ipsum
-            |]#
+            ipsum\n|]#
+            
             "})
         .as_str(),
     ))
