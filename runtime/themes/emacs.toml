@@ -54,6 +54,9 @@
 "ui.linenr.selected" = { fg = "gray80" }
 "ui.statusline" = { fg = "black", bg = "gray75" }
 "ui.statusline.inactive" = { fg = "gray20", bg = "gray90" }
+"ui.bufferline" = { fg = "gray36", bg = "gray90", modifiers = ["underlined"] }
+"ui.bufferline.active" = { fg = "gray0", bg = "gray99" }
+"ui.bufferline.background" = { bg = "gray75" }
 "ui.popup" = { fg = "black", bg = "gray97" }
 "ui.popup.info" = { fg = "black", bg = "gray97" }
 "ui.window" = { fg = "black" }
