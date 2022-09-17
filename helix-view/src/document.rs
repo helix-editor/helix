@@ -1036,6 +1036,12 @@ impl Document {
             .map(helix_core::path::get_relative_path)
     }
 
+    pub fn display_name(&self) -> String {
+        self.relative_path()
+            .map(|path| path.to_string_lossy().to_string())
+            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
+    }
+
     // transact(Fn) ?
 
     // -- LSP methods

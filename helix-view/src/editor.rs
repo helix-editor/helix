@@ -1,6 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::Mode,
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
@@ -28,7 +28,7 @@ use tokio::{
     time::{sleep, Duration, Instant, Sleep},
 };
 
-use anyhow::{bail, Error};
+use anyhow::Error;
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
@@ -686,6 +686,14 @@ pub enum Action {
     VerticalSplit,
 }
 
+/// Error thrown on failed document closed
+pub enum CloseError {
+    /// Document doesn't exist
+    DoesntExist,
+    /// Buffer is modified
+    BufferModified(String),
+}
+
 impl Editor {
     pub fn new(
         mut area: Rect,
@@ -1044,19 +1052,14 @@ impl Editor {
         self._refresh();
     }
 
-    pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> anyhow::Result<()> {
+    pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> Result<(), CloseError> {
         let doc = match self.documents.get(&doc_id) {
             Some(doc) => doc,
-            None => bail!("document does not exist"),
+            None => return Err(CloseError::DoesntExist),
         };
 
         if !force && doc.is_modified() {
-            bail!(
-                "buffer {:?} is modified",
-                doc.relative_path()
-                    .map(|path| path.to_string_lossy().to_string())
-                    .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
-            );
+            return Err(CloseError::BufferModified(doc.display_name()));
         }
 
         if let Some(language_server) = doc.language_server() {
