@@ -11,7 +11,7 @@ use helix_core::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
     },
     movement::Direction,
-    syntax::{self, HighlightEvent},
+    syntax::{self, span::Span, HighlightEvent},
     unicode::width::UnicodeWidthStr,
     LineEnding, Position, Range, Selection, Transaction,
 };
@@ -120,20 +120,22 @@ impl EditorView {
         let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
         let highlights = syntax::merge(
             highlights,
-            Box::new(syntax::span_iter(Self::doc_diagnostics_highlights(
+            Box::new(syntax::span::span_iter(Self::doc_diagnostics_highlights(
                 doc, theme,
             ))),
         );
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
-                Box::new(syntax::flat_span_iter(Self::doc_selection_highlights(
-                    editor.mode(),
-                    doc,
-                    view,
-                    theme,
-                    &editor.config().cursor_shape,
-                ))),
+                Box::new(syntax::span::flat_span_iter(
+                    Self::doc_selection_highlights(
+                        editor.mode(),
+                        doc,
+                        view,
+                        theme,
+                        &editor.config().cursor_shape,
+                    ),
+                )),
             ))
         } else {
             Box::new(highlights)
@@ -264,10 +266,7 @@ impl EditorView {
     }
 
     /// Get highlight spans for document diagnostics
-    pub fn doc_diagnostics_highlights(
-        doc: &Document,
-        theme: &Theme,
-    ) -> Vec<(usize, std::ops::Range<usize>)> {
+    pub fn doc_diagnostics_highlights(doc: &Document, theme: &Theme) -> Vec<Span> {
         use helix_core::diagnostic::Severity;
         let get_scope_of = |scope| {
             theme
@@ -298,10 +297,11 @@ impl EditorView {
                     Some(Severity::Error) => error,
                     _ => r#default,
                 };
-                (
-                    diagnostic_scope,
-                    diagnostic.range.start..diagnostic.range.end,
-                )
+                Span {
+                    scope: diagnostic_scope,
+                    start: diagnostic.range.start,
+                    end: diagnostic.range.end,
+                }
             })
             .collect()
     }
@@ -313,7 +313,7 @@ impl EditorView {
         view: &View,
         theme: &Theme,
         cursor_shape_config: &CursorShapeConfig,
-    ) -> Vec<(usize, std::ops::Range<usize>)> {
+    ) -> Vec<Span> {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
         let primary_idx = selection.primary_index();
@@ -342,7 +342,7 @@ impl EditorView {
             .find_scope_index("ui.selection.primary")
             .unwrap_or(selection_scope);
 
-        let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
+        let mut spans: Vec<Span> = Vec::new();
         for (i, range) in selection.iter().enumerate() {
             let selection_is_primary = i == primary_idx;
             let (cursor_scope, selection_scope) = if selection_is_primary {
@@ -359,7 +359,11 @@ impl EditorView {
                     // underline cursor (eg. when a regex prompt has focus) then
                     // the primary cursor will be invisible. This doesn't happen
                     // with block cursors since we manually draw *all* cursors.
-                    spans.push((cursor_scope, range.head..range.head + 1));
+                    spans.push(Span {
+                        scope: cursor_scope,
+                        start: range.head,
+                        end: range.head + 1,
+                    });
                 }
                 continue;
             }
@@ -368,17 +372,33 @@ impl EditorView {
             if range.head > range.anchor {
                 // Standard case.
                 let cursor_start = prev_grapheme_boundary(text, range.head);
-                spans.push((selection_scope, range.anchor..cursor_start));
+                spans.push(Span {
+                    scope: selection_scope,
+                    start: range.anchor,
+                    end: cursor_start,
+                });
                 if !selection_is_primary || cursor_is_block {
-                    spans.push((cursor_scope, cursor_start..range.head));
+                    spans.push(Span {
+                        scope: cursor_scope,
+                        start: cursor_start,
+                        end: range.head,
+                    });
                 }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
                 if !selection_is_primary || cursor_is_block {
-                    spans.push((cursor_scope, range.head..cursor_end));
+                    spans.push(Span {
+                        scope: cursor_scope,
+                        start: range.head,
+                        end: cursor_end,
+                    });
                 }
-                spans.push((selection_scope, cursor_end..range.anchor));
+                spans.push(Span {
+                    scope: selection_scope,
+                    start: cursor_end,
+                    end: range.anchor,
+                });
             }
         }
 

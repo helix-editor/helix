@@ -52,10 +52,11 @@ impl Component for SignatureHelp {
         let margin = Margin::horizontal(1);
 
         let active_param_span = self.active_param_range.map(|(start, end)| {
-            vec![(
-                cx.editor.theme.find_scope_index("ui.selection").unwrap(),
-                start..end,
-            )]
+            vec![syntax::span::Span {
+                scope: cx.editor.theme.find_scope_index("ui.selection").unwrap(),
+                start,
+                end,
+            }]
         });
 
         let sig_text = crate::ui::markdown::highlighted_code_block(

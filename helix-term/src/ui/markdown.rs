@@ -31,7 +31,7 @@ pub fn highlighted_code_block<'a>(
     language: &str,
     theme: Option<&Theme>,
     config_loader: Arc<syntax::Loader>,
-    additional_highlight_spans: Option<Vec<(usize, std::ops::Range<usize>)>>,
+    additional_highlight_spans: Option<Vec<syntax::span::Span>>,
 ) -> Text<'a> {
     let mut spans = Vec::new();
     let mut lines = Vec::new();
@@ -63,7 +63,7 @@ pub fn highlighted_code_block<'a>(
         if let Some(spans) = additional_highlight_spans {
             Box::new(helix_core::syntax::merge(
                 highlight_iter,
-                Box::new(helix_core::syntax::span_iter(spans)),
+                Box::new(helix_core::syntax::span::span_iter(spans)),
             ))
         } else {
             Box::new(highlight_iter)
