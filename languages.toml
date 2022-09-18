@@ -1767,3 +1767,17 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "astro"
 source = { git = "https://github.com/virchau13/tree-sitter-astro", rev = "5f5c3e73c45967df9aa42f861fad2d77cd4e0900" }
+
+[[language]]
+name = "bass"
+scope = "source.bass"
+injection-regex = "bass"
+file-types = ["bass"]
+roots = []
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "bass", args = ["--lsp"] }
+
+[[grammar]]
+name = "bass"
+source = { git = "https://github.com/vito/tree-sitter-bass", rev = "501133e260d768ed4e1fd7374912ed5c86d6fd90" }
