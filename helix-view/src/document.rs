@@ -788,6 +788,8 @@ impl Document {
                 diagnostic.range.end = changes.map_pos(diagnostic.range.end, Assoc::After);
                 diagnostic.line = self.text.char_to_line(diagnostic.range.start);
             }
+            self.diagnostics
+                .sort_unstable_by_key(|diagnostic| diagnostic.range);
 
             // emit lsp notification
             if let Some(language_server) = self.language_server() {
