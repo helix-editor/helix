@@ -84,13 +84,23 @@ impl Preview<'_, '_> {
 }
 
 fn layout_picker(area: &Rect, show_preview: bool, editor: &Editor) -> (Rect, Option<Rect>) {
-    use helix_view::editor::FilePickerLayoutDirection::*;
+    use helix_view::editor::PickerSplitDirection::*;
 
     const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
     const MIN_AREA_HEIGHT_FOR_PREVIEW: u16 = 18; // This leaves 12 lines for picker + preview
 
-    let layout_direction = editor.config().borrow().file_picker.layout_direction;
-    // Horizontal layout:         Vertical layout:
+    let (split_direction, picker_weight, preview_weight) = {
+        let config = editor.config();
+        let config = config.borrow();
+
+        (
+            config.picker.split_direction,
+            core::cmp::max(config.picker.picker_weight, 1),
+            config.picker.preview_weight,
+        )
+    };
+
+    // Vertical split:            Horizontal split:
     // +---------+ +---------+    +---------------------+
     // |prompt   | |preview  |    | prompt              |
     // +---------+ |         |    +---------------------+
@@ -100,22 +110,32 @@ fn layout_picker(area: &Rect, show_preview: bool, editor: &Editor) -> (Rect, Opt
     // |         | |         |    | preview             |
     // +---------+ +---------+    +---------------------+
 
-    let render_preview = if layout_direction == Horizontal {
-        show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW
+    let space_available = if split_direction == Vertical {
+        area.width > MIN_AREA_WIDTH_FOR_PREVIEW
     } else {
-        show_preview && area.height > MIN_AREA_HEIGHT_FOR_PREVIEW
+        area.height > MIN_AREA_HEIGHT_FOR_PREVIEW
     };
 
-    let picker_area = if layout_direction == Horizontal {
-        let picker_width = area.width / 2;
+    let preview_weight = if space_available && show_preview {
+        preview_weight
+    } else {
+        0
+    };
+
+    let ratio = preview_weight as u16 + picker_weight as u16;
+
+    let picker_area = if split_direction == Vertical {
+        // Width of the picker should never go below 20 (arbitrary value)
+        let picker_width = std::cmp::max(20, (area.width * picker_weight as u16) / ratio);
         area.with_width(picker_width)
     } else {
-        let picker_height = area.height / 3; // looks nicer than 2
+        // height of the picker should never go below 6
+        let picker_height = std::cmp::max(6, (area.height * picker_weight as u16) / ratio);
         area.with_height(picker_height)
     };
 
-    let preview_area = if render_preview {
-        if layout_direction == Horizontal {
+    let preview_area = if preview_weight > 0 {
+        if split_direction == Vertical {
             Some(area.clip_left(picker_area.width))
         } else {
             Some(area.clip_top(picker_area.height))
@@ -296,7 +316,8 @@ impl<T: Item + 'static> Component for FilePicker<T> {
     }
 
     fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
-        self.picker.required_size((width, height))
+        self.picker.required_size((width, height))?;
+        Some((width, height))
     }
 }
 
