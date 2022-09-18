@@ -93,7 +93,7 @@ impl Default for PickerConfig {
         Self {
             picker_weight: 1,
             preview_weight: 1,
-            split_direction: PickerSplitDirection::Horizontal,
+            split_direction: PickerSplitDirection::Vertical,
         }
     }
 }
