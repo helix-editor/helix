@@ -89,14 +89,16 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "X" => extend_to_line_bounds,
         "A-x" => shrink_to_line_bounds,
 
-        "m" => { "Match"
-            "m" => match_brackets,
+        "m" => select_textobject_inner,
+        "M" => select_textobject_around,
+
+        "^" => { "Brackets"
+            "b" => match_brackets,
             "s" => surround_add,
             "r" => surround_replace,
             "d" => surround_delete,
-            "a" => select_textobject_around,
-            "i" => select_textobject_inner,
         },
+
         "[" => { "Left bracket"
             "d" => goto_prev_diag,
             "D" => goto_first_diag,
