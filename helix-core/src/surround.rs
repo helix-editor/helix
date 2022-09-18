@@ -55,7 +55,7 @@ pub fn get_pair(ch: char) -> (char, char) {
 pub fn find_nth_closest_pairs_pos(
     text: RopeSlice,
     range: Range,
-    n: usize,
+    mut skip: usize,
 ) -> Result<(usize, usize)> {
     let is_open_pair = |ch| PAIRS.iter().any(|(open, _)| *open == ch);
     let is_close_pair = |ch| PAIRS.iter().any(|(_, close)| *close == ch);
@@ -85,13 +85,21 @@ pub fn find_nth_closest_pairs_pos(
                 // are unbalanced and we encounter a close pair that doesn't
                 // close the last seen open pair. In either case use this
                 // char as the auto-detected closest pair.
-                match find_nth_open_pair(text, open, close, close_pos, n) {
+                match find_nth_open_pair(text, open, close, close_pos, 1) {
                     // Before we accept this pair, we want to ensure that the
                     // pair encloses the range rather than just the cursor.
                     Some(open_pos)
                         if open_pos <= pos.saturating_add(1)
                             && close_pos >= range.to().saturating_sub(1) =>
                     {
+                        // Since we have special conditions for when to
+                        // accept, we can't just pass the skip parameter on
+                        // through to the find_nth_*_pair methods, so we
+                        // track skips manually here.
+                        if skip > 1 {
+                            skip -= 1;
+                            continue;
+                        }
                         return Ok((open_pos, close_pos));
                     }
                     _ => continue,
