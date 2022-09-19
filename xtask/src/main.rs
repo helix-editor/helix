@@ -256,7 +256,7 @@ pub mod tasks {
         Ok(())
     }
 
-    pub fn snap_theme() -> Result<(), DynError> {
+    pub fn gen_theme_previews() -> Result<(), DynError> {
         use crossterm::event::EventStream;
         use helix_term::{application::Application, args::Args, config::Config};
         use helix_view::theme;
@@ -288,7 +288,7 @@ pub mod tasks {
                     .create(true)
                     .open(tmp_file.path())
                     .unwrap();
-                let redirect = gag::Redirect::stdout(opts).unwrap();
+                let _redirect = gag::Redirect::stdout(opts).unwrap();
 
                 // render the editor and stop the application after some time
                 let mut stream = EventStream::new();
@@ -327,7 +327,7 @@ Usage: Run with `cargo xtask <task>`, eg. `cargo xtask docgen`.
     Tasks:
         docgen: Generate files to be included in the mdbook output.
         query-check: Check that tree-sitter queries are valid.
-        snap-theme: Make a snapshot of a theme
+        gen-theme-previews: Make a snapshot of a theme
 "
         );
     }
@@ -340,7 +340,7 @@ fn main() -> Result<(), DynError> {
         Some(t) => match t.as_str() {
             "docgen" => tasks::docgen()?,
             "query-check" => tasks::query_check()?,
-            "snap-theme" => tasks::snap_theme()?,
+            "gen-theme-previews" => tasks::gen_theme_previews()?,
             invalid => return Err(format!("Invalid task name: {}", invalid).into()),
         },
     };
