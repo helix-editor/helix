@@ -90,24 +90,9 @@ impl Config {
         if !config_path.exists() {
             return None;
         }
-        let mut confirmed = true;
-        if config_path != helix_loader::config_file() {
-            if root_config.editor.security.load_local_config {
-                if root_config.editor.security.confirm_local_config {
-                    eprintln!(
-                        "Type yes<ENTER> to continue with loading config: {:#?}",
-                        config_path
-                    );
-                    let mut input = String::new();
-                    std::io::stdin().read_line(&mut input).unwrap_or_default();
-                    confirmed = input.contains("yes");
-                } //else we still presume confirmed = true
-            } else {
-                // User denies local configs, do not load
-                confirmed = false;
-            }
-        }
-        if confirmed {
+        if config_path == helix_loader::config_file()
+            || root_config.editor.security.load_local_config
+        {
             log::debug!("Load config: {:?}", config_path);
             let bytes = std::fs::read(&config_path);
             let cfg: Option<toml::Value> = match bytes {

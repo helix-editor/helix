@@ -241,5 +241,4 @@ It is possible to write malicious TOML files, so we suggest you keep the `confir
 
 | Key                    | Description                                                                             | Default |
 | ---                    | ---                                                                                     | ---     |
-| `load_local_config`    | Load a `config.yaml` from `$PWD/.helix` that will merge with your global configuration. | `false` |
-| `confirm_local_config` | Prompt the user at launch in order to accept the loading of a found local `$PWD/.helix` | `true`  |
+| `load-local-config`    | Load `config.yaml` from `$PWD/.helix` that will merge with your global configuration.   | `false` |

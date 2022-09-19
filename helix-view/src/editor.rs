@@ -171,24 +171,11 @@ pub struct Config {
     pub color_modes: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct SecurityConfig {
     pub load_local_config: bool,
-    pub confirm_local_config: bool,
     //pub load_local_languages: bool, //TODO: implement
-    //pub confirm_local_languages: bool, //TODO: implement
-}
-
-impl Default for SecurityConfig {
-    fn default() -> Self {
-        Self {
-            load_local_config: false,
-            confirm_local_config: true,
-            //load_local_languages: false,
-            //confirm_local_languages: true,
-        }
-    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
