@@ -1469,5 +1469,6 @@ dependencies = [
  "helix-core",
  "helix-loader",
  "helix-term",
+ "helix-view",
  "toml",
 ]

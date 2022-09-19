@@ -254,4 +254,10 @@ These scopes are used for theming the editor interface.
 | `diagnostic.warning`      | Diagnostics warning (editing area)             |
 | `diagnostic.error`        | Diagnostics error (editing area)               |
 
+You can check compliance to spec with
+
+```shell
+cargo xtask themelint onedark  # replace onedark with <name>
+```
+
 [editor-section]: ./configuration.md#editor-section
