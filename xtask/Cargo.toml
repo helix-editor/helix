@@ -9,4 +9,9 @@ edition = "2021"
 helix-term = { version = "0.6", path = "../helix-term" }
 helix-core = { version = "0.6", path = "../helix-core" }
 helix-loader = { version = "0.6", path = "../helix-loader" }
+helix-view = { version = "0.6", path = "../helix-view" }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
+crossterm = { version = "0.25", features = ["event-stream"] }
 toml = "0.5"
+gag = "1.0"
+temp-file = "0.1"
