@@ -197,6 +197,10 @@ pub mod path {
         project_root().join("book/src/generated/")
     }
 
+    pub fn book_gen_theme_previews() -> PathBuf {
+        book_gen().join("themes")
+    }
+
     pub fn ts_queries() -> PathBuf {
         project_root().join("runtime/queries")
     }
@@ -252,6 +256,69 @@ pub mod tasks {
         Ok(())
     }
 
+    pub fn snap_theme() -> Result<(), DynError> {
+        use crossterm::event::EventStream;
+        use helix_term::{application::Application, args::Args, config::Config};
+        use helix_view::theme;
+
+        let themes =
+            theme::Loader::new(&helix_loader::config_dir(), &helix_loader::runtime_dir()).names();
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+
+        for theme in themes {
+            rt.block_on(async {
+                // create an application instance with a nice soucefile and the current theme
+                let args = Args {
+                    files: vec![("helix-core/src/register.rs".into(), (16, 15).into())],
+                    ..Default::default()
+                };
+                let config = Config {
+                    theme: Some(theme.clone()),
+                    ..Default::default()
+                };
+                let mut app = Application::new(args, config).unwrap();
+
+                let tmp_file = temp_file::empty();
+
+                // redirect stdout to some temp file
+                let opts = std::fs::OpenOptions::new()
+                    .truncate(true)
+                    .write(true)
+                    .create(true)
+                    .open(tmp_file.path())
+                    .unwrap();
+                let redirect = gag::Redirect::stdout(opts).unwrap();
+
+                // render the editor and stop the application after some time
+                let mut stream = EventStream::new();
+                tokio::select! {
+                    _ = tokio::time::sleep(std::time::Duration::from_millis(10)) => {},
+                    _ = app.run(&mut stream) => {}
+                }
+
+                // convert the captured ANSI sequence to html using the external `aha` tool and
+                // capture stdout
+                let html_out = tokio::process::Command::new("aha")
+                    .arg("-l")
+                    .arg("-f")
+                    .arg(tmp_file.path())
+                    .output()
+                    .await
+                    .unwrap();
+
+                let out_path = crate::path::book_gen_theme_previews();
+                let _ = tokio::fs::create_dir(&out_path).await;
+
+                // dump `aha` output to the final html file
+                tokio::fs::write(out_path.join(format!("{}.html", theme)), html_out.stdout)
+                    .await
+                    .unwrap();
+            });
+        }
+        Ok(())
+    }
+
     pub fn print_help() {
         println!(
             "
@@ -260,6 +327,7 @@ Usage: Run with `cargo xtask <task>`, eg. `cargo xtask docgen`.
     Tasks:
         docgen: Generate files to be included in the mdbook output.
         query-check: Check that tree-sitter queries are valid.
+        snap-theme: Make a snapshot of a theme
 "
         );
     }
@@ -272,6 +340,7 @@ fn main() -> Result<(), DynError> {
         Some(t) => match t.as_str() {
             "docgen" => tasks::docgen()?,
             "query-check" => tasks::query_check()?,
+            "snap-theme" => tasks::snap_theme()?,
             invalid => return Err(format!("Invalid task name: {}", invalid).into()),
         },
     };
