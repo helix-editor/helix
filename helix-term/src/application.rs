@@ -2,7 +2,7 @@ use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
 use helix_core::{
     config::{default_syntax_loader, user_syntax_loader},
-    diagnostic::NumberOrString,
+    diagnostic::{DiagnosticTag, NumberOrString},
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
@@ -605,13 +605,28 @@ impl Application {
                                         None => None,
                                     };
 
+                                    let tags = if let Some(ref tags) = diagnostic.tags {
+                                        let new_tags = tags.iter().filter_map(|tag| {
+                                            match *tag {
+                                                lsp::DiagnosticTag::DEPRECATED => Some(DiagnosticTag::Deprecated),
+                                                lsp::DiagnosticTag::UNNECESSARY => Some(DiagnosticTag::Unnecessary),
+                                                _ => None
+                                            }
+                                        }).collect();
+
+                                        Some(new_tags)
+                                    } else {
+                                        None
+                                    };
+
                                     Some(Diagnostic {
                                         range: Range { start, end },
                                         line: diagnostic.range.start.line as usize,
                                         message: diagnostic.message.clone(),
                                         severity,
                                         code,
-                                        // source
+                                        tags,
+                                        source: diagnostic.source.clone()
                                     })
                                 })
                                 .collect();

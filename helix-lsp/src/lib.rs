@@ -84,15 +84,33 @@ pub mod util {
             None => None,
         };
 
+        let tags = if let Some(ref tags) = diag.tags {
+            let new_tags = tags
+                .iter()
+                .map(|tag| match tag {
+                    helix_core::diagnostic::DiagnosticTag::Unnecessary => {
+                        lsp::DiagnosticTag::UNNECESSARY
+                    }
+                    helix_core::diagnostic::DiagnosticTag::Deprecated => {
+                        lsp::DiagnosticTag::DEPRECATED
+                    }
+                })
+                .collect();
+
+            Some(new_tags)
+        } else {
+            None
+        };
+
         // TODO: add support for Diagnostic.data
         lsp::Diagnostic::new(
             range_to_lsp_range(doc, range, offset_encoding),
             severity,
             code,
-            None,
+            diag.source.clone(),
             diag.message.to_owned(),
             None,
-            None,
+            tags,
         )
     }
 
