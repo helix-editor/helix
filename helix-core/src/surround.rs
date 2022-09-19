@@ -62,7 +62,7 @@ pub fn find_nth_closest_pairs_pos(
 
     let mut stack = Vec::with_capacity(2);
     let pos = range.from();
-    let mut close_pos = pos - 1;
+    let mut close_pos = pos.saturating_sub(1);
 
     for ch in text.chars_at(pos) {
         close_pos += 1;

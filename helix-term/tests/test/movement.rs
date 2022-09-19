@@ -81,6 +81,10 @@ async fn surround_by_character() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn surround_pair() -> anyhow::Result<()> {
+    // Works at first character of buffer
+    // TODO: Adjust test when opening pair failure is fixed
+    test(("#[(|]#something)", "mim", "#[(|]#something)")).await?;
+
     // Inside a valid pair selects pair
     test(("some (#[t|]#ext) here", "mim", "some (#[text|]#) here")).await?;
 
