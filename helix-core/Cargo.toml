@@ -42,7 +42,7 @@ encoding_rs = "0.8"
 chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }
 
 etcetera = "0.4"
-textwrap = "0.15.0"
+textwrap = "0.15.1"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
