@@ -78,7 +78,7 @@
 
 "ui.bufferline" = { fg = "text", bg = "widget" }
 "ui.bufferline.active" = { fg = "white", bg = "blue" }
-"ui.bufferline.background" = { fg = "text", bg = "background" }
+"ui.bufferline.background" = { bg = "background" }
 
 "ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "white" }
