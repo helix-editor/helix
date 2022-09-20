@@ -339,6 +339,10 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "end" => extend_to_line_end,
         "esc" => exit_select_mode,
 
+        "g" => { "Goto"
+            "J" => extend_jump_mode_search,
+        },
+
         "v" => normal_mode,
     }));
     let insert = keymap!({ "Insert mode"

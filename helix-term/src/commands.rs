@@ -435,6 +435,7 @@ impl MappableCommand {
         replay_macro, "Replay macro",
         jump_mode_word, "Jump mode: word-wise",
         jump_mode_search, "Jump mode: character search",
+        extend_jump_mode_search, "Jump mode: extending character search",
         command_palette, "Open command pallete",
     );
 }
@@ -4943,6 +4944,14 @@ fn jump_mode_word(cx: &mut Context) {
 }
 
 fn jump_mode_search(cx: &mut Context) {
+    jump_mode_search_impl(cx, false);
+}
+
+fn extend_jump_mode_search(cx: &mut Context) {
+    jump_mode_search_impl(cx, true);
+}
+
+fn jump_mode_search_impl(cx: &mut Context, extend: bool) {
     cx.on_next_key(move |cx, event| {
         let c = match event.char() {
             Some(c) => c,
@@ -4954,12 +4963,15 @@ fn jump_mode_search(cx: &mut Context) {
         let mut jump_locations = Vec::new();
 
         let text = doc.text().slice(..);
-        let cursor = doc.selection(view.id).primary().cursor(text);
+        let (cursor, anchor) = {
+            let range = doc.selection(view.id).primary();
+            (range.cursor(text), range.anchor)
+        };
         for n in 1.. {
             let next = search::find_nth_next(text, c, cursor + 1, n);
             match next {
                 Some(pos) if view.is_cursor_in_view(pos, doc, 0) => {
-                    jump_locations.push((pos, pos));
+                    jump_locations.push((pos, if extend { anchor } else { pos }));
                 }
                 _ => break,
             }
@@ -5102,9 +5114,13 @@ fn jump_mode_impl(cx: &mut Context, jump_locations: Vec<(usize, usize)>) {
                     doc.push_text_annotations("jump_mode", annots);
                     cx.on_next_key(move |cx, event| handle_key(jumps, cx, event));
                 }
-                Jump::Final(cursor, anchor) => {
+                Jump::Final(mut cursor, anchor) => {
                     let (view, doc) = current!(cx.editor);
                     push_jump(view, doc);
+                    // Fixes off-by-one errors when extending with jump mode
+                    if cursor >= anchor {
+                        cursor += 1
+                    }
                     doc.set_selection(view.id, Selection::single(anchor, cursor));
                 }
             }
