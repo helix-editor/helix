@@ -55,7 +55,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "n" => goto_next_buffer,
             "p" => goto_previous_buffer,
             "." => goto_last_modification,
-            "j" => jump_mode,
+            "j" => jump_mode_word,
+            "J" => jump_mode_search,
         },
         ":" => command_mode,
 
