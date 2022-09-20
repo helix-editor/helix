@@ -715,7 +715,10 @@ fn theme(
             cx.editor.unset_theme_preview();
         }
         PromptEvent::Update => {
-            if let Some(theme_name) = args.first() {
+            if args.is_empty() {
+                // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
+                cx.editor.unset_theme_preview();
+            } else if let Some(theme_name) = args.first() {
                 if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
                     if !(true_color || theme.is_16_color()) {
                         bail!("Unsupported theme: theme requires true color support");
