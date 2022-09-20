@@ -61,7 +61,6 @@
 "diagnostic.error"= { fg = "red", modifiers = ["underlined"] }
 "ui.bufferline" = { fg = "gray", bg = "black" }
 "ui.bufferline.active" = { fg = "foreground", bg = "background" }
-"ui.bufferline.background" = { fg = "gray", bg = "black" }
 
 "special" = { fg = "orange" }
 
