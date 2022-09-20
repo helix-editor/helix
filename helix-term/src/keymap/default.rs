@@ -360,6 +360,17 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "C-x" => completion,
         "C-r" => insert_register,
+
+        "up" => move_line_up,
+        "down" => move_line_down,
+        "left" => move_char_left,
+        "right" => move_char_right,
+        "C-left" => move_prev_word_end,
+        "C-right" => move_next_word_start,
+        "pageup" => page_up,
+        "pagedown" => page_down,
+        "home" => goto_line_start,
+        "end" => goto_line_end_newline,
     });
     hashmap!(
         Mode::Normal => Keymap::new(normal),
