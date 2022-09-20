@@ -99,7 +99,7 @@ scope = "source.elixir"
 injection-regex = "(elixir|ex)"
 file-types = ["ex", "exs", "mix.lock"]
 shebangs = ["elixir"]
-roots = []
+roots = ["mix.exs", "mix.lock"]
 comment-token = "#"
 language-server = { command = "elixir-ls" }
 config = { elixirLS.dialyzerEnabled = false }
