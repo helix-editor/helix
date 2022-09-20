@@ -44,6 +44,7 @@
 | `:show-directory`, `:pwd` | Show the current working directory. |
 | `:encoding` | Set encoding. Based on `https://encoding.spec.whatwg.org`. |
 | `:reload` | Discard changes and reload from the source file. |
+| `:lsp-restart` | Restarts the Language Server that is in use by the current doc |
 | `:tree-sitter-scopes` | Display tree sitter scopes, primarily for theming and development. |
 | `:debug-start`, `:dbg` | Start a debug session from a given template with given parameters. |
 | `:debug-remote`, `:dbg-tcp` | Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters. |

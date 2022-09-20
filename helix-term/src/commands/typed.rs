@@ -985,6 +985,40 @@ fn reload(
     })
 }
 
+fn lsp_restart(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_view, doc) = current!(cx.editor);
+    let config = doc
+        .language_config()
+        .context("LSP not defined for the current document")?;
+
+    let scope = config.scope.clone();
+    cx.editor.language_servers.restart(config)?;
+
+    // This collect is needed because refresh_language_server would need to re-borrow editor.
+    let document_ids_to_refresh: Vec<DocumentId> = cx
+        .editor
+        .documents()
+        .filter_map(|doc| match doc.language_config() {
+            Some(config) if config.scope.eq(&scope) => Some(doc.id()),
+            _ => None,
+        })
+        .collect();
+
+    for document_id in document_ids_to_refresh {
+        cx.editor.refresh_language_server(document_id);
+    }
+
+    Ok(())
+}
+
 fn tree_sitter_scopes(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1835,6 +1869,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Discard changes and reload from the source file.",
             fun: reload,
+            completer: None,
+        },
+        TypableCommand {
+            name: "lsp-restart",
+            aliases: &[],
+            doc: "Restarts the Language Server that is in use by the current doc",
+            fun: lsp_restart,
             completer: None,
         },
         TypableCommand {
