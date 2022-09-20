@@ -22,7 +22,6 @@
 "diagnostic.hint" = {bg="white", modifiers=["bold"]}
 "ui.bufferline" = { fg = "indent", bg = "acme_bar_bg" }
 "ui.bufferline.active" = { fg = "black", bg = "acme_bg" }
-"ui.bufferline.background" = { fg = "indent", bg = "acme_bar_bg" }
 
 [palette]
 white = "#ffffff"
