@@ -485,7 +485,6 @@ dependencies = [
  "log",
  "once_cell",
  "pulldown-cmark",
- "retain_mut",
  "serde",
  "serde_json",
  "signal-hook",
@@ -883,12 +882,6 @@ checksum = "3acd125665422973a33ac9d3dd2df85edad0f4ae9b00dafb1a05e43a9f5ef8e7"
 dependencies = [
  "winapi",
 ]
-
-[[package]]
-name = "retain_mut"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4389f1d5789befaf6029ebd9f7dac4af7f7e3d61b69d4f30e2ac02b57e7712b0"
 
 [[package]]
 name = "ropey"
