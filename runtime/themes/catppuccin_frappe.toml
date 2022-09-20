@@ -72,7 +72,7 @@
 
 "ui.bufferline" = { fg = "overlay1", bg = "mantle" }
 "ui.bufferline.active" = { fg = "text", bg = "surface0" }
-"ui.bufferline.background" = { fg = "overlay1", bg = "surface0" }
+"ui.bufferline.background" = { bg = "surface0" }
 
 "ui.popup" = { fg = "text", bg = "surface0" }
 "ui.window" = { fg = "crust" }
