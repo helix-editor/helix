@@ -433,7 +433,8 @@ impl MappableCommand {
         decrement, "Decrement item under cursor",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
-        command_palette, "Open command palette",
+        jump_mode, "Jump mode",
+        command_palette, "Open command pallete",
     );
 }
 
@@ -1629,7 +1630,11 @@ fn search_impl(
 
         doc.set_selection(view.id, selection);
         // TODO: is_cursor_in_view does the same calculation as ensure_cursor_in_view
-        if view.is_cursor_in_view(doc, 0) {
+        let cursor = doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..));
+        if view.is_cursor_in_view(cursor, doc, 0) {
             view.ensure_cursor_in_view(doc, scrolloff);
         } else {
             align_view(doc, view, Align::Center)
@@ -4899,4 +4904,150 @@ fn replay_macro(cx: &mut Context) {
         // replaying recursively.
         cx.editor.macro_replaying.pop();
     }));
+}
+
+fn jump_mode(cx: &mut Context) {
+    const JUMP_KEYS: &[u8] = b"asdghklqwertyuiopzxcvbfj;n";
+    // TODO: Implement multiple multi jump keys.
+    // const MULTI_JUMP_KEYS: &[u8] = b"fj;nm";
+    const MULTI_JUMP_KEY: u8 = b'm';
+
+    cx.on_next_key(move |cx, event| {
+        let c = match event.char() {
+            Some(c) => c,
+            _ => return,
+        };
+
+        let (view, doc) = current!(cx.editor);
+
+        let mut jump_locations = Vec::new();
+
+        let text = doc.text().slice(..);
+        let cursor = doc.selection(view.id).primary().cursor(text);
+        for n in 1.. {
+            let next = search::find_nth_next(text, c, cursor + 1, n);
+            match next {
+                Some(pos) if view.is_cursor_in_view(pos, doc, 0) => {
+                    jump_locations.push(pos);
+                }
+                _ => break,
+            }
+        }
+
+        if jump_locations.is_empty() {
+            return;
+        }
+
+        enum Jump {
+            Final(usize),
+            Multi(HashMap<u8, Jump>),
+        }
+
+        let mut jumps = HashMap::new();
+        let mut current = &mut jumps;
+        loop {
+            JUMP_KEYS
+                .iter()
+                .copied()
+                .zip(
+                    jump_locations
+                        .drain(..JUMP_KEYS.len().min(jump_locations.len()))
+                        .map(Jump::Final),
+                )
+                .for_each(|(k, v)| drop(current.insert(k, v)));
+            if jump_locations.is_empty() {
+                break;
+            } else {
+                current.insert(MULTI_JUMP_KEY, Jump::Multi(HashMap::new()));
+                current = match current.get_mut(&MULTI_JUMP_KEY) {
+                    Some(Jump::Multi(map)) => map,
+                    _ => unreachable!(),
+                };
+            }
+        }
+
+        use helix_view::decorations::{TextAnnotation, TextAnnotationKind};
+        use helix_view::graphics::{Color, Modifier, Style};
+
+        fn annotations_impl(
+            label: u8,
+            jump: &Jump,
+        ) -> Box<dyn Iterator<Item = (String, usize)> + '_> {
+            match jump {
+                Jump::Final(pos) => Box::new(std::iter::once(((label as char).into(), *pos))),
+                Jump::Multi(map) => Box::new(
+                    map.iter()
+                        .flat_map(|(&label, jump)| annotations_impl(label, jump))
+                        .map(move |(mut label_, jump)| {
+                            (
+                                {
+                                    label_.insert(0, label as char);
+                                    label_
+                                },
+                                jump,
+                            )
+                        }),
+                ),
+            }
+        }
+        fn annotations(
+            doc: &Document,
+            jumps: &HashMap<u8, Jump>,
+        ) -> impl Iterator<Item = TextAnnotation> {
+            // TODO: Make this themable.
+            let single_style = Style::default().fg(Color::Red).add_modifier(Modifier::BOLD);
+            let multi_style = Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD);
+            jumps
+                .iter()
+                .flat_map(|(&label, jump)| annotations_impl(label, jump))
+                .map(|(annot, pos)| {
+                    let text = doc.text();
+                    let line = text.byte_to_line(pos);
+                    let offset = pos - text.line_to_byte(line);
+                    let style = match annot.len() {
+                        2.. => multi_style,
+                        _ => single_style,
+                    };
+                    TextAnnotation {
+                        text: annot.into(),
+                        style,
+                        line,
+                        kind: TextAnnotationKind::Overlay(offset),
+                    }
+                })
+                // Collect to satisfy 'static lifetime.
+                .collect::<Vec<_>>()
+                .into_iter()
+        }
+
+        let annots = annotations(doc, &jumps);
+        doc.push_text_annotations("jump_mode", annots);
+
+        fn handle_key(mut jumps: HashMap<u8, Jump>, cx: &mut Context, event: KeyEvent) {
+            let doc = doc_mut!(cx.editor);
+            doc.clear_text_annotations("jump_mode");
+            if let Some(jump) = event
+                .char()
+                .and_then(|c| c.try_into().ok())
+                .and_then(|c| jumps.remove(&c))
+            {
+                match jump {
+                    Jump::Multi(jumps) => {
+                        let annots = annotations(doc, &jumps);
+                        doc.push_text_annotations("jump_mode", annots);
+                        cx.on_next_key(move |cx, event| handle_key(jumps, cx, event));
+                    }
+                    Jump::Final(pos) => {
+                        let (view, doc) = current!(cx.editor);
+                        push_jump(view, doc);
+                        doc.set_selection(view.id, Selection::single(pos, pos));
+                    }
+                }
+            }
+        }
+
+        cx.on_next_key(move |cx, event| handle_key(jumps, cx, event));
+    });
 }

@@ -154,14 +154,10 @@ impl View {
     //
     pub fn offset_coords_to_in_view(
         &self,
+        cursor: usize,
         doc: &Document,
         scrolloff: usize,
     ) -> Option<(usize, usize)> {
-        let cursor = doc
-            .selection(self.id)
-            .primary()
-            .cursor(doc.text().slice(..));
-
         let Position { col, row: line } =
             visual_coords_at_pos(doc.text().slice(..), cursor, doc.tab_width());
 
@@ -202,14 +198,19 @@ impl View {
     }
 
     pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {
-        if let Some((row, col)) = self.offset_coords_to_in_view(doc, scrolloff) {
+        let cursor = doc
+            .selection(self.id)
+            .primary()
+            .cursor(doc.text().slice(..));
+        if let Some((row, col)) = self.offset_coords_to_in_view(cursor, doc, scrolloff) {
             self.offset.row = row;
             self.offset.col = col;
         }
     }
 
-    pub fn is_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) -> bool {
-        self.offset_coords_to_in_view(doc, scrolloff).is_none()
+    pub fn is_cursor_in_view(&self, cursor: usize, doc: &Document, scrolloff: usize) -> bool {
+        self.offset_coords_to_in_view(cursor, doc, scrolloff)
+            .is_none()
     }
 
     /// Calculates the last visible line on screen
