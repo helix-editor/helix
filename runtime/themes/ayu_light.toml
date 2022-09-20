@@ -59,9 +59,8 @@
 "diagnostic.info"= { fg = "blue", modifiers = ["underlined"] }
 "diagnostic.warning"= { fg = "yellow", modifiers = ["underlined"] }
 "diagnostic.error"= { fg = "red", modifiers = ["underlined"] }
-"ui.bufferline" = { fg = "gray", bg = "dark_gray" }
+"ui.bufferline" = { fg = "gray", bg = "dark" }
 "ui.bufferline.active" = { fg = "dark", bg = "background" }
-"ui.bufferline.background" = { fg = "gray", bg = "dark_gray" }
 
 "special" = { fg = "orange" }
 
@@ -72,7 +71,7 @@ foreground = "#5c6166"
 black = "#e7eaed"
 blue = "#399ee6"
 cyan = "#478acc"
-dark_gray = "#e7eaed"
+dark = "#e7eaed"
 gray = "#787b8099"
 green = "#86b300"
 magenta = "#a37acc"
