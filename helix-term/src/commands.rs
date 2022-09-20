@@ -4931,12 +4931,12 @@ fn jump_mode_word(cx: &mut Context) {
         // Avoid adjacent jump locations
         if jump_locations
             .last()
-            .map(|pos| cursor_pos - pos <= 2)
+            .map(|(pos, _)| cursor_pos - pos <= 1)
             .unwrap_or(false)
         {
             continue;
         }
-        jump_locations.push(cursor_pos);
+        jump_locations.push((cursor_pos, transformed.anchor));
     }
 
     jump_mode_impl(cx, jump_locations);
@@ -4959,7 +4959,7 @@ fn jump_mode_search(cx: &mut Context) {
             let next = search::find_nth_next(text, c, cursor + 1, n);
             match next {
                 Some(pos) if view.is_cursor_in_view(pos, doc, 0) => {
-                    jump_locations.push(pos);
+                    jump_locations.push((pos, pos));
                 }
                 _ => break,
             }
@@ -4969,7 +4969,7 @@ fn jump_mode_search(cx: &mut Context) {
     });
 }
 
-fn jump_mode_impl(cx: &mut Context, jump_locations: Vec<usize>) {
+fn jump_mode_impl(cx: &mut Context, jump_locations: Vec<(usize, usize)>) {
     const JUMP_KEYS: &[u8] = b"asdghklqwertyuiopzxcvbnmfj;";
 
     if jump_locations.is_empty() {
@@ -4989,7 +4989,7 @@ fn jump_mode_impl(cx: &mut Context, jump_locations: Vec<usize>) {
     };
 
     enum Jump {
-        Final(usize),
+        Final(usize, usize),
         Multi(HashMap<u8, Jump>),
     }
 
@@ -5027,7 +5027,7 @@ fn jump_mode_impl(cx: &mut Context, jump_locations: Vec<usize>) {
                 _ => unreachable!(),
             }
         }
-        current.insert(*seq.last().unwrap(), Jump::Final(pos));
+        current.insert(*seq.last().unwrap(), Jump::Final(pos.0, pos.1));
     }
 
     use helix_view::decorations::{TextAnnotation, TextAnnotationKind};
@@ -5035,7 +5035,7 @@ fn jump_mode_impl(cx: &mut Context, jump_locations: Vec<usize>) {
 
     fn annotations_impl(label: u8, jump: &Jump) -> Box<dyn Iterator<Item = (String, usize)> + '_> {
         match jump {
-            Jump::Final(pos) => Box::new(std::iter::once(((label as char).into(), *pos))),
+            Jump::Final(pos, _) => Box::new(std::iter::once(((label as char).into(), *pos))),
             Jump::Multi(map) => Box::new(
                 map.iter()
                     .flat_map(|(&label, jump)| annotations_impl(label, jump))
@@ -5102,10 +5102,10 @@ fn jump_mode_impl(cx: &mut Context, jump_locations: Vec<usize>) {
                     doc.push_text_annotations("jump_mode", annots);
                     cx.on_next_key(move |cx, event| handle_key(jumps, cx, event));
                 }
-                Jump::Final(pos) => {
+                Jump::Final(cursor, anchor) => {
                     let (view, doc) = current!(cx.editor);
                     push_jump(view, doc);
-                    doc.set_selection(view.id, Selection::single(pos, pos));
+                    doc.set_selection(view.id, Selection::single(anchor, cursor));
                 }
             }
         }
