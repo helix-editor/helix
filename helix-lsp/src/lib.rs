@@ -84,19 +84,18 @@ pub mod util {
             None => None,
         };
 
-        let tags = if let Some(ref tags) = diag.tags {
-            let new_tags = tags
-                .iter()
-                .map(|tag| match tag {
-                    helix_core::diagnostic::DiagnosticTag::Unnecessary => {
-                        lsp::DiagnosticTag::UNNECESSARY
-                    }
-                    helix_core::diagnostic::DiagnosticTag::Deprecated => {
-                        lsp::DiagnosticTag::DEPRECATED
-                    }
-                })
-                .collect();
+        let new_tags: Vec<_> = diag
+            .tags
+            .iter()
+            .map(|tag| match tag {
+                helix_core::diagnostic::DiagnosticTag::Unnecessary => {
+                    lsp::DiagnosticTag::UNNECESSARY
+                }
+                helix_core::diagnostic::DiagnosticTag::Deprecated => lsp::DiagnosticTag::DEPRECATED,
+            })
+            .collect();
 
+        let tags = if !new_tags.is_empty() {
             Some(new_tags)
         } else {
             None

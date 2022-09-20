@@ -614,9 +614,9 @@ impl Application {
                                             }
                                         }).collect();
 
-                                        Some(new_tags)
+                                        new_tags
                                     } else {
-                                        None
+                                        Vec::new()
                                     };
 
                                     Some(Diagnostic {

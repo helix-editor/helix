@@ -43,6 +43,6 @@ pub struct Diagnostic {
     pub message: String,
     pub severity: Option<Severity>,
     pub code: Option<NumberOrString>,
-    pub tags: Option<Vec<DiagnosticTag>>,
+    pub tags: Vec<DiagnosticTag>,
     pub source: Option<String>,
 }
