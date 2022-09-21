@@ -335,7 +335,7 @@ experience.
 | `Backspace`, `Ctrl-h`                       | Delete previous char        | `delete_char_backward`  |
 | `Delete`, `Ctrl-d`                          | Delete next char            | `delete_char_forward`   |
 
-### Insert Mode (beginners)
+### Insert mode
 
 These keys are not recommended, it is for those who do not read documentations.
 
