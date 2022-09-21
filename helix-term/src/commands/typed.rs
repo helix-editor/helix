@@ -1794,7 +1794,10 @@ fn trim(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     let mode = args.get(0).unwrap_or(&Cow::Borrowed("all"));
     let (view, doc) = current!(cx.editor);
 
+    let selections = doc.selection(view.id)
+
     if mode == "all" || mode == "spaces" {
+        
         let mut pos = 0;
         let transaction = Transaction::change(
             doc.text(),
