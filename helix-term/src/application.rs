@@ -427,24 +427,25 @@ impl Application {
     }
 
     pub fn handle_document_write(&mut self, doc_save_event: DocumentSavedEventResult) {
-        if let Err(err) = doc_save_event {
-            self.editor.set_error(err.to_string());
-            return;
-        }
+        let doc_save_event = match doc_save_event {
+            Ok(event) => event,
+            Err(err) => {
+                self.editor.set_error(err.to_string());
+                return;
+            }
+        };
 
-        let doc_save_event = doc_save_event.unwrap();
-        let doc = self.editor.document_mut(doc_save_event.doc_id);
+        let doc = match self.editor.document_mut(doc_save_event.doc_id) {
+            None => {
+                warn!(
+                    "received document saved event for non-existent doc id: {}",
+                    doc_save_event.doc_id
+                );
 
-        if doc.is_none() {
-            warn!(
-                "received document saved event for non-existent doc id: {}",
-                doc_save_event.doc_id
-            );
-
-            return;
-        }
-
-        let doc = doc.unwrap();
+                return;
+            }
+            Some(doc) => doc,
+        };
 
         debug!(
             "document {:?} saved with revision {}",
@@ -472,7 +473,7 @@ impl Application {
             let loader = self.editor.syn_loader.clone();
 
             // borrowing the same doc again to get around the borrow checker
-            let doc = self.editor.document_mut(doc_save_event.doc_id).unwrap();
+            let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
             let id = doc.id();
             doc.detect_language(loader);
             let _ = self.editor.refresh_language_server(id);

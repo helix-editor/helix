@@ -21,7 +21,7 @@ pub struct TypableCommand {
 }
 
 fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
-    log::info!("quitting...");
+    log::debug!("quitting...");
 
     if event != PromptEvent::Validate {
         return Ok(());

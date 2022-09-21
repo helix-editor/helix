@@ -554,12 +554,7 @@ impl Document {
             }
         };
 
-        let identifier = if self.path().is_some() {
-            Some(self.identifier())
-        } else {
-            None
-        };
-
+        let identifier = self.path().map(|_| self.identifier());
         let language_server = self.language_server.clone();
 
         // mark changes up to now as saved
@@ -708,10 +703,7 @@ impl Document {
     /// and flushing through the queue of pending writes. If any fail,
     /// it stops early before emptying the rest of the queue.
     pub async fn close(&mut self) -> Option<DocumentSavedEventResult> {
-        if self.save_sender.is_some() {
-            self.save_sender.take();
-        }
-
+        self.save_sender.take();
         self.flush_saves_impl(true).await
     }
 
