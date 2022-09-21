@@ -59,7 +59,7 @@ pub fn config_dir() -> PathBuf {
 }
 
 pub fn local_config_dirs() -> Vec<PathBuf> {
-    let directories = find_root_impl(None, &[".helix".to_string()])
+    let directories = find_local_config_dirs()
         .into_iter()
         .map(|path| path.join(".helix"))
         .collect();
@@ -90,32 +90,16 @@ pub fn log_file() -> PathBuf {
     cache_dir().join("helix.log")
 }
 
-pub fn find_root_impl(root: Option<&str>, root_markers: &[String]) -> Vec<PathBuf> {
+pub fn find_local_config_dirs() -> Vec<PathBuf> {
     let current_dir = std::env::current_dir().expect("unable to determine current directory");
     let mut directories = Vec::new();
 
-    let root = match root {
-        Some(root) => {
-            let root = std::path::Path::new(root);
-            if root.is_absolute() {
-                root.to_path_buf()
-            } else {
-                current_dir.join(root)
-            }
-        }
-        None => current_dir,
-    };
-
-    for ancestor in root.ancestors() {
-        // don't go higher than repo
+    for ancestor in current_dir.ancestors() {
         if ancestor.join(".git").is_dir() {
-            // Use workspace if detected from marker
             directories.push(ancestor.to_path_buf());
+            // Don't go higher than repo if we're in one
             break;
-        } else if root_markers
-            .iter()
-            .any(|marker| ancestor.join(marker).exists())
-        {
+        } else if ancestor.join(".helix").is_dir() {
             directories.push(ancestor.to_path_buf());
         }
     }
