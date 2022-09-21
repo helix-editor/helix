@@ -84,7 +84,7 @@ impl Preview<'_, '_> {
 }
 
 fn layout_picker(area: &Rect, show_preview: bool, editor: &Editor) -> (Rect, Option<Rect>) {
-    use helix_view::editor::PickerSplitDirection::*;
+    use helix_view::editor::PickerLayoutDirection::*;
 
     const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
     const MIN_AREA_HEIGHT_FOR_PREVIEW: u16 = 18; // This leaves 12 lines for picker + preview
@@ -94,13 +94,13 @@ fn layout_picker(area: &Rect, show_preview: bool, editor: &Editor) -> (Rect, Opt
         let config = config.borrow();
 
         (
-            config.picker.split_direction,
+            config.picker.layout_direction,
             core::cmp::max(config.picker.picker_weight, 1),
             config.picker.preview_weight,
         )
     };
 
-    // Vertical split:            Horizontal split:
+    // Horizontal layout:         Vertival layout:
     // +---------+ +---------+    +---------------------+
     // |prompt   | |preview  |    | prompt              |
     // +---------+ |         |    +---------------------+
@@ -110,7 +110,7 @@ fn layout_picker(area: &Rect, show_preview: bool, editor: &Editor) -> (Rect, Opt
     // |         | |         |    | preview             |
     // +---------+ +---------+    +---------------------+
 
-    let space_available = if split_direction == Vertical {
+    let space_available = if split_direction == Horizontal {
         area.width > MIN_AREA_WIDTH_FOR_PREVIEW
     } else {
         area.height > MIN_AREA_HEIGHT_FOR_PREVIEW
@@ -124,7 +124,7 @@ fn layout_picker(area: &Rect, show_preview: bool, editor: &Editor) -> (Rect, Opt
 
     let ratio = preview_weight as u16 + picker_weight as u16;
 
-    let picker_area = if split_direction == Vertical {
+    let picker_area = if split_direction == Horizontal {
         // Width of the picker should never go below 20 (arbitrary value)
         let picker_width = std::cmp::max(20, (area.width * picker_weight as u16) / ratio);
         area.with_width(picker_width)
@@ -135,7 +135,7 @@ fn layout_picker(area: &Rect, show_preview: bool, editor: &Editor) -> (Rect, Opt
     };
 
     let preview_area = if preview_weight > 0 {
-        if split_direction == Vertical {
+        if split_direction == Horizontal {
             Some(area.clip_left(picker_area.width))
         } else {
             Some(area.clip_top(picker_area.height))

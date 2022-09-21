@@ -67,7 +67,7 @@ where
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
-pub enum PickerSplitDirection {
+pub enum PickerLayoutDirection {
     Horizontal,
     Vertical,
 }
@@ -83,9 +83,9 @@ pub struct PickerConfig {
     ///
     /// A weight of 0 will disable the preview entirely.
     pub preview_weight: u8,
-    /// The direction in which to split the file picker. Possible values are `horizontal` or
-    /// `vertical`.
-    pub split_direction: PickerSplitDirection,
+    /// The direction in which to split the file picker. Possible values are `horizontal`
+    /// (picker next to preview) or `vertical` (picker above preview).
+    pub layout_direction: PickerLayoutDirection,
 }
 
 impl Default for PickerConfig {
@@ -93,7 +93,7 @@ impl Default for PickerConfig {
         Self {
             picker_weight: 1,
             preview_weight: 1,
-            split_direction: PickerSplitDirection::Vertical,
+            layout_direction: PickerLayoutDirection::Horizontal,
         }
     }
 }
