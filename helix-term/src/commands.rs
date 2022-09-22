@@ -1760,6 +1760,8 @@ fn search_selection(cx: &mut Context) {
         .selection(view.id)
         .iter()
         .map(|selection| regex::escape(&selection.fragment(contents)))
+        .collect::<HashSet<_>>() // Collect into hashset to deduplicate identical regexes
+        .into_iter()
         .collect::<Vec<_>>()
         .join("|");
 
