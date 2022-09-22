@@ -689,7 +689,7 @@ pub enum Action {
 /// Error thrown on failed document closed
 pub enum CloseError {
     /// Document doesn't exist
-    DoesntExist,
+    DoesNotExist,
     /// Buffer is modified
     BufferModified(String),
 }
@@ -1055,11 +1055,11 @@ impl Editor {
     pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> Result<(), CloseError> {
         let doc = match self.documents.get(&doc_id) {
             Some(doc) => doc,
-            None => return Err(CloseError::DoesntExist),
+            None => return Err(CloseError::DoesNotExist),
         };
 
         if !force && doc.is_modified() {
-            return Err(CloseError::BufferModified(doc.display_name()));
+            return Err(CloseError::BufferModified(doc.display_name().into_owned()));
         }
 
         if let Some(language_server) = doc.language_server() {
