@@ -322,32 +322,33 @@ escaping from insert mode to normal mode. For this reason, new users are
 strongly encouraged to learn the modal editing paradigm to get the smoothest
 experience.
 
-| Key                                         | Description                 | Command                 |
-| -----                                       | -----------                 | -------                 |
-| `Escape`                                    | Switch to normal mode       | `normal_mode`           |
-| `Ctrl-x`                                    | Autocomplete                | `completion`            |
-| `Ctrl-r`                                    | Insert a register content   | `insert_register`       |
-| `Ctrl-w`, `Alt-Backspace`, `Ctrl-Backspace` | Delete previous word        | `delete_word_backward`  |
-| `Alt-d`, `Alt-Delete`, `Ctrl-Delete`        | Delete next word            | `delete_word_forward`   |
-| `Ctrl-u`                                    | Delete to start of line     | `kill_to_line_start`    |
-| `Ctrl-k`                                    | Delete to end of line       | `kill_to_line_end`      |
-| `Ctrl-j`, `Enter`                           | Insert new line             | `insert_newline`        |
-| `Backspace`, `Ctrl-h`                       | Delete previous char        | `delete_char_backward`  |
-| `Delete`, `Ctrl-d`                          | Delete next char            | `delete_char_forward`   |
+| Key                                         | Description                 | Command                  |
+| -----                                       | -----------                 | -------                  |
+| `Escape`                                    | Switch to normal mode       | `normal_mode`            |
+| `Ctrl-s`                                    | Commit undo checkpoint      | `commit_undo_checkpoint` |
+| `Ctrl-x`                                    | Autocomplete                | `completion`             |
+| `Ctrl-r`                                    | Insert a register content   | `insert_register`        |
+| `Ctrl-w`, `Alt-Backspace`                   | Delete previous word        | `delete_word_backward`   |
+| `Alt-d`, `Alt-Delete`                       | Delete next word            | `delete_word_forward`    |
+| `Ctrl-u`                                    | Delete to start of line     | `kill_to_line_start`     |
+| `Ctrl-k`                                    | Delete to end of line       | `kill_to_line_end`       |
+| `Ctrl-h`, `Backspace`                       | Delete previous char        | `delete_char_backward`   |
+| `Ctrl-d`, `Delete`                          | Delete next char            | `delete_char_forward`    |
+| `Ctrl-j`, `Enter`                           | Insert new line             | `insert_newline`         |
 
 These keys are not recommended, but are included for new users less familiar
 with modal editors.
 
-| Key                                         | Description                 | Command                 |
-| -----                                       | -----------                 | -------                 |
-| `Up`                                        | Move to previous line       | `move_line_up`          |
-| `Down`                                      | Move to next line           | `move_line_down`        |
-| `Left`                                      | Backward a char             | `move_char_left`        |
-| `Right`                                     | Forward a char              | `move_char_right`       |
-| `PageUp`                                    | Move one page up            | `page_up`               |
-| `PageDown`                                  | Move one page down          | `page_down`             |
-| `Home`                                      | Move to line start          | `goto_line_start`       |
-| `End`                                       | Move to line end            | `goto_line_end_newline` |
+| Key                                         | Description                 | Command                  |
+| -----                                       | -----------                 | -------                  |
+| `Up`                                        | Move to previous line       | `move_line_up`           |
+| `Down`                                      | Move to next line           | `move_line_down`         |
+| `Left`                                      | Backward a char             | `move_char_left`         |
+| `Right`                                     | Forward a char              | `move_char_right`        |
+| `PageUp`                                    | Move one page up            | `page_up`                |
+| `PageDown`                                  | Move one page down          | `page_down`              |
+| `Home`                                      | Move to line start          | `goto_line_start`        |
+| `End`                                       | Move to line end            | `goto_line_end_newline`  |
 
 ## Select / extend mode
 
