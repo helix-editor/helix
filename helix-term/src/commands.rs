@@ -3946,6 +3946,7 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
     );
 
     doc.apply(&transaction, view.id);
+    exit_select_mode(cx);
 }
 
 fn rotate_selection_contents_forward(cx: &mut Context) {
