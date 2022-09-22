@@ -10,7 +10,7 @@
 "ui.statusline" = {bg="paper_bar_bg", fg="regular0"}
 "ui.statusline.select" = {bg="background", fg="bright7"}
 "ui.statusline.normal" = {bg="background", fg="bright3"}
-"ui.statusline.inactive" = {bg="background", fg="bright0"}
+"ui.statusline.inactive" = {bg="bright0", fg="foreground"}
 "ui.virtual" = "indent"
 "ui.virtual.whitespace" = { fg = "regular5" }
 "ui.virtual.ruler" = {bg="cursorline_background"}
