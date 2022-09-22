@@ -199,11 +199,11 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
         M: serde::de::MapAccess<'de>,
     {
         let mut mapping = HashMap::new();
+        let mut order = Vec::new();
         while let Some((key, value)) = map.next_entry::<KeyEvent, KeyTrie>()? {
             mapping.insert(key, value);
+            order.push(key);
         }
-        let order = mapping.keys().copied().collect::<Vec<_>>(); // NOTE: map.keys() has arbitrary order
-
         Ok(KeyTrie::Node(KeyTrieNode::new("", mapping, order)))
     }
 }
