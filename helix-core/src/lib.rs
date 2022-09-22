@@ -46,7 +46,7 @@ pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
 /// * Git repository root if no marker detected
 /// * Top-most folder containing a root marker if not git repository detected
 /// * Current working directory as fallback
-pub fn find_root(root: Option<&str>, root_markers: &[String]) -> Option<std::path::PathBuf> {
+pub fn find_root(root: Option<&str>, root_markers: &[String]) -> std::path::PathBuf {
     let current_dir = std::env::current_dir().expect("unable to determine current directory");
 
     let root = match root {
@@ -81,7 +81,7 @@ pub fn find_root(root: Option<&str>, root_markers: &[String]) -> Option<std::pat
     }
 
     // Return the found top marker or the current_dir as fallback
-    top_marker.map(|a| a.to_path_buf()).or(Some(current_dir))
+    top_marker.map_or(current_dir, |a| a.to_path_buf())
 }
 
 pub use ropey::{str_utils, Rope, RopeBuilder, RopeSlice};
