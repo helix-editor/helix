@@ -313,7 +313,7 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `[space` | Add newline above                            | `add_newline_above`   |
 | `]space` | Add newline below                            | `add_newline_below`   |
 
-## Insert Mode
+## Insert mode
 
 Insert mode bindings are somewhat minimal by default. Helix is designed to
 be a modal editor, and this is reflected in the user experience and internal
@@ -335,9 +335,8 @@ experience.
 | `Backspace`, `Ctrl-h`                       | Delete previous char        | `delete_char_backward`  |
 | `Delete`, `Ctrl-d`                          | Delete next char            | `delete_char_forward`   |
 
-### Insert mode
-
-These keys are not recommended, it is for those who do not read documentations.
+These keys are not recommended, but are included for new users less familiar
+with modal editors.
 
 | Key                                         | Description                 | Command                 |
 | -----                                       | -----------                 | -------                 |
@@ -345,8 +344,6 @@ These keys are not recommended, it is for those who do not read documentations.
 | `Down`                                      | Move to next line           | `move_line_down`        |
 | `Left`                                      | Backward a char             | `move_char_left`        |
 | `Right`                                     | Forward a char              | `move_char_right`       |
-| `Ctrl-Left`                                 | Backward a word             | `move_prev_word_end`    |
-| `Ctrl-Right`                                | Forward a word              | `move_next_word_start`  |
 | `PageUp`                                    | Move one page up            | `page_up`               |
 | `PageDown`                                  | Move one page down          | `page_down`             |
 | `Home`                                      | Move to line start          | `goto_line_start`       |

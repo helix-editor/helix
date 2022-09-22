@@ -365,8 +365,6 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "down" => move_line_down,
         "left" => move_char_left,
         "right" => move_char_right,
-        "C-left" => move_prev_word_end,
-        "C-right" => move_next_word_start,
         "pageup" => page_up,
         "pagedown" => page_down,
         "home" => goto_line_start,
