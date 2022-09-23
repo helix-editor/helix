@@ -5059,8 +5059,20 @@ fn jump_mode_impl(cx: &mut Context, [fwd_jumps, bck_jumps]: [Vec<(usize, usize)>
         if jump_seqs.len() >= jump_locations.len() {
             break;
         }
+        let mut seq_iter = jump_seqs
+            .iter()
+            .zip((0..jump_seqs.len()).rev())
+            .skip_while(|(seq, _)| seq.len() < jump_seqs.last().map(|seq| seq.len()).unwrap_or(1))
+            .map(|(seq, len)| (seq.clone(), len))
+            .peekable();
+        let subset_len = seq_iter.peek().map(|(_, len)| *len).unwrap_or(1);
         jump_seqs.append(
-            &mut std::iter::repeat(jump_seqs.iter().cloned())
+            &mut std::iter::repeat(seq_iter.map(|(seq, _)| seq))
+                .take(
+                    // Add 1 less than the divisor to essentially ceil the integer division.
+                    (jump_locations.len().saturating_sub(jump_seqs.len()) + subset_len - 1)
+                        / subset_len,
+                )
                 .zip(JUMP_KEYS[sep_idx..].iter().copied())
                 .flat_map(|(iter, k)| {
                     iter.map(move |mut seq| {
