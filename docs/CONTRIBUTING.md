@@ -37,6 +37,12 @@ contributors are strongly encouraged to write integration tests for their code.
 Existing tests can be used as examples. Helpers can be found in
 [helpers.rs][helpers.rs]
 
+## Minimum Stable Rust Version (MSRV) Policy
+
+Helix follows the MSRV of Firefox.
+The current MSRV and future changes to the MSRV are listed in the [Firefox documentation].
+
+[Firefox documentation]: https://firefox-source-docs.mozilla.org/writing-rust-code/update-policy.html
 [good-first-issue]: https://github.com/helix-editor/helix/labels/E-easy
 [log-file]: https://github.com/helix-editor/helix/wiki/FAQ#access-the-log-file
 [architecture.md]: ./architecture.md

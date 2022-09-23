@@ -67,9 +67,6 @@ serde = { version = "1.0", features = ["derive"] }
 grep-regex = "0.1.10"
 grep-searcher = "0.1.10"
 
-# Remove once retain_mut lands in stable rust
-retain_mut = "0.1.7"
-
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
 
