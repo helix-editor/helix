@@ -5066,22 +5066,21 @@ fn jump_mode_impl(cx: &mut Context, [fwd_jumps, bck_jumps]: [Vec<(usize, usize)>
             .map(|(seq, len)| (seq.clone(), len))
             .peekable();
         let subset_len = seq_iter.peek().map(|(_, len)| *len).unwrap_or(1);
-        jump_seqs.append(
-            &mut std::iter::repeat(seq_iter.map(|(seq, _)| seq))
-                .take(
-                    // Add 1 less than the divisor to essentially ceil the integer division.
-                    (jump_locations.len().saturating_sub(jump_seqs.len()) + subset_len - 1)
-                        / subset_len,
-                )
-                .zip(JUMP_KEYS[sep_idx..].iter().copied())
-                .flat_map(|(iter, k)| {
-                    iter.map(move |mut seq| {
-                        seq.insert(0, k);
-                        seq
-                    })
+        let mut new_seqs = std::iter::repeat(seq_iter.map(|(seq, _)| seq))
+            .take(
+                // Add 1 less than the divisor to essentially ceil the integer division.
+                (jump_locations.len().saturating_sub(jump_seqs.len()) + subset_len - 1)
+                    / subset_len,
+            )
+            .zip(JUMP_KEYS[sep_idx..].iter().copied())
+            .flat_map(|(iter, k)| {
+                iter.map(move |mut seq| {
+                    seq.insert(0, k);
+                    seq
                 })
-                .collect(),
-        );
+            })
+            .collect();
+        jump_seqs.append(&mut new_seqs);
     }
 
     let mut jumps = HashMap::new();
