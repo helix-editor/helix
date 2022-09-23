@@ -87,11 +87,9 @@ impl Config {
         root_config: &Config,
         config_path: std::path::PathBuf,
     ) -> Option<toml::Value> {
-        if !config_path.exists() {
-            return None;
-        }
-        if config_path == helix_loader::config_file()
-            || root_config.editor.security.load_local_config
+        if config_path.exists()
+            && (config_path == helix_loader::config_file()
+                || root_config.editor.security.load_local_config)
         {
             log::debug!("Load config: {:?}", config_path);
             let bytes = std::fs::read(&config_path);
