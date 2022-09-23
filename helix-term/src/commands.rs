@@ -5110,13 +5110,17 @@ fn jump_mode_impl(cx: &mut Context, [fwd_jumps, bck_jumps]: [Vec<(usize, usize)>
     }
     fn annotations(
         doc: &Document,
+        theme: &helix_view::Theme,
         jumps: &HashMap<u8, Jump>,
     ) -> impl Iterator<Item = TextAnnotation> {
-        // TODO: Make this themable.
-        let single_style = Style::default().fg(Color::Red).add_modifier(Modifier::BOLD);
-        let multi_style = Style::default()
-            .fg(Color::Yellow)
-            .add_modifier(Modifier::BOLD);
+        let single_style = theme
+            .try_get("ui.jump.single")
+            .unwrap_or_else(|| Style::default().fg(Color::Red).add_modifier(Modifier::BOLD));
+        let multi_style = theme.try_get("ui.jump.multi").unwrap_or_else(|| {
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
+        });
         jumps
             .iter()
             .flat_map(|(&label, jump)| annotations_impl(label, jump))
@@ -5142,7 +5146,7 @@ fn jump_mode_impl(cx: &mut Context, [fwd_jumps, bck_jumps]: [Vec<(usize, usize)>
 
     let doc = doc_mut!(cx.editor);
 
-    let annots = annotations(doc, &jumps);
+    let annots = annotations(doc, &cx.editor.theme, &jumps);
     doc.push_text_annotations("jump_mode", annots);
 
     fn handle_key(mut jumps: HashMap<u8, Jump>, cx: &mut Context, event: KeyEvent) {
@@ -5155,7 +5159,7 @@ fn jump_mode_impl(cx: &mut Context, [fwd_jumps, bck_jumps]: [Vec<(usize, usize)>
         {
             match jump {
                 Jump::Multi(jumps) => {
-                    let annots = annotations(doc, &jumps);
+                    let annots = annotations(doc, &cx.editor.theme, &jumps);
                     doc.push_text_annotations("jump_mode", annots);
                     cx.on_next_key(move |cx, event| handle_key(jumps, cx, event));
                 }
