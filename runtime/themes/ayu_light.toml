@@ -59,6 +59,8 @@
 "diagnostic.info"= { fg = "blue", modifiers = ["underlined"] }
 "diagnostic.warning"= { fg = "yellow", modifiers = ["underlined"] }
 "diagnostic.error"= { fg = "red", modifiers = ["underlined"] }
+"ui.bufferline" = { fg = "gray", bg = "dark_gray" }
+"ui.bufferline.active" = { fg = "dark", bg = "background" }
 
 "special" = { fg = "orange" }
 
@@ -76,3 +78,4 @@ magenta = "#a37acc"
 orange = "#fa8d3e"
 red = "#f07171"
 yellow = "#ffaa33"
+dark = "#131721"

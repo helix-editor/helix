@@ -76,6 +76,10 @@
 "ui.statusline" = { fg = "white", bg = "blue" }
 "ui.statusline.inactive" = { fg = "white", bg = "blue" }
 
+"ui.bufferline" = { fg = "text", bg = "widget" }
+"ui.bufferline.active" = { fg = "white", bg = "blue" }
+"ui.bufferline.background" = { bg = "background" }
+
 "ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "white" }
 

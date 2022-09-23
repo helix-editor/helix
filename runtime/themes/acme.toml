@@ -20,6 +20,8 @@
 "diagnostic.error" = {bg="white", modifiers=["bold"]}
 "diagnostic.warning" = {bg="white", modifiers=["bold"]}
 "diagnostic.hint" = {bg="white", modifiers=["bold"]}
+"ui.bufferline" = { fg = "indent", bg = "acme_bar_bg" }
+"ui.bufferline.active" = { fg = "black", bg = "acme_bg" }
 
 [palette]
 white = "#ffffff"

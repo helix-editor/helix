@@ -53,6 +53,9 @@
 'ui.statusline.normal' = { bg = 'base3' }
 'ui.statusline.insert' = { bg = 'base3' }
 'ui.statusline.select' = { bg = 'base3' }
+'ui.bufferline' = { fg = 'gray', bg = 'base2' }
+'ui.bufferline.active' = { fg = 'white', bg = 'base4' }
+'ui.bufferline.background' = { bg = 'bg' }
 'ui.popup' = { bg = 'bg-alt' }
 'ui.window' = { fg = 'gray' }
 'ui.help' = { fg = 'fg', bg = 'base2' }
