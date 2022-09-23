@@ -16,6 +16,7 @@ default-members = [
 
 [profile.dev]
 split-debuginfo = "unpacked"
+incremental = true
 
 [profile.release]
 lto = "thin"
