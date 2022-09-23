@@ -237,7 +237,6 @@ character = "╎"
 ### `[editor.security]` Section
 
 Opt in to features that may put you at risk. 
-It is possible to write malicious TOML files, so we suggest you keep the `confirm_*` options to their default value of `true`.
 
 | Key                    | Description                                                                             | Default |
 | ---                    | ---                                                                                     | ---     |
