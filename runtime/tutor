@@ -70,7 +70,7 @@ _________________________________________________________________
 
  Type the d key to delete the character under the cursor.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Move the cursor to each extra character, and type d to
     delete it.
 
@@ -92,7 +92,7 @@ _________________________________________________________________
 
  Type the i key to enter Insert mode.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Move to a place in the line which is missing text and type
     i to enter Insert mode. Keys you type will now type text.
  3. Enter the missing text.
@@ -166,7 +166,7 @@ _________________________________________________________________
    I - Insert at the start of the line.
    A - Insert at the end of the line.
 
- 1. Move to anywhere in the line below marked -->.
+ 1. Move to anywhere in the line marked '-->' below.
  2. Type A (<SHIFT> + a), your cursor will move to the end of
     the line and you will be able to type.
  3. Type the text necessary to match the line below.
@@ -181,7 +181,7 @@ _________________________________________________________________
  Type o to add a newline and insert below the cursor.
  Type O to add a newline and insert above the cursor.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Type o to open a line below and type your answer.
 
  --> What is the best editor?
@@ -228,7 +228,7 @@ _________________________________________________________________
  it deletes all selected text. Your cursor is like a
  single-character selection.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Move to the beginning of a word that needs to be deleted.
  3. Type w to select until the beginning of the next word.
  4. Type d to delete the selection.
@@ -271,7 +271,7 @@ _________________________________________________________________
  The change command deletes the current selection and enters
  Insert mode, so it is a very common shorthand for di.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Move to the start of an incorrect word and type w to
     select it.
  3. Type c to delete the word and enter Insert mode.
@@ -290,7 +290,7 @@ _________________________________________________________________
 
  Type a number before a motion to repeat it that many times.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Type 2w to move 2 words forward.
  3. Type 3e to move to the end of the third word forward.
  4. Type 2b to move 2 words backwards
@@ -315,7 +315,7 @@ _________________________________________________________________
  In Select mode every movement will extend the selection, as
  opposed to replacing it.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Move to the F of FOO and type v2w to select the two words.
  3. Type d to remove the two words. Notice d returns you to
     Normal mode.
@@ -334,7 +334,7 @@ _________________________________________________________________
 
  Type x to select a whole line. Type x again to select the next.
 
- 1. Move the cursor to the second line below marked -->.
+ 1. Move the cursor to the second line marked '-->' below.
  2. Type x to select the line, and d to delete it.
  3. Move to the fourth line.
  4. Type x twice or type 2x to select 2 lines, and d to delete.
@@ -359,7 +359,7 @@ _________________________________________________________________
  Sometimes, you want to deselect without having to move the
  cursor(s). This can be done using the ; key.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Use the motions you have learned to move around the line,
     and try using ; to deselect the text after it is selected
     by the motions.
@@ -400,7 +400,7 @@ _________________________________________________________________
 
  Type u to undo. Type U to redo.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Move to the first error, and type d to delete it.
  3. Type u to undo your deletion.
  4. Fix all the errors on the line.
@@ -424,7 +424,7 @@ _________________________________________________________________
  Type p to paste the yanked selection after the cursor.
  Type P to paste the yanked text before the cursor.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
     Make sure your cursor is on the "b" of banana.
  2. Type w to select "banana" and y to yank it.
  3. Move to the space between "2" and "3" and type p to paste.
@@ -488,7 +488,7 @@ _________________________________________________________________
 
  Type C to duplicate the cursor to the next suitable line.
 
- 1. Move the cursor to the first line below marked -->.
+ 1. Move the cursor to the first line marked '-->' below.
  2. Type C to duplicate the cursor to the next suitable line.
     Notice how it skips the line in the middle. Keys you type
     will now affect both cursors.
@@ -510,7 +510,7 @@ _________________________________________________________________
 
  Type s to select matches in the selection.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Type x to select the line.
  3. Type s. A prompt will appear.
  4. Type 'apples' and type <ENTER>. Both occurrences of
@@ -533,7 +533,7 @@ _________________________________________________________________
  The select command selects regular expressions, not just exact
  matches, allowing you to target more complex patterns.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Select the line with x and then type s.
  3. Enter '  +' to select any amount of consecutive spaces >1.
  4. Type c and change the matches to single spaces.
@@ -554,7 +554,7 @@ _________________________________________________________________
 
  Type & to align the contents of the selections.
 
- 1. Move the cursor to the first line below marked -->. Place
+ 1. Move the cursor to the first line marked '-->' below. Place
     the cursor on the whitespace just after the arrow.
  2. Type C four times or 4C.
  3. Type W to select the numbers and brackets.
@@ -622,7 +622,7 @@ _________________________________________________________________
  Type t<ch> to do the same, but not including (till) a character.
  Type uppercase F / T to do the same backwards.
 
- 1. Move the cursor to the line below marked -->. Place the
+ 1. Move the cursor to the line marked '-->' below. Place the
     cursor on the first dash.
  2. Type f[ to select to the square bracket.
  3. Type d to delete your selection.
@@ -633,7 +633,7 @@ _________________________________________________________________
  --> -----[Free this sentence of its brackets!]-----
  --> ------Free this sentence of its dashes!------
 
- Note: Unlike Vim, Helix doesn't limit these commands to the 
+ Note: Unlike Vim, Helix doesn't limit these commands to the
        current line. It searches for the character in the file.
 
 =================================================================
@@ -665,7 +665,7 @@ _________________________________________________________________
  Type . to repeat the last insert command.
  Type A-. to repeat the last f / t selection.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Make a change, insertion or appendage and repeat it with . .
  3. Try using A-. with f and t, to select multiple sentences for
     instance.
@@ -708,7 +708,7 @@ _________________________________________________________________
 
  Type R to replace the selection with previously yanked text.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Type w to select "watermelons" and then y to yank it.
  3. Select "oranges" with w.
  4. Type R to replace "oranges" with "watermelons"
@@ -730,7 +730,7 @@ _________________________________________________________________
 
  Type J to join together lines in selection.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Type x four times or 4x to select all four lines.
  3. Type J to join the lines together.
 
@@ -752,7 +752,7 @@ lines.
 
  Type > to indent a line and < to outdent it.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Move down to the second line and type > to indent it.
  3. Move to the third line and type < to outdent it.
 
@@ -775,7 +775,7 @@ lines.
  Type C-a to increment the number under selection.
  Type C-x to decrement the number under selection.
 
- 1. Move the cursor to the third line below marked -->.
+ 1. Move the cursor to the third line marked '-->' below.
  2. Type C-a to increment the second point marked 2.
  3. Repeat for the point marked 3.
  4. Move to the last point and type C-x to decrement the 6.
@@ -823,7 +823,7 @@ lines.
 
  Type "<ch> to select register <ch>.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Type w to select "watermelons" and yank with y.
  3. Type w to select "bananas".
  4. Change to register b with "b and yank with y.
@@ -844,7 +844,7 @@ lines.
  the bottom of your screen. Type Q again to stop recording.
  Type q to repeat the macro from register @ (the default).
 
- 1. Move the cursor to the first line below marked -->.
+ 1. Move the cursor to the first line marked '-->' below.
     Ensure your cursor is on the > of the arrow.
  2. Type Q to start recording.
  3. Edit the line to look like the bottom one.
@@ -889,7 +889,7 @@ lines.
  Type * to copy the primary selection into register /, setting
  the search term to the selection.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Select "horse" with e and type *.
  3. Use n and N to jump between the instances of "horse".
 
@@ -908,7 +908,7 @@ lines.
  of moving the selection to the next match, it adds a new
  selection on each match.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Select the first "bat" and type * to set it to search.
  3. Type v to enter select mode.
  4. Type n to select the other "bat".
@@ -975,7 +975,7 @@ lines.
 
  Type A-, to remove the primary selection.
 
- 1. Move the cursor to the line below marked -->.
+ 1. Move the cursor to the line marked '-->' below.
  2. Select both lines with xx or 2x.
  3. Type s to select, type "would" and enter.
  4. Use ( and ) to cycle the primary selection and remove the
@@ -996,7 +996,7 @@ lines.
  Type ` to set all selected letters to lowercase.
  Type Alt-` to set all selected letters to uppercase.
 
- 1. Move the cursor to the first line below marked -->.
+ 1. Move the cursor to the first line marked '-->' below.
  2. Select each wrongly capitalised or lowercase letter
     and type ~ over them.
  3. Move to the second line marked -->.
