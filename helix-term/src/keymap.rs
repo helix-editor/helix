@@ -173,11 +173,36 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
     where
         M: serde::de::MapAccess<'de>,
     {
+        let mut label = String::from("");
+        let mut command = None;
         let mut mapping = IndexMap::new();
-        while let Some((key, value)) = map.next_entry::<KeyEvent, KeyTrie>()? {
-            mapping.insert(key, value);
+
+        while let Some(key) = map.next_key::<String>()? {
+            match &key as &str {
+                "label" => label = map.next_value::<String>()?,
+                "command" => command = Some(map.next_value::<MappableCommand>()?),
+                _ => {
+                    let key_event = key.parse::<KeyEvent>().map_err(serde::de::Error::custom)?;
+                    let key_trie = map.next_value::<KeyTrie>()?;
+                    mapping.insert(key_event, key_trie);
+                }
+            }
         }
-        Ok(KeyTrie::Node(KeyTrieNode::new("", mapping)))
+
+        match command {
+            None => Ok(KeyTrie::Node(KeyTrieNode::new(label.as_str(), mapping))),
+            Some(MappableCommand::Static { .. }) if !label.is_empty() => {
+                Err(serde::de::Error::custom("custom labels are only available for typable commands (the ones starting with ':')"))
+            }
+            Some(MappableCommand::Typable { name, args, .. }) if !label.is_empty() => {
+                Ok(KeyTrie::MappableCommand(MappableCommand::Typable {
+                    name,
+                    args,
+                    doc: label.to_string(),
+                }))
+            }
+            Some(command) => Ok(KeyTrie::MappableCommand(command)),
+        }
     }
 }
 
