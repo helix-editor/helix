@@ -208,6 +208,44 @@ mod tests {
     }
 
     #[test]
+    fn parsing_typable_commands() {
+        use crate::keymap;
+        use crate::keymap::MappableCommand;
+        use helix_view::document::Mode;
+        use helix_view::input::KeyEvent;
+        use std::str::FromStr;
+
+        let sample_keymaps = r#"
+            [keys.normal]
+            o = { label = "Edit Config", command = ":open ~/.config" }
+            c = ":buffer-close" 
+        "#;
+
+        let config = toml::from_str::<Config>(sample_keymaps).unwrap();
+
+        let tree = config.keys.get(&Mode::Normal).unwrap().root();
+
+        if let keymap::KeyTrie::Node(node) = tree {
+            let open_node = node.get(&KeyEvent::from_str("o").unwrap()).unwrap();
+
+            if let keymap::KeyTrie::Leaf(MappableCommand::Typable { doc, .. }) = open_node {
+                assert_eq!(doc, "Edit Config");
+            } else {
+                panic!("Edit Config did not parse to typable command");
+            }
+
+            let close_node = node.get(&KeyEvent::from_str("c").unwrap()).unwrap();
+            if let keymap::KeyTrie::Leaf(MappableCommand::Typable { doc, .. }) = close_node {
+                assert_eq!(doc, ":buffer-close []");
+            } else {
+                panic!(":buffer-close command did not parse to typable command");
+            }
+        } else {
+            panic!("Config did not parse to trie");
+        }
+    }
+
+    #[test]
     fn keys_resolve_to_correct_defaults() {
         // From serde default
         let default_keys = Config::load_test("").keys;

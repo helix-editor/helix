@@ -197,13 +197,15 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
     where
         M: serde::de::MapAccess<'de>,
     {
-        let mut name = "";
+        let mut label = "";
+        let mut command = None;
         let mut mapping = HashMap::new();
         let mut order = Vec::new();
 
         while let Some(key) = map.next_key::<&str>()? {
             match key {
-                "label" => name = map.next_value::<&str>()?,
+                "label" => label = map.next_value::<&str>()?,
+                "command" => command = Some(map.next_value::<MappableCommand>()?),
                 _ => {
                     let key_event = key.parse::<KeyEvent>().map_err(serde::de::Error::custom)?;
                     let key_trie = map.next_value::<KeyTrie>()?;
@@ -212,7 +214,27 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
                 }
             }
         }
-        Ok(KeyTrie::Node(KeyTrieNode::new(name, mapping, order)))
+
+        match command {
+            None => Ok(KeyTrie::Node(KeyTrieNode::new(label, mapping, order))),
+            Some(cmd) => {
+                if label.is_empty() {
+                    Ok(KeyTrie::Leaf(cmd))
+                } else {
+                    match cmd {
+                        MappableCommand::Typable { name, args, .. } => {
+                            Ok(MappableCommand::Typable {
+                                name,
+                                args,
+                                doc: label.to_string(),
+                            })
+                            .map(KeyTrie::Leaf)
+                        }
+                        MappableCommand::Static { .. } => Ok(KeyTrie::Leaf(cmd)),
+                    }
+                }
+            }
+        }
     }
 }
 
