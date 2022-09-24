@@ -175,6 +175,39 @@ mod tests {
     }
 
     #[test]
+    fn parsing_menus() {
+        use crate::keymap;
+        use crate::keymap::Keymap;
+        use helix_core::hashmap;
+        use helix_view::document::Mode;
+
+        let sample_keymaps = r#"
+            [keys.normal]
+            f = { f = "file_picker", c = "wclose" }
+            b = { label = "buffer", b = "buffer_picker", n = "goto_next_buffer" }
+        "#;
+
+        assert_eq!(
+            toml::from_str::<Config>(sample_keymaps).unwrap(),
+            Config {
+                keys: hashmap! {
+                    Mode::Normal => Keymap::new(keymap!({ "Normal mode"
+                        "f" => { ""
+                            "f" => file_picker,
+                            "c" => wclose,
+                        },
+                        "b" => { "buffer"
+                            "b" => buffer_picker,
+                            "n" => goto_next_buffer,
+                        },
+                    })),
+                },
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
     fn keys_resolve_to_correct_defaults() {
         // From serde default
         let default_keys = Config::load_test("").keys;

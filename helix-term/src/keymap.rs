@@ -197,13 +197,22 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
     where
         M: serde::de::MapAccess<'de>,
     {
+        let mut name = "";
         let mut mapping = HashMap::new();
         let mut order = Vec::new();
-        while let Some((key, value)) = map.next_entry::<KeyEvent, KeyTrie>()? {
-            mapping.insert(key, value);
-            order.push(key);
+
+        while let Some(key) = map.next_key::<&str>()? {
+            match key {
+                "label" => name = map.next_value::<&str>()?,
+                _ => {
+                    let key_event = key.parse::<KeyEvent>().map_err(serde::de::Error::custom)?;
+                    let key_trie = map.next_value::<KeyTrie>()?;
+                    mapping.insert(key_event, key_trie);
+                    order.push(key_event);
+                }
+            }
         }
-        Ok(KeyTrie::Node(KeyTrieNode::new("", mapping, order)))
+        Ok(KeyTrie::Node(KeyTrieNode::new(name, mapping, order)))
     }
 }
 
