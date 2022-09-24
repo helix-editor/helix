@@ -1783,6 +1783,42 @@ fn run_shell_command(
     Ok(())
 }
 
+fn read_file_info_buffer(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (view, doc) = current!(cx.editor);
+
+    ensure!(!args.is_empty(), "file name is expected");
+
+    let filename = args.get(0).unwrap();
+    let path = PathBuf::from(filename.to_string());
+    if path.exists() {
+        match std::fs::read_to_string(path) {
+            Ok(contents) => {
+                let contents = Tendril::from(contents);
+                let selection = doc.selection(view.id);
+                let transaction = Transaction::insert(doc.text(), selection, contents);
+                doc.apply(&transaction, view.id);
+            }
+            Err(error) => {
+                cx.editor
+                    .set_error(format!("error reading file: {}", error));
+            }
+        }
+    } else {
+        cx.editor
+            .set_error(format!("file doesn't exist: {}", filename));
+    }
+
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2290,6 +2326,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run a shell command",
             fun: run_shell_command,
             completer: Some(completers::directory),
+        },
+        TypableCommand {
+            name: "read",
+            aliases: &["r"],
+            doc: "Load a file into buffer",
+            fun: read_file_info_buffer,
+            completer: Some(completers::filename),
         },
     ];
 
