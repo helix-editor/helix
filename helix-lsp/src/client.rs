@@ -591,7 +591,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         text: &Rope,
-    ) -> Option<impl Future<Output = Result<()>>> {
+    ) -> impl Future<Output = Result<()>> {
         let capabilities = self.capabilities.get().unwrap();
 
         let include_text = match &capabilities.text_document_sync {
@@ -599,23 +599,19 @@ impl Client {
                 save: Some(options),
                 ..
             })) => match options {
-                lsp::TextDocumentSyncSaveOptions::Supported(true) => false,
                 lsp::TextDocumentSyncSaveOptions::SaveOptions(lsp_types::SaveOptions {
                     include_text,
                 }) => include_text.unwrap_or(false),
-                // Supported(false)
-                _ => return None,
+                _ => false,
             },
             // unsupported
-            _ => return None,
+            _ => false,
         };
 
-        Some(self.notify::<lsp::notification::DidSaveTextDocument>(
-            lsp::DidSaveTextDocumentParams {
-                text_document,
-                text: include_text.then(|| text.into()),
-            },
-        ))
+        self.notify::<lsp::notification::DidSaveTextDocument>(lsp::DidSaveTextDocumentParams {
+            text_document,
+            text: include_text.then(|| text.into()),
+        })
     }
 
     pub fn completion(

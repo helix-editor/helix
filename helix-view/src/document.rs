@@ -566,11 +566,9 @@ impl Document {
                 if !language_server.is_initialized() {
                     return Ok(());
                 }
-                if let Some(notification) =
-                    language_server.text_document_did_save(identifier, &text)
-                {
-                    notification.await?;
-                }
+                language_server
+                    .text_document_did_save(identifier, &text)
+                    .await?;
             }
 
             Ok(())
