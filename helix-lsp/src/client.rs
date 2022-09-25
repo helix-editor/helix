@@ -596,15 +596,12 @@ impl Client {
 
         let include_text = match &capabilities.text_document_sync {
             Some(lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
-                save: Some(options),
+                save:
+                    Some(lsp::TextDocumentSyncSaveOptions::SaveOptions(lsp_types::SaveOptions {
+                        include_text,
+                    })),
                 ..
-            })) => match options {
-                lsp::TextDocumentSyncSaveOptions::SaveOptions(lsp_types::SaveOptions {
-                    include_text,
-                }) => include_text.unwrap_or(false),
-                _ => false,
-            },
-            // unsupported
+            })) => include_text.unwrap_or(false),
             _ => false,
         };
 
