@@ -686,15 +686,14 @@ impl Loader {
             .cloned()
     }
 
-    pub fn language_configuration_for_injection_string(
-        &self,
-        string: &str,
-    ) -> Option<Arc<LanguageConfiguration>> {
+    /// Unlike language_config_for_language_id, which only returns Some for an exact id, this
+    /// function will perform a regex match on the given string to find the closest language match.
+    pub fn language_config_for_name(&self, name: &str) -> Option<Arc<LanguageConfiguration>> {
         let mut best_match_length = 0;
         let mut best_match_position = None;
         for (i, configuration) in self.language_configs.iter().enumerate() {
             if let Some(injection_regex) = &configuration.injection_regex {
-                if let Some(mat) = injection_regex.find(string) {
+                if let Some(mat) = injection_regex.find(name) {
                     let length = mat.end() - mat.start();
                     if length > best_match_length {
                         best_match_position = Some(i);
@@ -704,11 +703,17 @@ impl Loader {
             }
         }
 
-        if let Some(i) = best_match_position {
-            let configuration = &self.language_configs[i];
-            return Some(configuration.clone());
+        best_match_position.map(|i| self.language_configs[i].clone())
+    }
+
+    pub fn language_configuration_for_injection_string(
+        &self,
+        capture: &InjectionCapture,
+    ) -> Option<Arc<LanguageConfiguration>> {
+        match capture {
+            InjectionCapture::Name(string) => self.language_config_for_name(string),
+            InjectionCapture::File(file) => self.language_config_for_file_name(file),
         }
-        None
     }
 
     pub fn language_configs(&self) -> impl Iterator<Item = &Arc<LanguageConfiguration>> {
@@ -800,7 +805,7 @@ impl Syntax {
         queue.push_back(self.root);
 
         let scopes = self.loader.scopes.load();
-        let injection_callback = |language: &str| {
+        let injection_callback = |language: &InjectionCapture| {
             self.loader
                 .language_configuration_for_injection_string(language)
                 .and_then(|language_config| language_config.highlight_config(&scopes))
@@ -961,7 +966,7 @@ impl Syntax {
                 );
                 let mut injections = Vec::new();
                 for mat in matches {
-                    let (language_name, content_node, included_children) = injection_for_match(
+                    let (injection_capture, content_node, included_children) = injection_for_match(
                         &layer.config,
                         &layer.config.injections_query,
                         &mat,
@@ -974,9 +979,10 @@ impl Syntax {
 
                     // If a language is found with the given name, then add a new language layer
                     // to the highlighted document.
-                    if let (Some(language_name), Some(content_node)) = (language_name, content_node)
+                    if let (Some(injection_capture), Some(content_node)) =
+                        (injection_capture, content_node)
                     {
-                        if let Some(config) = (injection_callback)(&language_name) {
+                        if let Some(config) = (injection_callback)(&injection_capture) {
                             let ranges =
                                 intersect_ranges(&layer.ranges, &[content_node], included_children);
 
@@ -1001,14 +1007,15 @@ impl Syntax {
                     );
                     for mat in matches {
                         let entry = &mut injections_by_pattern_index[mat.pattern_index];
-                        let (language_name, content_node, included_children) = injection_for_match(
-                            &layer.config,
-                            combined_injections_query,
-                            &mat,
-                            source_slice,
-                        );
-                        if language_name.is_some() {
-                            entry.0 = language_name;
+                        let (injection_capture, content_node, included_children) =
+                            injection_for_match(
+                                &layer.config,
+                                combined_injections_query,
+                                &mat,
+                                source_slice,
+                            );
+                        if injection_capture.is_some() {
+                            entry.0 = injection_capture;
                         }
                         if let Some(content_node) = content_node {
                             entry.1.push(content_node);
@@ -1395,6 +1402,7 @@ pub struct HighlightConfiguration {
     non_local_variable_patterns: Vec<bool>,
     injection_content_capture_index: Option<u32>,
     injection_language_capture_index: Option<u32>,
+    injection_filename_capture_index: Option<u32>,
     local_scope_capture_index: Option<u32>,
     local_def_capture_index: Option<u32>,
     local_def_value_capture_index: Option<u32>,
@@ -1538,6 +1546,7 @@ impl HighlightConfiguration {
         // Store the numeric ids for all of the special captures.
         let mut injection_content_capture_index = None;
         let mut injection_language_capture_index = None;
+        let mut injection_filename_capture_index = None;
         let mut local_def_capture_index = None;
         let mut local_def_value_capture_index = None;
         let mut local_ref_capture_index = None;
@@ -1558,6 +1567,7 @@ impl HighlightConfiguration {
             match name.as_str() {
                 "injection.content" => injection_content_capture_index = i,
                 "injection.language" => injection_language_capture_index = i,
+                "injection.filename" => injection_filename_capture_index = i,
                 _ => {}
             }
         }
@@ -1573,6 +1583,7 @@ impl HighlightConfiguration {
             non_local_variable_patterns,
             injection_content_capture_index,
             injection_language_capture_index,
+            injection_filename_capture_index,
             local_scope_capture_index,
             local_def_capture_index,
             local_def_value_capture_index,
@@ -2042,24 +2053,40 @@ impl<'a> Iterator for HighlightIter<'a> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum InjectionCapture<'a> {
+    Name(Cow<'a, str>),
+    File(Cow<'a, Path>),
+}
+
 fn injection_for_match<'a>(
     config: &HighlightConfiguration,
     query: &'a Query,
     query_match: &QueryMatch<'a, 'a>,
     source: RopeSlice<'a>,
-) -> (Option<Cow<'a, str>>, Option<Node<'a>>, IncludedChildren) {
+) -> (
+    Option<InjectionCapture<'a>>,
+    Option<Node<'a>>,
+    IncludedChildren,
+) {
     let content_capture_index = config.injection_content_capture_index;
     let language_capture_index = config.injection_language_capture_index;
+    let language_filename_index = config.injection_filename_capture_index;
 
-    let mut language_name = None;
+    let mut injection_capture = None;
     let mut content_node = None;
     for capture in query_match.captures {
         let index = Some(capture.index);
         if index == language_capture_index {
             let name = byte_range_to_str(capture.node.byte_range(), source);
-            language_name = Some(name);
+            injection_capture = Some(InjectionCapture::Name(name));
         } else if index == content_capture_index {
             content_node = Some(capture.node);
+        } else if index == language_filename_index {
+            let name = byte_range_to_str(capture.node.byte_range(), source);
+            let path = Path::new(name.as_ref()).to_path_buf();
+
+            injection_capture = Some(InjectionCapture::File(path.into()));
         }
     }
 
@@ -2070,9 +2097,10 @@ fn injection_for_match<'a>(
             // captured node, it can also be hard-coded via a `#set!` predicate
             // that sets the injection.language key.
             "injection.language" => {
-                if language_name.is_none() {
-                    language_name = prop.value.as_ref().map(|s| s.as_ref().into())
-                }
+                injection_capture = prop
+                    .value
+                    .as_ref()
+                    .map(|s| InjectionCapture::Name(s.as_ref().into()));
             }
 
             // By default, injections do not include the *children* of an
@@ -2089,7 +2117,7 @@ fn injection_for_match<'a>(
         }
     }
 
-    (language_name, content_node, included_children)
+    (injection_capture, content_node, included_children)
 }
 
 pub struct Merge<I> {
