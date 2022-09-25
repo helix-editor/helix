@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::{io::BufReader, ops::Deref};
 
 use crate::job::Job;
 
@@ -1799,17 +1799,20 @@ fn read_file_info_buffer(
     let filename = args.get(0).unwrap();
     let path = PathBuf::from(filename.to_string());
     if path.exists() {
-        match std::fs::read_to_string(path) {
-            Ok(contents) => {
-                let contents = Tendril::from(contents);
+        let file = std::fs::File::open(path)?;
+        let mut reader = BufReader::new(file);
+
+        match helix_view::document::from_reader(&mut reader, Some(doc.encoding())) {
+            Ok((rope, _)) => {
+                let rope: String = rope.into();
+                let contents = Tendril::from(rope);
                 let selection = doc.selection(view.id);
                 let transaction = Transaction::insert(doc.text(), selection, contents);
                 doc.apply(&transaction, view.id);
             }
-            Err(error) => {
-                cx.editor
-                    .set_error(format!("error reading file: {}", error));
-            }
+            Err(error) => cx
+                .editor
+                .set_error(format!("error reading file: {}", error)),
         }
     } else {
         cx.editor
