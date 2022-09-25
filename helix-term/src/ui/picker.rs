@@ -367,7 +367,6 @@ impl<T: Item> Picker<T> {
         } else if pattern.starts_with(&self.previous_pattern) {
             // optimization: if the pattern is a more specific version of the previous one
             // then we can score the filtered set.
-            #[allow(unstable_name_collisions)]
             self.matches.retain_mut(|(index, score)| {
                 let option = &self.options[*index];
                 let text = option.sort_text(&self.editor_data);
