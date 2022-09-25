@@ -3,6 +3,7 @@ use std::ops::Deref;
 use super::*;
 
 use helix_view::editor::{Action, CloseError, ConfigEvent};
+use helix_core::spellcheck;
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -352,6 +353,52 @@ fn format(
 
     Ok(())
 }
+
+fn spell_check(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let doc = doc!(cx.editor);
+    if let Some(node) = doc.syntax() {
+        let doc_slice = doc.text().slice(..);
+        if let Some(ranges) = spellcheck::spellcheck_treesitter(
+            node.tree().root_node(),
+            doc_slice,
+            doc.language_config().unwrap(),
+        ) {
+            for range in ranges {
+                let slice = range.slice(doc_slice);
+                let (start_line, end_line) = range.line_range(doc_slice);
+                log::warn!(
+                    "range start_line {} end_line {} slice {:#?}",
+                    start_line,
+                    end_line,
+                    slice
+                )
+            }
+        };
+    };
+
+    // TODO: could probably just be a job?
+    // let callback = make_spell_check_callback(doc.id());
+    // cx.jobs.callback(callback);
+    Ok(())
+}
+
+// async fn make_spell_check_callback(doc_id: DocumentId) -> anyhow::Result<job::Callback> {
+//     let call: job::Callback = Box::new(move |editor, _compositor| {
+//         if let Some(doc) = editor.document_mut(doc_id) {
+//             let mut diagnostics = doc.spell_check();
+//             doc.add_diagnostics(diagnostics.as_mut());
+//         };
+//     });
+//     Ok(call)
+// }
+
 fn set_indent_style(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1710,6 +1757,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["fmt"],
             doc: "Format the file using the LSP formatter.",
             fun: format,
+            completer: None,
+        },
+        TypableCommand {
+            name: "spell-check",
+            aliases: &["sc"],
+            doc: "Check spelling using tree-sitter and hunspell.",
+            fun: spell_check,
             completer: None,
         },
         TypableCommand {

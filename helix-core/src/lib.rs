@@ -28,6 +28,7 @@ pub mod test;
 pub mod textobject;
 mod transaction;
 pub mod wrap;
+pub mod spellcheck;
 
 pub mod unicode {
     pub use unicode_general_category as category;
