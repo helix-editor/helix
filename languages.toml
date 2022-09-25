@@ -1287,7 +1287,7 @@ name = "eex"
 scope = "source.eex"
 injection-regex = "eex"
 file-types = ["eex"]
-roots = []
+roots = ["mix.exs", "mix.lock"]
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -1299,12 +1299,12 @@ name = "heex"
 scope = "source.heex"
 injection-regex = "heex"
 file-types = ["heex"]
-roots = []
+roots = ["mix.exs", "mix.lock"]
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "heex"
-source = { git = "https://github.com/phoenixframework/tree-sitter-heex", rev = "961bc4d2937cfd24ceb0a5a6b2da607809f8822e" }
+source = { git = "https://github.com/phoenixframework/tree-sitter-heex", rev = "881f1c805f51485a26ecd7865d15c9ef8d606a78" }
 
 [[language]]
 name = "sql"
