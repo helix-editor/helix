@@ -50,6 +50,23 @@ fn get_rules() -> Vec<Require> {
         // Check for visible cursor
         Require::Existence(Rule::has_bg("ui.cursor.primary")),
         Require::Existence(Rule::has_either("ui.cursor.match")),
+        // Markup scopes
+        Require::Existence(Rule::has_either("markup.heading.1")),
+        Require::Existence(Rule::has_either("markup.heading.2")),
+        Require::Existence(Rule::has_either("markup.heading.3")),
+        Require::Existence(Rule::has_either("markup.heading.4")),
+        Require::Existence(Rule::has_either("markup.heading.5")),
+        Require::Existence(Rule::has_either("markup.heading.6")),
+        Require::Existence(Rule::has_either("markup.heading.marker")),
+        Require::Existence(Rule::has_either("markup.bold")),
+        Require::Existence(Rule::has_either("markup.italic")),
+        Require::Existence(Rule::has_either("markup.quote")),
+        Require::Existence(Rule::has_either("markup.list")),
+        Require::Existence(Rule::has_either("markup.link.label")),
+        Require::Existence(Rule::has_either("markup.link.url")),
+        Require::Existence(Rule::has_either("markup.link.text")),
+        Require::Existence(Rule::has_either("markup.raw.inline")),
+        Require::Existence(Rule::has_either("markup.raw.block")),
     ]
 }
 
