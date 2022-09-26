@@ -890,7 +890,6 @@ fn goto_window(cx: &mut Context, align: Align) {
         .selection(view.id)
         .clone()
         .transform(|range| range.put_cursor(text, pos, cx.editor.mode == Mode::Select));
-    push_jump(view, doc);
     doc.set_selection(view.id, selection);
 }
 
