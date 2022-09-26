@@ -146,13 +146,7 @@ fn prev_char(doc: &Rope, pos: usize) -> Option<char> {
 }
 
 /// calculate what the resulting range should be for an auto pair insertion
-fn get_next_range(
-    doc: &Rope,
-    start_range: &Range,
-    offset: usize,
-    typed_char: char,
-    len_inserted: usize,
-) -> Range {
+fn get_next_range(doc: &Rope, start_range: &Range, offset: usize, len_inserted: usize) -> Range {
     // When the character under the cursor changes due to complete pair
     // insertion, we must look backward a grapheme and then add the length
     // of the insertion to put the resulting cursor in the right place, e.g.
@@ -172,8 +166,8 @@ fn get_next_range(
     // inserting at the very end of the document after the last newline
     if start_range.head == doc.len_chars() && start_range.anchor == doc.len_chars() {
         return Range::new(
-            start_range.anchor + offset + typed_char.len_utf8(),
-            start_range.head + offset + typed_char.len_utf8(),
+            start_range.anchor + offset + 1,
+            start_range.head + offset + 1,
         );
     }
 
@@ -203,21 +197,18 @@ fn get_next_range(
     // trivial case: only inserted a single-char opener, just move the selection
     if len_inserted == 1 {
         let end_anchor = if single_grapheme || start_range.direction() == Direction::Backward {
-            start_range.anchor + offset + typed_char.len_utf8()
+            start_range.anchor + offset + 1
         } else {
             start_range.anchor + offset
         };
 
-        return Range::new(
-            end_anchor,
-            start_range.head + offset + typed_char.len_utf8(),
-        );
+        return Range::new(end_anchor, start_range.head + offset + 1);
     }
 
     // If the head = 0, then we must be in insert mode with a backward
     // cursor, which implies the head will just move
     let end_head = if start_range.head == 0 || start_range.direction() == Direction::Backward {
-        start_range.head + offset + typed_char.len_utf8()
+        start_range.head + offset + 1
     } else {
         // We must have a forward cursor, which means we must move to the
         // other end of the grapheme to get to where the new characters
@@ -243,8 +234,7 @@ fn get_next_range(
 
         (_, Direction::Forward) => {
             if single_grapheme {
-                graphemes::prev_grapheme_boundary(doc.slice(..), start_range.head)
-                    + typed_char.len_utf8()
+                graphemes::prev_grapheme_boundary(doc.slice(..), start_range.head) + 1
 
             // if we are appending, the anchor stays where it is; only offset
             // for multiple range insertions
@@ -258,7 +248,7 @@ fn get_next_range(
                 // if we're backward, then the head is at the first char
                 // of the typed char, so we need to add the length of
                 // the closing char
-                graphemes::prev_grapheme_boundary(doc.slice(..), start_range.anchor) + len_inserted
+                graphemes::prev_grapheme_boundary(doc.slice(..), start_range.anchor) + len_inserted + offset
             } else {
                 // when we are inserting in front of a selection, we need to move
                 // the anchor over by however many characters were inserted overall
@@ -281,7 +271,7 @@ fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
 
         let change = match next_char {
             Some(_) if !pair.should_close(doc, start_range) => {
-                len_inserted = pair.open.len_utf8();
+                len_inserted = 1;
                 let mut tendril = Tendril::new();
                 tendril.push(pair.open);
                 (cursor, cursor, Some(tendril))
@@ -289,12 +279,12 @@ fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
             _ => {
                 // insert open & close
                 let pair_str = Tendril::from_iter([pair.open, pair.close]);
-                len_inserted = pair.open.len_utf8() + pair.close.len_utf8();
+                len_inserted = 2;
                 (cursor, cursor, Some(pair_str))
             }
         };
 
-        let next_range = get_next_range(doc, start_range, offs, pair.open, len_inserted);
+        let next_range = get_next_range(doc, start_range, offs, len_inserted);
         end_ranges.push(next_range);
         offs += len_inserted;
 
@@ -308,7 +298,6 @@ fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
 
 fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     let mut end_ranges = SmallVec::with_capacity(selection.len());
-
     let mut offs = 0;
 
     let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
@@ -320,13 +309,13 @@ fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
             // return transaction that moves past close
             (cursor, cursor, None) // no-op
         } else {
-            len_inserted += pair.close.len_utf8();
+            len_inserted = 1;
             let mut tendril = Tendril::new();
             tendril.push(pair.close);
             (cursor, cursor, Some(tendril))
         };
 
-        let next_range = get_next_range(doc, start_range, offs, pair.close, len_inserted);
+        let next_range = get_next_range(doc, start_range, offs, len_inserted);
         end_ranges.push(next_range);
         offs += len_inserted;
 
@@ -362,11 +351,11 @@ fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
                 pair_str.push(pair.close);
             }
 
-            len_inserted += pair_str.len();
+            len_inserted += pair_str.chars().count();
             (cursor, cursor, Some(pair_str))
         };
 
-        let next_range = get_next_range(doc, start_range, offs, pair.open, len_inserted);
+        let next_range = get_next_range(doc, start_range, offs, len_inserted);
         end_ranges.push(next_range);
         offs += len_inserted;
 
@@ -923,5 +912,20 @@ mod test {
             &doc,
             &Selection::single(9, 5),
         )
+    }
+
+    #[test]
+    fn test_multi_byte_pairs() {
+        // [NOTE] these are multi-byte Unicode characters
+        let test_pairs = &[('„', '“'), ('‚', '‘')];
+
+        test_hooks_with_pairs(
+            &Rope::from(LINE_END),
+            &Selection::single(1, 0),
+            test_pairs,
+            test_pairs,
+            |open, close| format!("{}{}{}", open, close, LINE_END),
+            &Selection::single(2, 1),
+        );
     }
 }

@@ -211,6 +211,16 @@ mod test {
             ),
             print("#[|he]#l#(|lo)#")
         );
+        assert_eq!(
+            (
+                String::from("hello\r\nhello\r\nhello\r\n"),
+                Selection::new(
+                    SmallVec::from_slice(&[Range::new(7, 5), Range::new(21, 19), Range::new(14, 12)]),
+                    0
+                )
+            ),
+            print("hello#[|\r\n]#hello#(|\r\n)#hello#(|\r\n)#")
+        );
     }
 
     #[test]
