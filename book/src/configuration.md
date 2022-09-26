@@ -236,8 +236,8 @@ character = "╎"
 
 ### `[editor.security]` Section
 
-Opt in to features that may put you at risk. 
+Features that the paranoid among us may choose to disable.
 
 | Key                    | Description                                                                             | Default |
 | ---                    | ---                                                                                     | ---     |
-| `load-local-config`    | Load `config.yaml` from `$PWD/.helix` that will merge with your global configuration.   | `false` |
+| `load-local-config`    | Load `config.yaml` from `$PWD/.helix` that will merge with your global configuration.   | `true` |
