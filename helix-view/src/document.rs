@@ -23,7 +23,6 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
-use crate::env::inject_environment;
 use crate::{DocumentId, Editor, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -413,7 +412,7 @@ impl Document {
             let text = self.text().clone();
             let mut process = tokio::process::Command::new(&formatter.command);
             process
-                .args(inject_environment(formatter.args.iter(), self))
+                .args(self.inject_environment(formatter.args.iter()))
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
@@ -1082,6 +1081,31 @@ impl Document {
             None => global_config,
         }
     }
+
+    /// Inject variables for this document into an iterator of displayable things.
+    /// Used for when you want to turn something like ["--file" "$file"]
+    /// into [file" "/path/to/current/document.ext"]
+    pub fn inject_environment<T>(&self, strs: T) -> Vec<String>
+    where
+        T: Iterator,
+        <T as Iterator>::Item: Display,
+    {
+        let path = self.path().and_then(|p| p.to_str()).unwrap_or_else(|| {
+            log::error!("No $path found for document: {:?}", self.url());
+            "ENV:NO_PATH"
+        });
+        let pwd = std::env::current_dir()
+            .unwrap_or_default()
+            .into_os_string()
+            .into_string()
+            .unwrap_or_else(|err| {
+                log::error!("No $pwd found for: {:?}", err);
+                "ENV:NO_PATH".to_string()
+            });
+
+        strs.map(|s| s.to_string().replace("$file", path).replace("$pwd", &pwd))
+            .collect()
+    }
 }
 
 impl Default for Document {
@@ -1126,6 +1150,8 @@ impl Display for FormatterError {
 
 #[cfg(test)]
 mod test {
+    use std::fs;
+
     use super::*;
 
     #[test]
@@ -1281,6 +1307,19 @@ mod test {
         assert_eq!(
             Document::default().text().to_string(),
             DEFAULT_LINE_ENDING.as_str()
+        );
+    }
+
+    #[test]
+    fn test_inject_environment() {
+        let doc = Document::open(&PathBuf::from(file!()), None, None).unwrap();
+        assert_eq!(
+            doc.inject_environment(["file", "$file"].iter()),
+            ["file", concat!(env!("CARGO_MANIFEST_DIR"), "/", file!())]
+        );
+        assert_eq!(
+            doc.inject_environment(["pwd", "$pwd"].iter()),
+            ["pwd", env!("CARGO_MANIFEST_DIR")]
         );
     }
 
