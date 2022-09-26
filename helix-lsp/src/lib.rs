@@ -359,7 +359,7 @@ impl Registry {
                 let (_, old_client) = entry.insert((id, client.clone()));
 
                 tokio::spawn(async move {
-                    if let Err(e) = old_client.shutdown_and_exit().await {
+                    if let Err(e) = old_client.force_shutdown().await {
                         log::error!("failed shutdown language server: {}", e);
                     }
                 });
