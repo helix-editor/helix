@@ -24,17 +24,24 @@ _________________________________________________________________
 =                  1.1 BASIC CURSOR MOVEMENT                    =
 =================================================================
 
+In other modal editors like Vim and Kakoune, the cursor is 
+traditionally moved using the h, j, k, l keys as shown bellow:
+
           ↑
           k       * h is on the left
       ← h   l →   * l is on the right
           j       * j looks like a down arrow
           ↓
 
- The cursor can be moved using the h, j, k, l keys, as shown
- above. The cursor/arrow keys will also work, but it is faster
- to use the hjkl keys as they are closer to the other keys you
- will be using. Try moving around to get a feel for hjkl.
- Once you're ready, hold j to continue to the next lesson.
+You can also use the arrow keys, but it doesn't really matter which
+one you prefer as long as you feel confortable with your choice.
+
+Some think it's faster to use the hjkl keys as they are closer to 
+the other keys you will be using. Others think the arrow keys are 
+more intuitive because they are used in other editors as well. 
+
+Try moving around to get the hang of it. Once you're ready, go down 
+to continue to the next lesson.
 
 
 
@@ -134,7 +141,7 @@ _________________________________________________________________
 =                        CHAPTER 1 RECAP                        =
 =================================================================
 
- * Use the h,j,k,l keys to move the cursor.
+ * Use the h,j,k,l keys or the arrow keys to move the cursor.
 
  * Type : to enter Command mode.
    * The q/quit and q!/quit! commands will exit Helix. The
