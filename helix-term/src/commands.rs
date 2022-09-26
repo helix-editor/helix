@@ -885,8 +885,13 @@ fn goto_window(cx: &mut Context, align: Align) {
     .min(last_line.saturating_sub(scrolloff));
 
     let pos = doc.text().line_to_char(line);
-
-    doc.set_selection(view.id, Selection::point(pos));
+    let text = doc.text().slice(..);
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .transform(|range| range.put_cursor(text, pos, cx.editor.mode == Mode::Select));
+    push_jump(view, doc);
+    doc.set_selection(view.id, selection);
 }
 
 fn goto_window_top(cx: &mut Context) {
