@@ -1315,7 +1315,13 @@ mod test {
         let doc = Document::open(&PathBuf::from(file!()), None, None).unwrap();
         assert_eq!(
             doc.inject_environment(["file", "$file"].iter()),
-            ["file", concat!(env!("CARGO_MANIFEST_DIR"), "/", file!())]
+            [
+                "file",
+                Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join(file!())
+                    .to_str()
+                    .unwrap()
+            ]
         );
         assert_eq!(
             doc.inject_environment(["pwd", "$pwd"].iter()),
