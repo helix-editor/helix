@@ -28,12 +28,14 @@
 
 "markup.heading" = { fg = "red" }
 "markup.raw.inline" = { fg = "green" }
+"markup.raw.block" = { fg = "white" }
 "markup.bold" = { fg = "gold", modifiers = ["bold"] }
 "markup.italic" = { fg = "purple", modifiers = ["italic"] }
 "markup.list" = { fg = "red" }
 "markup.quote" = { fg = "yellow" }
-"markup.link.url" = { fg = "cyan", modifiers = ["underlined"]}
-"markup.link.text" = { fg = "purple" }
+"markup.link.url" = { fg = "blue", modifiers = ["underlined"]}
+"markup.link.text" = { fg = "white" }
+"markup.link.label" = { fg = "white" }
 
 "diff.plus" = "green"
 "diff.delta" = "gold"
