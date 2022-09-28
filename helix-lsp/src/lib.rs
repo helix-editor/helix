@@ -480,6 +480,7 @@ fn start_client(
         &ls_config.command,
         &ls_config.args,
         config.config.clone(),
+        &ls_config.envs,
         &config.roots,
         id,
         ls_config.timeout,
