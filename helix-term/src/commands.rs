@@ -5093,7 +5093,7 @@ fn jump_mode_impl(cx: &mut Context, [fwd_jumps, bck_jumps]: [Vec<(usize, usize)>
             {
                 Jump::Multi(map) => map,
                 _ => unreachable!(),
-            }
+            };
         }
         current.insert(*seq.last().unwrap(), Jump::Final(pos.0, pos.1));
     }
