@@ -157,3 +157,6 @@
    argument: (indented_string_expression (string_fragment) @injection.content))
  (#match? @_func "(^|\\.)write(Text|Script(Bin)?)$")
  (#set! injection.combined))
+
+((indented_string_expression (string_fragment) @injection.shebang @injection.content)
+  (#set! injection.combined))

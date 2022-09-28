@@ -662,9 +662,8 @@ impl Loader {
 
     pub fn language_config_for_shebang(&self, source: &Rope) -> Option<Arc<LanguageConfiguration>> {
         let line = Cow::from(source.line(0));
-        static SHEBANG_REGEX: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"^#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)").unwrap()
-        });
+        static SHEBANG_REGEX: Lazy<Regex> =
+            Lazy::new(|| Regex::new(&["^", SHEBANG].concat()).unwrap());
         let configuration_id = SHEBANG_REGEX
             .captures(&line)
             .and_then(|cap| self.language_config_ids_by_shebang.get(&cap[1]));
@@ -713,6 +712,7 @@ impl Loader {
         match capture {
             InjectionCapture::Name(string) => self.language_config_for_name(string),
             InjectionCapture::File(file) => self.language_config_for_file_name(file),
+            InjectionCapture::Shebang(shebang) => self.language_config_for_language_id(shebang),
         }
     }
 
@@ -1403,6 +1403,7 @@ pub struct HighlightConfiguration {
     injection_content_capture_index: Option<u32>,
     injection_language_capture_index: Option<u32>,
     injection_filename_capture_index: Option<u32>,
+    injection_shebang_capture_index: Option<u32>,
     local_scope_capture_index: Option<u32>,
     local_def_capture_index: Option<u32>,
     local_def_value_capture_index: Option<u32>,
@@ -1547,6 +1548,7 @@ impl HighlightConfiguration {
         let mut injection_content_capture_index = None;
         let mut injection_language_capture_index = None;
         let mut injection_filename_capture_index = None;
+        let mut injection_shebang_capture_index = None;
         let mut local_def_capture_index = None;
         let mut local_def_value_capture_index = None;
         let mut local_ref_capture_index = None;
@@ -1568,6 +1570,7 @@ impl HighlightConfiguration {
                 "injection.content" => injection_content_capture_index = i,
                 "injection.language" => injection_language_capture_index = i,
                 "injection.filename" => injection_filename_capture_index = i,
+                "injection.shebang" => injection_shebang_capture_index = i,
                 _ => {}
             }
         }
@@ -1584,6 +1587,7 @@ impl HighlightConfiguration {
             injection_content_capture_index,
             injection_language_capture_index,
             injection_filename_capture_index,
+            injection_shebang_capture_index,
             local_scope_capture_index,
             local_def_capture_index,
             local_def_value_capture_index,
@@ -2057,7 +2061,10 @@ impl<'a> Iterator for HighlightIter<'a> {
 pub enum InjectionCapture<'a> {
     Name(Cow<'a, str>),
     File(Cow<'a, Path>),
+    Shebang(String),
 }
+
+static SHEBANG: &str = r"#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)";
 
 fn injection_for_match<'a>(
     config: &HighlightConfiguration,
@@ -2072,6 +2079,7 @@ fn injection_for_match<'a>(
     let content_capture_index = config.injection_content_capture_index;
     let language_capture_index = config.injection_language_capture_index;
     let language_filename_index = config.injection_filename_capture_index;
+    let language_shebang_index = config.injection_shebang_capture_index;
 
     let mut injection_capture = None;
     let mut content_node = None;
@@ -2087,6 +2095,27 @@ fn injection_for_match<'a>(
             let path = Path::new(name.as_ref()).to_path_buf();
 
             injection_capture = Some(InjectionCapture::File(path.into()));
+        } else if index == language_shebang_index {
+            let node_slice = source.slice(capture.node.byte_range());
+
+            // some languages allow space and newlines before the actual string content
+            // so a shebang could be on either the first or second line
+            let lines = if node_slice.len_lines() > 1 {
+                node_slice.slice(
+                    // start of first line
+                    node_slice.line_to_byte(0)
+                    // end of second line
+                    ..node_slice.line_to_byte(2) - 1,
+                )
+            } else {
+                node_slice.line(0)
+            };
+
+            static SHEBANG_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(SHEBANG).unwrap());
+
+            injection_capture = SHEBANG_REGEX
+                .captures(lines.as_str().unwrap_or_default())
+                .map(|cap| InjectionCapture::Shebang(cap[1].to_owned()));
         }
     }
 
