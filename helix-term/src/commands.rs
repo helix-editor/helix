@@ -264,6 +264,7 @@ impl MappableCommand {
         command_mode, "Enter command mode",
         file_picker, "Open file picker",
         file_picker_in_current_directory, "Open file picker at current working directory",
+        find_file_picker, "Open find file picker",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
@@ -2235,6 +2236,16 @@ fn file_picker(cx: &mut Context) {
 fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
     let picker = ui::file_picker(cwd, &cx.editor.config());
+    cx.push_layer(Box::new(overlayed(picker)));
+}
+
+fn find_file_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    let doc_parent = doc.path().and_then(|p| p.parent()).map(|p| p.to_owned());
+    let cwd = doc_parent
+        .or_else(|| std::env::current_dir().ok())
+        .unwrap_or_else(|| PathBuf::from("./"));
+    let picker = ui::find_file_picker(cwd);
     cx.push_layer(Box::new(overlayed(picker)));
 }
 

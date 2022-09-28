@@ -16,7 +16,7 @@ pub use completion::Completion;
 pub use editor::EditorView;
 pub use markdown::Markdown;
 pub use menu::Menu;
-pub use picker::{FileLocation, FilePicker, Picker};
+pub use picker::{FileLocation, FilePicker, FindFilePicker, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
@@ -198,6 +198,11 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         },
         |_editor, path| Some((path.clone(), None)),
     )
+}
+
+/// Based on find-file on doom emacs (SPC . or SPC f f).
+pub fn find_file_picker(dir: PathBuf) -> FindFilePicker {
+    FindFilePicker::new(dir)
 }
 
 pub mod completers {
