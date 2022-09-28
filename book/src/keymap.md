@@ -209,6 +209,8 @@ Jumps to various locations.
 | `n`   | Go to next buffer                                | `goto_next_buffer`         |
 | `p`   | Go to previous buffer                            | `goto_previous_buffer`     |
 | `.`   | Go to last modification in current file          | `goto_last_modification`   |
+| `j`   | Word-wise jump mode                              | `jump_mode_word`           |
+| `J`   | Character search jump mode                       | `jump_mode_search`         |
 
 #### Match mode
 
