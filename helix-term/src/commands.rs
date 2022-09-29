@@ -5140,8 +5140,8 @@ fn jump_mode_impl(cx: &mut Context, [fwd_jumps, bck_jumps]: [Vec<(usize, usize)>
             .flat_map(|(&label, jump)| annotations_impl(label, jump))
             .map(|(annot, pos)| {
                 let text = doc.text();
-                let line = text.byte_to_line(pos);
-                let offset = pos - text.line_to_byte(line);
+                let line = text.char_to_line(pos);
+                let offset = pos - text.line_to_char(line);
                 let style = match annot.len() {
                     2.. => multi_style,
                     _ => single_style,
