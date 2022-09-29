@@ -517,11 +517,11 @@ _________________________________________________________________
     'apples' in the line will be selected.
  5. You can now type c and change 'apples' to something else,
     like 'oranges'.
- 6. Type , to remove the second cursor.
+ 6. Type <ESC> to exit Insert mode.
+ 7. Type , to remove the second cursor.
 
  --> I like to eat apples since my favorite fruit is apples.
      I like to eat oranges since my favorite fruit is oranges.
-
 
 
 
