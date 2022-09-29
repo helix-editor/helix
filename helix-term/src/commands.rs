@@ -1767,6 +1767,8 @@ fn search_selection(cx: &mut Context) {
         .selection(view.id)
         .iter()
         .map(|selection| regex::escape(&selection.fragment(contents)))
+        .collect::<HashSet<_>>() // Collect into hashset to deduplicate identical regexes
+        .into_iter()
         .collect::<Vec<_>>()
         .join("|");
 
@@ -2230,8 +2232,9 @@ fn append_mode(cx: &mut Context) {
 }
 
 fn file_picker(cx: &mut Context) {
-    // We don't specify language markers, root will be the root of the current git repo
-    let root = find_root(None, &[]).unwrap_or_else(|| PathBuf::from("./"));
+    // We don't specify language markers, root will be the root of the current
+    // git repo or the current dir if we're not in a repo
+    let root = find_root(None, &[]);
     let picker = ui::file_picker(root, &cx.editor.config());
     cx.push_layer(Box::new(overlayed(picker)));
 }

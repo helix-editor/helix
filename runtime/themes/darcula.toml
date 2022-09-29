@@ -23,6 +23,8 @@
 "ui.virtual.ruler" = { bg = "grey02" }
 "ui.virtual.indent-guide" = "grey02"
 "ui.virtual.whitespace" = "grey03"
+"ui.bufferline" = { fg = "grey04", bg = "grey00" }
+"ui.bufferline.active" = { fg = "grey07", bg = "grey02" }
 
 "operator" = "grey05"
 "variable" = "white"

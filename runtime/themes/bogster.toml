@@ -48,6 +48,8 @@
 "ui.cursorline" = { bg = "#131920" }
 "ui.statusline" = { fg = "#e5ded6", bg = "#232d38" }
 "ui.statusline.inactive" = { fg = "#c6b8ad", bg = "#232d38" }
+"ui.bufferline" = { fg = "#627d9d", bg = "#131920" }
+"ui.bufferline.active" = { fg = "#e5ded6", bg = "#232d38" }
 "ui.popup" = { bg = "#232d38" }
 "ui.window" = { bg = "#232d38" }
 "ui.help" = { bg = "#232d38", fg = "#e5ded6" }

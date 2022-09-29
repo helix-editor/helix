@@ -365,13 +365,8 @@ impl<T: Item> Picker<T> {
                     .map(|(index, _option)| (index, 0)),
             );
         } else if pattern.starts_with(&self.previous_pattern) {
-            // TODO: remove when retain_mut is in stable rust
-            #[allow(unused_imports, deprecated)]
-            use retain_mut::RetainMut;
-
             // optimization: if the pattern is a more specific version of the previous one
             // then we can score the filtered set.
-            #[allow(unstable_name_collisions)]
             self.matches.retain_mut(|(index, score)| {
                 let option = &self.options[*index];
                 let text = option.sort_text(&self.editor_data);

@@ -6,7 +6,6 @@
   (call)
   (class)
   (case)
-  (do_block)
   (elsif)
   (if)
   (hash)
