@@ -66,16 +66,21 @@
 "ui.cursorline" = { bg = "background_dark" }
 "ui.statusline" = { fg = "foreground", bg = "background_dark" }
 "ui.statusline.inactive" = { fg = "comment", bg = "background_dark" }
+"ui.statusline.insert" = { fg = "olive", bg = "background_dark" }
+"ui.statusline.normal" = { fg = "opal", bg = "background_dark" }
+"ui.statusline.select" = { fg = "carnation", bg = "background_dark" }
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { fg = "cyan" }
 "ui.window" = { fg = "foreground" }
 "ui.virtual.whitespace" = { fg = "comment" }
+"ui.virtual.indent-guide" = { fg = "opal" }
 "ui.virtual.ruler" = { bg = "background_dark" }
 
 "error" = { fg = "red" }
 "warning" = { fg = "cyan" }
 
 "markup.heading" = { fg = "purple", modifiers = ["bold"] }
+"markup.link.label" = { fg = "blue", modifiers = ["italic"] }
 "markup.list" = "cyan"
 "markup.bold" = { fg = "blue", modifiers = ["bold"] }
 "markup.italic" = { fg = "yellow", modifiers = ["italic"] }
