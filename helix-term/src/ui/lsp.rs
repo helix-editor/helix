@@ -1,6 +1,7 @@
+use std::iter;
 use std::sync::Arc;
 
-use helix_core::syntax;
+use helix_core::syntax::{self, Highlight};
 use helix_view::graphics::{Margin, Rect, Style};
 use tui::buffer::Buffer;
 use tui::widgets::{BorderType, Paragraph, Widget, Wrap};
@@ -52,10 +53,12 @@ impl Component for SignatureHelp {
         let margin = Margin::horizontal(1);
 
         let active_param_span = self.active_param_range.map(|(start, end)| {
-            vec![(
-                cx.editor.theme.find_scope_index("ui.selection").unwrap(),
-                start..end,
-            )]
+            let highlight = cx.editor.theme.find_scope_index("ui.selection").unwrap();
+            syntax::Span {
+                scope: Highlight(highlight),
+                start,
+                end,
+            }
         });
 
         let sig_text = crate::ui::markdown::highlighted_code_block(
@@ -63,7 +66,7 @@ impl Component for SignatureHelp {
             &self.language,
             Some(&cx.editor.theme),
             Arc::clone(&self.config_loader),
-            active_param_span,
+            active_param_span.into_iter(),
         );
 
         let (_, sig_text_height) = crate::ui::text::required_size(&sig_text, area.width);
@@ -109,7 +112,7 @@ impl Component for SignatureHelp {
             &self.language,
             None,
             Arc::clone(&self.config_loader),
-            None,
+            iter::empty(),
         );
         let (sig_width, sig_height) =
             crate::ui::text::required_size(&signature_text, max_text_width);

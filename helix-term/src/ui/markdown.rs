@@ -4,7 +4,7 @@ use tui::{
     text::{Span, Spans, Text},
 };
 
-use std::sync::Arc;
+use std::{iter, sync::Arc};
 
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag};
 
@@ -31,7 +31,7 @@ pub fn highlighted_code_block<'a>(
     language: &str,
     theme: Option<&Theme>,
     config_loader: Arc<syntax::Loader>,
-    additional_highlight_spans: Option<Vec<(usize, std::ops::Range<usize>)>>,
+    additional_highlight_spans: impl Iterator<Item = syntax::Span>,
 ) -> Text<'a> {
     let mut spans = Vec::new();
     let mut lines = Vec::new();
@@ -59,13 +59,7 @@ pub fn highlighted_code_block<'a>(
     let highlight_iter = syntax
         .highlight_iter(rope.slice(..), None, None)
         .map(|e| e.unwrap());
-    let highlight_iter: Box<dyn Iterator<Item = HighlightEvent>> =
-        if let Some(spans) = additional_highlight_spans {
-            Box::new(helix_core::syntax::merge(highlight_iter, spans))
-        } else {
-            Box::new(highlight_iter)
-        };
-
+    let highlight_iter = syntax::monotonic_overlay(highlight_iter, additional_highlight_spans);
     let mut highlights = Vec::new();
     for event in highlight_iter {
         match event {
@@ -269,7 +263,7 @@ impl Markdown {
                             language,
                             theme,
                             Arc::clone(&self.config_loader),
-                            None,
+                            iter::empty(),
                         );
                         lines.extend(tui_text.lines.into_iter());
                     } else {
