@@ -215,7 +215,11 @@ mod test {
             (
                 String::from("hello\r\nhello\r\nhello\r\n"),
                 Selection::new(
-                    SmallVec::from_slice(&[Range::new(7, 5), Range::new(21, 19), Range::new(14, 12)]),
+                    SmallVec::from_slice(&[
+                        Range::new(7, 5),
+                        Range::new(21, 19),
+                        Range::new(14, 12)
+                    ]),
                     0
                 )
             ),
@@ -251,7 +255,8 @@ mod test {
     fn print_multi_code_point_grapheme() {
         assert_eq!(
             (
-                String::from("hello 👨‍👩‍👧‍👦 goodbye"), Selection::single(13, 6)
+                String::from("hello 👨‍👩‍👧‍👦 goodbye"),
+                Selection::single(13, 6)
             ),
             print("hello #[|👨‍👩‍👧‍👦]# goodbye")
         );
