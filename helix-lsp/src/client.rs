@@ -56,7 +56,7 @@ impl Client {
 
         let server_envs: Vec<(String, String)> = server_envs
             .into_iter()
-            .map(|(s1, s2)| (s1.clone(),s2.clone()))
+            .map(|(s1, s2)| (s1.clone(), s2.clone()))
             .collect();
 
         let process = Command::new(cmd)
