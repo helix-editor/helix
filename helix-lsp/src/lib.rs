@@ -207,11 +207,11 @@ pub mod util {
         // Generate a diff if the edit is a full document replacement.
         #[allow(clippy::collapsible_if)]
         if edits.len() == 1 {
-            let is_document_replacement = matches!(edits.first().and_then(|edit| {
+            let is_document_replacement = edits.first().and_then(|edit| {
                 let start = lsp_pos_to_pos(doc, edit.range.start, offset_encoding)?;
                 let end = lsp_pos_to_pos(doc, edit.range.end, offset_encoding)?;
                 Some(start..end)
-            }), Some(range) if range == (0..doc.len_chars()));
+            }) == Some(0..doc.len_chars());
             if is_document_replacement {
                 let new_text = Rope::from(edits.pop().unwrap().new_text);
                 return helix_core::diff::compare_ropes(doc, &new_text);
