@@ -344,7 +344,6 @@ fn set_indent_style(
 
     // If no argument, report current indent style.
     if args.is_empty() {
-        doc_mut!(cx.editor).detect_indent_and_line_ending();
         let style = doc!(cx.editor).indent_style;
         cx.editor.set_status(match style {
             Tabs => "tabs".to_owned(),
