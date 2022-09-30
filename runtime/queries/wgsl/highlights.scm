@@ -25,7 +25,7 @@
     (identifier) @type)
         
 (struct_declaration
-  	(struct_member
+    (struct_member
         (variable_identifier_declaration
             (identifier) @variable.other.member
             (type_declaration) @type)))
@@ -58,7 +58,7 @@
 
 "return" @keyword.control.return
 
-[ "," "." ":" ";" ] @punctuation.delimiter
+["," "." ":" ";"] @punctuation.delimiter
 
 ["(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
