@@ -55,7 +55,7 @@ impl Client {
         let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
 
         let server_envs: Vec<(String, String)> = server_envs
-            .into_iter()
+            .iter()
             .map(|(s1, s2)| (s1.clone(), s2.clone()))
             .collect();
 
