@@ -10,6 +10,8 @@
 
 [(comment_block) (comment_line)] @comment
 
-[(nat) (align_offset_value)] @constant.numeric.integer
+[(nat) (float) (align_offset_value)] @constant.numeric.integer
 
 (value_type) @type
+
+["(" ")"] @punctuation.bracket
