@@ -344,6 +344,7 @@ fn set_indent_style(
 
     // If no argument, report current indent style.
     if args.is_empty() {
+        doc_mut!(cx.editor).detect_indent_and_line_ending();
         let style = doc!(cx.editor).indent_style;
         cx.editor.set_status(match style {
             Tabs => "tabs".to_owned(),
@@ -385,9 +386,12 @@ fn set_line_ending(
 
     use LineEnding::*;
 
+    let (view, doc) = current!(cx.editor);
+
     // If no argument, report current line ending setting.
     if args.is_empty() {
-        let line_ending = doc!(cx.editor).line_ending;
+        doc.detect_indent_and_line_ending();
+        let line_ending = doc.line_ending;
         cx.editor.set_status(match line_ending {
             Crlf => "crlf",
             LF => "line feed",
@@ -423,7 +427,6 @@ fn set_line_ending(
         arg if arg.starts_with("nel") => Nel,
         _ => bail!("invalid line ending"),
     };
-    let (view, doc) = current!(cx.editor);
     doc.line_ending = line_ending;
 
     let mut pos = 0;
