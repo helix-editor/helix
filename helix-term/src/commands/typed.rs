@@ -1446,32 +1446,22 @@ fn open_serialized_keymap(editor: &mut Editor, keymap: &HashMap<Mode, keymap::Ke
     struct ModeSelect<'a> {
         select: &'a keymap::Keymap,
     }
-
-    let insert_str = toml::to_string(&Keys {
-                keys: ModeInsert { insert: keymap.get(&Mode::Insert).expect("Insert mode shall have entries")
-        }
-    }).expect("Insert mode shall be able to be serialized");
-
-    let normal_str = toml::to_string(&Keys {
-                keys: ModeNormal { normal: keymap.get(&Mode::Normal).expect("Normal mode shall have entries")
-        }
-    }).expect("Normal mode shall be able to be serialized");
-
-    let select_str = toml::to_string(&Keys {
-                keys: ModeSelect { select: keymap.get(&Mode::Select).expect("Select mode shall have entries")
-        }
-    }).expect("Select mode shall be able to be serialized");
-    let select_str = select_str
-        .lines()
-        .filter(|x| !normal_str
-            .lines()
-            .collect::<Vec<&str>>()
-            .contains(x))
-        .collect::<Vec<&str>>()
-        .join("\n");
-    
-    let serialized_str = format!("{}\n{}\n{}", normal_str, select_str, insert_str);
-    
+    let serialized_str = keymap
+        .iter()
+        // there must be a way to make this easier i think
+        .map(|couple| match couple.0 {
+            Mode::Insert => toml::to_string(&Keys {
+                keys: ModeInsert { insert: couple.1 },
+            }),
+            Mode::Normal => toml::to_string(&Keys {
+                keys: ModeNormal { normal: couple.1 },
+            }),
+            Mode::Select => toml::to_string(&Keys {
+                keys: ModeSelect { select: couple.1 },
+            }),
+        })
+        .collect::<Result<String, toml::ser::Error>>()
+        .expect("Keymap should serialze");
     let mut doc = Document::from(
         Rope::from_str(&serialized_str),
         Some(helix_core::encoding::UTF_8),
