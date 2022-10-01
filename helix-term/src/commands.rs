@@ -4921,7 +4921,7 @@ fn jump_mode_word(cx: &mut Context) {
     for n in 1.. {
         let next = movement::move_next_word_start(text, range, n);
         // Check that the cursor is within the file before attempting further operations.
-        if next.cursor(text) >= text.len_bytes() {
+        if next.cursor(text) >= text.len_chars() {
             break;
         }
         // Use a `b` operation to position the cursor at the first character of words,
