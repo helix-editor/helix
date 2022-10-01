@@ -421,15 +421,6 @@ impl EditorView {
         let text_style = theme.get("ui.text");
         let whitespace_style = theme.get("ui.virtual.whitespace");
 
-        let indent_rainbow_colors = [
-            helix_view::graphics::Color::Red,
-            helix_view::graphics::Color::Yellow,
-            helix_view::graphics::Color::Green,
-            helix_view::graphics::Color::Cyan,
-            helix_view::graphics::Color::Blue,
-            helix_view::graphics::Color::Magenta,
-        ];
-
         let mut is_in_indent_area = true;
         let mut last_line_indent_level = 0;
 
@@ -451,8 +442,8 @@ impl EditorView {
 
             for i in starting_indent..(indent_level / tab_width as u16) {
                 if config.indent_guides.rainbow {
-                    let color_index: usize = i as usize % indent_rainbow_colors.len();
-                    indent_guide_style.fg = Some(indent_rainbow_colors[color_index]);
+                    let color_index: usize = i as usize % theme.rainbow_length();
+                    indent_guide_style.fg = theme.get(&format!("rainbow.{}", color_index)).fg;
                 }
 
                 surface.set_string(
