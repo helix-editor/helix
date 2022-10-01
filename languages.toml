@@ -1781,3 +1781,25 @@ language-server = { command = "bass", args = ["--lsp"] }
 [[grammar]]
 name = "bass"
 source = { git = "https://github.com/vito/tree-sitter-bass", rev = "501133e260d768ed4e1fd7374912ed5c86d6fd90" }
+
+[[language]]
+name = "wat"
+scope = "source.wat"
+comment-token = ";;"
+file-types = ["wat"]
+roots = []
+
+[[grammar]]
+name = "wat"
+source = { git = "https://github.com/wasm-lsp/tree-sitter-wasm", rev = "2ca28a9f9d709847bf7a3de0942a84e912f59088", subpath = "wat" }
+
+[[language]]
+name = "wast"
+scope = "source.wast"
+comment-token = ";;"
+file-types = ["wast"]
+roots = []
+
+[[grammar]]
+name = "wast"
+source = { git = "https://github.com/wasm-lsp/tree-sitter-wasm", rev = "2ca28a9f9d709847bf7a3de0942a84e912f59088", subpath = "wast" }
