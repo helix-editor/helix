@@ -1784,7 +1784,7 @@ source = { git = "https://github.com/vito/tree-sitter-bass", rev = "501133e260d7
 
 [[language]]
 name = "wat"
-scope = "source.webassembly"
+scope = "source.wat"
 comment-token = ";;"
 file-types = ["wat"]
 roots = []
@@ -1795,7 +1795,7 @@ source = { git = "https://github.com/wasm-lsp/tree-sitter-wasm", rev = "2ca28a9f
 
 [[language]]
 name = "wast"
-scope = "source.webassembly"
+scope = "source.wast"
 comment-token = ";;"
 file-types = ["wast"]
 roots = []
