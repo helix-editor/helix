@@ -4921,7 +4921,7 @@ fn jump_mode_word(cx: &mut Context) {
     for n in 1.. {
         let next = movement::move_next_word_start(text, range, n);
         // Check that the cursor is within the file before attempting further operations.
-        if next.cursor(text) > text.len_bytes() - 1 {
+        if next.cursor(text) >= text.len_bytes() {
             break;
         }
         // Use a `b` operation to position the cursor at the first character of words,
@@ -5087,10 +5087,11 @@ fn jump_mode_impl(cx: &mut Context, [fwd_jumps, bck_jumps]: [Vec<(usize, usize)>
         if jump_seqs.len() >= jump_locations.len() {
             break;
         }
+        let last_len = jump_seqs.last().map(|seq| seq.len()).unwrap_or(1);
         let mut seq_iter = jump_seqs
             .iter()
-            .zip((0..jump_seqs.len()).rev())
-            .skip_while(|(seq, _)| seq.len() < jump_seqs.last().map(|seq| seq.len()).unwrap_or(1))
+            .zip((1..=jump_seqs.len()).rev())
+            .skip_while(|(seq, _)| seq.len() < last_len)
             .map(|(seq, len)| (seq.clone(), len))
             .peekable();
         let subset_len = seq_iter.peek().map(|(_, len)| *len).unwrap_or(1);
