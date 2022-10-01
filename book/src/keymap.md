@@ -376,7 +376,6 @@ Keys to use within picker. Remapping currently not supported.
 | `PageDown`, `Ctrl-d`         | Page down         |
 | `Home`                       | Go to first entry |
 | `End`                        | Go to last entry  |
-| `Ctrl-space`                 | Filter options    |
 | `Enter`                      | Open selected     |
 | `Ctrl-s`                     | Open horizontally |
 | `Ctrl-v`                     | Open vertically   |
