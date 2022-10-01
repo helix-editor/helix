@@ -1086,18 +1086,27 @@ fn extend_next_long_word_end(cx: &mut Context) {
     extend_word_impl(cx, movement::move_next_long_word_end)
 }
 
-fn will_find_char<F>(cx: &mut Context, search_fn: F, inclusive: bool, extend: bool)
-where
+fn will_find_char<F>(
+    cx: &mut Context,
+    search_fn: F,
+    inclusive: bool,
+    extend: bool,
+    pseudo_pending: Option<String>,
+) where
     F: Fn(RopeSlice, char, usize, usize, bool) -> Option<usize> + 'static,
 {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
     let count = cx.count();
 
+    cx.editor.pseudo_pending = pseudo_pending;
+
     // need to wait for next key
     // TODO: should this be done by grapheme rather than char?  For example,
     // we can't properly handle the line-ending CRLF case here in terms of char.
     cx.on_next_key(move |cx, event| {
+        cx.editor.pseudo_pending = None;
+
         let ch = match event {
             KeyEvent {
                 code: KeyCode::Enter,
@@ -1200,35 +1209,35 @@ fn find_prev_char_impl(
 }
 
 fn find_till_char(cx: &mut Context) {
-    will_find_char(cx, find_next_char_impl, false, false)
+    will_find_char(cx, find_next_char_impl, false, false, Some("t".to_string()))
 }
 
 fn find_next_char(cx: &mut Context) {
-    will_find_char(cx, find_next_char_impl, true, false)
+    will_find_char(cx, find_next_char_impl, true, false, Some("f".to_string()))
 }
 
 fn extend_till_char(cx: &mut Context) {
-    will_find_char(cx, find_next_char_impl, false, true)
+    will_find_char(cx, find_next_char_impl, false, true, Some("vt".to_string()))
 }
 
 fn extend_next_char(cx: &mut Context) {
-    will_find_char(cx, find_next_char_impl, true, true)
+    will_find_char(cx, find_next_char_impl, true, true, Some("vf".to_string()))
 }
 
 fn till_prev_char(cx: &mut Context) {
-    will_find_char(cx, find_prev_char_impl, false, false)
+    will_find_char(cx, find_prev_char_impl, false, false, Some("T".to_string()))
 }
 
 fn find_prev_char(cx: &mut Context) {
-    will_find_char(cx, find_prev_char_impl, true, false)
+    will_find_char(cx, find_prev_char_impl, true, false, Some("F".to_string()))
 }
 
 fn extend_till_prev_char(cx: &mut Context) {
-    will_find_char(cx, find_prev_char_impl, false, true)
+    will_find_char(cx, find_prev_char_impl, false, true, Some("vT".to_string()))
 }
 
 fn extend_prev_char(cx: &mut Context) {
-    will_find_char(cx, find_prev_char_impl, true, true)
+    will_find_char(cx, find_prev_char_impl, true, true, Some("vF".to_string()))
 }
 
 fn repeat_last_motion(cx: &mut Context) {
