@@ -421,17 +421,26 @@ impl EditorView {
         let text_style = theme.get("ui.text");
         let whitespace_style = theme.get("ui.virtual.whitespace");
 
+        let indent_rainbow_colors = [
+            helix_view::graphics::Color::Red,
+            helix_view::graphics::Color::Yellow,
+            helix_view::graphics::Color::Green,
+            helix_view::graphics::Color::Cyan,
+            helix_view::graphics::Color::Blue,
+            helix_view::graphics::Color::Magenta,
+        ];
+
         let mut is_in_indent_area = true;
-        let mut last_line_indent_level = 0;
+        let mut last_line_indent_level: u16 = 0;
 
         // use whitespace style as fallback for indent-guide
-        let indent_guide_style = text_style.patch(
+        let mut indent_guide_style = text_style.patch(
             theme
                 .try_get("ui.virtual.indent-guide")
                 .unwrap_or_else(|| theme.get("ui.virtual.whitespace")),
         );
 
-        let draw_indent_guides = |indent_level, line, surface: &mut Surface| {
+        let mut draw_indent_guides = |indent_level, line, surface: &mut Surface| {
             if !config.indent_guides.render {
                 return;
             }
@@ -441,6 +450,11 @@ impl EditorView {
             // extra loops if the code is deeply nested.
 
             for i in starting_indent..(indent_level / tab_width as u16) {
+                if config.indent_guides.rainbow {
+                    let color_index: usize = i as usize % indent_rainbow_colors.len();
+                    indent_guide_style.fg = Some(indent_rainbow_colors[color_index]);
+                }
+
                 surface.set_string(
                     viewport.x + (i * tab_width as u16) - offset.col as u16,
                     viewport.y + line,
