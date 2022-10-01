@@ -310,8 +310,6 @@ pub struct Picker<T: Item> {
     matcher: Box<Matcher>,
     /// (index, score)
     matches: Vec<(usize, i64)>,
-    /// Filter over original options.
-    filters: Vec<usize>, // could be optimized into bit but not worth it now
 
     /// Current height of the completions box
     completion_height: u16,
@@ -346,7 +344,6 @@ impl<T: Item> Picker<T> {
             editor_data,
             matcher: Box::new(Matcher::default()),
             matches: Vec::new(),
-            filters: Vec::new(),
             cursor: 0,
             prompt,
             previous_pattern: String::new(),
@@ -415,13 +412,6 @@ impl<T: Item> Picker<T> {
                     .iter()
                     .enumerate()
                     .filter_map(|(index, option)| {
-                        // filter options first before matching
-                        if !self.filters.is_empty() {
-                            // TODO: this filters functionality seems inefficient,
-                            // instead store and operate on filters if any
-                            self.filters.binary_search(&index).ok()?;
-                        }
-
                         let text = option.filter_text(&self.editor_data);
 
                         query
@@ -483,14 +473,6 @@ impl<T: Item> Picker<T> {
         self.matches
             .get(self.cursor)
             .map(|(index, _score)| &self.options[*index])
-    }
-
-    pub fn save_filter(&mut self, cx: &Context) {
-        self.filters.clear();
-        self.filters
-            .extend(self.matches.iter().map(|(index, _)| *index));
-        self.filters.sort_unstable(); // used for binary search later
-        self.prompt.clear(cx.editor);
     }
 
     pub fn toggle_preview(&mut self) {
@@ -572,9 +554,6 @@ impl<T: Item + 'static> Component for Picker<T> {
                     (self.callback_fn)(cx, option, Action::VerticalSplit);
                 }
                 return close_fn;
-            }
-            ctrl!(' ') => {
-                self.save_filter(cx);
             }
             ctrl!('t') => {
                 self.toggle_preview();
