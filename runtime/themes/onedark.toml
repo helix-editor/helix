@@ -39,10 +39,10 @@
 "diff.delta" = "gold"
 "diff.minus" = "red"
 
-"diagnostic.info" = { underline = "blue", modifiers = ["undercurled"] }
-"diagnostic.hint" = { underline = "green", modifiers = ["undercurled"] }
-"diagnostic.warning" = { underline = "yellow", modifiers = ["undercurled"] }
-"diagnostic.error" = { underline = "red", modifiers = ["undercurled"] }
+"diagnostic.info" = { underline_color = "blue", underline_style = "curl" }
+"diagnostic.hint" = { underline_color = "green", underline_style = "curl" }
+"diagnostic.warning" = { underline_color = "yellow", underline_style = "curl" }
+"diagnostic.error" = { underline_color = "red", underline_style = "curl" }
 "info" = { fg = "blue", modifiers = ["bold"] }
 "hint" = { fg = "green", modifiers = ["bold"] }
 "warning" = { fg = "yellow", modifiers = ["bold"] }

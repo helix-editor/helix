@@ -3,7 +3,7 @@ use helix_core::unicode::width::UnicodeWidthStr;
 use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
 
-use helix_view::graphics::{Color, Modifier, Rect, Style};
+use helix_view::graphics::{Color, Modifier, Rect, Style, UnderlineStyle};
 
 /// A buffer cell
 #[derive(Debug, Clone, PartialEq)]
@@ -11,7 +11,8 @@ pub struct Cell {
     pub symbol: String,
     pub fg: Color,
     pub bg: Color,
-    pub underline: Color,
+    pub underline_color: Color,
+    pub underline_style: UnderlineStyle,
     pub modifier: Modifier,
 }
 
@@ -45,9 +46,13 @@ impl Cell {
         if let Some(c) = style.bg {
             self.bg = c;
         }
-        if let Some(c) = style.underline {
-            self.underline = c;
+        if let Some(c) = style.underline_color {
+            self.underline_color = c;
         }
+        if let Some(style) = style.underline_style {
+            self.underline_style = style;
+        }
+
         self.modifier.insert(style.add_modifier);
         self.modifier.remove(style.sub_modifier);
         self
@@ -57,7 +62,8 @@ impl Cell {
         Style::default()
             .fg(self.fg)
             .bg(self.bg)
-            .underline(self.underline)
+            .underline_color(self.underline_color)
+            .underline_style(self.underline_style)
             .add_modifier(self.modifier)
     }
 
@@ -66,7 +72,8 @@ impl Cell {
         self.symbol.push(' ');
         self.fg = Color::Reset;
         self.bg = Color::Reset;
-        self.underline = Color::Reset;
+        self.underline_color = Color::Reset;
+        self.underline_style = UnderlineStyle::Reset;
         self.modifier = Modifier::empty();
     }
 }
@@ -77,7 +84,8 @@ impl Default for Cell {
             symbol: " ".into(),
             fg: Color::Reset,
             bg: Color::Reset,
-            underline: Color::Reset,
+            underline_color: Color::Reset,
+            underline_style: UnderlineStyle::Reset,
             modifier: Modifier::empty(),
         }
     }
@@ -94,7 +102,7 @@ impl Default for Cell {
 ///
 /// ```
 /// use helix_tui::buffer::{Buffer, Cell};
-/// use helix_view::graphics::{Rect, Color, Style, Modifier};
+/// use helix_view::graphics::{Rect, Color, UnderlineStyle, Style, Modifier};
 ///
 /// let mut buf = Buffer::empty(Rect{x: 0, y: 0, width: 10, height: 5});
 /// buf[(0, 2)].set_symbol("x");
@@ -104,7 +112,8 @@ impl Default for Cell {
 ///     symbol: String::from("r"),
 ///     fg: Color::Red,
 ///     bg: Color::White,
-///     underline: Color::Reset,
+///     underline_color: Color::Reset,
+///     underline_style: UnderlineStyle::Reset,
 ///     modifier: Modifier::empty(),
 /// });
 /// buf[(5, 0)].set_char('x');

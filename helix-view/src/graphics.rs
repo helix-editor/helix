@@ -315,6 +315,44 @@ impl From<Color> for crossterm::style::Color {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum UnderlineStyle {
+    Reset,
+    Line,
+    Curl,
+    Dotted,
+    Dashed,
+    DoubleLine,
+}
+
+impl FromStr for UnderlineStyle {
+    type Err = &'static str;
+
+    fn from_str(modifier: &str) -> Result<Self, Self::Err> {
+        match modifier {
+            "line" => Ok(Self::Line),
+            "curl" => Ok(Self::Curl),
+            "dotted" => Ok(Self::Dotted),
+            "dashed" => Ok(Self::Dashed),
+            "double_line" => Ok(Self::DoubleLine),
+            _ => Err("Invalid underline style"),
+        }
+    }
+}
+
+impl From<UnderlineStyle> for crossterm::style::Attribute {
+    fn from(style: UnderlineStyle) -> Self {
+        match style {
+            UnderlineStyle::Line => crossterm::style::Attribute::Underlined,
+            UnderlineStyle::Curl => crossterm::style::Attribute::Undercurled,
+            UnderlineStyle::Dotted => crossterm::style::Attribute::Underdotted,
+            UnderlineStyle::Dashed => crossterm::style::Attribute::Underdashed,
+            UnderlineStyle::DoubleLine => crossterm::style::Attribute::DoubleUnderlined,
+            UnderlineStyle::Reset => crossterm::style::Attribute::NoUnderline,
+        }
+    }
+}
+
 bitflags! {
     /// Modifier changes the way a piece of text is displayed.
     ///
@@ -332,22 +370,11 @@ bitflags! {
         const BOLD              = 0b0000_0000_0000_0001;
         const DIM               = 0b0000_0000_0000_0010;
         const ITALIC            = 0b0000_0000_0000_0100;
-        const UNDERLINED        = 0b0000_0000_0000_1000;
         const SLOW_BLINK        = 0b0000_0000_0001_0000;
         const RAPID_BLINK       = 0b0000_0000_0010_0000;
         const REVERSED          = 0b0000_0000_0100_0000;
         const HIDDEN            = 0b0000_0000_1000_0000;
         const CROSSED_OUT       = 0b0000_0001_0000_0000;
-        const UNDERCURLED       = 0b0000_0010_0000_0000;
-        const UNDERDOTTED       = 0b0000_0100_0000_0000;
-        const UNDERDASHED       = 0b0000_1000_0000_0000;
-        const DOUBLE_UNDERLINED = 0b0001_0000_0000_0000;
-
-        const ANY_UNDERLINE     = Self::UNDERLINED.bits
-                                    | Self::UNDERCURLED.bits
-                                    | Self::UNDERDOTTED.bits
-                                    | Self::UNDERDASHED.bits
-                                    | Self::DOUBLE_UNDERLINED.bits;
     }
 }
 
@@ -359,16 +386,11 @@ impl FromStr for Modifier {
             "bold" => Ok(Self::BOLD),
             "dim" => Ok(Self::DIM),
             "italic" => Ok(Self::ITALIC),
-            "underlined" => Ok(Self::UNDERLINED),
             "slow_blink" => Ok(Self::SLOW_BLINK),
             "rapid_blink" => Ok(Self::RAPID_BLINK),
             "reversed" => Ok(Self::REVERSED),
             "hidden" => Ok(Self::HIDDEN),
             "crossed_out" => Ok(Self::CROSSED_OUT),
-            "undercurled" => Ok(Self::UNDERCURLED),
-            "underdotted" => Ok(Self::UNDERDOTTED),
-            "underdashed" => Ok(Self::UNDERDASHED),
-            "double_underlined" => Ok(Self::DOUBLE_UNDERLINED),
             _ => Err("Invalid modifier"),
         }
     }
@@ -389,7 +411,7 @@ impl FromStr for Modifier {
 /// just S3.
 ///
 /// ```rust
-/// # use helix_view::graphics::{Rect, Color, Modifier, Style};
+/// # use helix_view::graphics::{Rect, Color, UnderlineStyle, Modifier, Style};
 /// # use helix_tui::buffer::Buffer;
 /// let styles = [
 ///     Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD | Modifier::ITALIC),
@@ -405,7 +427,8 @@ impl FromStr for Modifier {
 ///         fg: Some(Color::Yellow),
 ///         bg: Some(Color::Red),
 ///         add_modifier: Modifier::BOLD,
-///         underline: Some(Color::Reset),
+///         underline_color: Some(Color::Reset),
+///         underline_style: Some(UnderlineStyle::Reset),
 ///         sub_modifier: Modifier::empty(),
 ///     },
 ///     buffer[(0, 0)].style(),
@@ -416,7 +439,7 @@ impl FromStr for Modifier {
 /// reset all properties until that point use [`Style::reset`].
 ///
 /// ```
-/// # use helix_view::graphics::{Rect, Color, Modifier, Style};
+/// # use helix_view::graphics::{Rect, Color, UnderlineStyle, Modifier, Style};
 /// # use helix_tui::buffer::Buffer;
 /// let styles = [
 ///     Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD | Modifier::ITALIC),
@@ -430,7 +453,8 @@ impl FromStr for Modifier {
 ///     Style {
 ///         fg: Some(Color::Yellow),
 ///         bg: Some(Color::Reset),
-///         underline: Some(Color::Reset),
+///         underline_color: Some(Color::Reset),
+///         underline_style: Some(UnderlineStyle::Reset),
 ///         add_modifier: Modifier::empty(),
 ///         sub_modifier: Modifier::empty(),
 ///     },
@@ -442,7 +466,8 @@ impl FromStr for Modifier {
 pub struct Style {
     pub fg: Option<Color>,
     pub bg: Option<Color>,
-    pub underline: Option<Color>,
+    pub underline_color: Option<Color>,
+    pub underline_style: Option<UnderlineStyle>,
     pub add_modifier: Modifier,
     pub sub_modifier: Modifier,
 }
@@ -452,7 +477,8 @@ impl Default for Style {
         Style {
             fg: None,
             bg: None,
-            underline: None,
+            underline_color: None,
+            underline_style: None,
             add_modifier: Modifier::empty(),
             sub_modifier: Modifier::empty(),
         }
@@ -465,7 +491,8 @@ impl Style {
         Style {
             fg: Some(Color::Reset),
             bg: Some(Color::Reset),
-            underline: Some(Color::Reset),
+            underline_color: None,
+            underline_style: None,
             add_modifier: Modifier::empty(),
             sub_modifier: Modifier::all(),
         }
@@ -507,12 +534,27 @@ impl Style {
     ///
     /// ```rust
     /// # use helix_view::graphics::{Color, Style};
-    /// let style = Style::default().underline(Color::Blue);
-    /// let diff = Style::default().underline(Color::Red);
-    /// assert_eq!(style.patch(diff), Style::default().underline(Color::Red));
+    /// let style = Style::default().underline_color(Color::Blue);
+    /// let diff = Style::default().underline_color(Color::Red);
+    /// assert_eq!(style.patch(diff), Style::default().underline_color(Color::Red));
     /// ```
-    pub fn underline(mut self, color: Color) -> Style {
-        self.underline = Some(color);
+    pub fn underline_color(mut self, color: Color) -> Style {
+        self.underline_color = Some(color);
+        self
+    }
+
+    /// Changes the underline style.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// # use helix_view::graphics::{UnderlineStyle, Style};
+    /// let style = Style::default().underline_style(UnderlineStyle::Line);
+    /// let diff = Style::default().underline_style(UnderlineStyle::Curl);
+    /// assert_eq!(style.patch(diff), Style::default().underline_style(UnderlineStyle::Curl));
+    /// ```
+    pub fn underline_style(mut self, style: UnderlineStyle) -> Style {
+        self.underline_style = Some(style);
         self
     }
 
@@ -572,7 +614,8 @@ impl Style {
     pub fn patch(mut self, other: Style) -> Style {
         self.fg = other.fg.or(self.fg);
         self.bg = other.bg.or(self.bg);
-        self.underline = other.underline.or(self.underline);
+        self.underline_color = other.underline_color.or(self.underline_color);
+        self.underline_style = other.underline_style.or(self.underline_style);
 
         self.add_modifier.remove(other.sub_modifier);
         self.add_modifier.insert(other.add_modifier);

@@ -8,7 +8,7 @@ use crossterm::{
     },
     terminal::{self, Clear, ClearType},
 };
-use helix_view::graphics::{Color, CursorKind, Modifier, Rect};
+use helix_view::graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle};
 use std::io::{self, Write};
 
 fn vte_version() -> Option<usize> {
@@ -80,7 +80,8 @@ where
     {
         let mut fg = Color::Reset;
         let mut bg = Color::Reset;
-        let mut underline = Color::Reset;
+        let mut underline_color = Color::Reset;
+        let mut underline_style = UnderlineStyle::Reset;
         let mut modifier = Modifier::empty();
         let mut last_pos: Option<(u16, u16)> = None;
         for (x, y, cell) in content {
@@ -94,7 +95,7 @@ where
                     from: modifier,
                     to: cell.modifier,
                 };
-                diff.queue(&mut self.buffer, self.capabilities)?;
+                diff.queue(&mut self.buffer)?;
                 modifier = cell.modifier;
             }
             if cell.fg != fg {
@@ -107,10 +108,24 @@ where
                 map_error(queue!(self.buffer, SetBackgroundColor(color)))?;
                 bg = cell.bg;
             }
-            if cell.underline != underline {
-                let color = CColor::from(cell.underline);
+            if cell.underline_color != underline_color {
+                let color = CColor::from(cell.underline_color);
                 map_error(queue!(self.buffer, SetUnderlineColor(color)))?;
-                underline = cell.underline;
+                underline_color = cell.underline_color;
+            }
+
+            let mut new_underline_style = cell.underline_style;
+            if !self.capabilities.has_extended_underlines {
+                match new_underline_style {
+                    UnderlineStyle::Reset => (),
+                    _ => new_underline_style = UnderlineStyle::Line,
+                }
+            }
+
+            if new_underline_style != underline_style {
+                let attr = CAttribute::from(cell.underline_style);
+                map_error(queue!(self.buffer, SetAttribute(attr)))?;
+                underline_style = new_underline_style;
             }
 
             map_error(queue!(self.buffer, Print(&cell.symbol)))?;
@@ -118,6 +133,7 @@ where
 
         map_error(queue!(
             self.buffer,
+            SetUnderlineColor(CColor::Reset),
             SetForegroundColor(CColor::Reset),
             SetBackgroundColor(CColor::Reset),
             SetAttribute(CAttribute::Reset)
@@ -174,7 +190,7 @@ struct ModifierDiff {
 }
 
 impl ModifierDiff {
-    fn queue<W>(&self, mut w: W, caps: Capabilities) -> io::Result<()>
+    fn queue<W>(&self, mut w: W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -192,9 +208,6 @@ impl ModifierDiff {
         if removed.contains(Modifier::ITALIC) {
             map_error(queue!(w, SetAttribute(CAttribute::NoItalic)))?;
         }
-        if removed.intersects(Modifier::ANY_UNDERLINE) {
-            map_error(queue!(w, SetAttribute(CAttribute::NoUnderline)))?;
-        }
         if removed.contains(Modifier::DIM) {
             map_error(queue!(w, SetAttribute(CAttribute::NormalIntensity)))?;
         }
@@ -205,14 +218,6 @@ impl ModifierDiff {
             map_error(queue!(w, SetAttribute(CAttribute::NoBlink)))?;
         }
 
-        let queue_styled_underline = |styled_underline, w: &mut W| -> io::Result<()> {
-            let underline = match caps.has_extended_underlines {
-                true => styled_underline,
-                false => CAttribute::Underlined,
-            };
-            map_error(queue!(w, SetAttribute(underline)))
-        };
-
         let added = self.to - self.from;
         if added.contains(Modifier::REVERSED) {
             map_error(queue!(w, SetAttribute(CAttribute::Reverse)))?;
@@ -222,21 +227,6 @@ impl ModifierDiff {
         }
         if added.contains(Modifier::ITALIC) {
             map_error(queue!(w, SetAttribute(CAttribute::Italic)))?;
-        }
-        if added.contains(Modifier::UNDERLINED) {
-            map_error(queue!(w, SetAttribute(CAttribute::Underlined)))?;
-        }
-        if added.contains(Modifier::UNDERCURLED) {
-            queue_styled_underline(CAttribute::Undercurled, &mut w)?;
-        }
-        if added.contains(Modifier::UNDERDOTTED) {
-            queue_styled_underline(CAttribute::Underdotted, &mut w)?;
-        }
-        if added.contains(Modifier::UNDERDASHED) {
-            queue_styled_underline(CAttribute::Underdashed, &mut w)?;
-        }
-        if added.contains(Modifier::DOUBLE_UNDERLINED) {
-            queue_styled_underline(CAttribute::DoubleUnderlined, &mut w)?;
         }
         if added.contains(Modifier::DIM) {
             map_error(queue!(w, SetAttribute(CAttribute::Dim)))?;
