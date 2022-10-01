@@ -431,7 +431,7 @@ impl EditorView {
         ];
 
         let mut is_in_indent_area = true;
-        let mut last_line_indent_level: u16 = 0;
+        let mut last_line_indent_level = 0;
 
         // use whitespace style as fallback for indent-guide
         let mut indent_guide_style = text_style.patch(
