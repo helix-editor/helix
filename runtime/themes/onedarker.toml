@@ -1,13 +1,13 @@
-# Author : Gokul Soumya <gokulps15@gmail.com>
+# Author : nuid32 <lvkuzvesov@proton.me>
 
 "attribute" = { fg = "yellow" }
 "comment" = { fg = "light-gray", modifiers = ["italic"] }
-"constant" = { fg = "cyan" }
+"constant" = { fg = "green" }
 "constant.numeric" = { fg = "gold" }
 "constant.builtin" = { fg = "gold" }
 "constant.character.escape" = { fg = "gold" }
 "constructor" = { fg = "blue" }
-"function" = { fg = "blue" }
+"function" = { fg = "white" }
 "function.builtin" = { fg = "blue" }
 "function.macro" = { fg = "purple" }
 "keyword" = { fg = "purple" }
@@ -16,12 +16,12 @@
 "keyword.directive" = { fg = "purple" }
 "label" = { fg = "purple" }
 "namespace" = { fg = "purple" }
-"operator" = { fg = "purple" }
-"keyword.operator" = { fg = "purple" }
+"operator" = { fg = "white" }
+"keyword.operator" = { fg = "white" }
 "special" = { fg = "blue" }
 "string" = { fg = "green" }
 "type" = { fg = "yellow" }
-# "variable" = { fg = "blue" }
+"variable" = { fg = "white" }
 "variable.builtin" = { fg = "red" }
 "variable.parameter" = { fg = "red" }
 "variable.other.member" = { fg = "blue" }
