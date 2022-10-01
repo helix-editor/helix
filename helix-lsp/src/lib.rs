@@ -1,15 +1,16 @@
 mod client;
+pub mod jsonrpc;
 mod transport;
 
 pub use client::Client;
 pub use futures_executor::block_on;
 pub use jsonrpc::Call;
-pub use jsonrpc_core as jsonrpc;
 pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::syntax::LanguageConfiguration;
+use helix_core::syntax::{LanguageConfiguration, LanguageServerConfiguration};
+use tokio::sync::mpsc::UnboundedReceiver;
 
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -38,8 +39,8 @@ pub enum Error {
     Timeout,
     #[error("server closed the stream")]
     StreamClosed,
-    #[error("LSP not defined")]
-    LspNotDefined,
+    #[error("Unhandled")]
+    Unhandled,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -56,7 +57,62 @@ pub enum OffsetEncoding {
 
 pub mod util {
     use super::*;
-    use helix_core::{Range, Rope, Transaction};
+    use helix_core::{diagnostic::NumberOrString, Range, Rope, Transaction};
+
+    /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
+    ///
+    /// Panics when [`pos_to_lsp_pos`] would for an invalid range on the diagnostic.
+    pub fn diagnostic_to_lsp_diagnostic(
+        doc: &Rope,
+        diag: &helix_core::diagnostic::Diagnostic,
+        offset_encoding: OffsetEncoding,
+    ) -> lsp::Diagnostic {
+        use helix_core::diagnostic::Severity::*;
+
+        let range = Range::new(diag.range.start, diag.range.end);
+        let severity = diag.severity.map(|s| match s {
+            Hint => lsp::DiagnosticSeverity::HINT,
+            Info => lsp::DiagnosticSeverity::INFORMATION,
+            Warning => lsp::DiagnosticSeverity::WARNING,
+            Error => lsp::DiagnosticSeverity::ERROR,
+        });
+
+        let code = match diag.code.clone() {
+            Some(x) => match x {
+                NumberOrString::Number(x) => Some(lsp::NumberOrString::Number(x)),
+                NumberOrString::String(x) => Some(lsp::NumberOrString::String(x)),
+            },
+            None => None,
+        };
+
+        let new_tags: Vec<_> = diag
+            .tags
+            .iter()
+            .map(|tag| match tag {
+                helix_core::diagnostic::DiagnosticTag::Unnecessary => {
+                    lsp::DiagnosticTag::UNNECESSARY
+                }
+                helix_core::diagnostic::DiagnosticTag::Deprecated => lsp::DiagnosticTag::DEPRECATED,
+            })
+            .collect();
+
+        let tags = if !new_tags.is_empty() {
+            Some(new_tags)
+        } else {
+            None
+        };
+
+        // TODO: add support for Diagnostic.data
+        lsp::Diagnostic::new(
+            range_to_lsp_range(doc, range, offset_encoding),
+            severity,
+            code,
+            diag.source.clone(),
+            diag.message.to_owned(),
+            None,
+            tags,
+        )
+    }
 
     /// Converts [`lsp::Position`] to a position in the document.
     ///
@@ -141,9 +197,13 @@ pub mod util {
 
     pub fn generate_transaction_from_edits(
         doc: &Rope,
-        edits: Vec<lsp::TextEdit>,
+        mut edits: Vec<lsp::TextEdit>,
         offset_encoding: OffsetEncoding,
     ) -> Transaction {
+        // Sort edits by start range, since some LSPs (Omnisharp) send them
+        // in reverse order.
+        edits.sort_unstable_by_key(|edit| edit.range.start);
+
         Transaction::change(
             doc,
             edits.into_iter().map(|edit| {
@@ -169,59 +229,38 @@ pub mod util {
             }),
         )
     }
-
-    /// The result of asking the language server to format the document. This can be turned into a
-    /// `Transaction`, but the advantage of not doing that straight away is that this one is
-    /// `Send` and `Sync`.
-    #[derive(Clone, Debug)]
-    pub struct LspFormatting {
-        pub doc: Rope,
-        pub edits: Vec<lsp::TextEdit>,
-        pub offset_encoding: OffsetEncoding,
-    }
-
-    impl From<LspFormatting> for Transaction {
-        fn from(fmt: LspFormatting) -> Transaction {
-            generate_transaction_from_edits(&fmt.doc, fmt.edits, fmt.offset_encoding)
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum MethodCall {
     WorkDoneProgressCreate(lsp::WorkDoneProgressCreateParams),
     ApplyWorkspaceEdit(lsp::ApplyWorkspaceEditParams),
+    WorkspaceFolders,
     WorkspaceConfiguration(lsp::ConfigurationParams),
 }
 
 impl MethodCall {
-    pub fn parse(method: &str, params: jsonrpc::Params) -> Option<MethodCall> {
+    pub fn parse(method: &str, params: jsonrpc::Params) -> Result<MethodCall> {
         use lsp::request::Request;
         let request = match method {
             lsp::request::WorkDoneProgressCreate::METHOD => {
-                let params: lsp::WorkDoneProgressCreateParams = params
-                    .parse()
-                    .expect("Failed to parse WorkDoneCreate params");
+                let params: lsp::WorkDoneProgressCreateParams = params.parse()?;
                 Self::WorkDoneProgressCreate(params)
             }
             lsp::request::ApplyWorkspaceEdit::METHOD => {
-                let params: lsp::ApplyWorkspaceEditParams = params
-                    .parse()
-                    .expect("Failed to parse ApplyWorkspaceEdit params");
+                let params: lsp::ApplyWorkspaceEditParams = params.parse()?;
                 Self::ApplyWorkspaceEdit(params)
             }
+            lsp::request::WorkspaceFoldersRequest::METHOD => Self::WorkspaceFolders,
             lsp::request::WorkspaceConfiguration::METHOD => {
-                let params: lsp::ConfigurationParams = params
-                    .parse()
-                    .expect("Failed to parse WorkspaceConfiguration params");
+                let params: lsp::ConfigurationParams = params.parse()?;
                 Self::WorkspaceConfiguration(params)
             }
             _ => {
-                log::warn!("unhandled lsp request: {}", method);
-                return None;
+                return Err(Error::Unhandled);
             }
         };
-        Some(request)
+        Ok(request)
     }
 }
 
@@ -236,42 +275,34 @@ pub enum Notification {
 }
 
 impl Notification {
-    pub fn parse(method: &str, params: jsonrpc::Params) -> Option<Notification> {
+    pub fn parse(method: &str, params: jsonrpc::Params) -> Result<Notification> {
         use lsp::notification::Notification as _;
 
         let notification = match method {
             lsp::notification::Initialized::METHOD => Self::Initialized,
             lsp::notification::PublishDiagnostics::METHOD => {
-                let params: lsp::PublishDiagnosticsParams = params
-                    .parse()
-                    .expect("Failed to parse PublishDiagnostics params");
-
-                // TODO: need to loop over diagnostics and distinguish them by URI
+                let params: lsp::PublishDiagnosticsParams = params.parse()?;
                 Self::PublishDiagnostics(params)
             }
 
             lsp::notification::ShowMessage::METHOD => {
-                let params: lsp::ShowMessageParams = params.parse().ok()?;
-
+                let params: lsp::ShowMessageParams = params.parse()?;
                 Self::ShowMessage(params)
             }
             lsp::notification::LogMessage::METHOD => {
-                let params: lsp::LogMessageParams = params.parse().ok()?;
-
+                let params: lsp::LogMessageParams = params.parse()?;
                 Self::LogMessage(params)
             }
             lsp::notification::Progress::METHOD => {
-                let params: lsp::ProgressParams = params.parse().ok()?;
-
+                let params: lsp::ProgressParams = params.parse()?;
                 Self::ProgressMessage(params)
             }
             _ => {
-                log::error!("unhandled LSP notification: {}", method);
-                return None;
+                return Err(Error::Unhandled);
             }
         };
 
-        Some(notification)
+        Ok(notification)
     }
 }
 
@@ -305,56 +336,50 @@ impl Registry {
             .map(|(_, client)| client.as_ref())
     }
 
-    pub fn get(&mut self, language_config: &LanguageConfiguration) -> Result<Arc<Client>> {
+    pub fn restart(
+        &mut self,
+        language_config: &LanguageConfiguration,
+    ) -> Result<Option<Arc<Client>>> {
         let config = match &language_config.language_server {
             Some(config) => config,
-            None => return Err(Error::LspNotDefined),
+            None => return Ok(None),
+        };
+
+        let scope = language_config.scope.clone();
+
+        match self.inner.entry(scope) {
+            Entry::Vacant(_) => Ok(None),
+            Entry::Occupied(mut entry) => {
+                // initialize a new client
+                let id = self.counter.fetch_add(1, Ordering::Relaxed);
+
+                let NewClientResult(client, incoming) = start_client(id, language_config, config)?;
+                self.incoming.push(UnboundedReceiverStream::new(incoming));
+
+                entry.insert((id, client.clone()));
+
+                Ok(Some(client))
+            }
+        }
+    }
+
+    pub fn get(&mut self, language_config: &LanguageConfiguration) -> Result<Option<Arc<Client>>> {
+        let config = match &language_config.language_server {
+            Some(config) => config,
+            None => return Ok(None),
         };
 
         match self.inner.entry(language_config.scope.clone()) {
-            Entry::Occupied(entry) => Ok(entry.get().1.clone()),
+            Entry::Occupied(entry) => Ok(Some(entry.get().1.clone())),
             Entry::Vacant(entry) => {
                 // initialize a new client
                 let id = self.counter.fetch_add(1, Ordering::Relaxed);
-                let (client, incoming, initialize_notify) = Client::start(
-                    &config.command,
-                    &config.args,
-                    language_config.config.clone(),
-                    language_config.roots.clone(),
-                    id,
-                )?;
+
+                let NewClientResult(client, incoming) = start_client(id, language_config, config)?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));
-                let client = Arc::new(client);
-
-                // Initialize the client asynchronously
-                let _client = client.clone();
-                tokio::spawn(async move {
-                    use futures_util::TryFutureExt;
-                    let value = _client
-                        .capabilities
-                        .get_or_try_init(|| {
-                            _client
-                                .initialize()
-                                .map_ok(|response| response.capabilities)
-                        })
-                        .await;
-
-                    if let Err(e) = value {
-                        log::error!("failed to initialize language server: {}", e);
-                        return;
-                    }
-
-                    // next up, notify<initialized>
-                    _client
-                        .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-                        .await
-                        .unwrap();
-
-                    initialize_notify.notify_one();
-                });
 
                 entry.insert((id, client.clone()));
-                Ok(client)
+                Ok(Some(client))
             }
         }
     }
@@ -390,7 +415,7 @@ impl LspProgressMap {
         Self::default()
     }
 
-    /// Returns a map of all tokens coresponding to the lanaguage server with `id`.
+    /// Returns a map of all tokens corresponding to the language server with `id`.
     pub fn progress_map(&self, id: usize) -> Option<&HashMap<lsp::ProgressToken, ProgressStatus>> {
         self.0.get(&id)
     }
@@ -428,7 +453,7 @@ impl LspProgressMap {
         self.0.get_mut(&id).and_then(|vals| vals.remove(token))
     }
 
-    /// Updates the progess of `token` for server with `id` to `status`, returns the value replaced or `None`.
+    /// Updates the progress of `token` for server with `id` to `status`, returns the value replaced or `None`.
     pub fn update(
         &mut self,
         id: usize,
@@ -440,6 +465,56 @@ impl LspProgressMap {
             .or_default()
             .insert(token, ProgressStatus::Started(status))
     }
+}
+
+struct NewClientResult(Arc<Client>, UnboundedReceiver<(usize, Call)>);
+
+/// start_client takes both a LanguageConfiguration and a LanguageServerConfiguration to ensure that
+/// it is only called when it makes sense.
+fn start_client(
+    id: usize,
+    config: &LanguageConfiguration,
+    ls_config: &LanguageServerConfiguration,
+) -> Result<NewClientResult> {
+    let (client, incoming, initialize_notify) = Client::start(
+        &ls_config.command,
+        &ls_config.args,
+        config.config.clone(),
+        &config.roots,
+        id,
+        ls_config.timeout,
+    )?;
+
+    let client = Arc::new(client);
+
+    // Initialize the client asynchronously
+    let _client = client.clone();
+    tokio::spawn(async move {
+        use futures_util::TryFutureExt;
+        let value = _client
+            .capabilities
+            .get_or_try_init(|| {
+                _client
+                    .initialize()
+                    .map_ok(|response| response.capabilities)
+            })
+            .await;
+
+        if let Err(e) = value {
+            log::error!("failed to initialize language server: {}", e);
+            return;
+        }
+
+        // next up, notify<initialized>
+        _client
+            .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
+            .await
+            .unwrap();
+
+        initialize_notify.notify_one();
+    });
+
+    Ok(NewClientResult(client, incoming))
 }
 
 #[cfg(test)]

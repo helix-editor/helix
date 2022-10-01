@@ -1,13 +1,33 @@
 # Keymap
 
-- Mappings marked (**LSP**) require an active language server for the file.
-- Mappings marked (**TS**) require a tree-sitter grammar for the filetype.
+- [Normal mode](#normal-mode)
+  - [Movement](#movement)
+  - [Changes](#changes)
+    - [Shell](#shell)
+  - [Selection manipulation](#selection-manipulation)
+  - [Search](#search)
+  - [Minor modes](#minor-modes)
+    - [View mode](#view-mode)
+    - [Goto mode](#goto-mode)
+    - [Match mode](#match-mode)
+    - [Window mode](#window-mode)
+    - [Space mode](#space-mode)
+      - [Popup](#popup)
+    - [Unimpaired](#unimpaired)
+- [Insert Mode](#insert-mode)
+- [Select / extend mode](#select--extend-mode)
+- [Picker](#picker)
+- [Prompt](#prompt)
+
+> 💡 Mappings marked (**LSP**) require an active language server for the file.
+
+> 💡 Mappings marked (**TS**) require a tree-sitter grammar for the filetype.
 
 ## Normal mode
 
 ### Movement
 
-> NOTE: Unlike vim, `f`, `F`, `t` and `T` are not confined to the current line.
+> NOTE: Unlike Vim, `f`, `F`, `t` and `T` are not confined to the current line.
 
 | Key                   | Description                                        | Command                     |
 | -----                 | -----------                                        | -------                     |
@@ -52,7 +72,7 @@
 | `A`         | Insert at the end of the line                                        | `append_to_line`          |
 | `o`         | Open new line below selection                                        | `open_below`              |
 | `O`         | Open new line above selection                                        | `open_above`              |
-| `.`         | Repeat last change                                                   | N/A                       |
+| `.`         | Repeat last insert                                                   | N/A                       |
 | `u`         | Undo change                                                          | `undo`                    |
 | `U`         | Redo change                                                          | `redo`                    |
 | `Alt-u`     | Move backward in history                                             | `earlier`                 |
@@ -105,16 +125,17 @@
 | `Alt-(`               | Rotate selection contents backward                                | `rotate_selection_contents_backward` |
 | `Alt-)`               | Rotate selection contents forward                                 | `rotate_selection_contents_forward`  |
 | `%`                   | Select entire file                                                | `select_all`                         |
-| `x`                   | Select current line, if already selected, extend to next line     | `extend_line`                        |
+| `x`                   | Select current line, if already selected, extend to next line     | `extend_line_below`                  |
 | `X`                   | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
+| `Alt-x`               | Shrink selection to line bounds (line-wise selection)             | `shrink_to_line_bounds`              |
 | `J`                   | Join lines inside selection                                       | `join_selections`                    |
 | `K`                   | Keep selections matching the regex                                | `keep_selections`                    |
 | `Alt-K`               | Remove selections matching the regex                              | `remove_selections`                  |
 | `Ctrl-c`              | Comment/uncomment the selections                                  | `toggle_comments`                    |
-| `Alt-k`, `Alt-up`     | Expand selection to parent syntax node (**TS**)                   | `expand_selection`                   |
-| `Alt-j`, `Alt-down`   | Shrink syntax tree object selection (**TS**)                      | `shrink_selection`                   |
-| `Alt-h`, `Alt-left`   | Select previous sibling node in syntax tree (**TS**)              | `select_prev_sibling`                |
-| `Alt-l`, `Alt-right`  | Select next sibling node in syntax tree (**TS**)                  | `select_next_sibling`                |
+| `Alt-o`, `Alt-up`     | Expand selection to parent syntax node (**TS**)                   | `expand_selection`                   |
+| `Alt-i`, `Alt-down`   | Shrink syntax tree object selection (**TS**)                      | `shrink_selection`                   |
+| `Alt-p`, `Alt-left`   | Select previous sibling node in syntax tree (**TS**)              | `select_prev_sibling`                |
+| `Alt-n`, `Alt-right`  | Select next sibling node in syntax tree (**TS**)                  | `select_next_sibling`                |
 
 ### Search
 
@@ -191,7 +212,7 @@ Jumps to various locations.
 
 #### Match mode
 
-Enter this mode using `m` from normal mode. See the relavant section
+Enter this mode using `m` from normal mode. See the relevant section
 in [Usage](./usage.md) for an explanation about [surround](./usage.md#surround)
 and [textobject](./usage.md#textobject) usage.
 
@@ -208,7 +229,7 @@ TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
 #### Window mode
 
-This layer is similar to vim keybindings as kakoune does not support window.
+This layer is similar to Vim keybindings as Kakoune does not support window.
 
 | Key                    | Description                                          | Command           |
 | -----                  | -------------                                        | -------           |
@@ -223,6 +244,10 @@ This layer is similar to vim keybindings as kakoune does not support window.
 | `l`, `Ctrl-l`, `Right` | Move to right split                                  | `jump_view_right` |
 | `q`, `Ctrl-q`          | Close current window                                 | `wclose`          |
 | `o`, `Ctrl-o`          | Only keep the current window, closing all the others | `wonly`           |
+| `H`                    | Swap window to the left                              | `swap_view_left`  |
+| `J`                    | Swap window downwards                                | `swap_view_down`  |
+| `K`                    | Swap window upwards                                  | `swap_view_up`    |
+| `L`                    | Swap window to the right                             | `swap_view_right` |
 
 #### Space mode
 
@@ -232,10 +257,14 @@ This layer is a kludge of mappings, mostly pickers.
 | Key     | Description                                                             | Command                             |
 | -----   | -----------                                                             | -------                             |
 | `f`     | Open file picker                                                        | `file_picker`                       |
+| `F`     | Open file picker at current working directory                           | `file_picker_in_current_directory`  |
 | `b`     | Open buffer picker                                                      | `buffer_picker`                     |
+| `j`     | Open jumplist picker                                                    | `jumplist_picker`                   |
 | `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                             |
 | `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                     |
 | `S`     | Open workspace symbol picker (**LSP**)                                  | `workspace_symbol_picker`           |
+| `g`     | Open document diagnostics picker (**LSP**)                              | `diagnostics_picker`                |
+| `G`     | Open workspace diagnostics picker (**LSP**)                             | `workspace_diagnostics_picker`
 | `r`     | Rename symbol (**LSP**)                                                 | `rename_symbol`                     |
 | `a`     | Apply code action  (**LSP**)                                            | `code_action`                       |
 | `'`     | Open last fuzzy picker                                                  | `last_picker`                       |
@@ -277,40 +306,61 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `[a`     | Go to previous argument/parameter (**TS**)   | `goto_prev_parameter` |
 | `]o`     | Go to next comment (**TS**)                  | `goto_next_comment`   |
 | `[o`     | Go to previous comment (**TS**)              | `goto_prev_comment`   |
+| `]t`     | Go to next test (**TS**)                     | `goto_next_test`      |
+| `]t`     | Go to previous test (**TS**)                 | `goto_prev_test`      |
+| `]p`     | Go to next paragraph                         | `goto_next_paragraph` |
+| `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
 | `[space` | Add newline above                            | `add_newline_above`   |
 | `]space` | Add newline below                            | `add_newline_below`   |
 
 ## Insert Mode
 
-We support many readline/emacs style bindings in insert mode for
-convenience. These can be helpful for making simple modifications
-without escaping to normal mode, but beware that you will not have an
-undo-able "save point" until you return to normal mode.
+Insert mode bindings are somewhat minimal by default. Helix is designed to
+be a modal editor, and this is reflected in the user experience and internal
+mechanics. For example, changes to the text are only saved for undos when
+escaping from insert mode to normal mode. For this reason, new users are
+strongly encouraged to learn the modal editing paradigm to get the smoothest
+experience.
 
-| Key                       | Description                 | Command                 |
-| -----                     | -----------                 | -------                 |
-| `Escape`                  | Switch to normal mode       | `normal_mode`           |
-| `Ctrl-x`                  | Autocomplete                | `completion`            |
-| `Ctrl-r`                  | Insert a register content   | `insert_register`       |
-| `Ctrl-w`, `Alt-Backspace` | Delete previous word        | `delete_word_backward`  |
-| `Alt-d`                   | Delete next word            | `delete_word_forward`   |
-| `Alt-b`, `Alt-Left`       | Backward a word             | `move_prev_word_end`    |
-| `Ctrl-b`, `Left`          | Backward a char             | `move_char_left`        |
-| `Alt-f`, `Alt-Right`      | Forward a word              | `move_next_word_start`  |
-| `Ctrl-f`, `Right`         | Forward a char              | `move_char_right`       |
-| `Ctrl-e`, `End`           | Move to line end            | `goto_line_end_newline` |
-| `Ctrl-a`, `Home`          | Move to line start          | `goto_line_start`       |
-| `Ctrl-u`                  | Delete to start of line     | `kill_to_line_start`    |
-| `Ctrl-k`                  | Delete to end of line       | `kill_to_line_end`      |
-| `Ctrl-j`, `Enter`         | Insert new line             | `insert_newline`        |
-| `Backspace`, `Ctrl-h`     | Delete previous char        | `delete_char_backward`  |
-| `Delete`, `Ctrl-d`        | Delete previous char        | `delete_char_forward`   |
-| `Ctrl-p`, `Up`            | Move to previous line       | `move_line_up`          |
-| `Ctrl-n`, `Down`          | Move to next line           | `move_line_down`        |
-| `PageUp`                  | Move one page up            | `page_up`               |
-| `PageDown`                | Move one page down          | `page_down`             |
-| `Alt->`                   | Go to end of buffer         | `goto_file_end`         |
-| `Alt-<`                   | Go to start of buffer       | `goto_file_start`       |
+| Key                                         | Description                 | Command                 |
+| -----                                       | -----------                 | -------                 |
+| `Escape`                                    | Switch to normal mode       | `normal_mode`           |
+| `Ctrl-x`                                    | Autocomplete                | `completion`            |
+| `Ctrl-r`                                    | Insert a register content   | `insert_register`       |
+| `Ctrl-w`, `Alt-Backspace`, `Ctrl-Backspace` | Delete previous word        | `delete_word_backward`  |
+| `Alt-d`, `Alt-Delete`, `Ctrl-Delete`        | Delete next word            | `delete_word_forward`   |
+| `Ctrl-u`                                    | Delete to start of line     | `kill_to_line_start`    |
+| `Ctrl-k`                                    | Delete to end of line       | `kill_to_line_end`      |
+| `Ctrl-j`, `Enter`                           | Insert new line             | `insert_newline`        |
+| `Backspace`, `Ctrl-h`                       | Delete previous char        | `delete_char_backward`  |
+| `Delete`, `Ctrl-d`                          | Delete next char            | `delete_char_forward`   |
+
+However, if you really want navigation in insert mode, this is supported. An
+example config that gives the ability to use arrow keys while still in insert
+mode:
+
+```toml
+[keys.insert]
+"up" = "move_line_up"
+"down" = "move_line_down"
+"left" = "move_char_left"
+"right" = "move_char_right"
+"C-b" = "move_char_left"
+"C-f" = "move_char_right"
+"A-b" = "move_prev_word_end"
+"C-left" = "move_prev_word_end"
+"A-f" = "move_next_word_start"
+"C-right" = "move_next_word_start"
+"A-<" = "goto_file_start"
+"A->" = "goto_file_end"
+"pageup" = "page_up"
+"pagedown" = "page_down"
+"home" = "goto_line_start"
+"C-a" = "goto_line_start"
+"end" = "goto_line_end_newline"
+"C-e" = "goto_line_end_newline"
+"A-left" = "goto_line_start"
+```
 
 ## Select / extend mode
 
@@ -325,47 +375,48 @@ mode before pressing `n` or `N` makes it possible to keep the current
 selection. Toggling it on and off during your iterative searching allows
 you to selectively add search terms to your selections.
 
-# Picker
+## Picker
 
 Keys to use within picker. Remapping currently not supported.
 
 | Key                          | Description       |
 | -----                        | -------------     |
-| `Up`, `Ctrl-k`, `Ctrl-p`     | Previous entry    |
-| `PageUp`, `Ctrl-b`           | Page up           |
-| `Down`, `Ctrl-j`, `Ctrl-n`   | Next entry        |
-| `PageDown`, `Ctrl-f`         | Page down         |
+| `Shift-Tab`, `Up`, `Ctrl-p`  | Previous entry    |
+| `Tab`, `Down`, `Ctrl-n`      | Next entry        |
+| `PageUp`, `Ctrl-u`           | Page up           |
+| `PageDown`, `Ctrl-d`         | Page down         |
 | `Home`                       | Go to first entry |
 | `End`                        | Go to last entry  |
 | `Ctrl-space`                 | Filter options    |
 | `Enter`                      | Open selected     |
 | `Ctrl-s`                     | Open horizontally |
 | `Ctrl-v`                     | Open vertically   |
+| `Ctrl-t`                     | Toggle preview    |
 | `Escape`, `Ctrl-c`           | Close picker      |
 
-# Prompt
+## Prompt
 
 Keys to use within prompt, Remapping currently not supported.
 
-| Key                     | Description                                                             |
-| -----                   | -------------                                                           |
-| `Escape`, `Ctrl-c`      | Close prompt                                                            |
-| `Alt-b`, `Alt-Left`     | Backward a word                                                         |
-| `Ctrl-b`, `Left`        | Backward a char                                                         |
-| `Alt-f`, `Alt-Right`    | Forward a word                                                          |
-| `Ctrl-f`, `Right`       | Forward a char                                                          |
-| `Ctrl-e`, `End`         | Move prompt end                                                         |
-| `Ctrl-a`, `Home`        | Move prompt start                                                       |
-| `Ctrl-w`                | Delete previous word                                                    |
-| `Alt-d`                 | Delete next word                                                        |
-| `Ctrl-u`                | Delete to start of line                                                 |
-| `Ctrl-k`                | Delete to end of line                                                   |
-| `backspace`, `Ctrl-h`   | Delete previous char                                                    |
-| `delete`, `Ctrl-d`      | Delete next char                                                        |
-| `Ctrl-s`                | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
-| `Ctrl-p`, `Up`          | Select previous history                                                 |
-| `Ctrl-n`, `Down`        | Select next history                                                     |
-| `Tab`                   | Select next completion item                                             |
-| `BackTab`               | Select previous completion item                                         |
-| `Enter`                 | Open selected                                                           |
-
+| Key                                         | Description                                                             |
+| -----                                       | -------------                                                           |
+| `Escape`, `Ctrl-c`                          | Close prompt                                                            |
+| `Alt-b`, `Ctrl-Left`                        | Backward a word                                                         |
+| `Ctrl-b`, `Left`                            | Backward a char                                                         |
+| `Alt-f`, `Ctrl-Right`                       | Forward a word                                                          |
+| `Ctrl-f`, `Right`                           | Forward a char                                                          |
+| `Ctrl-e`, `End`                             | Move prompt end                                                         |
+| `Ctrl-a`, `Home`                            | Move prompt start                                                       |
+| `Ctrl-w`, `Alt-Backspace`, `Ctrl-Backspace` | Delete previous word                                                    |
+| `Alt-d`, `Alt-Delete`, `Ctrl-Delete`        | Delete next word                                                        |
+| `Ctrl-u`                                    | Delete to start of line                                                 |
+| `Ctrl-k`                                    | Delete to end of line                                                   |
+| `backspace`, `Ctrl-h`                       | Delete previous char                                                    |
+| `delete`, `Ctrl-d`                          | Delete next char                                                        |
+| `Ctrl-s`                                    | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
+| `Ctrl-p`, `Up`                              | Select previous history                                                 |
+| `Ctrl-n`, `Down`                            | Select next history                                                     |
+| `Ctrl-r`                                    | Insert the content of the register selected by following input char     |
+| `Tab`                                       | Select next completion item                                             |
+| `BackTab`                                   | Select previous completion item                                         |
+| `Enter`                                     | Open selected                                                           |

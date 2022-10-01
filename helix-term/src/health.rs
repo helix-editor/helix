@@ -1,6 +1,10 @@
-use crossterm::style::{Color, Print, Stylize};
+use crossterm::{
+    style::{Color, Print, Stylize},
+    tty::IsTty,
+};
 use helix_core::config::{default_syntax_loader, user_syntax_loader};
 use helix_loader::grammar::load_runtime_file;
+use helix_view::clipboard::get_clipboard_provider;
 use std::io::Write;
 
 #[derive(Copy, Clone)]
@@ -49,6 +53,7 @@ pub fn general() -> std::io::Result<()> {
     let lang_file = helix_loader::lang_config_file();
     let log_file = helix_loader::log_file();
     let rt_dir = helix_loader::runtime_dir();
+    let clipboard_provider = get_clipboard_provider();
 
     if config_file.exists() {
         writeln!(stdout, "Config file: {}", config_file.display())?;
@@ -72,6 +77,34 @@ pub fn general() -> std::io::Result<()> {
     }
     if rt_dir.read_dir().ok().map(|it| it.count()) == Some(0) {
         writeln!(stdout, "{}", "Runtime directory is empty.".red())?;
+    }
+    writeln!(stdout, "Clipboard provider: {}", clipboard_provider.name())?;
+
+    Ok(())
+}
+
+pub fn clipboard() -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+
+    let board = get_clipboard_provider();
+    match board.name().as_ref() {
+        "none" => {
+            writeln!(
+                stdout,
+                "{}",
+                "System clipboard provider: Not installed".red()
+            )?;
+            writeln!(
+                stdout,
+                "    {}",
+                "For troubleshooting system clipboard issues, refer".red()
+            )?;
+            writeln!(stdout, "    {}",
+                "https://github.com/helix-editor/helix/wiki/Troubleshooting#copypaste-fromto-system-clipboard-not-working"
+            .red().underlined())?;
+        }
+        name => writeln!(stdout, "System clipboard provider: {}", name)?,
     }
 
     Ok(())
@@ -106,17 +139,19 @@ pub fn languages_all() -> std::io::Result<()> {
 
     let terminal_cols = crossterm::terminal::size().map(|(c, _)| c).unwrap_or(80);
     let column_width = terminal_cols as usize / headings.len();
+    let is_terminal = std::io::stdout().is_tty();
 
     let column = |item: &str, color: Color| {
-        let data = format!(
+        let mut data = format!(
             "{:width$}",
             item.get(..column_width - 2)
                 .map(|s| format!("{}…", s))
                 .unwrap_or_else(|| item.to_string()),
             width = column_width,
-        )
-        .stylize()
-        .with(color);
+        );
+        if is_terminal {
+            data = data.stylize().with(color).to_string();
+        }
 
         // We can't directly use println!() because of
         // https://github.com/crossterm-rs/crossterm/issues/589
@@ -134,8 +169,8 @@ pub fn languages_all() -> std::io::Result<()> {
 
     let check_binary = |cmd: Option<String>| match cmd {
         Some(cmd) => match which::which(&cmd) {
-            Ok(_) => column(&cmd, Color::Green),
-            Err(_) => column(&cmd, Color::Red),
+            Ok(_) => column(&format!("✓ {}", cmd), Color::Green),
+            Err(_) => column(&format!("✘ {}", cmd), Color::Red),
         },
         None => column("None", Color::Yellow),
     };
@@ -154,8 +189,8 @@ pub fn languages_all() -> std::io::Result<()> {
 
         for ts_feat in TsFeature::all() {
             match load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok() {
-                true => column("Found", Color::Green),
-                false => column("Not Found", Color::Red),
+                true => column("✓", Color::Green),
+                false => column("✘", Color::Red),
             }
         }
 
@@ -263,8 +298,8 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
     let mut stdout = stdout.lock();
 
     let found = match load_runtime_file(lang, feature.runtime_filename()).is_ok() {
-        true => "Found".green(),
-        false => "Not found".red(),
+        true => "✓".green(),
+        false => "✘".red(),
     };
     writeln!(stdout, "{} queries: {}", feature.short_title(), found)?;
 
@@ -273,13 +308,15 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
 
 pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
     match health_arg.as_deref() {
-        Some("all") => languages_all()?,
-        Some(lang) => language(lang.to_string())?,
-        None => {
+        Some("languages") => languages_all()?,
+        Some("clipboard") => clipboard()?,
+        None | Some("all") => {
             general()?;
+            clipboard()?;
             writeln!(std::io::stdout().lock())?;
             languages_all()?;
         }
+        Some(lang) => language(lang.to_string())?,
     }
     Ok(())
 }

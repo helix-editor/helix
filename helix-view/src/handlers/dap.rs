@@ -4,6 +4,7 @@ use helix_core::Selection;
 use helix_dap::{self as dap, Client, Payload, Request, ThreadId};
 use helix_lsp::block_on;
 use log::warn;
+use std::fmt::Write;
 use std::path::PathBuf;
 
 #[macro_export]
@@ -61,7 +62,7 @@ pub fn jump_to_stack_frame(editor: &mut Editor, frame: &helix_dap::StackFrame) {
         return;
     };
 
-    if let Err(e) = editor.open(path, Action::Replace) {
+    if let Err(e) = editor.open(&path, Action::Replace) {
         editor.set_error(format!("Unable to jump to stack frame: {}", e));
         return;
     }
@@ -85,7 +86,7 @@ pub fn breakpoints_changed(
     path: PathBuf,
     breakpoints: &mut [Breakpoint],
 ) -> Result<(), anyhow::Error> {
-    // TODO: handle capabilities correctly again, by filterin breakpoints when emitting
+    // TODO: handle capabilities correctly again, by filtering breakpoints when emitting
     // if breakpoint.condition.is_some()
     //     && !debugger
     //         .caps
@@ -179,10 +180,10 @@ impl Editor {
 
                     let mut status = format!("{} stopped because of {}", scope, reason);
                     if let Some(desc) = description {
-                        status.push_str(&format!(" {}", desc));
+                        write!(status, " {}", desc).unwrap();
                     }
                     if let Some(text) = text {
-                        status.push_str(&format!(" {}", text));
+                        write!(status, " {}", text).unwrap();
                     }
                     if all_threads_stopped {
                         status.push_str(" (all threads stopped)");
@@ -285,11 +286,33 @@ impl Editor {
                         serde_json::from_value(request.arguments.unwrap_or_default()).unwrap();
                     // TODO: no unwrap
 
-                    let process = std::process::Command::new("tmux")
-                        .arg("split-window")
+                    let config = match self.config().terminal.clone() {
+                        Some(config) => config,
+                        None => {
+                            self.set_error("No external terminal defined");
+                            return true;
+                        }
+                    };
+
+                    // Re-borrowing debugger to avoid issues when loading config
+                    let debugger = match self.debugger.as_mut() {
+                        Some(debugger) => debugger,
+                        None => return false,
+                    };
+
+                    let process = match std::process::Command::new(config.command)
+                        .args(config.args)
                         .arg(arguments.args.join(" "))
                         .spawn()
-                        .unwrap();
+                    {
+                        Ok(process) => process,
+                        Err(err) => {
+                            // TODO replace the pretty print {:?} with a regular format {}
+                            // when the MSRV is raised to 1.60.0
+                            self.set_error(format!("Error starting external terminal: {:?}", err));
+                            return true;
+                        }
+                    };
 
                     let _ = debugger
                         .reply(

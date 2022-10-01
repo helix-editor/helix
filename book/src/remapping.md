@@ -33,12 +33,7 @@ Control, Shift and Alt modifiers are encoded respectively with the prefixes
 | Backspace    | `"backspace"`  |
 | Space        | `"space"`      |
 | Return/Enter | `"ret"`        |
-| <            | `"lt"`         |
-| \>           | `"gt"`         |
-| \+           | `"plus"`       |
 | \-           | `"minus"`      |
-| ;            | `"semicolon"`  |
-| %            | `"percent"`    |
 | Left         | `"left"`       |
 | Right        | `"right"`      |
 | Up           | `"up"`         |

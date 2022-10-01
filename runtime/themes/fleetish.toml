@@ -1,0 +1,117 @@
+# Author: Kristoffer Flottorp <kr.fl@outlook.com>
+# Based on a few screenshots of Jetbrains Fleet
+
+"type" = { fg = "orange" } # .builtin
+"constructor" = { fg = "orange" }
+"constant" = { fg = "green" }
+# "constant.builtin" = {} # .boolean
+"constant.builtin.boolean" = { fg = "green" } # .boolean
+# "constant.character" = {} #.escape
+"constant.numeric" = { fg = "yellow" } # .integer / .float
+"string" = { fg = "pink" } # .regexp
+# "string.special" = {} #.path / .url / .symbol
+"string.special" = { modifiers = ["underlined"] } #.path / .url / .symbol
+"comment" = { fg = "dark_gray" } # .line
+# "comment.block" = {} # .documentation
+"variable" = { fg = "light" } # .builtin / .parameter
+# "variable.other" = {} # .member
+"variable.other.member" = { fg = "purple" }
+"label" = { fg = "orange" }
+# "punctuation" = {} # .delimiter / .bracket
+"keyword" = { fg = "green" } # .operator / .directive / .function
+# "keyword.control" = { fg = "orange" } # .conditional / .repeat / .import / .return / .exception
+"operator" = { fg = "light" }
+"function" = { fg = "blue" } # .builtin / .method / .macro / .special
+"function.macro" = { fg = "yellow" }
+"function.special" = { fg = "yellow" }
+"tag" = { fg = "yellow" }
+"special" = { fg = "yellow" }
+"namespace" = { fg = "light" }
+"markup" = { fg = "purple" } # .bold / .italic / .quote
+"markup.heading" = { fg = "light" } # .marker / .1 / .2 / .3 / .4 / .5 / .6
+"markup.heading.1" = { fg = "orange" }
+"markup.heading.2" = { fg = "yellow" }
+"markup.heading.3" = { fg = "pink" }
+"markup.heading.4" = { fg = "purple" }
+"markup.heading.5" = { fg = "green" }
+"markup.heading.6" = { fg = "blue" }
+"markup.list" = { fg = "green" } # .unnumbered / .numbered
+"markup.link" = { fg = "yellow" } # .url / .label / .text
+"markup.raw" = { fg = "pink" } # .inline / .block
+# "diff" = {} # .plus / .minus
+"diff.plus" = { fg = "green" }
+"diff.minus" = { fg = "orange" }
+"diff.delta" = { fg = "purple" } # .moved
+
+# used in theming
+# "markup.normal" = {} # .completion / .hover
+# "markup.heading" = {} # .completion / .hover
+# "markup.raw.inline" = {} # .completion / .hover
+
+# ui specific
+"ui.background" = { bg = "darkest" } # .separator
+"ui.cursor" = { bg = "dark_gray", modifiers = ["reversed"] } # .insert / .select / .match / .primary
+"ui.cursor.match" = { fg = "light", bg = "blue_accent" } # .insert / .select / .match / .primary
+"ui.cursorline" = { bg = "darker" }
+"ui.linenr" = { fg = "dark_gray" } # .selected
+"ui.linenr.selected" = { fg = "light_gray", bg = "darker" }
+"ui.statusline" = { fg = "light", bg = "darker" } # .inactive / .normal / .insert / .select
+"ui.statusline.inactive" = { fg = "dark", bg = "darker" } # .inactive / .normal / .insert / .select
+"ui.statusline.normal" = { fg = "lightest", bg = "darker"} # .inactive / .normal / .insert / .select
+"ui.statusline.insert" = { fg = "lightest", bg = "blue_accent" } # .inactive / .normal / .insert / .select
+"ui.statusline.select" = { fg = "lightest", bg = "orange_accent" } # .inactive / .normal / .insert / .select
+"ui.popup" = { fg = "light", bg = "dark" } # .info
+"ui.window" = { fg = "dark", bg = "darkest" }
+"ui.help" = { fg = "light", bg = "dark" }
+"ui.text" = { fg = "light" } # .focus / .info
+"ui.virtual" = { fg = "dark" } # .ruler / .whitespace
+"ui.virtual.ruler" = { bg = "darker"}
+"ui.menu" = { fg = "light", bg = "dark" } # .selected
+"ui.menu.selected" = { fg = "lightest", bg = "blue_accent" } # .selected
+"ui.selection" = { bg = "darker" } # .primary
+"ui.selection.primary" = { bg = "select" } # .primary
+"hint" = { fg = "blue_accent"}
+"info" = { fg = "yellow_accent" }
+"warning" = { fg = "orange_accent" }
+"error" = { fg = "diff_red_accent" }
+"diagnostic" = { fg = "orange", bg = "darkest" } # .hint / .info / .warning / .error
+"diagnostic.hint" = { fg = "lightest", bg = "blue_accent" }
+"diagnostic.info" = { fg = "lightest", bg = "purple_accent" }
+"diagnostic.warning" = { fg = "lightest", bg = "yellow_accent" }
+"diagnostic.error" = { fg = "lightest", bg = "orange_accent" }
+
+[palette]
+darkest = "#0F0F0F"
+darker = "#222222"
+dark = "#383838"
+select = "#102F5B"
+
+light = "#F0F0F0"
+lightest = "#FFFFFF"
+
+dark_gray = "#5B5B5B"
+light_gray = "#757575"
+purple = "#A096F9"
+blue = "#52A7F6"
+pink = "#E878DE"
+green = "#78D0BD"
+orange = "#ECA775"
+yellow = "#F9CA6A"
+
+purple_accent = "#6363EE"
+blue_accent = "#2197F3"
+pink_accent = "#E44C7A"
+green_accent = "#00AF99"
+orange_accent = "#EE7F25"
+yellow_accent = "#DEA407"
+
+# variables intended for future updates
+checkmark = "#44B254"
+
+diff_blue_accent = "#0079FF"
+diff_blue_bg = "#072037"
+diff_blue_fg = "#0079FF"
+
+diff_red_accent = "#EE113C"
+diff_red_bg = "#390B14"
+diff_red_fg = "#EC123B"

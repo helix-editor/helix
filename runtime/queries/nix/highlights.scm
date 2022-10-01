@@ -1,15 +1,20 @@
 (comment) @comment
 
+"assert" @keyword.control.exception
+"or" @keyword.operator
+"rec" @keyword.control.repeat
+
 [
-  "if"
+  "if" 
   "then"
   "else"
+] @keyword.control.conditional
+
+[
   "let"
   "inherit"
   "in"
-  "rec"
-  "with"
-  "assert"
+  "with" 
 ] @keyword
 
 ((identifier) @variable.builtin
@@ -21,61 +26,75 @@
  (#is-not? local))
 
 [
-  (string)
-  (indented_string)
+  (string_expression)
+  (indented_string_expression)
 ] @string
 
 [
-  (path)
-  (hpath)
-  (spath)
+  (path_expression)
+  (hpath_expression)
+  (spath_expression)
 ] @string.special.path
 
-(uri) @string.special.uri
+(uri_expression) @string.special.uri
 
 ; boolean
 ((identifier) @constant.builtin.boolean (#match? @constant.builtin.boolean "^(true|false)$")) @constant.builtin.boolean
 ; null
 ((identifier) @constant.builtin (#eq? @constant.builtin "null")) @constant.builtin
 
-(integer) @constant.numeric.integer
-(float) @constant.numeric.float
-
-(interpolation
-  "${" @punctuation.special
-  "}" @punctuation.special) @embedded
+(integer_expression) @constant.numeric.integer
+(float_expression) @constant.numeric.float
 
 (escape_sequence) @constant.character.escape
 
-(function
+(function_expression
   universal: (identifier) @variable.parameter
+  "@"? @punctuation.delimiter
 )
 
 (formal
   name: (identifier) @variable.parameter
   "?"? @punctuation.delimiter)
 
-(app
+(select_expression
+  attrpath: (attrpath attr: (identifier)) @variable.other.member)
+
+(interpolation
+  "${" @punctuation.special
+  "}" @punctuation.special) @embedded
+
+(apply_expression
   function: [
-    (identifier) @function
-    (select
+    (variable_expression name: (identifier) @function)
+    (select_expression
       attrpath: (attrpath
-        attr: (attr_identifier) @function .))])
+        attr: (identifier) @function .))])
 
-
-(unary
+(unary_expression
   operator: _ @operator)
 
-(binary
+(binary_expression
   operator: _ @operator)
 
-(attr_identifier) @variable.other.member
-(inherit attrs: (attrs_inherited (identifier) @variable.other.member) )
+(variable_expression name: (identifier) @variable)
+
+(binding
+  attrpath: (attrpath attr: (identifier)) @variable.other.member)
+
+(inherit_from attrs: (inherited_attrs attr: (identifier) @variable))
+
+(has_attr_expression
+  expression: (_)
+  "?" @operator
+  attrpath: (attrpath
+    attr: (identifier) @variable.other.member))
 
 [
   ";"
   "."
   ","
+  "="
 ] @punctuation.delimiter
 
 [
@@ -86,5 +105,3 @@
   "{"
   "}"
 ] @punctuation.bracket
-
-(identifier) @variable

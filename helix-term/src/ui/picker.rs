@@ -1,9 +1,8 @@
 use crate::{
-    compositor::{Component, Compositor, Context, EventResult},
+    compositor::{Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
     ui::{self, EditorView},
 };
-use crossterm::event::Event;
 use tui::{
     buffer::Buffer as Surface,
     widgets::{Block, BorderType, Borders},
@@ -15,7 +14,6 @@ use tui::widgets::Widget;
 
 use std::time::Instant;
 use std::{
-    borrow::Cow,
     cmp::Reverse,
     collections::HashMap,
     io::Read,
@@ -26,9 +24,11 @@ use crate::ui::{Prompt, PromptEvent};
 use helix_core::{movement::Direction, Position};
 use helix_view::{
     editor::Action,
-    graphics::{Color, CursorKind, Margin, Modifier, Rect, Style},
+    graphics::{CursorKind, Margin, Modifier, Rect},
     Document, Editor,
 };
+
+use super::menu::Item;
 
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 /// Biggest file size to preview in bytes
@@ -37,7 +37,7 @@ pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 /// File path and range of lines (used to align and highlight lines)
 pub type FileLocation = (PathBuf, Option<(usize, usize)>);
 
-pub struct FilePicker<T> {
+pub struct FilePicker<T: Item> {
     picker: Picker<T>,
     pub truncate_start: bool,
     /// Caches paths to documents
@@ -84,15 +84,15 @@ impl Preview<'_, '_> {
     }
 }
 
-impl<T> FilePicker<T> {
+impl<T: Item> FilePicker<T> {
     pub fn new(
         options: Vec<T>,
-        format_fn: impl Fn(&T) -> Cow<str> + 'static,
+        editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
         let truncate_start = true;
-        let mut picker = Picker::new(options, format_fn, callback_fn);
+        let mut picker = Picker::new(options, editor_data, callback_fn);
         picker.truncate_start = truncate_start;
 
         Self {
@@ -163,7 +163,7 @@ impl<T> FilePicker<T> {
     }
 }
 
-impl<T: 'static> Component for FilePicker<T> {
+impl<T: Item + 'static> Component for FilePicker<T> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // +---------+ +---------+
         // |prompt   | |preview  |
@@ -172,7 +172,7 @@ impl<T: 'static> Component for FilePicker<T> {
         // |         | |         |
         // +---------+ +---------+
 
-        let render_preview = area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+        let render_preview = self.picker.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
@@ -200,10 +200,7 @@ impl<T: 'static> Component for FilePicker<T> {
         // calculate the inner area inside the box
         let inner = block.inner(preview_area);
         // 1 column gap on either side
-        let margin = Margin {
-            vertical: 0,
-            horizontal: 1,
-        };
+        let margin = Margin::horizontal(1);
         let inner = inner.inner(&margin);
         block.render(preview_area, surface);
 
@@ -240,6 +237,7 @@ impl<T: 'static> Component for FilePicker<T> {
                 surface,
                 &cx.editor.theme,
                 highlights,
+                &cx.editor.config(),
             );
 
             // highlight the line
@@ -262,7 +260,7 @@ impl<T: 'static> Component for FilePicker<T> {
         }
     }
 
-    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
         // TODO: keybinds for scrolling preview
         self.picker.handle_event(event, ctx)
     }
@@ -282,8 +280,9 @@ impl<T: 'static> Component for FilePicker<T> {
     }
 }
 
-pub struct Picker<T> {
+pub struct Picker<T: Item> {
     options: Vec<T>,
+    editor_data: T::Data,
     // filter: String,
     matcher: Box<Matcher>,
     /// (index, score)
@@ -300,15 +299,16 @@ pub struct Picker<T> {
     previous_pattern: String,
     /// Whether to truncate the start (default true)
     pub truncate_start: bool,
+    /// Whether to show the preview panel (default true)
+    show_preview: bool,
 
-    format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
 }
 
-impl<T> Picker<T> {
+impl<T: Item> Picker<T> {
     pub fn new(
         options: Vec<T>,
-        format_fn: impl Fn(&T) -> Cow<str> + 'static,
+        editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
@@ -320,6 +320,7 @@ impl<T> Picker<T> {
 
         let mut picker = Self {
             options,
+            editor_data,
             matcher: Box::new(Matcher::default()),
             matches: Vec::new(),
             filters: Vec::new(),
@@ -327,7 +328,7 @@ impl<T> Picker<T> {
             prompt,
             previous_pattern: String::new(),
             truncate_start: true,
-            format_fn: Box::new(format_fn),
+            show_preview: true,
             callback_fn: Box::new(callback_fn),
             completion_height: 0,
         };
@@ -364,16 +365,11 @@ impl<T> Picker<T> {
                     .map(|(index, _option)| (index, 0)),
             );
         } else if pattern.starts_with(&self.previous_pattern) {
-            // TODO: remove when retain_mut is in stable rust
-            use retain_mut::RetainMut;
-
             // optimization: if the pattern is a more specific version of the previous one
             // then we can score the filtered set.
-            #[allow(unstable_name_collisions)]
             self.matches.retain_mut(|(index, score)| {
                 let option = &self.options[*index];
-                // TODO: maybe using format_fn isn't the best idea here
-                let text = (self.format_fn)(option);
+                let text = option.sort_text(&self.editor_data);
 
                 match self.matcher.fuzzy_match(&text, pattern) {
                     Some(s) => {
@@ -401,8 +397,7 @@ impl<T> Picker<T> {
                             self.filters.binary_search(&index).ok()?;
                         }
 
-                        // TODO: maybe using format_fn isn't the best idea here
-                        let text = (self.format_fn)(option);
+                        let text = option.filter_text(&self.editor_data);
 
                         self.matcher
                             .fuzzy_match(&text, pattern)
@@ -470,7 +465,19 @@ impl<T> Picker<T> {
         self.filters
             .extend(self.matches.iter().map(|(index, _)| *index));
         self.filters.sort_unstable(); // used for binary search later
-        self.prompt.clear(cx);
+        self.prompt.clear(cx.editor);
+    }
+
+    pub fn toggle_preview(&mut self) {
+        self.show_preview = !self.show_preview;
+    }
+
+    fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+        if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
+            // TODO: recalculate only if pattern changed
+            self.score();
+        }
+        EventResult::Consumed(None)
     }
 }
 
@@ -479,35 +486,36 @@ impl<T> Picker<T> {
 // - on input change:
 //  - score all the names in relation to input
 
-impl<T: 'static> Component for Picker<T> {
+impl<T: Item + 'static> Component for Picker<T> {
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         self.completion_height = viewport.1.saturating_sub(4);
         Some(viewport)
     }
 
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let key_event = match event {
-            Event::Key(event) => event,
+            Event::Key(event) => *event,
+            Event::Paste(..) => return self.prompt_handle_event(event, cx),
             Event::Resize(..) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored(None),
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _cx| {
             // remove the layer
             compositor.last_picker = compositor.pop();
         })));
 
-        match key_event.into() {
-            shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
+        match key_event {
+            shift!(Tab) | key!(Up) | ctrl!('p') => {
                 self.move_by(1, Direction::Backward);
             }
-            key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
+            key!(Tab) | key!(Down) | ctrl!('n') => {
                 self.move_by(1, Direction::Forward);
             }
-            key!(PageDown) | ctrl!('f') => {
+            key!(PageDown) | ctrl!('d') => {
                 self.page_down();
             }
-            key!(PageUp) | ctrl!('b') => {
+            key!(PageUp) | ctrl!('u') => {
                 self.page_up();
             }
             key!(Home) => {
@@ -540,11 +548,11 @@ impl<T: 'static> Component for Picker<T> {
             ctrl!(' ') => {
                 self.save_filter(cx);
             }
+            ctrl!('t') => {
+                self.toggle_preview();
+            }
             _ => {
-                if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
-                    // TODO: recalculate only if pattern changed
-                    self.score();
-                }
+                self.prompt_handle_event(event, cx);
             }
         }
 
@@ -585,7 +593,7 @@ impl<T: 'static> Component for Picker<T> {
         self.prompt.render(area, surface, cx);
 
         // -- Separator
-        let sep_style = Style::default().fg(Color::Rgb(90, 89, 119));
+        let sep_style = cx.editor.theme.get("ui.background.separator");
         let borders = BorderType::line_symbols(BorderType::Plain);
         for x in inner.left()..inner.right() {
             if let Some(cell) = surface.get_mut(x, inner.y + 1) {
@@ -609,33 +617,46 @@ impl<T: 'static> Component for Picker<T> {
         for (i, (_index, option)) in files.take(rows as usize).enumerate() {
             let is_active = i == (self.cursor - offset);
             if is_active {
-                surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
+                surface.set_string(
+                    inner.x.saturating_sub(3),
+                    inner.y + i as u16,
+                    " > ",
+                    selected,
+                );
+                surface.set_style(
+                    Rect::new(inner.x, inner.y + i as u16, inner.width, 1),
+                    selected,
+                );
             }
 
-            let formatted = (self.format_fn)(option);
-
+            let spans = option.label(&self.editor_data);
             let (_score, highlights) = self
                 .matcher
-                .fuzzy_indices(&formatted, self.prompt.line())
+                .fuzzy_indices(&String::from(&spans), self.prompt.line())
                 .unwrap_or_default();
 
-            surface.set_string_truncated(
-                inner.x,
-                inner.y + i as u16,
-                &formatted,
-                inner.width as usize,
-                |idx| {
-                    if highlights.contains(&idx) {
-                        highlighted
-                    } else if is_active {
-                        selected
-                    } else {
-                        text_style
-                    }
-                },
-                true,
-                self.truncate_start,
-            );
+            spans.0.into_iter().fold(inner, |pos, span| {
+                let new_x = surface
+                    .set_string_truncated(
+                        pos.x,
+                        pos.y + i as u16,
+                        &span.content,
+                        pos.width as usize,
+                        |idx| {
+                            if highlights.contains(&idx) {
+                                highlighted.patch(span.style)
+                            } else if is_active {
+                                selected.patch(span.style)
+                            } else {
+                                text_style.patch(span.style)
+                            }
+                        },
+                        true,
+                        self.truncate_start,
+                    )
+                    .0;
+                pos.clip_left(new_x - pos.x)
+            });
         }
     }
 

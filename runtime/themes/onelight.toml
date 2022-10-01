@@ -1,0 +1,124 @@
+# One Light
+# Author : erasin<erasinoo@gmail.com>
+
+"attribute" = { fg = "yellow" }
+"comment" = { fg = "gray", modifiers = ["italic"] }
+
+"constant" = { fg = "cyan" }
+"constant.numeric" = { fg = "gold" }
+"constant.builtin" = { fg = "gold" }
+"constant.character.escape" = { fg = "gold" }
+
+"constructor" = { fg = "yellow" }
+
+"function" = { fg = "blue" }
+"function.builtin" = { fg = "cyan" }
+"function.macro" = { fg = "red" }
+
+"keyword" = { fg = "purple" }
+"keyword.function" = { fg = "purple" }
+"keyword.control" = { fg = "purple" }
+"keyword.control.import" = { fg = "purple" }
+"keyword.directive" = { fg = "purple" }
+"keyword.operator" = { fg = "purple" }
+"keyword.storage.type" = { fg = "purple" }
+
+"tag" = "cyan"
+"label" = { fg = "cyan" }
+"namespace" = { fg = "red" }
+"operator" = { fg = "red" }
+"special" = { fg = "purple" }
+"string" = { fg = "green" }
+"module" = { fg = "cyan" }
+
+"type" = { fg = "yellow" }
+"type.builtin" = { fg = "purple" }
+
+"punctuation" = { fg = "gray" }
+"punctuation.delimiter" = { fg = "black" }
+"punctuation.bracket" = { fg = "gray" }
+
+"variable" = { fg = "black" }
+"variable.builtin" = { fg = "light-blue" }
+"variable.parameter" = { fg = "red" }
+"variable.other.member" = { fg = "red" }
+
+"markup.heading" = { fg = "red" }
+"markup.raw" = { fg = "gray" }
+"markup.raw.inline" = { fg = "green", bg = "grey-200" }
+"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "purple", modifiers = ["italic"] }
+"markup.list" = { fg = "light-blue" }
+"markup.quote" = { fg = "gray" }
+"markup.link.url" = { fg = "cyan", modifiers = ["underlined"] }
+"markup.link.text" = { fg = "light-blue" }
+"markup.heading.1" = { fg = "red", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "gold", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "yellow", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "green", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "blue", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "purple", modifiers = ["bold"] }
+
+"diff.plus" = "green"
+"diff.delta" = "gold"
+"diff.minus" = "red"
+
+"diagnostic" = { modifiers = ["underlined"] }
+"info" = { fg = "blue", modifiers = ["bold"] }
+"hint" = { fg = "green", modifiers = ["bold"] }
+"warning" = { fg = "yellow", modifiers = ["bold"] }
+"error" = { fg = "red", modifiers = ["bold"] }
+
+"ui.background" = { bg = "white" }
+
+"ui.cursor" = { fg = "white", bg = "gray" }
+"ui.cursor.primary" = { fg = "white", bg = "black" }
+"ui.cursor.match" = { bg = "light-gray" }
+
+"ui.cursorline.primary" = { fg = "white", bg = "grey-100" }
+# "ui.cursorline.secondary" = { fg = "white", bg = "grey-200" }
+
+"ui.highlight" = { bg = "light-white" }
+
+"ui.selection" = { bg = "light-white", modifiers = ["dim"] }
+"ui.selection.primary" = { bg = "light-white" }
+
+"ui.virtual" = { fg = "light-white" }
+"ui.virtual.indent-guide" = { fg = "grey-500" }
+"ui.virtual.ruler" = { bg = "light-white" }
+"ui.virtual.whitespace" = { fg = "light-white" }
+
+"ui.linenr" = { fg = "grey-500" }
+"ui.linenr.selected" = { fg = "black", modifiers = ["dim"] }
+
+"ui.statusline" = { fg = "black", bg = "light-white" }
+"ui.statusline.inactive" = { fg = "gray", bg = "light-white" }
+"ui.statusline.normal" = { fg = "light-white", bg = "light-blue" }
+"ui.statusline.insert" = { fg = "light-white", bg = "green" }
+"ui.statusline.select" = { fg = "light-white", bg = "purple" }
+
+"ui.text" = { fg = "black" }
+"ui.text.focus" = { fg = "red", bg = "light-white", modifiers = ["bold"] }
+
+"ui.help" = { fg = "black", bg = "grey-200" }
+"ui.popup" = { fg = "black", bg = "grey-200" }
+"ui.window" = { fg = "black", bg = "light-white" }
+"ui.menu" = { fg = "black", bg = "light-white" }
+"ui.menu.selected" = { fg = "white", bg = "light-blue" }
+
+[palette]
+white = "#FAFAFA"
+yellow = "#A06600"
+blue = "#0061FF"
+light-blue = "#1877F2"
+red = "#DC003F"
+purple = "#B500A9"
+green = "#24A443"
+gold = "#D35400"
+cyan = "#0086C1"
+black = "#282C34"
+light-white = "#E3E3E3"
+gray = "#5C6370"
+grey-100 = "#F3F3F3"
+grey-200 = "#EDEDED"
+grey-500 = "#9E9E9E"

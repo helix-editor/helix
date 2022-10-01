@@ -8,22 +8,26 @@
 "ui.liner.selected" = "highlightOverlay"
 "ui.selection" = { bg = "highlight" }
 "comment" = "subtle"
+"ui.cursorline" = { bg = "surface" }
 "ui.statusline" = {fg = "foam", bg = "surface" }
+"ui.statusline.insert" = {fg = "base", bg = "foam", modifiers = ["bold"]}
+"ui.statusline.normal" = {fg = "base", bg = "rose", modifiers = ["bold"]}
+"ui.statusline.select" = {fg = "base", bg = "iris", modifiers = ["bold"]}
 "ui.statusline.inactive" = { fg = "iris", bg = "surface" }
-"ui.help" = { fg = "foam", bg = "surface" }
 "ui.cursor" = { fg = "rose", modifiers = ["reversed"] }
 "ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "foam", modifiers = ["bold"]}
 "ui.text.info" = {fg = "pine", modifiers = ["bold"]}
+"ui.virtual.whitespace" = "highlight"
+"ui.virtual.ruler" = { bg = "surface" }
 "operator" = "rose"
 "variable" = "text"
 "constant.numeric" = "iris"
 "constant" = "gold"
-"attributes" = "gold" 
+"attribute" = "gold" 
 "type" = "foam"
 "ui.cursor.match" = { fg = "gold", modifiers = ["underlined"] }
 "string"  = "gold"
-"property" = "foam"
 "constant.character.escape" = "subtle"
 "function" = "rose"
 "function.builtin" = "rose"
@@ -37,7 +41,6 @@
 "ui.popup.info" = { bg = "surface" }
 "ui.window" = { bg = "base" }
 "ui.help" = { bg = "overlay", fg = "foam" }
-"text" = "text"
 "diff.plus" = "foam"
 "diff.delta" = "rose"
 "diff.minus" = "love"
@@ -53,8 +56,8 @@
 "markup.heading.2" = { fg = "gold", modifiers = ["bold"] }
 "markup.heading.3" = { fg = "rose", modifiers = ["bold"] }
 "markup.heading.4" = { fg = "pine", modifiers = ["bold"] }
-"markup.heading.5" = { fg = "form", modifiers = ["bold"] }
-"markup.heading.6" = { fg = "fg", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "foam", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "iris", modifiers = ["bold"] }
 "markup.list" = { fg = "love" }
 "markup.bold" = { fg = "gold", modifiers = ["bold"] }
 "markup.italic" = { fg = "iris", modifiers = ["italic"] }

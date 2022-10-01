@@ -45,20 +45,27 @@
 "ui.background" = { bg = "#161c23" }
 "ui.linenr" = { fg = "#415367" }
 "ui.linenr.selected" = { fg = "#e5ded6" }  # TODO
+"ui.cursorline" = { bg = "#131920" }
 "ui.statusline" = { fg = "#e5ded6", bg = "#232d38" }
 "ui.statusline.inactive" = { fg = "#c6b8ad", bg = "#232d38" }
+"ui.bufferline" = { fg = "#627d9d", bg = "#131920" }
+"ui.bufferline.active" = { fg = "#e5ded6", bg = "#232d38" }
 "ui.popup" = { bg = "#232d38" }
 "ui.window" = { bg = "#232d38" }
 "ui.help" = { bg = "#232d38", fg = "#e5ded6" }
 
 "ui.text" = { fg = "#e5ded6" }
 "ui.text.focus" = { fg = "#e5ded6", modifiers= ["bold"] }
+"ui.virtual.whitespace" = "#627d9d"
+"ui.virtual.ruler" = { bg = "#131920" }
 
 "ui.selection" = { bg = "#313f4e" }
 # "ui.cursor.match"  # TODO might want to override this because dimmed is not widely supported
 "ui.cursor.match" = { fg = "#313f4e", bg = "#dc7759" }
 "ui.cursor" = { fg = "#ABB2BF", modifiers = ["reversed"] }
-"ui.menu.selected" = { fg = "#e5ded6", bg = "#313f4e" }
+
+"ui.menu" = { fg = "#e5ded6bg", bg = "#232d38" }
+"ui.menu.selected" = { bg = "#313f4e" }
 
 "warning" = "#dc7759"
 "error" = "#dc597f"

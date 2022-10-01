@@ -21,7 +21,7 @@
 (identifier) @variable
 (comment) @comment
 (null_lit) @constant.builtin
-(numeric_lit) @constant.number
+(numeric_lit) @constant.numeric
 (bool_lit) @constant.builtin.boolean
 
 [

@@ -6,7 +6,7 @@ punctuation = "lavender"
 "punctuation.delimiter" = "lavender"
 operator = "lilac"
 special = "honey"
-variable.other.member = "white"
+"variable.other.member" = "white"
 variable = "lavender"
 # variable = "almond" # TODO: metavariables only
 # "variable.parameter" = { fg = "lavender", modifiers = ["underlined"] }
@@ -43,6 +43,7 @@ label = "honey"
 # concat (ERROR) @error.syntax and "MISSING ;" selectors for errors
 
 "ui.background" = { bg = "midnight" }
+"ui.background.separator" = { fg = "comet" }
 "ui.linenr" = { fg = "comet" }
 "ui.linenr.selected" = { fg = "lilac" }
 "ui.statusline" = { fg = "lilac", bg = "revolver" }
@@ -53,6 +54,9 @@ label = "honey"
 
 "ui.text" = { fg = "lavender" }
 "ui.text.focus" = { fg = "white" }
+"ui.virtual" = { fg = "comet" }
+
+"ui.virtual.indent-guide" = { fg = "comet" }
 
 "ui.selection" = { bg = "#540099" }
 "ui.selection.primary" = { bg = "#540099" }
@@ -61,11 +65,18 @@ label = "honey"
 "ui.cursor.insert" = { bg = "white" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
 "ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursorline.primary" = { bg = "bossanova" }
 "ui.highlight" = { bg = "bossanova" }
 
+"ui.menu" = { fg = "lavender", bg = "revolver" }
 "ui.menu.selected" = { fg = "revolver", bg = "white" }
+"ui.menu.scroll" = { fg = "lavender", bg = "comet" }
 
 diagnostic = { modifiers = ["underlined"] }
+# "diagnostic.hint" = { fg = "revolver", bg = "lilac" }
+# "diagnostic.info" = { fg = "revolver", bg = "lavender" }
+# "diagnostic.warning" = { fg = "revolver", bg = "honey" }
+# "diagnostic.error" = { fg = "revolver", bg = "apricot" }
 
 warning = "lightning"
 error = "apricot"

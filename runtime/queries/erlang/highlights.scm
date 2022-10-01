@@ -2,23 +2,23 @@
 ; module declaration
 (attribute
   name: (atom) @keyword
-  (arguments (atom) @module)
- (#eq? @keyword "module"))
+  (arguments (atom) @namespace)
+ (#match? @keyword "(module|behaviou?r)"))
 
 (attribute
   name: (atom) @keyword
   (arguments
     .
-    (atom) @module)
+    (atom) @namespace)
  (#eq? @keyword "import"))
 
 (attribute
   name: (atom) @keyword
   (arguments
     .
-    (atom) @type
+    [(atom) @type (macro)]
     [
-      (tuple (atom) @variable.other.member)
+      (tuple (atom)? @variable.other.member)
       (tuple
         (binary_operator
           left: (atom) @variable.other.member
@@ -38,8 +38,8 @@
   (arguments
     .
     [
-      (atom) @keyword.directive
-      (variable) @keyword.directive
+      (atom) @constant
+      (variable) @constant
       (call
         function:
           [(variable) (atom)] @keyword.directive)
@@ -48,15 +48,21 @@
 
 (attribute
   name: (atom) @keyword
-  module: (atom) @module
- (#eq? @keyword "spec"))
+  (arguments
+    (_) @keyword.directive)
+ (#match? @keyword "ifn?def"))
+
+(attribute
+  name: (atom) @keyword
+  module: (atom) @namespace
+ (#match? @keyword "(spec|callback)"))
 
 ; Functions
-(function name: (atom) @function)
-(call module: (atom) @module)
+(function_clause name: (atom) @function)
+(call module: (atom) @namespace)
 (call function: (atom) @function)
 (stab_clause name: (atom) @function)
-(function_capture module: (atom) @module)
+(function_capture module: (atom) @namespace)
 (function_capture function: (atom) @function)
 
 ; Records
@@ -69,10 +75,7 @@
 (record name: (atom) @type)
 
 ; Keywords
-((attribute name: (atom) @keyword)
- (#match?
-  @keyword
-  "^(define|export|export_type|include|include_lib|ifdef|ifndef|if|elif|else|endif|vsn|on_load|behaviour|record|file|type|opaque|spec)$"))
+(attribute name: (atom) @keyword)
 
 ["case" "fun" "if" "of" "when" "end" "receive" "try" "catch" "after" "begin" "maybe"] @keyword
 
@@ -82,13 +85,14 @@
   operator: "/"
   right: (integer) @constant.numeric.integer)
 
+((binary_operator operator: _ @keyword.operator)
+ (#match? @keyword.operator "^\\w+$"))
+((unary_operator operator: _ @keyword.operator)
+ (#match? @keyword.operator "^\\w+$"))
+
 (binary_operator operator: _ @operator)
 (unary_operator operator: _ @operator)
-["/" ":" "#" "->"] @operator
-
-; Comments
-((variable) @comment.discard
- (#match? @comment.discard "^_"))
+["/" ":" "->"] @operator
 
 (tripledot) @comment.discard
 
@@ -96,15 +100,21 @@
 
 ; Macros
 (macro
+  "?"+ @constant
+  name: (_) @constant
+  !arguments)
+
+(macro
   "?"+ @keyword.directive
   name: (_) @keyword.directive)
 
+; Comments
+((variable) @comment.discard
+ (#match? @comment.discard "^_"))
+
 ; Basic types
 (variable) @variable
-[
-  (atom)
-  (quoted_atom)
-] @string.special.symbol
+(atom) @string.special.symbol
 (string) @string
 (character) @constant.character
 
@@ -113,6 +123,6 @@
 
 ; Punctuation
 ["," "." "-" ";"] @punctuation.delimiter
-["(" ")" "{" "}" "[" "]" "<<" ">>"] @punctuation.bracket
+["(" ")" "#" "{" "}" "[" "]" "<<" ">>"] @punctuation.bracket
 
 ; (ERROR) @error

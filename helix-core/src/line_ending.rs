@@ -119,6 +119,11 @@ pub fn str_is_line_ending(s: &str) -> bool {
     LineEnding::from_str(s).is_some()
 }
 
+#[inline]
+pub fn rope_is_line_ending(r: RopeSlice) -> bool {
+    r.chunks().all(str_is_line_ending)
+}
+
 /// Attempts to detect what line ending the passed document uses.
 pub fn auto_detect_line_ending(doc: &Rope) -> Option<LineEnding> {
     // Return first matched line ending. Not all possible line endings
@@ -300,8 +305,17 @@ mod line_ending_tests {
     fn line_end_char_index_rope_slice() {
         let r = Rope::from_str("Hello\rworld\nhow\r\nare you?");
         let s = &r.slice(..);
-        assert_eq!(line_end_char_index(s, 0), 11);
-        assert_eq!(line_end_char_index(s, 1), 15);
-        assert_eq!(line_end_char_index(s, 2), 25);
+        #[cfg(not(feature = "unicode-lines"))]
+        {
+            assert_eq!(line_end_char_index(s, 0), 11);
+            assert_eq!(line_end_char_index(s, 1), 15);
+            assert_eq!(line_end_char_index(s, 2), 25);
+        }
+        #[cfg(feature = "unicode-lines")]
+        {
+            assert_eq!(line_end_char_index(s, 0), 5);
+            assert_eq!(line_end_char_index(s, 1), 11);
+            assert_eq!(line_end_char_index(s, 2), 15);
+        }
     }
 }

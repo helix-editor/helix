@@ -39,7 +39,7 @@ changed by using a `#set!` declaration anywhere in the pattern:
 ## Capture Types
 
 - `@indent` (default scope `tail`):
-Increase the indent level by 1. Multiple occurences in the same line
+Increase the indent level by 1. Multiple occurrences in the same line
 don't stack. If there is at least one `@indent` and one `@outdent`
 capture on the same line, the indent level isn't changed at all.
 

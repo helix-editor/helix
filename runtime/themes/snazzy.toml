@@ -1,0 +1,70 @@
+# Author : Sebastian Zivota <loewenheim@mailbox.org>
+# Author : Timothy DeHerrera <tim@nrdxp.dev>
+"comment" = { fg = "comment" }
+"constant" = { fg = "purple" }
+"constant.character.escape" = { fg = "magenta" }
+"function" = { fg = "green" }
+"keyword" = { fg = "magenta" }
+"operator" = { fg = "magenta" }
+"punctuation" = { fg = "foreground" }
+"string" = { fg = "yellow" }
+"string.special.path" = { fg = "blue" }
+"string.regexp" = { fg = "red" }
+"tag" = { fg = "magenta" }
+"type" = { fg = "cyan", modifiers = ["italic"] }
+"type.enum.variant" = { fg = "foreground", modifiers = ["italic"] }
+"variable" = { fg = "foreground" }
+"variable.builtin" = { fg = "cyan", modifiers = ["italic"] }
+"variable.parameter" = { fg ="blue", modifiers = ["italic"] }
+
+"diff.plus" = { fg = "green" }
+"diff.delta" = { fg = "blue" }
+"diff.minus" = { fg = "red" }
+
+"ui.background" = { fg = "foreground", bg = "background" }
+"ui.cursor" =  { fg = "background", bg = "blue", modifiers = ["dim"] }
+"ui.cursor.match" = { fg = "green", modifiers = ["underlined"] }
+"ui.cursor.primary" = { fg = "background", bg = "cyan", modifiers = ["dim"] }
+"ui.help" = { fg = "foreground", bg = "background_dark" }
+"ui.linenr" = { fg = "comment" }
+"ui.linenr.selected" = { fg = "foreground" }
+"ui.menu" = { fg = "foreground", bg = "background_dark" }
+"ui.menu.selected" = { fg = "cyan", bg = "background_dark" }
+"ui.popup" = { fg = "foreground", bg = "background_dark" }
+"ui.selection" = { bg = "secondary_highlight" }
+"ui.selection.primary" = { bg = "primary_highlight" }
+"ui.cursorline" = { bg = "background_dark" }
+"ui.statusline" = { fg = "foreground", bg = "background_dark" }
+"ui.statusline.inactive" = { fg = "comment", bg = "background_dark" }
+"ui.text" = { fg = "foreground" }
+"ui.text.focus" = { fg = "cyan" }
+"ui.window" = { fg = "foreground" }
+"ui.virtual.whitespace" = { fg = "comment" }
+"ui.virtual.ruler" = { bg = "background_dark" }
+
+"error" = { fg = "red" }
+"warning" = { fg = "cyan" }
+
+"markup.heading" = { fg = "purple", modifiers = ["bold"] }
+"markup.list" = "cyan"
+"markup.bold" = { fg = "blue", modifiers = ["bold"] }
+"markup.italic" = { fg = "yellow", modifiers = ["italic"] }
+"markup.link.url" = "cyan"
+"markup.link.text" = "magenta"
+"markup.quote" = { fg = "yellow", modifiers = ["italic"] }
+"markup.raw" = { fg = "foreground" }
+
+[palette]
+background = "#282a36"
+background_dark = "#21222c"
+primary_highlight = "#800049"
+secondary_highlight = "#4d4f66"
+foreground = "#eff0eb"
+comment = "#a39e9b"
+red = "#ff5c57"
+blue = "#57c7ff"
+yellow = "#f3f99d"
+green = "#5af78e"
+purple = "#bd93f9"
+cyan = "#9aedfe"
+magenta = "#ff6ac1"

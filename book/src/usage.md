@@ -2,7 +2,7 @@
 
 (Currently not fully documented, see the [keymappings](./keymap.md) list for more.)
 
-See [tutor.txt](https://github.com/helix-editor/helix/blob/master/runtime/tutor.txt) (accessible via `hx --tutor` or `:tutor`) for a vimtutor-like introduction.
+See [tutor](https://github.com/helix-editor/helix/blob/master/runtime/tutor) (accessible via `hx --tutor` or `:tutor`) for a vimtutor-like introduction.
 
 ## Registers
 
@@ -51,25 +51,98 @@ It can also act on multiple selections (yay!). For example, to change every occu
 
 Multiple characters are currently not supported, but planned.
 
-## Textobjects
+## Syntax-tree Motions
 
-Currently supported: `word`, `surround`, `function`, `class`, `parameter`.
+`A-p`, `A-o`, `A-i`, and `A-n` (or `Alt` and arrow keys) move the primary
+selection according to the selection's place in the syntax tree. Let's walk
+through an example to get familiar with them. Many languages have a syntax like
+so for function calls:
+
+```
+func(arg1, arg2, arg3)
+```
+
+A function call might be parsed by tree-sitter into a tree like the following.
+
+```tsq
+(call
+  function: (identifier) ; func
+  arguments:
+    (arguments           ; (arg1, arg2, arg3)
+      (identifier)       ; arg1
+      (identifier)       ; arg2
+      (identifier)))     ; arg3
+```
+
+Use `:tree-sitter-subtree` to view the syntax tree of the primary selection. In
+a more intuitive tree format:
+
+```
+            ┌────┐
+            │call│
+      ┌─────┴────┴─────┐
+      │                │
+┌─────▼────┐      ┌────▼────┐
+│identifier│      │arguments│
+│  "func"  │ ┌────┴───┬─────┴───┐
+└──────────┘ │        │         │
+             │        │         │
+   ┌─────────▼┐  ┌────▼─────┐  ┌▼─────────┐
+   │identifier│  │identifier│  │identifier│
+   │  "arg1"  │  │  "arg2"  │  │  "arg3"  │
+   └──────────┘  └──────────┘  └──────────┘
+```
+
+Say we have a selection that wraps `arg1`. The selection is on the `arg1` leaf
+in the tree above.
+
+```
+func([arg1], arg2, arg3)
+```
+
+Using `A-n` would select the next sibling in the syntax tree: `arg2`.
+
+```
+func(arg1, [arg2], arg3)
+```
+
+While `A-o` would expand the selection to the parent node. In the tree above we
+can see that we would select the `arguments` node.
+
+```
+func[(arg1, arg2, arg3)]
+```
+
+There is also some nuanced behavior that prevents you from getting stuck on a
+node with no sibling. If we have a selection on `arg1`, `A-p` would bring us
+to the previous child node. Since `arg1` doesn't have a sibling to its left,
+though, we climb the syntax tree and then take the previous selection. So `A-p`
+will move the selection over to the "func" `identifier`.
+
+```
+[func](arg1, arg2, arg3)
+```
+
+## Textobjects
 
 ![textobject-demo](https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif)
 ![textobject-treesitter-demo](https://user-images.githubusercontent.com/23398472/132537398-2a2e0a54-582b-44ab-a77f-eb818942203d.gif)
 
-- `ma` - Select around the object (`va` in vim, `<alt-a>` in kakoune)
-- `mi` - Select inside the object (`vi` in vim, `<alt-i>` in kakoune)
+- `ma` - Select around the object (`va` in Vim, `<alt-a>` in Kakoune)
+- `mi` - Select inside the object (`vi` in Vim, `<alt-i>` in Kakoune)
 
 | Key after `mi` or `ma` | Textobject selected      |
 | ---                    | ---                      |
 | `w`                    | Word                     |
 | `W`                    | WORD                     |
+| `p`                    | Paragraph                |
 | `(`, `[`, `'`, etc     | Specified surround pairs |
+| `m`                    | Closest surround pair    |
 | `f`                    | Function                 |
 | `c`                    | Class                    |
 | `a`                    | Argument/parameter       |
 | `o`                    | Comment                  |
+| `t`                    | Test                     |
 
 > NOTE: `f`, `c`, etc need a tree-sitter grammar active for the current
 document and a special tree-sitter query file to work properly. [Only

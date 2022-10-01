@@ -14,8 +14,13 @@ pub trait ClipboardProvider: std::fmt::Debug {
     fn set_contents(&mut self, contents: String, clipboard_type: ClipboardType) -> Result<()>;
 }
 
+#[cfg(not(windows))]
 macro_rules! command_provider {
     (paste => $get_prg:literal $( , $get_arg:literal )* ; copy => $set_prg:literal $( , $set_arg:literal )* ; ) => {{
+        log::info!(
+            "Using {} to interact with the system clipboard",
+            if $set_prg != $get_prg { format!("{}+{}", $set_prg, $get_prg)} else { $set_prg.to_string() }
+        );
         Box::new(provider::command::Provider {
             get_cmd: provider::command::Config {
                 prg: $get_prg,
@@ -35,6 +40,10 @@ macro_rules! command_provider {
      primary_paste => $pr_get_prg:literal $( , $pr_get_arg:literal )* ;
      primary_copy => $pr_set_prg:literal $( , $pr_set_arg:literal )* ;
     ) => {{
+        log::info!(
+            "Using {} to interact with the system and selection (primary) clipboard",
+            if $set_prg != $get_prg { format!("{}+{}", $set_prg, $get_prg)} else { $set_prg.to_string() }
+        );
         Box::new(provider::command::Provider {
             get_cmd: provider::command::Config {
                 prg: $get_prg,
@@ -75,7 +84,13 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     }
 }
 
-#[cfg(not(any(windows, target_os = "macos")))]
+#[cfg(target_os = "wasm32")]
+pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
+    // TODO:
+    Box::new(provider::NopProvider::new())
+}
+
+#[cfg(not(any(windows, target_os = "wasm32", target_os = "macos")))]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     use provider::command::{env_var_is_set, exists, is_exit_success};
     // TODO: support for user-defined provider, probably when we have plugin support by setting a
@@ -104,6 +119,11 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
             primary_paste => "xsel", "-o";
             primary_copy => "xsel", "-i";
         }
+    } else if exists("win32yank.exe") {
+        command_provider! {
+            paste => "win32yank.exe", "-o", "--lf";
+            copy => "win32yank.exe", "-i", "--crlf";
+        }
     } else if exists("termux-clipboard-set") && exists("termux-clipboard-get") {
         command_provider! {
             paste => "termux-clipboard-get";
@@ -119,7 +139,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     }
 }
 
-mod provider {
+pub mod provider {
     use super::{ClipboardProvider, ClipboardType};
     use anyhow::Result;
     use std::borrow::Cow;
@@ -134,10 +154,20 @@ mod provider {
     #[cfg(not(target_os = "windows"))]
     impl NopProvider {
         pub fn new() -> Self {
+            log::warn!(
+                "No clipboard provider found! Yanking and pasting will be internal to Helix"
+            );
             Self {
                 buf: String::new(),
                 primary_buf: String::new(),
             }
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    impl Default for NopProvider {
+        fn default() -> Self {
+            Self::new()
         }
     }
 
@@ -172,6 +202,7 @@ mod provider {
     #[cfg(target_os = "windows")]
     impl ClipboardProvider for WindowsProvider {
         fn name(&self) -> Cow<str> {
+            log::info!("Using clipboard-win to interact with the system clipboard");
             Cow::Borrowed("clipboard-win")
         }
 
@@ -196,6 +227,7 @@ mod provider {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub mod command {
         use super::*;
         use anyhow::{bail, Context as _, Result};
@@ -204,10 +236,12 @@ mod provider {
             which::which(executable_name).is_ok()
         }
 
+        #[cfg(not(windows))]
         pub fn env_var_is_set(env_var_name: &str) -> bool {
             std::env::var_os(env_var_name).is_some()
         }
 
+        #[cfg(not(any(windows, target_os = "macos")))]
         pub fn is_exit_success(program: &str, args: &[&str]) -> bool {
             std::process::Command::new(program)
                 .args(args)

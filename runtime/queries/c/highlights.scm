@@ -1,8 +1,9 @@
+(storage_class_specifier) @keyword.storage
+
 "goto" @keyword
 "register" @keyword
 "break" @keyword
 "case" @keyword
-"const" @keyword
 "continue" @keyword
 "default" @keyword
 "do" @keyword
@@ -14,13 +15,13 @@
 "inline" @keyword
 "return" @keyword
 "sizeof" @keyword
-"static" @keyword
 "struct" @keyword
 "switch" @keyword
 "typedef" @keyword
 "union" @keyword
 "volatile" @keyword
 "while" @keyword
+"const" @keyword
 
 [
  "#define"
@@ -50,9 +51,13 @@
 "==" @operator
 ">" @operator
 "||" @operator
+">=" @operator
+"<=" @operator
 
 "." @punctuation.delimiter
 ";" @punctuation.delimiter
+
+[(true) (false)] @constant.builtin.boolean
 
 (enumerator) @type.enum.variant
 

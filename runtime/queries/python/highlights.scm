@@ -1,10 +1,10 @@
-; Identifier naming conventions
+; Imports
 
-((identifier) @constructor
- (#match? @constructor "^[A-Z]"))
-
-((identifier) @constant
- (#match? @constant "^[A-Z][A-Z_]*$"))
+(dotted_name
+  (identifier)* @namespace)
+  
+(aliased_import
+  alias: (identifier) @namespace)
 
 ; Builtin functions
 
@@ -16,29 +16,98 @@
 
 ; Function calls
 
-(decorator) @function
+[
+  "def"
+  "lambda"
+] @keyword.function
+
+(call
+  function: (attribute attribute: (identifier) @constructor)
+ (#match? @constructor "^[A-Z]"))
+(call
+  function: (identifier) @constructor
+ (#match? @constructor "^[A-Z]"))
 
 (call
   function: (attribute attribute: (identifier) @function.method))
+
 (call
   function: (identifier) @function)
 
 ; Function definitions
 
 (function_definition
+  name: (identifier) @constructor
+ (#match? @constructor "^(__new__|__init__)$"))
+
+(function_definition
   name: (identifier) @function)
 
-(identifier) @variable
+; Decorators
+
+(decorator) @function
+(decorator (identifier) @function)
+(decorator (attribute attribute: (identifier) @function))
+(decorator (call
+  function: (attribute attribute: (identifier) @function)))
+
+; Parameters
+
+((identifier) @variable.builtin
+ (#match? @variable.builtin "^(self|cls)$"))
+
+(parameters (identifier) @variable.parameter)
+(parameters (typed_parameter (identifier) @variable.parameter))
+(parameters (default_parameter name: (identifier) @variable.parameter))
+(parameters (typed_default_parameter name: (identifier) @variable.parameter))
+
+(parameters
+  (list_splat_pattern ; *args
+    (identifier) @variable.parameter))
+(parameters
+  (dictionary_splat_pattern ; **kwargs
+    (identifier) @variable.parameter))
+    
+(lambda_parameters
+  (identifier) @variable.parameter)
+
+; Types
+
+((identifier) @type.builtin
+ (#match?
+   @type.builtin
+   "^(bool|bytes|dict|float|frozenset|int|list|set|str|tuple)$"))
+
+; In type hints make everything types to catch non-conforming identifiers
+; (e.g., datetime.datetime) and None
+(type [(identifier) (none)] @type)
+; Handle [] . and | nesting 4 levels deep
+(type
+  (_ [(identifier) (none)]? @type
+    (_ [(identifier) (none)]? @type
+      (_ [(identifier) (none)]? @type
+        (_ [(identifier) (none)]? @type)))))
+
+(class_definition name: (identifier) @type)
+(class_definition superclasses: (argument_list (identifier) @type))
+
+; Variables
+
+((identifier) @constant
+ (#match? @constant "^[A-Z_]{2,}$"))
+
+((identifier) @type
+ (#match? @type "^[A-Z]")) 
+
 (attribute attribute: (identifier) @variable.other.member)
-(type (identifier) @type)
+(identifier) @variable
 
 ; Literals
-
+(none) @constant.builtin
 [
-  (none)
   (true)
   (false)
-] @constant.builtin
+] @constant.builtin.boolean
 
 (integer) @constant.numeric.integer
 (float) @constant.numeric.float
@@ -46,9 +115,11 @@
 (string) @string
 (escape_sequence) @constant.character.escape
 
+["," "." ":" ";" (ellipsis)] @punctuation.delimiter
 (interpolation
   "{" @punctuation.special
   "}" @punctuation.special) @embedded
+["(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
 [
   "-"
@@ -81,41 +152,69 @@
   ">>"
   "|"
   "~"
-  "and"
-  "in"
-  "is"
-  "not"
-  "or"
 ] @operator
 
 [
   "as"
   "assert"
-  "async"
   "await"
-  "break"
-  "class"
-  "continue"
-  "def"
-  "del"
+  "from"
+  "pass"
+
+  "with"
+] @keyword.control
+
+[
+  "if"
   "elif"
   "else"
-  "except"
-  "exec"
-  "finally"
-  "for"
-  "from"
-  "global"
-  "if"
-  "import"
-  "lambda"
-  "nonlocal"
-  "pass"
-  "print"
-  "raise"
-  "return"
-  "try"
+] @keyword.control.conditional
+
+[
   "while"
-  "with"
+  "for"
+  "break"
+  "continue"
+] @keyword.control.repeat
+
+[
+  "return"
   "yield"
+] @keyword.control.return
+(yield "from" @keyword.control.return)
+
+[
+  "raise"
+  "try"
+  "except"
+  "finally"
+] @keyword.control.except
+(raise_statement "from" @keyword.control.except)
+"import" @keyword.control.import
+
+(for_statement "in" @keyword.control)
+(for_in_clause "in" @keyword.control)
+
+[
+  "and"
+  "async"
+  "class"
+  "exec"
+  "global"
+  "nonlocal"
+  "print"
 ] @keyword
+[
+  "and"
+  "or"
+  "in"
+  "not"
+  "del"
+  "is"
+] @keyword.operator
+
+((identifier) @type.builtin
+  (#match? @type.builtin
+    "^(BaseException|Exception|ArithmeticError|BufferError|LookupError|AssertionError|AttributeError|EOFError|FloatingPointError|GeneratorExit|ImportError|ModuleNotFoundError|IndexError|KeyError|KeyboardInterrupt|MemoryError|NameError|NotImplementedError|OSError|OverflowError|RecursionError|ReferenceError|RuntimeError|StopIteration|StopAsyncIteration|SyntaxError|IndentationError|TabError|SystemError|SystemExit|TypeError|UnboundLocalError|UnicodeError|UnicodeEncodeError|UnicodeDecodeError|UnicodeTranslateError|ValueError|ZeroDivisionError|EnvironmentError|IOError|WindowsError|BlockingIOError|ChildProcessError|ConnectionError|BrokenPipeError|ConnectionAbortedError|ConnectionRefusedError|ConnectionResetError|FileExistsError|FileNotFoundError|InterruptedError|IsADirectoryError|NotADirectoryError|PermissionError|ProcessLookupError|TimeoutError|Warning|UserWarning|DeprecationWarning|PendingDeprecationWarning|SyntaxWarning|RuntimeWarning|FutureWarning|ImportWarning|UnicodeWarning|BytesWarning|ResourceWarning)$"))
+
+(ERROR) @error

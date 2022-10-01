@@ -1,12 +1,16 @@
-use crate::compositor::{Component, Context, EventResult};
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crate::compositor::{Component, Context, Event, EventResult};
 use helix_view::editor::CompleteAction;
 use tui::buffer::Buffer as Surface;
+use tui::text::Spans;
 
 use std::borrow::Cow;
 
 use helix_core::{Change, Transaction};
-use helix_view::{graphics::Rect, Document, Editor};
+use helix_view::{
+    graphics::Rect,
+    input::{KeyCode, KeyEvent},
+    Document, Editor,
+};
 
 use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
@@ -15,19 +19,25 @@ use helix_lsp::{lsp, util};
 use lsp::CompletionItem;
 
 impl menu::Item for CompletionItem {
-    fn sort_text(&self) -> &str {
-        self.filter_text.as_ref().unwrap_or(&self.label).as_str()
+    type Data = ();
+    fn sort_text(&self, data: &Self::Data) -> Cow<str> {
+        self.filter_text(data)
     }
 
-    fn filter_text(&self) -> &str {
-        self.filter_text.as_ref().unwrap_or(&self.label).as_str()
+    #[inline]
+    fn filter_text(&self, _data: &Self::Data) -> Cow<str> {
+        self.filter_text
+            .as_ref()
+            .unwrap_or(&self.label)
+            .as_str()
+            .into()
     }
 
-    fn label(&self) -> &str {
-        self.label.as_str()
+    fn label(&self, _data: &Self::Data) -> Spans {
+        self.label.as_str().into()
     }
 
-    fn row(&self) -> menu::Row {
+    fn row(&self, _data: &Self::Data) -> menu::Row {
         menu::Row::new(vec![
             menu::Cell::from(self.label.as_str()),
             menu::Cell::from(match self.kind {
@@ -78,6 +88,8 @@ pub struct Completion {
 }
 
 impl Completion {
+    pub const ID: &'static str = "completion";
+
     pub fn new(
         editor: &Editor,
         items: Vec<CompletionItem>,
@@ -85,7 +97,7 @@ impl Completion {
         start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
-        let menu = Menu::new(items, move |editor: &mut Editor, item, event| {
+        let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
             fn item_to_transaction(
                 doc: &Document,
                 item: &CompletionItem,
@@ -135,6 +147,7 @@ impl Completion {
 
             match event {
                 PromptEvent::Abort => {
+                    doc.restore(view.id);
                     editor.last_completion = None;
                 }
                 PromptEvent::Update => {
@@ -178,17 +191,21 @@ impl Completion {
                     });
 
                     // apply additional edits, mostly used to auto import unqualified types
-                    let resolved_additional_text_edits = if item.additional_text_edits.is_some() {
+                    let resolved_item = if item
+                        .additional_text_edits
+                        .as_ref()
+                        .map(|edits| !edits.is_empty())
+                        .unwrap_or(false)
+                    {
                         None
                     } else {
                         Self::resolve_completion_item(doc, item.clone())
-                            .and_then(|item| item.additional_text_edits)
                     };
 
-                    if let Some(additional_edits) = item
-                        .additional_text_edits
+                    if let Some(additional_edits) = resolved_item
                         .as_ref()
-                        .or(resolved_additional_text_edits.as_ref())
+                        .and_then(|item| item.additional_text_edits.as_ref())
+                        .or(item.additional_text_edits.as_ref())
                     {
                         if !additional_edits.is_empty() {
                             let transaction = util::generate_transaction_from_edits(
@@ -202,7 +219,7 @@ impl Completion {
                 }
             };
         });
-        let popup = Popup::new("completion", menu);
+        let popup = Popup::new(Self::ID, menu);
         let mut completion = Self {
             popup,
             start_offset,
@@ -281,7 +298,7 @@ impl Completion {
 }
 
 impl Component for Completion {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         // let the Editor handle Esc instead
         if let Event::Key(KeyEvent {
             code: KeyCode::Esc, ..
@@ -307,10 +324,7 @@ impl Component for Completion {
             // option.documentation
 
             let (view, doc) = current!(cx.editor);
-            let language = doc
-                .language()
-                .and_then(|scope| scope.strip_prefix("source."))
-                .unwrap_or("");
+            let language = doc.language_name().unwrap_or("");
             let text = doc.text().slice(..);
             let cursor_pos = doc.selection(view.id).primary().cursor(text);
             let coords = helix_core::visual_coords_at_pos(text, cursor_pos, doc.tab_width());

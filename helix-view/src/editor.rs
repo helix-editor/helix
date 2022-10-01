@@ -32,13 +32,14 @@ use anyhow::{bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
+use helix_core::Position;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig},
     Change,
 };
-use helix_core::{Position, Selection};
 use helix_dap as dap;
+use helix_lsp::lsp;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -71,6 +72,9 @@ pub struct FilePickerConfig {
     /// Enables ignoring hidden files.
     /// Whether to hide hidden files in file picker and global search results. Defaults to true.
     pub hidden: bool,
+    /// Enables following symlinks.
+    /// Whether to follow symbolic links in file picker and file or directory completions. Defaults to true.
+    pub follow_symlinks: bool,
     /// Enables reading ignore files from parent directories. Defaults to true.
     pub parents: bool,
     /// Enables reading `.ignore` files.
@@ -94,6 +98,7 @@ impl Default for FilePickerConfig {
     fn default() -> Self {
         Self {
             hidden: true,
+            follow_symlinks: true,
             parents: true,
             ignore: true,
             git_ignore: true,
@@ -117,6 +122,10 @@ pub struct Config {
     pub shell: Vec<String>,
     /// Line number mode.
     pub line_number: LineNumber,
+    /// Highlight the lines cursors are currently on. Defaults to false.
+    pub cursorline: bool,
+    /// Gutters. Default ["diagnostics", "line-numbers"]
+    pub gutters: Vec<GutterType>,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
     /// Automatic insertion of pairs to parentheses, brackets,
@@ -125,6 +134,8 @@ pub struct Config {
     pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
+    /// Automatic formatting on save. Defaults to true.
+    pub auto_format: bool,
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(
@@ -136,6 +147,8 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
+    /// Configuration of the statusline elements
+    pub statusline: StatusLineConfig,
     /// Shape for cursor in each mode
     pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
@@ -144,12 +157,91 @@ pub struct Config {
     #[serde(default)]
     pub search: SearchConfig,
     pub lsp: LspConfig,
+    pub terminal: Option<TerminalConfig>,
+    /// Column numbers at which to draw the rulers. Default to `[]`, meaning no rulers.
+    pub rulers: Vec<u16>,
+    #[serde(default)]
+    pub whitespace: WhitespaceConfig,
+    /// Persistently display open buffers along the top
+    pub bufferline: BufferLine,
+    /// Vertical indent width guides.
+    pub indent_guides: IndentGuidesConfig,
+    /// Whether to color modes with different colors. Defaults to `false`.
+    pub color_modes: bool,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct TerminalConfig {
+    pub command: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub args: Vec<String>,
+}
+
+#[cfg(windows)]
+pub fn get_terminal_provider() -> Option<TerminalConfig> {
+    use crate::clipboard::provider::command::exists;
+
+    if exists("wt") {
+        return Some(TerminalConfig {
+            command: "wt".to_string(),
+            args: vec![
+                "new-tab".to_string(),
+                "--title".to_string(),
+                "DEBUG".to_string(),
+                "cmd".to_string(),
+                "/C".to_string(),
+            ],
+        });
+    }
+
+    return Some(TerminalConfig {
+        command: "conhost".to_string(),
+        args: vec!["cmd".to_string(), "/C".to_string()],
+    });
+}
+
+#[cfg(not(any(windows, target_os = "wasm32")))]
+pub fn get_terminal_provider() -> Option<TerminalConfig> {
+    use crate::clipboard::provider::command::{env_var_is_set, exists};
+
+    if env_var_is_set("TMUX") && exists("tmux") {
+        return Some(TerminalConfig {
+            command: "tmux".to_string(),
+            args: vec!["split-window".to_string()],
+        });
+    }
+
+    if env_var_is_set("WEZTERM_UNIX_SOCKET") && exists("wezterm") {
+        return Some(TerminalConfig {
+            command: "wezterm".to_string(),
+            args: vec!["cli".to_string(), "split-pane".to_string()],
+        });
+    }
+
+    None
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
+    /// Display LSP progress messages below statusline
     pub display_messages: bool,
+    /// Enable automatic pop up of signature help (parameter hints)
+    pub auto_signature_help: bool,
+    /// Display docs under signature help popup
+    pub display_signature_help_docs: bool,
+}
+
+impl Default for LspConfig {
+    fn default() -> Self {
+        Self {
+            display_messages: false,
+            auto_signature_help: true,
+            display_signature_help_docs: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -159,6 +251,68 @@ pub struct SearchConfig {
     pub smart_case: bool,
     /// Whether the search should wrap after depleting the matches. Default to true.
     pub wrap_around: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct StatusLineConfig {
+    pub left: Vec<StatusLineElement>,
+    pub center: Vec<StatusLineElement>,
+    pub right: Vec<StatusLineElement>,
+    pub separator: String,
+}
+
+impl Default for StatusLineConfig {
+    fn default() -> Self {
+        use StatusLineElement as E;
+
+        Self {
+            left: vec![E::Mode, E::Spinner, E::FileName],
+            center: vec![],
+            right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
+            separator: String::from("│"),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum StatusLineElement {
+    /// The editor mode (Normal, Insert, Visual/Selection)
+    Mode,
+
+    /// The LSP activity spinner
+    Spinner,
+
+    /// The file nane/path, including a dirty flag if it's unsaved
+    FileName,
+
+    /// The file encoding
+    FileEncoding,
+
+    /// The file line endings (CRLF or LF)
+    FileLineEnding,
+
+    /// The file type (language ID or "text")
+    FileType,
+
+    /// A summary of the number of errors and warnings
+    Diagnostics,
+
+    /// The number of selections (cursors)
+    Selections,
+
+    /// The cursor position
+    Position,
+
+    /// The separator string
+    Separator,
+
+    /// The cursor position as a percent of the total file
+    PositionPercentage,
+
+    /// A single space
+    Spacer,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -215,6 +369,24 @@ impl Default for CursorShapeConfig {
     }
 }
 
+/// bufferline render modes
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BufferLine {
+    /// Don't render bufferline
+    Never,
+    /// Always render
+    Always,
+    /// Only if multiple buffers are open
+    Multiple,
+}
+
+impl Default for BufferLine {
+    fn default() -> Self {
+        BufferLine::Never
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LineNumber {
@@ -238,6 +410,140 @@ impl std::str::FromStr for LineNumber {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum GutterType {
+    /// Show diagnostics and other features like breakpoints
+    Diagnostics,
+    /// Show line numbers
+    LineNumbers,
+    /// Show one blank space
+    Spacer,
+}
+
+impl std::str::FromStr for GutterType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "diagnostics" => Ok(Self::Diagnostics),
+            "line-numbers" => Ok(Self::LineNumbers),
+            _ => anyhow::bail!("Gutter type can only be `diagnostics` or `line-numbers`."),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct WhitespaceConfig {
+    pub render: WhitespaceRender,
+    pub characters: WhitespaceCharacters,
+}
+
+impl Default for WhitespaceConfig {
+    fn default() -> Self {
+        Self {
+            render: WhitespaceRender::Basic(WhitespaceRenderValue::None),
+            characters: WhitespaceCharacters::default(),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged, rename_all = "kebab-case")]
+pub enum WhitespaceRender {
+    Basic(WhitespaceRenderValue),
+    Specific {
+        default: Option<WhitespaceRenderValue>,
+        space: Option<WhitespaceRenderValue>,
+        nbsp: Option<WhitespaceRenderValue>,
+        tab: Option<WhitespaceRenderValue>,
+        newline: Option<WhitespaceRenderValue>,
+    },
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum WhitespaceRenderValue {
+    None,
+    // TODO
+    // Selection,
+    All,
+}
+
+impl WhitespaceRender {
+    pub fn space(&self) -> WhitespaceRenderValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific { default, space, .. } => {
+                space.or(default).unwrap_or(WhitespaceRenderValue::None)
+            }
+        }
+    }
+    pub fn nbsp(&self) -> WhitespaceRenderValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific { default, nbsp, .. } => {
+                nbsp.or(default).unwrap_or(WhitespaceRenderValue::None)
+            }
+        }
+    }
+    pub fn tab(&self) -> WhitespaceRenderValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific { default, tab, .. } => {
+                tab.or(default).unwrap_or(WhitespaceRenderValue::None)
+            }
+        }
+    }
+    pub fn newline(&self) -> WhitespaceRenderValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific {
+                default, newline, ..
+            } => newline.or(default).unwrap_or(WhitespaceRenderValue::None),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct WhitespaceCharacters {
+    pub space: char,
+    pub nbsp: char,
+    pub tab: char,
+    pub tabpad: char,
+    pub newline: char,
+}
+
+impl Default for WhitespaceCharacters {
+    fn default() -> Self {
+        Self {
+            space: '·',    // U+00B7
+            nbsp: '⍽',    // U+237D
+            tab: '→',     // U+2192
+            newline: '⏎', // U+23CE
+            tabpad: ' ',
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct IndentGuidesConfig {
+    pub render: bool,
+    pub character: char,
+}
+
+impl Default for IndentGuidesConfig {
+    fn default() -> Self {
+        Self {
+            render: false,
+            character: '│',
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -250,17 +556,27 @@ impl Default for Config {
                 vec!["sh".to_owned(), "-c".to_owned()]
             },
             line_number: LineNumber::Absolute,
+            cursorline: false,
+            gutters: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
+            auto_format: true,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             search: SearchConfig::default(),
             lsp: LspConfig::default(),
+            terminal: get_terminal_provider(),
+            rulers: Vec::new(),
+            whitespace: WhitespaceConfig::default(),
+            bufferline: BufferLine::default(),
+            indent_guides: IndentGuidesConfig::default(),
+            color_modes: false,
         }
     }
 }
@@ -300,6 +616,8 @@ pub struct Breakpoint {
 }
 
 pub struct Editor {
+    /// Current editing mode.
+    pub mode: Mode,
     pub tree: Tree,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
@@ -307,8 +625,9 @@ pub struct Editor {
     pub selected_register: Option<char>,
     pub registers: Registers,
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
-    pub theme: Theme,
+    pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
+    pub diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
 
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
@@ -318,6 +637,12 @@ pub struct Editor {
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
+    /// last_theme is used for theme previews. We store the current theme here,
+    /// and if previewing is cancelled, we can return to it.
+    pub last_theme: Option<Theme>,
+    /// The currently applied editor theme. While previewing a theme, the previewed theme
+    /// is set here.
+    pub theme: Theme,
 
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
@@ -339,7 +664,12 @@ pub struct Editor {
 #[derive(Debug, Clone)]
 pub enum ConfigEvent {
     Refresh,
-    Update(Config),
+    Update(Box<Config>),
+}
+
+enum ThemeAction {
+    Set,
+    Preview,
 }
 
 #[derive(Debug, Clone)]
@@ -363,7 +693,6 @@ impl Editor {
         syn_loader: Arc<syntax::Loader>,
         config: Box<dyn DynAccess<Config>>,
     ) -> Self {
-        let language_servers = helix_lsp::Registry::new();
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
 
@@ -371,19 +700,23 @@ impl Editor {
         area.height -= 1;
 
         Self {
+            mode: Mode::Normal,
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
             count: None,
             selected_register: None,
             macro_recording: None,
+            macro_replaying: Vec::new(),
             theme: theme_loader.default(),
-            language_servers,
+            language_servers: helix_lsp::Registry::new(),
+            diagnostics: BTreeMap::new(),
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
             syn_loader,
             theme_loader,
+            last_theme: None,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
@@ -399,8 +732,21 @@ impl Editor {
         }
     }
 
+    /// Current editing mode for the [`Editor`].
+    pub fn mode(&self) -> Mode {
+        self.mode
+    }
+
     pub fn config(&self) -> DynGuard<Config> {
         self.config.load()
+    }
+
+    /// Call if the config has changed to let the editor update all
+    /// relevant members.
+    pub fn refresh_config(&mut self) {
+        let config = self.config();
+        self.auto_pairs = (&config.auto_pairs).into();
+        self.reset_idle_timer();
     }
 
     pub fn clear_idle_timer(&mut self) {
@@ -431,7 +777,36 @@ impl Editor {
         self.status_msg = Some((error.into(), Severity::Error));
     }
 
+    #[inline]
+    pub fn get_status(&self) -> Option<(&Cow<'static, str>, &Severity)> {
+        self.status_msg.as_ref().map(|(status, sev)| (status, sev))
+    }
+
+    /// Returns true if the current status is an error
+    #[inline]
+    pub fn is_err(&self) -> bool {
+        self.status_msg
+            .as_ref()
+            .map(|(_, sev)| *sev == Severity::Error)
+            .unwrap_or(false)
+    }
+
+    pub fn unset_theme_preview(&mut self) {
+        if let Some(last_theme) = self.last_theme.take() {
+            self.set_theme(last_theme);
+        }
+        // None likely occurs when the user types ":theme" and then exits before previewing
+    }
+
+    pub fn set_theme_preview(&mut self, theme: Theme) {
+        self.set_theme_impl(theme, ThemeAction::Preview);
+    }
+
     pub fn set_theme(&mut self, theme: Theme) {
+        self.set_theme_impl(theme, ThemeAction::Set);
+    }
+
+    fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) {
         // `ui.selection` is the only scope required to be able to render a theme.
         if theme.find_scope_index("ui.selection").is_none() {
             self.set_error("Invalid theme: `ui.selection` required");
@@ -441,19 +816,32 @@ impl Editor {
         let scopes = theme.scopes();
         self.syn_loader.set_scopes(scopes.to_vec());
 
-        self.theme = theme;
+        match preview {
+            ThemeAction::Preview => {
+                let last_theme = std::mem::replace(&mut self.theme, theme);
+                // only insert on first preview: this will be the last theme the user has saved
+                self.last_theme.get_or_insert(last_theme);
+            }
+            ThemeAction::Set => {
+                self.last_theme = None;
+                self.theme = theme;
+            }
+        }
+
         self._refresh();
     }
 
     /// Refreshes the language server for a given document
     pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
         let doc = self.documents.get_mut(&doc_id)?;
-        doc.detect_language(self.syn_loader.clone());
         Self::launch_language_server(&mut self.language_servers, doc)
     }
 
     /// Launch a language server for a given document
     fn launch_language_server(ls: &mut helix_lsp::Registry, doc: &mut Document) -> Option<()> {
+        // if doc doesn't have a URL it's a scratch buffer, ignore it
+        let doc_url = doc.url()?;
+
         // try to find a language server based on the language name
         let language_server = doc.language.as_ref().and_then(|language| {
             ls.get(language)
@@ -465,6 +853,7 @@ impl Editor {
                     )
                 })
                 .ok()
+                .flatten()
         });
         if let Some(language_server) = language_server {
             // only spawn a new lang server if the servers aren't the same
@@ -477,7 +866,7 @@ impl Editor {
 
                 // TODO: this now races with on_init code if the init happens too quickly
                 tokio::spawn(language_server.text_document_did_open(
-                    doc.url().unwrap(),
+                    doc_url,
                     doc.version(),
                     doc.text(),
                     language_id,
@@ -502,12 +891,9 @@ impl Editor {
         view.doc = doc_id;
         view.offset = Position::default();
 
-        let doc = self.documents.get_mut(&doc_id).unwrap();
+        let doc = doc_mut!(self, &doc_id);
+        doc.ensure_view_init(view.id);
 
-        // initialize selection for view
-        doc.selections
-            .entry(view.id)
-            .or_insert_with(|| Selection::point(0));
         // TODO: reuse align_view
         let pos = doc
             .selection(view.id)
@@ -543,17 +929,24 @@ impl Editor {
                         .any(|(_, v)| v.doc == doc.id && v.id != view.id);
 
                 let (view, doc) = current!(self);
+                let view_id = view.id;
+
                 if remove_empty_scratch {
                     // Copy `doc.id` into a variable before calling `self.documents.remove`, which requires a mutable
                     // borrow, invalidating direct access to `doc.id`.
                     let id = doc.id;
                     self.documents.remove(&id);
+
+                    // Remove the scratch buffer from any jumplists
+                    for (view, _) in self.tree.views_mut() {
+                        view.remove_document(&id);
+                    }
                 } else {
                     let jump = (view.doc, doc.selection(view.id).clone());
                     view.jumps.push(jump);
                     // Set last accessed doc if it is a different document
                     if doc.id != id {
-                        view.last_accessed_doc = Some(view.doc);
+                        view.add_to_history(view.doc);
                         // Set last modified doc if modified and last modified doc is different
                         if std::mem::take(&mut doc.modified_since_accessed)
                             && view.last_modified_docs[0] != Some(view.doc)
@@ -563,21 +956,24 @@ impl Editor {
                     }
                 }
 
-                let view_id = view.id;
                 self.replace_document_in_view(view_id, id);
 
                 return;
             }
             Action::Load => {
                 let view_id = view!(self).id;
-                let doc = self.documents.get_mut(&id).unwrap();
-                if doc.selections().is_empty() {
-                    doc.selections.insert(view_id, Selection::point(0));
-                }
+                let doc = doc_mut!(self, &id);
+                doc.ensure_view_init(view_id);
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
-                let view = View::new(id);
+                // copy the current view, unless there is no view yet
+                let view = self
+                    .tree
+                    .try_get(self.tree.focus)
+                    .filter(|v| id == v.doc) // Different Document
+                    .cloned()
+                    .unwrap_or_else(|| View::new(id, self.config().gutters.clone()));
                 let view_id = self.tree.split(
                     view,
                     match action {
@@ -587,8 +983,8 @@ impl Editor {
                     },
                 );
                 // initialize selection for view
-                let doc = self.documents.get_mut(&id).unwrap();
-                doc.selections.insert(view_id, Selection::point(0));
+                let doc = doc_mut!(self, &id);
+                doc.ensure_view_init(view_id);
             }
         }
 
@@ -621,8 +1017,9 @@ impl Editor {
         Ok(self.new_file_from_document(action, Document::from(rope, Some(encoding))))
     }
 
-    pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
-        let path = helix_core::path::get_canonicalized_path(&path)?;
+    // ??? possible use for integration tests
+    pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, Error> {
+        let path = helix_core::path::get_canonicalized_path(path)?;
         let id = self.document_by_path(&path).map(|doc| doc.id);
 
         let id = if let Some(id) = id {
@@ -640,14 +1037,9 @@ impl Editor {
     }
 
     pub fn close(&mut self, id: ViewId) {
-        let view = self.tree.get(self.tree.focus);
+        let (_view, doc) = current!(self);
         // remove selection
-        self.documents
-            .get_mut(&view.doc)
-            .unwrap()
-            .selections
-            .remove(&id);
-
+        doc.remove_view(id);
         self.tree.remove(id);
         self._refresh();
     }
@@ -671,20 +1063,40 @@ impl Editor {
             tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
 
-        let views_to_close = self
+        enum Action {
+            Close(ViewId),
+            ReplaceDoc(ViewId, DocumentId),
+        }
+
+        let actions: Vec<Action> = self
             .tree
-            .views()
+            .views_mut()
             .filter_map(|(view, _focus)| {
+                view.remove_document(&doc_id);
+
                 if view.doc == doc_id {
-                    Some(view.id)
+                    // something was previously open in the view, switch to previous doc
+                    if let Some(prev_doc) = view.docs_access_history.pop() {
+                        Some(Action::ReplaceDoc(view.id, prev_doc))
+                    } else {
+                        // only the document that is being closed was in the view, close it
+                        Some(Action::Close(view.id))
+                    }
                 } else {
                     None
                 }
             })
-            .collect::<Vec<_>>();
+            .collect();
 
-        for view_id in views_to_close {
-            self.close(view_id);
+        for action in actions {
+            match action {
+                Action::Close(view_id) => {
+                    self.close(view_id);
+                }
+                Action::ReplaceDoc(view_id, doc_id) => {
+                    self.replace_document_in_view(view_id, doc_id);
+                }
+            }
         }
 
         self.documents.remove(&doc_id);
@@ -699,10 +1111,10 @@ impl Editor {
                 .map(|(&doc_id, _)| doc_id)
                 .next()
                 .unwrap_or_else(|| self.new_document(Document::default()));
-            let view = View::new(doc_id);
+            let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
-            let doc = self.documents.get_mut(&doc_id).unwrap();
-            doc.selections.insert(view_id, Selection::point(0));
+            let doc = doc_mut!(self, &doc_id);
+            doc.ensure_view_init(view_id);
         }
 
         self._refresh();
@@ -716,24 +1128,39 @@ impl Editor {
         };
     }
 
+    pub fn focus(&mut self, view_id: ViewId) {
+        let prev_id = std::mem::replace(&mut self.tree.focus, view_id);
+
+        // if leaving the view: mode should reset
+        if prev_id != view_id {
+            self.mode = Mode::Normal;
+        }
+    }
+
     pub fn focus_next(&mut self) {
+        let prev_id = self.tree.focus;
         self.tree.focus_next();
+        let id = self.tree.focus;
+
+        // if leaving the view: mode should reset
+        if prev_id != id {
+            self.mode = Mode::Normal;
+        }
     }
 
-    pub fn focus_right(&mut self) {
-        self.tree.focus_direction(tree::Direction::Right);
+    pub fn focus_direction(&mut self, direction: tree::Direction) {
+        let current_view = self.tree.focus;
+        if let Some(id) = self.tree.find_split_in_direction(current_view, direction) {
+            self.focus(id)
+        }
     }
 
-    pub fn focus_left(&mut self) {
-        self.tree.focus_direction(tree::Direction::Left);
+    pub fn swap_split_in_direction(&mut self, direction: tree::Direction) {
+        self.tree.swap_split_in_direction(direction);
     }
 
-    pub fn focus_up(&mut self) {
-        self.tree.focus_direction(tree::Direction::Up);
-    }
-
-    pub fn focus_down(&mut self) {
-        self.tree.focus_direction(tree::Direction::Down);
+    pub fn transpose_view(&mut self) {
+        self.tree.transpose();
     }
 
     pub fn should_close(&self) -> bool {
@@ -788,7 +1215,7 @@ impl Editor {
             let inner = view.inner_area();
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            let cursorkind = config.cursor_shape.from_mode(doc.mode());
+            let cursorkind = config.cursor_shape.from_mode(self.mode);
             (Some(pos), cursorkind)
         } else {
             (None, CursorKind::default())
