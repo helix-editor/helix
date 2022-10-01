@@ -21,6 +21,7 @@ pub mod register;
 pub mod search;
 pub mod selection;
 pub mod shellwords;
+pub mod spellcheck;
 mod state;
 pub mod surround;
 pub mod syntax;
@@ -28,7 +29,6 @@ pub mod test;
 pub mod textobject;
 mod transaction;
 pub mod wrap;
-pub mod spellcheck;
 
 pub mod unicode {
     pub use unicode_general_category as category;

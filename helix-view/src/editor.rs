@@ -40,6 +40,7 @@ use helix_core::{
 };
 use helix_dap as dap;
 use helix_lsp::lsp;
+use helix_spell::client as spell;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -657,6 +658,8 @@ pub struct Editor {
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
 
+    pub spell_checker: spell::Client,
+
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
@@ -764,6 +767,7 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
+            spell_checker: spell::Client::new(),
         }
     }
 

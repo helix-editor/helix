@@ -29,6 +29,7 @@ helix-core = { version = "0.6", path = "../helix-core" }
 helix-view = { version = "0.6", path = "../helix-view" }
 helix-lsp = { version = "0.6", path = "../helix-lsp" }
 helix-dap = { version = "0.6", path = "../helix-dap" }
+helix-spell = { version = "0.6", path = "../helix-spell" }
 helix-loader = { version = "0.6", path = "../helix-loader" }
 
 anyhow = "1"

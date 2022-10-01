@@ -9,7 +9,7 @@ pub fn spellcheck_treesitter(
     lang_config: &LanguageConfiguration,
 ) -> Option<Vec<Range>> {
     let mut cursor = QueryCursor::new();
-    let mut ranges: Vec<Range> = lang_config
+    let ranges: Vec<Range> = lang_config
         .spellcheck_query()?
         .capture_nodes("spell", doc_tree, doc_slice, &mut cursor)?
         .map(|node| {
@@ -18,6 +18,5 @@ pub fn spellcheck_treesitter(
             Range::new(start_char, end_char)
         })
         .collect();
-    ranges.dedup();
     Some(ranges)
 }

@@ -566,9 +566,10 @@ dependencies = [
 
 [[package]]
 name = "helix-spell"
-version = "0.1.0"
+version = "0.6.0"
 dependencies = [
  "hunspell-rs",
+ "log",
 ]
 
 [[package]]
@@ -589,6 +590,7 @@ dependencies = [
  "helix-dap",
  "helix-loader",
  "helix-lsp",
+ "helix-spell",
  "helix-tui",
  "helix-view",
  "ignore",
@@ -636,6 +638,7 @@ dependencies = [
  "helix-dap",
  "helix-loader",
  "helix-lsp",
+ "helix-spell",
  "helix-tui",
  "log",
  "once_cell",
