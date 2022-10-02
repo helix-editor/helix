@@ -1091,7 +1091,7 @@ fn will_find_char<F>(
     search_fn: F,
     inclusive: bool,
     extend: bool,
-    pseudo_pending: Option<String>,
+    pseudo_pending: &str,
 ) where
     F: Fn(RopeSlice, char, usize, usize, bool) -> Option<usize> + 'static,
 {
@@ -1099,7 +1099,7 @@ fn will_find_char<F>(
     // Would be nice to carry over.
     let count = cx.count();
 
-    cx.editor.pseudo_pending = pseudo_pending;
+    cx.editor.pseudo_pending = Some(pseudo_pending.to_string());
 
     // need to wait for next key
     // TODO: should this be done by grapheme rather than char?  For example,
@@ -1209,35 +1209,35 @@ fn find_prev_char_impl(
 }
 
 fn find_till_char(cx: &mut Context) {
-    will_find_char(cx, find_next_char_impl, false, false, Some("t".to_string()))
+    will_find_char(cx, find_next_char_impl, false, false, "t")
 }
 
 fn find_next_char(cx: &mut Context) {
-    will_find_char(cx, find_next_char_impl, true, false, Some("f".to_string()))
+    will_find_char(cx, find_next_char_impl, true, false, "f")
 }
 
 fn extend_till_char(cx: &mut Context) {
-    will_find_char(cx, find_next_char_impl, false, true, Some("vt".to_string()))
+    will_find_char(cx, find_next_char_impl, false, true, "t")
 }
 
 fn extend_next_char(cx: &mut Context) {
-    will_find_char(cx, find_next_char_impl, true, true, Some("vf".to_string()))
+    will_find_char(cx, find_next_char_impl, true, true, "f")
 }
 
 fn till_prev_char(cx: &mut Context) {
-    will_find_char(cx, find_prev_char_impl, false, false, Some("T".to_string()))
+    will_find_char(cx, find_prev_char_impl, false, false, "T")
 }
 
 fn find_prev_char(cx: &mut Context) {
-    will_find_char(cx, find_prev_char_impl, true, false, Some("F".to_string()))
+    will_find_char(cx, find_prev_char_impl, true, false, "F")
 }
 
 fn extend_till_prev_char(cx: &mut Context) {
-    will_find_char(cx, find_prev_char_impl, false, true, Some("vT".to_string()))
+    will_find_char(cx, find_prev_char_impl, false, true, "T")
 }
 
 fn extend_prev_char(cx: &mut Context) {
-    will_find_char(cx, find_prev_char_impl, true, true, Some("vF".to_string()))
+    will_find_char(cx, find_prev_char_impl, true, true, "F")
 }
 
 fn repeat_last_motion(cx: &mut Context) {
