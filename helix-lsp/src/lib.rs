@@ -204,6 +204,20 @@ pub mod util {
         // in reverse order.
         edits.sort_unstable_by_key(|edit| edit.range.start);
 
+        // Generate a diff if the edit is a full document replacement.
+        #[allow(clippy::collapsible_if)]
+        if edits.len() == 1 {
+            let is_document_replacement = edits.first().and_then(|edit| {
+                let start = lsp_pos_to_pos(doc, edit.range.start, offset_encoding)?;
+                let end = lsp_pos_to_pos(doc, edit.range.end, offset_encoding)?;
+                Some(start..end)
+            }) == Some(0..doc.len_chars());
+            if is_document_replacement {
+                let new_text = Rope::from(edits.pop().unwrap().new_text);
+                return helix_core::diff::compare_ropes(doc, &new_text);
+            }
+        }
+
         Transaction::change(
             doc,
             edits.into_iter().map(|edit| {
