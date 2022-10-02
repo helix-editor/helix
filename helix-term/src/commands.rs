@@ -2504,18 +2504,23 @@ async fn make_format_callback(
 ) -> anyhow::Result<job::Callback> {
     let format = format.await?;
     let call: job::Callback = Box::new(move |editor, _compositor| {
-        let view_id = view!(editor).id;
-        if let Some(doc) = editor.document_mut(doc_id) {
-            if doc.version() == doc_version {
-                doc.apply(&format, view_id);
-                doc.append_changes_to_history(view_id);
-                doc.detect_indent_and_line_ending();
-                if let Modified::SetUnmodified = modified {
-                    doc.reset_modified();
-                }
-            } else {
-                log::info!("discarded formatting changes because the document changed");
+        if !editor.documents.contains_key(&doc_id) {
+            return;
+        }
+
+        let scrolloff = editor.config().scrolloff;
+        let doc = doc_mut!(editor, &doc_id);
+        let view = view_mut!(editor);
+        if doc.version() == doc_version {
+            doc.apply(&format, view.id);
+            doc.append_changes_to_history(view.id);
+            doc.detect_indent_and_line_ending();
+            view.ensure_cursor_in_view(doc, scrolloff);
+            if let Modified::SetUnmodified = modified {
+                doc.reset_modified();
             }
+        } else {
+            log::info!("discarded formatting changes because the document changed");
         }
     });
     Ok(call)
