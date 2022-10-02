@@ -1781,3 +1781,17 @@ language-server = { command = "bass", args = ["--lsp"] }
 [[grammar]]
 name = "bass"
 source = { git = "https://github.com/vito/tree-sitter-bass", rev = "501133e260d768ed4e1fd7374912ed5c86d6fd90" }
+
+[[language]]
+name = "d"
+scope = "source.d"
+injection-regex = "d"
+file-type = ["d"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "served" }
+
+[[grammar]]
+name = "d"
+source = { git = "https://github.com/CyberShadow/tree-sitter-d", rev = "c2fbf21bd3aa45495fe13247e040ad5815250032" }
