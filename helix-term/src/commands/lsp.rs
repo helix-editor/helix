@@ -8,8 +8,10 @@ use tui::text::{Span, Spans};
 
 use super::{align_view, push_jump, Align, Context, Editor, Open};
 
-use helix_core::{path, Selection};
+use helix_core::{path, Selection, diagnostic::Severity};
 use helix_view::{editor::Action, theme::Style};
+
+use serde_json::json;
 
 use crate::{
     compositor::{self, Compositor},
@@ -768,6 +770,32 @@ pub fn goto_type_definition(cx: &mut Context) {
         },
     );
 }
+
+pub fn goto_error(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = doc.position(view.id, offset_encoding);
+    let mut error_locations = Vec::<lsp::Location>::new();
+
+    for diagnostic in doc.diagnostics().iter()
+        .filter(|diagnostic| diagnostic.severity.unwrap() == Severity::Error) {
+        error_locations.push(lsp::Location{
+            uri: doc.url().unwrap(), 
+            range: range_to_lsp_range(doc.text(), helix_core::Range::new(diagnostic.range.start, diagnostic.range.end), offset_encoding)
+        });
+    }
+
+    cx.callback(
+        async { Ok(json!(null))},
+        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
+            goto_impl(editor, compositor, error_locations, offset_encoding);
+        },
+    );
+
+}
+
 
 pub fn goto_implementation(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
