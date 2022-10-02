@@ -33,6 +33,7 @@ use super::statusline;
 pub struct EditorView {
     pub keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
+    pseudo_pending: Vec<KeyEvent>,
     last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
@@ -56,6 +57,7 @@ impl EditorView {
         Self {
             keymaps,
             on_next_key: None,
+            pseudo_pending: Vec::new(),
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
@@ -831,6 +833,7 @@ impl EditorView {
         event: KeyEvent,
     ) -> Option<KeymapResult> {
         let mut last_mode = mode;
+        self.pseudo_pending.extend(self.keymaps.pending());
         let key_result = self.keymaps.get(mode, event);
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
@@ -1308,6 +1311,11 @@ impl Component for EditorView {
                 }
 
                 self.on_next_key = cx.on_next_key_callback.take();
+                match self.on_next_key {
+                    Some(_) => self.pseudo_pending.push(key),
+                    None => self.pseudo_pending.clear(),
+                }
+
                 // appease borrowck
                 let callback = cx.callback.take();
 
@@ -1408,8 +1416,8 @@ impl Component for EditorView {
             for key in self.keymaps.pending() {
                 disp.push_str(&key.key_sequence_format());
             }
-            if let Some(pseudo_pending) = &cx.editor.pseudo_pending {
-                disp.push_str(pseudo_pending.as_str())
+            for key in &self.pseudo_pending {
+                disp.push_str(&key.key_sequence_format());
             }
             let style = cx.editor.theme.get("ui.text");
             let macro_width = if cx.editor.macro_recording.is_some() {
