@@ -110,5 +110,3 @@
     (identifier) @attribute)
 
 (comment) @comment
-
-(ERROR) @error
