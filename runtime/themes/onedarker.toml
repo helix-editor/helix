@@ -2,7 +2,7 @@
 
 "attribute" = { fg = "yellow" }
 "comment" = { fg = "light-gray", modifiers = ["italic"] }
-"constant" = { fg = "green" }
+"constant" = { fg = "gold" }
 "constant.numeric" = { fg = "gold" }
 "constant.builtin" = { fg = "gold" }
 "constant.character.escape" = { fg = "gold" }
@@ -69,7 +69,7 @@ diagnostic = { modifiers = ["underlined"] }
 "ui.statusline.normal" = { fg = "light-black", bg = "purple" }
 "ui.statusline.insert" = { fg = "light-black", bg = "green" }
 "ui.statusline.select" = { fg = "light-black", bg = "cyan" }
-"ui.text" = { fg = "purple" }
+"ui.text" = { fg = "white" }
 "ui.text.focus" = { fg = "white", bg = "light-black", modifiers = ["bold"] }
 
 "ui.help" = { fg = "white", bg = "gray" }
@@ -91,7 +91,7 @@ cyan = "#46A6B2"
 white = "#ABB2BF"
 black = "#16181A"
 light-black = "#2C323C"
-gray = "#454D50"
+gray = "#252D30"
 faint-gray = "#ABB2BF"
 light-gray = "#636C6E"
 linenr = "#282C34"
