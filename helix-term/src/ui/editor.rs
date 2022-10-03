@@ -13,7 +13,7 @@ use helix_core::{
     movement::Direction,
     syntax::{self, HighlightEvent},
     unicode::width::UnicodeWidthStr,
-    LineEnding, Position, Range, Selection, Transaction,
+    visual_coords_at_pos, LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
@@ -117,6 +117,9 @@ impl EditorView {
 
         if is_focused && editor.config().cursorline {
             Self::highlight_cursorline(doc, view, surface, theme);
+        }
+        if is_focused && editor.config().cursorcolumn {
+            Self::highlight_cursorcolumn(doc, view, surface, theme);
         }
 
         let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
@@ -826,6 +829,45 @@ impl EditorView {
                 surface.set_style(area, primary_style);
             } else if secondary_lines.binary_search(&line).is_ok() {
                 surface.set_style(area, secondary_style);
+            }
+        }
+    }
+
+    /// Apply the highlighting on the columns where a cursor is active
+    pub fn highlight_cursorcolumn(
+        doc: &Document,
+        view: &View,
+        surface: &mut Surface,
+        theme: &Theme,
+    ) {
+        let text = doc.text().slice(..);
+
+        let primary_style = theme.get("ui.cursorline.primary");
+        let secondary_style = theme.get("ui.cursorline.secondary");
+
+        let inner_area = view.inner_area();
+        let offset = view.offset.col;
+
+        let selection = doc.selection(view.id);
+        let primary = selection.primary();
+        for range in selection.iter() {
+            let is_primary = primary == *range;
+
+            let Position { row: _, col } =
+                visual_coords_at_pos(text, range.cursor(text), doc.tab_width());
+            // if the cursor is horizontally in the view
+            if col >= offset && inner_area.width > (col - offset) as u16 {
+                let area = Rect::new(
+                    inner_area.x + (col - offset) as u16,
+                    view.area.y,
+                    1,
+                    view.area.height,
+                );
+                if is_primary {
+                    surface.set_style(area, primary_style)
+                } else {
+                    surface.set_style(area, secondary_style)
+                }
             }
         }
     }
