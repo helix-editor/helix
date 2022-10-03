@@ -314,7 +314,7 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `[space` | Add newline above                            | `add_newline_above`   |
 | `]space` | Add newline below                            | `add_newline_below`   |
 
-## Insert Mode
+## Insert mode
 
 Insert mode bindings are somewhat minimal by default. Helix is designed to
 be a modal editor, and this is reflected in the user experience and internal
@@ -323,45 +323,33 @@ escaping from insert mode to normal mode. For this reason, new users are
 strongly encouraged to learn the modal editing paradigm to get the smoothest
 experience.
 
-| Key                                         | Description                 | Command                 |
-| -----                                       | -----------                 | -------                 |
-| `Escape`                                    | Switch to normal mode       | `normal_mode`           |
-| `Ctrl-x`                                    | Autocomplete                | `completion`            |
-| `Ctrl-r`                                    | Insert a register content   | `insert_register`       |
-| `Ctrl-w`, `Alt-Backspace`, `Ctrl-Backspace` | Delete previous word        | `delete_word_backward`  |
-| `Alt-d`, `Alt-Delete`, `Ctrl-Delete`        | Delete next word            | `delete_word_forward`   |
-| `Ctrl-u`                                    | Delete to start of line     | `kill_to_line_start`    |
-| `Ctrl-k`                                    | Delete to end of line       | `kill_to_line_end`      |
-| `Ctrl-j`, `Enter`                           | Insert new line             | `insert_newline`        |
-| `Backspace`, `Ctrl-h`                       | Delete previous char        | `delete_char_backward`  |
-| `Delete`, `Ctrl-d`                          | Delete next char            | `delete_char_forward`   |
+| Key                                         | Description                 | Command                  |
+| -----                                       | -----------                 | -------                  |
+| `Escape`                                    | Switch to normal mode       | `normal_mode`            |
+| `Ctrl-s`                                    | Commit undo checkpoint      | `commit_undo_checkpoint` |
+| `Ctrl-x`                                    | Autocomplete                | `completion`             |
+| `Ctrl-r`                                    | Insert a register content   | `insert_register`        |
+| `Ctrl-w`, `Alt-Backspace`                   | Delete previous word        | `delete_word_backward`   |
+| `Alt-d`, `Alt-Delete`                       | Delete next word            | `delete_word_forward`    |
+| `Ctrl-u`                                    | Delete to start of line     | `kill_to_line_start`     |
+| `Ctrl-k`                                    | Delete to end of line       | `kill_to_line_end`       |
+| `Ctrl-h`, `Backspace`                       | Delete previous char        | `delete_char_backward`   |
+| `Ctrl-d`, `Delete`                          | Delete next char            | `delete_char_forward`    |
+| `Ctrl-j`, `Enter`                           | Insert new line             | `insert_newline`         |
 
-However, if you really want navigation in insert mode, this is supported. An
-example config that gives the ability to use arrow keys while still in insert
-mode:
+These keys are not recommended, but are included for new users less familiar
+with modal editors.
 
-```toml
-[keys.insert]
-"up" = "move_line_up"
-"down" = "move_line_down"
-"left" = "move_char_left"
-"right" = "move_char_right"
-"C-b" = "move_char_left"
-"C-f" = "move_char_right"
-"A-b" = "move_prev_word_end"
-"C-left" = "move_prev_word_end"
-"A-f" = "move_next_word_start"
-"C-right" = "move_next_word_start"
-"A-<" = "goto_file_start"
-"A->" = "goto_file_end"
-"pageup" = "page_up"
-"pagedown" = "page_down"
-"home" = "goto_line_start"
-"C-a" = "goto_line_start"
-"end" = "goto_line_end_newline"
-"C-e" = "goto_line_end_newline"
-"A-left" = "goto_line_start"
-```
+| Key                                         | Description                 | Command                  |
+| -----                                       | -----------                 | -------                  |
+| `Up`                                        | Move to previous line       | `move_line_up`           |
+| `Down`                                      | Move to next line           | `move_line_down`         |
+| `Left`                                      | Backward a char             | `move_char_left`         |
+| `Right`                                     | Forward a char              | `move_char_right`        |
+| `PageUp`                                    | Move one page up            | `page_up`                |
+| `PageDown`                                  | Move one page down          | `page_down`              |
+| `Home`                                      | Move to line start          | `goto_line_start`        |
+| `End`                                       | Move to line end            | `goto_line_end_newline`  |
 
 ## Select / extend mode
 
