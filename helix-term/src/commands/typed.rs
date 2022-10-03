@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use super::*;
 
-use helix_view::editor::{Action, ConfigEvent};
+use helix_view::editor::{Action, CloseError, ConfigEvent};
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -71,8 +71,29 @@ fn buffer_close_by_ids_impl(
     doc_ids: &[DocumentId],
     force: bool,
 ) -> anyhow::Result<()> {
-    for &doc_id in doc_ids {
-        editor.close_document(doc_id, force)?;
+    let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
+        .iter()
+        .filter_map(|&doc_id| {
+            if let Err(CloseError::BufferModified(name)) = editor.close_document(doc_id, force) {
+                Some((doc_id, name))
+            } else {
+                None
+            }
+        })
+        .unzip();
+
+    if let Some(first) = modified_ids.first() {
+        let current = doc!(editor);
+        // If the current document is unmodified, and there are modified
+        // documents, switch focus to the first modified doc.
+        if !modified_ids.contains(&current.id()) {
+            editor.switch(*first, Action::Replace);
+        }
+        bail!(
+            "{} unsaved buffer(s) remaining: {:?}",
+            modified_names.len(),
+            modified_names
+        );
     }
 
     Ok(())
@@ -513,23 +534,26 @@ fn force_write_quit(
     force_quit(cx, &[], event)
 }
 
-/// Results an error if there are modified buffers remaining and sets editor error,
-/// otherwise returns `Ok(())`
+/// Results in an error if there are modified buffers remaining and sets editor
+/// error, otherwise returns `Ok(())`. If the current document is unmodified,
+/// and there are modified documents, switches focus to one of them.
 pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> {
-    let modified: Vec<_> = editor
+    let (modified_ids, modified_names): (Vec<_>, Vec<_>) = editor
         .documents()
         .filter(|doc| doc.is_modified())
-        .map(|doc| {
-            doc.relative_path()
-                .map(|path| path.to_string_lossy().to_string())
-                .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
-        })
-        .collect();
-    if !modified.is_empty() {
+        .map(|doc| (doc.id(), doc.display_name()))
+        .unzip();
+    if let Some(first) = modified_ids.first() {
+        let current = doc!(editor);
+        // If the current document is unmodified, and there are modified
+        // documents, switch focus to the first modified doc.
+        if !modified_ids.contains(&current.id()) {
+            editor.switch(*first, Action::Replace);
+        }
         bail!(
             "{} unsaved buffer(s) remaining: {:?}",
-            modified.len(),
-            modified
+            modified_names.len(),
+            modified_names
         );
     }
     Ok(())
