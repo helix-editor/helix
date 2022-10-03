@@ -12,7 +12,7 @@ use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 use tui::widgets::Widget;
 
-use std::{borrow::Borrow, time::Instant};
+use std::time::Instant;
 use std::{
     cmp::Reverse,
     collections::HashMap,
@@ -91,11 +91,10 @@ fn layout_picker(area: &Rect, show_preview: bool, editor: &Editor) -> (Rect, Opt
 
     let (split_direction, picker_weight, preview_weight) = {
         let config = editor.config();
-        let config = config.borrow();
 
         (
             config.picker.layout_direction,
-            core::cmp::max(config.picker.picker_weight, 1),
+            config.picker.picker_weight.max(1),
             config.picker.preview_weight,
         )
     };
