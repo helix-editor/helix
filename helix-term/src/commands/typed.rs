@@ -1196,18 +1196,41 @@ pub(super) fn goto_line_number(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
+    match event {
+        PromptEvent::Abort => {
+            if let Some(line_number) = cx.editor.last_line_number {
+                goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
+                let (view, doc) = current!(cx.editor);
+                view.ensure_cursor_in_view(doc, line_number);
+                cx.editor.last_line_number = None;
+            }
+            return Ok(());
+        }
+        PromptEvent::Validate => {
+            ensure!(!args.is_empty(), "Line number required");
+            cx.editor.last_line_number = None;
+        }
+        PromptEvent::Update => {
+            if args.is_empty() {
+                if let Some(line_number) = cx.editor.last_line_number {
+                    // When a user hits backspace and there are no numbers left,
+                    // we can bring them back to their original line
+                    goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
+                    let (view, doc) = current!(cx.editor);
+                    view.ensure_cursor_in_view(doc, line_number);
+                    cx.editor.last_line_number = None;
+                }
+                return Ok(());
+            }
+            let (view, doc) = current!(cx.editor);
+            let text = doc.text().slice(..);
+            let line = doc.selection(view.id).primary().cursor_line(text);
+            cx.editor.last_line_number.get_or_insert(line + 1);
+        }
     }
-
-    ensure!(!args.is_empty(), "Line number required");
-
     let line = args[0].parse::<usize>()?;
-
     goto_line_impl(cx.editor, NonZeroUsize::new(line));
-
     let (view, doc) = current!(cx.editor);
-
     view.ensure_cursor_in_view(doc, line);
     Ok(())
 }

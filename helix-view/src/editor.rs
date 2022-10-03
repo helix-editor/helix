@@ -643,7 +643,7 @@ pub struct Editor {
     /// The currently applied editor theme. While previewing a theme, the previewed theme
     /// is set here.
     pub theme: Theme,
-
+    pub last_line_number: Option<usize>,
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
@@ -717,6 +717,7 @@ impl Editor {
             syn_loader,
             theme_loader,
             last_theme: None,
+            last_line_number: None,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
