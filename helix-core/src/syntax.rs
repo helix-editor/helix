@@ -1193,17 +1193,17 @@ struct LocalScope<'a> {
 pub struct CharacterHighlightIter<'a>(HighlightIter<'a>);
 
 impl Iterator for CharacterHighlightIter<'_> {
-    type Item = HighlightEvent;
+    type Item = Result<HighlightEvent, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let res = match self.0.next()?.unwrap() {
+        let res = match self.0.next()? {
             // TODO: use byte slices directly
             // convert byte offsets to char offset
-            HighlightEvent::Source { start, end } => {
+            Ok(HighlightEvent::Source { start, end }) => {
                 let text = self.0.source;
                 let start = text.byte_to_char(ensure_grapheme_boundary_next_byte(text, start));
                 let end = text.byte_to_char(ensure_grapheme_boundary_next_byte(text, end));
-                HighlightEvent::Source { start, end }
+                Ok(HighlightEvent::Source { start, end })
             }
             event => event,
         };

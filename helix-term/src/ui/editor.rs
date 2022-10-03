@@ -12,7 +12,7 @@ use crate::{
 use helix_core::{
     diagnostic::Severity,
     movement::Direction,
-    syntax::{CharacterHighlightIter, HighlightEvent},
+    syntax::{self, CharacterHighlightIter, HighlightEvent},
     unicode::width::UnicodeWidthStr,
     LineEnding, Position, Range, Selection, Transaction,
 };
@@ -32,6 +32,8 @@ use super::lsp::SignatureHelp;
 use super::statusline;
 
 mod highlights;
+
+type UnwrapResult = fn(Result<HighlightEvent, syntax::Error>) -> HighlightEvent;
 
 pub struct EditorView {
     pub keymaps: Keymaps,
@@ -225,7 +227,7 @@ impl EditorView {
         config: &helix_view::editor::Config,
         overlay: O,
     ) where
-        O: HighlightOverlay<CharacterHighlightIter<'doc>>
+        O: HighlightOverlay<iter::Map<CharacterHighlightIter<'doc>, UnwrapResult>>
             + HighlightOverlay<iter::Once<HighlightEvent>>,
     {
         let height = viewport.height;
@@ -249,9 +251,13 @@ impl EditorView {
                 // TODO: range doesn't actually restrict source, just highlight range
                 // TODO: use byte slices directly
                 // convert byte offsets to char offset
-                let iter = syntax
+                let iter: CharacterHighlightIter<'doc> = syntax
                     .highlight_iter(text.slice(..), Some(range), None)
                     .to_chars();
+
+                // we have to help type inference out here (even if turbofish is used)
+                // this is probably a rustc bug/shortcoming
+                let iter = iter.map(Result::unwrap as UnwrapResult);
                 Self::render_text_highlights(
                     doc,
                     offset,
