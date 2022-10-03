@@ -523,6 +523,7 @@ dependencies = [
  "futures-util",
  "helix-core",
  "helix-dap",
+ "helix-loader",
  "helix-lsp",
  "helix-tui",
  "log",
