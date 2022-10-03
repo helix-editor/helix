@@ -192,9 +192,16 @@ where
                 continue;
             }
             // skip empty spans and spans that end before this source
-            while matches!(&self.current_span, Some(span) if span.end <= start || span.start == span.end)
-            {
-                self.current_span = self.spans.next();
+            while let Some(span) = self.current_span {
+                if span.end <= start || span.start == span.end {
+                    self.current_span = self.spans.next();
+                    debug_assert!(
+                        !matches!(self.current_span, Some(next_span) if next_span.start < span.end),
+                        "spans must be  sorted in ascending order"
+                    );
+                } else {
+                    break;
+                }
             }
 
             if let Some(span) = &mut self.current_span {
@@ -224,15 +231,10 @@ where
                     // advance the span as the current one has been fully processed
                     if span.end <= end {
                         self.current_span = self.spans.next();
-                        if cfg!(debug_assertions)
-                            && matches!(self.current_span, Some(next_span) if next_span.start < span.end)
-                        {
-                            if MERGE {
-                                unreachable!("spans must be  sorted in ascending order",);
-                            } else {
-                                unreachable!("spans must be monotonically increasing",);
-                            }
-                        }
+                        debug_assert!(
+                            !matches!(self.current_span, Some(next_span) if next_span.start < span.end),
+                            "spans must be  sorted in ascending order"
+                        );
                     }
                     let event = if span.end < end {
                         // the span ends before the current source event.
