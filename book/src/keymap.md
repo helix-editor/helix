@@ -351,6 +351,21 @@ with modal editors.
 | `Home`                                      | Move to line start          | `goto_line_start`        |
 | `End`                                       | Move to line end            | `goto_line_end_newline`  |
 
+If you want to disable them in insert mode as you become more comfortable with modal editing, you can use
+the following in your `config.toml`:
+
+```toml
+[keys.insert]
+up = "no_op"
+down = "no_op"
+left = "no_op"
+right = "no_op"
+pageup = "no_op"
+pagedown = "no_op"
+home = "no_op"
+end = "no_op"
+```
+
 ## Select / extend mode
 
 This mode echoes Normal mode, but changes any movements to extend
