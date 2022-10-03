@@ -233,10 +233,11 @@ tabpad = "·" # Tabs will look like "→···" (depending on tab width)
 
 Options for rendering vertical indent guides.
 
-| Key         | Description                                             | Default |
-| ---         | ---                                                     | ---     |
-| `render`    | Whether to render indent guides.                        | `false` |
-| `character` | Literal character to use for rendering the indent guide | `│`     |
+| Key           | Description                                             | Default |
+| ---           | ---                                                     | ---     |
+| `render`      | Whether to render indent guides.                        | `false` |
+| `character`   | Literal character to use for rendering the indent guide | `│`     |
+| `skip-levels` | Number of indent levels to skip                         | `0`     |
 
 Example:
 
@@ -244,4 +245,5 @@ Example:
 [editor.indent-guides]
 render = true
 character = "╎"
+skip-levels = 1
 ```

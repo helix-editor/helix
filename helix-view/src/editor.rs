@@ -552,15 +552,17 @@ impl Default for WhitespaceCharacters {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, rename_all = "kebab-case")]
 pub struct IndentGuidesConfig {
     pub render: bool,
     pub character: char,
+    pub skip_levels: u16,
 }
 
 impl Default for IndentGuidesConfig {
     fn default() -> Self {
         Self {
+            skip_levels: 0,
             render: false,
             character: '│',
         }
