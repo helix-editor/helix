@@ -275,7 +275,8 @@ mod test {
     /// In this test a range of lower priority (like a hint) starts at 2
     /// and another range of a high priority range (like an error) starts earlier
     /// with the old span implementation the hint would always overwrite the error.
-    /// The new implementation (tested here) forces the
+    /// The new implementation (tested here) ensures that that high pripority diagnostic
+    /// always overlays the low priority diagnostic
     #[test]
     fn overlay_long_hint() {
         let base = iter::once(Source { start: 0, end: 31 });
