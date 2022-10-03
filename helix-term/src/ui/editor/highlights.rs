@@ -76,8 +76,15 @@ where
 {
     type Out = syntax::OverlappingOverlay<In, DiagnosticIter<'a>>;
     fn apply(self, highlights: In) -> Self::Out {
-        let get_scope_of = |scope| {
-            self.theme
+        let scope = match self.severity {
+            Some(Severity::Error) => "diagnostic.error",
+            Some(Severity::Warning) => "diagnostic.warning",
+            Some(Severity::Info) => "diagnostic.info",
+            Some(Severity::Hint) => "diagnostic.hint",
+            None => "diagnostic",
+        };
+
+        let scope = self.theme
             .find_scope_index(scope)
             // get one of the themes below as fallback values
             .or_else(|| self.theme.find_scope_index("diagnostic"))
@@ -85,16 +92,7 @@ where
             .or_else(|| self.theme.find_scope_index("ui.selection"))
             .expect(
                 "at least one of the following scopes must be defined in the theme: `diagnostic`, `ui.cursor`, or `ui.selection`",
-            )
-        };
-
-        let highlight = match self.severity {
-            Some(Severity::Error) => get_scope_of("diagnostic.error"),
-            Some(Severity::Warning) => get_scope_of("diagnostic.warning"),
-            Some(Severity::Info) => get_scope_of("diagnostic.info"),
-            Some(Severity::Hint) => get_scope_of("diagnostic.hint"),
-            None => get_scope_of("diagnostic"),
-        };
+            );
 
         overlapping_overlay(
             highlights,
@@ -102,7 +100,7 @@ where
                 diagnostics: self.doc.diagnostics().iter(),
                 severity: self.severity,
             },
-            Highlight(highlight),
+            Highlight(scope),
         )
     }
 }
