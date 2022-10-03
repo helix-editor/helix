@@ -2427,11 +2427,11 @@ impl ui::menu::Item for MappableCommand {
 
         match self {
             MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String) {
-                Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
+                Some(bindings) => format!("{} ({}) [{}]", doc, fmt_binding(bindings), name).into(),
                 None => doc.as_str().into(),
             },
             MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
-                Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
+                Some(bindings) => format!("{} ({}) [{}]", doc, fmt_binding(bindings), name).into(),
                 None => (*doc).into(),
             },
         }
