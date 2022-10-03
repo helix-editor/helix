@@ -870,8 +870,15 @@ impl Application {
         }));
 
         self.event_loop(input_stream).await;
-        self.close().await?;
+
+        let err = self.close().await.err();
+
         restore_term()?;
+
+        if let Some(err) = err {
+            self.editor.exit_code = 1;
+            eprintln!("Error: {}", err);
+        }
 
         Ok(self.editor.exit_code)
     }
