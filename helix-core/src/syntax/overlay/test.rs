@@ -15,7 +15,7 @@ fn overlay_long_hint() {
     let highlights = overlapping_overlay(highlights, [0..4].into_iter(), Highlight(2));
     let res: Vec<_> = highlights.collect();
     assert_eq!(
-        &*res,
+        res,
         &[
             HighlightStart(Highlight(2)),
             Source { start: 0, end: 2 },

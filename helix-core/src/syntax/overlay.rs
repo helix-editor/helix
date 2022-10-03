@@ -10,13 +10,13 @@ mod test;
 
 /// Overlays multiple different highlights from `spans` onto the `HighlightEvent` stream `events`.
 ///
-/// The [`Span`]s yielded by `spans` **must never overlap*  or the iterator will produce incorrect results.
+/// The [`Span`]s yielded by `spans` **must never overlap** or the iterator will produce incorrect results.
 /// The [`Span`]s **must be sorted** in ascending order by their start.
 /// If multiple [`Span`]s  share the same start, the ordering is arbitrary.
 ///
 /// Together these two properties mean that `spans` must prduce monotonically increasing [`Span`]s.
 /// That means that the next span must always start after the last span ended:
-/// `next_span.end <= span.start`
+/// `span.end <= next_span.start`
 pub fn monotonic_overlay<Events, Spans>(
     events: Events,
     spans: Spans,
@@ -192,7 +192,7 @@ where
                 if span.start < end {
                     // if the span starts inside the source,
                     // split off the start of the source that is not highlighted
-                    // and emit this sourcespan first
+                    // and emit this source span first
                     if start < span.start {
                         let partition_point = span.start;
                         let unhighlighted =
@@ -239,8 +239,7 @@ where
         match replace(&mut self.next_event, self.events.next()) {
             Some(event) => Some(event),
             None => {
-                // Unfinished span at EOF is allowed  to finish.
-                // Special case for cursor past EOF
+                // Unfinished span at EOF is allowed to finish.
                 let span = self.current_span.take()?;
                 self.queue.push(HighlightEnd);
                 self.queue.push(Source {
