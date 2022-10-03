@@ -11,7 +11,6 @@ pub type MonotonicOverlay<Events, Spans> = Overlay<Events, Spans, false>;
 ///
 /// The [`Span`]s yielded by `spans` **must never overlap** or the iterator will produce incorrect results.
 /// The [`Span`]s **must be sorted** in ascending order by their start.
-/// If multiple [`Span`]s  share the same start, the ordering is arbitrary.
 ///
 /// Together these two properties mean that `spans` must prduce monotonically increasing [`Span`]s.
 /// That means that the next span must always start after the last span ended:
@@ -62,7 +61,6 @@ pub type OverlappingOverlay<Events, Ranges> = Overlay<Events, RangeToSpan<Ranges
 /// This is possible because all `ranges` use the **same highlighting scope**.
 ///
 /// The `ranges` **must be sorted** in ascending order by their start.
-/// If multiple `ranges`  share the same start, the ordering is arbitrary.
 pub fn overlapping_overlay<Events, Ranges>(
     events: Events,
     ranges: Ranges,
@@ -226,6 +224,15 @@ where
                     // advance the span as the current one has been fully processed
                     if span.end <= end {
                         self.current_span = self.spans.next();
+                        if cfg!(debug_assertions)
+                            && matches!(self.current_span, Some(next_span) if next_span.start < span.end)
+                        {
+                            if MERGE {
+                                unreachable!("spans must be  sorted in ascending order",);
+                            } else {
+                                unreachable!("spans must be monotonically increasing",);
+                            }
+                        }
                     }
                     let event = if span.end < end {
                         // the span ends before the current source event.
@@ -269,14 +276,14 @@ mod test {
     use super::*;
     use std::iter;
 
-    /// this tests checks that merging two overlapping ranges onto each other
+    /// This tests checks that merging two overlapping ranges onto each other
     /// correctly preveres the order of merges.
     /// that is the highlight that is merged in last, gets applied last and overwrites the other layers
     /// In this test a range of lower priority (like a hint) starts at 2
     /// and another range of a high priority range (like an error) starts earlier
     /// with the old span implementation the hint would always overwrite the error.
     /// The new implementation (tested here) ensures that that high pripority diagnostic
-    /// always overlays the low priority diagnostic
+    /// always overlays the low priority diagnostic.
     #[test]
     fn overlay_long_hint() {
         let base = iter::once(Source { start: 0, end: 31 });
