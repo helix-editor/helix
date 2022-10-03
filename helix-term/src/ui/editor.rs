@@ -696,6 +696,7 @@ impl EditorView {
         let mut offset = 0;
 
         let gutter_style = theme.get("ui.gutter");
+        let gutter_selected_style = theme.get("ui.gutter.selected");
 
         // avoid lots of small allocations by reusing a text buffer for each line
         let mut text = String::with_capacity(8);
@@ -707,6 +708,12 @@ impl EditorView {
                 let selected = cursors.contains(&line);
                 let x = viewport.x + offset;
                 let y = viewport.y + i as u16;
+
+                let gutter_style = if selected {
+                    gutter_selected_style
+                } else {
+                    gutter_style
+                };
 
                 if let Some(style) = gutter(line, selected, &mut text) {
                     surface.set_stringn(x, y, &text, *width, gutter_style.patch(style));
