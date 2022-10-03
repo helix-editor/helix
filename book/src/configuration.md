@@ -28,6 +28,10 @@ hidden = false
 You may also specify a file to use for configuration with the `-c` or
 `--config` CLI argument: `hx -c path/to/custom-config.toml`.
 
+It is also possible to trigger configuration file reloading by sending the `USR1`
+signal to the helix process, e.g. via `pkill -USR1 hx`. This is only supported 
+on unix operating systems.
+
 ## Editor
 
 ### `[editor]` Section

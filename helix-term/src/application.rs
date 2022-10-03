@@ -224,8 +224,8 @@ impl Application {
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
         #[cfg(not(windows))]
-        let signals =
-            Signals::new(&[signal::SIGTSTP, signal::SIGCONT]).context("build signal handler")?;
+        let signals = Signals::new(&[signal::SIGTSTP, signal::SIGCONT, signal::SIGUSR1])
+            .context("build signal handler")?;
 
         let app = Self {
             compositor,
@@ -424,6 +424,10 @@ impl Application {
                 let Rect { width, height, .. } = self.compositor.size();
                 self.compositor.resize(width, height);
                 self.compositor.load_cursor();
+                self.render();
+            }
+            signal::SIGUSR1 => {
+                self.refresh_config();
                 self.render();
             }
             _ => unreachable!(),
