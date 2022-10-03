@@ -353,6 +353,7 @@ impl Registry {
     pub fn restart(
         &mut self,
         language_config: &LanguageConfiguration,
+        doc_path: Option<&std::path::PathBuf>,
     ) -> Result<Option<Arc<Client>>> {
         let config = match &language_config.language_server {
             Some(config) => config,
@@ -367,7 +368,8 @@ impl Registry {
                 // initialize a new client
                 let id = self.counter.fetch_add(1, Ordering::Relaxed);
 
-                let NewClientResult(client, incoming) = start_client(id, language_config, config)?;
+                let NewClientResult(client, incoming) =
+                    start_client(id, language_config, config, doc_path)?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));
 
                 let (_, old_client) = entry.insert((id, client.clone()));
@@ -381,7 +383,11 @@ impl Registry {
         }
     }
 
-    pub fn get(&mut self, language_config: &LanguageConfiguration) -> Result<Option<Arc<Client>>> {
+    pub fn get(
+        &mut self,
+        language_config: &LanguageConfiguration,
+        doc_path: Option<&std::path::PathBuf>,
+    ) -> Result<Option<Arc<Client>>> {
         let config = match &language_config.language_server {
             Some(config) => config,
             None => return Ok(None),
@@ -393,7 +399,8 @@ impl Registry {
                 // initialize a new client
                 let id = self.counter.fetch_add(1, Ordering::Relaxed);
 
-                let NewClientResult(client, incoming) = start_client(id, language_config, config)?;
+                let NewClientResult(client, incoming) =
+                    start_client(id, language_config, config, doc_path)?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));
 
                 entry.insert((id, client.clone()));
@@ -493,6 +500,7 @@ fn start_client(
     id: usize,
     config: &LanguageConfiguration,
     ls_config: &LanguageServerConfiguration,
+    doc_path: Option<&std::path::PathBuf>,
 ) -> Result<NewClientResult> {
     let (client, incoming, initialize_notify) = Client::start(
         &ls_config.command,
@@ -501,6 +509,7 @@ fn start_client(
         &config.roots,
         id,
         ls_config.timeout,
+        doc_path,
     )?;
 
     let client = Arc::new(client);

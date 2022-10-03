@@ -868,7 +868,7 @@ impl Editor {
 
         // try to find a language server based on the language name
         let language_server = doc.language.as_ref().and_then(|language| {
-            ls.get(language)
+            ls.get(language, doc.path())
                 .map_err(|e| {
                     log::error!(
                         "Failed to initialize the LSP for `{}` {{ {} }}",
