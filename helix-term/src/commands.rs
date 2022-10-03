@@ -346,6 +346,7 @@ impl MappableCommand {
         unindent, "Unindent selection",
         format_selections, "Format selection",
         join_selections, "Join lines inside selection",
+        join_selections_space, "Join lines inside selection and select spaces",
         keep_selections, "Keep selections matching regex",
         remove_selections, "Remove selections matching regex",
         align_selections, "Align selections in column",
@@ -3731,7 +3732,7 @@ fn format_selections(cx: &mut Context) {
     }
 }
 
-fn join_selections(cx: &mut Context) {
+fn join_selections_inner(cx: &mut Context, select_space: bool) {
     use movement::skip_while;
     let (view, doc) = current!(cx.editor);
     let text = doc.text();
@@ -3766,9 +3767,21 @@ fn join_selections(cx: &mut Context) {
     // TODO: joining multiple empty lines should be replaced by a single space.
     // need to merge change ranges that touch
 
-    let transaction = Transaction::change(doc.text(), changes.into_iter());
-    // TODO: select inserted spaces
-    // .with_selection(selection);
+    // select inserted spaces
+    let transaction = if select_space {
+        let ranges: SmallVec<_> = changes
+            .iter()
+            .scan(0, |offset, change| {
+                let range = Range::point(change.0 - *offset);
+                *offset += change.1 - change.0 - 1; // -1 because cursor is 0-sized
+                Some(range)
+            })
+            .collect();
+        let selection = Selection::new(ranges, 0);
+        Transaction::change(doc.text(), changes.into_iter()).with_selection(selection)
+    } else {
+        Transaction::change(doc.text(), changes.into_iter())
+    };
 
     doc.apply(&transaction, view.id);
 }
@@ -3795,6 +3808,14 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
             }
         },
     )
+}
+
+fn join_selections(cx: &mut Context) {
+    join_selections_inner(cx, false)
+}
+
+fn join_selections_space(cx: &mut Context) {
+    join_selections_inner(cx, true)
 }
 
 fn keep_selections(cx: &mut Context) {
