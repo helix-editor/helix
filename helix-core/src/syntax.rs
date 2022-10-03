@@ -7,7 +7,9 @@ use crate::{
     transaction::{ChangeSet, Operation},
     Rope, RopeSlice, Tendril,
 };
-pub use overlay::{monotonic_overlay, overlapping_overlay, Span};
+pub use overlay::{
+    monotonic_overlay, overlapping_overlay, MonotonicOverlay, OverlappingOverlay, Span,
+};
 
 use arc_swap::{ArcSwap, Guard};
 use slotmap::{DefaultKey as LayerId, HopSlotMap};

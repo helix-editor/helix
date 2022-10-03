@@ -3,31 +3,35 @@ use crate::{
     compositor::{Component, Context, Event, EventResult},
     job, key,
     keymap::{KeymapResult, Keymaps},
-    ui::{Completion, ProgressSpinners},
+    ui::{
+        editor::highlights::{all_diganostic_overlays, HighlightOverlay, SelectionOverlay},
+        Completion, ProgressSpinners,
+    },
 };
 
 use helix_core::{
     diagnostic::Severity,
-    graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
-    syntax::{self, CharacterHighlightIter, Highlight, HighlightEvent},
+    syntax::{CharacterHighlightIter, HighlightEvent},
     unicode::width::UnicodeWidthStr,
     LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::CompleteAction,
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{borrow::Cow, iter, ops, path::PathBuf};
+use std::{borrow::Cow, iter, path::PathBuf};
 
 use tui::buffer::Buffer as Surface;
 
 use super::lsp::SignatureHelp;
 use super::statusline;
+
+mod highlights;
 
 pub struct EditorView {
     pub keymaps: Keymaps,
@@ -63,52 +67,6 @@ impl EditorView {
 
     pub fn spinners_mut(&mut self) -> &mut ProgressSpinners {
         &mut self.spinners
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn render_text(
-        base: impl Iterator<Item = HighlightEvent>,
-        editor: &Editor,
-        doc: &Document,
-        view: &View,
-        text_area: Rect,
-        theme: &Theme,
-        surface: &mut Surface,
-        is_focused: bool,
-    ) {
-        let highlights =
-            Self::overlay_diagnostics_highlights(base, doc, theme, Some(Severity::Hint));
-        let highlights =
-            Self::overlay_diagnostics_highlights(highlights, doc, theme, Some(Severity::Info));
-        let highlights = Self::overlay_diagnostics_highlights(highlights, doc, theme, None);
-        let highlights =
-            Self::overlay_diagnostics_highlights(highlights, doc, theme, Some(Severity::Warning));
-        let highlights =
-            Self::overlay_diagnostics_highlights(highlights, doc, theme, Some(Severity::Error));
-        let doc_selection_highlights = if is_focused {
-            Self::doc_selection_highlights(
-                editor.mode(),
-                doc,
-                view,
-                theme,
-                &editor.config().cursor_shape,
-            )
-        } else {
-            Vec::new()
-        };
-
-        let highlights =
-            syntax::monotonic_overlay(highlights, doc_selection_highlights.into_iter());
-
-        Self::render_text_highlights(
-            doc,
-            view.offset,
-            text_area,
-            surface,
-            theme,
-            highlights,
-            &editor.config(),
-        );
     }
 
     pub fn render_view(
@@ -162,14 +120,24 @@ impl EditorView {
             Self::highlight_cursorline(doc, view, surface, theme);
         }
 
-        match Self::doc_syntax_highlights(doc, view.offset, inner.height, theme) {
-            DocSyntaxHighlight::TreeSitter(base) => {
-                Self::render_text(base, editor, doc, view, inner, theme, surface, is_focused)
-            }
-            DocSyntaxHighlight::Default(base) => {
-                Self::render_text(base, editor, doc, view, inner, theme, surface, is_focused)
-            }
-        }
+        let diagnostics_overlay = all_diganostic_overlays(doc, theme);
+        let selection_overlay = SelectionOverlay {
+            focused: is_focused,
+            editor,
+            doc,
+            theme,
+            view,
+        };
+
+        Self::render_document_with_overlay(
+            doc,
+            inner,
+            surface,
+            view.offset,
+            theme,
+            &*editor.config(),
+            (diagnostics_overlay, selection_overlay),
+        );
         Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
@@ -230,15 +198,37 @@ impl EditorView {
             .for_each(|area| surface.set_style(area, ruler_theme))
     }
 
-    /// Get syntax highlights for a document in a view represented by the first line
-    /// and column (`offset`) and the last line. This is done instead of using a view
-    /// directly to enable rendering syntax highlighted docs anywhere (eg. picker preview)
-    pub fn doc_syntax_highlights<'doc>(
+    /// Get syntax highlights for a document in `viewport` and renders the result onto `surface`.
+    /// This is done instead of using a view directly to enable rendering
+    /// syntax highlighted docs anywhere (eg. picker preview)
+    pub fn render_document<'doc>(
         doc: &'doc Document,
+        viewport: Rect,
+        surface: &mut Surface,
         offset: Position,
-        height: u16,
-        _theme: &Theme,
-    ) -> DocSyntaxHighlight<'doc> {
+        theme: &Theme,
+        config: &helix_view::editor::Config,
+    ) {
+        Self::render_document_with_overlay(doc, viewport, surface, offset, theme, config, ())
+    }
+
+    /// Get syntax highlights for a document in `viewport`,
+    /// applies `overlay` and renders the result onto `surface`.
+    /// This is done instead of using a view directly to enable rendering
+    /// syntax highlighted docs anywhere (eg. picker preview)
+    pub fn render_document_with_overlay<'doc, O>(
+        doc: &'doc Document,
+        viewport: Rect,
+        surface: &mut Surface,
+        offset: Position,
+        theme: &Theme,
+        config: &helix_view::editor::Config,
+        overlay: O,
+    ) where
+        O: HighlightOverlay<CharacterHighlightIter<'doc>>
+            + HighlightOverlay<iter::Once<HighlightEvent>>,
+    {
+        let height = viewport.height;
         let text = doc.text().slice(..);
         let last_line = std::cmp::min(
             // Saturating subs to make it inclusive zero indexing.
@@ -262,161 +252,32 @@ impl EditorView {
                 let iter = syntax
                     .highlight_iter(text.slice(..), Some(range), None)
                     .to_chars();
-                DocSyntaxHighlight::TreeSitter(iter)
+                Self::render_text_highlights(
+                    doc,
+                    offset,
+                    viewport,
+                    surface,
+                    theme,
+                    overlay.apply(iter),
+                    config,
+                );
             }
             None => {
                 let event = HighlightEvent::Source {
                     start: text.byte_to_char(range.start),
                     end: text.byte_to_char(range.end),
                 };
-                DocSyntaxHighlight::Default(iter::once(event))
+                Self::render_text_highlights(
+                    doc,
+                    offset,
+                    viewport,
+                    surface,
+                    theme,
+                    overlay.apply(iter::once(event)),
+                    config,
+                );
             }
         }
-    }
-
-    /// Get highlight spans for document diagnostics
-    pub fn doc_diagnostics_highlights<'d>(
-        doc: &'d Document,
-        theme: &Theme,
-        severity: Option<Severity>,
-    ) -> (Highlight, impl Iterator<Item = ops::Range<usize>> + 'd) {
-        let get_scope_of = |scope| {
-            theme
-            .find_scope_index(scope)
-            // get one of the themes below as fallback values
-            .or_else(|| theme.find_scope_index("diagnostic"))
-            .or_else(|| theme.find_scope_index("ui.cursor"))
-            .or_else(|| theme.find_scope_index("ui.selection"))
-            .expect(
-                "at least one of the following scopes must be defined in the theme: `diagnostic`, `ui.cursor`, or `ui.selection`",
-            )
-        };
-
-        let highlight = match severity {
-            Some(Severity::Error) => get_scope_of("diagnostic.error"),
-            Some(Severity::Warning) => get_scope_of("diagnostic.warning"),
-            Some(Severity::Info) => get_scope_of("diagnostic.info"),
-            Some(Severity::Hint) => get_scope_of("diagnostic.hint"),
-            None => get_scope_of("diagnostic"),
-        };
-
-        let diagnostic_ranges = doc.diagnostics().iter().filter_map(move |diagnostic| {
-            if diagnostic.severity != severity {
-                return None;
-            }
-            Some(diagnostic.range.start..diagnostic.range.end)
-        });
-
-        (Highlight(highlight), diagnostic_ranges)
-    }
-
-    pub fn overlay_diagnostics_highlights<'d>(
-        events: impl Iterator<Item = HighlightEvent> + 'd,
-        doc: &'d Document,
-        theme: &Theme,
-        severity: Option<Severity>,
-    ) -> impl Iterator<Item = HighlightEvent> + 'd {
-        let (highlight, ranges) = Self::doc_diagnostics_highlights(doc, theme, severity);
-        syntax::overlapping_overlay(events, ranges, highlight)
-    }
-
-    /// Get highlight spans for selections in a document view.
-    pub fn doc_selection_highlights(
-        mode: Mode,
-        doc: &Document,
-        view: &View,
-        theme: &Theme,
-        cursor_shape_config: &CursorShapeConfig,
-    ) -> Vec<syntax::Span> {
-        let text = doc.text().slice(..);
-        let selection = doc.selection(view.id);
-        let primary_idx = selection.primary_index();
-
-        let cursorkind = cursor_shape_config.from_mode(mode);
-        let cursor_is_block = cursorkind == CursorKind::Block;
-
-        let selection_scope = theme
-            .find_scope_index("ui.selection")
-            .expect("could not find `ui.selection` scope in the theme!");
-        let base_cursor_scope = theme
-            .find_scope_index("ui.cursor")
-            .unwrap_or(selection_scope);
-
-        let cursor_scope = match mode {
-            Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
-            Mode::Select => theme.find_scope_index("ui.cursor.select"),
-            Mode::Normal => Some(base_cursor_scope),
-        }
-        .unwrap_or(base_cursor_scope);
-
-        let primary_cursor_scope = theme
-            .find_scope_index("ui.cursor.primary")
-            .unwrap_or(cursor_scope);
-        let primary_selection_scope = theme
-            .find_scope_index("ui.selection.primary")
-            .unwrap_or(selection_scope);
-
-        let mut spans: Vec<syntax::Span> = Vec::new();
-        for (i, range) in selection.iter().enumerate() {
-            let selection_is_primary = i == primary_idx;
-            let (cursor_scope, selection_scope) = if selection_is_primary {
-                (primary_cursor_scope, primary_selection_scope)
-            } else {
-                (cursor_scope, selection_scope)
-            };
-
-            // Special-case: cursor at end of the rope.
-            if range.head == range.anchor && range.head == text.len_chars() {
-                if !selection_is_primary || cursor_is_block {
-                    // Bar and underline cursors are drawn by the terminal
-                    // BUG: If the editor area loses focus while having a bar or
-                    // underline cursor (eg. when a regex prompt has focus) then
-                    // the primary cursor will be invisible. This doesn't happen
-                    // with block cursors since we manually draw *all* cursors.
-                    spans.push(syntax::Span {
-                        scope: Highlight(cursor_scope),
-                        start: range.head,
-                        end: range.head + 1,
-                    });
-                }
-                continue;
-            }
-
-            let range = range.min_width_1(text);
-            if range.head > range.anchor {
-                // Standard case.
-                let cursor_start = prev_grapheme_boundary(text, range.head);
-                spans.push(syntax::Span {
-                    scope: Highlight(selection_scope),
-                    start: range.anchor,
-                    end: cursor_start,
-                });
-                if !selection_is_primary || cursor_is_block {
-                    spans.push(syntax::Span {
-                        scope: Highlight(cursor_scope),
-                        start: cursor_start,
-                        end: range.head,
-                    });
-                }
-            } else {
-                // Reverse case.
-                let cursor_end = next_grapheme_boundary(text, range.head);
-                if !selection_is_primary || cursor_is_block {
-                    spans.push(syntax::Span {
-                        scope: Highlight(cursor_scope),
-                        start: range.head,
-                        end: cursor_end,
-                    });
-                }
-                spans.push(syntax::Span {
-                    scope: Highlight(selection_scope),
-                    start: cursor_end,
-                    end: range.anchor,
-                });
-            }
-        }
-
-        spans
     }
 
     pub fn render_text_highlights<H: Iterator<Item = HighlightEvent>>(
@@ -1497,9 +1358,4 @@ fn canonicalize_key(key: &mut KeyEvent) {
     {
         key.modifiers.remove(KeyModifiers::SHIFT)
     }
-}
-
-pub enum DocSyntaxHighlight<'d> {
-    TreeSitter(CharacterHighlightIter<'d>),
-    Default(iter::Once<HighlightEvent>),
 }

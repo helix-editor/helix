@@ -1,4 +1,4 @@
-use std::iter::{self, Peekable};
+use std::iter::Peekable;
 use std::mem::replace;
 use std::ops::Range;
 
@@ -7,6 +7,8 @@ use HighlightEvent::*;
 
 #[cfg(test)]
 mod test;
+
+pub type MonotonicOverlay<Events, Spans> = Overlay<Events, Spans, false>;
 
 /// Overlays multiple different highlights from `spans` onto the `HighlightEvent` stream `events`.
 ///
@@ -20,7 +22,7 @@ mod test;
 pub fn monotonic_overlay<Events, Spans>(
     events: Events,
     spans: Spans,
-) -> Overlay<Events, Spans, false>
+) -> MonotonicOverlay<Events, Spans>
 where
     Events: Iterator<Item = HighlightEvent>,
     Spans: Iterator<Item = Span>,
@@ -37,6 +39,25 @@ where
     overlay
 }
 
+pub struct RangeToSpan<I: Iterator<Item = Range<usize>>> {
+    scope: Highlight,
+    ranges: I,
+}
+
+impl<I: Iterator<Item = Range<usize>>> Iterator for RangeToSpan<I> {
+    type Item = Span;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.ranges.next().map(|range| Span {
+            start: range.start,
+            end: range.end,
+            scope: self.scope,
+        })
+    }
+}
+
+pub type OverlappingOverlay<Events, Ranges> = Overlay<Events, RangeToSpan<Ranges>, true>;
+
 /// Overlays a `scope` highlight onto the `HighlightEvent`  stream `events`
 /// at the ranges specified in `ranges`.
 ///
@@ -49,20 +70,14 @@ pub fn overlapping_overlay<Events, Ranges>(
     events: Events,
     ranges: Ranges,
     scope: Highlight,
-) -> Overlay<Events, iter::Map<Ranges, impl FnMut(Range<usize>) -> Span>, true>
+) -> OverlappingOverlay<Events, Ranges>
 where
     Events: Iterator<Item = HighlightEvent>,
     Ranges: Iterator<Item = Range<usize>>,
 {
     let mut overlay = Overlay {
         events,
-        spans: ranges
-            .map(move |span| Span {
-                start: span.start,
-                end: span.end,
-                scope,
-            })
-            .peekable(),
+        spans: RangeToSpan { scope, ranges }.peekable(),
         next_event: None,
         current_span: None,
         queue: EventQueue::new(),

@@ -1,7 +1,7 @@
 use crate::{
     compositor::{Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
-    ui::{self, editor::DocSyntaxHighlight, EditorView},
+    ui::{self, EditorView},
 };
 use tui::{
     buffer::Buffer as Surface,
@@ -228,26 +228,14 @@ impl<T: Item + 'static> Component for FilePicker<T> {
 
             let offset = Position::new(first_line, 0);
 
-            match EditorView::doc_syntax_highlights(doc, offset, area.height, &cx.editor.theme) {
-                DocSyntaxHighlight::Default(highlights) => EditorView::render_text_highlights(
-                    doc,
-                    offset,
-                    inner,
-                    surface,
-                    &cx.editor.theme,
-                    highlights,
-                    &cx.editor.config(),
-                ),
-                DocSyntaxHighlight::TreeSitter(highlights) => EditorView::render_text_highlights(
-                    doc,
-                    offset,
-                    inner,
-                    surface,
-                    &cx.editor.theme,
-                    highlights,
-                    &cx.editor.config(),
-                ),
-            }
+            EditorView::render_document(
+                doc,
+                inner,
+                surface,
+                offset,
+                &cx.editor.theme,
+                &*cx.editor.config(),
+            );
 
             // highlight the line
             if let Some((start, end)) = range {
