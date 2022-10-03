@@ -331,12 +331,14 @@ tabpad = &quot;·&quot; # Tabs will look like &quot;→···&quot; (depending o
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>render</code></td><td>Whether to render indent guides.</td><td><code>false</code></td></tr>
 <tr><td><code>character</code></td><td>Literal character to use for rendering the indent guide</td><td><code>│</code></td></tr>
+<tr><td><code>skip-levels</code></td><td>Number of indent levels to skip</td><td><code>0</code></td></tr>
 </tbody></table>
 </div>
 <p>Example:</p>
 <pre><code class="language-toml">[editor.indent-guides]
 render = true
 character = &quot;╎&quot;
+skip-levels = 1
 </code></pre>
 
                     </main>
