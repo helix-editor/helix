@@ -74,6 +74,6 @@ signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
 helix-loader = { version = "0.6", path = "../helix-loader" }
 
 [dev-dependencies]
-smallvec = "1.9"
+smallvec = "1.10"
 indoc = "1.0.6"
 tempfile = "3.3.0"
