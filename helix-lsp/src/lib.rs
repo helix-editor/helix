@@ -370,7 +370,11 @@ impl Registry {
                 let NewClientResult(client, incoming) = start_client(id, language_config, config)?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));
 
-                entry.insert((id, client.clone()));
+                let (_, old_client) = entry.insert((id, client.clone()));
+
+                tokio::spawn(async move {
+                    let _ = old_client.force_shutdown().await;
+                });
 
                 Ok(Some(client))
             }
