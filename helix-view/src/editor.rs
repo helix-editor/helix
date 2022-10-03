@@ -260,6 +260,7 @@ pub struct StatusLineConfig {
     pub center: Vec<StatusLineElement>,
     pub right: Vec<StatusLineElement>,
     pub separator: String,
+    pub mode: ModeConfig,
 }
 
 impl Default for StatusLineConfig {
@@ -271,6 +272,25 @@ impl Default for StatusLineConfig {
             center: vec![],
             right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
             separator: String::from("│"),
+            mode: ModeConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct ModeConfig {
+    pub normal: String,
+    pub insert: String,
+    pub select: String,
+}
+
+impl Default for ModeConfig {
+    fn default() -> Self {
+        Self {
+            normal: String::from("NOR"),
+            insert: String::from("INS"),
+            select: String::from("SEL"),
         }
     }
 }

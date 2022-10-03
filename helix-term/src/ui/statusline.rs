@@ -154,16 +154,16 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let visible = context.focused;
-
+    let modenames = &context.editor.config().statusline.mode;
     write(
         context,
         format!(
             " {} ",
             if visible {
                 match context.editor.mode() {
-                    Mode::Insert => "INS",
-                    Mode::Select => "SEL",
-                    Mode::Normal => "NOR",
+                    Mode::Insert => &modenames.insert,
+                    Mode::Select => &modenames.select,
+                    Mode::Normal => &modenames.normal,
                 }
             } else {
                 // If not focused, explicitly leave an empty space instead of returning None.
