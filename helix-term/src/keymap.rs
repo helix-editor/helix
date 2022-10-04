@@ -217,19 +217,14 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
 
         match command {
             None => Ok(KeyTrie::Node(KeyTrieNode::new(label, mapping, order))),
-            Some(cmd) => {
-                let status = (cmd, label.is_empty());
-                if let (MappableCommand::Typable { name, args, .. }, false) = status {
-                    Ok(MappableCommand::Typable {
-                        name,
-                        args,
-                        doc: label.to_string(),
-                    })
-                    .map(KeyTrie::Leaf)
-                } else {
-                    Ok(KeyTrie::Leaf(status.0))
-                }
+            Some(MappableCommand::Typable { name, args, .. }) if !label.is_empty() => {
+                Ok(KeyTrie::Leaf(MappableCommand::Typable {
+                    name,
+                    args,
+                    doc: label.to_string(),
+                }))
             }
+            Some(command) => Ok(KeyTrie::Leaf(command)),
         }
     }
 }
