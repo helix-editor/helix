@@ -27,40 +27,46 @@
 ; Constants
 
 (this) @variable.builtin
-(nullptr) @constant
+(nullptr) @constant.builtin
 
 ; Keywords
 
 [
- "catch"
- "class"
- "co_await"
- "co_return"
- "co_yield"
- "constexpr"
- "constinit"
- "consteval"
- "delete"
- "explicit"
- "final"
- "friend"
- "mutable"
- "namespace"
- "noexcept"
- "new"
- "override"
- "private"
- "protected"
- "public"
- "template"
- "throw"
- "try"
- "typename"
- "using"
- "virtual"
- "concept"
- "requires"
+  "catch"
+  "co_await"
+  "co_return"
+  "co_yield"
+  "concept"
+  "delete"
+  "final"
+  "noexcept"
+  "new"
+  "requires"
+  "throw"
+  "try"
+  "typename"
+  "using"
 ] @keyword
+
+[
+  "class"
+  "namespace"
+] @keyword.storage.type
+
+[
+  "constexpr"
+  "constinit"
+  "consteval"
+  "explicit"
+  "friend"
+  "mutable"
+  "private"
+  "protected"
+  "public"
+  "override"
+  "template"
+  "virtual"
+] @keyword.storage.modifier
 
 ; Strings
 
