@@ -8,51 +8,57 @@
 (const_expression) @function
 
 (variable_identifier_declaration
-    (identifier) @variable
-    (type_declaration) @type)
+  (identifier) @variable
+  (type_declaration) @type)
 
 (function_declaration
-    (identifier) @function
-    (function_return_type_declaration
-        (type_declaration) @type))
+  (identifier) @function
+  (function_return_type_declaration
+    (type_declaration) @type))
 
 (parameter
-    (variable_identifier_declaration
-        (identifier) @variable.parameter
-        (type_declaration) @type))
+  (variable_identifier_declaration
+    (identifier) @variable.parameter
+    (type_declaration) @type))
 
 (struct_declaration
-    (identifier) @type)
-        
+  (identifier) @type)
+
 (struct_declaration
-    (struct_member
-        (variable_identifier_declaration
-            (identifier) @variable.other.member
-            (type_declaration) @type)))
+  (struct_member
+    (variable_identifier_declaration
+      (identifier) @variable.other.member
+      (type_declaration) @type)))
 
 (type_constructor_or_function_call_expression
-    (type_declaration) @function)
+  (type_declaration) @function)
 
 [
-    "struct"
-    "bitcast"
-    "discard"
-    "enable"
-    "fallthrough"
-    "fn"
-    "let"
-    "private"
-    "read"
-    "read_write"
-    "storage"
-    "type"
-    "uniform"
-    "var"
-    "workgroup"
-    "write"
-    "override"
-    (texel_format)
+  "bitcast"
+  "discard"
+  "enable"
+  "fallthrough"
 ] @keyword
+
+[
+  "let"
+  "override"
+  "struct"
+  "type"
+  "var"
+  (texel_format)
+] @keyword.storage.type
+
+[
+  "function"
+  "private"
+  "read"
+  "read_write"
+  "storage"
+  "uniform"
+  "workgroup"
+  "write"
+] @keyword.storage.modifier
 
 "fn" @keyword.function
 
@@ -63,50 +69,59 @@
 ["(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
 [
-    "loop"
-    "for"
-    "while"
-    "break"
-    "continue"
-    "continuing"
+  "loop"
+  "for"
+  "while"
+  "break"
+  "continue"
+  "continuing"
 ] @keyword.control.repeat
 
 [
-    "if"
-    "else"
-    "switch"
-    "case"
-    "default"
+  "if"
+  "else"
+  "switch"
+  "case"
+  "default"
 ] @keyword.control.conditional
 
 [
-    "&"
-    "&&"
-    "/"
-    "!"
-    "="
-    "=="
-    "!="
-    ">"
-    ">="
-    ">>"
-    "<"
-    "<="
-    "<<"
-    "%"
-    "-"
-    "+"
-    "|"
-    "||"
-    "*"
-    "~"
-    "^"
-    "@"
-    "++"
-    "--"
+  "!"
+  "!="
+  "%"
+  "%="
+  "&"
+  "&&"
+  "&="
+  "*"
+  "*="
+  "+"
+  "++"
+  "+="
+  "-"
+  "--"
+  "-="
+  "->"
+  "/"
+  "/="
+  "<"
+  "<<"
+  "<="
+  "="
+  "=="
+  ">"
+  ">="
+  ">>"
+  "@"
+  "^"
+  "^="
+  "|"
+  "|="
+  "||"
+  "~"
 ] @operator
 
 (attribute
-    (identifier) @attribute)
+  (identifier) @attribute)
 
 (comment) @comment
