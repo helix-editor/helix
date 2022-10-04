@@ -1798,28 +1798,70 @@ fn read_file_info_buffer(
 
     let filename = args.get(0).unwrap();
     let path = PathBuf::from(filename.to_string());
-    if path.exists() {
-        let file = std::fs::File::open(path)?;
-        let mut reader = BufReader::new(file);
-
-        match helix_view::document::from_reader(&mut reader, Some(doc.encoding())) {
-            Ok((rope, _)) => {
-                let rope: String = rope.into();
-                let contents = Tendril::from(rope);
-                let selection = doc.selection(view.id);
-                let transaction = Transaction::insert(doc.text(), selection, contents);
-                doc.apply(&transaction, view.id);
-            }
-            Err(error) => cx
-                .editor
-                .set_error(format!("error reading file: {}", error)),
-        }
-    } else {
-        cx.editor
-            .set_error(format!("file doesn't exist: {}", filename));
+    if !path.exists() {
+        bail!("file doesn't exist: {}", filename);
     }
 
+    let file = std::fs::File::open(path).map_err(|err| anyhow!("error reading file {}", err))?;
+    let mut reader = BufReader::new(file);
+    let contents = from_reader(&mut reader, doc.encoding())
+        .map_err(|err| anyhow!("error reading file: {}", err))?;
+    let contents = Tendril::from(contents);
+    let selection = doc.selection(view.id);
+    let transaction = Transaction::insert(doc.text(), selection, contents);
+    doc.apply(&transaction, view.id);
+
     Ok(())
+}
+
+/// Stripped down version of [`helix_view::document::from_reader`] which is adapted to use encoding_rs::Decoder::read_to_string
+fn from_reader<R: std::io::Read + ?Sized>(
+    reader: &mut R,
+    encoding: &'static helix_core::encoding::Encoding,
+) -> anyhow::Result<String> {
+    let mut buf = [0u8; 8192];
+
+    let (mut decoder, mut slice, read) = {
+        let read = reader.read(&mut buf)?;
+        let decoder = encoding.new_decoder();
+        let slice = &buf[..read];
+        (decoder, slice, read)
+    };
+
+    let mut is_empty = read == 0;
+    let mut buf_str = String::with_capacity(buf.len());
+
+    loop {
+        let mut total_read = 0usize;
+
+        loop {
+            let (result, read, ..) =
+                decoder.decode_to_string(&slice[total_read..], &mut buf_str, is_empty);
+
+            total_read += read;
+
+            match result {
+                helix_core::encoding::CoderResult::InputEmpty => {
+                    debug_assert_eq!(slice.len(), total_read);
+                    break;
+                }
+                helix_core::encoding::CoderResult::OutputFull => {
+                    debug_assert!(slice.len() > total_read);
+                    buf_str.reserve(buf.len())
+                }
+            }
+        }
+
+        if is_empty {
+            debug_assert_eq!(reader.read(&mut buf)?, 0);
+            break;
+        }
+
+        let read = reader.read(&mut buf)?;
+        slice = &buf[..read];
+        is_empty = read == 0;
+    }
+    Ok(buf_str)
 }
 
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
