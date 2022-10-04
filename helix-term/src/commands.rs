@@ -1569,6 +1569,7 @@ fn search_impl(
     direction: Direction,
     scrolloff: usize,
     wrap_around: bool,
+    show_warnings: bool,
 ) {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
@@ -1609,9 +1610,13 @@ fn search_impl(
                     regex.find_iter(&contents[start..]).last()
                 }
             };
-            editor.set_status("Wrapped around document");
-        } else {
-            editor.set_error("No more matches");
+        }
+        if show_warnings {
+            if wrap_around && mat.is_some() {
+                editor.set_status("Wrapped around document");
+            } else {
+                editor.set_error("No more matches");
+            }
         }
     }
 
@@ -1706,6 +1711,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
                 direction,
                 scrolloff,
                 wrap_around,
+                false,
             );
         },
     );
@@ -1740,6 +1746,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
                     direction,
                     scrolloff,
                     wrap_around,
+                    true,
                 );
             }
         } else {
