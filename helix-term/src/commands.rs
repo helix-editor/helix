@@ -1561,6 +1561,7 @@ fn split_selection_on_newline(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn search_impl(
     editor: &mut Editor,
     contents: &str,
