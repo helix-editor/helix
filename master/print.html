@@ -1228,6 +1228,17 @@ over it and is merged into the default palette.</p>
 <tr><td><code>crossed_out</code></td></tr>
 </tbody></table>
 </div>
+<h3 id="inheritance"><a class="header" href="#inheritance">Inheritance</a></h3>
+<p>Extend upon other themes by setting the <code>inherits</code> property to an existing theme.</p>
+<pre><code class="language-toml">inherits = &quot;boo_berry&quot;
+
+# Override the theming for &quot;keyword&quot;s:
+&quot;keyword&quot; = { fg = &quot;gold&quot; }
+
+# Override colors in the palette:
+[palette]
+berry = &quot;#2A2A4D&quot;
+</code></pre>
 <h3 id="scopes"><a class="header" href="#scopes">Scopes</a></h3>
 <p>The following is a list of scopes available to use for styling.</p>
 <h4 id="syntax-highlighting"><a class="header" href="#syntax-highlighting">Syntax highlighting</a></h4>
