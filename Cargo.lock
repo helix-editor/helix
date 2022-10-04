@@ -1184,6 +1184,7 @@ dependencies = [
  "helix-loader",
  "log",
  "lsp-types",
+ "once_cell",
  "serde",
  "serde_json",
  "thiserror",
