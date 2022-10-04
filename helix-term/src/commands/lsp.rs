@@ -692,7 +692,7 @@ pub fn apply_workspace_edit(
 fn goto_impl(
     editor: &mut Editor,
     compositor: &mut Compositor,
-    locations: Vec<lsp::Location>,
+    mut locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
 ) {
     let cwdir = std::env::current_dir().unwrap_or_default();
@@ -705,6 +705,11 @@ fn goto_impl(
             editor.set_error("No definition found.");
         }
         _locations => {
+            for i in (1..locations.len()).rev() {
+                if locations.as_slice()[..i].contains(&locations[i]) {
+                    locations.remove(i);
+                }
+            }
             let picker = FilePicker::new(
                 locations,
                 cwdir,
