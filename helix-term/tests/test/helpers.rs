@@ -94,7 +94,17 @@ pub async fn test_key_sequences(
         tokio::time::timeout(TIMEOUT, event_loop).await?;
     }
 
-    app.close().await?;
+    let errs = app.close().await;
+
+    if !errs.is_empty() {
+        log::error!("Errors closing app");
+
+        for err in errs {
+            log::error!("{}", err);
+        }
+
+        bail!("Error closing app");
+    }
 
     Ok(())
 }

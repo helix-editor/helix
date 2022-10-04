@@ -951,28 +951,10 @@ impl Application {
 
         self.event_loop(input_stream).await;
 
-        // let mut save_errs = Vec::new();
-
-        // for doc in self.editor.documents_mut() {
-        //     if let Some(Err(err)) = doc.close().await {
-        //         save_errs.push((
-        //             doc.path()
-        //                 .map(|path| path.to_string_lossy().into_owned())
-        //                 .unwrap_or_else(|| "".into()),
-        //             err,
-        //         ));
-        //     }
-        // }
-
-        let close_err = self.close().await.err();
+        let close_errs = self.close().await;
         restore_term()?;
 
-        // for (path, err) in save_errs {
-        //     self.editor.exit_code = 1;
-        //     eprintln!("Error closing '{}': {}", path, err);
-        // }
-
-        if let Some(err) = close_err {
+        for err in close_errs {
             self.editor.exit_code = 1;
             eprintln!("Error: {}", err);
         }
@@ -980,49 +962,41 @@ impl Application {
         Ok(self.editor.exit_code)
     }
 
-    pub async fn close(&mut self) -> anyhow::Result<()> {
+    pub async fn close(&mut self) -> Vec<anyhow::Error> {
         // [NOTE] we intentionally do not return early for errors because we
         //        want to try to run as much cleanup as we can, regardless of
         //        errors along the way
+        let mut errs = Vec::new();
 
-        let mut result = match self
+        if let Err(err) = self
             .jobs
             .finish(&mut self.editor, Some(&mut self.compositor))
             .await
         {
-            Ok(_) => Ok(()),
-            Err(err) => {
-                log::error!("Error executing job: {}", err);
-                Err(err)
-            }
+            log::error!("Error executing job: {}", err);
+            errs.push(err);
         };
 
         for doc in self.editor.documents_mut() {
-            if let Some(save_result) = doc.close().await {
-                result = match save_result {
-                    Ok(_) => result,
-                    Err(err) => {
-                        if let Some(path) = doc.path() {
-                            log::error!(
-                                "Error saving document '{}': {}",
-                                path.to_string_lossy(),
-                                err
-                            );
-                        }
-                        Err(err)
-                    }
-                };
+            if let Some(Err(err)) = doc.close().await {
+                if let Some(path) = doc.path() {
+                    log::error!(
+                        "Error saving document '{}': {}",
+                        path.to_string_lossy(),
+                        err
+                    );
+                }
+                errs.push(err);
             }
         }
 
-        match self.editor.close_language_servers(None).await {
-            Ok(_) => result,
-            Err(_) => {
-                log::error!("Timed out waiting for language servers to shutdown");
-                Err(anyhow::format_err!(
-                    "Timed out waiting for language servers to shutdown"
-                ))
-            }
+        if self.editor.close_language_servers(None).await.is_err() {
+            log::error!("Timed out waiting for language servers to shutdown");
+            errs.push(anyhow::format_err!(
+                "Timed out waiting for language servers to shutdown"
+            ));
         }
+
+        errs
     }
 }
