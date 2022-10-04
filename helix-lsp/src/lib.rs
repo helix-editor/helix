@@ -1,5 +1,6 @@
 mod client;
 pub mod jsonrpc;
+pub mod snippet;
 mod transport;
 
 pub use client::Client;
