@@ -476,6 +476,18 @@ with modal editors.</p>
 <tr><td><code>End</code></td><td>Move to line end</td><td><code>goto_line_end_newline</code></td></tr>
 </tbody></table>
 </div>
+<p>If you want to disable them in insert mode as you become more comfortable with modal editing, you can use
+the following in your <code>config.toml</code>:</p>
+<pre><code class="language-toml">[keys.insert]
+up = &quot;no_op&quot;
+down = &quot;no_op&quot;
+left = &quot;no_op&quot;
+right = &quot;no_op&quot;
+pageup = &quot;no_op&quot;
+pagedown = &quot;no_op&quot;
+home = &quot;no_op&quot;
+end = &quot;no_op&quot;
+</code></pre>
 <h2 id="select--extend-mode"><a class="header" href="#select--extend-mode">Select / extend mode</a></h2>
 <p>This mode echoes Normal mode, but changes any movements to extend
 selections rather than replace them. Goto motions are also changed to
