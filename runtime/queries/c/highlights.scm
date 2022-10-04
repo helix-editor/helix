@@ -1,17 +1,22 @@
-(storage_class_specifier) @keyword.storage
+[
+  "sizeof"
+] @keyword
 
 [
-  "register"
-  "const"
   "enum"
+  "struct"
+  "union"
+] @keyword.storage.type
+
+[
+  "const"
   "extern"
   "inline"
-  "sizeof"
-  "struct"
+  "register"
   "typedef"
-  "union"
   "volatile"
-] @keyword
+  (storage_class_specifier)
+] @keyword.storage.modifier
 
 [
   "for"
@@ -46,25 +51,43 @@
 ] @keyword.directive
 
 [
-  "--"
-  "-"
-  "-="
-  "->"
-  "="
-  "!="
-  "*"
-  "&"
-  "&&"
   "+"
+  "-"
+  "*"
+  "/"
   "++"
-  "+="
-  "<"
+  "--"
+  "%"
   "=="
+  "!="
   ">"
-  "||"
+  "<"
   ">="
   "<="
+  "&&"
+  "||"
+  "!"
+  "&"
+  "|"
+  "^"
+  "~"
+  "<<"
+  ">>"
+  "="
+  "+="
+  "-="
+  "*="
+  "/="
+  "%="
+  "<<="
+  ">>="
+  "&="
+  "^="
+  "|="
+  "->"
   "::"
+  "?"
+  "..."
 ] @operator
 
 ["," "." ":" ";"] @punctuation.delimiter
@@ -87,14 +110,16 @@
 (call_expression
   function: (field_expression
     field: (field_identifier) @function))
-(function_declarator) @function
 (function_declarator
-  parameters: (parameter_list) @variable.parameter)
+  declarator: (identifier) @function)
+(parameter_declaration
+  declarator: (identifier) @variable.parameter)
+(parameter_declaration
+  (pointer_declarator
+    declarator: (identifier) @variable.parameter))
 (preproc_function_def
   name: (identifier) @function.special)
 
-(compound_statement) @variable
-(init_declarator) @variable
 (field_identifier) @variable.other.member
 (statement_identifier) @label
 (struct_specifier) @type
@@ -105,5 +130,7 @@
 
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z\\d_]*$"))
+
+(identifier) @variable
 
 (comment) @comment
