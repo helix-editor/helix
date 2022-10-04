@@ -89,6 +89,21 @@ Less common modifiers might not be supported by your terminal emulator.
 | `hidden`       |
 | `crossed_out`  |
 
+### Inheritance
+
+Extend upon other themes by setting the `inherits` property to an existing theme.
+
+```toml
+inherits = "boo_berry"
+
+# Override the theming for "keyword"s:
+"keyword" = { fg = "gold" }
+
+# Override colors in the palette:
+[palette]
+berry = "#2A2A4D"
+```
+
 ### Scopes
 
 The following is a list of scopes available to use for styling.
