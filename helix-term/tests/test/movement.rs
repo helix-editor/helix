@@ -117,6 +117,7 @@ async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::
             ..Default::default()
         },
         Config::default(),
+        helpers::test_syntax_conf(None),
         (
             helpers::platform_line(indoc! {"\
                 #[/|]#// Increments
@@ -148,6 +149,7 @@ async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Res
             ..Default::default()
         },
         Config::default(),
+        helpers::test_syntax_conf(None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -180,6 +182,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
             ..Default::default()
         },
         Config::default(),
+        helpers::test_syntax_conf(None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -210,6 +213,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
             ..Default::default()
         },
         Config::default(),
+        helpers::test_syntax_conf(None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
