@@ -11,6 +11,11 @@
 
 (invocation_expression
   (member_access_expression
+    expression: ((identifier) @type
+      (#match? @type "^[A-Z]"))))
+
+(invocation_expression
+  (member_access_expression
     expression: (identifier) @variable))
 
 (invocation_expression
@@ -19,12 +24,12 @@
       name: (identifier) @function)))
 
 (invocation_expression
-      [(identifier) (qualified_name)] @function)
+  [(identifier) (qualified_name)] @function)
 
 ; Generic Method invocation with generic type
 (invocation_expression
   function: (generic_name
-              . (identifier) @function))
+    . (identifier) @function))
 
 ;; Namespaces
 
@@ -40,6 +45,7 @@
 (namespace_declaration name: (identifier) @type)
 (using_directive (_) @namespace)
 (constructor_declaration name: (identifier) @type)
+(destructor_declaration name: (identifier) @type)
 (object_creation_expression [(identifier) (qualified_name)] @type)
 (type_parameter_list (type_parameter) @type)
 
@@ -66,7 +72,7 @@
 
 (object_creation_expression
   (generic_name
-   (identifier) @type))
+    (identifier) @type))
 
 (property_declaration
   (generic_name
@@ -74,7 +80,7 @@
 
 (_
   type: (generic_name
-   (identifier) @type))
+    (identifier) @type))
 
 ;; Enum
 (enum_member_declaration (identifier) @variable.other.member)
@@ -150,6 +156,7 @@
   "%"
   "%="
   ":"
+  "::"
   ".."
   "&="
   "->"
@@ -166,50 +173,27 @@
 ]  @punctuation.bracket
 
 ;; Keywords
-(modifier) @keyword
+(modifier) @keyword.storage.modifier
 (this_expression) @keyword
 (escape_sequence) @constant.character.escape
 
 [
   "as"
   "base"
-  "break"
-  "case"
   "catch"
   "checked"
-  "class"
-  "continue"
-  "default"
-  "delegate"
-  "do"
-  "else"
-  "enum"
-  "event"
-  "explicit"
   "finally"
-  "for"
-  "foreach"
-  "goto"
-  "if"
-  "implicit"
-  "interface"
   "is"
   "lock"
-  "namespace"
   "operator"
   "params"
-  "return"
   "sizeof"
   "stackalloc"
-  "static"
-  "struct"
-  "switch"
   "throw"
   "try"
   "typeof"
   "unchecked"
   "using"
-  "while"
   "new"
   "await"
   "in"
@@ -222,11 +206,47 @@
   "from"
   "where"
   "select"
-  "record"
   "init"
   "with"
   "let"
 ] @keyword
+
+[
+  "class"
+  "delegate"
+  "enum"
+  "event"
+  "interface"
+  "namespace"
+  "struct"
+  "record"
+] @keyword.storage.type
+
+[
+  "explicit"
+  "implicit"
+  "static"
+] @keyword.storage.modifier
+
+[
+  "for"
+  "foreach"
+  "do"
+  "while"
+  "break"
+  "continue"
+] @keyword.control.repeat
+
+[
+  "goto"
+  "if"
+  "else"
+  "switch"
+  "case"
+  "default"
+] @keyword.control.conditional
+
+"return" @keyword.control.return
 
 (nullable_directive) @keyword.directive
 (define_directive) @keyword.directive
@@ -296,11 +316,11 @@
 
 (parameter_list
   (parameter
-   name: (identifier) @parameter))
+    name: (identifier) @parameter))
 
 (parameter_list
   (parameter
-   type: [(identifier) (qualified_name)] @type))
+    type: [(identifier) (qualified_name)] @type))
 
 ;; Typeof
 (type_of_expression [(identifier) (qualified_name)] @type)
@@ -334,14 +354,26 @@
 (lock_statement (identifier) @variable)
 
 ;; Rest
-(member_access_expression) @variable
+(member_access_expression
+  expression: ((identifier) @type
+    (#match? @type "^[A-Z]")))
+(member_access_expression expression: (identifier) @variable)
+(member_access_expression name: (identifier) @variable)
 (element_access_expression (identifier) @variable)
 (argument (identifier) @variable)
 (for_statement (identifier) @variable)
+(for_each_statement type: (identifier) @type)
 (for_each_statement (identifier) @variable)
 (expression_statement (identifier) @variable)
-(member_access_expression expression: (identifier) @variable)
-(member_access_expression name: (identifier) @variable)
 (conditional_access_expression [(identifier) (qualified_name)] @variable)
 ((identifier) @comment.unused
- (#eq? @comment.unused "_"))
+  (#eq? @comment.unused "_"))
+(array_type (identifier) @type)
+(array_rank_specifier (identifier) @variable)
+(equals_value_clause (identifier) @variable)
+(interpolation (identifier) @variable)
+(interpolation_format_clause) @string
+(cast_expression (identifier) @variable)
+(declaration_expression name: (identifier) @variable)
+(declaration_expression type: (identifier) @type)
+(if_statement (identifier) @variable)
