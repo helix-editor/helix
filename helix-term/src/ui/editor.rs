@@ -842,8 +842,12 @@ impl EditorView {
     ) {
         let text = doc.text().slice(..);
 
-        let primary_style = theme.get("ui.cursorline.primary");
-        let secondary_style = theme.get("ui.cursorline.secondary");
+        let primary_style = theme
+            .try_get("ui.cursorcolumn.primary")
+            .unwrap_or_else(|| theme.get("ui.cursorline.primary"));
+        let secondary_style = theme
+            .try_get("ui.cursorcolumn.secondary")
+            .unwrap_or_else(|| theme.get("ui.cursorline.secondary"));
 
         let inner_area = view.inner_area();
         let offset = view.offset.col;
