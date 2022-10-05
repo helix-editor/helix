@@ -3,7 +3,7 @@ use std::borrow::Cow;
 /// Get the vec of escaped / quoted / doublequoted filenames from the input str
 pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
     enum State {
-        Delimiter, // whitespace
+        OnWhitespace,
         Unquoted,
         UnquotedEscaped,
         Quoted,
@@ -23,7 +23,7 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
 
     for (i, c) in input.char_indices() {
         state = match state {
-            Delimiter => match c {
+            OnWhitespace => match c {
                 '"' => {
                     end = i;
                     Dquoted
@@ -38,12 +38,12 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
                         start = i + 1;
                         UnquotedEscaped
                     } else {
-                        Delimiter
+                        OnWhitespace
                     }
                 }
                 c if c.is_ascii_whitespace() => {
                     end = i;
-                    Delimiter
+                    OnWhitespace
                 }
                 _ => Unquoted,
             },
@@ -59,7 +59,7 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
                 }
                 c if c.is_ascii_whitespace() => {
                     end = i;
-                    Delimiter
+                    OnWhitespace
                 }
                 _ => Unquoted,
             },
@@ -76,7 +76,7 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
                 }
                 '\'' => {
                     end = i;
-                    Delimiter
+                    OnWhitespace
                 }
                 _ => Quoted,
             },
@@ -93,7 +93,7 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
                 }
                 '"' => {
                     end = i;
-                    Delimiter
+                    OnWhitespace
                 }
                 _ => Dquoted,
             },
