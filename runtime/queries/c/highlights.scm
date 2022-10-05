@@ -133,7 +133,7 @@
 (primitive_type) @type.builtin
 (sized_type_specifier) @type
 
-(init_declarator declarator: (identifier) @variable)
+(init_declarator (identifier) @variable)
 (binary_expression left: (identifier) @variable)
 (binary_expression right: (identifier) @variable)
 (compound_statement (declaration (identifier) @variable))
