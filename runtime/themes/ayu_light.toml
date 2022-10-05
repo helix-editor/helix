@@ -39,7 +39,6 @@
 "ui.linenr" = { fg = "light_gray" }
 "ui.linenr.selected" = { fg = "orange" }
 "ui.cursorline" = { bg = "black" }
-"ui.statusline" = { fg = "foreground", bg = "black" }
 "ui.popup" = { bg = "black" }
 "ui.window" = { fg = "light_gray" }
 "ui.help" = { fg  = "foreground", bg = "black" }
@@ -59,8 +58,13 @@
 "diagnostic.info"= { fg = "blue", modifiers = ["underlined"] }
 "diagnostic.warning"= { fg = "yellow", modifiers = ["underlined"] }
 "diagnostic.error"= { fg = "red", modifiers = ["underlined"] }
-"ui.bufferline" = { fg = "gray", bg = "dark_gray" }
-"ui.bufferline.active" = { fg = "dark", bg = "background" }
+"ui.bufferline" = { fg = "ui_foreground", bg = "ui_background" }
+"ui.bufferline.active" = { fg = "ui_background", bg = "ui_foreground" }
+"ui.statusline" = { fg = "ui_foreground", bg = "ui_background" }
+"ui.statusline.inactive" = { fg = "ui_foreground", bg = "light_gray" }
+"ui.statusline.normal" = { fg = "white", bg = "light_blue" }
+"ui.statusline.insert" = { fg = "white", bg = "orange" }
+"ui.statusline.select" = { fg = "white", bg = "magenta" }
 
 "special" = { fg = "orange" }
 
@@ -68,8 +72,13 @@
 background = "#fcfcfc"
 foreground = "#5c6166"
 
+ui_foreground = "#8a9199"
+ui_background = "#f8f9fa"
+
 black = "#e7eaed"
+white = "#fcfcfc"
 blue = "#399ee6"
+light_blue = "#55b4d4"
 cyan = "#478acc"
 light_gray = "#e7eaed"
 gray = "#787b8099"
@@ -78,4 +87,3 @@ magenta = "#a37acc"
 orange = "#fa8d3e"
 red = "#f07171"
 yellow = "#ffaa33"
-dark = "#131721"
