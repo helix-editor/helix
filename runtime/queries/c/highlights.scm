@@ -77,6 +77,9 @@
   declarator: (identifier) @function)
 (preproc_function_def
   name: (identifier) @function.special)
+  
+(attribute
+  name: (identifier) @attribute)
 
 (field_identifier) @variable.other.member
 (statement_identifier) @label

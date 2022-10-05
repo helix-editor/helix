@@ -42,7 +42,10 @@
 
 "catch" @keyword
 "class" @keyword
+"concept" @keyword
+"consteval" @keyword
 "constexpr" @keyword
+"constinit" @keyword
 "delete" @keyword
 "explicit" @keyword
 "final" @keyword
@@ -55,12 +58,27 @@
 "private" @keyword
 "protected" @keyword
 "public" @keyword
+"requires" @keyword
 "template" @keyword
 "throw" @keyword
 "try" @keyword
 "typename" @keyword
 "using" @keyword
 "virtual" @keyword
+
+; Operators
+"<=>" @operator
+[
+  "or"
+  "and"
+  "bitor"
+  "xor"
+  "bitand"
+  "not_eq"
+  "and_eq"
+  "or_eq"
+  "xor_eq"
+] @keyword.operator
 
 ; Strings
 
