@@ -1966,3 +1966,17 @@ roots = []
 [[grammar]]
 name = "ini"
 source = { git = "https://github.com/justinmk/tree-sitter-ini", rev = "4d247fb876b4ae6b347687de4a179511bf67fcbc" }
+
+[[language]]
+name = "bicep"
+scope = "source.bicep"
+file-types = ["bicep"]
+roots = []
+auto-format = true
+comment-token = "//"
+indent = { tab-width = 2, unit = " "}
+language-server = { command = "bicep-langserver" }
+
+[[grammar]]
+name = "bicep"
+source = { git = "https://github.com/Sjord/tree-sitter-bicep", rev = "60795d3a1b493e064b263a64cb4f7f758a3394d7" }
