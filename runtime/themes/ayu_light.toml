@@ -61,7 +61,7 @@
 "ui.bufferline" = { fg = "ui_foreground", bg = "ui_background" }
 "ui.bufferline.active" = { fg = "ui_background", bg = "ui_foreground" }
 "ui.statusline" = { fg = "ui_foreground", bg = "ui_background" }
-"ui.statusline.inactive" = { fg = "ui_foreground", bg = "light_gray" }
+"ui.statusline.inactive" = { fg = "ui_foreground", bg = "ui_background" }
 "ui.statusline.normal" = { fg = "white", bg = "light_blue" }
 "ui.statusline.insert" = { fg = "white", bg = "orange" }
 "ui.statusline.select" = { fg = "white", bg = "magenta" }
