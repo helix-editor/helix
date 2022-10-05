@@ -13,8 +13,11 @@
   name: (field_identifier) @function)
 
 (function_declarator
-  declarator: (qualified_identifier
-    name: (identifier) @function))
+  (qualified_identifier (identifier) @function))
+
+(function_declarator
+  (qualified_identifier
+    (qualified_identifier (identifier) @function)))
 
 (function_declarator
   declarator: (field_identifier) @function)
@@ -71,3 +74,5 @@
 ; Strings
 
 (raw_string_literal) @string
+
+(identifier) @variable
