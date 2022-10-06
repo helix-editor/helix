@@ -4,13 +4,16 @@ use crossterm::{
     execute, queue,
     style::{
         Attribute as CAttribute, Color as CColor, Print, SetAttribute, SetBackgroundColor,
-        SetForegroundColor, SetUnderlineColor,
+        SetForegroundColor,
     },
     terminal::{self, Clear, ClearType},
+    Command,
 };
 use helix_view::graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle};
-use std::io::{self, Write};
-
+use std::{
+    fmt,
+    io::{self, Write},
+};
 fn vte_version() -> Option<usize> {
     std::env::var("VTE_VERSION").ok()?.parse().ok()
 }
@@ -108,17 +111,18 @@ where
                 map_error(queue!(self.buffer, SetBackgroundColor(color)))?;
                 bg = cell.bg;
             }
-            if cell.underline_color != underline_color {
-                let color = CColor::from(cell.underline_color);
-                map_error(queue!(self.buffer, SetUnderlineColor(color)))?;
-                underline_color = cell.underline_color;
-            }
 
             let mut new_underline_style = cell.underline_style;
             if !self.capabilities.has_extended_underlines {
                 match new_underline_style {
-                    UnderlineStyle::Reset => (),
+                    UnderlineStyle::Reset | UnderlineStyle::Line => (),
                     _ => new_underline_style = UnderlineStyle::Line,
+                }
+
+                if cell.underline_color != underline_color {
+                    let color = CColor::from(cell.underline_color);
+                    map_error(queue!(self.buffer, SetUnderlineColor(color)))?;
+                    underline_color = cell.underline_color;
                 }
             }
 
@@ -242,5 +246,60 @@ impl ModifierDiff {
         }
 
         Ok(())
+    }
+}
+
+/// Crossterm uses semicolon as a seperator for colors
+/// this is actually not spec compliant (altough commonly supported)
+/// However the correct approach is to use colons as a seperator.
+/// This usually doesn't make a difference for emulators that do support colored underlines.
+/// However terminals that do not support colored underlines will ignore underlines colors with colons
+/// while escape sequences with semicolons are always processed which leads to weird visual artifacts.
+/// See [this nvim issue](https://github.com/neovim/neovim/issues/9270) for details
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SetUnderlineColor(pub CColor);
+
+impl Command for SetUnderlineColor {
+    fn write_ansi(&self, f: &mut impl fmt::Write) -> fmt::Result {
+        let color = self.0;
+
+        if color == CColor::Reset {
+            write!(f, "\x1b[59m")?;
+            return Ok(());
+        }
+        f.write_str("\x1b[58:")?;
+
+        let res = match color {
+            CColor::Black => f.write_str("5:0"),
+            CColor::DarkGrey => f.write_str("5:8"),
+            CColor::Red => f.write_str("5:9"),
+            CColor::DarkRed => f.write_str("5:1"),
+            CColor::Green => f.write_str("5:10"),
+            CColor::DarkGreen => f.write_str("5:2"),
+            CColor::Yellow => f.write_str("5:11"),
+            CColor::DarkYellow => f.write_str("5:3"),
+            CColor::Blue => f.write_str("5:12"),
+            CColor::DarkBlue => f.write_str("5:4"),
+            CColor::Magenta => f.write_str("5:13"),
+            CColor::DarkMagenta => f.write_str("5:5"),
+            CColor::Cyan => f.write_str("5:14"),
+            CColor::DarkCyan => f.write_str("5:6"),
+            CColor::White => f.write_str("5:15"),
+            CColor::Grey => f.write_str("5:7"),
+            CColor::Rgb { r, g, b } => write!(f, "2::{}:{}:{}", r, g, b),
+            CColor::AnsiValue(val) => write!(f, "5:{}", val),
+            _ => Ok(()),
+        };
+        res?;
+        write!(f, "m")?;
+        Ok(())
+    }
+
+    #[cfg(windows)]
+    fn execute_winapi(&self) -> crossterm::Result<()> {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "SetUnderlineColor not supported by winapi.",
+        ))
     }
 }
