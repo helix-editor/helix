@@ -13,7 +13,7 @@ The default theme.toml can be found [here](https://github.com/helix-editor/helix
 Each line in the theme file is specified as below:
 
 ```toml
-key = { fg = "#ffffff", bg = "#000000", underline_color = "#ff0000", underline_style = "curl", modifiers = ["bold", "italic"] }
+key = { fg = "#ffffff", bg = "#000000", underline-color = "#ff0000", underline-style = "curl", modifiers = ["bold", "italic"] }
 ```
 
 where `key` represents what you want to style, `fg` specifies the foreground color, `bg` the background color, `underline_style` the underline style, `underline_color` the underline color (only meaningful if an underline style is enabled), and `modifiers` is a list of style modifiers. `bg`, `underline` and `modifiers` can be omitted to defer to the defaults.
@@ -91,7 +91,7 @@ Less common modifiers might not be supported by your terminal emulator.
 
 ### Underline Style
 
-One of the following values may be used as an `underline_styles`. 
+One of the following values may be used as an `underline-style`. 
 
 Some styles might not be supported by your terminal emulator.
 
@@ -101,7 +101,7 @@ Some styles might not be supported by your terminal emulator.
 | `curl`         |
 | `dashed`       |
 | `dot`          |
-| `double-line`  |
+| `double_line`  |
 
 
 ### Scopes

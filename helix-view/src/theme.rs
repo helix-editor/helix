@@ -277,8 +277,8 @@ impl ThemePalette {
                 match name.as_str() {
                     "fg" => *style = style.fg(self.parse_color(value)?),
                     "bg" => *style = style.bg(self.parse_color(value)?),
-                    "underline_color" => *style = style.underline_color(self.parse_color(value)?),
-                    "underline_style" => {
+                    "underline-color" => *style = style.underline_color(self.parse_color(value)?),
+                    "underline-style" => {
                         warn!("found style");
                         *style = style.underline_style(Self::parse_underline_style(&value)?)
                     }

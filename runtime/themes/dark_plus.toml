@@ -92,8 +92,8 @@
 "info" = { fg = "light_blue" }
 "hint" = { fg = "light_gray3" }
 
-"diagnostic.error" = {underline_color = "red", underline_style = "curl"}
-"diagnostic" = {underline_color = "gold", underline_style = "curl" }
+"diagnostic.error" = {underline-color = "red", underline-style = "curl"}
+"diagnostic" = {underline-color = "gold", underline-style = "curl" }
 
 [palette]
 white = "#ffffff"
