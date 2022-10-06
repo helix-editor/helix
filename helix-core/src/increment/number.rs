@@ -19,7 +19,7 @@ pub struct NumberIncrementor<'a> {
 }
 
 impl<'a> NumberIncrementor<'a> {
-    /// Return information about number under rang if there is one.
+    /// Return information about number under range if there is one.
     pub fn from_range(text: RopeSlice, range: Range) -> Option<NumberIncrementor> {
         // If the cursor is on the minus sign of a number we want to get the word textobject to the
         // right of it.
@@ -32,14 +32,18 @@ impl<'a> NumberIncrementor<'a> {
             range
         };
 
-        let range = textobject_word(text, range, TextObject::Inside, 1, false);
+        let mut range = textobject_word(text, range, TextObject::Inside, 1, false);
 
         // If there is a minus sign to the left of the word object, we want to include it in the range.
-        let range = if range.from() > 0 && text.char(range.from() - 1) == '-' {
-            range.extend(range.from() - 1, range.from())
-        } else {
-            range
+        if range.from() > 0 && text.char(range.from() - 1) == '-' {
+            range = range.extend(range.from() - 1, range.from())
         };
+
+        // If there are trailing underscores, remove them from the range.
+        // There is a `- 1` here because range ends are exclusive.
+        while !range.is_empty() && text.char(range.to() - 1) == '_' {
+            range = range.shorten()
+        }
 
         let word: String = text
             .slice(range.from()..range.to())
@@ -146,6 +150,14 @@ impl<'a> Increment for NumberIncrementor<'a> {
                 }
             }
         }
+
+        // println!(
+        //     "text: {:?}, length: {:?}, val: {:?}, new_len: {:?}",
+        //     old_text,
+        //     old_length,
+        //     new_value,
+        //     new_text.len()
+        // );
 
         (self.range, new_text.into())
     }

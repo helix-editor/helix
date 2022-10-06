@@ -209,6 +209,26 @@ impl Range {
         }
     }
 
+    /// Shorten the range by 1 character.
+    #[must_use]
+    pub fn shorten(&self) -> Self {
+        if self.head > self.anchor {
+            Self {
+                anchor: self.anchor,
+                head: self.head - 1,
+                horiz: None,
+            }
+        } else if self.anchor > self.head {
+            Self {
+                anchor: self.anchor - 1,
+                head: self.head,
+                horiz: None,
+            }
+        } else {
+            self.clone()
+        }
+    }
+
     /// Returns a range that encompasses both input ranges.
     ///
     /// This is like `extend()`, but tries to negotiate the
