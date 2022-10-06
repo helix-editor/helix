@@ -27,13 +27,13 @@ impl Capabilities {
     /// on the $TERM environment variable. If detection fails, returns
     /// a default value where no capability is supported.
     pub fn from_env_or_default() -> Self {
-        match cxterminfo::terminfo::TermInfo::from_env() {
+        match termini::TermInfo::from_env() {
             Err(_) => Capabilities::default(),
             Ok(t) => Capabilities {
                 // Smulx, VTE: https://unix.stackexchange.com/a/696253/246284
                 // Su (used by kitty): https://sw.kovidgoyal.net/kitty/underlines
-                has_extended_underlines: t.get_ext_string("Smulx").is_some()
-                    || *t.get_ext_bool("Su").unwrap_or(&false)
+                has_extended_underlines: t.extended_cap("Smulx").is_some()
+                    || t.extended_cap("Su").is_some()
                     || vte_version() >= Some(5102),
             },
         }

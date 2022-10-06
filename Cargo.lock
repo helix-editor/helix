@@ -177,12 +177,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cxterminfo"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da92c5e3aaf2cc1fea346d9b3bac0c59c6ffc1d1d46f18d991d449912a3e6f07"
-
-[[package]]
 name = "dirs-next"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -510,10 +504,10 @@ dependencies = [
  "bitflags",
  "cassowary",
  "crossterm",
- "cxterminfo",
  "helix-core",
  "helix-view",
  "serde",
+ "termini",
  "unicode-segmentation",
 ]
 
@@ -1103,6 +1097,15 @@ dependencies = [
  "redox_syscall",
  "remove_dir_all",
  "winapi",
+]
+
+[[package]]
+name = "termini"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "00733d628ac0a8bd4fd3171a28eb6c09759ae1b43d8b587eadebaccee01d01a3"
+dependencies = [
+ "dirs-next",
 ]
 
 [[package]]
