@@ -842,13 +842,15 @@ impl EditorView {
     ) {
         let text = doc.text().slice(..);
 
+        // Manual fallback behaviour:
+        // ui.cursorcolumn.{p/s} -> ui.cursorcolumn -> ui.cursorline.{p/s}
         let primary_style = theme
-            .try_get("ui.cursorcolumn.primary")
-            .or_else(|| theme.try_get("ui.cursorcolumn"))
+            .try_get_exact("ui.cursorcolumn.primary")
+            .or_else(|| theme.try_get_exact("ui.cursorcolumn"))
             .unwrap_or_else(|| theme.get("ui.cursorline.primary"));
         let secondary_style = theme
-            .try_get("ui.cursorcolumn.secondary")
-            .or_else(|| theme.try_get("ui.cursorcolumn"))
+            .try_get_exact("ui.cursorcolumn.secondary")
+            .or_else(|| theme.try_get_exact("ui.cursorcolumn"))
             .unwrap_or_else(|| theme.get("ui.cursorline.secondary"));
 
         let inner_area = view.inner_area();
