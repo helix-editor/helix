@@ -97,7 +97,7 @@ impl Completion {
         start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
-        let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
+        let menu = Menu::new(items, true, (), move |editor: &mut Editor, item, event| {
             fn item_to_transaction(
                 doc: &Document,
                 item: &CompletionItem,

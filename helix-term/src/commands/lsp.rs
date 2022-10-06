@@ -452,43 +452,83 @@ pub fn code_action(cx: &mut Context) {
     cx.callback(
         future,
         move |editor, compositor, response: Option<lsp::CodeActionResponse>| {
-            let actions = match response {
+            let mut actions = match response {
                 Some(a) => a,
                 None => return,
             };
+
             if actions.is_empty() {
                 editor.set_status("No code actions available");
                 return;
             }
 
-            let mut picker = ui::Menu::new(actions, (), move |editor, code_action, event| {
-                if event != PromptEvent::Validate {
-                    return;
-                }
+            // sort by CodeActionKind
+            // this ensures that the most relevant codeactions (quickfix) show up first
+            // while more situational commands (like refactors) show up later
+            // this behaviour is modeled after the behaviour of vscode (editor/contrib/codeAction/browser/codeActionWidget.ts)
 
-                // always present here
-                let code_action = code_action.unwrap();
+            let mut categories = vec![Vec::new(); 8];
+            for action in actions.drain(..) {
+                let category = match &action {
+                    lsp::CodeActionOrCommand::CodeAction(lsp::CodeAction {
+                        kind: Some(kind),
+                        ..
+                    }) => {
+                        let mut components = kind.as_str().split('.');
 
-                match code_action {
-                    lsp::CodeActionOrCommand::Command(command) => {
-                        log::debug!("code action command: {:?}", command);
-                        execute_lsp_command(editor, command.clone());
-                    }
-                    lsp::CodeActionOrCommand::CodeAction(code_action) => {
-                        log::debug!("code action: {:?}", code_action);
-                        if let Some(ref workspace_edit) = code_action.edit {
-                            log::debug!("edit: {:?}", workspace_edit);
-                            apply_workspace_edit(editor, offset_encoding, workspace_edit);
+                        match components.next() {
+                            Some("quickfix") => 0,
+                            Some("refactor") => match components.next() {
+                                Some("extract") => 1,
+                                Some("inline") => 2,
+                                Some("rewrite") => 3,
+                                Some("move") => 4,
+                                Some("surround") => 5,
+                                _ => 7,
+                            },
+                            Some("source") => 6,
+                            _ => 7,
                         }
+                    }
+                    _ => 7,
+                };
 
-                        // if code action provides both edit and command first the edit
-                        // should be applied and then the command
-                        if let Some(command) = &code_action.command {
+                categories[category].push(action);
+            }
+
+            for category in categories {
+                actions.extend(category.into_iter())
+            }
+
+            let mut picker =
+                ui::Menu::new(actions, false, (), move |editor, code_action, event| {
+                    if event != PromptEvent::Validate {
+                        return;
+                    }
+
+                    // always present here
+                    let code_action = code_action.unwrap();
+
+                    match code_action {
+                        lsp::CodeActionOrCommand::Command(command) => {
+                            log::debug!("code action command: {:?}", command);
                             execute_lsp_command(editor, command.clone());
                         }
+                        lsp::CodeActionOrCommand::CodeAction(code_action) => {
+                            log::debug!("code action: {:?}", code_action);
+                            if let Some(ref workspace_edit) = code_action.edit {
+                                log::debug!("edit: {:?}", workspace_edit);
+                                apply_workspace_edit(editor, offset_encoding, workspace_edit);
+                            }
+
+                            // if code action provides both edit and command first the edit
+                            // should be applied and then the command
+                            if let Some(command) = &code_action.command {
+                                execute_lsp_command(editor, command.clone());
+                            }
+                        }
                     }
-                }
-            });
+                });
             picker.move_down(); // pre-select the first item
 
             let popup = Popup::new("code-action", picker);
