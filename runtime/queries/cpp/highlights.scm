@@ -40,6 +40,8 @@
   "co_return"
   "co_yield"
   "concept"
+  "consteval"
+  "constinit"
   "delete"
   "final"
   "noexcept"
@@ -50,6 +52,20 @@
   "typename"
   "using"
 ] @keyword
+
+"<=>" @operator
+
+[
+  "or"
+  "and"
+  "bitor"
+  "xor"
+  "bitand"
+  "not_eq"
+  "and_eq"
+  "or_eq"
+  "xor_eq"
+] @keyword.operator
 
 [
   "class"
