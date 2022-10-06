@@ -533,6 +533,8 @@ impl Default for WhitespaceCharacters {
 pub struct IndentGuidesConfig {
     pub render: bool,
     pub character: char,
+
+    // TODO: Make enum to also support background rainbow for indent guides
     pub rainbow: bool,
 }
 

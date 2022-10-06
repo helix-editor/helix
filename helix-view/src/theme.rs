@@ -213,6 +213,10 @@ impl Theme {
         self.rainbow_length
     }
 
+    pub fn get_rainbow(&self, index: usize) -> Style {
+        self.highlights[index % self.rainbow_length]
+    }
+
     pub fn default_rainbow() -> Vec<Style> {
         vec![
             Style::default().fg(Color::Red),

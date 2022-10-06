@@ -442,8 +442,7 @@ impl EditorView {
 
             for i in starting_indent..(indent_level / tab_width as u16) {
                 let style = if config.indent_guides.rainbow {
-                    let color_index = i as usize % theme.rainbow_length();
-                    indent_guide_style.patch(theme.get(&format!("rainbow.{}", color_index)))
+                    indent_guide_style.patch(theme.get_rainbow(i as usize))
                 } else {
                     indent_guide_style
                 };
