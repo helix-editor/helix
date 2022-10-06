@@ -335,7 +335,7 @@
 
 ;; Type
 (generic_name (identifier) @type)
-(type_parameter [(identifier) (qualified_name)] @variable.parameter)
+(type_parameter [(identifier) (qualified_name)] @type)
 (type_argument_list [(identifier) (qualified_name)] @type)
 
 ;; Type constraints
@@ -361,6 +361,7 @@
 (member_access_expression name: (identifier) @variable)
 (element_access_expression (identifier) @variable)
 (argument (identifier) @variable)
+(name_colon (identifier) @variable)
 (for_statement (identifier) @variable)
 (for_each_statement type: (identifier) @type)
 (for_each_statement (identifier) @variable)
