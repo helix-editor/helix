@@ -306,6 +306,17 @@ impl Component for Completion {
         {
             return EventResult::Ignored(None);
         }
+        if let None = self.popup.contents().selection() {
+            if let Event::Key(KeyEvent {
+                code: KeyCode::Down,
+                ..
+            }) = event
+            {
+                if cx.editor.config().idle_timeout.as_millis() == 0 {
+                    return EventResult::Ignored(None);
+                }
+            }
+        }
         self.popup.handle_event(event, cx)
     }
 
