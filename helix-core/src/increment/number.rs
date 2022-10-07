@@ -20,8 +20,8 @@ pub struct IntegerIncrementor<'a> {
 
 impl<'a> IntegerIncrementor<'a> {
     /// Return information about an integer under range if there is one.
-    /// Number includes possible negative sign, digits in bases 2, 8, 10, or 16 and underscores.
-    /// Number does not include decimal point or trailing underscores
+    /// Integer includes possible negative sign, digits in bases 2, 8, 10, or 16 and underscores.
+    /// Integer does not include decimal point or trailing underscores
     /// Examples:
     ///    -1, 99, 0xABCD, 0x1010, 0o1234567, 1_000_000
     pub fn from_range(text: RopeSlice, range: Range) -> Option<IntegerIncrementor> {
