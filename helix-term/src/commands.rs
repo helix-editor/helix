@@ -4886,17 +4886,17 @@ fn increment_impl(cx: &mut Context, amount: i64) {
 
     let mut changes = vec![];
     let mut iter = maybe_changes.into_iter();
-    let mut last_change;
+    let mut last_change_to;
 
-    if let Some(c) = iter.next() {
-        last_change = c.clone();
-        changes.push(c);
+    if let Some(change) = iter.next() {
+        last_change_to = change.1;
+        changes.push(change);
         // Overlapping changes will panic so we keep the earliest in the document of any
         // that overlap.
-        while let Some(c) = iter.next() {
-            if c.0 >= last_change.1 {
-                last_change = c.clone();
-                changes.push(c);
+        for change in iter {
+            if change.0 >= last_change_to {
+                last_change_to = change.1;
+                changes.push(change);
             }
         }
 

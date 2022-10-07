@@ -212,20 +212,18 @@ impl Range {
     /// Shorten the range by 1 character.
     #[must_use]
     pub fn shorten(&self) -> Self {
-        if self.head > self.anchor {
-            Self {
+        match self.head.cmp(&self.anchor) {
+            std::cmp::Ordering::Greater => Self {
                 anchor: self.anchor,
                 head: self.head - 1,
                 horiz: None,
-            }
-        } else if self.anchor > self.head {
-            Self {
+            },
+            std::cmp::Ordering::Less => Self {
                 anchor: self.anchor - 1,
                 head: self.head,
                 horiz: None,
-            }
-        } else {
-            self.clone()
+            },
+            std::cmp::Ordering::Equal => *self,
         }
     }
 
