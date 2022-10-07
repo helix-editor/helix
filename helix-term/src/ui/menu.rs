@@ -117,10 +117,7 @@ impl<T: Item> Menu<T> {
                         .map(|score| (index, score))
                 }),
         );
-        // matches.sort_unstable_by_key(|(_, score)| -score);
-        self.matches.sort_unstable_by_key(|(index, _score)| {
-            self.options[*index].sort_text(&self.editor_data)
-        });
+        self.matches.sort_unstable_by_key(|(_, score)| -score);
 
         // reset cursor position
         self.cursor = None;
