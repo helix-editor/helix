@@ -4866,10 +4866,10 @@ fn increment_impl(cx: &mut Context, amount: i64) {
     let mut last_change_to = 0;
 
     // Overlapping changes will panic so we keep the earliest in the document of any
-    // that overlap. Selection ranges in the resulting doc will be only from changes that are
-    // kept.
+    // that overlap. Selection ranges in the resulting doc will be only from changes
+    // that are kept.
     for change in maybe_changes.into_iter() {
-        if changes.len() == 0 || change.0 >= last_change_to {
+        if changes.is_empty() || change.0 >= last_change_to {
             let length_diff =
                 (change.2.as_ref().unwrap().len() as i128) - ((change.1 - change.0) as i128);
             // Selection after increment is the first character of the new number.
@@ -4885,7 +4885,7 @@ fn increment_impl(cx: &mut Context, amount: i64) {
         }
     }
 
-    if changes.len() > 0 {
+    if !changes.is_empty() {
         let new_selection_primary =
             std::cmp::min(selection.primary_index(), new_selection_ranges.len() - 1);
         let new_selection = Selection::new(new_selection_ranges, new_selection_primary);
