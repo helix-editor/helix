@@ -388,6 +388,7 @@ name = "helix-core"
 version = "0.6.0"
 dependencies = [
  "arc-swap",
+ "bitflags",
  "chrono",
  "encoding_rs",
  "etcetera",
