@@ -4838,11 +4838,7 @@ fn increment_impl(cx: &mut Context, amount: i64) {
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
     let text = doc.text().slice(..);
-
     let mut maybe_changes = vec![];
-    let mut new_selection_ranges = SmallVec::new();
-    let mut comulative_character_diff: i128 = 0;
-    let mut positions_seen = vec![];
 
     for range in selection.iter() {
         let incrementor: Box<dyn Increment> =
@@ -4856,49 +4852,43 @@ fn increment_impl(cx: &mut Context, amount: i64) {
 
         let (original_text_range, new_text) = incrementor.increment(amount);
 
-        // Ensure that if the length of the text has changed that we update
-        // the selections. We need to keep a running total of all the text length changes
-        // as the new selection positions are dependent on all changes made before them.
-        let length_diff = (new_text.len() as i128) - (original_text_range.len() as i128);
-        // Selection after increment is the first character of the new number.
-        let range_start: usize =
-            ((original_text_range.from() as i128) + comulative_character_diff) as usize;
-        let range_after_replace = Range::new(range_start, range_start + 1);
-
-        // We don't know if the change is valid yet as it may overlap withanother change.
+        // We don't know if the change is valid yet as it may overlap with another change.
         maybe_changes.push((
             original_text_range.from(),
             original_text_range.to(),
             Some(new_text),
         ));
+    }
 
-        // We don't want overlapping selections
-        if !positions_seen.contains(&range_after_replace.from()) {
-            positions_seen.push(range_after_replace.from());
+    let mut new_selection_ranges = SmallVec::new();
+    let mut comulative_character_diff: i128 = 0;
+    let mut changes = vec![];
+    let mut last_change_to = 0;
+
+    // Overlapping changes will panic so we keep the earliest in the document of any
+    // that overlap. Selection ranges in the resulting doc will be only from changes that are
+    // kept.
+    for change in maybe_changes.into_iter() {
+        if changes.len() == 0 || change.0 >= last_change_to {
+            let length_diff =
+                (change.2.as_ref().unwrap().len() as i128) - ((change.1 - change.0) as i128);
+            // Selection after increment is the first character of the new number.
+            // We must keep track of the adjustments to the documents lengh from things like `-1` -> `0`
+            // or `9` -> `10` and move the resulting selections around accordingly.
+            let range_start: usize = ((change.0 as i128) + comulative_character_diff) as usize;
+            let range_after_change = Range::new(range_start, range_start + 1);
+
+            new_selection_ranges.push(range_after_change);
             comulative_character_diff += length_diff;
-            new_selection_ranges.push(range_after_replace);
+            last_change_to = change.1;
+            changes.push(change);
         }
     }
 
-    let new_selection_primary =
-        std::cmp::min(selection.primary_index(), new_selection_ranges.len() - 1);
-    let new_selection = Selection::new(new_selection_ranges, new_selection_primary);
-
-    let mut changes = vec![];
-    let mut iter = maybe_changes.into_iter();
-    let mut last_change_to;
-
-    if let Some(change) = iter.next() {
-        last_change_to = change.1;
-        changes.push(change);
-        // Overlapping changes will panic so we keep the earliest in the document of any
-        // that overlap.
-        for change in iter {
-            if change.0 >= last_change_to {
-                last_change_to = change.1;
-                changes.push(change);
-            }
-        }
+    if changes.len() > 0 {
+        let new_selection_primary =
+            std::cmp::min(selection.primary_index(), new_selection_ranges.len() - 1);
+        let new_selection = Selection::new(new_selection_ranges, new_selection_primary);
 
         let transaction = Transaction::change(doc.text(), changes.into_iter());
         let transaction = transaction.with_selection(new_selection);
