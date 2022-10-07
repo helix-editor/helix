@@ -87,6 +87,25 @@ async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+async fn cursor_position_append_eof() -> anyhow::Result<()> {
+    test((
+        "#[f|]#oo",
+        "eabar<esc>",
+        helpers::platform_line("#[foobar|]#\n").as_ref()
+    ))
+    .await?;
+    
+    test((
+        "foo#[|]#",
+        "babar<esc>",
+        helpers::platform_line("#[foobar|]#\n").as_ref()
+    ))
+    .await?;
+    
+    Ok(())
+}
+
+#[tokio::test]
 async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::Result<()> {
     test_with_config(
         Args {
