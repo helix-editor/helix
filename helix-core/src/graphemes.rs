@@ -81,10 +81,8 @@ pub fn prev_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> usize {
 
 #[must_use]
 pub fn nth_next_grapheme_boundary(slice: RopeSlice, char_idx: usize, n: usize) -> usize {
-    // We shouldn't get here but don't crash if we do
-    if char_idx > slice.len_chars() {
-        return slice.len_chars();
-    }
+    // Bounds check
+    debug_assert!(char_idx <= slice.len_chars());
 
     // We work with bytes for this, so convert.
     let mut byte_idx = slice.char_to_byte(char_idx);
@@ -124,10 +122,8 @@ pub fn nth_next_grapheme_boundary(slice: RopeSlice, char_idx: usize, n: usize) -
 
 #[must_use]
 pub fn nth_next_grapheme_boundary_byte(slice: RopeSlice, mut byte_idx: usize, n: usize) -> usize {
-    // We shouldn't get here but don't crash if we do
-    if byte_idx > slice.len_bytes() {
-        return slice.len_bytes();
-    }
+    // Bounds check
+    debug_assert!(byte_idx <= slice.len_bytes());
 
     // Get the chunk with our byte index in it.
     let (mut chunk, mut chunk_byte_idx, mut _chunk_char_idx, _) = slice.chunk_at_byte(byte_idx);

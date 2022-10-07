@@ -11,7 +11,7 @@ use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
     increment::date_time::DateTimeIncrementor,
-    increment::{number::NumberIncrementor, Increment},
+    increment::{number::IntegerIncrementor, Increment},
     indent,
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
@@ -4826,13 +4826,11 @@ fn find_next_char_until_newline<M: CharMatcher>(
 
 /// Decrement object under cursor by `amount`.
 fn increment_impl(cx: &mut Context, amount: i64) {
-    // TODO: when incrementing or decrementing a number that gets a new digit or lose one, the
-    // selection is updated improperly.
     find_char_impl(
         cx.editor,
         &find_next_char_until_newline,
         true,
-        true,
+        false,
         char::is_ascii_digit,
         1,
     );
@@ -4841,51 +4839,72 @@ fn increment_impl(cx: &mut Context, amount: i64) {
     let selection = doc.selection(view.id);
     let text = doc.text().slice(..);
 
-    let changes: Vec<_> = selection
-        .ranges()
-        .iter()
-        .filter_map(|range| {
-            let incrementor: Box<dyn Increment> =
-                if let Some(incrementor) = DateTimeIncrementor::from_range(text, *range) {
-                    Box::new(incrementor)
-                } else if let Some(incrementor) = NumberIncrementor::from_range(text, *range) {
-                    Box::new(incrementor)
-                } else {
-                    return None;
-                };
+    let mut maybe_changes = vec![];
+    let mut new_selection_ranges = SmallVec::new();
+    let mut comulative_character_diff: i128 = 0;
+    let mut positions_seen = vec![];
 
-            let (range, new_text) = incrementor.increment(amount);
+    for range in selection.iter() {
+        let incrementor: Box<dyn Increment> =
+            if let Some(incrementor) = DateTimeIncrementor::from_range(text, *range) {
+                Box::new(incrementor)
+            } else if let Some(incrementor) = IntegerIncrementor::from_range(text, *range) {
+                Box::new(incrementor)
+            } else {
+                continue;
+            };
 
-            Some((range.from(), range.to(), Some(new_text)))
-        })
-        .collect();
+        let (original_text_range, new_text) = incrementor.increment(amount);
 
-    // Overlapping changes in a transaction will panic, so we need to find and remove them.
-    // For example, if there are cursors on each of the year, month, and day of `2021-11-29`,
-    // incrementing will give overlapping changes, with each change incrementing a different part of
-    // the date. Since these conflict with each other we remove these changes from the transaction
-    // so nothing happens.
-    let mut overlapping_indexes = HashSet::new();
-    for (i, changes) in changes.windows(2).enumerate() {
-        if changes[0].1 > changes[1].0 {
-            overlapping_indexes.insert(i);
-            overlapping_indexes.insert(i + 1);
+        // Ensure that if the length of the text has changed that we update
+        // the selections. We need to keep a running total of all the text length changes
+        // as the new selection positions are dependent on all changes made before them.
+        let length_diff = (new_text.len() as i128) - (original_text_range.len() as i128);
+        // Selection after increment is the first character of the new number.
+        let range_start: usize =
+            ((original_text_range.from() as i128) + comulative_character_diff) as usize;
+        let range_after_replace = Range::new(range_start, range_start + 1);
+
+        // We don't know if the change is valid yet as it may overlap withanother change.
+        maybe_changes.push((
+            original_text_range.from(),
+            original_text_range.to(),
+            Some(new_text),
+        ));
+
+        // We don't want overlapping selections
+        if !positions_seen.contains(&range_after_replace.from()) {
+            positions_seen.push(range_after_replace.from());
+            comulative_character_diff += length_diff;
+            new_selection_ranges.push(range_after_replace);
         }
     }
-    let changes = changes.into_iter().enumerate().filter_map(|(i, change)| {
-        if overlapping_indexes.contains(&i) {
-            None
-        } else {
-            Some(change)
-        }
-    });
 
-    if changes.clone().count() > 0 {
-        let transaction = Transaction::change(doc.text(), changes);
-        let transaction = transaction.with_selection(selection.clone());
+    let new_selection_primary =
+        std::cmp::min(selection.primary_index(), new_selection_ranges.len() - 1);
+    let new_selection = Selection::new(new_selection_ranges, new_selection_primary);
+
+    let mut changes = vec![];
+    let mut iter = maybe_changes.into_iter();
+    let mut last_change;
+
+    if let Some(c) = iter.next() {
+        last_change = c.clone();
+        changes.push(c);
+        // Overlapping changes will panic so we keep the earliest in the document of any
+        // that overlap.
+        while let Some(c) = iter.next() {
+            if c.0 >= last_change.1 {
+                last_change = c.clone();
+                changes.push(c);
+            }
+        }
+
+        let transaction = Transaction::change(doc.text(), changes.into_iter());
+        let transaction = transaction.with_selection(new_selection);
 
         doc.apply(&transaction, view.id);
-    }
+    };
 }
 
 fn record_macro(cx: &mut Context) {

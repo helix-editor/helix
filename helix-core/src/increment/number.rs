@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct NumberIncrementor<'a> {
+pub struct IntegerIncrementor<'a> {
     value: i64,
     radix: u32,
     range: Range,
@@ -18,13 +18,17 @@ pub struct NumberIncrementor<'a> {
     text: RopeSlice<'a>,
 }
 
-impl<'a> NumberIncrementor<'a> {
-    /// Return information about number under range if there is one.
-    pub fn from_range(text: RopeSlice, range: Range) -> Option<NumberIncrementor> {
-        // If the cursor is on the minus sign of a number we want to get the word textobject to the
-        // right of it.
+impl<'a> IntegerIncrementor<'a> {
+    /// Return information about an integer under range if there is one.
+    /// Number includes possible negative sign, digits in bases 2, 8, 10, or 16 and underscores.
+    /// Number does not include decimal point or trailing underscores
+    /// Examples:
+    ///    -1, 99, 0xABCD, 0x1010, 0o1234567, 1_000_000
+    pub fn from_range(text: RopeSlice, range: Range) -> Option<IntegerIncrementor> {
+        // If the cursor is on the minus sign of an integer we want to get the word textobject
+        // to the right of it.
         let range = if range.to() < text.len_chars()
-            && range.to() - range.from() <= 1
+            && range.len() <= 1
             && text.char(range.from()) == '-'
         {
             Range::new(range.from() + 1, range.to() + 1)
@@ -70,7 +74,7 @@ impl<'a> NumberIncrementor<'a> {
         }
 
         let value = value as i64;
-        Some(NumberIncrementor {
+        Some(IntegerIncrementor {
             range,
             value,
             radix,
@@ -79,7 +83,7 @@ impl<'a> NumberIncrementor<'a> {
     }
 }
 
-impl<'a> Increment for NumberIncrementor<'a> {
+impl<'a> Increment for IntegerIncrementor<'a> {
     fn increment(&self, amount: i64) -> (Range, Tendril) {
         let old_text: Cow<str> = self.text.slice(self.range.from()..self.range.to()).into();
         let old_length = old_text.len();
@@ -151,14 +155,6 @@ impl<'a> Increment for NumberIncrementor<'a> {
             }
         }
 
-        // println!(
-        //     "text: {:?}, length: {:?}, val: {:?}, new_len: {:?}",
-        //     old_text,
-        //     old_length,
-        //     new_value,
-        //     new_text.len()
-        // );
-
         (self.range, new_text.into())
     }
 }
@@ -173,8 +169,8 @@ mod test {
         let rope = Rope::from_str("Test text 12345 more text.");
         let range = Range::point(12);
         assert_eq!(
-            NumberIncrementor::from_range(rope.slice(..), range),
-            Some(NumberIncrementor {
+            IntegerIncrementor::from_range(rope.slice(..), range),
+            Some(IntegerIncrementor {
                 range: Range::new(10, 15),
                 value: 12345,
                 radix: 10,
@@ -188,8 +184,8 @@ mod test {
         let rope = Rope::from_str("Test text 0x123ABCDEF more text.");
         let range = Range::point(12);
         assert_eq!(
-            NumberIncrementor::from_range(rope.slice(..), range),
-            Some(NumberIncrementor {
+            IntegerIncrementor::from_range(rope.slice(..), range),
+            Some(IntegerIncrementor {
                 range: Range::new(10, 21),
                 value: 0x123ABCDEF,
                 radix: 16,
@@ -203,8 +199,8 @@ mod test {
         let rope = Rope::from_str("Test text 0xfa3b4e more text.");
         let range = Range::point(12);
         assert_eq!(
-            NumberIncrementor::from_range(rope.slice(..), range),
-            Some(NumberIncrementor {
+            IntegerIncrementor::from_range(rope.slice(..), range),
+            Some(IntegerIncrementor {
                 range: Range::new(10, 18),
                 value: 0xfa3b4e,
                 radix: 16,
@@ -218,8 +214,8 @@ mod test {
         let rope = Rope::from_str("Test text 0o1074312 more text.");
         let range = Range::point(12);
         assert_eq!(
-            NumberIncrementor::from_range(rope.slice(..), range),
-            Some(NumberIncrementor {
+            IntegerIncrementor::from_range(rope.slice(..), range),
+            Some(IntegerIncrementor {
                 range: Range::new(10, 19),
                 value: 0o1074312,
                 radix: 8,
@@ -233,8 +229,8 @@ mod test {
         let rope = Rope::from_str("Test text 0b10111010010101 more text.");
         let range = Range::point(12);
         assert_eq!(
-            NumberIncrementor::from_range(rope.slice(..), range),
-            Some(NumberIncrementor {
+            IntegerIncrementor::from_range(rope.slice(..), range),
+            Some(IntegerIncrementor {
                 range: Range::new(10, 26),
                 value: 0b10111010010101,
                 radix: 2,
@@ -248,8 +244,8 @@ mod test {
         let rope = Rope::from_str("Test text -54321 more text.");
         let range = Range::point(12);
         assert_eq!(
-            NumberIncrementor::from_range(rope.slice(..), range),
-            Some(NumberIncrementor {
+            IntegerIncrementor::from_range(rope.slice(..), range),
+            Some(IntegerIncrementor {
                 range: Range::new(10, 16),
                 value: -54321,
                 radix: 10,
@@ -263,8 +259,8 @@ mod test {
         let rope = Rope::from_str("Test text 000045326 more text.");
         let range = Range::point(12);
         assert_eq!(
-            NumberIncrementor::from_range(rope.slice(..), range),
-            Some(NumberIncrementor {
+            IntegerIncrementor::from_range(rope.slice(..), range),
+            Some(IntegerIncrementor {
                 range: Range::new(10, 19),
                 value: 45326,
                 radix: 10,
@@ -278,8 +274,8 @@ mod test {
         let rope = Rope::from_str("Test text -54321 more text.");
         let range = Range::point(10);
         assert_eq!(
-            NumberIncrementor::from_range(rope.slice(..), range),
-            Some(NumberIncrementor {
+            IntegerIncrementor::from_range(rope.slice(..), range),
+            Some(IntegerIncrementor {
                 range: Range::new(10, 16),
                 value: -54321,
                 radix: 10,
@@ -293,8 +289,8 @@ mod test {
         let rope = Rope::from_str("100");
         let range = Range::point(0);
         assert_eq!(
-            NumberIncrementor::from_range(rope.slice(..), range),
-            Some(NumberIncrementor {
+            IntegerIncrementor::from_range(rope.slice(..), range),
+            Some(IntegerIncrementor {
                 range: Range::new(0, 3),
                 value: 100,
                 radix: 10,
@@ -308,8 +304,8 @@ mod test {
         let rope = Rope::from_str("100");
         let range = Range::point(2);
         assert_eq!(
-            NumberIncrementor::from_range(rope.slice(..), range),
-            Some(NumberIncrementor {
+            IntegerIncrementor::from_range(rope.slice(..), range),
+            Some(IntegerIncrementor {
                 range: Range::new(0, 3),
                 value: 100,
                 radix: 10,
@@ -323,8 +319,8 @@ mod test {
         let rope = Rope::from_str(",100;");
         let range = Range::point(1);
         assert_eq!(
-            NumberIncrementor::from_range(rope.slice(..), range),
-            Some(NumberIncrementor {
+            IntegerIncrementor::from_range(rope.slice(..), range),
+            Some(IntegerIncrementor {
                 range: Range::new(1, 4),
                 value: 100,
                 radix: 10,
@@ -337,28 +333,58 @@ mod test {
     fn test_not_a_number_point() {
         let rope = Rope::from_str("Test text 45326 more text.");
         let range = Range::point(6);
-        assert_eq!(NumberIncrementor::from_range(rope.slice(..), range), None);
+        assert_eq!(IntegerIncrementor::from_range(rope.slice(..), range), None);
     }
 
     #[test]
     fn test_number_too_large_at_point() {
         let rope = Rope::from_str("Test text 0xFFFFFFFFFFFFFFFFF more text.");
         let range = Range::point(12);
-        assert_eq!(NumberIncrementor::from_range(rope.slice(..), range), None);
+        assert_eq!(IntegerIncrementor::from_range(rope.slice(..), range), None);
     }
 
     #[test]
     fn test_number_cursor_one_right_of_number() {
         let rope = Rope::from_str("100 ");
         let range = Range::point(3);
-        assert_eq!(NumberIncrementor::from_range(rope.slice(..), range), None);
+        assert_eq!(IntegerIncrementor::from_range(rope.slice(..), range), None);
     }
 
     #[test]
     fn test_number_cursor_one_left_of_number() {
         let rope = Rope::from_str(" 100");
         let range = Range::point(0);
-        assert_eq!(NumberIncrementor::from_range(rope.slice(..), range), None);
+        assert_eq!(IntegerIncrementor::from_range(rope.slice(..), range), None);
+    }
+
+    #[test]
+    fn test_number_can_have_underscores() {
+        let rope = Rope::from_str("1_000_000");
+        let range = Range::point(0);
+        assert_eq!(
+            IntegerIncrementor::from_range(rope.slice(..), range),
+            Some(IntegerIncrementor {
+                range: Range::new(0, 9),
+                value: 1000000,
+                radix: 10,
+                text: rope.slice(..),
+            })
+        );
+    }
+
+    #[test]
+    fn test_number_no_trailing_underscores() {
+        let rope = Rope::from_str("1_000_000_");
+        let range = Range::point(0);
+        assert_eq!(
+            IntegerIncrementor::from_range(rope.slice(..), range),
+            Some(IntegerIncrementor {
+                range: Range::new(0, 9),
+                value: 1000000,
+                radix: 10,
+                text: rope.slice(..),
+            })
+        );
     }
 
     #[test]
@@ -379,7 +405,7 @@ mod test {
             let rope = Rope::from_str(original);
             let range = Range::point(0);
             assert_eq!(
-                NumberIncrementor::from_range(rope.slice(..), range)
+                IntegerIncrementor::from_range(rope.slice(..), range)
                     .unwrap()
                     .increment(amount)
                     .1,
@@ -406,7 +432,7 @@ mod test {
             let rope = Rope::from_str(original);
             let range = Range::point(0);
             assert_eq!(
-                NumberIncrementor::from_range(rope.slice(..), range)
+                IntegerIncrementor::from_range(rope.slice(..), range)
                     .unwrap()
                     .increment(amount)
                     .1,
@@ -434,7 +460,7 @@ mod test {
             let rope = Rope::from_str(original);
             let range = Range::point(0);
             assert_eq!(
-                NumberIncrementor::from_range(rope.slice(..), range)
+                IntegerIncrementor::from_range(rope.slice(..), range)
                     .unwrap()
                     .increment(amount)
                     .1,
@@ -480,7 +506,7 @@ mod test {
             let rope = Rope::from_str(original);
             let range = Range::point(0);
             assert_eq!(
-                NumberIncrementor::from_range(rope.slice(..), range)
+                IntegerIncrementor::from_range(rope.slice(..), range)
                     .unwrap()
                     .increment(amount)
                     .1,
@@ -508,7 +534,7 @@ mod test {
             let rope = Rope::from_str(original);
             let range = Range::point(0);
             assert_eq!(
-                NumberIncrementor::from_range(rope.slice(..), range)
+                IntegerIncrementor::from_range(rope.slice(..), range)
                     .unwrap()
                     .increment(amount)
                     .1,
