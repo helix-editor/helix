@@ -38,7 +38,7 @@ on unix operating systems.
 
 | Key | Description | Default |
 |--|--|---------|
-| `scrolloff` | Number of lines of padding around the edge of the screen when scrolling. | `3` |
+| `scrolloff` | Number of lines of padding around the edge of the screen when scrolling. | `5` |
 | `mouse` | Enable mouse mode. | `true` |
 | `middle-click-paste` | Middle click paste support. | `true` |
 | `scroll-lines` | Number of lines to scroll per scroll wheel step. | `3` |
