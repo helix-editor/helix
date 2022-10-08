@@ -1,0 +1,26 @@
+name: Changelog Check
+on:
+  pull_request:
+
+concurrency:
+  group: changelog-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-changelog:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Add ${{ github.base_ref }} branch
+        run: git branch -f --create-reflog ${{ github.base_ref }} origin/${{ github.base_ref }}
+
+      - name: Check for missing changelog change
+        run: | 
+          if [ -z "$(git --no-pager diff ${{ github.base_ref }} --name-only -- 'CHANGELOG.md')" ]; then
+            echo "Missing CHANGELOG.md change!"
+            exit 1
+          fi
