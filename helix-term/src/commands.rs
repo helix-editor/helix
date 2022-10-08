@@ -365,6 +365,7 @@ impl MappableCommand {
         extend_to_line_end, "Extend to line end",
         extend_to_line_end_newline, "Extend to line end",
         signature_help, "Show signature help",
+        smart_tab, "Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command.",
         insert_tab, "Insert tab char",
         insert_newline, "Insert newline char",
         delete_char_backward, "Delete previous char",
@@ -2521,6 +2522,10 @@ fn insert_mode(cx: &mut Context) {
         .transform(|range| Range::new(range.to(), range.from()));
 
     doc.set_selection(view.id, selection);
+
+    // [TODO] temporary workaround until we're not using the idle timer to
+    //        trigger auto completions any more
+    cx.editor.clear_idle_timer();
 }
 
 // inserts at the end of each selection
@@ -3444,6 +3449,7 @@ pub mod insert {
     }
 
     use helix_core::auto_pairs;
+    use helix_view::editor::SmartTabConfig;
 
     pub fn insert_char(cx: &mut Context, c: char) {
         let (view, doc) = current_ref!(cx.editor);
@@ -3467,6 +3473,31 @@ pub mod insert {
         for hook in &[language_server_completion, signature_help] {
             hook(cx, c);
         }
+    }
+
+    pub fn smart_tab(cx: &mut Context) {
+        let (view, doc) = current_ref!(cx.editor);
+        let view_id = view.id;
+
+        if matches!(
+            cx.editor.config().smart_tab,
+            Some(SmartTabConfig { enable: true, .. })
+        ) {
+            let cursors_after_whitespace = doc.selection(view_id).ranges().iter().all(|range| {
+                let cursor = range.cursor(doc.text().slice(..));
+                let current_line_num = doc.text().char_to_line(cursor);
+                let current_line_start = doc.text().line_to_char(current_line_num);
+                let left = doc.text().slice(current_line_start..cursor);
+                left.chars().all(|c| c.is_whitespace())
+            });
+
+            if !cursors_after_whitespace {
+                move_parent_node_end(cx);
+                return;
+            }
+        }
+
+        insert_tab(cx);
     }
 
     pub fn insert_tab(cx: &mut Context) {
@@ -4626,11 +4657,14 @@ fn move_node_bound_impl(cx: &mut Context, dir: Direction, movement: Movement) {
             );
 
             doc.set_selection(view.id, selection);
+
+            // [TODO] temporary workaround until we're not using the idle timer to
+            //        trigger auto completions any more
+            editor.clear_idle_timer();
         }
     };
 
-    motion(cx.editor);
-    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+    cx.editor.apply_motion(motion);
 }
 
 pub fn move_parent_node_end(cx: &mut Context) {

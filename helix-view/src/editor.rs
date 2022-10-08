@@ -287,6 +287,24 @@ pub struct Config {
     pub workspace_lsp_roots: Vec<PathBuf>,
     /// Which line ending to choose for new documents. Defaults to `native`. i.e. `crlf` on Windows, otherwise `lf`.
     pub default_line_ending: LineEndingConfig,
+    /// Enables smart tab
+    pub smart_tab: Option<SmartTabConfig>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "kebab-case", default)]
+pub struct SmartTabConfig {
+    pub enable: bool,
+    pub supersede_menu: bool,
+}
+
+impl Default for SmartTabConfig {
+    fn default() -> Self {
+        SmartTabConfig {
+            enable: true,
+            supersede_menu: false,
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -820,6 +838,7 @@ impl Default for Config {
             completion_replace: false,
             workspace_lsp_roots: Vec::new(),
             default_line_ending: LineEndingConfig::default(),
+            smart_tab: Some(SmartTabConfig::default()),
         }
     }
 }
