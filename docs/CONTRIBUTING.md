@@ -37,6 +37,12 @@ contributors are strongly encouraged to write integration tests for their code.
 Existing tests can be used as examples. Helpers can be found in
 [helpers.rs][helpers.rs]
 
+# Changelog
+
+Helix maintains a detalied changelog in `CHANGELOG.md`.
+A relevant changelog entry is **required** in (almost) all PRs and checked automatically by CI.
+Make sure that your changelog entry matches the style of previous changelog entries.
+
 ## Minimum Stable Rust Version (MSRV) Policy
 
 Helix follows the MSRV of Firefox.
