@@ -89,6 +89,9 @@ Less common modifiers might not be supported by your terminal emulator.
 | `hidden`             |
 | `crossed_out`        |
 
+> Note: The `underlined` modifier is deprecated and only available for backwards compatability.
+> It's behaviour is equivalent to `underline-style="line"`
+
 ### Underline Style
 
 One of the following values may be used as an `underline-style`. 
