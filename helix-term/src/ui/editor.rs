@@ -1016,7 +1016,7 @@ impl EditorView {
         editor.clear_idle_timer(); // don't retrigger
     }
 
-    pub fn handle_idle_timeout(&mut self, cx: &mut crate::compositor::Context) -> EventResult {
+    pub fn handle_idle_timeout(&mut self, cx: &mut commands::Context) -> EventResult {
         if self.completion.is_some()
             || cx.editor.mode != Mode::Insert
             || !cx.editor.config().auto_completion
@@ -1024,15 +1024,7 @@ impl EditorView {
             return EventResult::Ignored(None);
         }
 
-        let mut cx = commands::Context {
-            register: None,
-            editor: cx.editor,
-            jobs: cx.jobs,
-            count: None,
-            callback: None,
-            on_next_key_callback: None,
-        };
-        crate::commands::insert::idle_completion(&mut cx);
+        crate::commands::insert::idle_completion(cx);
 
         EventResult::Consumed(None)
     }
@@ -1353,6 +1345,7 @@ impl Component for EditorView {
             }
 
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
+            Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
             Event::FocusGained | Event::FocusLost => EventResult::Ignored(None),
         }
     }
