@@ -303,8 +303,8 @@ enum IndentScope {
 /// A capture from the indent query which does not define an indent but extends
 /// the range of a node. This is used before the indent is calculated.
 enum ExtendCapture {
-    ExtendIndented,
-    StopExtend,
+    Extend,
+    PreventOnce,
 }
 
 /// The result of running a tree-sitter indent query. This stores for
@@ -394,18 +394,18 @@ fn query_indents(
             let capture_type = match capture_name {
                 "indent" => IndentCaptureType::Indent,
                 "outdent" => IndentCaptureType::Outdent,
-                "extend-indented" => {
+                "extend" => {
                     extend_captures
                         .entry(capture.node.id())
                         .or_insert_with(|| Vec::with_capacity(1))
-                        .push(ExtendCapture::ExtendIndented);
+                        .push(ExtendCapture::Extend);
                     continue;
                 }
-                "stop-extend" => {
+                "extend.prevent-once" => {
                     extend_captures
                         .entry(capture.node.id())
                         .or_insert_with(|| Vec::with_capacity(1))
-                        .push(ExtendCapture::StopExtend);
+                        .push(ExtendCapture::PreventOnce);
                     continue;
                 }
                 _ => {
@@ -478,10 +478,10 @@ fn extend_nodes<'a>(
             if let Some(captures) = extend_captures.get(&deepest_preceding.id()) {
                 for capture in captures {
                     match capture {
-                        ExtendCapture::StopExtend => {
+                        ExtendCapture::PreventOnce => {
                             stop_extend = true;
                         }
-                        ExtendCapture::ExtendIndented => {
+                        ExtendCapture::Extend => {
                             node_captured = true;
                             // We extend the node if
                             // - the cursor is on the same line as the end of the node OR
@@ -574,8 +574,8 @@ pub fn treesitter_indent_for_pos(
         .descendant_for_byte_range(byte_pos, byte_pos)?;
     let (query_result, deepest_preceding) = {
         // The query range should intersect with all nodes directly preceding
-        // the cursor in case one of them is extended.
-        let mut deepest_preceding = None; // The deepest node preceding the cursor
+        // the position of the indent query in case one of them is extended.
+        let mut deepest_preceding = None; // The deepest node preceding the indent query position
         let mut tree_cursor = node.walk();
         for child in node.children(&mut tree_cursor) {
             if child.byte_range().end <= byte_pos {
