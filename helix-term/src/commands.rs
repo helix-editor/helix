@@ -4455,13 +4455,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         (" ", "... or any character acting as a pair"),
     ];
 
-    cx.editor.autoinfo = Some(Info::new(
-        title,
-        help_text
-            .into_iter()
-            .map(|(col1, col2)| (col1.to_string(), col2.to_string()))
-            .collect(),
-    ));
+    cx.editor.autoinfo = Some(Info::new(title, &help_text));
 }
 
 fn surround_add(cx: &mut Context) {
