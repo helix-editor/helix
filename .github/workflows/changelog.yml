@@ -1,7 +1,14 @@
 name: Changelog Check
 on:
   pull_request:
-
+    paths-ignore:
+      - 'README.md'
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - '*/Cargo.toml'
+      - 'xtask/**'
+      - 'book/**'
+      - 'docs/**'
 concurrency:
   group: changelog-check-${{ github.ref }}
   cancel-in-progress: true
