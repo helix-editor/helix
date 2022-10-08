@@ -90,7 +90,7 @@ Less common modifiers might not be supported by your terminal emulator.
 | `crossed_out`        |
 
 > Note: The `underlined` modifier is deprecated and only available for backwards compatability.
-> It's behaviour is equivalent to `underline-style="line"`
+> Its behaviour is equivalent to `underline-style="line"`.
 
 ### Underline Style
 
