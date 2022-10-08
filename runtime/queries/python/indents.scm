@@ -36,7 +36,7 @@
 
   (function_definition)
   (class_definition)
-] @extend-indented
+] @extend
 
 [
   (return_statement)
@@ -44,7 +44,7 @@
   (continue_statement)
   (raise_statement)
   (pass_statement)
-] @stop-extend
+] @extend.prevent-once
 
 [
   ")"
