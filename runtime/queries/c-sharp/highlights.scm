@@ -10,15 +10,6 @@
     name: (identifier) @function))
 
 (invocation_expression
-  (member_access_expression
-    expression: ((identifier) @type
-      (#match? @type "^[A-Z]"))))
-
-(invocation_expression
-  (member_access_expression
-    expression: (identifier) @variable))
-
-(invocation_expression
   function: (conditional_access_expression
     (member_binding_expression
       name: (identifier) @function)))
@@ -26,13 +17,15 @@
 (invocation_expression
   [(identifier) (qualified_name)] @function)
 
+(local_function_statement
+  name: (identifier) @function)
+
 ; Generic Method invocation with generic type
 (invocation_expression
   function: (generic_name
     . (identifier) @function))
 
 ;; Namespaces
-
 (namespace_declaration
   name: [(identifier) (qualified_name)] @namespace)
 
@@ -48,6 +41,8 @@
 (destructor_declaration name: (identifier) @type)
 (object_creation_expression [(identifier) (qualified_name)] @type)
 (type_parameter_list (type_parameter) @type)
+(array_type (identifier) @type)
+(for_each_statement type: (identifier) @type)
 
 [
   (implicit_type)
@@ -97,6 +92,7 @@
   (verbatim_string_literal)
   (interpolated_string_text)
   (interpolated_verbatim_string_text)
+  (interpolation_format_clause)
   "\""
   "$\""
   "@$\""
@@ -248,19 +244,21 @@
 
 "return" @keyword.control.return
 
-(nullable_directive) @keyword.directive
-(define_directive) @keyword.directive
-(undef_directive) @keyword.directive
-(if_directive) @keyword.directive
-(else_directive) @keyword.directive
-(elif_directive) @keyword.directive
-(endif_directive) @keyword.directive
-(region_directive) @keyword.directive
-(endregion_directive) @keyword.directive
-(error_directive) @keyword.directive
-(warning_directive) @keyword.directive
-(line_directive) @keyword.directive
-(pragma_directive) @keyword.directive
+[
+  (nullable_directive)
+  (define_directive)
+  (undef_directive)
+  (if_directive)
+  (else_directive)
+  (elif_directive)
+  (endif_directive)
+  (region_directive)
+  (endregion_directive)
+  (error_directive)
+  (warning_directive)
+  (line_directive)
+  (pragma_directive)
+] @keyword.directive
 
 ;; Linq
 (from_clause (identifier) @variable)
@@ -279,10 +277,16 @@
 (binary_expression [(identifier) (qualified_name)] @variable [(identifier) (qualified_name)] @variable)
 (binary_expression [(identifier) (qualified_name)]* @variable)
 (conditional_expression [(identifier) (qualified_name)] @variable)
+(conditional_access_expression [(identifier) (qualified_name)] @variable)
 (prefix_unary_expression [(identifier) (qualified_name)] @variable)
 (postfix_unary_expression [(identifier) (qualified_name)]* @variable)
 (assignment_expression [(identifier) (qualified_name)] @variable)
 (cast_expression [(identifier) (qualified_name)] @type [(identifier) (qualified_name)] @variable)
+(element_access_expression (identifier) @variable)
+(member_access_expression
+  expression: ([(identifier) (qualified_name)] @type
+    (#match? @type "^[A-Z]")))
+(member_access_expression [(identifier) (qualified_name)] @variable)
 
 ;; Class
 (base_list (identifier) @type)
@@ -298,7 +302,6 @@
   name: (identifier) @variable)
   
 ;; Delegate
-
 (delegate_declaration (identifier) @type)
 
 ;; Lambda
@@ -353,28 +356,21 @@
 ;; Lock statement
 (lock_statement (identifier) @variable)
 
+;; Declaration expression
+(declaration_expression
+  type: (identifier) @type
+  name: (identifier) @variable)
+
 ;; Rest
-(member_access_expression
-  expression: ((identifier) @type
-    (#match? @type "^[A-Z]")))
-(member_access_expression expression: (identifier) @variable)
-(member_access_expression name: (identifier) @variable)
-(element_access_expression (identifier) @variable)
 (argument (identifier) @variable)
 (name_colon (identifier) @variable)
+(if_statement (identifier) @variable)
 (for_statement (identifier) @variable)
-(for_each_statement type: (identifier) @type)
 (for_each_statement (identifier) @variable)
 (expression_statement (identifier) @variable)
-(conditional_access_expression [(identifier) (qualified_name)] @variable)
-((identifier) @comment.unused
-  (#eq? @comment.unused "_"))
-(array_type (identifier) @type)
 (array_rank_specifier (identifier) @variable)
 (equals_value_clause (identifier) @variable)
 (interpolation (identifier) @variable)
-(interpolation_format_clause) @string
 (cast_expression (identifier) @variable)
-(declaration_expression name: (identifier) @variable)
-(declaration_expression type: (identifier) @type)
-(if_statement (identifier) @variable)
+((identifier) @comment.unused
+  (#eq? @comment.unused "_"))
