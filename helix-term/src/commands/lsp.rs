@@ -467,38 +467,28 @@ pub fn code_action(cx: &mut Context) {
             // while more situational commands (like refactors) show up later
             // this behaviour is modeled after the behaviour of vscode (editor/contrib/codeAction/browser/codeActionWidget.ts)
 
-            let mut categories = vec![Vec::new(); 8];
-            for action in actions.drain(..) {
-                let category = match &action {
-                    lsp::CodeActionOrCommand::CodeAction(lsp::CodeAction {
-                        kind: Some(kind),
-                        ..
-                    }) => {
-                        let mut components = kind.as_str().split('.');
+            actions.sort_by_key(|action| match &action {
+                lsp::CodeActionOrCommand::CodeAction(lsp::CodeAction {
+                    kind: Some(kind), ..
+                }) => {
+                    let mut components = kind.as_str().split('.');
 
-                        match components.next() {
-                            Some("quickfix") => 0,
-                            Some("refactor") => match components.next() {
-                                Some("extract") => 1,
-                                Some("inline") => 2,
-                                Some("rewrite") => 3,
-                                Some("move") => 4,
-                                Some("surround") => 5,
-                                _ => 7,
-                            },
-                            Some("source") => 6,
+                    match components.next() {
+                        Some("quickfix") => 0,
+                        Some("refactor") => match components.next() {
+                            Some("extract") => 1,
+                            Some("inline") => 2,
+                            Some("rewrite") => 3,
+                            Some("move") => 4,
+                            Some("surround") => 5,
                             _ => 7,
-                        }
+                        },
+                        Some("source") => 6,
+                        _ => 7,
                     }
-                    _ => 7,
-                };
-
-                categories[category].push(action);
-            }
-
-            for category in categories {
-                actions.extend(category.into_iter())
-            }
+                }
+                _ => 7,
+            });
 
             let mut picker =
                 ui::Menu::new(actions, false, (), move |editor, code_action, event| {
