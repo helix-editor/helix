@@ -5,6 +5,7 @@ use helix_core::auto_pairs::AutoPairs;
 use helix_core::Range;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -1036,6 +1037,12 @@ impl Document {
         self.path
             .as_deref()
             .map(helix_core::path::get_relative_path)
+    }
+
+    pub fn display_name(&self) -> Cow<'static, str> {
+        self.relative_path()
+            .map(|path| path.to_string_lossy().to_string().into())
+            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
     }
 
     // transact(Fn) ?

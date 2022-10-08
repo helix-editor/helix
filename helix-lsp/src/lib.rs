@@ -204,6 +204,20 @@ pub mod util {
         // in reverse order.
         edits.sort_unstable_by_key(|edit| edit.range.start);
 
+        // Generate a diff if the edit is a full document replacement.
+        #[allow(clippy::collapsible_if)]
+        if edits.len() == 1 {
+            let is_document_replacement = edits.first().and_then(|edit| {
+                let start = lsp_pos_to_pos(doc, edit.range.start, offset_encoding)?;
+                let end = lsp_pos_to_pos(doc, edit.range.end, offset_encoding)?;
+                Some(start..end)
+            }) == Some(0..doc.len_chars());
+            if is_document_replacement {
+                let new_text = Rope::from(edits.pop().unwrap().new_text);
+                return helix_core::diff::compare_ropes(doc, &new_text);
+            }
+        }
+
         Transaction::change(
             doc,
             edits.into_iter().map(|edit| {
@@ -339,6 +353,7 @@ impl Registry {
     pub fn restart(
         &mut self,
         language_config: &LanguageConfiguration,
+        doc_path: Option<&std::path::PathBuf>,
     ) -> Result<Option<Arc<Client>>> {
         let config = match &language_config.language_server {
             Some(config) => config,
@@ -353,17 +368,26 @@ impl Registry {
                 // initialize a new client
                 let id = self.counter.fetch_add(1, Ordering::Relaxed);
 
-                let NewClientResult(client, incoming) = start_client(id, language_config, config)?;
+                let NewClientResult(client, incoming) =
+                    start_client(id, language_config, config, doc_path)?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));
 
-                entry.insert((id, client.clone()));
+                let (_, old_client) = entry.insert((id, client.clone()));
+
+                tokio::spawn(async move {
+                    let _ = old_client.force_shutdown().await;
+                });
 
                 Ok(Some(client))
             }
         }
     }
 
-    pub fn get(&mut self, language_config: &LanguageConfiguration) -> Result<Option<Arc<Client>>> {
+    pub fn get(
+        &mut self,
+        language_config: &LanguageConfiguration,
+        doc_path: Option<&std::path::PathBuf>,
+    ) -> Result<Option<Arc<Client>>> {
         let config = match &language_config.language_server {
             Some(config) => config,
             None => return Ok(None),
@@ -375,7 +399,8 @@ impl Registry {
                 // initialize a new client
                 let id = self.counter.fetch_add(1, Ordering::Relaxed);
 
-                let NewClientResult(client, incoming) = start_client(id, language_config, config)?;
+                let NewClientResult(client, incoming) =
+                    start_client(id, language_config, config, doc_path)?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));
 
                 entry.insert((id, client.clone()));
@@ -475,6 +500,7 @@ fn start_client(
     id: usize,
     config: &LanguageConfiguration,
     ls_config: &LanguageServerConfiguration,
+    doc_path: Option<&std::path::PathBuf>,
 ) -> Result<NewClientResult> {
     let (client, incoming, initialize_notify) = Client::start(
         &ls_config.command,
@@ -483,6 +509,7 @@ fn start_client(
         &config.roots,
         id,
         ls_config.timeout,
+        doc_path,
     )?;
 
     let client = Arc::new(client);

@@ -144,6 +144,7 @@ where
         helix_view::editor::StatusLineElement::Selections => render_selections,
         helix_view::editor::StatusLineElement::Position => render_position,
         helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
+        helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
         helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
     }
@@ -154,16 +155,16 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let visible = context.focused;
-
+    let modenames = &context.editor.config().statusline.mode;
     write(
         context,
         format!(
             " {} ",
             if visible {
                 match context.editor.mode() {
-                    Mode::Insert => "INS",
-                    Mode::Select => "SEL",
-                    Mode::Normal => "NOR",
+                    Mode::Insert => &modenames.insert,
+                    Mode::Select => &modenames.select,
+                    Mode::Normal => &modenames.normal,
                 }
             } else {
                 // If not focused, explicitly leave an empty space instead of returning None.
@@ -274,6 +275,15 @@ where
         format!(" {}:{} ", position.row + 1, position.col + 1),
         None,
     );
+}
+
+fn render_total_line_numbers<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let total_line_numbers = context.doc.text().len_lines();
+
+    write(context, format!(" {} ", total_line_numbers), None);
 }
 
 fn render_position_percentage<F>(context: &mut RenderContext, write: F)

@@ -7,6 +7,8 @@
 
 ((html_block) @injection.content (#set! injection.language "html") (#set! injection.include-unnamed-children))
 
+((pipe_table_cell) @injection.content (#set! injection.language "markdown.inline") (#set! injection.include-unnamed-children))
+
 ((minus_metadata) @injection.content (#set! injection.language "yaml") (#set! injection.include-unnamed-children))
 ((plus_metadata) @injection.content (#set! injection.language "toml") (#set! injection.include-unnamed-children))
 

@@ -253,6 +253,9 @@
 (function_item
   name: (identifier) @function)
 
+(function_signature_item
+  name: (identifier) @function)
+
 ; ---
 ; Macros
 ; ---

@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use super::*;
 
-use helix_view::editor::{Action, ConfigEvent};
+use helix_view::editor::{Action, CloseError, ConfigEvent};
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -71,8 +71,29 @@ fn buffer_close_by_ids_impl(
     doc_ids: &[DocumentId],
     force: bool,
 ) -> anyhow::Result<()> {
-    for &doc_id in doc_ids {
-        editor.close_document(doc_id, force)?;
+    let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
+        .iter()
+        .filter_map(|&doc_id| {
+            if let Err(CloseError::BufferModified(name)) = editor.close_document(doc_id, force) {
+                Some((doc_id, name))
+            } else {
+                None
+            }
+        })
+        .unzip();
+
+    if let Some(first) = modified_ids.first() {
+        let current = doc!(editor);
+        // If the current document is unmodified, and there are modified
+        // documents, switch focus to the first modified doc.
+        if !modified_ids.contains(&current.id()) {
+            editor.switch(*first, Action::Replace);
+        }
+        bail!(
+            "{} unsaved buffer(s) remaining: {:?}",
+            modified_names.len(),
+            modified_names
+        );
     }
 
     Ok(())
@@ -513,23 +534,26 @@ fn force_write_quit(
     force_quit(cx, &[], event)
 }
 
-/// Results an error if there are modified buffers remaining and sets editor error,
-/// otherwise returns `Ok(())`
+/// Results in an error if there are modified buffers remaining and sets editor
+/// error, otherwise returns `Ok(())`. If the current document is unmodified,
+/// and there are modified documents, switches focus to one of them.
 pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> {
-    let modified: Vec<_> = editor
+    let (modified_ids, modified_names): (Vec<_>, Vec<_>) = editor
         .documents()
         .filter(|doc| doc.is_modified())
-        .map(|doc| {
-            doc.relative_path()
-                .map(|path| path.to_string_lossy().to_string())
-                .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
-        })
-        .collect();
-    if !modified.is_empty() {
+        .map(|doc| (doc.id(), doc.display_name()))
+        .unzip();
+    if let Some(first) = modified_ids.first() {
+        let current = doc!(editor);
+        // If the current document is unmodified, and there are modified
+        // documents, switch focus to the first modified doc.
+        if !modified_ids.contains(&current.id()) {
+            editor.switch(*first, Action::Replace);
+        }
         bail!(
             "{} unsaved buffer(s) remaining: {:?}",
-            modified.len(),
-            modified
+            modified_names.len(),
+            modified_names
         );
     }
     Ok(())
@@ -1000,7 +1024,7 @@ fn lsp_restart(
         .context("LSP not defined for the current document")?;
 
     let scope = config.scope.clone();
-    cx.editor.language_servers.restart(config)?;
+    cx.editor.language_servers.restart(config, doc.path())?;
 
     // This collect is needed because refresh_language_server would need to re-borrow editor.
     let document_ids_to_refresh: Vec<DocumentId> = cx
@@ -1196,18 +1220,41 @@ pub(super) fn goto_line_number(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
+    match event {
+        PromptEvent::Abort => {
+            if let Some(line_number) = cx.editor.last_line_number {
+                goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
+                let (view, doc) = current!(cx.editor);
+                view.ensure_cursor_in_view(doc, line_number);
+                cx.editor.last_line_number = None;
+            }
+            return Ok(());
+        }
+        PromptEvent::Validate => {
+            ensure!(!args.is_empty(), "Line number required");
+            cx.editor.last_line_number = None;
+        }
+        PromptEvent::Update => {
+            if args.is_empty() {
+                if let Some(line_number) = cx.editor.last_line_number {
+                    // When a user hits backspace and there are no numbers left,
+                    // we can bring them back to their original line
+                    goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
+                    let (view, doc) = current!(cx.editor);
+                    view.ensure_cursor_in_view(doc, line_number);
+                    cx.editor.last_line_number = None;
+                }
+                return Ok(());
+            }
+            let (view, doc) = current!(cx.editor);
+            let text = doc.text().slice(..);
+            let line = doc.selection(view.id).primary().cursor_line(text);
+            cx.editor.last_line_number.get_or_insert(line + 1);
+        }
     }
-
-    ensure!(!args.is_empty(), "Line number required");
-
     let line = args[0].parse::<usize>()?;
-
     goto_line_impl(cx.editor, NonZeroUsize::new(line));
-
     let (view, doc) = current!(cx.editor);
-
     view.ensure_cursor_in_view(doc, line);
     Ok(())
 }
