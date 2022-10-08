@@ -4838,48 +4838,46 @@ fn increment_impl(cx: &mut Context, amount: i64) {
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
     let text = doc.text().slice(..);
-    let mut maybe_changes = vec![];
 
-    for range in selection.iter() {
+    let maybe_changes = selection.iter().filter_map(|range| {
         let incrementor: Box<dyn Increment> =
             if let Some(incrementor) = DateTimeIncrementor::from_range(text, *range) {
                 Box::new(incrementor)
             } else if let Some(incrementor) = IntegerIncrementor::from_range(text, *range) {
                 Box::new(incrementor)
             } else {
-                continue;
+                return None;
             };
 
         let (original_text_range, new_text) = incrementor.increment(amount);
 
-        // We don't know if the change is valid yet as it may overlap with another change.
-        maybe_changes.push((
+        Some((
             original_text_range.from(),
             original_text_range.to(),
             Some(new_text),
-        ));
-    }
+        ))
+    });
 
     let mut new_selection_ranges = SmallVec::new();
-    let mut comulative_character_diff: i128 = 0;
+    let mut comulative_length_diff: i128 = 0;
     let mut changes = vec![];
     let mut last_change_to = 0;
 
     // Overlapping changes will panic so we keep the earliest in the document of any
     // that overlap. Selection ranges in the resulting doc will be only from changes
     // that are kept.
-    for change in maybe_changes.into_iter() {
+    for change in maybe_changes {
         if changes.is_empty() || change.0 >= last_change_to {
             let length_diff =
                 (change.2.as_ref().unwrap().len() as i128) - ((change.1 - change.0) as i128);
             // Selection after increment is the first character of the new number.
             // We must keep track of the adjustments to the documents lengh from things like `-1` -> `0`
             // or `9` -> `10` and move the resulting selections around accordingly.
-            let range_start: usize = ((change.0 as i128) + comulative_character_diff) as usize;
+            let range_start: usize = ((change.0 as i128) + comulative_length_diff) as usize;
             let range_after_change = Range::new(range_start, range_start + 1);
 
             new_selection_ranges.push(range_after_change);
-            comulative_character_diff += length_diff;
+            comulative_length_diff += length_diff;
             last_change_to = change.1;
             changes.push(change);
         }
