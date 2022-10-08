@@ -1,3 +1,130 @@
+# [unreleased]
+
+Breaking changes:
+- Rename `prepend_to_line`/`append_to_line` to `insert_at_line_start`/`insert_at_line_end` ([#3753](https://github.com/helix-editor/helix/pull/3753))
+- Remove CTRL and ALT based default hotkeys for navigation in insert mode ([#3915](https://github.com/helix-editor/helix/pull/3915), [#3671](https://github.com/helix-editor/helix/pull/3671))
+
+Features:
+
+- Bufferline ([#2759](https://github.com/helix-editor/helix/pull/2759))
+- Cursorcolumn ([#4048](https://github.com/helix-editor/helix/pull/4048))
+- Add ability to extend existing themes using inheritance ([#3067](https://github.com/helix-editor/helix/pull/3067))
+- Preview destination while typing `goto` command ([#2982](https://github.com/helix-editor/helix/pull/2982))
+- Add a separate gutter style for lines that contain the cursor ([#3303](https://github.com/helix-editor/helix/pull/3303))
+- Add option to change the mode names displayed in the statusline ([#3311](https://github.com/helix-editor/helix/pull/3311))
+- Add option to show total line numbers in statusline ([#3960](https://github.com/helix-editor/helix/pull/3960))
+- Add option to hide the first indentation guide ([#3819](https://github.com/helix-editor/helix/pull/3819))
+
+Commands:
+
+- `:lsp-restart` to refresh the language server ([#3435](https://github.com/helix-editor/helix/pull/3435))
+
+Usability improvements and fixes:
+
+- Don't log "LSP not defined" errors in the log file
+- Allow saving the file if formatting with external formatter fails ([#3670](https://github.com/helix-editor/helix/pull/3670), [#3684](https://github.com/helix-editor/helix/pull/3684))
+- Fix LSP related crash when opening files without an URL like the tutor ([#3683](https://github.com/helix-editor/helix/pull/3683))
+- Fix `extend_line_above` and `extend_line` skipping a line when less than a full line is selected ([#3689](https://github.com/helix-editor/helix/pull/3689))
+- Fix buffer position resetting when a split is created 
+- Fix panic when calling `:reflow` on large files where the cursor is out of view ([#3733](https://github.com/helix-editor/helix/pull/3733))
+- Used 1 based indexing for listing grammar fetch error ([#3773](https://github.com/helix-editor/helix/pull/3773))
+- Accept `text` as an argument for `:set-language` to remove language specific configuration ([#3359](https://github.com/helix-editor/helix/pull/3359))
+- Show error-message if unknown language is passed to `:set-language` ([#3359](https://github.com/helix-editor/helix/pull/3359))
+- Improve handling of invalid configuration files during config refresh ([#3685](https://github.com/helix-editor/helix/pull/3685))
+- Avoid spawning a language server for the tutor ([#3730](https://github.com/helix-editor/helix/pull/3730))
+- Fix panic during syntax highlighting ([#3826](https://github.com/helix-editor/helix/pull/3826))
+- Remove border from code actions popup ([#3444](https://github.com/helix-editor/helix/pull/3444))
+- Fix runtime directory detection when `hx` executable is a symlink ([#3794](https://github.com/helix-editor/helix/pull/3794))
+- Ensure diagnostics are sorted to avoid broken syntax highlights and `goto_definitions` commands ([#3895](https://github.com/helix-editor/helix/pull/3895))
+- Add `--log` option to change the location of the log file ([#3807](https://github.com/helix-editor/helix/pull/3807))
+- Track additional diagnostic information to ensure that all code-actions can be displayed ([#3898](https://github.com/helix-editor/helix/pull/3898))
+- Fix `:theme` preview becoming permanent after using arrow keys ([#3620](https://github.com/helix-editor/helix/pull/3620))
+- Fix fish completions for `--config` and `--log` ([#3912](https://github.com/helix-editor/helix/pull/3912))
+- Make root directory detection match the documented behavior ([#3929](https://github.com/helix-editor/helix/pull/3929))
+- Fix various spelling mistakes and oversights in tutor ([#3888](https://github.com/helix-editor/helix/pull/3888), [#4007](https://github.com/helix-editor/helix/pull/4007), [#4027](https://github.com/helix-editor/helix/pull/4027), [#4116](https://github.com/helix-editor/helix/pull/4116))
+- Fix panic if the text under the cursor is removed during formatting ([#4047](https://github.com/helix-editor/helix/pull/4047))
+- Keep cursor position after formatting with LSP ([#3859](https://github.com/helix-editor/helix/pull/3859))
+- Always display pressed key in top-right corner while awaiting further keys ([#4062](https://github.com/helix-editor/helix/pull/4062), [#4077](https://github.com/helix-editor/helix/pull/4077))
+- Show `invalid regex` error right away after pressing enter when searching ([#3034](https://github.com/helix-editor/helix/pull/3034))
+- While searching display warning if no additional matches are available and cycle to the first/last match([#3176](https://github.com/helix-editor/helix/pull/3176))
+- Fix panic for large LSP signatures ([#4030](https://github.com/helix-editor/helix/pull/4030))
+- Display command name in command palette ([#4071](https://github.com/helix-editor/helix/pull/4071))
+- If there are any unsaved buffers if `quit` is called automatically switch to one of them ([#3872](https://github.com/helix-editor/helix/pull/3872))
+- respond to `SIGUSR1` by reloading configuration ([#3952](https://github.com/helix-editor/helix/pull/3952))
+- Ensure the terminal is restored when internal errors occur ([#4081](https://github.com/helix-editor/helix/pull/4081))
+ 
+Themes:
+
+- Add `varua` ([#3610](https://github.com/helix-editor/helix/pull/3610))
+- Add `papercolor` dark variant ([#3742](https://github.com/helix-editor/helix/pull/3742))
+- Add Rasmus ([#3728](https://github.com/helix-editor/helix/pull/3728))
+- Update `boo_berry` theme (add statusline and indent-guide) ([#3653](https://github.com/helix-editor/helix/pull/3653))
+- Update `monokai-pro-spectrum` ([#3814](https://github.com/helix-editor/helix/pull/3814))
+- Update `Nord` ([#3792](https://github.com/helix-editor/helix/pull/3792)
+- Update `fleetish` ([#3844](https://github.com/helix-editor/helix/pull/3844))
+- Update `flatwhite` ([#3843](https://github.com/helix-editor/helix/pull/3843))
+- Add `darcula` ([#3739](https://github.com/helix-editor/helix/pull/3739))
+- Automatically lint themes and update existing themes ([#3234](https://github.com/helix-editor/helix/pull/3234), [#3587](https://github.com/helix-editor/helix/pull/3587)))
+- Add bufferline colors to 15 themes ([#3881](https://github.com/helix-editor/helix/pull/3881))
+- Add `gruvbox_dark_hard` ([#3948](https://github.com/helix-editor/helix/pull/3948))
+- Add `onedarker` ([#3980](https://github.com/helix-editor/helix/pull/3980))
+- Add ability to derive ([#3067](https://github.com/helix-editor/helix/pull/3067))
+- Add `dark_high_contrast` ([#3312](https://github.com/helix-editor/helix/pull/3312))
+- Update `bogster` ([#4121](https://github.com/helix-editor/helix/pull/4121))
+- Update `sonokai`([#4089](https://github.com/helix-editor/helix/pull/4089))
+
+LSP:
+
+- Switch to `openscad-lsp` for OpenSCAD ([#3750](https://github.com/helix-editor/helix/pull/3750))
+- Markdown ([#3499](https://github.com/helix-editor/helix/pull/3499))
+- Jsonnet ([#3714](https://github.com/helix-editor/helix/pull/3714))
+- Bass ([#3771](https://github.com/helix-editor/helix/pull/3771))
+
+New languages:
+
+- SML ([#3692](https://github.com/helix-editor/helix/pull/3692))
+- Jsonnet ([#3714](https://github.com/helix-editor/helix/pull/3714))
+- Godot-resource ([#3759](https://github.com/helix-editor/helix/pull/3759))
+- Astro ([#3829](https://github.com/helix-editor/helix/pull/3829))
+- Bass ([#3771](https://github.com/helix-editor/helix/pull/3771))
+- Webassembly text format ([#4040](https://github.com/helix-editor/helix/pull/4040))
+
+
+Updated languages and queries:
+
+- Zig ([#3621](https://github.com/helix-editor/helix/pull/3621))
+- Solidity
+- Fish ([#3704](https://github.com/helix-editor/helix/pull/3704))
+- Elixir ([#3645](https://github.com/helix-editor/helix/pull/3645))
+- Update Git-Diff and rename to Diff ([#3708](https://github.com/helix-editor/helix/pull/3708))
+- Add language injection for Nix ([#3594](https://github.com/helix-editor/helix/pull/3594))
+- Fix highlight rules for Nix ([#3697](https://github.com/helix-editor/helix/pull/3697))
+- Add highlights for attributes for Rust ([#3729](https://github.com/helix-editor/helix/pull/3729))
+- Show rulers while editing Git-Commit messages ([#3738](https://github.com/helix-editor/helix/pull/3738))
+- Add `.markdown` as recognized extension for Markdown ([#3749](https://github.com/helix-editor/helix/pull/3749))
+- Render HTML `<code>` tags as code in Markdown ([#3425](https://github.com/helix-editor/helix/pull/3425))
+- Add text objects for Gdscript ([#3760](https://github.com/helix-editor/helix/pull/3760))
+- Improve JSX and TSX auto identation ([#3853](https://github.com/helix-editor/helix/pull/3853))
+- Highlight SQL in `sqlx::{query,query_as}!()` in Rust ([#3647](https://github.com/helix-editor/helix/pull/3647))
+- Fix highlighting for single-character `const`s in Rust ([#3927](https://github.com/helix-editor/helix/pull/3927))
+- Add mix.exs and mix.lock as Elixir root markers ([#3917](https://github.com/helix-editor/helix/pull/3917))
+- Remove `do_block` from idents for Ruby ([#3976](https://github.com/helix-editor/helix/pull/3976))
+- Improve tag highlighting for JSX and TSX ([#3973](https://github.com/helix-editor/helix/pull/3973))
+- Add comment injection for R ([#4031](https://github.com/helix-editor/helix/pull/4031))
+- Fix highlighting for WGL ([#3996](https://github.com/helix-editor/helix/pull/3996))
+- Update grammar for markdown ([#4078](https://github.com/helix-editor/helix/pull/4078))
+- Correctly highlight bodyless functions (in `trait`s or `extern` blocks) in Rust ([#4073](https://github.com/helix-editor/helix/pull/4073))
+- Selected inserted spaces after joining selection ([#3549](https://github.com/helix-editor/helix/pull/3549))
+- Start LSP workspace discovery at the file instead of the `CWD` ([#3553](https://github.com/helix-editor/helix/pull/3553))
+
+Packaging:
+
+- Refactor and update nix flake ([#3657](https://github.com/helix-editor/helix/pull/3657))
+- Use `runCommand` instead of `runCommandNoCC` in nix build ([#3992](https://github.com/helix-editor/helix/pull/3992))
+- Fix `devShell` in nix flake on aarch64-darwin ([#3810](https://github.com/helix-editor/helix/pull/3810))
+- Raise MSRV to 1.61 and specify MSRV policy ([#3913](https://github.com/helix-editor/helix/pull/3913),[#3961](https://github.com/helix-editor/helix/pull/3961))
+- ([#3X](https://github.com/helix-editor/helix/pull/3X))
+
 # 22.08.1 (2022-09-01)
 
 This is a patch release that fixes a panic caused by closing splits or buffers. ([#3633](https://github.com/helix-editor/helix/pull/3633))
