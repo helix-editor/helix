@@ -338,9 +338,9 @@ impl EditorView {
         let primary_cursor_scope: usize = {
             if true {
                 match mode {
-                    Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
-                    Mode::Select => theme.find_scope_index("ui.cursor.select"),
-                    Mode::Normal => theme.find_scope_index("ui.cursor.normal"),
+                    Mode::Insert => theme.find_scope_index("ui.cursor.color.insert"),
+                    Mode::Select => theme.find_scope_index("ui.cursor.color.select"),
+                    Mode::Normal => theme.find_scope_index("ui.cursor.color.normal"),
                 }
                 .unwrap_or(cursor_scope)
             } else {
