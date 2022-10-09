@@ -85,3 +85,131 @@ async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::Result<()> {
+    test_with_config(
+        Args {
+            files: vec![(PathBuf::from("foo.rs"), Position::default())],
+            ..Default::default()
+        },
+        Config::default(),
+        (
+            helpers::platform_line(indoc! {"\
+                #[/|]#// Increments
+                fn inc(x: usize) -> usize { x + 1 }
+                /// Decrements
+                fn dec(x: usize) -> usize { x - 1 }
+            "})
+            .as_ref(),
+            "]fv]f",
+            helpers::platform_line(indoc! {"\
+                /// Increments
+                #[fn inc(x: usize) -> usize { x + 1 }
+                /// Decrements
+                fn dec(x: usize) -> usize { x - 1 }|]#
+            "})
+            .as_ref(),
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Result<()> {
+    test_with_config(
+        Args {
+            files: vec![(PathBuf::from("foo.rs"), Position::default())],
+            ..Default::default()
+        },
+        Config::default(),
+        (
+            helpers::platform_line(indoc! {"\
+                /// Increments
+                #[fn inc(x: usize) -> usize { x + 1 }
+                /// Decrements
+                fn dec(x: usize) -> usize { x - 1 }|]#
+            "})
+            .as_ref(),
+            "v[f",
+            helpers::platform_line(indoc! {"\
+                /// Increments
+                #[fn inc(x: usize) -> usize { x + 1 }|]#
+                /// Decrements
+                fn dec(x: usize) -> usize { x - 1 }
+            "})
+            .as_ref(),
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> anyhow::Result<()> {
+    // Note: the anchor stays put and the head moves back.
+    test_with_config(
+        Args {
+            files: vec![(PathBuf::from("foo.rs"), Position::default())],
+            ..Default::default()
+        },
+        Config::default(),
+        (
+            helpers::platform_line(indoc! {"\
+                /// Increments
+                fn inc(x: usize) -> usize { x + 1 }
+                /// Decrements
+                fn dec(x: usize) -> usize { x - 1 }
+                /// Identity
+                #[fn ident(x: usize) -> usize { x }|]#
+            "})
+            .as_ref(),
+            "v[f",
+            helpers::platform_line(indoc! {"\
+                /// Increments
+                fn inc(x: usize) -> usize { x + 1 }
+                /// Decrements
+                #[|fn dec(x: usize) -> usize { x - 1 }
+                /// Identity
+                ]#fn ident(x: usize) -> usize { x }
+            "})
+            .as_ref(),
+        ),
+    )
+    .await?;
+
+    test_with_config(
+        Args {
+            files: vec![(PathBuf::from("foo.rs"), Position::default())],
+            ..Default::default()
+        },
+        Config::default(),
+        (
+            helpers::platform_line(indoc! {"\
+                /// Increments
+                fn inc(x: usize) -> usize { x + 1 }
+                /// Decrements
+                fn dec(x: usize) -> usize { x - 1 }
+                /// Identity
+                #[fn ident(x: usize) -> usize { x }|]#
+            "})
+            .as_ref(),
+            "v[f[f",
+            helpers::platform_line(indoc! {"\
+                /// Increments
+                #[|fn inc(x: usize) -> usize { x + 1 }
+                /// Decrements
+                fn dec(x: usize) -> usize { x - 1 }
+                /// Identity
+                ]#fn ident(x: usize) -> usize { x }
+            "})
+            .as_ref(),
+        ),
+    )
+    .await?;
+
+    Ok(())
+}

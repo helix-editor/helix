@@ -334,7 +334,7 @@ impl TextObjectQuery {
     }
 }
 
-fn read_query(language: &str, filename: &str) -> String {
+pub fn read_query(language: &str, filename: &str) -> String {
     static INHERITS_REGEX: Lazy<Regex> =
         Lazy::new(|| Regex::new(r";+\s*inherits\s*:?\s*([a-z_,()-]+)\s*").unwrap());
 
@@ -374,7 +374,8 @@ impl LanguageConfiguration {
                 &injections_query,
                 &locals_query,
             )
-            .unwrap_or_else(|query_error| panic!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar fetch' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, query_error));
+            .map_err(|err| log::error!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar fetch' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, err))
+            .ok()?;
 
             config.configure(scopes);
             Some(Arc::new(config))
@@ -399,34 +400,33 @@ impl LanguageConfiguration {
 
     pub fn indent_query(&self) -> Option<&Query> {
         self.indent_query
-            .get_or_init(|| {
-                let lang_name = self.language_id.to_ascii_lowercase();
-                let query_text = read_query(&lang_name, "indents.scm");
-                if query_text.is_empty() {
-                    return None;
-                }
-                let lang = self.highlight_config.get()?.as_ref()?.language;
-                Query::new(lang, &query_text).ok()
-            })
+            .get_or_init(|| self.load_query("indents.scm"))
             .as_ref()
     }
 
     pub fn textobject_query(&self) -> Option<&TextObjectQuery> {
         self.textobject_query
-            .get_or_init(|| -> Option<TextObjectQuery> {
-                let lang_name = self.language_id.to_ascii_lowercase();
-                let query_text = read_query(&lang_name, "textobjects.scm");
-                let lang = self.highlight_config.get()?.as_ref()?.language;
-                let query = Query::new(lang, &query_text)
-                    .map_err(|e| log::error!("Failed to parse textobjects.scm queries: {}", e))
-                    .ok()?;
-                Some(TextObjectQuery { query })
+            .get_or_init(|| {
+                self.load_query("textobjects.scm")
+                    .map(|query| TextObjectQuery { query })
             })
             .as_ref()
     }
 
     pub fn scope(&self) -> &str {
         &self.scope
+    }
+
+    fn load_query(&self, kind: &str) -> Option<Query> {
+        let lang_name = self.language_id.to_ascii_lowercase();
+        let query_text = read_query(&lang_name, kind);
+        if query_text.is_empty() {
+            return None;
+        }
+        let lang = self.highlight_config.get()?.as_ref()?.language;
+        Query::new(lang, &query_text)
+            .map_err(|e| log::error!("Failed to parse {} queries for {}: {}", kind, lang_name, e))
+            .ok()
     }
 }
 
@@ -985,7 +985,9 @@ impl LanguageLayer {
     }
 
     fn parse(&mut self, parser: &mut Parser, source: &Rope) -> Result<(), Error> {
-        parser.set_included_ranges(&self.ranges).unwrap();
+        parser
+            .set_included_ranges(&self.ranges)
+            .map_err(|_| Error::InvalidRanges)?;
 
         parser
             .set_language(self.config.language)
@@ -1135,6 +1137,7 @@ pub struct Highlight(pub usize);
 pub enum Error {
     Cancelled,
     InvalidLanguage,
+    InvalidRanges,
     Unknown,
 }
 

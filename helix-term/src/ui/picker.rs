@@ -1,9 +1,8 @@
 use crate::{
-    compositor::{Component, Compositor, Context, EventResult},
+    compositor::{Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
     ui::{self, EditorView},
 };
-use crossterm::event::Event;
 use tui::{
     buffer::Buffer as Surface,
     widgets::{Block, BorderType, Borders},
@@ -261,7 +260,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         }
     }
 
-    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
         // TODO: keybinds for scrolling preview
         self.picker.handle_event(event, ctx)
     }
@@ -366,13 +365,8 @@ impl<T: Item> Picker<T> {
                     .map(|(index, _option)| (index, 0)),
             );
         } else if pattern.starts_with(&self.previous_pattern) {
-            // TODO: remove when retain_mut is in stable rust
-            #[allow(unused_imports, deprecated)]
-            use retain_mut::RetainMut;
-
             // optimization: if the pattern is a more specific version of the previous one
             // then we can score the filtered set.
-            #[allow(unstable_name_collisions)]
             self.matches.retain_mut(|(index, score)| {
                 let option = &self.options[*index];
                 let text = option.sort_text(&self.editor_data);
@@ -471,11 +465,19 @@ impl<T: Item> Picker<T> {
         self.filters
             .extend(self.matches.iter().map(|(index, _)| *index));
         self.filters.sort_unstable(); // used for binary search later
-        self.prompt.clear(cx);
+        self.prompt.clear(cx.editor);
     }
 
     pub fn toggle_preview(&mut self) {
         self.show_preview = !self.show_preview;
+    }
+
+    fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+        if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
+            // TODO: recalculate only if pattern changed
+            self.score();
+        }
+        EventResult::Consumed(None)
     }
 }
 
@@ -490,9 +492,10 @@ impl<T: Item + 'static> Component for Picker<T> {
         Some(viewport)
     }
 
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let key_event = match event {
-            Event::Key(event) => event,
+            Event::Key(event) => *event,
+            Event::Paste(..) => return self.prompt_handle_event(event, cx),
             Event::Resize(..) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored(None),
         };
@@ -502,7 +505,7 @@ impl<T: Item + 'static> Component for Picker<T> {
             compositor.last_picker = compositor.pop();
         })));
 
-        match key_event.into() {
+        match key_event {
             shift!(Tab) | key!(Up) | ctrl!('p') => {
                 self.move_by(1, Direction::Backward);
             }
@@ -549,10 +552,7 @@ impl<T: Item + 'static> Component for Picker<T> {
                 self.toggle_preview();
             }
             _ => {
-                if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
-                    // TODO: recalculate only if pattern changed
-                    self.score();
-                }
+                self.prompt_handle_event(event, cx);
             }
         }
 

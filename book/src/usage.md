@@ -2,7 +2,7 @@
 
 (Currently not fully documented, see the [keymappings](./keymap.md) list for more.)
 
-See [tutor.txt](https://github.com/helix-editor/helix/blob/master/runtime/tutor.txt) (accessible via `hx --tutor` or `:tutor`) for a vimtutor-like introduction.
+See [tutor](https://github.com/helix-editor/helix/blob/master/runtime/tutor) (accessible via `hx --tutor` or `:tutor`) for a vimtutor-like introduction.
 
 ## Registers
 
@@ -125,18 +125,17 @@ will move the selection over to the "func" `identifier`.
 
 ## Textobjects
 
-Currently supported: `word`, `surround`, `function`, `class`, `parameter`.
-
 ![textobject-demo](https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif)
 ![textobject-treesitter-demo](https://user-images.githubusercontent.com/23398472/132537398-2a2e0a54-582b-44ab-a77f-eb818942203d.gif)
 
-- `ma` - Select around the object (`va` in vim, `<alt-a>` in kakoune)
-- `mi` - Select inside the object (`vi` in vim, `<alt-i>` in kakoune)
+- `ma` - Select around the object (`va` in Vim, `<alt-a>` in Kakoune)
+- `mi` - Select inside the object (`vi` in Vim, `<alt-i>` in Kakoune)
 
 | Key after `mi` or `ma` | Textobject selected      |
 | ---                    | ---                      |
 | `w`                    | Word                     |
 | `W`                    | WORD                     |
+| `p`                    | Paragraph                |
 | `(`, `[`, `'`, etc     | Specified surround pairs |
 | `m`                    | Closest surround pair    |
 | `f`                    | Function                 |

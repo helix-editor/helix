@@ -2,7 +2,7 @@ use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
 use helix_core::{
     config::{default_syntax_loader, user_syntax_loader},
-    diagnostic::NumberOrString,
+    diagnostic::{DiagnosticTag, NumberOrString},
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
@@ -12,7 +12,7 @@ use serde_json::json;
 use crate::{
     args::Args,
     commands::apply_workspace_edit,
-    compositor::Compositor,
+    compositor::{Compositor, Event},
     config::Config,
     job::Jobs,
     keymap::Keymaps,
@@ -29,7 +29,10 @@ use std::{
 use anyhow::{Context, Error};
 
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture, Event},
+    event::{
+        DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
+        Event as CrosstermEvent,
+    },
     execute, terminal,
     tty::IsTty,
 };
@@ -80,6 +83,22 @@ fn setup_integration_logging() {
         .level(level)
         .chain(std::io::stdout())
         .apply();
+}
+
+fn restore_term() -> Result<(), Error> {
+    let mut stdout = stdout();
+    // reset cursor shape
+    write!(stdout, "\x1B[0 q")?;
+    // Ignore errors on disabling, this might trigger on windows if we call
+    // disable without calling enable previously
+    let _ = execute!(stdout, DisableMouseCapture);
+    execute!(
+        stdout,
+        DisableBracketedPaste,
+        terminal::LeaveAlternateScreen
+    )?;
+    terminal::disable_raw_mode()?;
+    Ok(())
 }
 
 impl Application {
@@ -138,7 +157,7 @@ impl Application {
         compositor.push(editor_view);
 
         if args.load_tutor {
-            let path = helix_loader::runtime_dir().join("tutor.txt");
+            let path = helix_loader::runtime_dir().join("tutor");
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
@@ -176,7 +195,7 @@ impl Application {
                         // `--vsplit` or `--hsplit` are used, the file which is
                         // opened last is focused on.
                         let view_id = editor.tree.focus;
-                        let doc = editor.document_mut(doc_id).unwrap();
+                        let doc = doc_mut!(editor, &doc_id);
                         let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
                         doc.set_selection(view_id, pos);
                     }
@@ -205,8 +224,8 @@ impl Application {
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
         #[cfg(not(windows))]
-        let signals =
-            Signals::new(&[signal::SIGTSTP, signal::SIGCONT]).context("build signal handler")?;
+        let signals = Signals::new(&[signal::SIGTSTP, signal::SIGCONT, signal::SIGUSR1])
+            .context("build signal handler")?;
 
         let app = Self {
             compositor,
@@ -347,29 +366,39 @@ impl Application {
         self.editor.refresh_config();
     }
 
-    fn refresh_config(&mut self) {
-        let config = Config::load_default().unwrap_or_else(|err| {
-            self.editor.set_error(err.to_string());
-            Config::default()
-        });
-
-        // Refresh theme
+    /// Refresh theme after config change
+    fn refresh_theme(&mut self, config: &Config) {
         if let Some(theme) = config.theme.clone() {
             let true_color = self.true_color();
-            self.editor.set_theme(
-                self.theme_loader
-                    .load(&theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
-                    .unwrap_or_else(|| self.theme_loader.default_theme(true_color)),
-            );
+            match self.theme_loader.load(&theme) {
+                Ok(theme) => {
+                    if true_color || theme.is_16_color() {
+                        self.editor.set_theme(theme);
+                    } else {
+                        self.editor
+                            .set_error("theme requires truecolor support, which is not available");
+                    }
+                }
+                Err(err) => {
+                    let err_string = format!("failed to load theme `{}` - {}", theme, err);
+                    self.editor.set_error(err_string);
+                }
+            }
         }
+    }
 
-        self.config.store(Arc::new(config));
+    fn refresh_config(&mut self) {
+        match Config::load_default() {
+            Ok(config) => {
+                self.refresh_theme(&config);
+
+                // Store new config
+                self.config.store(Arc::new(config));
+            }
+            Err(err) => {
+                self.editor.set_error(err.to_string());
+            }
+        }
     }
 
     fn true_color(&self) -> bool {
@@ -386,7 +415,7 @@ impl Application {
         match signal {
             signal::SIGTSTP => {
                 self.compositor.save_cursor();
-                self.restore_term().unwrap();
+                restore_term().unwrap();
                 low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
             }
             signal::SIGCONT => {
@@ -395,6 +424,10 @@ impl Application {
                 let Rect { width, height, .. } = self.compositor.size();
                 self.compositor.resize(width, height);
                 self.compositor.load_cursor();
+                self.render();
+            }
+            signal::SIGUSR1 => {
+                self.refresh_config();
                 self.render();
             }
             _ => unreachable!(),
@@ -418,22 +451,20 @@ impl Application {
         }
     }
 
-    pub fn handle_terminal_events(&mut self, event: Result<Event, crossterm::ErrorKind>) {
+    pub fn handle_terminal_events(&mut self, event: Result<CrosstermEvent, crossterm::ErrorKind>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,
         };
         // Handle key events
-        let should_redraw = match event {
-            Ok(Event::Resize(width, height)) => {
+        let should_redraw = match event.unwrap() {
+            CrosstermEvent::Resize(width, height) => {
                 self.compositor.resize(width, height);
-
                 self.compositor
-                    .handle_event(Event::Resize(width, height), &mut cx)
+                    .handle_event(&Event::Resize(width, height), &mut cx)
             }
-            Ok(event) => self.compositor.handle_event(event, &mut cx),
-            Err(x) => panic!("{}", x),
+            event => self.compositor.handle_event(&event.into(), &mut cx),
         };
 
         if should_redraw && !self.editor.should_close() {
@@ -488,8 +519,13 @@ impl Application {
                             let language_id =
                                 doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
+                            let url = match doc.url() {
+                                Some(url) => url,
+                                None => continue, // skip documents with no path
+                            };
+
                             tokio::spawn(language_server.text_document_did_open(
-                                doc.url().unwrap(),
+                                url,
                                 doc.version(),
                                 doc.text(),
                                 language_id,
@@ -511,7 +547,12 @@ impl Application {
                                     use helix_core::diagnostic::{Diagnostic, Range, Severity::*};
                                     use lsp::DiagnosticSeverity;
 
-                                    let language_server = doc.language_server().unwrap();
+                                    let language_server = if let Some(language_server) = doc.language_server() {
+                                        language_server
+                                    } else {
+                                        log::warn!("Discarding diagnostic because language server is not initialized: {:?}", diagnostic);
+                                        return None;
+                                    };
 
                                     // TODO: convert inside server
                                     let start = if let Some(start) = lsp_pos_to_pos(
@@ -568,13 +609,28 @@ impl Application {
                                         None => None,
                                     };
 
+                                    let tags = if let Some(ref tags) = diagnostic.tags {
+                                        let new_tags = tags.iter().filter_map(|tag| {
+                                            match *tag {
+                                                lsp::DiagnosticTag::DEPRECATED => Some(DiagnosticTag::Deprecated),
+                                                lsp::DiagnosticTag::UNNECESSARY => Some(DiagnosticTag::Unnecessary),
+                                                _ => None
+                                            }
+                                        }).collect();
+
+                                        new_tags
+                                    } else {
+                                        Vec::new()
+                                    };
+
                                     Some(Diagnostic {
                                         range: Range { start, end },
                                         line: diagnostic.range.start.line as usize,
                                         message: diagnostic.message.clone(),
                                         severity,
                                         code,
-                                        // source
+                                        tags,
+                                        source: diagnostic.source.clone()
                                     })
                                 })
                                 .collect();
@@ -789,23 +845,11 @@ impl Application {
     async fn claim_term(&mut self) -> Result<(), Error> {
         terminal::enable_raw_mode()?;
         let mut stdout = stdout();
-        execute!(stdout, terminal::EnterAlternateScreen)?;
+        execute!(stdout, terminal::EnterAlternateScreen, EnableBracketedPaste)?;
         execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
         if self.config.load().editor.mouse {
             execute!(stdout, EnableMouseCapture)?;
         }
-        Ok(())
-    }
-
-    fn restore_term(&mut self) -> Result<(), Error> {
-        let mut stdout = stdout();
-        // reset cursor shape
-        write!(stdout, "\x1B[0 q")?;
-        // Ignore errors on disabling, this might trigger on windows if we call
-        // disable without calling enable previously
-        let _ = execute!(stdout, DisableMouseCapture);
-        execute!(stdout, terminal::LeaveAlternateScreen)?;
-        terminal::disable_raw_mode()?;
         Ok(())
     }
 
@@ -820,16 +864,21 @@ impl Application {
         std::panic::set_hook(Box::new(move |info| {
             // We can't handle errors properly inside this closure.  And it's
             // probably not a good idea to `unwrap()` inside a panic handler.
-            // So we just ignore the `Result`s.
-            let _ = execute!(std::io::stdout(), DisableMouseCapture);
-            let _ = execute!(std::io::stdout(), terminal::LeaveAlternateScreen);
-            let _ = terminal::disable_raw_mode();
+            // So we just ignore the `Result`.
+            let _ = restore_term();
             hook(info);
         }));
 
         self.event_loop(input_stream).await;
-        self.close().await?;
-        self.restore_term()?;
+
+        let err = self.close().await.err();
+
+        restore_term()?;
+
+        if let Some(err) = err {
+            self.editor.exit_code = 1;
+            eprintln!("Error: {}", err);
+        }
 
         Ok(self.editor.exit_code)
     }

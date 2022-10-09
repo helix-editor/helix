@@ -491,8 +491,7 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup =
-                Popup::new("code-action", picker).margin(helix_view::graphics::Margin::all(1));
+            let popup = Popup::new("code-action", picker);
             compositor.replace_or_push("code-action", popup);
         },
     )
@@ -863,10 +862,7 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
                 }
             };
             let doc = doc!(editor);
-            let language = doc
-                .language()
-                .and_then(|scope| scope.strip_prefix("source."))
-                .unwrap_or("");
+            let language = doc.language_name().unwrap_or("");
 
             let signature = match response
                 .signatures
