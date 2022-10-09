@@ -394,7 +394,7 @@ fn spell_check(
                                 tags: Vec::new(),
                                 source: None,
                                 message: suggestions.join("\n"),
-                                line: start_line + i + 1,
+                                line: start_line + i,
                                 range: diagnostic::Range {
                                     start: position + start,
                                     end: position + end,
@@ -418,7 +418,7 @@ async fn make_spell_check_callback(
 ) -> anyhow::Result<job::Callback> {
     let call: job::Callback = Box::new(move |editor, _compositor| {
         if let Some(doc) = editor.document_mut(doc_id) {
-            doc.set_diagnostics(diagnostics);
+            doc.set_spell_diagnostics(diagnostics);
         }
     });
     Ok(call)

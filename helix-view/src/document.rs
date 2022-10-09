@@ -120,6 +120,7 @@ pub struct Document {
     pub(crate) modified_since_accessed: bool,
 
     diagnostics: Vec<Diagnostic>,
+    spell_diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
 }
 
@@ -353,6 +354,7 @@ impl Document {
             changes,
             old_state,
             diagnostics: Vec::new(),
+            spell_diagnostics: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
             savepoint: None,
@@ -792,6 +794,17 @@ impl Document {
             self.diagnostics
                 .sort_unstable_by_key(|diagnostic| diagnostic.range);
 
+            // map state.spell_diagnostics over changes::map_pos too
+            for diagnostic in &mut self.spell_diagnostics {
+                use helix_core::Assoc;
+                let changes = transaction.changes();
+                diagnostic.range.start = changes.map_pos(diagnostic.range.start, Assoc::After);
+                diagnostic.range.end = changes.map_pos(diagnostic.range.end, Assoc::After);
+                diagnostic.line = self.text.char_to_line(diagnostic.range.start);
+            }
+            self.spell_diagnostics
+                .sort_unstable_by_key(|diagnostic| diagnostic.range);
+
             // emit lsp notification
             if let Some(language_server) = self.language_server() {
                 let notify = language_server.text_document_did_change(
@@ -1072,6 +1085,13 @@ impl Document {
         )
     }
 
+    pub fn all_diagnostics(&self) -> Vec<&Diagnostic> {
+        self.diagnostics
+            .iter()
+            .chain(self.spell_diagnostics.iter())
+            .collect()
+    }
+
     #[inline]
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
@@ -1081,6 +1101,15 @@ impl Document {
         self.diagnostics = diagnostics;
         self.diagnostics
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
+    }
+
+    #[inline]
+    pub fn spell_diagnostics(&self) -> &[Diagnostic] {
+        &self.spell_diagnostics
+    }
+
+    pub fn set_spell_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
+        self.spell_diagnostics = diagnostics;
     }
 
     /// Get the document's auto pairs. If the document has a recognized

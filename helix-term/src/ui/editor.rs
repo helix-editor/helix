@@ -288,7 +288,9 @@ impl EditorView {
         let error = get_scope_of("diagnostic.error");
         let r#default = get_scope_of("diagnostic"); // this is a bit redundant but should be fine
 
-        doc.diagnostics()
+        let all_diagnostics = doc.all_diagnostics();
+
+        all_diagnostics
             .iter()
             .map(|diagnostic| {
                 let diagnostic_scope = match diagnostic.severity {
@@ -761,7 +763,8 @@ impl EditorView {
             .primary()
             .cursor(doc.text().slice(..));
 
-        let diagnostics = doc.diagnostics().iter().filter(|diagnostic| {
+        let all_diagnostics = doc.all_diagnostics();
+        let diagnostics = all_diagnostics.iter().filter(|diagnostic| {
             diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
         });
 
