@@ -846,6 +846,48 @@ fn paste_clipboard_before(
     paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Clipboard, 1)
 }
 
+fn paste_file_after(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(!args.is_empty(), "wrong argument count");
+    let paths: Vec<PathBuf> = args
+        .iter()
+        .map(|arg| {
+            let (path, _) = args::parse_file(arg);
+            path
+        })
+        .collect();
+
+    paste_file_impl(cx.editor, Paste::After, &paths, 1)
+}
+
+fn paste_file_before(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(!args.is_empty(), "wrong argument count");
+    let paths: Vec<PathBuf> = args
+        .iter()
+        .map(|arg| {
+            let (path, _) = args::parse_file(arg);
+            path
+        })
+        .collect();
+
+    paste_file_impl(cx.editor, Paste::Before, &paths, 1)
+}
+
 fn paste_primary_clipboard_after(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1861,6 +1903,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Replace selections with content of system clipboard.",
             fun: replace_selections_with_clipboard,
             completer: None,
+        },
+        TypableCommand {
+            name: "file-paste-after",
+            aliases: &[],
+            doc: "Read a file from disk and paste afer selections.",
+            fun: paste_file_after,
+            completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "file-paste-before",
+            aliases: &[],
+            doc: "Read a file from disk and paste before selections.",
+            fun: paste_file_before,
+            completer: Some(completers::filename),
         },
         TypableCommand {
             name: "primary-clipboard-paste-after",
