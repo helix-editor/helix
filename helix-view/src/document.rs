@@ -1239,15 +1239,27 @@ impl Document {
         Ok(())
     }
 
-    /// Select text within the [`Document`].
-    pub fn set_selection(&mut self, view_id: ViewId, selection: Selection) {
+    /// Select text within the [`Document`], optionally clearing the previous selection state.
+    pub fn set_selection_clear(&mut self, view_id: ViewId, selection: Selection, clear_prev: bool) {
         // TODO: use a transaction?
         self.selections
             .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
+
         helix_event::dispatch(SelectionDidChange {
             doc: self,
             view: view_id,
-        })
+        });
+
+        if clear_prev {
+            self.view_data
+                .entry(view_id)
+                .and_modify(|view_data| view_data.object_selections.clear());
+        }
+    }
+
+    /// Select text within the [`Document`].
+    pub fn set_selection(&mut self, view_id: ViewId, selection: Selection) {
+        self.set_selection_clear(view_id, selection, true);
     }
 
     /// Find the origin selection of the text in a document, i.e. where
@@ -1433,6 +1445,12 @@ impl Document {
             apply_inlay_hint_changes(other_inlay_hints);
             apply_inlay_hint_changes(padding_after_inlay_hints);
         }
+
+        // clear out all associated view object selections, as they are no
+        // longer valid
+        self.view_data
+            .values_mut()
+            .for_each(|view_data| view_data.object_selections.clear());
 
         helix_event::dispatch(DocumentDidChange {
             doc: self,
@@ -1868,13 +1886,13 @@ impl Document {
         &self.selections
     }
 
-    fn view_data(&self, view_id: ViewId) -> &ViewData {
+    pub fn view_data(&self, view_id: ViewId) -> &ViewData {
         self.view_data
             .get(&view_id)
             .expect("This should only be called after ensure_view_init")
     }
 
-    fn view_data_mut(&mut self, view_id: ViewId) -> &mut ViewData {
+    pub fn view_data_mut(&mut self, view_id: ViewId) -> &mut ViewData {
         self.view_data.entry(view_id).or_default()
     }
 
@@ -2181,9 +2199,13 @@ impl Document {
     }
 }
 
+/// Stores data needed for views that are tied to this specific Document.
 #[derive(Debug, Default)]
 pub struct ViewData {
     view_position: ViewPosition,
+
+    /// used to store previous selections of tree-sitter objects
+    pub object_selections: HashMap<&'static str, Vec<Selection>>,
 }
 
 #[derive(Clone, Debug)]
@@ -2233,6 +2255,7 @@ mod test {
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
         );
         let view = ViewId::default();
+        doc.ensure_view_init(view);
         doc.set_selection(view, Selection::single(0, 0));
 
         let transaction =
@@ -2270,7 +2293,9 @@ mod test {
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
         );
+
         let view = ViewId::default();
+        doc.ensure_view_init(view);
         doc.set_selection(view, Selection::single(5, 5));
 
         // insert
