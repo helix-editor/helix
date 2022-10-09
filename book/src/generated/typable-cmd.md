@@ -36,6 +36,8 @@
 | `:clipboard-paste-after` | Paste system clipboard after selections. |
 | `:clipboard-paste-before` | Paste system clipboard before selections. |
 | `:clipboard-paste-replace` | Replace selections with content of system clipboard. |
+| `:file-paste-after` | Read a file from disk and paste afer selections. |
+| `:file-paste-before` | Read a file from disk and paste before selections. |
 | `:primary-clipboard-paste-after` | Paste primary clipboard after selections. |
 | `:primary-clipboard-paste-before` | Paste primary clipboard before selections. |
 | `:primary-clipboard-paste-replace` | Replace selections with content of system primary clipboard. |
