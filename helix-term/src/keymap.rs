@@ -200,11 +200,25 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
     {
         let mut mapping = HashMap::new();
         let mut order = Vec::new();
-        while let Some((key, value)) = map.next_entry::<KeyEvent, KeyTrie>()? {
-            mapping.insert(key, value);
-            order.push(key);
+        let mut is_sticky = false;
+        while let Some(toml_key) = map.next_key::<toml::Value>()? {
+            let maybe_key_event = toml_key.clone().try_into::<KeyEvent>();
+            match (maybe_key_event, toml_key.as_str()) {
+                (Ok(key_event), _) => {
+                    mapping.insert(key_event, map.next_value::<KeyTrie>()?);
+                    order.push(key_event);
+                }
+                (Err(_), Some("sticky")) => {
+                    is_sticky = map.next_value::<bool>()?;
+                }
+                (Err(err), _) => {
+                    return Err(serde::de::Error::custom(err.to_string()));
+                }
+            }
         }
-        Ok(KeyTrie::Node(KeyTrieNode::new("", mapping, order)))
+        let mut trie_node = KeyTrieNode::new("", mapping, order);
+        trie_node.is_sticky = is_sticky;
+        Ok(KeyTrie::Node(trie_node))
     }
 }
 
