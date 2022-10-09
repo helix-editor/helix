@@ -576,7 +576,7 @@ _________________________________________________________________
 
  Type A-s (Alt-s) to split the selection(s) on newlines.
 
- 1. Move the first row of the table below.
+ 1. Move the cursor to the first row of the table below.
  2. Select the entire table with 6x.
  3. Type A-s to split into selections at each line.
  4. Align the table with &.
