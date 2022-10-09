@@ -335,9 +335,21 @@ impl EditorView {
         }
         .unwrap_or(base_cursor_scope);
 
-        let primary_cursor_scope = theme
-            .find_scope_index("ui.cursor.primary")
-            .unwrap_or(cursor_scope);
+        let primary_cursor_scope: usize = {
+            if true {
+                match mode {
+                    Mode::Insert => theme.find_scope_index("ui.statusline.insert"),
+                    Mode::Select => theme.find_scope_index("ui.statusline.select"),
+                    Mode::Normal => theme.find_scope_index("ui.statusline.normal"),
+                }
+                .unwrap_or(cursor_scope)
+            } else {
+                theme
+                    .find_scope_index("ui.cursor.primary")
+                    .unwrap_or(cursor_scope)
+            }
+        };
+
         let primary_selection_scope = theme
             .find_scope_index("ui.selection.primary")
             .unwrap_or(selection_scope);
