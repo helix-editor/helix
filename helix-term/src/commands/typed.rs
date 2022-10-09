@@ -354,10 +354,6 @@ fn format(
     Ok(())
 }
 
-use helix_core::diagnostic;
-use helix_core::Diagnostic;
-use regex::Regex;
-
 fn spell_check(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -367,59 +363,16 @@ fn spell_check(
         return Ok(());
     }
     let doc = doc!(cx.editor);
-    let mut diagnostics = Vec::new();
-    if let Some(node) = doc.syntax() {
-        let doc_slice = doc.text().slice(..);
-        if let Some(ranges) = spellcheck::spellcheck_treesitter(
-            node.tree().root_node(),
-            doc_slice,
-            doc.language_config().unwrap(),
-        ) {
-            let client = &mut cx.editor.spell_checker;
-            let regex = Regex::new(r"[[:alpha:]']+").unwrap();
-            for range in ranges {
-                let (start_line, _) = range.line_range(doc_slice);
-                let mut position = range.from();
-                for (i, line_slice) in range.slice(doc_slice).lines().enumerate() {
-                    let line = String::from(line_slice);
-                    for capture in regex.captures_iter(line.as_str()) {
-                        let capture_match = capture.get(0).unwrap();
-                        let word = capture_match.as_str();
-                        let start = capture_match.start();
-                        let end = capture_match.end();
-                        if let Err(suggestions) = client.check(word) {
-                            diagnostics.push(Diagnostic {
-                                severity: Some(diagnostic::Severity::Warning),
-                                code: None,
-                                tags: Vec::new(),
-                                source: None,
-                                message: suggestions.join("\n"),
-                                line: start_line + i,
-                                range: diagnostic::Range {
-                                    start: position + start,
-                                    end: position + end,
-                                },
-                            });
-                        }
-                    }
-                    position += line_slice.len_chars();
-                }
-            }
-        };
-    };
-    cx.jobs
-        .callback(make_spell_check_callback(doc.id(), diagnostics));
+    cx.jobs.callback(make_spell_check_callback(doc.id()));
     Ok(())
 }
 
-async fn make_spell_check_callback(
-    doc_id: DocumentId,
-    diagnostics: Vec<Diagnostic>,
-) -> anyhow::Result<job::Callback> {
+async fn make_spell_check_callback(doc_id: DocumentId) -> anyhow::Result<job::Callback> {
     let call: job::Callback = Box::new(move |editor, _compositor| {
+        let checker = editor.spell_checker.clone();
         if let Some(doc) = editor.document_mut(doc_id) {
-            doc.set_spell_diagnostics(diagnostics);
-        }
+            doc.spell_check(checker);
+        };
     });
     Ok(call)
 }

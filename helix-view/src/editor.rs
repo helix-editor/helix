@@ -21,6 +21,7 @@ use std::{
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
+    sync::Mutex,
 };
 
 use tokio::{
@@ -658,7 +659,7 @@ pub struct Editor {
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
 
-    pub spell_checker: spell::Client,
+    pub spell_checker: Arc<Mutex<spell::Client>>,
 
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
@@ -767,7 +768,7 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
-            spell_checker: spell::Client::new(),
+            spell_checker: Arc::new(Mutex::new(spell::Client::new())),
         }
     }
 

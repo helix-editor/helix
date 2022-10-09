@@ -3,6 +3,7 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::Range;
+use regex::Regex;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::borrow::Cow;
@@ -13,6 +14,7 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use helix_core::{
     encoding,
@@ -393,6 +395,50 @@ impl Document {
         doc.detect_indent_and_line_ending();
 
         Ok(doc)
+    }
+
+    pub fn spell_check(&mut self, spell_checker: Arc<Mutex<helix_spell::client::Client>>) {
+        let mut diagnostics = Vec::new();
+        if let Some(node) = self.syntax() {
+            let doc_slice = self.text().slice(..);
+            if let Some(ranges) = helix_core::spellcheck::spellcheck_treesitter(
+                node.tree().root_node(),
+                doc_slice,
+                self.language_config().unwrap(),
+            ) {
+                let client = &mut spell_checker.lock().unwrap();
+                let regex = Regex::new(r"[[:alpha:]']+").unwrap();
+                for range in ranges {
+                    let (start_line, _) = range.line_range(doc_slice);
+                    let mut position = range.from();
+                    for (i, line_slice) in range.slice(doc_slice).lines().enumerate() {
+                        let line = String::from(line_slice);
+                        for capture in regex.captures_iter(line.as_str()) {
+                            let capture_match = capture.get(0).unwrap();
+                            let word = capture_match.as_str();
+                            let start = capture_match.start();
+                            let end = capture_match.end();
+                            if let Err(suggestions) = client.check(word) {
+                                diagnostics.push(Diagnostic {
+                                    severity: Some(helix_core::diagnostic::Severity::Warning),
+                                    code: None,
+                                    tags: Vec::new(),
+                                    source: None,
+                                    message: suggestions.join("\n"),
+                                    line: start_line + i,
+                                    range: helix_core::diagnostic::Range {
+                                        start: position + start,
+                                        end: position + end,
+                                    },
+                                });
+                            }
+                        }
+                        position += line_slice.len_chars();
+                    }
+                }
+            };
+        };
+        self.set_spell_diagnostics(diagnostics);
     }
 
     /// The same as [`format`], but only returns formatting changes if auto-formatting

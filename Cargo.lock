@@ -642,6 +642,7 @@ dependencies = [
  "helix-tui",
  "log",
  "once_cell",
+ "regex",
  "serde",
  "serde_json",
  "slotmap",
