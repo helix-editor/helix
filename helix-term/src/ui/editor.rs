@@ -6,6 +6,7 @@ use crate::{
     ui::{Completion, ProgressSpinners},
 };
 
+use arc_swap::access::DynGuard;
 use helix_core::{
     graphemes::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
@@ -17,14 +18,13 @@ use helix_core::{
 };
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{CompleteAction, Config},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
 use std::{borrow::Cow, path::PathBuf};
-
 use tui::buffer::Buffer as Surface;
 
 use super::lsp::SignatureHelp;
@@ -127,13 +127,7 @@ impl EditorView {
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
-                Self::doc_selection_highlights(
-                    editor.mode(),
-                    doc,
-                    view,
-                    theme,
-                    &editor.config().cursor_shape,
-                ),
+                Self::doc_selection_highlights(editor.mode(), doc, view, theme, &editor.config()),
             ))
         } else {
             Box::new(highlights)
@@ -312,13 +306,13 @@ impl EditorView {
         doc: &Document,
         view: &View,
         theme: &Theme,
-        cursor_shape_config: &CursorShapeConfig,
+        config: &DynGuard<Config>,
     ) -> Vec<(usize, std::ops::Range<usize>)> {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
         let primary_idx = selection.primary_index();
 
-        let cursorkind = cursor_shape_config.from_mode(mode);
+        let cursorkind = config.cursor_shape.from_mode(mode);
         let cursor_is_block = cursorkind == CursorKind::Block;
 
         let selection_scope = theme
@@ -336,7 +330,7 @@ impl EditorView {
         .unwrap_or(base_cursor_scope);
 
         let primary_cursor_scope: usize = {
-            if true {
+            if config.cursor_match_mode_color {
                 match mode {
                     Mode::Insert => theme.find_scope_index("ui.cursor.color.insert"),
                     Mode::Select => theme.find_scope_index("ui.cursor.color.select"),
