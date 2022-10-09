@@ -124,6 +124,7 @@ pub struct Document {
     diagnostics: Vec<Diagnostic>,
     spell_diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
+    spell_checker: Option<Arc<Mutex<helix_spell::client::Client>>>,
 }
 
 use std::{fmt, mem};
@@ -363,6 +364,7 @@ impl Document {
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_server: None,
+            spell_checker: None,
         }
     }
 
@@ -397,8 +399,9 @@ impl Document {
         Ok(doc)
     }
 
-    pub fn spell_check(&mut self, spell_checker: Arc<Mutex<helix_spell::client::Client>>) {
+    pub fn spell_check(&mut self) {
         let mut diagnostics = Vec::new();
+        let spell_checker = self.spell_checker.clone().unwrap();
         if let Some(node) = self.syntax() {
             let doc_slice = self.text().slice(..);
             if let Some(ranges) = helix_core::spellcheck::spellcheck_treesitter(
@@ -406,7 +409,7 @@ impl Document {
                 doc_slice,
                 self.language_config().unwrap(),
             ) {
-                let client = &mut spell_checker.lock().unwrap();
+                let mut client = spell_checker.lock().unwrap();
                 let regex = Regex::new(r"[[:alpha:]']+").unwrap();
                 for range in ranges {
                     let (start_line, _) = range.line_range(doc_slice);
@@ -743,6 +746,14 @@ impl Document {
     /// Set the LSP.
     pub fn set_language_server(&mut self, language_server: Option<Arc<helix_lsp::Client>>) {
         self.language_server = language_server;
+    }
+
+    /// Set the spell checker.
+    pub fn set_spell_checker(
+        &mut self,
+        spell_checker: Option<Arc<Mutex<helix_spell::client::Client>>>,
+    ) {
+        self.spell_checker = spell_checker;
     }
 
     /// Select text within the [`Document`].

@@ -259,6 +259,7 @@ fn write_impl(
     force: bool,
 ) -> anyhow::Result<()> {
     let auto_format = cx.editor.config().auto_format;
+    let auto_spellcheck = cx.editor.config().auto_spellcheck;
     let jobs = &mut cx.jobs;
     let doc = doc_mut!(cx.editor);
 
@@ -269,6 +270,11 @@ fn write_impl(
     if doc.path().is_none() {
         bail!("cannot write a buffer without a filename");
     }
+
+    if auto_spellcheck {
+        jobs.callback(make_spell_check_callback(doc.id()));
+    };
+
     let fmt = if auto_format {
         doc.auto_format().map(|fmt| {
             let shared = fmt.shared();
@@ -368,9 +374,8 @@ fn spell_check(
 
 async fn make_spell_check_callback(doc_id: DocumentId) -> anyhow::Result<job::Callback> {
     let call: job::Callback = Box::new(move |editor, _compositor| {
-        let checker = editor.spell_checker.clone();
         if let Some(doc) = editor.document_mut(doc_id) {
-            doc.spell_check(checker);
+            doc.spell_check();
         };
     });
     Ok(call)
@@ -596,6 +601,7 @@ fn write_all_impl(
 
     let mut errors = String::new();
     let auto_format = cx.editor.config().auto_format;
+    let auto_spellcheck = cx.editor.config().auto_spellcheck;
     let jobs = &mut cx.jobs;
     // save all documents
     for doc in &mut cx.editor.documents.values_mut() {
@@ -607,6 +613,10 @@ fn write_all_impl(
         if !doc.is_modified() {
             continue;
         }
+
+        if auto_spellcheck {
+            jobs.callback(make_spell_check_callback(doc.id()));
+        };
 
         let fmt = if auto_format {
             doc.auto_format().map(|fmt| {

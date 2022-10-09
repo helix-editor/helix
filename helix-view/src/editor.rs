@@ -140,6 +140,8 @@ pub struct Config {
     pub auto_completion: bool,
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
+    /// Automatic spell checking on save. Defaults to true.
+    pub auto_spellcheck: bool,
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(
@@ -592,6 +594,7 @@ impl Default for Config {
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             auto_format: true,
+            auto_spellcheck: true,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
@@ -1068,7 +1071,7 @@ impl Editor {
             let mut doc = Document::open(&path, None, Some(self.syn_loader.clone()))?;
 
             let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
-
+            doc.set_spell_checker(Some(self.spell_checker.clone()));
             self.new_document(doc)
         };
 
