@@ -68,15 +68,15 @@ for a language.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
-## Gnome `.desktop` file support
+## Adding Helix to your desktop environment
 
-If you are installing from source, to use Helix in the Gnome desktop environment you will need to copy the provided `.desktop` file:
+If installing from source, to use Helix in desktop environments that supports [XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html), including Gnome and KDE, copy the provided `.desktop` file to the correct folder:
 
 ```bash
 cp contrib/Helix.desktop ~/.local/share/applications
 ```
 
-To use another terminal than the default `gnome-terminal` you will need to modify the `.desktop` file. For example, to use `kitty`:
+To use another terminal than the default, you will need to modify the `.desktop` file. For example, to use `kitty`:
 
 ```bash
 sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
