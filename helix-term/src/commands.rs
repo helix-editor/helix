@@ -4038,6 +4038,7 @@ fn goto_prev_diag(cx: &mut Context) {
         view.diagnostics_handler
             .immediately_show_diagnostic(doc, view.id);
     };
+
     cx.editor.apply_motion(motion)
 }
 
@@ -5496,6 +5497,8 @@ fn reverse_selection_contents(cx: &mut Context) {
 
 // tree sitter node selection
 
+const EXPAND_KEY: &str = "expand";
+
 fn expand_selection(cx: &mut Context) {
     let motion = |editor: &mut Editor| {
         let (view, doc) = current!(editor);
@@ -5503,42 +5506,52 @@ fn expand_selection(cx: &mut Context) {
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
 
-            let current_selection = doc.selection(view.id);
+            let current_selection = doc.selection(view.id).clone();
             let selection = object::expand_selection(syntax, text, current_selection.clone());
 
             // check if selection is different from the last one
-            if *current_selection != selection {
-                // save current selection so it can be restored using shrink_selection
-                view.object_selections.push(current_selection.clone());
+            if current_selection != selection {
+                let prev_selections = doc
+                    .view_data_mut(view.id)
+                    .object_selections
+                    .entry(EXPAND_KEY)
+                    .or_default();
 
-                doc.set_selection(view.id, selection);
+                // save current selection so it can be restored using shrink_selection
+                prev_selections.push(current_selection);
+                doc.set_selection_clear(view.id, selection, false);
             }
         }
     };
+
     cx.editor.apply_motion(motion);
 }
 
 fn shrink_selection(cx: &mut Context) {
     let motion = |editor: &mut Editor| {
         let (view, doc) = current!(editor);
-        let current_selection = doc.selection(view.id);
+        let current_selection = doc.selection(view.id).clone();
+        let prev_expansions = doc
+            .view_data_mut(view.id)
+            .object_selections
+            .entry(EXPAND_KEY)
+            .or_default();
+
         // try to restore previous selection
-        if let Some(prev_selection) = view.object_selections.pop() {
-            if current_selection.contains(&prev_selection) {
-                doc.set_selection(view.id, prev_selection);
-                return;
-            } else {
-                // clear existing selection as they can't be shrunk to anyway
-                view.object_selections.clear();
-            }
+        if let Some(prev_selection) = prev_expansions.pop() {
+            // allow shrinking the selection only if current selection contains the previous object selection
+            doc.set_selection_clear(view.id, prev_selection, false);
+            return;
         }
+
         // if not previous selection, shrink to first child
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
-            let selection = object::shrink_selection(syntax, text, current_selection.clone());
-            doc.set_selection(view.id, selection);
+            let selection = object::shrink_selection(syntax, text, current_selection);
+            doc.set_selection_clear(view.id, selection, false);
         }
     };
+
     cx.editor.apply_motion(motion);
 }
 
@@ -5656,8 +5669,6 @@ fn match_brackets(cx: &mut Context) {
 
     doc.set_selection(view.id, selection);
 }
-
-//
 
 fn jump_forward(cx: &mut Context) {
     let count = cx.count();
