@@ -303,6 +303,8 @@ impl MappableCommand {
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
         goto_prev_diag, "Goto previous diagnostic",
+        goto_next_misspell, "Goto next misspelling",
+        goto_prev_misspell, "Goto previous misspelling",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
         goto_next_buffer, "Goto next buffer",
@@ -2875,6 +2877,52 @@ fn goto_prev_diag(cx: &mut Context) {
     goto_pos(editor, pos);
 }
 
+fn goto_next_misspell(cx: &mut Context) {
+    let editor = &mut cx.editor;
+    let (view, doc) = current!(editor);
+
+    let cursor_pos = doc
+        .selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..));
+
+    let diag = doc
+        .spell_diagnostics()
+        .iter()
+        .find(|diag| diag.range.start > cursor_pos)
+        .or_else(|| doc.spell_diagnostics().first());
+
+    let pos = match diag {
+        Some(diag) => diag.range.start,
+        None => return,
+    };
+
+    goto_pos(editor, pos);
+}
+
+fn goto_prev_misspell(cx: &mut Context) {
+    let editor = &mut cx.editor;
+    let (view, doc) = current!(editor);
+
+    let cursor_pos = doc
+        .selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..));
+
+    let diag = doc
+        .spell_diagnostics()
+        .iter()
+        .rev()
+        .find(|diag| diag.range.start < cursor_pos)
+        .or_else(|| doc.spell_diagnostics().last());
+
+    let pos = match diag {
+        Some(diag) => diag.range.start,
+        None => return,
+    };
+
+    goto_pos(editor, pos);
+}
 pub mod insert {
     use super::*;
     pub type Hook = fn(&Rope, &Selection, char) -> Option<Transaction>;

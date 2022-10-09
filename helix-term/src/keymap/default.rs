@@ -100,6 +100,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "[" => { "Left bracket"
             "d" => goto_prev_diag,
             "D" => goto_first_diag,
+            "z" => goto_prev_misspell,
             "f" => goto_prev_function,
             "c" => goto_prev_class,
             "a" => goto_prev_parameter,
@@ -111,6 +112,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "]" => { "Right bracket"
             "d" => goto_next_diag,
             "D" => goto_last_diag,
+            "z" => goto_next_misspell,
             "f" => goto_next_function,
             "c" => goto_next_class,
             "a" => goto_next_parameter,

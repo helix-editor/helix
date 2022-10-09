@@ -2,7 +2,6 @@ use std::ops::Deref;
 
 use super::*;
 
-use helix_core::spellcheck;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use ui::completers::{self, Completer};
 
