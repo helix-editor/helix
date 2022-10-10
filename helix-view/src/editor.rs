@@ -170,7 +170,7 @@ pub struct Config {
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
-    /// Whether the cursor matches the mode color if `color_modes` is `true`. Defaults to `fales`
+    /// Whether the cursor matches the mode as specified by `ui.cursor.insert` and `ui.cursor.select`. Defaults to `false`.
     pub cursor_color_match_mode: bool,
 }
 
