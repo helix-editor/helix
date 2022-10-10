@@ -226,6 +226,14 @@ async fn surround_inside_pair() -> anyhow::Result<()> {
     ))
     .await?;
 
+    // Works with multiple cursors
+    test((
+        "(so (many (good) text) #[he|]#re\nso (many (good) text) #(|he)#re)",
+        "mim",
+        "(#[so (many (good) text) here\nso (many (good) text) here|]#)",
+    ))
+    .await?;
+
     Ok(())
 }
 
@@ -343,6 +351,14 @@ async fn surround_around_pair() -> anyhow::Result<()> {
         "(so (many (go#[od) text) |]#here)",
         "mam",
         "#[(so (many (good) text) here)|]#",
+    ))
+    .await?;
+
+    // Works with multiple cursors
+    test((
+        "(so (many (good) text) #[he|]#re\nso (many (good) text) #(|he)#re)",
+        "mam",
+        "#[(so (many (good) text) here\nso (many (good) text) here)|]#",
     ))
     .await?;
 
