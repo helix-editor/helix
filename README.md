@@ -48,11 +48,11 @@ tree-sitter grammars may be manually fetched and built with `hx --grammar fetch`
 Helix also needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
 config directory (for example `~/.config/helix/runtime` on Linux/macOS, or `%AppData%/helix/runtime` on Windows).
 
-| OS                   | Command                                      |
-| -------------------- | -------------------------------------------- |
-| Windows (cmd.exe)    | `xcopy /e /i runtime %AppData%\helix\runtime`      |
-| Windows (PowerShell) | `xcopy /e /i runtime $Env:AppData\helix\runtime`   |
-| Linux/macOS          | `ln -s $PWD/runtime ~/.config/helix/runtime` |
+| OS                   | Command                                          |
+| -------------------- | ------------------------------------------------ |
+| Windows (cmd.exe)    | `xcopy /e /i runtime %AppData%\helix\runtime`    |
+| Windows (PowerShell) | `xcopy /e /i runtime $Env:AppData\helix\runtime` |
+| Linux/macOS          | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
 
 This location can be overridden via the `HELIX_RUNTIME` environment variable.
 
@@ -67,6 +67,23 @@ In order to use LSP features like auto-complete, you will need to
 for a language.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
+
+## Adding Helix to your desktop environment
+
+If installing from source, to use Helix in desktop environments that supports [XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html), including Gnome and KDE, copy the provided `.desktop` file to the correct folder:
+
+```bash
+cp contrib/Helix.desktop ~/.local/share/applications
+```
+
+To use another terminal than the default, you will need to modify the `.desktop` file. For example, to use `kitty`:
+
+```bash
+sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
+sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
+```
+
+Please note: there is no icon for Helix yet, so the system default will be used.
 
 ## MacOS
 
