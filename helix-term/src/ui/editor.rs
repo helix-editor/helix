@@ -322,44 +322,57 @@ impl EditorView {
             .find_scope_index("ui.cursor")
             .unwrap_or(selection_scope);
 
-        let cursor_scope = match mode {
-            Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
-            Mode::Select => theme.find_scope_index("ui.cursor.select"),
-            Mode::Normal => Some(base_cursor_scope),
-        }
-        .unwrap_or(base_cursor_scope);
+        // let cursor_scope = match mode {
+        //     Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
+        //     Mode::Select => theme.find_scope_index("ui.cursor.select"),
+        //     Mode::Normal => Some(base_cursor_scope),
+        // }
+        // .unwrap_or(base_cursor_scope);
 
-        let primary_cursor_scope: usize = {
+        let cursor_scope: usize = {
             if config.cursor_color_match_mode {
                 match mode {
                     Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
                     Mode::Select => theme.find_scope_index("ui.cursor.select"),
-                    Mode::Normal => theme.find_scope_index("ui.cursor.primary"),
+                    Mode::Normal => Some(base_cursor_scope),
                 }
                 .unwrap_or(base_cursor_scope)
             } else {
-                theme
-                    .find_scope_index("ui.cursor.primary")
-                    .unwrap_or(base_cursor_scope)
+                base_cursor_scope
             }
         };
 
-        let primary_selection_scope = theme
-            .find_scope_index("ui.selection.primary")
+        let secondary_cursor_scope: usize = {
+            if config.cursor_color_match_mode {
+                match mode {
+                    Mode::Insert => theme.find_scope_index("ui.cursor.secondary.insert"),
+                    Mode::Select => theme.find_scope_index("ui.cursor.secondary.select"),
+                    Mode::Normal => theme.find_scope_index("ui.cursor.secondary"),
+                }
+                .unwrap_or(cursor_scope)
+            } else {
+                theme
+                    .find_scope_index("ui.cursor.secondary")
+                    .unwrap_or(cursor_scope)
+            }
+        };
+
+        let secondary_selection_scope = theme
+            .find_scope_index("ui.selection.secondary")
             .unwrap_or(selection_scope);
 
         let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
         for (i, range) in selection.iter().enumerate() {
-            let selection_is_primary = i == primary_idx;
-            let (cursor_scope, selection_scope) = if selection_is_primary {
-                (primary_cursor_scope, primary_selection_scope)
+            let selection_is_secondary = i != primary_idx;
+            let (cursor_scope, selection_scope) = if selection_is_secondary {
+                (secondary_cursor_scope, secondary_selection_scope)
             } else {
                 (cursor_scope, selection_scope)
             };
 
             // Special-case: cursor at end of the rope.
             if range.head == range.anchor && range.head == text.len_chars() {
-                if !selection_is_primary || cursor_is_block {
+                if !selection_is_secondary || cursor_is_block {
                     // Bar and underline cursors are drawn by the terminal
                     // BUG: If the editor area loses focus while having a bar or
                     // underline cursor (eg. when a regex prompt has focus) then
@@ -375,13 +388,13 @@ impl EditorView {
                 // Standard case.
                 let cursor_start = prev_grapheme_boundary(text, range.head);
                 spans.push((selection_scope, range.anchor..cursor_start));
-                if !selection_is_primary || cursor_is_block {
+                if !selection_is_secondary || cursor_is_block {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
-                if !selection_is_primary || cursor_is_block {
+                if !selection_is_secondary || cursor_is_block {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
                 spans.push((selection_scope, cursor_end..range.anchor));

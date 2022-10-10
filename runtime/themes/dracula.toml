@@ -20,12 +20,11 @@
 "diff.minus" = { fg = "red" }
 
 "ui.background" = { fg = "foreground", bg = "background" }
-"ui.cursor" =  { fg = "background", bg = "orange", modifiers = ["dim"] }
-"ui.cursor.match" = { fg = "green", modifiers = ["underlined"] }
-"ui.cursor.primary" = { fg = "background", bg = "cyan", modifiers = ["dim"] }
-"ui.cursor.normal" = { fg = "background", bg = "cyan",  modifiers = ["dim"]}
+"ui.cursor" = { fg = "background", bg = "cyan", modifiers = ["dim"] }
 "ui.cursor.insert" = { fg = "background", bg = "green",  modifiers = ["dim"]}
 "ui.cursor.select" = { fg = "background", bg = "purple",  modifiers = ["dim"]}
+"ui.cursor.secondary" =  { fg = "background", bg = "orange", modifiers = ["dim"] }
+"ui.cursor.match" = { fg = "green", modifiers = ["underlined"] }
 "ui.cursorline.primary" = { bg = "background_dark" }
 "ui.help" = { fg = "foreground", bg = "background_dark" }
 "ui.linenr" = { fg = "comment" }
@@ -33,8 +32,8 @@
 "ui.menu" = { fg = "foreground", bg = "background_dark" }
 "ui.menu.selected" = { fg = "cyan", bg = "background_dark" }
 "ui.popup" = { fg = "foreground", bg = "background_dark" }
-"ui.selection" = { bg = "secondary_highlight" }
-"ui.selection.primary" = { bg = "primary_highlight" }
+"ui.selection" = { bg = "primary_highlight" }
+"ui.selection.secondary" = { bg = "secondary_highlight" }
 "ui.statusline" = { fg = "foreground", bg = "background_dark" }
 "ui.statusline.inactive" = { fg = "comment", bg = "background_dark" }
 "ui.statusline.normal" = { fg = "background_dark", bg = "cyan" }
