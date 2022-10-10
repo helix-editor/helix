@@ -551,6 +551,12 @@ impl<T: Item + 'static> Component for Picker<T> {
             ctrl!('t') => {
                 self.toggle_preview();
             }
+            ctrl!('o') => {
+                if let Some(option) = self.selection() {
+                    (self.callback_fn)(cx, option, Action::PasteAfter);
+                }
+                return close_fn;
+            }
             _ => {
                 self.prompt_handle_event(event, cx);
             }

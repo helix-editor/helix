@@ -708,6 +708,8 @@ pub enum Action {
     Replace,
     HorizontalSplit,
     VerticalSplit,
+    PasteBefore,
+    PasteAfter,
 }
 
 /// Error thrown on failed document closed
@@ -1017,6 +1019,9 @@ impl Editor {
                 // initialize selection for view
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
+            }
+            Action::PasteBefore | Action::PasteAfter => {
+                // do nothing?
             }
         }
 

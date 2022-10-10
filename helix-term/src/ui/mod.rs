@@ -220,13 +220,28 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         files,
         root,
         move |cx, path: &PathBuf, action| {
-            if let Err(e) = cx.editor.open(path, action) {
-                let err = if let Some(err) = e.source() {
-                    format!("{}", err)
-                } else {
-                    format!("unable to open \"{}\"", path.display())
-                };
-                cx.editor.set_error(err);
+            if let Err(e) = match action {
+                helix_view::editor::Action::PasteBefore => {
+                    crate::commands::paste_file_before(cx, &[path.clone()])
+                }
+                helix_view::editor::Action::PasteAfter => {
+                    crate::commands::paste_file_after(cx, &[path.clone()])
+                }
+                _ => {
+                    if let Err(e) = cx.editor.open(path, action) {
+                        let err = if let Some(err) = e.source() {
+                            format!("{}", err)
+                        } else {
+                            format!("unable to open \"{}\"", path.display())
+                        };
+
+                        Err(anyhow::anyhow!(err))
+                    } else {
+                        anyhow::Ok(())
+                    }
+                }
+            } {
+                cx.editor.set_error(e.to_string());
             }
         },
         |_editor, path| Some((path.clone(), None)),

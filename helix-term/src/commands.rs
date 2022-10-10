@@ -3485,10 +3485,23 @@ fn paste_clipboard_impl(
     }
 }
 
-fn paste_file_impl(
+pub(crate) fn paste_file_after<P: AsRef<Path>>(
+    cx: &mut compositor::Context,
+    paths: &[P],
+) -> anyhow::Result<()> {
+    paste_file_impl(cx.editor, Paste::After, paths, 1)
+}
+pub(crate) fn paste_file_before<P: AsRef<Path>>(
+    cx: &mut compositor::Context,
+    paths: &[P],
+) -> anyhow::Result<()> {
+    paste_file_impl(cx.editor, Paste::Before, paths, 1)
+}
+
+fn paste_file_impl<P: AsRef<Path>>(
     editor: &mut Editor,
     action: Paste,
-    paths: &[PathBuf],
+    paths: &[P],
     count: usize,
 ) -> anyhow::Result<()> {
     use std::io::Read;
@@ -3496,10 +3509,11 @@ fn paste_file_impl(
     // reverse the paths[] as its more intuative to expect the order to be respected
     // paths[0], paths[1], paths[..N] when calling the function
     for path in paths.iter().rev() {
-        let mut file = std::fs::File::open(&path).context(format!("unable to open {:?}", path))?;
+        let mut file =
+            std::fs::File::open(&path).context(format!("unable to open {:?}", path.as_ref()))?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)
-            .context(format!("unable to read {:?}", path))?;
+            .context(format!("unable to read {:?}", path.as_ref()))?;
 
         let (view, doc) = current!(editor);
 
