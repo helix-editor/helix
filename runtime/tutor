@@ -16,7 +16,7 @@ _________________________________________________________________
  perform various actions with the text. This allows for more
  efficient editing. This tutor will teach you how you can make
  use of Helix's modal editing features. To begin, ensure your
- caps-lock key is not pressed and hold the j key until you reach
+ CapsLock key is not pressed and hold the j key until you reach
  the first lesson.
 
 
@@ -31,7 +31,7 @@ _________________________________________________________________
           ↓
 
  The cursor can be moved using the h, j, k, l keys, as shown
- above. The cursor/arrow keys will also work, but it is faster
+ above. The cursor / arrow keys will also work, but it is faster
  to use the hjkl keys as they are closer to the other keys you
  will be using. Try moving around to get a feel for hjkl.
  Once you're ready, hold j to continue to the next lesson.
@@ -48,13 +48,13 @@ _________________________________________________________________
 
  1. Type : to enter Command mode. Your cursor will
     move to the bottom of the screen.
- 2. Type q or quit and type <ENTER> to exit Helix.
+ 2. Type q or quit and type Enter to exit Helix.
 
  Note: The quit command will fail if there are unsaved changes.
        To force quit and DISCARD these changes, type q! or quit!.
        You will learn how to save files later.
 
- To exit Command mode without entering a command, type <ESC>.
+ To exit Command mode without entering a command, type Escape.
 
  Now, move on to the next lesson.
 
@@ -96,7 +96,7 @@ _________________________________________________________________
  2. Move to a place in the line which is missing text and type
     i to enter Insert mode. Keys you type will now type text.
  3. Enter the missing text.
- 4. type <ESC> to exit Insert mode and return to Normal mode.
+ 4. type Escape to exit Insert mode and return to Normal mode.
  5. Repeat until the line matches the line below it.
 
  --> Th stce misg so.
@@ -112,18 +112,18 @@ _________________________________________________________________
 =                      1.5 SAVING A FILE                        =
 =================================================================
 
- Type :w/:write to save a file.
+ Type :w / :write to save a file.
 
  1. Exit Helix using :q! as explained before, or open a new
     terminal.
  2. Open a file in Helix by running: hx FILENAME
  3. Make some edits to the file.
  4. Type : to enter Command mode.
- 5. Type w or write, and type <ENTER> to save the file.
+ 5. Type w or write, and type Enter to save the file.
 
  You can also type wq or write-quit to save and exit.
 
- Note: You can optionally enter a filepath after the w/write
+ Note: You can optionally enter a filepath after the w / write
        command in order to save to that path.
  Note: If there are any unsaved changes to a file, a plus [+]
        will appear next to the file name in the status bar.
@@ -137,15 +137,15 @@ _________________________________________________________________
  * Use the h,j,k,l keys to move the cursor.
 
  * Type : to enter Command mode.
-   * The q/quit and q!/quit! commands will exit Helix. The
+   * The q / quit and q! / quit! commands will exit Helix. The
      former fails when there are unsaved changes. The latter
      discards them.
-   * The w/write command will save the file.
-   * The wq/write-quit command will do both.
+   * The w / write command will save the file.
+   * The wq / write-quit command will do both.
 
  * Type d to delete the character at the cursor.
 
- * Type i to enter Insert mode and type text. Type <ESC> to
+ * Type i to enter Insert mode and type text. Type Escape to
    return to Normal mode.
 
 
@@ -167,7 +167,7 @@ _________________________________________________________________
    A - Insert at the end of the line.
 
  1. Move to anywhere in the line marked '-->' below.
- 2. Type A (<SHIFT> + a), your cursor will move to the end of
+ 2. Type A (Shift-a), your cursor will move to the end of
     the line and you will be able to type.
  3. Type the text necessary to match the line below.
 
@@ -207,7 +207,7 @@ _________________________________________________________________
 
  * Type A to enter Insert mode at the end of a line.
 
- * Use o and O to open lines below/above the cursor respectively.
+ * Use o and O to open lines below and above the cursor respectively.
 
 
 
@@ -307,11 +307,11 @@ _________________________________________________________________
 
 
 =================================================================
-=                    3.5 SELECT/EXTEND MODE                     =
+=                    3.5 SELECT / EXTEND MODE                   =
 =================================================================
 
  Type v to enter Select mode.
- Type v again or <ESC> to return to Normal mode
+ Type v again or Escape to return to Normal mode
  In Select mode every movement will extend the selection, as
  opposed to replacing it.
 
@@ -366,8 +366,8 @@ _________________________________________________________________
 
  --> This is an error-free line with words to move around in.
 
- Note: This works the same in select mode.
- Note: Another related command is A-; which flips selections.
+ Note: This works the same in Select mode.
+ Note: Another related command is Alt-; which flips selections.
 
 
 
@@ -405,7 +405,7 @@ _________________________________________________________________
  3. Type u to undo your deletion.
  4. Fix all the errors on the line.
  5. Type u several times to undo your fixes.
- 6. Type U (<SHIFT> + u) several times to redo your fixes.
+ 6. Type U (Shift-u) several times to redo your fixes.
 
  --> Fiix the errors on thhis line and reeplace them witth undo.
 
@@ -434,31 +434,29 @@ _________________________________________________________________
      1 banana 2 banana 3 banana 4
 
  Note: Whenever you delete or change text, Helix will copy the
-       altered text. Use alt-d/c instead to avoid this.
+       altered text. Use Alt-d / Alt-c instead to avoid this.
  Note: Helix doesn't share the system clipboard by default. Type
-       space-y/p to yank/paste on your computer's main clipboard.
+       Space + y / p to yank / paste on the system's clipboard.
 
 =================================================================
 =                     4.3 SEARCHING IN FILE                     =
 =================================================================
 
- Type / to search forward in file, enter to confirm search.
+ Type / to search forward in file, Enter to confirm search.
  Type n to go to the next search match.
  Type N to go to the previous search match.
 
  1. Type / and type in a common word, like 'banana'.
- 2. Type enter to confirm the search.
+ 2. Type Enter to confirm the search.
  3. Use n and N to cycle through the matches.
 
  Searching uses regular expressions, allowing you to target more
  complex expressions, which you'll learn about in the lesson on
  the select command.
 
- Note: To search backwards, type ? (shift-/).
+ Note: To search backwards, type ? (Shift-/).
  Note: Unlike Vim, ? doesn't change the search direction.
        N always goes backwards and n always goes forwards.
-
-
 
 
 
@@ -469,7 +467,7 @@ _________________________________________________________________
  * Type u to undo. Type U to redo.
 
  * Type y to yank (copy) text and p to paste.
-   * Use space-Y and space-P to yank/paste on the system
+   * Use Space + y and Space + p to yank / paste on the system
      clipboard.
 
  * Type / to search forward in file, and ? to search backwards.
@@ -490,8 +488,8 @@ _________________________________________________________________
 
  Type C to duplicate the cursor to the next suitable line.
 
- 1. Move the cursor to the first line below marked -->. Place
-    the cursor on the first word.
+ 1. Move the cursor to the first line marked '-->' below. Place
+    the cursor somewhere past the '-->'.
  2. Type C to duplicate the cursor to the next suitable line.
     Notice how it skips the line in the middle. Keys you type
     will now affect both cursors.
@@ -502,10 +500,9 @@ _________________________________________________________________
  --> Fix th two nes at same ime.
  -->
  --> Fix th two nes at same ime.
-
      Fix these two lines at the same time.
 
- Note: Type alt-C to do the same above the cursor.
+ Note: Type Alt-C to do the same above the cursor.
 
 =================================================================
 =                    5.2 THE SELECT COMMAND                     =
@@ -516,11 +513,11 @@ _________________________________________________________________
  1. Move the cursor to the line marked '-->' below.
  2. Type x to select the line.
  3. Type s. A prompt will appear.
- 4. Type 'apples' and type <ENTER>. Both occurrences of
+ 4. Type 'apples' and type Enter. Both occurrences of
     'apples' in the line will be selected.
  5. You can now type c and change 'apples' to something else,
     like 'oranges'.
- 6. Type <ESC> to exit Insert mode.
+ 6. Type Escape to exit Insert mode.
  7. Type , to remove the second cursor.
 
  --> I like to eat apples since my favorite fruit is apples.
@@ -577,11 +574,11 @@ _________________________________________________________________
 =                 5.5 SPLIT SELECTION INTO LINES                =
 =================================================================
 
- Type A-s (Alt-s) to split the selection(s) on newlines.
+ Type Alt-s to split the selection(s) on newlines.
 
  1. Move the cursor to the first row of the table below.
  2. Select the entire table with 6x.
- 3. Type A-s to split into selections at each line.
+ 3. Type Alt-s to split into selections at each line.
  4. Align the table with &.
 
     | FRUIT   | AMOUNT |
@@ -607,7 +604,7 @@ _________________________________________________________________
 
  * Type & to align selections.
 
- * Type A-s to split the selection into lines.
+ * Type Alt-s to split the selection into lines.
 
 
 
@@ -630,7 +627,7 @@ _________________________________________________________________
  2. Type f[ to select to the square bracket.
  3. Type d to delete your selection.
  4. Go to the end of the line and repeat with F].
- 5. Move to the second line marked -->, just after the arrow.
+ 5. Move to the second line marked '-->', just after the arrow.
  6. Use t and T to delete the dashes around the sentence.
 
  --> -----[Free this sentence of its brackets!]-----
@@ -666,16 +663,16 @@ _________________________________________________________________
 =================================================================
 
  Type . to repeat the last insert command.
- Type A-. to repeat the last f / t selection.
+ Type Alt-. to repeat the last f / t selection.
 
  1. Move the cursor to the line marked '-->' below.
  2. Make a change, insertion or appendage and repeat it with . .
- 3. Try using A-. with f and t, to select multiple sentences for
-    instance.
+ 3. Try using Alt-. with f and t, to select multiple sentences
+    for instance.
 
  --> This is some text for you to repeat things. You can repeat
-     insertions like changing words, or repeat selections like f/t.
-
+     insertions like changing words, or repeat selections like
+     f / t.
 
 
 
@@ -693,7 +690,7 @@ _________________________________________________________________
  * Type r to replace selected characters.
 
  * Type . to repeat the last insertion.
-   * Type A-. to repeat the last f / t selection.
+   * Type Alt-. to repeat the last f / t selection.
 
 
 
@@ -775,13 +772,13 @@ lines.
 =               7.4 INCREMENTING AND DECREMENTING               =
 =================================================================
 
- Type C-a to increment the number under selection.
- Type C-x to decrement the number under selection.
+ Type Ctrl-a to increment the number under selection.
+ Type Ctrl-x to decrement the number under selection.
 
  1. Move the cursor to the third line marked '-->' below.
- 2. Type C-a to increment the second point marked 2.
+ 2. Type Ctrl-a to increment the second point marked 2.
  3. Repeat for the point marked 3.
- 4. Move to the last point and type C-x to decrement the 6.
+ 4. Move to the last point and type Ctrl-x to decrement the 6.
 
  --> 1) First point.
  --> 2) Added point.
@@ -803,8 +800,8 @@ lines.
 
  * Type < and > to indent / outdent lines.
 
- * Type C-a to increment the selected number.
-   * Type C-x to decrement the selected number.
+ * Type Ctrl-a to increment the selected number.
+   * Type Ctrl-x to decrement the selected number.
 
 
 
@@ -903,18 +900,17 @@ lines.
  Note: * is like a shorthand for "/ y as all it really does is
        copy the selection into the / register.
 
-
 =================================================================
 =           9.2 ADDING SELECTION ON NEXT SEARCH MATCH           =
 =================================================================
 
- A property of select mode (v) when using n and N is that instead
+ A property of Select mode (v) when using n and N is that instead
  of moving the selection to the next match, it adds a new
  selection on each match.
 
  1. Move the cursor to the line marked '-->' below.
  2. Select the first "bat" and type * to set it to search.
- 3. Type v to enter select mode.
+ 3. Type v to enter Select mode.
  4. Type n to select the other "bat".
  5. Use c or r to change the "bat"s to "cat".
 
@@ -934,15 +930,15 @@ lines.
  searching or jumping to the definition of a function in code. It
  stores these in what's called the jumplist.
 
- Type C-s (ctrl-s) to manually save your current position to
+ Type Ctrl-s to manually save your current position to
  the jumplist.
 
- Type C-i ("in") and C-o ("out") to move forward and backwards in
- the jumplist respectively.
+ Type Ctrl-i ("in") and Ctrl-o ("out") to move forward and
+ backwards in the jumplist respectively.
 
- 1. Type C-s somewhere.
+ 1. Type Ctrl-s somewhere.
  2. Move far away in the file.
- 3. Type C-o (just once!) to come back to where you saved.
+ 3. Type Ctrl-o (just once!) to come back to where you saved.
 
 
 
@@ -954,12 +950,12 @@ lines.
 
  * Type * to set the search register to the primary selection.
 
- * Type n / N in visual mode to add selections on each search
+ * Type n / N in Visual mode to add selections on each search
    match.
 
- * Type C-s to save position to the jumplist.
-   * Type C-i and C-o to go forward and backward in the jumplist.
-
+ * Type Ctrl-s to save position to the jumplist.
+   * Type Ctrl-i and Ctrl-o to go forward and backward in the
+     jumplist.
 
 
 
@@ -977,20 +973,20 @@ lines.
  Type ) and ( to cycle the primary selection forward and backward
  through selections respectively.
 
- Type A-, to remove the primary selection.
+ Type Alt-, to remove the primary selection.
 
  1. Move the cursor to the line marked '-->' below.
  2. Select both lines with xx or 2x.
  3. Type s to select, type "would" and enter.
  4. Use ( and ) to cycle the primary selection and remove the
-    very second "would" with A-, .
+    very second "would" with Alt-, .
  5. Type c "wood" to change the remaining "would"s to "wood".
 
  --> How much would would a wouldchuck chuck
  --> if a wouldchuck could chuck would?
 
- Note: Additionally, A-( and A-) cycle the *contents* of the
-       selections.
+ Note: Additionally, Alt-( and Alt-) cycle the *contents* of the
+       selections as well.
 
 =================================================================
 =                     10.2 CHANGING CASE                        =
@@ -1003,10 +999,10 @@ lines.
  1. Move the cursor to the first line marked '-->' below.
  2. Select each wrongly capitalised or lowercase letter
     and type ~ over them.
- 3. Move to the second line marked -->.
+ 3. Move to the second line marked '-->'.
  4. Type x to select the line.
  5. Type ` to change the line to lowercase.
- 6. Move to the third line marked -->.
+ 6. Move to the third line marked '-->'.
  7. Type x to select the line.
  8. Type Alt-` to change the line to uppercase.
 
@@ -1022,13 +1018,13 @@ lines.
 
  1. Move the cursor to the line under ---.
  2. Type xx / 2x to select the lines.
- 3. Type S then \. |! <enter> (note the spaces after . and !).
+ 3. Type S then \. |! Enter (note the spaces after . and !).
     This effectively splits the selection into sentences at each
     dot or exclamation mark.
- 4. Type A-; to reverse the selections.
+ 4. Type Alt-; to reverse the selections.
  5. Type ; to reduce selections to a single character - the first
     letter of each sentence.
- 6. Type A-` to convert all selected letters to uppercase.
+ 6. Type Alt-` to convert all selected letters to uppercase.
 
 ---
 these are sentences. some sentences don't start with uppercase
@@ -1042,10 +1038,10 @@ letters! that is not good grammar. you can fix this.
 
  * Use ) and ( to cycle the primary selection back and forward
    through selections respectively.
-   * Type A-, to remove the primary selection.
+   * Type Alt-, to remove the primary selection.
 
  * Type ~ to alternate case of selected letters.
-   * Use ` and A-` to set the case of selected letters to
+   * Use ` and Alt-` to set the case of selected letters to
      upper and lower respectively.
 
  * Type S to split selections on regex.
