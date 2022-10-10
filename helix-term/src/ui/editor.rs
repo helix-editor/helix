@@ -604,11 +604,11 @@ impl EditorView {
             use helix_core::match_brackets;
             let pos = doc.selection(view.id).primary().cursor(text);
 
-            let pos = match_brackets::find_matching_bracket(syntax, doc.text(), pos)
-                .and_then(|pos| view.screen_coords_at_pos(doc, text, pos));
-
-            if let Some(pos) = pos {
-                // ensure col is on screen
+            if let Some(pos) = match_brackets::find_matching_bracket(syntax, doc.text(), pos)
+                // Don't render over the primary selection.
+                .filter(|pos| !doc.selection(view.id).primary().contains(*pos))
+                .and_then(|pos| view.screen_coords_at_pos(doc, text, pos))
+            {
                 if (pos.col as u16) < viewport.width + view.offset.col as u16
                     && pos.col >= view.offset.col
                 {
