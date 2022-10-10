@@ -9,7 +9,7 @@ use tui::text::{Span, Spans};
 use super::{align_view, push_jump, Align, Context, Editor, Open};
 
 use helix_core::{path, Selection};
-use helix_view::{editor::Action, theme::Style};
+use helix_view::{apply_transaction, editor::Action, theme::Style};
 
 use crate::{
     compositor::{self, Compositor},
@@ -617,8 +617,7 @@ pub fn apply_workspace_edit(
             text_edits,
             offset_encoding,
         );
-        doc.apply(&transaction, view_id);
-        view_mut!(editor, view_id).apply(&transaction, doc);
+        apply_transaction(&transaction, doc, view_mut!(editor, view_id));
         doc.append_changes_to_history(view_id);
     };
 
