@@ -173,7 +173,7 @@ cd helix
 cargo install --path helix-term
 </code></pre>
 <p>This will install the <code>hx</code> binary to <code>$HOME/.cargo/bin</code>.</p>
-<p>Helix also needs it's runtime files so make sure to copy/symlink the <code>runtime/</code> directory into the
+<p>Helix also needs its runtime files so make sure to copy/symlink the <code>runtime/</code> directory into the
 config directory (for example <code>~/.config/helix/runtime</code> on Linux/macOS). This location can be overridden
 via the <code>HELIX_RUNTIME</code> environment variable.</p>
 <div class="table-wrapper"><table><thead><tr><th>OS</th><th>command</th></tr></thead><tbody>
@@ -182,11 +182,19 @@ via the <code>HELIX_RUNTIME</code> environment variable.</p>
 <tr><td>linux/macos</td><td><code>ln -s $PWD/runtime ~/.config/helix/runtime</code></td></tr>
 </tbody></table>
 </div>
+<p>To use Helix in desktop environments that supports <a href="https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html">XDG desktop menu</a>, including Gnome and KDE, copy the provided <code>.desktop</code> file to the correct folder:</p>
+<pre><code class="language-bash">cp contrib/Helix.desktop ~/.local/share/applications
+</code></pre>
+<p>To use another terminal than the default, you will need to modify the <code>.desktop</code> file. For example, to use <code>kitty</code>:</p>
+<pre><code class="language-bash">sed -i &quot;s|Exec=hx %F|Exec=kitty hx %F|g&quot; ~/.local/share/applications/Helix.desktop
+sed -i &quot;s|Terminal=true|Terminal=false|g&quot; ~/.local/share/applications/Helix.desktop
+</code></pre>
+<p>Please note: there is no icon for Helix yet, so the system default will be used.</p>
 <h2 id="finishing-up-the-installation"><a class="header" href="#finishing-up-the-installation">Finishing up the installation</a></h2>
-<p>To make sure everything is set up as expected you should finally run the helix healthcheck via </p>
+<p>To make sure everything is set up as expected you should finally run the helix healthcheck via</p>
 <pre><code>hx --health
 </code></pre>
-<p>For more information on the information displayed in the healthcheck results refer to <a href="https://github.com/helix-editor/helix/wiki/Healthcheck">Healthcheck</a>.</p>
+<p>For more information on the information displayed in the health check results refer to <a href="https://github.com/helix-editor/helix/wiki/Healthcheck">Healthcheck</a>.</p>
 <h3 id="building-tree-sitter-grammars"><a class="header" href="#building-tree-sitter-grammars">Building tree-sitter grammars</a></h3>
 <p>Tree-sitter grammars must be fetched and compiled if not pre-packaged.
 Fetch grammars with <code>hx --grammar fetch</code> (requires <code>git</code>) and compile them
