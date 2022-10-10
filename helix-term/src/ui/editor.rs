@@ -428,7 +428,7 @@ impl EditorView {
         let characters = &whitespace.characters;
 
         let mut spans = Vec::new();
-        let mut visual_x = 0u16;
+        let mut visual_x = 0usize;
         let mut line = 0u16;
         let tab_width = doc.tab_width();
         let tab = if whitespace.render.tab() == WhitespaceRenderValue::All {
@@ -465,14 +465,13 @@ impl EditorView {
                 return;
             }
 
-            let starting_indent =
-                (offset.col / tab_width) as u16 + config.indent_guides.skip_levels;
+            let starting_indent = (offset.col / tab_width) + config.indent_guides.skip_levels;
             // TODO: limit to a max indent level too. It doesn't cause visual artifacts but it would avoid some
             // extra loops if the code is deeply nested.
 
-            for i in starting_indent..(indent_level / tab_width as u16) {
+            for i in starting_indent..(indent_level / tab_width) {
                 surface.set_string(
-                    viewport.x + (i * tab_width as u16) - offset.col as u16,
+                    (viewport.x as usize + (i * tab_width) - offset.col) as u16,
                     viewport.y + line,
                     &indent_guide_char,
                     indent_guide_style,
@@ -518,14 +517,14 @@ impl EditorView {
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
                     for grapheme in RopeGraphemes::new(text) {
-                        let out_of_bounds = visual_x < offset.col as u16
-                            || visual_x >= viewport.width + offset.col as u16;
+                        let out_of_bounds = offset.col > (visual_x as usize)
+                            || (visual_x as usize) >= viewport.width as usize + offset.col;
 
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
                             if !out_of_bounds {
                                 // we still want to render an empty cell with the style
                                 surface.set_string(
-                                    viewport.x + visual_x - offset.col as u16,
+                                    (viewport.x as usize + visual_x - offset.col) as u16,
                                     viewport.y + line,
                                     &newline,
                                     style.patch(whitespace_style),
@@ -573,7 +572,7 @@ impl EditorView {
                             if !out_of_bounds {
                                 // if we're offscreen just keep going until we hit a new line
                                 surface.set_string(
-                                    viewport.x + visual_x - offset.col as u16,
+                                    (viewport.x as usize + visual_x - offset.col) as u16,
                                     viewport.y + line,
                                     display_grapheme,
                                     if is_whitespace {
@@ -606,7 +605,7 @@ impl EditorView {
                                 last_line_indent_level = visual_x;
                             }
 
-                            visual_x = visual_x.saturating_add(width as u16);
+                            visual_x = visual_x.saturating_add(width);
                         }
                     }
                 }
