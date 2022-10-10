@@ -20,9 +20,9 @@
 "diff.minus" = { fg = "red" }
 
 "ui.background" = { fg = "foreground", bg = "background" }
-"ui.cursor" = { fg = "background", bg = "cyan", modifiers = ["dim"] }
-"ui.cursor.insert" = { fg = "background", bg = "green",  modifiers = ["dim"]}
-"ui.cursor.select" = { fg = "background", bg = "purple",  modifiers = ["dim"]}
+"ui.cursor" = { fg = "background", bg = "cyan",  modifiers = ["dim"] }
+"ui.cursor.insert" = { fg = "background", bg = "green",  modifiers = ["dim"] }
+"ui.cursor.select" = { fg = "background", bg = "purple",  modifiers = ["dim"] }
 "ui.cursor.secondary" =  { fg = "background", bg = "orange", modifiers = ["dim"] }
 "ui.cursor.match" = { fg = "green", modifiers = ["underlined"] }
 "ui.cursorline.primary" = { bg = "background_dark" }
