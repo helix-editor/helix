@@ -24,8 +24,11 @@
 
 ; Types
 
+(namespace_definition name: (identifier) @namespace)
+(using_declaration (identifier) @namespace)
 (namespace_identifier) @namespace
-(auto) @type
+
+(qualified_identifier name: (identifier) @type.enum.variant)
 
 ; Constants
 
@@ -56,20 +59,22 @@
 "<=>" @operator
 
 [
-  "or"
   "and"
-  "bitor"
-  "xor"
-  "bitand"
-  "not_eq"
   "and_eq"
+  "bitor"
+  "bitand"
+  "not"
+  "not_eq"
+  "or"
   "or_eq"
+  "xor"
   "xor_eq"
 ] @keyword.operator
 
 [
   "class"
   "namespace"
+  (auto)
 ] @keyword.storage.type
 
 [
