@@ -53,12 +53,12 @@ pub fn align_view(doc: &Document, view: &mut View, align: Align) {
         .cursor(doc.text().slice(..));
     let line = doc.text().char_to_line(pos);
 
-    let height = view.inner_area().height as usize;
+    let last_line_height = view.inner_area().height.saturating_sub(1) as usize;
 
     let relative = match align {
-        Align::Center => height / 2,
+        Align::Center => last_line_height / 2,
         Align::Top => 0,
-        Align::Bottom => height,
+        Align::Bottom => last_line_height,
     };
 
     view.offset.row = line.saturating_sub(relative);
