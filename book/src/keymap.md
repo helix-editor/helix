@@ -129,7 +129,7 @@
 | `X`                   | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
 | `Alt-x`               | Shrink selection to line bounds (line-wise selection)             | `shrink_to_line_bounds`              |
 | `J`                   | Join lines inside selection                                       | `join_selections`                    |
-| `A-J`                 | Join lines inside selection and select space                      | `join_selections_space`              |
+| `Alt-J`               | Join lines inside selection and select space                      | `join_selections_space`              |
 | `K`                   | Keep selections matching the regex                                | `keep_selections`                    |
 | `Alt-K`               | Remove selections matching the regex                              | `remove_selections`                  |
 | `Ctrl-c`              | Comment/uncomment the selections                                  | `toggle_comments`                    |
@@ -278,7 +278,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `/`     | Global search in workspace folder                                       | `global_search`                     |
 | `?`     | Open command palette                                                    | `command_palette`                   |
 
-> TIP: Global search displays results in a fuzzy picker, use `space + '` to bring it back up after opening a file.
+> TIP: Global search displays results in a fuzzy picker, use `Space + '` to bring it back up after opening a file.
 
 ##### Popup
 
@@ -311,8 +311,8 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `]t`     | Go to previous test (**TS**)                 | `goto_prev_test`      |
 | `]p`     | Go to next paragraph                         | `goto_next_paragraph` |
 | `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
-| `[space` | Add newline above                            | `add_newline_above`   |
-| `]space` | Add newline below                            | `add_newline_below`   |
+| `[Space` | Add newline above                            | `add_newline_above`   |
+| `]Space` | Add newline below                            | `add_newline_below`   |
 
 ## Insert mode
 
@@ -414,8 +414,8 @@ Keys to use within prompt, Remapping currently not supported.
 | `Alt-d`, `Alt-Delete`, `Ctrl-Delete`        | Delete next word                                                        |
 | `Ctrl-u`                                    | Delete to start of line                                                 |
 | `Ctrl-k`                                    | Delete to end of line                                                   |
-| `backspace`, `Ctrl-h`                       | Delete previous char                                                    |
-| `delete`, `Ctrl-d`                          | Delete next char                                                        |
+| `Backspace`, `Ctrl-h`                       | Delete previous char                                                    |
+| `Delete`, `Ctrl-d`                          | Delete next char                                                        |
 | `Ctrl-s`                                    | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
 | `Ctrl-p`, `Up`                              | Select previous history                                                 |
 | `Ctrl-n`, `Down`                            | Select next history                                                     |
