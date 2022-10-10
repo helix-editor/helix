@@ -990,7 +990,7 @@ lines.
  --> if a wouldchuck could chuck would?
 
  Note: Additionally, A-( and A-) cycle the *contents* of the
-       selections as well.
+       selections.
 
 =================================================================
 =                     10.2 CHANGING CASE                        =
