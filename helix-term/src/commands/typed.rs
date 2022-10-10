@@ -463,6 +463,7 @@ fn set_line_ending(
         }),
     );
     doc.apply(&transaction, view.id);
+    view.apply(&transaction, doc);
     doc.append_changes_to_history(view.id);
 
     Ok(())
@@ -884,6 +885,7 @@ fn replace_selections_with_clipboard_impl(
             });
 
             doc.apply(&transaction, view.id);
+            view.apply(&transaction, doc);
             doc.append_changes_to_history(view.id);
             Ok(())
         }
@@ -1004,7 +1006,7 @@ fn reload(
 
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
-    doc.reload(view.id).map(|_| {
+    doc.reload(view).map(|_| {
         view.ensure_cursor_in_view(doc, scrolloff);
     })
 }
@@ -1399,6 +1401,7 @@ fn sort_impl(
     );
 
     doc.apply(&transaction, view.id);
+    view.apply(&transaction, doc);
     doc.append_changes_to_history(view.id);
 
     Ok(())
@@ -1443,6 +1446,7 @@ fn reflow(
     });
 
     doc.apply(&transaction, view.id);
+    view.apply(&transaction, doc);
     doc.append_changes_to_history(view.id);
     view.ensure_cursor_in_view(doc, scrolloff);
 

@@ -143,11 +143,11 @@ impl Completion {
             let (view, doc) = current!(editor);
 
             // if more text was entered, remove it
-            doc.restore(view.id);
+            doc.restore(view);
 
             match event {
                 PromptEvent::Abort => {
-                    doc.restore(view.id);
+                    doc.restore(view);
                     editor.last_completion = None;
                 }
                 PromptEvent::Update => {
@@ -165,6 +165,7 @@ impl Completion {
                     // initialize a savepoint
                     doc.savepoint();
                     doc.apply(&transaction, view.id);
+                    view.apply(&transaction, doc);
 
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
@@ -184,6 +185,7 @@ impl Completion {
                     );
 
                     doc.apply(&transaction, view.id);
+                    view.apply(&transaction, doc);
 
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
@@ -214,6 +216,7 @@ impl Completion {
                                 offset_encoding, // TODO: should probably transcode in Client
                             );
                             doc.apply(&transaction, view.id);
+                            view.apply(&transaction, doc);
                         }
                     }
                 }
