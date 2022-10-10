@@ -889,8 +889,9 @@ lines.
  n and N both refer to register /, this means we can set that
  register without having to type in a search.
 
- Type * to copy the primary selection into register /, setting
- the search term to the selection.
+ Type * to copy the selection into register /, setting the search
+ term to the selection. This copies the primary selection, which
+ you will learn about in the section on cycling selections.
 
  1. Move the cursor to the line marked '-->' below.
  2. Select "horse" with e and type *.
