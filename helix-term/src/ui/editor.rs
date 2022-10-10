@@ -349,7 +349,11 @@ impl EditorView {
                     Mode::Select => theme.find_scope_index("ui.cursor.secondary.select"),
                     Mode::Normal => theme.find_scope_index("ui.cursor.secondary"),
                 }
-                .unwrap_or(cursor_scope)
+                .unwrap_or_else(|| {
+                    theme
+                        .find_scope_index("ui.cursor.secondary")
+                        .unwrap_or(cursor_scope)
+                })
             } else {
                 theme
                     .find_scope_index("ui.cursor.secondary")
