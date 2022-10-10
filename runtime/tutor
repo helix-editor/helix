@@ -490,7 +490,8 @@ _________________________________________________________________
 
  Type C to duplicate the cursor to the next suitable line.
 
- 1. Move the cursor to the first line marked '-->' below.
+ 1. Move the cursor to the first line below marked -->. Place
+    the cursor on the first word.
  2. Type C to duplicate the cursor to the next suitable line.
     Notice how it skips the line in the middle. Keys you type
     will now affect both cursors.
