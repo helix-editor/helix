@@ -23,9 +23,9 @@
 "ui.cursor" =  { fg = "background", bg = "orange", modifiers = ["dim"] }
 "ui.cursor.match" = { fg = "green", modifiers = ["underlined"] }
 "ui.cursor.primary" = { fg = "background", bg = "cyan", modifiers = ["dim"] }
-"ui.cursor.color.normal" = { fg = "background", bg = "cyan" }
-"ui.cursor.color.insert" = { fg = "background", bg = "green" }
-"ui.cursor.color.select" = { fg = "background", bg = "purple" }
+"ui.cursor.normal" = { fg = "background", bg = "cyan",  modifiers = ["dim"]}
+"ui.cursor.insert" = { fg = "background", bg = "green",  modifiers = ["dim"]}
+"ui.cursor.select" = { fg = "background", bg = "purple",  modifiers = ["dim"]}
 "ui.cursorline.primary" = { bg = "background_dark" }
 "ui.help" = { fg = "foreground", bg = "background_dark" }
 "ui.linenr" = { fg = "comment" }
