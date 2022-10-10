@@ -171,7 +171,7 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     /// Whether the cursor matches the mode color if `color_modes` is `true`. Defaults to `fales`
-    pub cursor_match_mode_color: bool,
+    pub cursor_color_match_mode: bool,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -607,7 +607,7 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
-            cursor_match_mode_color: true,
+            cursor_color_match_mode: false,
         }
     }
 }
