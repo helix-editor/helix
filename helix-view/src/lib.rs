@@ -64,6 +64,19 @@ pub fn align_view(doc: &Document, view: &mut View, align: Align) {
     view.offset.row = line.saturating_sub(relative);
 }
 
+/// Applies a [`helix_core::Transaction`] to the given [`Document`]
+/// and [`View`].
+pub fn apply_transaction(
+    transaction: &helix_core::Transaction,
+    doc: &mut Document,
+    view: &mut View,
+) -> bool {
+    // This is a short function but it's easy to call `Document::apply`
+    // without calling `View::apply` or in the wrong order. The transaction
+    // must be applied to the document before the view.
+    doc.apply(transaction, view.id) && view.apply(transaction, doc)
+}
+
 pub use document::Document;
 pub use editor::Editor;
 pub use theme::Theme;

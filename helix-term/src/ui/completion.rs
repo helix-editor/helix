@@ -1,5 +1,5 @@
 use crate::compositor::{Component, Context, Event, EventResult};
-use helix_view::editor::CompleteAction;
+use helix_view::{apply_transaction, editor::CompleteAction};
 use tui::buffer::Buffer as Surface;
 use tui::text::Spans;
 
@@ -164,8 +164,7 @@ impl Completion {
 
                     // initialize a savepoint
                     doc.savepoint();
-                    doc.apply(&transaction, view.id);
-                    view.apply(&transaction, doc);
+                    apply_transaction(&transaction, doc, view);
 
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
@@ -184,8 +183,7 @@ impl Completion {
                         trigger_offset,
                     );
 
-                    doc.apply(&transaction, view.id);
-                    view.apply(&transaction, doc);
+                    apply_transaction(&transaction, doc, view);
 
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
@@ -215,8 +213,7 @@ impl Completion {
                                 additional_edits.clone(),
                                 offset_encoding, // TODO: should probably transcode in Client
                             );
-                            doc.apply(&transaction, view.id);
-                            view.apply(&transaction, doc);
+                            apply_transaction(&transaction, doc, view);
                         }
                     }
                 }
