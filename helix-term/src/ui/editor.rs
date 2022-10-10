@@ -376,7 +376,7 @@ impl EditorView {
 
             // Special-case: cursor at end of the rope.
             if range.head == range.anchor && range.head == text.len_chars() {
-                if !selection_is_secondary || cursor_is_block {
+                if selection_is_secondary || cursor_is_block {
                     // Bar and underline cursors are drawn by the terminal
                     // BUG: If the editor area loses focus while having a bar or
                     // underline cursor (eg. when a regex prompt has focus) then
@@ -392,13 +392,13 @@ impl EditorView {
                 // Standard case.
                 let cursor_start = prev_grapheme_boundary(text, range.head);
                 spans.push((selection_scope, range.anchor..cursor_start));
-                if !selection_is_secondary || cursor_is_block {
+                if selection_is_secondary || cursor_is_block {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
-                if !selection_is_secondary || cursor_is_block {
+                if selection_is_secondary || cursor_is_block {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
                 spans.push((selection_scope, cursor_end..range.anchor));
