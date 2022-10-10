@@ -96,7 +96,7 @@
 
 [(true) (false)] @constant.builtin.boolean
 
-(enumerator) @type.enum.variant
+(enumerator name: (identifier) @type.enum.variant)
 
 (string_literal) @string
 (system_lib_string) @string
