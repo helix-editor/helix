@@ -11,7 +11,7 @@ use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
     increment::date_time::DateTimeIncrementor,
-    increment::{number::IntegerIncrementor, Increment},
+    increment::{integer::IntegerIncrementor, Increment},
     indent,
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},

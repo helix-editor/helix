@@ -1,5 +1,5 @@
 pub mod date_time;
-pub mod number;
+pub mod integer;
 
 use crate::{Range, Tendril};
 

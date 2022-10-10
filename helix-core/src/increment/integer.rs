@@ -358,36 +358,6 @@ mod test {
     }
 
     #[test]
-    fn test_number_can_have_underscores() {
-        let rope = Rope::from_str("1_000_000");
-        let range = Range::point(0);
-        assert_eq!(
-            IntegerIncrementor::from_range(rope.slice(..), range),
-            Some(IntegerIncrementor {
-                range: Range::new(0, 9),
-                value: 1000000,
-                radix: 10,
-                text: rope.slice(..),
-            })
-        );
-    }
-
-    #[test]
-    fn test_number_no_trailing_underscores() {
-        let rope = Rope::from_str("1_000_000_");
-        let range = Range::point(0);
-        assert_eq!(
-            IntegerIncrementor::from_range(rope.slice(..), range),
-            Some(IntegerIncrementor {
-                range: Range::new(0, 9),
-                value: 1000000,
-                radix: 10,
-                text: rope.slice(..),
-            })
-        );
-    }
-
-    #[test]
     fn test_increment_basic_decimal_numbers() {
         let tests = [
             ("100", 1, "101"),
@@ -541,5 +511,20 @@ mod test {
                 Tendril::from(expected)
             );
         }
+    }
+
+    #[test]
+    fn test_number_trailing_separator_ignored() {
+        let rope = Rope::from_str("1_000_000_");
+        let range = Range::point(0);
+        assert_eq!(
+            IntegerIncrementor::from_range(rope.slice(..), range),
+            Some(IntegerIncrementor {
+                range: Range::new(0, 9),
+                value: 1000000,
+                radix: 10,
+                text: rope.slice(..),
+            })
+        );
     }
 }
