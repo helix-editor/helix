@@ -67,14 +67,44 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
 #[tokio::test]
 async fn surround_by_character() -> anyhow::Result<()> {
     // Only pairs matching the passed character count
-    test(("(so [many {go#[o|]#d} text] here)", "mi{", "(so [many {#[good|]#} text] here)")).await?;
-    test(("(so [many {go#[o|]#d} text] here)", "mi[", "(so [#[many {good} text|]#] here)")).await?;
-    test(("(so [many {go#[o|]#d} text] here)", "mi(", "(#[so [many {good} text] here|]#)")).await?;
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "mi{",
+        "(so [many {#[good|]#} text] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "mi[",
+        "(so [#[many {good} text|]#] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "mi(",
+        "(#[so [many {good} text] here|]#)",
+    ))
+    .await?;
 
     // Works with characters that aren't pairs too
-    test(("'so 'many 'go#[o|]#d' text' here'", "mi'", "'so 'many '#[good|]#' text' here'")).await?;
-    test(("'so 'many 'go#[o|]#d' text' here'", "2mi'", "'so '#[many 'good' text|]#' here'")).await?;
-    test(("'so \"many 'go#[o|]#d' text\" here'", "mi\"", "'so \"#[many 'good' text|]#\" here'")).await?;
+    test((
+        "'so 'many 'go#[o|]#d' text' here'",
+        "mi'",
+        "'so 'many '#[good|]#' text' here'",
+    ))
+    .await?;
+    test((
+        "'so 'many 'go#[o|]#d' text' here'",
+        "2mi'",
+        "'so '#[many 'good' text|]#' here'",
+    ))
+    .await?;
+    test((
+        "'so \"many 'go#[o|]#d' text\" here'",
+        "mi\"",
+        "'so \"#[many 'good' text|]#\" here'",
+    ))
+    .await?;
 
     Ok(())
 }
@@ -97,24 +127,84 @@ async fn surround_inside_pair() -> anyhow::Result<()> {
     test(("so#[m|]#e (text) here", "mim", "so#[m|]#e (text) here")).await?;
 
     // Count skips to outer pairs
-    test(("(so (many (go#[o|]#d) text) here)", "1mim", "(so (many (#[good|]#) text) here)")).await?;
-    test(("(so (many (go#[o|]#d) text) here)", "2mim", "(so (#[many (good) text|]#) here)")).await?;
-    test(("(so (many (go#[o|]#d) text) here)", "3mim", "(#[so (many (good) text) here|]#)")).await?;
+    test((
+        "(so (many (go#[o|]#d) text) here)",
+        "1mim",
+        "(so (many (#[good|]#) text) here)",
+    ))
+    .await?;
+    test((
+        "(so (many (go#[o|]#d) text) here)",
+        "2mim",
+        "(so (#[many (good) text|]#) here)",
+    ))
+    .await?;
+    test((
+        "(so (many (go#[o|]#d) text) here)",
+        "3mim",
+        "(#[so (many (good) text) here|]#)",
+    ))
+    .await?;
 
     // Matching paris outside selection don't match
-    test(("((so)((many) go#[o|]#d (text))(here))", "mim", "((so)(#[(many) good (text)|]#)(here))")).await?;
-    test(("((so)((many) go#[o|]#d (text))(here))", "2mim", "(#[(so)((many) good (text))(here)|]#)")).await?;
+    test((
+        "((so)((many) go#[o|]#d (text))(here))",
+        "mim",
+        "((so)(#[(many) good (text)|]#)(here))",
+    ))
+    .await?;
+    test((
+        "((so)((many) go#[o|]#d (text))(here))",
+        "2mim",
+        "(#[(so)((many) good (text))(here)|]#)",
+    ))
+    .await?;
 
     // Works with mixed braces
-    test(("(so [many {go#[o|]#d} text] here)", "mim", "(so [many {#[good|]#} text] here)")).await?;
-    test(("(so [many {go#[o|]#d} text] here)", "2mim", "(so [#[many {good} text|]#] here)")).await?;
-    test(("(so [many {go#[o|]#d} text] here)", "3mim", "(#[so [many {good} text] here|]#)")).await?;
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "mim",
+        "(so [many {#[good|]#} text] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "2mim",
+        "(so [#[many {good} text|]#] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "3mim",
+        "(#[so [many {good} text] here|]#)",
+    ))
+    .await?;
 
     // Only pairs outside of full selection range are considered
-    test(("(so (many (go#[od) |]#text) here)", "mim", "(so (#[many (good) text|]#) here)")).await?;
-    test(("(so (many#[ (go|]#od) text) here)", "mim", "(so (#[many (good) text|]#) here)")).await?;
-    test(("(so#[ (many (go|]#od) text) here)", "mim", "(#[so (many (good) text) here|]#)")).await?;
-    test(("(so (many (go#[od) text) |]#here)", "mim", "(#[so (many (good) text) here|]#)")).await?;
+    test((
+        "(so (many (go#[od) |]#text) here)",
+        "mim",
+        "(so (#[many (good) text|]#) here)",
+    ))
+    .await?;
+    test((
+        "(so (many#[ (go|]#od) text) here)",
+        "mim",
+        "(so (#[many (good) text|]#) here)",
+    ))
+    .await?;
+    test((
+        "(so#[ (many (go|]#od) text) here)",
+        "mim",
+        "(#[so (many (good) text) here|]#)",
+    ))
+    .await?;
+    test((
+        "(so (many (go#[od) text) |]#here)",
+        "mim",
+        "(#[so (many (good) text) here|]#)",
+    ))
+    .await?;
 
     Ok(())
 }
@@ -137,24 +227,84 @@ async fn surround_around_pair() -> anyhow::Result<()> {
     test(("so#[m|]#e (text) here", "mam", "so#[m|]#e (text) here")).await?;
 
     // Count skips to outer pairs
-    test(("(so (many (go#[o|]#d) text) here)", "1mam", "(so (many #[(good)|]# text) here)")).await?;
-    test(("(so (many (go#[o|]#d) text) here)", "2mam", "(so #[(many (good) text)|]# here)")).await?;
-    test(("(so (many (go#[o|]#d) text) here)", "3mam", "#[(so (many (good) text) here)|]#")).await?;
+    test((
+        "(so (many (go#[o|]#d) text) here)",
+        "1mam",
+        "(so (many #[(good)|]# text) here)",
+    ))
+    .await?;
+    test((
+        "(so (many (go#[o|]#d) text) here)",
+        "2mam",
+        "(so #[(many (good) text)|]# here)",
+    ))
+    .await?;
+    test((
+        "(so (many (go#[o|]#d) text) here)",
+        "3mam",
+        "#[(so (many (good) text) here)|]#",
+    ))
+    .await?;
 
     // Matching paris outside selection don't match
-    test(("((so)((many) go#[o|]#d (text))(here))", "mam", "((so)#[((many) good (text))|]#(here))")).await?;
-    test(("((so)((many) go#[o|]#d (text))(here))", "2mam", "#[((so)((many) good (text))(here))|]#")).await?;
+    test((
+        "((so)((many) go#[o|]#d (text))(here))",
+        "mam",
+        "((so)#[((many) good (text))|]#(here))",
+    ))
+    .await?;
+    test((
+        "((so)((many) go#[o|]#d (text))(here))",
+        "2mam",
+        "#[((so)((many) good (text))(here))|]#",
+    ))
+    .await?;
 
     // Works with mixed braces
-    test(("(so [many {go#[o|]#d} text] here)", "mam", "(so [many #[{good}|]# text] here)")).await?;
-    test(("(so [many {go#[o|]#d} text] here)", "2mam", "(so #[[many {good} text]|]# here)")).await?;
-    test(("(so [many {go#[o|]#d} text] here)", "3mam", "#[(so [many {good} text] here)|]#")).await?;
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "mam",
+        "(so [many #[{good}|]# text] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "2mam",
+        "(so #[[many {good} text]|]# here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "3mam",
+        "#[(so [many {good} text] here)|]#",
+    ))
+    .await?;
 
     // Only pairs outside of full selection range are considered
-    test(("(so (many (go#[od) |]#text) here)", "mam", "(so #[(many (good) text)|]# here)")).await?;
-    test(("(so (many#[ (go|]#od) text) here)", "mam", "(so #[(many (good) text)|]# here)")).await?;
-    test(("(so#[ (many (go|]#od) text) here)", "mam", "#[(so (many (good) text) here)|]#")).await?;
-    test(("(so (many (go#[od) text) |]#here)", "mam", "#[(so (many (good) text) here)|]#")).await?;
+    test((
+        "(so (many (go#[od) |]#text) here)",
+        "mam",
+        "(so #[(many (good) text)|]# here)",
+    ))
+    .await?;
+    test((
+        "(so (many#[ (go|]#od) text) here)",
+        "mam",
+        "(so #[(many (good) text)|]# here)",
+    ))
+    .await?;
+    test((
+        "(so#[ (many (go|]#od) text) here)",
+        "mam",
+        "#[(so (many (good) text) here)|]#",
+    ))
+    .await?;
+    test((
+        "(so (many (go#[od) text) |]#here)",
+        "mam",
+        "#[(so (many (good) text) here)|]#",
+    ))
+    .await?;
 
     Ok(())
 }
