@@ -180,6 +180,26 @@ async fn surround_inside_pair() -> anyhow::Result<()> {
     ))
     .await?;
 
+    // Selection direction is preserved
+    test((
+        "(so [many {go#[|od]#} text] here)",
+        "mim",
+        "(so [many {#[|good]#} text] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[|od]#} text] here)",
+        "2mim",
+        "(so [#[|many {good} text]#] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[|od]#} text] here)",
+        "3mim",
+        "(#[|so [many {good} text] here]#)",
+    ))
+    .await?;
+
     // Only pairs outside of full selection range are considered
     test((
         "(so (many (go#[od) |]#text) here)",
@@ -277,6 +297,26 @@ async fn surround_around_pair() -> anyhow::Result<()> {
         "(so [many {go#[o|]#d} text] here)",
         "3mam",
         "#[(so [many {good} text] here)|]#",
+    ))
+    .await?;
+
+    // Selection direction is preserved
+    test((
+        "(so [many {go#[|od]#} text] here)",
+        "mam",
+        "(so [many #[|{good}]# text] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[|od]#} text] here)",
+        "2mam",
+        "(so #[|[many {good} text]]# here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[|od]#} text] here)",
+        "3mam",
+        "#[|(so [many {good} text] here)]#",
     ))
     .await?;
 

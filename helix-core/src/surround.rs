@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{search, Range, Selection};
+use crate::{movement::Direction, search, Range, Selection};
 use ropey::RopeSlice;
 
 pub const PAIRS: &[(char, char)] = &[
@@ -107,7 +107,11 @@ pub fn find_nth_closest_pairs_pos(
                     skip -= 1;
                     continue;
                 }
-                return Ok((open_pos, close_pos));
+
+                return match range.direction() {
+                    Direction::Forward => Ok((open_pos, close_pos)),
+                    Direction::Backward => Ok((close_pos, open_pos)),
+                };
             }
             _ => continue,
         }
