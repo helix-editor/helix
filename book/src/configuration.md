@@ -249,6 +249,6 @@ Example:
 ```toml
 [editor.indent-guides]
 render = true
-character = "╎", # Some characters that work well: "▏", "┆", "┊", "⸽"
+character = "╎" # Some characters that work well: "▏", "┆", "┊", "⸽"
 skip-levels = 1
 ```
