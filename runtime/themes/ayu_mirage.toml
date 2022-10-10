@@ -34,7 +34,8 @@
 
 # Interface
 "ui.background"= { bg = "background" }
-"ui.cursor" = { bg = "yellow", fg = "dark_gray" }
+"ui.cursor" = { bg = "green", fg = "dark_gray" }
+"ui.cursor.primary" = { bg = "orange", fg = "dark_gray" }
 "ui.cursor.match" = { fg = "orange" }
 "ui.linenr" = { fg = "dark_gray" }
 "ui.linenr.selected" = { fg = "orange" }
