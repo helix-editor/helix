@@ -119,7 +119,7 @@ async fn surround_inside_pair() -> anyhow::Result<()> {
     test(("some (#[t|]#ext) here", "mim", "some (#[text|]#) here")).await?;
 
     // On pair character selects pair
-    // Opening pair character is a known failure case that needs addressing
+    // TODO: Opening pair character is a known failure case that needs addressing
     // test(("some #[(|]#text) here", "mim", "some (#[text|]#) here")).await?;
     test(("some (text#[)|]# here", "mim", "some (#[text|]#) here")).await?;
 
@@ -247,7 +247,7 @@ async fn surround_around_pair() -> anyhow::Result<()> {
     test(("some (#[t|]#ext) here", "mam", "some #[(text)|]# here")).await?;
 
     // On pair character selects pair
-    // Opening pair character is a known failure case that needs addressing
+    // TODO: Opening pair character is a known failure case that needs addressing
     // test(("some #[(|]#text) here", "mam", "some #[(text)|]# here")).await?;
     test(("some (text#[)|]# here", "mam", "some #[(text)|]# here")).await?;
 
