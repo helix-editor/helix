@@ -66,6 +66,7 @@ pub fn find_nth_closest_pairs_pos(
 
     for ch in text.chars_at(pos) {
         close_pos += 1;
+
         if is_open_pair(ch) {
             // Track open pairs encountered so that we can step over
             // the corresponding close pairs that will come up further
@@ -73,38 +74,42 @@ pub fn find_nth_closest_pairs_pos(
             // open pair is before the cursor position.
             stack.push(ch);
             continue;
-        } else if is_close_pair(ch) {
-            let (open, close) = get_pair(ch);
-            if stack.last() == Some(&open) {
-                stack.pop();
-                continue;
-            } else {
-                // In the ideal case the stack would be empty here and the
-                // current character would be the close pair that we are
-                // looking for. It could also be the case that the pairs
-                // are unbalanced and we encounter a close pair that doesn't
-                // close the last seen open pair. In either case use this
-                // char as the auto-detected closest pair.
-                match find_nth_open_pair(text, open, close, close_pos, 1) {
-                    // Before we accept this pair, we want to ensure that the
-                    // pair encloses the range rather than just the cursor.
-                    Some(open_pos)
-                        if open_pos <= pos.saturating_add(1)
-                            && close_pos >= range.to().saturating_sub(1) =>
-                    {
-                        // Since we have special conditions for when to
-                        // accept, we can't just pass the skip parameter on
-                        // through to the find_nth_*_pair methods, so we
-                        // track skips manually here.
-                        if skip > 1 {
-                            skip -= 1;
-                            continue;
-                        }
-                        return Ok((open_pos, close_pos));
-                    }
-                    _ => continue,
+        }
+
+        if !is_close_pair(ch) {
+            // We don't care if this character isn't a brace pair item,
+            // so short circuit here.
+            continue;
+        }
+
+        let (open, close) = get_pair(ch);
+
+        if stack.last() == Some(&open) {
+            // If we are encountering the closing pair for an opener
+            // we just found while traversing, then its inside the
+            // selection and should be skipped over.
+            stack.pop();
+            continue;
+        }
+
+        match find_nth_open_pair(text, open, close, close_pos, 1) {
+            // Before we accept this pair, we want to ensure that the
+            // pair encloses the range rather than just the cursor.
+            Some(open_pos)
+                if open_pos <= pos.saturating_add(1)
+                    && close_pos >= range.to().saturating_sub(1) =>
+            {
+                // Since we have special conditions for when to
+                // accept, we can't just pass the skip parameter on
+                // through to the find_nth_*_pair methods, so we
+                // track skips manually here.
+                if skip > 1 {
+                    skip -= 1;
+                    continue;
                 }
+                return Ok((open_pos, close_pos));
             }
+            _ => continue,
         }
     }
 
