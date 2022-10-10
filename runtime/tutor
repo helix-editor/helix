@@ -450,7 +450,9 @@ _________________________________________________________________
  2. Type enter to confirm the search.
  3. Use n and N to cycle through the matches.
 
- Like the select command, searching also uses regex.
+ Searching uses regular expressions, allowing you to target more
+ complex expressions, which you'll learn about in the lesson on
+ the select command.
 
  Note: To search backwards, type ? (shift-/).
  Note: Unlike Vim, ? doesn't change the search direction.
@@ -530,8 +532,8 @@ _________________________________________________________________
 =                    5.3 SELECTING VIA REGEX                    =
 =================================================================
 
- The select command selects regular expressions, not just exact
- matches, allowing you to target more complex patterns.
+ Like searching, the select command selects regular expressions,
+ not just exact matches.
 
  1. Move the cursor to the line marked '-->' below.
  2. Select the line with x and then type s.
