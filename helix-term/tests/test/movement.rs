@@ -80,7 +80,7 @@ async fn surround_by_character() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn surround_pair() -> anyhow::Result<()> {
+async fn surround_inside_pair() -> anyhow::Result<()> {
     // Works at first character of buffer
     // TODO: Adjust test when opening pair failure is fixed
     test(("#[(|]#something)", "mim", "#[(|]#something)")).await?;
@@ -115,6 +115,46 @@ async fn surround_pair() -> anyhow::Result<()> {
     test(("(so (many#[ (go|]#od) text) here)", "mim", "(so (#[many (good) text|]#) here)")).await?;
     test(("(so#[ (many (go|]#od) text) here)", "mim", "(#[so (many (good) text) here|]#)")).await?;
     test(("(so (many (go#[od) text) |]#here)", "mim", "(#[so (many (good) text) here|]#)")).await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn surround_around_pair() -> anyhow::Result<()> {
+    // Works at first character of buffer
+    // TODO: Adjust test when opening pair failure is fixed
+    test(("#[(|]#something)", "mam", "#[(|]#something)")).await?;
+
+    // Inside a valid pair selects pair
+    test(("some (#[t|]#ext) here", "mam", "some #[(text)|]# here")).await?;
+
+    // On pair character selects pair
+    // Opening pair character is a known failure case that needs addressing
+    // test(("some #[(|]#text) here", "mam", "some #[(text)|]# here")).await?;
+    test(("some (text#[)|]# here", "mam", "some #[(text)|]# here")).await?;
+
+    // No valid pair does nothing
+    test(("so#[m|]#e (text) here", "mam", "so#[m|]#e (text) here")).await?;
+
+    // Count skips to outer pairs
+    test(("(so (many (go#[o|]#d) text) here)", "1mam", "(so (many #[(good)|]# text) here)")).await?;
+    test(("(so (many (go#[o|]#d) text) here)", "2mam", "(so #[(many (good) text)|]# here)")).await?;
+    test(("(so (many (go#[o|]#d) text) here)", "3mam", "#[(so (many (good) text) here)|]#")).await?;
+
+    // Matching paris outside selection don't match
+    test(("((so)((many) go#[o|]#d (text))(here))", "mam", "((so)#[((many) good (text))|]#(here))")).await?;
+    test(("((so)((many) go#[o|]#d (text))(here))", "2mam", "#[((so)((many) good (text))(here))|]#")).await?;
+
+    // Works with mixed braces
+    test(("(so [many {go#[o|]#d} text] here)", "mam", "(so [many #[{good}|]# text] here)")).await?;
+    test(("(so [many {go#[o|]#d} text] here)", "2mam", "(so #[[many {good} text]|]# here)")).await?;
+    test(("(so [many {go#[o|]#d} text] here)", "3mam", "#[(so [many {good} text] here)|]#")).await?;
+
+    // Only pairs outside of full selection range are considered
+    test(("(so (many (go#[od) |]#text) here)", "mam", "(so #[(many (good) text)|]# here)")).await?;
+    test(("(so (many#[ (go|]#od) text) here)", "mam", "(so #[(many (good) text)|]# here)")).await?;
+    test(("(so#[ (many (go|]#od) text) here)", "mam", "#[(so (many (good) text) here)|]#")).await?;
+    test(("(so (many (go#[od) text) |]#here)", "mam", "#[(so (many (good) text) here)|]#")).await?;
 
     Ok(())
 }
