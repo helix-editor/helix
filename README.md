@@ -70,7 +70,7 @@ for a language.
 
 ## Adding Helix to your desktop environment
 
-If installing from source, to use Helix in desktop environments that supports [XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html), including Gnome and KDE, copy the provided `.desktop` file to the correct folder:
+If installing from source to use Helix in a desktop environment that supports [XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html) including Gnome and KDE, copy the provided `.desktop` file to the correct folder:
 
 ```bash
 cp contrib/Helix.desktop ~/.local/share/applications
