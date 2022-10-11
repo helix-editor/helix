@@ -465,7 +465,7 @@ pub fn code_action(cx: &mut Context) {
             // sort by CodeActionKind
             // this ensures that the most relevant codeactions (quickfix) show up first
             // while more situational commands (like refactors) show up later
-            // this behaviour is modeled after the behaviour of vscode (editor/contrib/codeAction/browser/codeActionWidget.ts)
+            // this behaviour is modeled after the behaviour of vscode (https://github.com/microsoft/vscode/blob/eaec601dd69aeb4abb63b9601a6f44308c8d8c6e/src/vs/editor/contrib/codeAction/browser/codeActionWidget.ts)
 
             actions.sort_by_key(|action| match &action {
                 lsp::CodeActionOrCommand::CodeAction(lsp::CodeAction {
