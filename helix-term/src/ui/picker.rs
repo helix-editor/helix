@@ -204,6 +204,8 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         let inner = inner.inner(&margin);
         block.render(preview_area, surface);
 
+        let mut preview_scroll_offset = self.picker.preview_scroll_offset;
+
         if let Some((path, range)) = self.current_file(cx.editor) {
             let preview = self.get_preview(&path, cx.editor);
             let doc = match preview.document() {
@@ -226,7 +228,8 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                 })
                 .unwrap_or(0);
 
-            let offset = Position::new(first_line, 0);
+            preview_scroll_offset = preview_scroll_offset.min(doc.text().len_lines());
+            let offset = Position::new(first_line + preview_scroll_offset, 0);
 
             let highlights =
                 EditorView::doc_syntax_highlights(doc, offset, area.height, &cx.editor.theme);
@@ -258,6 +261,9 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                 );
             }
         }
+
+        // Limits the preview scroll between 0 and doc's len_lines() in case it moves past the line number
+        self.picker.preview_scroll_offset = preview_scroll_offset;
     }
 
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
@@ -297,6 +303,7 @@ pub struct Picker<T: Item> {
     // pattern: String,
     prompt: Prompt,
     previous_pattern: String,
+    preview_scroll_offset: usize,
     /// Whether to truncate the start (default true)
     pub truncate_start: bool,
     /// Whether to show the preview panel (default true)
@@ -327,6 +334,7 @@ impl<T: Item> Picker<T> {
             cursor: 0,
             prompt,
             previous_pattern: String::new(),
+            preview_scroll_offset: 0,
             truncate_start: true,
             show_preview: true,
             callback_fn: Box::new(callback_fn),
@@ -434,6 +442,18 @@ impl<T: Item> Picker<T> {
         }
     }
 
+    // Move the picker file preview by a number of lines, either down (`Forward`) or up (`Backward`)
+    pub fn move_preview_by(&mut self, amount: usize, direction: Direction) {
+        self.preview_scroll_offset = match direction {
+            Direction::Forward => {
+                self.preview_scroll_offset.saturating_add(amount)
+            },
+            Direction::Backward => {
+                self.preview_scroll_offset.saturating_sub(amount)
+            },
+        };
+    }
+
     /// Move the cursor down by exactly one page. After the last page comes the first page.
     pub fn page_up(&mut self) {
         self.move_by(self.completion_height as usize, Direction::Backward);
@@ -508,6 +528,12 @@ impl<T: Item + 'static> Component for Picker<T> {
         match key_event {
             shift!(Tab) | key!(Up) | ctrl!('p') => {
                 self.move_by(1, Direction::Backward);
+            }
+            shift!(Up) => {
+                self.move_preview_by(cx.editor.config().scroll_lines.unsigned_abs(), Direction::Backward);
+            }
+            shift!(Down) => {
+                self.move_preview_by(cx.editor.config().scroll_lines.unsigned_abs(), Direction::Forward);
             }
             key!(Tab) | key!(Down) | ctrl!('n') => {
                 self.move_by(1, Direction::Forward);
