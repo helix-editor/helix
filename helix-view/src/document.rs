@@ -24,7 +24,7 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
-use crate::{DocumentId, Editor, ViewId};
+use crate::{apply_transaction, DocumentId, Editor, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -601,7 +601,7 @@ impl Document {
     }
 
     /// Reload the document from its path.
-    pub fn reload(&mut self, view_id: ViewId) -> Result<(), Error> {
+    pub fn reload(&mut self, view: &mut View) -> Result<(), Error> {
         let encoding = &self.encoding;
         let path = self.path().filter(|path| path.exists());
 
@@ -617,8 +617,8 @@ impl Document {
         // This is not considered a modification of the contents of the file regardless
         // of the encoding.
         let transaction = helix_core::diff::compare_ropes(self.text(), &rope);
-        self.apply(&transaction, view_id);
-        self.append_changes_to_history(view_id);
+        apply_transaction(&transaction, self, view);
+        self.append_changes_to_history(view.id);
         self.reset_modified();
 
         self.detect_indent_and_line_ending();
@@ -810,6 +810,9 @@ impl Document {
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
+    /// Instead of calling this function directly, use [crate::apply_transaction]
+    /// to ensure that the transaction is applied to the appropriate [`View`] as
+    /// well.
     pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
@@ -862,9 +865,9 @@ impl Document {
         self.savepoint = Some(Transaction::new(self.text()));
     }
 
-    pub fn restore(&mut self, view_id: ViewId) {
+    pub fn restore(&mut self, view: &mut View) {
         if let Some(revert) = self.savepoint.take() {
-            self.apply(&revert, view_id);
+            apply_transaction(&revert, self, view);
         }
     }
 

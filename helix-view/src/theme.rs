@@ -277,6 +277,13 @@ impl Theme {
             .find_map(|s| self.styles.get(s).copied())
     }
 
+    /// Get the style of a scope, without falling back to dot separated broader
+    /// scopes. For example if `ui.text.focus` is not defined in the theme, it
+    /// will return `None`, even if `ui.text` is.
+    pub fn try_get_exact(&self, scope: &str) -> Option<Style> {
+        self.styles.get(scope).copied()
+    }
+
     #[inline]
     pub fn scopes(&self) -> &[String] {
         &self.scopes

@@ -1,32 +1,32 @@
 # Author : Wojciech Kępka <wojciech@wkepka.dev>
 
-"attribute" = "#dc7759"
-"keyword" = { fg = "#dcb659", modifiers = ["bold"] }
-"keyword.directive" = "#dcb659"
-"namespace" = "#d32c5d"
-"punctuation" = "#dc7759"
-"punctuation.delimiter" = "#dc7759"
-"operator" = { fg = "#dc7759", modifiers = ["bold"] }
-"special" = "#7fdc59"
-"variable.other.member" = "#c6b8ad"
-"variable" = "#c6b8ad"
-"variable.parameter" = "#c6b8ad"
-"type" = "#dc597f"
-"type.builtin" = { fg = "#d32c5d", modifiers = ["bold"] }
-"constructor" = "#dc597f"
-"function" = "#59dcd8"
-"function.macro" = { fg = "#dc7759", modifiers = ["bold"] }
-"function.builtin" = { fg = "#59dcd8", modifiers = ["bold"] }
-"comment" = "#627d9d"
-"variable.builtin" = "#c6b8ad"
-"constant" = "#59dcb7"
-"constant.builtin" = "#59dcb7"
-"string" = "#59dcb7"
-"constant.numeric" = "#59c0dc"
-"constant.character.escape" = { fg = "#7fdc59", modifiers = ["bold"] }
-"label" = "#59c0dc"
+"attribute" = "bogster0"
+"keyword" = { fg = "bogster1", modifiers = ["bold"] }
+"keyword.directive" = "bogster1"
+"namespace" = "bogster2"
+"punctuation" = "bogster0"
+"punctuation.delimiter" = "bogster0"
+"operator" = { fg = "bogster0", modifiers = ["bold"] }
+"special" = "bogster3"
+"variable.other.member" = "bogster4"
+"variable" = "bogster4"
+"variable.parameter" = "bogster4"
+"type" = "bogster5"
+"type.builtin" = { fg = "bogster2", modifiers = ["bold"] }
+"constructor" = "bogster5"
+"function" = "bogster6"
+"function.macro" = { fg = "bogster0", modifiers = ["bold"] }
+"function.builtin" = { fg = "bogster6", modifiers = ["bold"] }
+"comment" = "bogster7"
+"variable.builtin" = "bogster4"
+"constant" = "bogster8"
+"constant.builtin" = "bogster8"
+"string" = "bogster8"
+"constant.numeric" = "bogster9"
+"constant.character.escape" = { fg = "bogster3", modifiers = ["bold"] }
+"label" = "bogster9"
 
-"module" = "#d32c5d"
+"module" = "bogster2"
 
 # TODO
 "markup.heading" = "blue"
@@ -38,39 +38,60 @@
 "markup.quote" = "cyan"
 "markup.raw" = "green"
 
-"diff.plus" = "#59dcb7"
-"diff.delta" = "#dc7759"
-"diff.minus" = "#dc597f"
+"diff.plus" = "bogster8"
+"diff.delta" = "bogster0"
+"diff.minus" = "bogster5"
 
-"ui.background" = { bg = "#161c23" }
-"ui.linenr" = { fg = "#415367" }
-"ui.linenr.selected" = { fg = "#e5ded6" }  # TODO
-"ui.cursorline" = { bg = "#131920" }
-"ui.statusline" = { fg = "#e5ded6", bg = "#232d38" }
-"ui.statusline.inactive" = { fg = "#c6b8ad", bg = "#232d38" }
-"ui.bufferline" = { fg = "#627d9d", bg = "#131920" }
-"ui.bufferline.active" = { fg = "#e5ded6", bg = "#232d38" }
-"ui.popup" = { bg = "#232d38" }
-"ui.window" = { bg = "#232d38" }
-"ui.help" = { bg = "#232d38", fg = "#e5ded6" }
+"ui.background" = { bg = "bogster10" }
+"ui.linenr" = { fg = "bogster11" }
+"ui.linenr.selected" = { fg = "bogster12" }  # TODO
+"ui.cursorline" = { bg = "bogster13" }
+"ui.statusline" = { fg = "bogster12", bg = "bogster14" }
+"ui.statusline.inactive" = { fg = "bogster4", bg = "bogster14" }
+"ui.popup" = { bg = "bogster14" }
+"ui.window" = { bg = "bogster14" }
+"ui.help" = { bg = "bogster14", fg = "bogster12" }
 
-"ui.text" = { fg = "#e5ded6" }
-"ui.text.focus" = { fg = "#e5ded6", modifiers= ["bold"] }
-"ui.virtual.whitespace" = "#627d9d"
-"ui.virtual.ruler" = { bg = "#131920" }
+"ui.statusline.normal" = { fg = "bogster10", bg = "bogster9", modifiers = [ "bold" ]}
+"ui.statusline.insert" = { fg = "bogster10", bg = "bogster3", modifiers = [ "bold" ]}
+"ui.statusline.select" = { fg = "bogster10", bg = "bogster2", modifiers = [ "bold" ] }
 
-"ui.selection" = { bg = "#313f4e" }
+"ui.text" = { fg = "bogster12" }
+"ui.text.focus" = { fg = "bogster12", modifiers= ["bold"] }
+"ui.virtual.whitespace" = "bogster7"
+"ui.virtual.ruler" = { bg = "bogster13" }
+
+"ui.selection" = { bg = "bogster15" }
 # "ui.cursor.match"  # TODO might want to override this because dimmed is not widely supported
-"ui.cursor.match" = { fg = "#313f4e", bg = "#dc7759" }
-"ui.cursor" = { fg = "#ABB2BF", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "bogster15", bg = "bogster0" }
+"ui.cursor" = { fg = "bogster16", modifiers = ["reversed"] }
 
-"ui.menu" = { fg = "#e5ded6bg", bg = "#232d38" }
-"ui.menu.selected" = { bg = "#313f4e" }
+"ui.menu" = { fg = "bogster12", bg = "bogster14" }
+"ui.menu.selected" = { bg = "bogster15" }
 
-"warning" = "#dc7759"
-"error" = "#dc597f"
-"info" = "#59dcb7"
-"hint" = "#59c0dc"
+"warning" = "bogster0"
+"error" = "bogster5"
+"info" = "bogster8"
+"hint" = "bogster9"
 
 # make diagnostic underlined, to distinguish with selection text.
 diagnostic = { modifiers = ["underlined"] }
+
+[palette]
+bogster0 = "#dc7759"
+bogster1 = "#dcb659"
+bogster2 = "#d32c5d"
+bogster3 = "#7fdc59"
+bogster4 = "#c6b8ad"
+bogster5 = "#dc597f"
+bogster6 = "#59dcd8"
+bogster7 = "#627d9d"
+bogster8 = "#59dcb7"
+bogster9 = "#59c0dc"
+bogster10 = "#161c23" 
+bogster11 = "#415367" 
+bogster12 = "#e5ded6"
+bogster13 = "#131920"
+bogster14 = "#232d38"
+bogster15 = "#313f4e" 
+bogster16 = "#ABB2BF"

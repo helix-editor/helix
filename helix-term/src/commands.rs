@@ -27,6 +27,7 @@ use helix_core::{
     SmallVec, Tendril, Transaction,
 };
 use helix_view::{
+    apply_transaction,
     clipboard::ClipboardType,
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
@@ -859,7 +860,7 @@ fn align_selections(cx: &mut Context) {
     changes.sort_unstable_by_key(|(from, _, _)| *from);
 
     let transaction = Transaction::change(doc.text(), changes.into_iter());
-    doc.apply(&transaction, view.id);
+    apply_transaction(&transaction, doc, view);
 }
 
 fn goto_window(cx: &mut Context, align: Align) {
@@ -1289,7 +1290,7 @@ fn replace(cx: &mut Context) {
                 }
             });
 
-            doc.apply(&transaction, view.id);
+            apply_transaction(&transaction, doc, view);
         }
     })
 }
@@ -1306,7 +1307,7 @@ where
         (range.from(), range.to(), Some(text))
     });
 
-    doc.apply(&transaction, view.id);
+    apply_transaction(&transaction, doc, view);
 }
 
 fn switch_case(cx: &mut Context) {
@@ -2112,7 +2113,7 @@ fn delete_selection_impl(cx: &mut Context, op: Operation) {
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
         (range.from(), range.to(), None)
     });
-    doc.apply(&transaction, view.id);
+    apply_transaction(&transaction, doc, view);
 
     match op {
         Operation::Delete => {
@@ -2126,14 +2127,11 @@ fn delete_selection_impl(cx: &mut Context, op: Operation) {
 }
 
 #[inline]
-fn delete_selection_insert_mode(doc: &mut Document, view: &View, selection: &Selection) {
-    let view_id = view.id;
-
-    // then delete
+fn delete_selection_insert_mode(doc: &mut Document, view: &mut View, selection: &Selection) {
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
         (range.from(), range.to(), None)
     });
-    doc.apply(&transaction, view_id);
+    apply_transaction(&transaction, doc, view);
 }
 
 fn delete_selection(cx: &mut Context) {
@@ -2229,7 +2227,7 @@ fn append_mode(cx: &mut Context) {
             doc.text(),
             [(end, end, Some(doc.line_ending.as_str().into()))].into_iter(),
         );
-        doc.apply(&transaction, view.id);
+        apply_transaction(&transaction, doc, view);
     }
 
     let selection = doc.selection(view.id).clone().transform(|range| {
@@ -2529,7 +2527,7 @@ async fn make_format_callback(
         let doc = doc_mut!(editor, &doc_id);
         let view = view_mut!(editor);
         if doc.version() == doc_version {
-            doc.apply(&format, view.id);
+            apply_transaction(&format, doc, view);
             doc.append_changes_to_history(view.id);
             doc.detect_indent_and_line_ending();
             view.ensure_cursor_in_view(doc, scrolloff);
@@ -2616,7 +2614,7 @@ fn open(cx: &mut Context, open: Open) {
 
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
-    doc.apply(&transaction, view.id);
+    apply_transaction(&transaction, doc, view);
 }
 
 // o inserts a new line after each line with a selection
@@ -2637,7 +2635,7 @@ fn normal_mode(cx: &mut Context) {
     cx.editor.mode = Mode::Normal;
     let (view, doc) = current!(cx.editor);
 
-    try_restore_indent(doc, view.id);
+    try_restore_indent(doc, view);
 
     // if leaving append mode, move cursor back by 1
     if doc.restore_cursor {
@@ -2654,7 +2652,7 @@ fn normal_mode(cx: &mut Context) {
     }
 }
 
-fn try_restore_indent(doc: &mut Document, view_id: ViewId) {
+fn try_restore_indent(doc: &mut Document, view: &mut View) {
     use helix_core::chars::char_is_whitespace;
     use helix_core::Operation;
 
@@ -2673,18 +2671,18 @@ fn try_restore_indent(doc: &mut Document, view_id: ViewId) {
 
     let doc_changes = doc.changes().changes();
     let text = doc.text().slice(..);
-    let range = doc.selection(view_id).primary();
+    let range = doc.selection(view.id).primary();
     let pos = range.cursor(text);
     let line_end_pos = line_end_char_index(&text, range.cursor_line(text));
 
     if inserted_a_new_blank_line(doc_changes, pos, line_end_pos) {
         // Removes tailing whitespaces.
         let transaction =
-            Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
+            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
                 (line_start_pos, pos, None)
             });
-        doc.apply(&transaction, view_id);
+        apply_transaction(&transaction, doc, view);
     }
 }
 
@@ -2998,7 +2996,7 @@ pub mod insert {
 
         let (view, doc) = current!(cx.editor);
         if let Some(t) = transaction {
-            doc.apply(&t, view.id);
+            apply_transaction(&t, doc, view);
         }
 
         // TODO: need a post insert hook too for certain triggers (autocomplete, signature help, etc)
@@ -3020,7 +3018,7 @@ pub mod insert {
             &doc.selection(view.id).clone().cursors(doc.text().slice(..)),
             indent,
         );
-        doc.apply(&transaction, view.id);
+        apply_transaction(&transaction, doc, view);
     }
 
     pub fn insert_newline(cx: &mut Context) {
@@ -3107,7 +3105,7 @@ pub mod insert {
         transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
         let (view, doc) = current!(cx.editor);
-        doc.apply(&transaction, view.id);
+        apply_transaction(&transaction, doc, view);
     }
 
     pub fn delete_char_backward(cx: &mut Context) {
@@ -3201,7 +3199,7 @@ pub mod insert {
                 }
             });
         let (view, doc) = current!(cx.editor);
-        doc.apply(&transaction, view.id);
+        apply_transaction(&transaction, doc, view);
 
         lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
     }
@@ -3219,7 +3217,7 @@ pub mod insert {
                     None,
                 )
             });
-        doc.apply(&transaction, view.id);
+        apply_transaction(&transaction, doc, view);
 
         lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
     }
@@ -3413,7 +3411,7 @@ enum Paste {
     Cursor,
 }
 
-fn paste_impl(values: &[String], doc: &mut Document, view: &View, action: Paste, count: usize) {
+fn paste_impl(values: &[String], doc: &mut Document, view: &mut View, action: Paste, count: usize) {
     let repeat = std::iter::repeat(
         values
             .last()
@@ -3456,7 +3454,7 @@ fn paste_impl(values: &[String], doc: &mut Document, view: &View, action: Paste,
         };
         (pos, pos, values.next())
     });
-    doc.apply(&transaction, view.id);
+    apply_transaction(&transaction, doc, view);
 }
 
 pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
@@ -3548,7 +3546,7 @@ fn replace_with_yanked(cx: &mut Context) {
                 }
             });
 
-            doc.apply(&transaction, view.id);
+            apply_transaction(&transaction, doc, view);
         }
     }
 }
@@ -3571,7 +3569,7 @@ fn replace_selections_with_clipboard_impl(
                 )
             });
 
-            doc.apply(&transaction, view.id);
+            apply_transaction(&transaction, doc, view);
             doc.append_changes_to_history(view.id);
             Ok(())
         }
@@ -3641,7 +3639,7 @@ fn indent(cx: &mut Context) {
             Some((pos, pos, Some(indent.clone())))
         }),
     );
-    doc.apply(&transaction, view.id);
+    apply_transaction(&transaction, doc, view);
 }
 
 fn unindent(cx: &mut Context) {
@@ -3680,7 +3678,7 @@ fn unindent(cx: &mut Context) {
 
     let transaction = Transaction::change(doc.text(), changes.into_iter());
 
-    doc.apply(&transaction, view.id);
+    apply_transaction(&transaction, doc, view);
 }
 
 fn format_selections(cx: &mut Context) {
@@ -3727,7 +3725,7 @@ fn format_selections(cx: &mut Context) {
         //     language_server.offset_encoding(),
         // );
 
-        // doc.apply(&transaction, view.id);
+        // apply_transaction(&transaction, doc, view);
     }
 }
 
@@ -3782,7 +3780,7 @@ fn join_selections_inner(cx: &mut Context, select_space: bool) {
         Transaction::change(doc.text(), changes.into_iter())
     };
 
-    doc.apply(&transaction, view.id);
+    apply_transaction(&transaction, doc, view);
 }
 
 fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
@@ -3935,7 +3933,7 @@ fn toggle_comments(cx: &mut Context) {
         .map(|tc| tc.as_ref());
     let transaction = comment::toggle_line_comments(doc.text(), doc.selection(view.id), token);
 
-    doc.apply(&transaction, view.id);
+    apply_transaction(&transaction, doc, view);
     exit_select_mode(cx);
 }
 
@@ -3991,7 +3989,7 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
             .map(|(range, fragment)| (range.from(), range.to(), Some(fragment))),
     );
 
-    doc.apply(&transaction, view.id);
+    apply_transaction(&transaction, doc, view);
 }
 
 fn rotate_selection_contents_forward(cx: &mut Context) {
@@ -4457,13 +4455,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         (" ", "... or any character acting as a pair"),
     ];
 
-    cx.editor.autoinfo = Some(Info::new(
-        title,
-        help_text
-            .into_iter()
-            .map(|(col1, col2)| (col1.to_string(), col2.to_string()))
-            .collect(),
-    ));
+    cx.editor.autoinfo = Some(Info::new(title, &help_text));
 }
 
 fn surround_add(cx: &mut Context) {
@@ -4487,7 +4479,7 @@ fn surround_add(cx: &mut Context) {
         }
 
         let transaction = Transaction::change(doc.text(), changes.into_iter());
-        doc.apply(&transaction, view.id);
+        apply_transaction(&transaction, doc, view);
     })
 }
 
@@ -4526,7 +4518,7 @@ fn surround_replace(cx: &mut Context) {
                     (pos, pos + 1, Some(t))
                 }),
             );
-            doc.apply(&transaction, view.id);
+            apply_transaction(&transaction, doc, view);
         });
     })
 }
@@ -4553,7 +4545,7 @@ fn surround_delete(cx: &mut Context) {
 
         let transaction =
             Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
-        doc.apply(&transaction, view.id);
+        apply_transaction(&transaction, doc, view);
     })
 }
 
@@ -4728,7 +4720,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
 
     if behavior != &ShellBehavior::Ignore {
         let transaction = Transaction::change(doc.text(), changes.into_iter());
-        doc.apply(&transaction, view.id);
+        apply_transaction(&transaction, doc, view);
         doc.append_changes_to_history(view.id);
     }
 
@@ -4791,7 +4783,7 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
     });
 
     let transaction = Transaction::change(text, changes);
-    doc.apply(&transaction, view.id);
+    apply_transaction(&transaction, doc, view);
 }
 
 /// Increment object under cursor by count.
@@ -4891,8 +4883,8 @@ fn increment_impl(cx: &mut Context, amount: i64) {
         let transaction = Transaction::change(doc.text(), changes.into_iter());
         let transaction = transaction.with_selection(new_selection);
 
-        doc.apply(&transaction, view.id);
-    };
+        apply_transaction(&transaction, doc, view);
+    }
 }
 
 fn record_macro(cx: &mut Context) {

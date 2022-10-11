@@ -10,24 +10,22 @@
     name: (identifier) @function))
 
 (invocation_expression
-  (member_access_expression
-    expression: (identifier) @variable))
-
-(invocation_expression
   function: (conditional_access_expression
     (member_binding_expression
       name: (identifier) @function)))
 
 (invocation_expression
-      [(identifier) (qualified_name)] @function)
+  [(identifier) (qualified_name)] @function)
+
+(local_function_statement
+  name: (identifier) @function)
 
 ; Generic Method invocation with generic type
 (invocation_expression
   function: (generic_name
-              . (identifier) @function))
+    . (identifier) @function))
 
 ;; Namespaces
-
 (namespace_declaration
   name: [(identifier) (qualified_name)] @namespace)
 
@@ -40,8 +38,11 @@
 (namespace_declaration name: (identifier) @type)
 (using_directive (_) @namespace)
 (constructor_declaration name: (identifier) @type)
+(destructor_declaration name: (identifier) @type)
 (object_creation_expression [(identifier) (qualified_name)] @type)
 (type_parameter_list (type_parameter) @type)
+(array_type (identifier) @type)
+(for_each_statement type: (identifier) @type)
 
 [
   (implicit_type)
@@ -66,7 +67,7 @@
 
 (object_creation_expression
   (generic_name
-   (identifier) @type))
+    (identifier) @type))
 
 (property_declaration
   (generic_name
@@ -74,7 +75,7 @@
 
 (_
   type: (generic_name
-   (identifier) @type))
+    (identifier) @type))
 
 ;; Enum
 (enum_member_declaration (identifier) @variable.other.member)
@@ -91,6 +92,7 @@
   (verbatim_string_literal)
   (interpolated_string_text)
   (interpolated_verbatim_string_text)
+  (interpolation_format_clause)
   "\""
   "$\""
   "@$\""
@@ -150,6 +152,7 @@
   "%"
   "%="
   ":"
+  "::"
   ".."
   "&="
   "->"
@@ -166,50 +169,27 @@
 ]  @punctuation.bracket
 
 ;; Keywords
-(modifier) @keyword
+(modifier) @keyword.storage.modifier
 (this_expression) @keyword
 (escape_sequence) @constant.character.escape
 
 [
   "as"
   "base"
-  "break"
-  "case"
   "catch"
   "checked"
-  "class"
-  "continue"
-  "default"
-  "delegate"
-  "do"
-  "else"
-  "enum"
-  "event"
-  "explicit"
   "finally"
-  "for"
-  "foreach"
-  "goto"
-  "if"
-  "implicit"
-  "interface"
   "is"
   "lock"
-  "namespace"
   "operator"
   "params"
-  "return"
   "sizeof"
   "stackalloc"
-  "static"
-  "struct"
-  "switch"
   "throw"
   "try"
   "typeof"
   "unchecked"
   "using"
-  "while"
   "new"
   "await"
   "in"
@@ -222,25 +202,63 @@
   "from"
   "where"
   "select"
-  "record"
   "init"
   "with"
   "let"
 ] @keyword
 
-(nullable_directive) @keyword.directive
-(define_directive) @keyword.directive
-(undef_directive) @keyword.directive
-(if_directive) @keyword.directive
-(else_directive) @keyword.directive
-(elif_directive) @keyword.directive
-(endif_directive) @keyword.directive
-(region_directive) @keyword.directive
-(endregion_directive) @keyword.directive
-(error_directive) @keyword.directive
-(warning_directive) @keyword.directive
-(line_directive) @keyword.directive
-(pragma_directive) @keyword.directive
+[
+  "class"
+  "delegate"
+  "enum"
+  "event"
+  "interface"
+  "namespace"
+  "struct"
+  "record"
+] @keyword.storage.type
+
+[
+  "explicit"
+  "implicit"
+  "static"
+] @keyword.storage.modifier
+
+[
+  "for"
+  "foreach"
+  "do"
+  "while"
+  "break"
+  "continue"
+] @keyword.control.repeat
+
+[
+  "goto"
+  "if"
+  "else"
+  "switch"
+  "case"
+  "default"
+] @keyword.control.conditional
+
+"return" @keyword.control.return
+
+[
+  (nullable_directive)
+  (define_directive)
+  (undef_directive)
+  (if_directive)
+  (else_directive)
+  (elif_directive)
+  (endif_directive)
+  (region_directive)
+  (endregion_directive)
+  (error_directive)
+  (warning_directive)
+  (line_directive)
+  (pragma_directive)
+] @keyword.directive
 
 ;; Linq
 (from_clause (identifier) @variable)
@@ -259,10 +277,16 @@
 (binary_expression [(identifier) (qualified_name)] @variable [(identifier) (qualified_name)] @variable)
 (binary_expression [(identifier) (qualified_name)]* @variable)
 (conditional_expression [(identifier) (qualified_name)] @variable)
+(conditional_access_expression [(identifier) (qualified_name)] @variable)
 (prefix_unary_expression [(identifier) (qualified_name)] @variable)
 (postfix_unary_expression [(identifier) (qualified_name)]* @variable)
 (assignment_expression [(identifier) (qualified_name)] @variable)
 (cast_expression [(identifier) (qualified_name)] @type [(identifier) (qualified_name)] @variable)
+(element_access_expression (identifier) @variable)
+(member_access_expression
+  expression: ([(identifier) (qualified_name)] @type
+    (#match? @type "^[A-Z]")))
+(member_access_expression [(identifier) (qualified_name)] @variable)
 
 ;; Class
 (base_list (identifier) @type)
@@ -278,7 +302,6 @@
   name: (identifier) @variable)
   
 ;; Delegate
-
 (delegate_declaration (identifier) @type)
 
 ;; Lambda
@@ -296,11 +319,11 @@
 
 (parameter_list
   (parameter
-   name: (identifier) @parameter))
+    name: (identifier) @parameter))
 
 (parameter_list
   (parameter
-   type: [(identifier) (qualified_name)] @type))
+    type: [(identifier) (qualified_name)] @type))
 
 ;; Typeof
 (type_of_expression [(identifier) (qualified_name)] @type)
@@ -315,7 +338,7 @@
 
 ;; Type
 (generic_name (identifier) @type)
-(type_parameter [(identifier) (qualified_name)] @variable.parameter)
+(type_parameter [(identifier) (qualified_name)] @type)
 (type_argument_list [(identifier) (qualified_name)] @type)
 
 ;; Type constraints
@@ -333,15 +356,21 @@
 ;; Lock statement
 (lock_statement (identifier) @variable)
 
+;; Declaration expression
+(declaration_expression
+  type: (identifier) @type
+  name: (identifier) @variable)
+
 ;; Rest
-(member_access_expression) @variable
-(element_access_expression (identifier) @variable)
 (argument (identifier) @variable)
+(name_colon (identifier) @variable)
+(if_statement (identifier) @variable)
 (for_statement (identifier) @variable)
 (for_each_statement (identifier) @variable)
 (expression_statement (identifier) @variable)
-(member_access_expression expression: (identifier) @variable)
-(member_access_expression name: (identifier) @variable)
-(conditional_access_expression [(identifier) (qualified_name)] @variable)
+(array_rank_specifier (identifier) @variable)
+(equals_value_clause (identifier) @variable)
+(interpolation (identifier) @variable)
+(cast_expression (identifier) @variable)
 ((identifier) @comment.unused
- (#eq? @comment.unused "_"))
+  (#eq? @comment.unused "_"))
