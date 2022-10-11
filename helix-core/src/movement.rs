@@ -48,6 +48,31 @@ pub fn move_horizontally(
     range.put_cursor(slice, new_pos, behaviour == Movement::Extend)
 }
 
+pub fn move_horizontally_line_bounded(
+    slice: RopeSlice,
+    range: Range,
+    dir: Direction,
+    count: usize,
+    behaviour: Movement,
+    tab_width: usize,
+) -> Range {
+    let pos = range.cursor(slice);
+    let new_pos = match dir {
+        Direction::Forward => nth_next_grapheme_boundary(slice, pos, count),
+        Direction::Backward => nth_prev_grapheme_boundary(slice, pos, count),
+    };
+
+    let old_coords = visual_coords_at_pos(slice, pos, tab_width);
+    let new_coords = visual_coords_at_pos(slice, new_pos, tab_width);
+
+    // only allow moves within the same line.
+    if old_coords.row == new_coords.row {
+        range.put_cursor(slice, new_pos, behaviour == Movement::Extend)
+    } else {
+        range
+    }
+}
+
 pub fn move_vertically(
     slice: RopeSlice,
     range: Range,

@@ -197,9 +197,12 @@ impl MappableCommand {
     static_commands!(
         no_op, "Do nothing",
         move_char_left, "Move left",
+        move_char_left_same_line, "Move left within same line only",
         move_char_right, "Move right",
+        move_char_right_same_line, "Move right within same line only",
         move_line_up, "Move up",
         move_line_down, "Move down",
+        move_from_line_end, "Move left from line end",
         extend_char_left, "Extend left",
         extend_char_right, "Extend right",
         extend_line_up, "Extend up",
@@ -534,14 +537,32 @@ where
     doc.set_selection(view.id, selection);
 }
 
-use helix_core::movement::{move_horizontally, move_vertically};
+use helix_core::movement::{move_horizontally, move_horizontally_line_bounded, move_vertically};
 
 fn move_char_left(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Backward, Movement::Move)
 }
 
+fn move_char_left_same_line(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_horizontally_line_bounded,
+        Direction::Backward,
+        Movement::Move,
+    )
+}
+
 fn move_char_right(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Forward, Movement::Move)
+}
+
+fn move_char_right_same_line(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_horizontally_line_bounded,
+        Direction::Forward,
+        Movement::Move,
+    )
 }
 
 fn move_line_up(cx: &mut Context) {
@@ -550,6 +571,29 @@ fn move_line_up(cx: &mut Context) {
 
 fn move_line_down(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Forward, Movement::Move)
+}
+
+fn move_from_line_end(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let line = range.cursor_line(text);
+        let line_start = text.line_to_char(line);
+
+        let pos = range.cursor(text);
+
+        let last_line_char =
+            graphemes::prev_grapheme_boundary(text, line_end_char_index(&text, line))
+                .max(line_start);
+        if pos == last_line_char + 1 {
+            range.put_cursor(text, last_line_char, false)
+        } else {
+            range
+        }
+    });
+
+    doc.set_selection(view.id, selection);
 }
 
 fn extend_char_left(cx: &mut Context) {
