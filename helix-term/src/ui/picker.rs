@@ -440,17 +440,16 @@ impl<T: Item> Picker<T> {
                 self.cursor = self.cursor.saturating_add(len).saturating_sub(amount) % len;
             }
         }
+
+        // Reset the preview scroll on pointing to a different file
+        self.preview_scroll_offset = 0;
     }
 
     // Move the picker file preview by a number of lines, either down (`Forward`) or up (`Backward`)
     pub fn move_preview_by(&mut self, amount: usize, direction: Direction) {
         self.preview_scroll_offset = match direction {
-            Direction::Forward => {
-                self.preview_scroll_offset.saturating_add(amount)
-            },
-            Direction::Backward => {
-                self.preview_scroll_offset.saturating_sub(amount)
-            },
+            Direction::Forward => self.preview_scroll_offset.saturating_add(amount),
+            Direction::Backward => self.preview_scroll_offset.saturating_sub(amount),
         };
     }
 
@@ -529,12 +528,6 @@ impl<T: Item + 'static> Component for Picker<T> {
             shift!(Tab) | key!(Up) | ctrl!('p') => {
                 self.move_by(1, Direction::Backward);
             }
-            shift!(Up) => {
-                self.move_preview_by(cx.editor.config().scroll_lines.unsigned_abs(), Direction::Backward);
-            }
-            shift!(Down) => {
-                self.move_preview_by(cx.editor.config().scroll_lines.unsigned_abs(), Direction::Forward);
-            }
             key!(Tab) | key!(Down) | ctrl!('n') => {
                 self.move_by(1, Direction::Forward);
             }
@@ -549,6 +542,12 @@ impl<T: Item + 'static> Component for Picker<T> {
             }
             key!(End) => {
                 self.to_end();
+            }
+            shift!(Up) => {
+                self.move_preview_by(cx.editor.config().scroll_lines.unsigned_abs(), Direction::Backward);
+            }
+            shift!(Down) => {
+                self.move_preview_by(cx.editor.config().scroll_lines.unsigned_abs(), Direction::Forward);
             }
             key!(Esc) | ctrl!('c') => {
                 return close_fn;
