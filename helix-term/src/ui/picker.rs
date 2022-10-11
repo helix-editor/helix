@@ -161,6 +161,27 @@ impl<T: Item> FilePicker<T> {
         self.preview_cache.insert(path.to_owned(), preview);
         Preview::Cached(&self.preview_cache[path])
     }
+
+    fn handle_idle_timeout(&mut self, cx: &mut Context) -> EventResult {
+        // Try to find a document in the cache
+        let doc = self
+            .current_file(cx.editor)
+            .and_then(|(path, _range)| self.preview_cache.get_mut(&path))
+            .and_then(|cache| match cache {
+                CachedPreview::Document(doc) => Some(doc),
+                _ => None,
+            });
+
+        // Then attempt to highlight it if it has no language set
+        if let Some(doc) = doc {
+            if doc.language_config().is_none() {
+                let loader = cx.editor.syn_loader.clone();
+                doc.detect_language(loader);
+            }
+        }
+
+        EventResult::Consumed(None)
+    }
 }
 
 impl<T: Item + 'static> Component for FilePicker<T> {
@@ -261,6 +282,9 @@ impl<T: Item + 'static> Component for FilePicker<T> {
     }
 
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
+        if let Event::IdleTimeout = event {
+            return self.handle_idle_timeout(ctx);
+        }
         // TODO: keybinds for scrolling preview
         self.picker.handle_event(event, ctx)
     }
@@ -504,6 +528,9 @@ impl<T: Item + 'static> Component for Picker<T> {
             // remove the layer
             compositor.last_picker = compositor.pop();
         })));
+
+        // So that idle timeout retriggers
+        cx.editor.reset_idle_timer();
 
         match key_event {
             shift!(Tab) | key!(Up) | ctrl!('p') => {
