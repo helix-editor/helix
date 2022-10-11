@@ -76,12 +76,6 @@ impl Args {
                 arg => args.files.push(parse_file(arg)),
             }
         }
-
-        // push the remaining args, if any to the files
-        for arg in argv {
-            args.files.push(parse_file(&arg));
-        }
-
         Ok(args)
     }
 }
