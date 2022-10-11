@@ -33,11 +33,11 @@ impl Args {
                 "--help" => args.display_help = true,
                 "--tutor" => args.load_tutor = true,
                 "--vsplit" => match args.split {
-                    Some(_) => anyhow::bail!("Can only set a split once of a specific type"),
+                    Some(_) => anyhow::bail!("can only set a split once of a specific type"),
                     None => args.split = Some(Layout::Vertical),
                 },
                 "--hsplit" => match args.split {
-                    Some(_) => anyhow::bail!("Can only set a split once of a specific type"),
+                    Some(_) => anyhow::bail!("can only set a split once of a specific type"),
                     None => args.split = Some(Layout::Horizontal),
                 },
                 "--health" => {
