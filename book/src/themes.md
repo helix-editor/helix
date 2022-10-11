@@ -16,7 +16,7 @@ Each line in the theme file is specified as below:
 key = { fg = "#ffffff", bg = "#000000", underline-color = "#ff0000", underline-style = "curl", modifiers = ["bold", "italic"] }
 ```
 
-where `key` represents what you want to style, `fg` specifies the foreground color, `bg` the background color, `underline_style` the underline style, `underline_color` the underline color (only meaningful if an underline style is enabled), and `modifiers` is a list of style modifiers. `bg`, `underline` and `modifiers` can be omitted to defer to the defaults.
+where `key` represents what you want to style, `fg` specifies the foreground color, `bg` the background color, `underline-style` the underline style, `underline-color` the underline color (only meaningful if an underline style is enabled), and `modifiers` is a list of style modifiers. `bg`, `underline` and `modifiers` can be omitted to defer to the defaults.
 
 To specify only the foreground color:
 

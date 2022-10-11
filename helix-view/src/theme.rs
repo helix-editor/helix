@@ -268,7 +268,7 @@ impl ThemePalette {
         value
             .as_str()
             .and_then(|s| s.parse().ok())
-            .ok_or(format!("Theme: invalid underline_style: {}", value))
+            .ok_or(format!("Theme: invalid underline-style: {}", value))
     }
 
     pub fn parse_style(&self, style: &mut Style, value: Value) -> Result<(), String> {
@@ -279,7 +279,6 @@ impl ThemePalette {
                     "bg" => *style = style.bg(self.parse_color(value)?),
                     "underline-color" => *style = style.underline_color(self.parse_color(value)?),
                     "underline-style" => {
-                        warn!("found style");
                         *style = style.underline_style(Self::parse_underline_style(&value)?)
                     }
                     "modifiers" => {
