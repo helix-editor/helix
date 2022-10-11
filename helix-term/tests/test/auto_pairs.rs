@@ -28,8 +28,9 @@ async fn insert_basic() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn insert_configured_multi_byte_chars() -> anyhow::Result<()> {
-    // [NOTE] these are multi-byte Unicode characters
-    let pairs = hashmap!('„' => '“', '‚' => '‘');
+    // NOTE: these are multi-byte Unicode characters
+    let pairs = hashmap!('„' => '“', '‚' => '‘', '「' => '」');
+
     let config = Config {
         editor: helix_view::editor::Config {
             auto_pairs: AutoPairConfig::Pairs(pairs.clone()),

@@ -271,6 +271,9 @@ fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
         let next_char = doc.get_char(cursor);
         let len_inserted;
 
+        // Since auto pairs are currently limited to single chars, we're either
+        // inserting exactly one or two chars. When arbitrary length pairs are
+        // added, these will need to be changed.
         let change = match next_char {
             Some(_) if !pair.should_close(doc, start_range) => {
                 len_inserted = 1;
