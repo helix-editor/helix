@@ -123,8 +123,15 @@ impl EditorView {
             Self::highlight_cursorcolumn(doc, view, surface, theme);
         }
 
-        let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
-        let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
+        let mut highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
+        for diagnostic in Self::doc_diagnostics_highlights(doc, theme) {
+            // Most of the `diagnostic` Vecs are empty most of the time. Skipping
+            // a merge for any empty Vec saves a significant amount of work.
+            if diagnostic.is_empty() {
+                continue;
+            }
+            highlights = Box::new(syntax::merge(highlights, diagnostic));
+        }
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
@@ -268,7 +275,7 @@ impl EditorView {
     pub fn doc_diagnostics_highlights(
         doc: &Document,
         theme: &Theme,
-    ) -> Vec<(usize, std::ops::Range<usize>)> {
+    ) -> [Vec<(usize, std::ops::Range<usize>)>; 5] {
         use helix_core::diagnostic::Severity;
         let get_scope_of = |scope| {
             theme
@@ -289,22 +296,42 @@ impl EditorView {
         let error = get_scope_of("diagnostic.error");
         let r#default = get_scope_of("diagnostic"); // this is a bit redundant but should be fine
 
-        doc.diagnostics()
-            .iter()
-            .map(|diagnostic| {
-                let diagnostic_scope = match diagnostic.severity {
-                    Some(Severity::Info) => info,
-                    Some(Severity::Hint) => hint,
-                    Some(Severity::Warning) => warning,
-                    Some(Severity::Error) => error,
-                    _ => r#default,
-                };
-                (
-                    diagnostic_scope,
-                    diagnostic.range.start..diagnostic.range.end,
-                )
-            })
-            .collect()
+        let mut default_vec: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
+        let mut info_vec = Vec::new();
+        let mut hint_vec = Vec::new();
+        let mut warning_vec = Vec::new();
+        let mut error_vec = Vec::new();
+
+        let diagnostics = doc.diagnostics();
+
+        // Diagnostics must be sorted by range. Otherwise, the merge strategy
+        // below would not be accurate.
+        debug_assert!(diagnostics
+            .windows(2)
+            .all(|window| window[0].range.start <= window[1].range.start
+                && window[0].range.end <= window[1].range.end));
+
+        for diagnostic in diagnostics {
+            // Separate diagnostics into different Vecs by severity.
+            let (vec, scope) = match diagnostic.severity {
+                Some(Severity::Info) => (&mut info_vec, info),
+                Some(Severity::Hint) => (&mut hint_vec, hint),
+                Some(Severity::Warning) => (&mut warning_vec, warning),
+                Some(Severity::Error) => (&mut error_vec, error),
+                _ => (&mut default_vec, r#default),
+            };
+
+            // If any diagnostic overlaps ranges with the prior diagnostic,
+            // merge the two together. Otherwise push a new span.
+            match vec.last_mut() {
+                Some((_, range)) if diagnostic.range.start <= range.end => {
+                    range.end = diagnostic.range.end.max(range.end)
+                }
+                _ => vec.push((scope, diagnostic.range.start..diagnostic.range.end)),
+            }
+        }
+
+        [default_vec, info_vec, hint_vec, warning_vec, error_vec]
     }
 
     /// Get highlight spans for selections in a document view.
