@@ -42,10 +42,8 @@ cargo install --path helix-term
 ```
 
 This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars.
-If you want to customize your `languages.toml` config,
-tree-sitter grammars may be manually fetched and built with `hx --grammar fetch` and `hx --grammar build`.
 
-Helix also needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
+Helix needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
 config directory (for example `~/.config/helix/runtime` on Linux/macOS, or `%AppData%/helix/runtime` on Windows).
 
 | OS                   | Command                                          |
@@ -61,6 +59,9 @@ that sets the variable to the install dir.
 
 > NOTE: running via cargo also doesn't require setting explicit `HELIX_RUNTIME` path, it will automatically
 > detect the `runtime` directory in the project root.
+
+If you want to customize your `languages.toml` config,
+tree-sitter grammars may be manually fetched and built with `hx --grammar fetch` and `hx --grammar build`.
 
 In order to use LSP features like auto-complete, you will need to
 [install the appropriate Language Server](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers)
