@@ -184,6 +184,21 @@ capture on the same line, the indent level isn't changed at all.</p>
 <p><code>@outdent</code> (default scope <code>all</code>):
 Decrease the indent level by 1. The same rules as for <code>@indent</code> apply.</p>
 </li>
+<li>
+<p><code>@extend</code>:
+Extend the range of this node to the end of the line and to lines that
+are indented more than the line that this node starts on. This is useful
+for languages like Python, where for the purpose of indentation some nodes
+(like functions or classes) should also contain indented lines that follow them.</p>
+</li>
+<li>
+<p><code>@extend.prevent-once</code>:
+Prevents the first extension of an ancestor of this node. For example, in Python
+a return expression always ends the block that it is in. Note that this only stops the
+extension of the next <code>@extend</code> capture. If multiple ancestors are captured,
+only the extension of the innermost one is prevented. All other ancestors are unaffected
+(regardless of whether the innermost ancestor would actually have been extended).</p>
+</li>
 </ul>
 <h2 id="predicates"><a class="header" href="#predicates">Predicates</a></h2>
 <p>In some cases, an S-expression cannot express exactly what pattern should be matched.
