@@ -53,8 +53,12 @@ use crate::{
 
 use crate::job::{self, Job, Jobs};
 use futures_util::{FutureExt, StreamExt};
-use std::{collections::HashMap, fmt, future::Future};
-use std::{collections::HashSet, num::NonZeroUsize};
+use std::{
+    collections::{BTreeMap, HashMap, HashSet},
+    fmt,
+    future::Future,
+    num::NonZeroUsize,
+};
 
 use std::{
     borrow::Cow,
@@ -304,6 +308,10 @@ impl MappableCommand {
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
         goto_prev_diag, "Goto previous diagnostic",
+        goto_first_diag_workspace, "Goto first diagnostic in workspace",
+        goto_last_diag_workspace, "Goto last diagnostic in workspace",
+        goto_next_diag_workspace, "Goto next diagnostic in workspace",
+        goto_prev_diag_workspace, "Goto previous diagnostic in workspace",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
         goto_next_buffer, "Goto next buffer",
@@ -2800,7 +2808,7 @@ fn exit_select_mode(cx: &mut Context) {
     }
 }
 
-fn goto_pos(editor: &mut Editor, pos: usize) {
+pub fn goto_pos(editor: &mut Editor, pos: usize) {
     let (view, doc) = current!(editor);
 
     push_jump(view, doc);
@@ -2826,23 +2834,81 @@ fn goto_last_diag(cx: &mut Context) {
     goto_pos(cx.editor, pos);
 }
 
-fn goto_next_diag(cx: &mut Context) {
-    let editor = &mut cx.editor;
-    let (view, doc) = current!(editor);
-
+/// Finds the position of the next/previous diagnostic.
+pub fn get_next_diag_pos(
+    view: &mut View,
+    doc: &mut Document,
+    direction: Direction,
+) -> Option<usize> {
     let cursor_pos = doc
         .selection(view.id)
         .primary()
         .cursor(doc.text().slice(..));
 
-    let diag = doc
-        .diagnostics()
-        .iter()
-        .find(|diag| diag.range.start > cursor_pos)
-        .or_else(|| doc.diagnostics().first());
+    let diag = match direction {
+        Direction::Forward => doc
+            .diagnostics()
+            .iter()
+            .find(|diag| diag.range.start > cursor_pos),
+        Direction::Backward => doc
+            .diagnostics()
+            .iter()
+            .find(|diag| diag.range.start < cursor_pos),
+    };
 
-    let pos = match diag {
-        Some(diag) => diag.range.start,
+    return diag.map(|d| d.range.start);
+}
+
+/// Finds the next/previous document with diagnostics in it.
+pub fn get_next_diag_doc(
+    doc: &mut Document,
+    editor_diagnostics: BTreeMap<helix_lsp::lsp::Url, Vec<helix_lsp::lsp::Diagnostic>>,
+    direction: Direction,
+) -> Option<PathBuf> {
+    let current_url = doc.url();
+    let diagnostics = editor_diagnostics.iter();
+    let next_diags = match direction {
+        Direction::Forward => {
+            let mut iter = diagnostics
+                .filter(|(_, diags)| !diags.is_empty())
+                .skip_while(|(url, _)| Some(*url) != current_url.as_ref());
+            iter.next();
+            iter.next().or_else(|| {
+                editor_diagnostics
+                    .iter()
+                    .filter(|(_, diags)| !diags.is_empty())
+                    .next()
+            })
+        }
+        Direction::Backward => {
+            let mut iter = diagnostics
+                .rev()
+                .filter(|(_, diags)| !diags.is_empty())
+                .skip_while(|(url, _)| Some(*url) != current_url.as_ref());
+            iter.next(); // skip current
+            iter.next().or_else(|| {
+                editor_diagnostics
+                    .iter()
+                    .filter(|(_, diags)| !diags.is_empty())
+                    .last()
+            })
+        }
+    };
+    match next_diags {
+        Some((url, _)) => url.to_file_path().ok(),
+        None => None,
+    }
+}
+
+fn goto_next_diag(cx: &mut Context) {
+    let editor = &mut cx.editor;
+    let (view, doc) = current!(editor);
+
+    let diag_pos = get_next_diag_pos(view, doc, Direction::Forward)
+        .or_else(|| doc.diagnostics().first().map(|d| d.range.start));
+
+    let pos = match diag_pos {
+        Some(pos) => pos,
         None => return,
     };
 
@@ -2853,20 +2919,11 @@ fn goto_prev_diag(cx: &mut Context) {
     let editor = &mut cx.editor;
     let (view, doc) = current!(editor);
 
-    let cursor_pos = doc
-        .selection(view.id)
-        .primary()
-        .cursor(doc.text().slice(..));
+    let diag_pos = get_next_diag_pos(view, doc, Direction::Backward)
+        .or_else(|| doc.diagnostics().last().map(|d| d.range.start));
 
-    let diag = doc
-        .diagnostics()
-        .iter()
-        .rev()
-        .find(|diag| diag.range.start < cursor_pos)
-        .or_else(|| doc.diagnostics().last());
-
-    let pos = match diag {
-        Some(diag) => diag.range.start,
+    let pos = match diag_pos {
+        Some(pos) => pos,
         None => return,
     };
 

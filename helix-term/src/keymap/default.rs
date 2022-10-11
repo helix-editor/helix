@@ -100,6 +100,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "[" => { "Left bracket"
             "d" => goto_prev_diag,
             "D" => goto_first_diag,
+            "w" => goto_prev_diag_workspace,
+            "W" => goto_first_diag_workspace,
             "f" => goto_prev_function,
             "c" => goto_prev_class,
             "a" => goto_prev_parameter,
@@ -111,6 +113,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "]" => { "Right bracket"
             "d" => goto_next_diag,
             "D" => goto_last_diag,
+            "w" => goto_next_diag_workspace,
+            "W" => goto_last_diag_workspace,
             "f" => goto_next_function,
             "c" => goto_next_class,
             "a" => goto_next_parameter,
