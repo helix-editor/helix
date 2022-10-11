@@ -88,20 +88,22 @@ async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn cursor_position_append_eof() -> anyhow::Result<()> {
+    // Selection is fowards
     test((
-        "#[f|]#oo",
-        "eabar<esc>",
-        helpers::platform_line("#[foobar|]#\n").as_ref()
+        "#[foo|]#",
+        "abar<esc>",
+        helpers::platform_line("#[foobar|]#\n").as_ref(),
     ))
     .await?;
-    
+
+    // Selection is backwards
     test((
-        "foo#[|]#",
-        "babar<esc>",
-        helpers::platform_line("#[foobar|]#\n").as_ref()
+        "#[|foo]#",
+        "abar<esc>",
+        helpers::platform_line("#[foobar|]#\n").as_ref(),
     ))
     .await?;
-    
+
     Ok(())
 }
 
