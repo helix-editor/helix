@@ -209,24 +209,6 @@ impl Range {
         }
     }
 
-    /// Shorten the range by 1 character.
-    #[must_use]
-    pub fn shorten(&self) -> Self {
-        match self.head.cmp(&self.anchor) {
-            std::cmp::Ordering::Greater => Self {
-                anchor: self.anchor,
-                head: self.head - 1,
-                horiz: None,
-            },
-            std::cmp::Ordering::Less => Self {
-                anchor: self.anchor - 1,
-                head: self.head,
-                horiz: None,
-            },
-            std::cmp::Ordering::Equal => *self,
-        }
-    }
-
     /// Returns a range that encompasses both input ranges.
     ///
     /// This is like `extend()`, but tries to negotiate the

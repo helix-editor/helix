@@ -4835,7 +4835,7 @@ fn increment_impl(cx: &mut Context, amount: i64) {
     let mut changes = vec![];
     let mut last_change_to = 0;
 
-    for range in selection.iter() {
+    for range in selection {
         let (original_text_range, new_text) =
             if let Some(incrementor) = DateTimeIncrementor::from_range(text, *range) {
                 incrementor.increment(amount)
@@ -4867,8 +4867,9 @@ fn increment_impl(cx: &mut Context, amount: i64) {
     }
 
     if !changes.is_empty() {
-        let new_selection_primary =
-            selection.primary_index().min(new_selection_ranges.len() - 1);
+        let new_selection_primary = selection
+            .primary_index()
+            .min(new_selection_ranges.len() - 1);
         let new_selection = Selection::new(new_selection_ranges, new_selection_primary);
 
         let transaction = Transaction::change(doc.text(), changes.into_iter());

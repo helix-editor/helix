@@ -21,9 +21,9 @@ pub struct IntegerIncrementor<'a> {
 impl<'a> IntegerIncrementor<'a> {
     /// Return information about an integer under range if there is one.
     /// Integer includes possible negative sign, digits in bases 2, 8, 10, or 16 and underscores.
-    /// Integer does not include decimal point or trailing underscores
+    /// Integer does not include decimal point or trailing underscores.
     /// Examples:
-    ///    -1, 99, 0xABCD, 0x1010, 0o1234567, 1_000_000
+    ///    -1, 99, 0xABCD, 0b1010, 0o1234567, 1_000_000
     pub fn from_range(text: RopeSlice, range: Range) -> Option<IntegerIncrementor> {
         // If the cursor is on the minus sign of an integer we want to get the word textobject
         // to the right of it.
@@ -44,9 +44,8 @@ impl<'a> IntegerIncrementor<'a> {
         };
 
         // If there are trailing underscores, remove them from the range.
-        // There is a `- 1` here because range ends are exclusive.
         while !range.is_empty() && text.char(range.to() - 1) == '_' {
-            range = range.shorten()
+            range = Range::new(range.from(), range.to() - 1)
         }
 
         let word: String = text
