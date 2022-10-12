@@ -307,7 +307,7 @@ impl Component for Completion {
             return EventResult::Ignored(None);
         }
         if self.popup.contents().selection().is_none()
-            && cx.editor.config().idle_timeout.as_millis() == 0
+            && !cx.editor.config().arrows_to_enter_completion
         {
             match event {
                 Event::Key(KeyEvent {

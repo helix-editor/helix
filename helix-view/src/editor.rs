@@ -144,6 +144,7 @@ pub struct Config {
     )]
     pub idle_timeout: Duration,
     pub completion_trigger_len: u8,
+    pub arrows_to_enter_completion: bool,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
@@ -589,6 +590,7 @@ impl Default for Config {
             auto_format: true,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
+            arrows_to_enter_completion: true,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
             statusline: StatusLineConfig::default(),
