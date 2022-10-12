@@ -19,7 +19,7 @@ use helix_core::{
 use helix_view::{
     apply_transaction,
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{CompleteAction, CursorShapeConfig, LineNumber},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -151,11 +151,12 @@ impl EditorView {
 
         Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights, &config);
 
+        let mut context_ln = None;
         if editor.config().sticky_context {
-            Self::render_sticky_context(editor, doc, view, surface, theme);
+            context_ln = Self::render_sticky_context(editor, doc, view, surface, theme);
         }
 
-        Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
+        Self::render_gutter(editor, doc, view, surface, theme, is_focused, context_ln);
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
         if is_focused {
@@ -414,7 +415,7 @@ impl EditorView {
         view: &View,
         surface: &mut Surface,
         theme: &Theme,
-    ) {
+    ) -> Option<Vec<usize>> {
         if let Some(syntax) = doc.syntax() {
             let tree = syntax.tree();
             let text = doc.text().slice(..);
@@ -453,11 +454,12 @@ impl EditorView {
 
             // TODO: this probably needs it's own style, although it seems to work well even with cursorline
             let context_style = theme.get("ui.cursorline.primary");
-            let mut context_area = view.inner_area();
+            let mut context_area = view.inner_area(doc);
             context_area.height = 1;
 
+            let mut line_numbers = Vec::new();
             for line_num in context {
-                if line_num > view.offset.row {
+                if line_num >= view.offset.row {
                     continue;
                 }
                 surface.clear_with(context_area, context_style);
@@ -475,7 +477,21 @@ impl EditorView {
                 );
 
                 context_area.y += 1;
+                let line_number = match editor.config().line_number {
+                    LineNumber::Absolute => line_num,
+                    LineNumber::Relative => {
+                        let res = text.byte_to_line(cursor_byte) - line_num;
+                        match res {
+                            n if n < 2 => 1,
+                            _ => res - 1,
+                        }
+                    }
+                };
+                line_numbers.push(line_number);
             }
+            Some(line_numbers)
+        } else {
+            None
         }
     }
 
@@ -780,13 +796,14 @@ impl EditorView {
         editor: &Editor,
         doc: &Document,
         view: &View,
-        viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
+        context_ln: Option<Vec<usize>>,
     ) {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
+        let viewport = view.area;
 
         // it's used inside an iterator so the collect isn't needless:
         // https://github.com/rust-lang/rust-clippy/issues/6164
@@ -809,7 +826,12 @@ impl EditorView {
             let mut gutter = gutter_type.style(editor, doc, view, theme, is_focused);
             let width = gutter_type.width(view, doc);
             text.reserve(width); // ensure there's enough space for the gutter
-            for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
+            for (i, mut line) in (view.offset.row..(last_line + 1)).enumerate() {
+                if let Some(ref line_numbers) = context_ln {
+                    if line_numbers.len() > i {
+                        line = line_numbers[i];
+                    }
+                }
                 let selected = cursors.contains(&line);
                 let x = viewport.x + offset;
                 let y = viewport.y + i as u16;
