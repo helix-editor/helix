@@ -68,14 +68,16 @@
 
 ["(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
-"break" @keyword.control
+[
+  "break"
+  "continue"
+  "continuing"
+] @keyword.control
 
 [
   "loop"
   "for"
   "while"
-  "continue"
-  "continuing"
 ] @keyword.control.repeat
 
 [
