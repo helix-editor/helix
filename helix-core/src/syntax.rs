@@ -127,7 +127,7 @@ pub struct LanguageConfiguration {
 
     pub rulers: Option<Vec<u16>>, // if set, override editor's rulers
 
-    /// List of LSP nodes that should be displayed in the sticky context.
+    /// List of tree-sitter nodes that should be displayed in the sticky context.
     pub sticky_context_nodes: Option<Vec<String>>,
 }
 

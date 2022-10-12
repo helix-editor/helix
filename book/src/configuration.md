@@ -57,6 +57,7 @@ on unix operating systems.
 | `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file. | `[]` |
 | `bufferline` | Renders a line at the top of the editor displaying open buffers. Can be `always`, `never` or `multiple` (only shown if more than one buffer is in use) | `never` |
 | `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
+| `sticky-context` | Display context of current line if outside the view | `false` |
 
 ### `[editor.statusline]` Section
 
@@ -112,12 +113,11 @@ The following statusline elements can be configured:
 
 ### `[editor.lsp]` Section
 
-| Key                           | Description                                                 | Default |
-| ---                           | -----------                                                 | ------- |
-| `display-messages`            | Display LSP progress messages below statusline[^1]          | `false` |
-| `auto-signature-help`         | Enable automatic popup of signature help (parameter hints)  | `true`  |
-| `display-signature-help-docs` | Display docs under signature help popup                     | `true`  |
-| `context`                     | Display context of current line if outside the view         | `false` |
+| Key                   | Description                                                 | Default |
+| ---                   | -----------                                                 | ------- |
+| `display-messages`    | Display LSP progress messages below statusline[^1]          | `false` |
+| `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
+| `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
 
 [^1]: By default, a progress spinner is shown in the statusline beside the file path.
 

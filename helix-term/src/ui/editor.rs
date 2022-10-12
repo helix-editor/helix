@@ -152,7 +152,7 @@ impl EditorView {
         Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights, &config);
 
         if editor.config().sticky_context {
-            Self::render_context(editor, doc, view, surface, theme);
+            Self::render_sticky_context(editor, doc, view, surface, theme);
         }
 
         Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
@@ -408,7 +408,7 @@ impl EditorView {
         spans
     }
 
-    pub fn render_context(
+    pub fn render_sticky_context(
         editor: &Editor,
         doc: &Document,
         view: &View,
@@ -416,23 +416,23 @@ impl EditorView {
         theme: &Theme,
     ) {
         if let Some(syntax) = doc.syntax() {
-            let text = doc.text().slice(..);
             let tree = syntax.tree();
-            let byte = doc.selection(view.id).primary().cursor(text);
-            let nodes_to_match = doc
+            let text = doc.text().slice(..);
+            let cursor_byte = doc.selection(view.id).primary().cursor(text);
+            let context_nodes = doc
                 .language_config()
                 .and_then(|lc| lc.sticky_context_nodes.as_ref());
 
             let mut parent = tree
                 .root_node()
-                .descendant_for_byte_range(byte, byte)
+                .descendant_for_byte_range(cursor_byte, cursor_byte)
                 .and_then(|n| n.parent());
 
             // context is list of numbers of lines that should be rendered in the LSP context
             let mut context: Vec<usize> = Vec::new();
 
-            while let Some(curr) = parent {
-                let line = text.byte_to_line(curr.start_byte());
+            while let Some(node) = parent {
+                let line = text.byte_to_line(node.start_byte());
 
                 // if parent of previous node is still on the same line, use the parent node
                 if let Some(&prev_line) = context.last() {
@@ -441,11 +441,11 @@ impl EditorView {
                     }
                 }
 
-                if nodes_to_match.map_or(true, |nodes| nodes.iter().any(|n| n == curr.kind())) {
+                if context_nodes.map_or(true, |nodes| nodes.iter().any(|n| n == node.kind())) {
                     context.push(line);
                 }
 
-                parent = curr.parent();
+                parent = node.parent();
             }
 
             // we render from top most (last in the list)
