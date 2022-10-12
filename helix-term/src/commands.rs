@@ -246,6 +246,7 @@ impl MappableCommand {
         extend_search_next, "Add next search match to selection",
         extend_search_prev, "Add previous search match to selection",
         search_selection, "Use current selection as search pattern",
+        search_selection_bounded, "Use current selection as search pattern with word boundaries",
         global_search, "Global search in workspace folder",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
@@ -1772,14 +1773,21 @@ fn extend_search_prev(cx: &mut Context) {
     search_next_or_prev_impl(cx, Movement::Extend, Direction::Backward);
 }
 
-fn search_selection(cx: &mut Context) {
+fn search_selection_impl(cx: &mut Context, word_bounds: bool) {
     let (view, doc) = current!(cx.editor);
     let contents = doc.text().slice(..);
 
     let regex = doc
         .selection(view.id)
         .iter()
-        .map(|selection| regex::escape(&selection.fragment(contents)))
+        .map(|selection| {
+            let escaped = regex::escape(&selection.fragment(contents));
+            if word_bounds {
+                format!("\\b{}\\b", escaped)
+            } else {
+                escaped
+            }
+        })
         .collect::<HashSet<_>>() // Collect into hashset to deduplicate identical regexes
         .into_iter()
         .collect::<Vec<_>>()
@@ -1788,6 +1796,14 @@ fn search_selection(cx: &mut Context) {
     let msg = format!("register '{}' set to '{}'", '/', &regex);
     cx.editor.registers.get_mut('/').push(regex);
     cx.editor.set_status(msg);
+}
+
+fn search_selection(cx: &mut Context) {
+    search_selection_impl(cx, false)
+}
+
+fn search_selection_bounded(cx: &mut Context) {
+    search_selection_impl(cx, true)
 }
 
 fn global_search(cx: &mut Context) {
