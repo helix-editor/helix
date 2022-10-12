@@ -1,10 +1,9 @@
-[
-  "sizeof"
-] @keyword
+"sizeof" @keyword
 
 [
   "enum"
   "struct"
+  "typedef"
   "union"
 ] @keyword.storage.type
 
@@ -13,21 +12,23 @@
   "extern"
   "inline"
   "register"
-  "typedef"
   "volatile"
   (storage_class_specifier)
 ] @keyword.storage.modifier
 
 [
-  "for"
-  "do"
-  "while"
+  "goto"
   "break"
   "continue"
+] @keyword.control
+
+[
+  "do"
+  "for"
+  "while"
 ] @keyword.control.repeat
 
 [
-  "goto"
   "if"
   "else"
   "switch"
@@ -84,13 +85,12 @@
   "&="
   "^="
   "|="
-  "->"
-  "::"
   "?"
-  "..."
 ] @operator
 
-["," "." ":" ";"] @punctuation.delimiter
+"..." @punctuation
+
+["," "." ":" ";" "->" "::"] @punctuation.delimiter
 
 ["(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
