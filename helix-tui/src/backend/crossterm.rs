@@ -113,21 +113,21 @@ where
             }
 
             let mut new_underline_style = cell.underline_style;
-            if !self.capabilities.has_extended_underlines {
-                match new_underline_style {
-                    UnderlineStyle::Reset | UnderlineStyle::Line => (),
-                    _ => new_underline_style = UnderlineStyle::Line,
-                }
-
+            if self.capabilities.has_extended_underlines {
                 if cell.underline_color != underline_color {
                     let color = CColor::from(cell.underline_color);
                     map_error(queue!(self.buffer, SetUnderlineColor(color)))?;
                     underline_color = cell.underline_color;
                 }
+            } else {
+                match new_underline_style {
+                    UnderlineStyle::Reset | UnderlineStyle::Line => (),
+                    _ => new_underline_style = UnderlineStyle::Line,
+                }
             }
 
             if new_underline_style != underline_style {
-                let attr = CAttribute::from(cell.underline_style);
+                let attr = CAttribute::from(new_underline_style);
                 map_error(queue!(self.buffer, SetAttribute(attr)))?;
                 underline_style = new_underline_style;
             }

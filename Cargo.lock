@@ -1101,9 +1101,9 @@ dependencies = [
 
 [[package]]
 name = "termini"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00733d628ac0a8bd4fd3171a28eb6c09759ae1b43d8b587eadebaccee01d01a3"
+checksum = "394766021ef3dae8077f080518cdf5360831990f77f5708d5e3594c9b3efa2f9"
 dependencies = [
  "dirs-next",
 ]
