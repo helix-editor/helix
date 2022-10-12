@@ -11,6 +11,7 @@ auto-format = true
 comment-token = "//"
 language-server = { command = "rust-analyzer" }
 indent = { tab-width = 4, unit = "    " }
+sticky-context-nodes = ["impl_item", "function_item", "struct_item", "enum_item", "match_expression", "match_arm", "let_declaration"]
 
 [language.auto-pairs]
 '(' = ')'

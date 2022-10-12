@@ -178,6 +178,8 @@ pub struct Config {
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
+    /// Display context of current cursor line if it is outside the view.
+    pub sticky_context: bool,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -242,8 +244,6 @@ pub struct LspConfig {
     pub auto_signature_help: bool,
     /// Display docs under signature help popup
     pub display_signature_help_docs: bool,
-    /// Display context of current cursor line if it is outside the view.
-    pub context: bool,
 }
 
 impl Default for LspConfig {
@@ -252,7 +252,6 @@ impl Default for LspConfig {
             display_messages: false,
             auto_signature_help: true,
             display_signature_help_docs: true,
-            context: false,
         }
     }
 }
@@ -633,6 +632,7 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
+            sticky_context: false,
         }
     }
 }
