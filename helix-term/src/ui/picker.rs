@@ -1,4 +1,5 @@
 use crate::{
+    alt,
     compositor::{Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
     ui::{self, EditorView},
@@ -228,6 +229,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                 })
                 .unwrap_or(0);
 
+            // Limits the preview scroll between 0 and doc's len_lines() in case it moves past the line number
             preview_scroll_offset = preview_scroll_offset.min(doc.text().len_lines());
             let offset = Position::new(first_line + preview_scroll_offset, 0);
 
@@ -242,6 +244,9 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                 highlights,
                 &cx.editor.config(),
             );
+
+            // update after use of `doc` because of lifetime issues with get_preview()
+            self.picker.preview_scroll_offset = preview_scroll_offset;
 
             // highlight the line
             if let Some((start, end)) = range {
@@ -261,9 +266,6 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                 );
             }
         }
-
-        // Limits the preview scroll between 0 and doc's len_lines() in case it moves past the line number
-        self.picker.preview_scroll_offset = preview_scroll_offset;
     }
 
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
@@ -445,7 +447,7 @@ impl<T: Item> Picker<T> {
         self.preview_scroll_offset = 0;
     }
 
-    // Move the picker file preview by a number of lines, either down (`Forward`) or up (`Backward`)
+    /// Moves the picker file preview by a number of lines, either down (`Forward`) or up (`Backward`)
     pub fn move_preview_by(&mut self, amount: usize, direction: Direction) {
         self.preview_scroll_offset = match direction {
             Direction::Forward => self.preview_scroll_offset.saturating_add(amount),
@@ -543,11 +545,17 @@ impl<T: Item + 'static> Component for Picker<T> {
             key!(End) => {
                 self.to_end();
             }
-            shift!(Up) => {
-                self.move_preview_by(cx.editor.config().scroll_lines.unsigned_abs(), Direction::Backward);
+            alt!('u') | shift!(Up) => {
+                self.move_preview_by(
+                    cx.editor.config().scroll_lines.unsigned_abs(),
+                    Direction::Backward,
+                );
             }
-            shift!(Down) => {
-                self.move_preview_by(cx.editor.config().scroll_lines.unsigned_abs(), Direction::Forward);
+            alt!('d') | shift!(Down) => {
+                self.move_preview_by(
+                    cx.editor.config().scroll_lines.unsigned_abs(),
+                    Direction::Forward,
+                );
             }
             key!(Esc) | ctrl!('c') => {
                 return close_fn;
