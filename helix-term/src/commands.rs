@@ -4868,7 +4868,7 @@ fn increment_impl(cx: &mut Context, amount: i64) {
 
     if !changes.is_empty() {
         let new_selection_primary =
-            std::cmp::min(selection.primary_index(), new_selection_ranges.len() - 1);
+            selection.primary_index().min(new_selection_ranges.len() - 1);
         let new_selection = Selection::new(new_selection_ranges, new_selection_primary);
 
         let transaction = Transaction::change(doc.text(), changes.into_iter());
