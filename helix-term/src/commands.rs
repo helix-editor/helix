@@ -2222,7 +2222,7 @@ fn append_mode(cx: &mut Context) {
         .iter()
         .last()
         .expect("selection should always have at least one range");
-    if !last_range.is_empty() && last_range.head == end {
+    if !last_range.is_empty() && last_range.to() == end {
         let transaction = Transaction::change(
             doc.text(),
             [(end, end, Some(doc.line_ending.as_str().into()))].into_iter(),
