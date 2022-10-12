@@ -483,7 +483,7 @@ fn earlier(
     let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
 
     let (view, doc) = current!(cx.editor);
-    let success = doc.earlier(view.id, uk);
+    let success = doc.earlier(view, uk);
     if !success {
         cx.editor.set_status("Already at oldest change");
     }
@@ -502,7 +502,7 @@ fn later(
 
     let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
     let (view, doc) = current!(cx.editor);
-    let success = doc.later(view.id, uk);
+    let success = doc.later(view, uk);
     if !success {
         cx.editor.set_status("Already at newest change");
     }
