@@ -30,6 +30,7 @@
 (namespace_identifier) @namespace
 
 (qualified_identifier name: (identifier) @type.enum.variant)
+(auto) @type
 
 ; Constants
 
@@ -89,7 +90,6 @@
   "decltype"
   "namespace"
   "typename"
-  (auto)
 ] @keyword.storage.type
 
 [
