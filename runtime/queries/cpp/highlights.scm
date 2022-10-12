@@ -30,7 +30,9 @@
 (namespace_identifier) @namespace
 
 (qualified_identifier name: (identifier) @type.enum.variant)
+
 (auto) @type
+"decltype" @type
 
 ; Constants
 
@@ -86,8 +88,7 @@
 ] @keyword.operator
 
 [
-  "class"
-  "decltype"
+  "class"  
   "namespace"
   "typename"
 ] @keyword.storage.type
