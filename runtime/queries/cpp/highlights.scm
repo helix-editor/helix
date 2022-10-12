@@ -24,8 +24,9 @@
 
 ; Types
 
+(using_declaration ("using" "namespace" (identifier) @namespace))
+(using_declaration ("using" "namespace" (qualified_identifier name: (identifier) @namespace)))
 (namespace_definition name: (identifier) @namespace)
-(using_declaration (identifier) @namespace)
 (namespace_identifier) @namespace
 
 (qualified_identifier name: (identifier) @type.enum.variant)
@@ -37,26 +38,38 @@
 
 ; Keywords
 
+(template_argument_list (["<" ">"] @punctuation.bracket))
+(template_parameter_list (["<" ">"] @punctuation.bracket))
+(default_method_clause "default" @keyword)
+
+"static_assert" @function.special
+
 [
-  "catch"
+  "<=>"
+  "[]"
+  "()"
+] @operator
+
+[
   "co_await"
   "co_return"
   "co_yield"
   "concept"
-  "consteval"
-  "constinit"
   "delete"
   "final"
-  "noexcept"
   "new"
+  "operator"
   "requires"
-  "throw"
-  "try"
-  "typename"
   "using"
 ] @keyword
 
-"<=>" @operator
+[
+  "catch"
+  "noexcept"
+  "throw"
+  "try"
+] @keyword.control.exception
+
 
 [
   "and"
@@ -73,7 +86,9 @@
 
 [
   "class"
+  "decltype"
   "namespace"
+  "typename"
   (auto)
 ] @keyword.storage.type
 
