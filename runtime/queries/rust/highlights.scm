@@ -67,6 +67,7 @@
   "]"
   "{"
   "}"
+  "#"
 ] @punctuation.bracket
 (type_arguments
   [
@@ -78,6 +79,8 @@
     "<"
     ">"
   ] @punctuation.bracket)
+(closure_parameters
+  "|" @punctuation.bracket)
 
 ; ---
 ; Variables
@@ -180,7 +183,7 @@
 ; -------
 
 ((identifier) @constant
- (#match? @constant "^[A-Z][A-Z\\d_]+$"))
+ (#match? @constant "^[A-Z][A-Z\\d_]*$"))
 
 ; ---
 ; PascalCase identifiers in call_expressions (e.g. `Ok()`)
@@ -250,11 +253,17 @@
 (function_item
   name: (identifier) @function)
 
+(function_signature_item
+  name: (identifier) @function)
+
 ; ---
 ; Macros
 ; ---
 (meta_item
   (identifier) @function.macro)
+(attr_item
+  (identifier) @function.macro
+  (token_tree (identifier) @function.macro)?)
 
 (inner_attribute_item) @attribute
 

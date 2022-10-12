@@ -21,6 +21,7 @@
 "union" @keyword
 "volatile" @keyword
 "while" @keyword
+"const" @keyword
 
 [
  "#define"
@@ -50,9 +51,13 @@
 "==" @operator
 ">" @operator
 "||" @operator
+">=" @operator
+"<=" @operator
 
 "." @punctuation.delimiter
 ";" @punctuation.delimiter
+
+[(true) (false)] @constant.builtin.boolean
 
 (enumerator) @type.enum.variant
 

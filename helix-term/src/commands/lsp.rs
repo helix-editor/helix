@@ -10,7 +10,7 @@ use tui::text::{Span, Spans};
 use super::{align_view, push_jump, Align, Context, Editor, Open};
 
 use helix_core::{path, Selection};
-use helix_view::{editor::Action, theme::Style};
+use helix_view::{apply_transaction, editor::Action, theme::Style};
 
 use crate::{
     compositor::{self, Compositor},
@@ -519,8 +519,7 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup =
-                Popup::new("code-action", picker).margin(helix_view::graphics::Margin::all(1));
+            let popup = Popup::new("code-action", picker);
             compositor.replace_or_push("code-action", popup);
         },
     )
@@ -625,9 +624,7 @@ pub fn apply_workspace_edit(
             }
         };
 
-        let doc = editor
-            .document_mut(doc_id)
-            .expect("Document for document_changes not found");
+        let doc = doc_mut!(editor, &doc_id);
 
         // Need to determine a view for apply/append_changes_to_history
         let selections = doc.selections();
@@ -648,7 +645,7 @@ pub fn apply_workspace_edit(
             text_edits,
             offset_encoding,
         );
-        doc.apply(&transaction, view_id);
+        apply_transaction(&transaction, doc, view_mut!(editor, view_id));
         doc.append_changes_to_history(view_id);
     };
 
@@ -891,10 +888,7 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
                 }
             };
             let doc = doc!(editor);
-            let language = doc
-                .language()
-                .and_then(|scope| scope.strip_prefix("source."))
-                .unwrap_or("");
+            let language = doc.language_name().unwrap_or("");
 
             let signature = match response
                 .signatures
@@ -932,7 +926,12 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
                         Some((start, start + string.len()))
                     }
                     lsp::ParameterLabel::LabelOffsets([start, end]) => {
-                        Some((*start as usize, *end as usize))
+                        // LS sends offsets based on utf-16 based string representation
+                        // but highlighting in helix is done using byte offset.
+                        use helix_core::str_utils::char_to_byte_idx;
+                        let from = char_to_byte_idx(&signature.label, *start as usize);
+                        let to = char_to_byte_idx(&signature.label, *end as usize);
+                        Some((from, to))
                     }
                 }
             };

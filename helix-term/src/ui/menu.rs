@@ -1,10 +1,9 @@
 use std::{borrow::Cow, path::PathBuf};
 
 use crate::{
-    compositor::{Callback, Component, Compositor, Context, EventResult},
+    compositor::{Callback, Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
 };
-use crossterm::event::Event;
 use tui::{buffer::Buffer as Surface, text::Spans, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
@@ -226,9 +225,9 @@ impl<T: Item> Menu<T> {
 use super::PromptEvent as MenuEvent;
 
 impl<T: Item + 'static> Component for Menu<T> {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let event = match event {
-            Event::Key(event) => event,
+            Event::Key(event) => *event,
             _ => return EventResult::Ignored(None),
         };
 
@@ -237,7 +236,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             compositor.pop();
         }));
 
-        match event.into() {
+        match event {
             // esc or ctrl-c aborts the completion and closes the menu
             key!(Esc) | ctrl!('c') => {
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Abort);
