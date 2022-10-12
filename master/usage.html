@@ -183,7 +183,7 @@ on the closest pairs found and selections are not required; use counts to act in
 </ul>
 <p>Multiple characters are currently not supported, but planned.</p>
 <h2 id="syntax-tree-motions"><a class="header" href="#syntax-tree-motions">Syntax-tree Motions</a></h2>
-<p><code>A-p</code>, <code>A-o</code>, <code>A-i</code>, and <code>A-n</code> (or <code>Alt</code> and arrow keys) move the primary
+<p><code>Alt-p</code>, <code>Alt-o</code>, <code>Alt-i</code>, and <code>Alt-n</code> (or <code>Alt</code> and arrow keys) move the primary
 selection according to the selection's place in the syntax tree. Let's walk
 through an example to get familiar with them. Many languages have a syntax like
 so for function calls:</p>
@@ -218,18 +218,18 @@ a more intuitive tree format:</p>
 in the tree above.</p>
 <pre><code>func([arg1], arg2, arg3)
 </code></pre>
-<p>Using <code>A-n</code> would select the next sibling in the syntax tree: <code>arg2</code>.</p>
+<p>Using <code>Alt-n</code> would select the next sibling in the syntax tree: <code>arg2</code>.</p>
 <pre><code>func(arg1, [arg2], arg3)
 </code></pre>
-<p>While <code>A-o</code> would expand the selection to the parent node. In the tree above we
+<p>While <code>Alt-o</code> would expand the selection to the parent node. In the tree above we
 can see that we would select the <code>arguments</code> node.</p>
 <pre><code>func[(arg1, arg2, arg3)]
 </code></pre>
 <p>There is also some nuanced behavior that prevents you from getting stuck on a
-node with no sibling. If we have a selection on <code>arg1</code>, <code>A-p</code> would bring us
+node with no sibling. If we have a selection on <code>arg1</code>, <code>Alt-p</code> would bring us
 to the previous child node. Since <code>arg1</code> doesn't have a sibling to its left,
-though, we climb the syntax tree and then take the previous selection. So <code>A-p</code>
-will move the selection over to the &quot;func&quot; <code>identifier</code>.</p>
+though, we climb the syntax tree and then take the previous selection. So
+<code>Alt-p</code> will move the selection over to the &quot;func&quot; <code>identifier</code>.</p>
 <pre><code>[func](arg1, arg2, arg3)
 </code></pre>
 <h2 id="textobjects"><a class="header" href="#textobjects">Textobjects</a></h2>

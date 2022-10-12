@@ -257,7 +257,7 @@ on the closest pairs found and selections are not required; use counts to act in
 </ul>
 <p>Multiple characters are currently not supported, but planned.</p>
 <h2 id="syntax-tree-motions"><a class="header" href="#syntax-tree-motions">Syntax-tree Motions</a></h2>
-<p><code>A-p</code>, <code>A-o</code>, <code>A-i</code>, and <code>A-n</code> (or <code>Alt</code> and arrow keys) move the primary
+<p><code>Alt-p</code>, <code>Alt-o</code>, <code>Alt-i</code>, and <code>Alt-n</code> (or <code>Alt</code> and arrow keys) move the primary
 selection according to the selection's place in the syntax tree. Let's walk
 through an example to get familiar with them. Many languages have a syntax like
 so for function calls:</p>
@@ -292,18 +292,18 @@ a more intuitive tree format:</p>
 in the tree above.</p>
 <pre><code>func([arg1], arg2, arg3)
 </code></pre>
-<p>Using <code>A-n</code> would select the next sibling in the syntax tree: <code>arg2</code>.</p>
+<p>Using <code>Alt-n</code> would select the next sibling in the syntax tree: <code>arg2</code>.</p>
 <pre><code>func(arg1, [arg2], arg3)
 </code></pre>
-<p>While <code>A-o</code> would expand the selection to the parent node. In the tree above we
+<p>While <code>Alt-o</code> would expand the selection to the parent node. In the tree above we
 can see that we would select the <code>arguments</code> node.</p>
 <pre><code>func[(arg1, arg2, arg3)]
 </code></pre>
 <p>There is also some nuanced behavior that prevents you from getting stuck on a
-node with no sibling. If we have a selection on <code>arg1</code>, <code>A-p</code> would bring us
+node with no sibling. If we have a selection on <code>arg1</code>, <code>Alt-p</code> would bring us
 to the previous child node. Since <code>arg1</code> doesn't have a sibling to its left,
-though, we climb the syntax tree and then take the previous selection. So <code>A-p</code>
-will move the selection over to the &quot;func&quot; <code>identifier</code>.</p>
+though, we climb the syntax tree and then take the previous selection. So
+<code>Alt-p</code> will move the selection over to the &quot;func&quot; <code>identifier</code>.</p>
 <pre><code>[func](arg1, arg2, arg3)
 </code></pre>
 <h2 id="textobjects"><a class="header" href="#textobjects">Textobjects</a></h2>
@@ -483,7 +483,7 @@ and therefore requires the corresponding query file to work properly.</p>
 <tr><td><code>X</code></td><td>Extend selection to line bounds (line-wise selection)</td><td><code>extend_to_line_bounds</code></td></tr>
 <tr><td><code>Alt-x</code></td><td>Shrink selection to line bounds (line-wise selection)</td><td><code>shrink_to_line_bounds</code></td></tr>
 <tr><td><code>J</code></td><td>Join lines inside selection</td><td><code>join_selections</code></td></tr>
-<tr><td><code>A-J</code></td><td>Join lines inside selection and select space</td><td><code>join_selections_space</code></td></tr>
+<tr><td><code>Alt-J</code></td><td>Join lines inside selection and select space</td><td><code>join_selections_space</code></td></tr>
 <tr><td><code>K</code></td><td>Keep selections matching the regex</td><td><code>keep_selections</code></td></tr>
 <tr><td><code>Alt-K</code></td><td>Remove selections matching the regex</td><td><code>remove_selections</code></td></tr>
 <tr><td><code>Ctrl-c</code></td><td>Comment/uncomment the selections</td><td><code>toggle_comments</code></td></tr>
@@ -617,7 +617,7 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 </tbody></table>
 </div>
 <blockquote>
-<p>TIP: Global search displays results in a fuzzy picker, use <code>space + '</code> to bring it back up after opening a file.</p>
+<p>TIP: Global search displays results in a fuzzy picker, use <code>Space + '</code> to bring it back up after opening a file.</p>
 </blockquote>
 <h5 id="popup"><a class="header" href="#popup">Popup</a></h5>
 <p>Displays documentation for item under cursor.</p>
@@ -645,8 +645,8 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>]t</code></td><td>Go to previous test (<strong>TS</strong>)</td><td><code>goto_prev_test</code></td></tr>
 <tr><td><code>]p</code></td><td>Go to next paragraph</td><td><code>goto_next_paragraph</code></td></tr>
 <tr><td><code>[p</code></td><td>Go to previous paragraph</td><td><code>goto_prev_paragraph</code></td></tr>
-<tr><td><code>[space</code></td><td>Add newline above</td><td><code>add_newline_above</code></td></tr>
-<tr><td><code>]space</code></td><td>Add newline below</td><td><code>add_newline_below</code></td></tr>
+<tr><td><code>[Space</code></td><td>Add newline above</td><td><code>add_newline_above</code></td></tr>
+<tr><td><code>]Space</code></td><td>Add newline below</td><td><code>add_newline_below</code></td></tr>
 </tbody></table>
 </div>
 <h2 id="insert-mode"><a class="header" href="#insert-mode">Insert mode</a></h2>
@@ -735,8 +735,8 @@ you to selectively add search terms to your selections.</p>
 <tr><td><code>Alt-d</code>, <code>Alt-Delete</code>, <code>Ctrl-Delete</code></td><td>Delete next word</td></tr>
 <tr><td><code>Ctrl-u</code></td><td>Delete to start of line</td></tr>
 <tr><td><code>Ctrl-k</code></td><td>Delete to end of line</td></tr>
-<tr><td><code>backspace</code>, <code>Ctrl-h</code></td><td>Delete previous char</td></tr>
-<tr><td><code>delete</code>, <code>Ctrl-d</code></td><td>Delete next char</td></tr>
+<tr><td><code>Backspace</code>, <code>Ctrl-h</code></td><td>Delete previous char</td></tr>
+<tr><td><code>Delete</code>, <code>Ctrl-d</code></td><td>Delete next char</td></tr>
 <tr><td><code>Ctrl-s</code></td><td>Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later</td></tr>
 <tr><td><code>Ctrl-p</code>, <code>Up</code></td><td>Select previous history</td></tr>
 <tr><td><code>Ctrl-n</code>, <code>Down</code></td><td>Select next history</td></tr>
@@ -1471,7 +1471,7 @@ berry = &quot;#2A2A4D&quot;
 <tr><td><code>ui.statusline.insert</code></td><td>Statusline mode during insert mode (<a href="./configuration.html#editor-section">only if <code>editor.color-modes</code> is enabled</a>)</td></tr>
 <tr><td><code>ui.statusline.select</code></td><td>Statusline mode during select mode (<a href="./configuration.html#editor-section">only if <code>editor.color-modes</code> is enabled</a>)</td></tr>
 <tr><td><code>ui.statusline.separator</code></td><td>Separator character in statusline</td></tr>
-<tr><td><code>ui.popup</code></td><td>Documentation popups (e.g space-k)</td></tr>
+<tr><td><code>ui.popup</code></td><td>Documentation popups (e.g Space + k)</td></tr>
 <tr><td><code>ui.popup.info</code></td><td>Prompt for multiple key options</td></tr>
 <tr><td><code>ui.window</code></td><td>Border lines separating splits</td></tr>
 <tr><td><code>ui.help</code></td><td>Description box for commands</td></tr>
@@ -1479,7 +1479,7 @@ berry = &quot;#2A2A4D&quot;
 <tr><td><code>ui.text.focus</code></td><td></td></tr>
 <tr><td><code>ui.text.info</code></td><td>The key: command text in <code>ui.popup.info</code> boxes</td></tr>
 <tr><td><code>ui.virtual.ruler</code></td><td>Ruler columns (see the <a href="./configuration.html#editor-section"><code>editor.rulers</code> config</a>)</td></tr>
-<tr><td><code>ui.virtual.whitespace</code></td><td>Visible white-space characters</td></tr>
+<tr><td><code>ui.virtual.whitespace</code></td><td>Visible whitespace characters</td></tr>
 <tr><td><code>ui.virtual.indent-guide</code></td><td>Vertical indent width guides</td></tr>
 <tr><td><code>ui.menu</code></td><td>Code and command completion menus</td></tr>
 <tr><td><code>ui.menu.selected</code></td><td>Selected autocomplete item</td></tr>
@@ -1513,11 +1513,11 @@ directory (default <code>~/.config/helix</code> in Linux systems) with a structu
 this:</p>
 <pre><code class="language-toml"># At most one section each of 'keys.normal', 'keys.insert' and 'keys.select'
 [keys.normal]
-C-s = &quot;:w&quot; # Maps the Control-s to the typable command :w which is an alias for :write (save file)
-C-o = &quot;:open ~/.config/helix/config.toml&quot; # Maps the Control-o to opening of the helix config file
+C-s = &quot;:w&quot; # Maps the Ctrl-s to the typable command :w which is an alias for :write (save file)
+C-o = &quot;:open ~/.config/helix/config.toml&quot; # Maps the Ctrl-o to opening of the helix config file
 a = &quot;move_char_left&quot; # Maps the 'a' key to the move_char_left command
 w = &quot;move_line_up&quot; # Maps the 'w' key move_line_up
-&quot;C-S-esc&quot; = &quot;extend_line&quot; # Maps Control-Shift-Escape to extend_line
+&quot;C-S-esc&quot; = &quot;extend_line&quot; # Maps Ctrl-Shift-Escape to extend_line
 g = { a = &quot;code_action&quot; } # Maps `ga` to show possible code actions
 &quot;ret&quot; = [&quot;open_below&quot;, &quot;normal_mode&quot;] # Maps the enter key to open_below then re-enter normal mode
 
@@ -1528,7 +1528,7 @@ j = { k = &quot;normal_mode&quot; } # Maps `jk` to exit insert mode
 <blockquote>
 <p>NOTE: Typable commands can also be remapped, remember to keep the <code>:</code> prefix to indicate it's a typable command.</p>
 </blockquote>
-<p>Control, Shift and Alt modifiers are encoded respectively with the prefixes
+<p>Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
 <code>C-</code>, <code>S-</code> and <code>A-</code>. Special keys are encoded as follows:</p>
 <div class="table-wrapper"><table><thead><tr><th>Key name</th><th>Representation</th></tr></thead><tbody>
 <tr><td>Backspace</td><td><code>&quot;backspace&quot;</code></td></tr>

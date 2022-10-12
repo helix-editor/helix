@@ -146,11 +146,11 @@ directory (default <code>~/.config/helix</code> in Linux systems) with a structu
 this:</p>
 <pre><code class="language-toml"># At most one section each of 'keys.normal', 'keys.insert' and 'keys.select'
 [keys.normal]
-C-s = &quot;:w&quot; # Maps the Control-s to the typable command :w which is an alias for :write (save file)
-C-o = &quot;:open ~/.config/helix/config.toml&quot; # Maps the Control-o to opening of the helix config file
+C-s = &quot;:w&quot; # Maps the Ctrl-s to the typable command :w which is an alias for :write (save file)
+C-o = &quot;:open ~/.config/helix/config.toml&quot; # Maps the Ctrl-o to opening of the helix config file
 a = &quot;move_char_left&quot; # Maps the 'a' key to the move_char_left command
 w = &quot;move_line_up&quot; # Maps the 'w' key move_line_up
-&quot;C-S-esc&quot; = &quot;extend_line&quot; # Maps Control-Shift-Escape to extend_line
+&quot;C-S-esc&quot; = &quot;extend_line&quot; # Maps Ctrl-Shift-Escape to extend_line
 g = { a = &quot;code_action&quot; } # Maps `ga` to show possible code actions
 &quot;ret&quot; = [&quot;open_below&quot;, &quot;normal_mode&quot;] # Maps the enter key to open_below then re-enter normal mode
 
@@ -161,7 +161,7 @@ j = { k = &quot;normal_mode&quot; } # Maps `jk` to exit insert mode
 <blockquote>
 <p>NOTE: Typable commands can also be remapped, remember to keep the <code>:</code> prefix to indicate it's a typable command.</p>
 </blockquote>
-<p>Control, Shift and Alt modifiers are encoded respectively with the prefixes
+<p>Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
 <code>C-</code>, <code>S-</code> and <code>A-</code>. Special keys are encoded as follows:</p>
 <div class="table-wrapper"><table><thead><tr><th>Key name</th><th>Representation</th></tr></thead><tbody>
 <tr><td>Backspace</td><td><code>&quot;backspace&quot;</code></td></tr>
