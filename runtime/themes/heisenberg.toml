@@ -38,7 +38,7 @@
 "ui.linenr" = { fg = "crystal_blue" }
 "ui.linenr.selected" = { fg = "barium_green" }
 "ui.statusline" = { fg = "crystal_blue", bg = "black" } 
-"ui.cursorline" = { bg = "background" }
+"ui.cursorline" = { bg = "041B0E" }
 "ui.popup" = { fg = "crystal_blue", bg = "background" }
 "ui.window" = { fg = "barium_green" }
 "ui.help" = { fg = "crystal_blue", bg = "background"}
@@ -46,7 +46,7 @@
 "ui.text.focus" = { bg = "background", fg = "barium_green" }
 "ui.text.info" = { fg = "crystal_blue" }
 "ui.virtual.whitespace" = { fg = "dark_gray" }
-"ui.virtual.ruler" = { bg = "background" }
+"ui.virtual.ruler" = { bg = "#041B0E" }
 "ui.menu" = { fg = "crystal_blue", bg = "background" }
 "ui.menu.selected" = { bg = "hazmat_yellow", fg = "background" }
 "ui.selection" = { bg = "dark_gray" }
