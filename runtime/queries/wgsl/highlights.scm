@@ -23,7 +23,6 @@
 (type_constructor_or_function_call_expression
   (type_declaration) @function)
 
-(type_declaration (type_declaration) @type)
 (type_declaration (identifier) @type)
 (type_declaration) @type
 
