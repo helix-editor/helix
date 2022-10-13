@@ -13,10 +13,10 @@ The default theme.toml can be found [here](https://github.com/helix-editor/helix
 Each line in the theme file is specified as below:
 
 ```toml
-key = { fg = "#ffffff", bg = "#000000", underline-color = "#ff0000", underline-style = "curl", modifiers = ["bold", "italic"] }
+key = { fg = "#ffffff", bg = "#000000", underline = { color = "#ff0000", style = "curl"}, modifiers = ["bold", "italic"] }
 ```
 
-where `key` represents what you want to style, `fg` specifies the foreground color, `bg` the background color, `underline-style` the underline style, `underline-color` the underline color (only meaningful if an underline style is enabled), and `modifiers` is a list of style modifiers. `bg`, `underline` and `modifiers` can be omitted to defer to the defaults.
+where `key` represents what you want to style, `fg` specifies the foreground color, `bg` the background color, `underline` the underline `style`/`color`, and `modifiers` is a list of style modifiers. `bg`, `underline` and `modifiers` can be omitted to defer to the defaults.
 
 To specify only the foreground color:
 
@@ -89,12 +89,12 @@ Less common modifiers might not be supported by your terminal emulator.
 | `hidden`             |
 | `crossed_out`        |
 
-> Note: The `underlined` modifier is deprecated and only available for backwards compatability.
-> Its behaviour is equivalent to `underline-style="line"`.
+> Note: The `underlined` modifier is deprecated and only available for backwards compatibility.
+> Its behavior is equivalent to setting `underline.style="line"`.
 
 ### Underline Style
 
-One of the following values may be used as an `underline-style`. 
+One of the following values may be used as a value for `underline.style`. 
 
 Some styles might not be supported by your terminal emulator.
 
