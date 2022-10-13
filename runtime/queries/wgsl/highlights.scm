@@ -2,30 +2,6 @@
 (float_literal) @constant.numeric.float
 (bool_literal) @constant.builtin.boolean
 
-(function_declaration
-  (identifier) @function)
-
-(parameter
-  (variable_identifier_declaration
-    (identifier) @variable.parameter))
-
-(struct_declaration
-  (identifier) @type)
-
-(struct_declaration
-  (struct_member
-    (variable_identifier_declaration
-      (identifier) @variable.other.member)))
-
-(type_constructor_or_function_call_expression
-  (type_declaration (identifier) @function))
-
-(type_constructor_or_function_call_expression
-  (type_declaration) @function)
-
-(type_declaration (identifier) @type)
-(type_declaration) @type
-
 [
   "bitcast"
   "discard"
@@ -43,14 +19,8 @@
 ] @keyword.storage.type
 
 [
-  "function"
-  "private"
-  "read"
-  "read_write"
-  "storage"
-  "uniform"
-  "workgroup"
-  "write"
+  (access_mode)
+  (address_space)
 ] @keyword.storage.modifier
 
 "fn" @keyword.function
@@ -119,9 +89,29 @@
   "~"
 ] @operator
 
+(function_declaration
+  (identifier) @function)
+
+(parameter
+  (variable_identifier_declaration
+    (identifier) @variable.parameter))
+
+(struct_declaration
+  (identifier) @type)
+
+(struct_declaration
+  (struct_member
+    (variable_identifier_declaration
+      (identifier) @variable.other.member)))
+
+(type_constructor_or_function_call_expression
+  (type_declaration (identifier) @function))
+
+(type_declaration _ @type)
+
 (attribute
   (identifier) @attribute)
 
-(comment) @comment
-
 (identifier) @variable
+
+(comment) @comment
