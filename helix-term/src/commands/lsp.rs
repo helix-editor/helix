@@ -2,7 +2,7 @@ use helix_lsp::{
     block_on,
     lsp::{self, DiagnosticSeverity, NumberOrString},
     util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
-    OffsetEncoding,
+    OffsetEncoding, Url,
 };
 use tui::text::{Span, Spans};
 
@@ -18,7 +18,12 @@ use crate::{
     },
 };
 
-use std::{borrow::Cow, collections::BTreeMap, path::PathBuf, sync::Arc};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, HashSet},
+    path::PathBuf,
+    sync::Arc,
+};
 
 /// Gets the language server that is attached to a document, and
 /// if it's not active displays a status message. Using this macro
@@ -687,6 +692,24 @@ pub fn apply_workspace_edit(
     }
 }
 
+fn dedupe_locations(locations: Vec<lsp::Location>) -> Vec<lsp::Location> {
+    let mut seen: HashSet<(Url, u32, u32)> = HashSet::new();
+    let mut deduped_locations = Vec::new();
+    for location in locations {
+        let key = (
+            location.uri.clone(),
+            location.range.start.line,
+            location.range.start.character,
+        );
+        if seen.contains(&key) {
+            continue;
+        }
+        seen.insert(key);
+        deduped_locations.push(location);
+    }
+    deduped_locations
+}
+
 fn goto_impl(
     editor: &mut Editor,
     compositor: &mut Compositor,
@@ -694,7 +717,7 @@ fn goto_impl(
     offset_encoding: OffsetEncoding,
 ) {
     let cwdir = std::env::current_dir().unwrap_or_default();
-
+    let locations = dedupe_locations(locations);
     match locations.as_slice() {
         [location] => {
             jump_to_location(editor, location, offset_encoding, Action::Replace);
