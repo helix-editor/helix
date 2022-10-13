@@ -68,6 +68,8 @@
 
 ["(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
+(type_declaration ["<" ">"] @punctuation.bracket)
+
 [
   "break"
   "continue"
