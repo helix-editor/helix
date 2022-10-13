@@ -48,7 +48,7 @@
 "ui.text" = { fg = "crystal_blue" }
 "ui.text.focus" = { bg = "background", fg = "barium_green" }
 "ui.text.info" = { fg = "crystal_blue" }
-"ui.virtual.whitespace" = { fg = "teddy_bear_pink" }
+"ui.virtual.whitespace" = { fg = "#08341B" }
 "ui.virtual.ruler" = { bg = "#041B0E" }
 "ui.virtual.indent-guide" = { fg = "#08341B" }
 "ui.menu" = { fg = "crystal_blue", bg = "background" }
