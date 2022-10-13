@@ -88,6 +88,8 @@
   "?"
 ] @operator
 
+(conditional_expression ":" @operator)
+
 "..." @punctuation
 
 ["," "." ":" ";" "->" "::"] @punctuation.delimiter
