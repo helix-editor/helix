@@ -51,7 +51,11 @@ fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) ->
 
     loop {
         let (start_byte, end_byte) = surrounding_bytes(doc, &node)?;
-        let (start_char, end_char) = (doc.byte_to_char(start_byte), doc.byte_to_char(end_byte));
+        let (mut start_char, end_char) = (doc.byte_to_char(start_byte), doc.byte_to_char(end_byte));
+
+        if doc.char(start_char) == '$' && end_char > start_char {
+            start_char += 1
+        }
 
         if is_valid_pair(doc, start_char, end_char) {
             if end_byte == pos {
