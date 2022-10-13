@@ -53,7 +53,8 @@
 "ui.virtual.indent-guide" = { fg = "#08341B" }
 "ui.menu" = { fg = "crystal_blue", bg = "background" }
 "ui.menu.selected" = { bg = "hazmat_yellow", fg = "background" }
-"ui.selection" = { bg = "desert_maroon" }
+"ui.selection" = { bg = "#1B0334" }
+"ui.selection.primary" = { bg = "desert_maroon" }
 "warning" = { fg = "vapor_yellow" }
 "error" = { fg = "chili_powder_red", modifiers = ["bold"] }
 "info" = { fg = "crystal_blue", modifiers = ["bold"] }
