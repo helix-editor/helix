@@ -1079,6 +1079,12 @@ impl Editor {
         self._refresh();
     }
 
+    pub fn open_url(&mut self, url: lsp::Url) {
+        if let Err(e) = open::that(url.as_str()) {
+            self.set_error(format!("Failed to open url '{}': {:?}", url.as_str(), e));
+        }
+    }
+
     pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> Result<(), CloseError> {
         let doc = match self.documents.get(&doc_id) {
             Some(doc) => doc,

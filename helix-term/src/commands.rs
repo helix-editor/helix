@@ -291,6 +291,7 @@ impl MappableCommand {
         goto_file, "Goto files in selection",
         goto_file_hsplit, "Goto files in selection (hsplit)",
         goto_file_vsplit, "Goto files in selection (vsplit)",
+        goto_url, "Goto url in selection",
         goto_reference, "Goto references",
         goto_window_top, "Goto window top",
         goto_window_center, "Goto window center",
@@ -1048,6 +1049,27 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             if let Err(e) = cx.editor.open(&PathBuf::from(p), action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
             }
+        }
+    }
+}
+
+fn goto_url(cx: &mut Context) {
+    use helix_lsp::Url;
+
+    let (view, doc) = current_ref!(cx.editor);
+    let selection = doc.selection(view.id).primary();
+    let text = doc
+        .text()
+        .slice(selection.from()..selection.to())
+        .to_string();
+
+    match Url::parse(&text) {
+        Ok(url) => {
+            cx.editor.open_url(url);
+        }
+        Err(e) => {
+            cx.editor
+                .set_error(format!("Failed to parse url '{}': {}", text, e.to_string()));
         }
     }
 }

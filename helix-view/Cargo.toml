@@ -43,6 +43,8 @@ log = "~0.4"
 
 which = "4.2"
 
+open = "3"
+
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "4.4", features = ["std"] }
 
