@@ -35,10 +35,20 @@ use super::statusline;
 pub struct EditorView {
     pub keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
+    pending_commands: PendingCommands,
     pseudo_pending: Vec<KeyEvent>,
     last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
+}
+
+/// Stores commands that are pending because a previous command is
+/// waiting on input. Also stores context information that was present
+/// when the command chain was first executed.
+pub struct PendingCommands {
+    pub commands: Vec<commands::MappableCommand>,
+    pub register: Option<char>,
+    pub count: Option<NonZeroUsize>,
 }
 
 #[derive(Debug, Clone)]
@@ -48,9 +58,36 @@ pub enum InsertEvent {
     TriggerCompletion,
 }
 
+enum KeyEventOrResult {
+    Event(KeyEvent),
+    Result(KeymapResult),
+}
+
+impl From<KeyEvent> for KeyEventOrResult {
+    fn from(event: KeyEvent) -> Self {
+        Self::Event(event)
+    }
+}
+
+impl From<KeymapResult> for KeyEventOrResult {
+    fn from(result: KeymapResult) -> Self {
+        Self::Result(result)
+    }
+}
+
 impl Default for EditorView {
     fn default() -> Self {
         Self::new(Keymaps::default())
+    }
+}
+
+impl PendingCommands {
+    pub fn new() -> Self {
+        Self {
+            commands: Vec::new(),
+            register: None,
+            count: None,
+        }
     }
 }
 
@@ -59,6 +96,7 @@ impl EditorView {
         Self {
             keymaps,
             on_next_key: None,
+            pending_commands: PendingCommands::new(),
             pseudo_pending: Vec::new(),
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
@@ -910,54 +948,72 @@ impl EditorView {
         &mut self,
         mode: Mode,
         cxt: &mut commands::Context,
-        event: KeyEvent,
+        event: impl Into<KeyEventOrResult>,
     ) -> Option<KeymapResult> {
         let mut last_mode = mode;
         self.pseudo_pending.extend(self.keymaps.pending());
-        let key_result = self.keymaps.get(mode, event);
+        let key_result = match event.into() {
+            KeyEventOrResult::Event(event) => self.keymaps.get(mode, event),
+            KeyEventOrResult::Result(result) => result,
+        };
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
-        let mut execute_command = |command: &commands::MappableCommand| {
-            command.execute(cxt);
-            let current_mode = cxt.editor.mode();
-            match (last_mode, current_mode) {
-                (Mode::Normal, Mode::Insert) => {
-                    // HAXX: if we just entered insert mode from normal, clear key buf
-                    // and record the command that got us into this mode.
+        let mut execute_command =
+            |cxt: &mut commands::Context, command: &commands::MappableCommand| {
+                command.execute(cxt);
+                let current_mode = cxt.editor.mode();
+                match (last_mode, current_mode) {
+                    (Mode::Normal, Mode::Insert) => {
+                        // HAXX: if we just entered insert mode from normal, clear key buf
+                        // and record the command that got us into this mode.
 
-                    // how we entered insert mode is important, and we should track that so
-                    // we can repeat the side effect.
-                    self.last_insert.0 = command.clone();
-                    self.last_insert.1.clear();
+                        // how we entered insert mode is important, and we should track that so
+                        // we can repeat the side effect.
+                        self.last_insert.0 = command.clone();
+                        self.last_insert.1.clear();
 
-                    commands::signature_help_impl(cxt, commands::SignatureHelpInvoked::Automatic);
+                        commands::signature_help_impl(
+                            cxt,
+                            commands::SignatureHelpInvoked::Automatic,
+                        );
+                    }
+                    (Mode::Insert, Mode::Normal) => {
+                        // if exiting insert mode, remove completion
+                        self.completion = None;
+
+                        // TODO: Use an on_mode_change hook to remove signature help
+                        cxt.jobs.callback(async {
+                            let call: job::Callback =
+                                Callback::EditorCompositor(Box::new(|_editor, compositor| {
+                                    compositor.remove(SignatureHelp::ID);
+                                }));
+                            Ok(call)
+                        });
+                    }
+                    _ => (),
                 }
-                (Mode::Insert, Mode::Normal) => {
-                    // if exiting insert mode, remove completion
-                    self.completion = None;
+                last_mode = current_mode;
+            };
 
-                    // TODO: Use an on_mode_change hook to remove signature help
-                    cxt.jobs.callback(async {
-                        let call: job::Callback =
-                            Callback::EditorCompositor(Box::new(|_editor, compositor| {
-                                compositor.remove(SignatureHelp::ID);
-                            }));
-                        Ok(call)
-                    });
-                }
-                _ => (),
-            }
-            last_mode = current_mode;
-        };
-
-        match &key_result {
+        match key_result {
             KeymapResult::Matched(command) => {
-                execute_command(command);
+                execute_command(cxt, &command);
             }
             KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
-            KeymapResult::MatchedSequence(commands) => {
-                for command in commands {
-                    execute_command(command);
+            KeymapResult::MatchedSequence(mut commands) => {
+                while !commands.is_empty() {
+                    // if a previous command is waiting for input, stop executing
+                    // and store the remaining commands
+                    if cxt.on_next_key_callback.is_some() {
+                        self.pending_commands = PendingCommands {
+                            commands,
+                            register: cxt.register,
+                            count: cxt.count,
+                        };
+                        break;
+                    } else {
+                        execute_command(cxt, &commands.remove(0));
+                    }
                 }
             }
             KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
@@ -1343,6 +1399,23 @@ impl Component for EditorView {
                 if let Some(on_next_key) = self.on_next_key.take() {
                     // if there's a command waiting input, do that first
                     on_next_key(&mut cx, key);
+                    // execute any pending commands if the current command is finished
+                    // (i.e. the command we just executed did not set on_next_key_callback)
+                    if !self.pending_commands.commands.is_empty()
+                        && cx.on_next_key_callback.is_none()
+                    {
+                        let pending =
+                            std::mem::replace(&mut self.pending_commands, PendingCommands::new());
+
+                        cx.count = pending.count;
+                        cx.register = pending.register;
+
+                        self.handle_keymap_event(
+                            mode,
+                            &mut cx,
+                            KeymapResult::MatchedSequence(pending.commands),
+                        );
+                    }
                 } else {
                     match mode {
                         Mode::Insert => {
