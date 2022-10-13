@@ -46,6 +46,11 @@ pub struct FilePicker<T: Item> {
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
+
+    /// Line offset from preview's starting point(first_line) to enable preview scrolling
+    preview_scroll_offset: (Direction, usize),
+    /// Whether to show the preview panel (default true)
+    show_preview: bool,
 }
 
 pub enum CachedPreview {
@@ -102,6 +107,8 @@ impl<T: Item> FilePicker<T> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: Box::new(preview_fn),
+            preview_scroll_offset: (Direction::Forward, 0),
+            show_preview: true,
         }
     }
 
@@ -159,8 +166,60 @@ impl<T: Item> FilePicker<T> {
                 },
             )
             .unwrap_or(CachedPreview::NotFound);
+
         self.preview_cache.insert(path.to_owned(), preview);
         Preview::Cached(&self.preview_cache[path])
+    }
+
+    /// Moves the picker file preview by a number of lines, either down (`Forward`) or up (`Backward`)
+    fn move_preview_by(&mut self, amount: usize, move_direction: Direction) {
+        let (current_scroll_direction, current_scroll_offset) = self.preview_scroll_offset;
+
+        match move_direction {
+            Direction::Backward => match current_scroll_direction {
+                Direction::Backward => {
+                    self.preview_scroll_offset.1 = current_scroll_offset.saturating_add(amount);
+                }
+                Direction::Forward => {
+                    if let Some(change) = current_scroll_offset.checked_sub(amount) {
+                        self.preview_scroll_offset.1 = change;
+                    } else {
+                        self.preview_scroll_offset = (
+                            Direction::Backward,
+                            amount.saturating_sub(current_scroll_offset),
+                        );
+                    }
+                }
+            },
+            Direction::Forward => match current_scroll_direction {
+                Direction::Backward => {
+                    if let Some(change) = current_scroll_offset.checked_sub(amount) {
+                        self.preview_scroll_offset.1 = change;
+                    } else {
+                        self.preview_scroll_offset = (
+                            Direction::Forward,
+                            amount.saturating_sub(current_scroll_offset),
+                        );
+                    }
+                }
+                Direction::Forward => {
+                    self.preview_scroll_offset.1 = current_scroll_offset.saturating_add(amount);
+                }
+            },
+        };
+    }
+
+    /// Updates FilePicker state if picker::cursor_moved is `true`.
+    /// Used for resetting the preview scroll offset on Picker::move_by()
+    fn on_cursor_move_update(&mut self) {
+        if self.picker.cursor_moved {
+            self.preview_scroll_offset.1 = 0;
+            self.picker.cursor_moved = false;
+        }
+    }
+
+    fn toggle_preview(&mut self) {
+        self.show_preview = !self.show_preview;
     }
 }
 
@@ -173,7 +232,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         // |         | |         |
         // +---------+ +---------+
 
-        let render_preview = self.picker.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+        let render_preview = self.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
@@ -205,7 +264,10 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         let inner = inner.inner(&margin);
         block.render(preview_area, surface);
 
-        let mut preview_scroll_offset = self.picker.preview_scroll_offset;
+        self.on_cursor_move_update();
+        // we get the scroll offset here because the lifetimes of
+        // FilePicker::get_preview() prohibit the use of self until the final use of doc: `&Document`
+        let mut preview_scroll_offset = self.preview_scroll_offset;
 
         if let Some((path, range)) = self.current_file(cx.editor) {
             let preview = self.get_preview(&path, cx.editor);
@@ -229,9 +291,27 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                 })
                 .unwrap_or(0);
 
-            // Limits the preview scroll between 0 and doc's len_lines() in case it moves past the line number
-            preview_scroll_offset = preview_scroll_offset.min(doc.text().len_lines());
-            let offset = Position::new(first_line + preview_scroll_offset, 0);
+            // limit scroll offset between [-first_line, doc.text().len_lines() - first_line - preview height + 1]
+            // +1 is so to assert that preview scrolls up to one line after the end of the file
+            preview_scroll_offset.1 = match preview_scroll_offset.0 {
+                Direction::Backward => preview_scroll_offset.1.min(first_line),
+                Direction::Forward => preview_scroll_offset.1.min(
+                    doc.text()
+                        .len_lines()
+                        .saturating_sub(first_line)
+                        .saturating_sub(inner.height as usize)
+                        + 1,
+                ),
+            };
+
+            // subtract or add scroll offset with respect to first_line
+            let offset = Position::new(
+                match preview_scroll_offset.0 {
+                    Direction::Backward => first_line.saturating_sub(preview_scroll_offset.1),
+                    Direction::Forward => first_line.saturating_add(preview_scroll_offset.1),
+                },
+                0,
+            );
 
             let highlights =
                 EditorView::doc_syntax_highlights(doc, offset, area.height, &cx.editor.theme);
@@ -245,31 +325,63 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                 &cx.editor.config(),
             );
 
-            // update after use of `doc` because of lifetime issues with get_preview()
-            self.picker.preview_scroll_offset = preview_scroll_offset;
+            self.preview_scroll_offset = preview_scroll_offset;
 
             // highlight the line
             if let Some((start, end)) = range {
-                let offset = start.saturating_sub(first_line) as u16;
-                surface.set_style(
-                    Rect::new(
-                        inner.x,
-                        inner.y + offset,
-                        inner.width,
-                        (end.saturating_sub(start) as u16 + 1)
-                            .min(inner.height.saturating_sub(offset)),
-                    ),
-                    cx.editor
-                        .theme
-                        .try_get("ui.highlight")
-                        .unwrap_or_else(|| cx.editor.theme.get("ui.selection")),
-                );
+                let offset_h = start.saturating_sub(offset.row) as u16;
+
+                // highlight only if selection is inside preview
+                if offset_h <= inner.height && end >= offset.row {
+                    surface.set_style(
+                        Rect::new(
+                            inner.x,
+                            inner.y + offset_h,
+                            inner.width,
+                            (end.saturating_sub(start) as u16 + 1)
+                                .min(inner.height.saturating_sub(offset_h))
+                                .min(end.saturating_sub(offset.row) as u16 + 1),
+                        ),
+                        cx.editor
+                            .theme
+                            .try_get("ui.highlight")
+                            .unwrap_or_else(|| cx.editor.theme.get("ui.selection")),
+                    );
+                }
             }
         }
     }
 
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
-        // TODO: keybinds for scrolling preview
+        if let Event::Key(key_event) = event {
+            match key_event {
+                alt!('u') | shift!(Up) => {
+                    self.move_preview_by(
+                        ctx.editor.config().scroll_lines.unsigned_abs(),
+                        Direction::Backward,
+                    );
+
+                    return EventResult::Consumed(None);
+                }
+                alt!('d') | shift!(Down) => {
+                    self.move_preview_by(
+                        ctx.editor.config().scroll_lines.unsigned_abs(),
+                        Direction::Forward,
+                    );
+
+                    return EventResult::Consumed(None);
+                }
+                ctrl!('t') => {
+                    self.toggle_preview();
+
+                    return EventResult::Consumed(None);
+                }
+                _ => {
+                    return self.picker.handle_event(event, ctx);
+                }
+            }
+        }
+
         self.picker.handle_event(event, ctx)
     }
 
@@ -302,14 +414,13 @@ pub struct Picker<T: Item> {
     completion_height: u16,
 
     cursor: usize,
+    /// Used to inform the picker owner on a cursor move
+    cursor_moved: bool,
     // pattern: String,
     prompt: Prompt,
     previous_pattern: String,
-    preview_scroll_offset: usize,
     /// Whether to truncate the start (default true)
     pub truncate_start: bool,
-    /// Whether to show the preview panel (default true)
-    show_preview: bool,
 
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
 }
@@ -334,11 +445,10 @@ impl<T: Item> Picker<T> {
             matches: Vec::new(),
             filters: Vec::new(),
             cursor: 0,
+            cursor_moved: false,
             prompt,
             previous_pattern: String::new(),
-            preview_scroll_offset: 0,
             truncate_start: true,
-            show_preview: true,
             callback_fn: Box::new(callback_fn),
             completion_height: 0,
         };
@@ -443,16 +553,7 @@ impl<T: Item> Picker<T> {
             }
         }
 
-        // Reset the preview scroll on pointing to a different file
-        self.preview_scroll_offset = 0;
-    }
-
-    /// Moves the picker file preview by a number of lines, either down (`Forward`) or up (`Backward`)
-    pub fn move_preview_by(&mut self, amount: usize, direction: Direction) {
-        self.preview_scroll_offset = match direction {
-            Direction::Forward => self.preview_scroll_offset.saturating_add(amount),
-            Direction::Backward => self.preview_scroll_offset.saturating_sub(amount),
-        };
+        self.cursor_moved = true;
     }
 
     /// Move the cursor down by exactly one page. After the last page comes the first page.
@@ -487,10 +588,6 @@ impl<T: Item> Picker<T> {
             .extend(self.matches.iter().map(|(index, _)| *index));
         self.filters.sort_unstable(); // used for binary search later
         self.prompt.clear(cx.editor);
-    }
-
-    pub fn toggle_preview(&mut self) {
-        self.show_preview = !self.show_preview;
     }
 
     fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
@@ -545,18 +642,6 @@ impl<T: Item + 'static> Component for Picker<T> {
             key!(End) => {
                 self.to_end();
             }
-            alt!('u') | shift!(Up) => {
-                self.move_preview_by(
-                    cx.editor.config().scroll_lines.unsigned_abs(),
-                    Direction::Backward,
-                );
-            }
-            alt!('d') | shift!(Down) => {
-                self.move_preview_by(
-                    cx.editor.config().scroll_lines.unsigned_abs(),
-                    Direction::Forward,
-                );
-            }
             key!(Esc) | ctrl!('c') => {
                 return close_fn;
             }
@@ -580,9 +665,6 @@ impl<T: Item + 'static> Component for Picker<T> {
             }
             ctrl!(' ') => {
                 self.save_filter(cx);
-            }
-            ctrl!('t') => {
-                self.toggle_preview();
             }
             _ => {
                 self.prompt_handle_event(event, cx);
