@@ -8,11 +8,9 @@
 ] @keyword.storage.type
 
 [
-  "const"
   "extern"
-  "inline"
   "register"
-  "volatile"
+  (type_qualifier)
   (storage_class_specifier)
 ] @keyword.storage.modifier
 
@@ -107,7 +105,7 @@
 (system_lib_string) @string
 
 (null) @constant
-(number_literal) @constant.numeric.integer
+(number_literal) @constant.numeric
 (char_literal) @constant.character
 
 (call_expression
@@ -133,7 +131,7 @@
 (statement_identifier) @label
 (type_identifier) @type
 (primitive_type) @type.builtin
-(sized_type_specifier) @type
+(sized_type_specifier) @type.builtin
 
 ((identifier) @constant
   (#match? @constant "^[A-Z][A-Z\\d_]*$"))
