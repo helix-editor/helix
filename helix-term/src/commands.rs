@@ -205,9 +205,13 @@ impl MappableCommand {
         move_line_down, "Move down",
         move_line_down_anchored, "Move down with newline anchoring behavior",
         extend_char_left, "Extend left",
+        extend_char_left_same_line, "Extend left within same line only",
         extend_char_right, "Extend right",
+        extend_char_right_same_line, "Extend left within same line only",
         extend_line_up, "Extend up",
+        extend_line_up_anchored, "Extend up with newline anchoring behavior",
         extend_line_down, "Extend down",
+        extend_line_down_anchored, "Extend down with newline anchoring behavior",
         copy_selection_on_next_line, "Copy selection on next line",
         copy_selection_on_prev_line, "Copy selection on previous line",
         move_next_word_start, "Move to start of next word",
@@ -598,16 +602,52 @@ fn extend_char_left(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Backward, Movement::Extend)
 }
 
+fn extend_char_left_same_line(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_horizontally_same_line,
+        Direction::Backward,
+        Movement::Extend,
+    )
+}
+
 fn extend_char_right(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Forward, Movement::Extend)
+}
+
+fn extend_char_right_same_line(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_horizontally_same_line,
+        Direction::Forward,
+        Movement::Extend,
+    )
 }
 
 fn extend_line_up(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Backward, Movement::Extend)
 }
 
+fn extend_line_up_anchored(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored,
+        Direction::Backward,
+        Movement::Extend,
+    )
+}
+
 fn extend_line_down(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Forward, Movement::Extend)
+}
+
+fn extend_line_down_anchored(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored,
+        Direction::Forward,
+        Movement::Extend,
+    )
 }
 
 fn goto_line_end_impl(view: &mut View, doc: &mut Document, movement: Movement) {
