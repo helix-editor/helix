@@ -123,15 +123,16 @@ pub fn move_vertically_anchored(
     let pos = range.cursor(slice);
     let line = slice.char_to_line(pos);
 
-    // if we are resting on a newline character and we did not just move
-    // across an empty line where the newline_mode_mode flag was negativley
-    // carried we are in newline movement mode.
-    let newline_move_mode = pos == line_end_char_index(&slice, line)
-        && (range.newline_move_mode || slice.line(line).len_chars() != 1);
-
     // Compute the current position's 2d coordinates.
     let Position { row, col } = visual_coords_at_pos(slice, pos, tab_width);
     let horiz = range.horiz.unwrap_or(col as u32);
+
+    // if we are resting on a newline character and we did not just move
+    // across an empty line we are in newline movement mode.  To disambiugate these
+    // cases we take advantage that anchored movement sets the horizontal column
+    // to the largest possible integer.
+    let newline_move_mode = pos == line_end_char_index(&slice, line)
+        && (horiz == !0 || slice.line(line).len_chars() != 1);
 
     // Compute the new position.
     let new_row = match dir {
@@ -141,7 +142,7 @@ pub fn move_vertically_anchored(
 
     // if we are already on a newline character, we want to navigate to the
     // newline character on the new line we moved to.
-    let (new_pos, newline_move_mode) = if newline_move_mode {
+    let (new_pos, new_horiz) = if newline_move_mode {
         let new_pos = line_end_char_index(
             &slice,
             slice.char_to_line(pos_at_visual_coords(
@@ -151,7 +152,9 @@ pub fn move_vertically_anchored(
             )),
         );
 
-        (new_pos, true)
+        // when in newline_move_mode we set the horizontal column to the largest
+        // possible integer to be able to disambiugate movements across empty lines.
+        (new_pos, !0)
     } else {
         let new_col = col.max(horiz as usize);
         let mut new_pos = pos_at_visual_coords(slice, Position::new(new_row, new_col), tab_width);
@@ -167,13 +170,11 @@ pub fn move_vertically_anchored(
             new_pos = graphemes::prev_grapheme_boundary(slice, end_index);
         }
 
-        // non newline movement mode carries the flag of the range forward
-        (new_pos, range.newline_move_mode)
+        (new_pos, horiz)
     };
 
     let mut new_range = range.put_cursor(slice, new_pos, behaviour == Movement::Extend);
-    new_range.horiz = Some(horiz);
-    new_range.newline_move_mode = newline_move_mode;
+    new_range.horiz = Some(new_horiz);
     new_range
 }
 

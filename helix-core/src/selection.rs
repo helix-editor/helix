@@ -55,10 +55,6 @@ pub struct Range {
     pub head: usize,
     /// Retains the information about the horizontal column we were on
     pub horiz: Option<u32>,
-    /// Disambiugation state for movement across empty lines for anchored
-    /// newline movement.  If this flag is `true` it means that we came
-    /// from the newline character rather than a character in the line.
-    pub newline_move_mode: bool,
 }
 
 impl Range {
@@ -67,7 +63,6 @@ impl Range {
             anchor,
             head,
             horiz: None,
-            newline_move_mode: false,
         }
     }
 
@@ -134,7 +129,6 @@ impl Range {
             anchor: self.head,
             head: self.anchor,
             horiz: self.horiz,
-            newline_move_mode: self.newline_move_mode,
         }
     }
 
@@ -193,7 +187,6 @@ impl Range {
             anchor,
             head,
             horiz: None,
-            newline_move_mode: false,
         }
     }
 
@@ -207,14 +200,12 @@ impl Range {
                 anchor: self.anchor.min(from),
                 head: self.head.max(to),
                 horiz: None,
-                newline_move_mode: false,
             }
         } else {
             Self {
                 anchor: self.anchor.max(to),
                 head: self.head.min(from),
                 horiz: None,
-                newline_move_mode: false,
             }
         }
     }
@@ -230,14 +221,12 @@ impl Range {
                 anchor: self.anchor.max(other.anchor),
                 head: self.head.min(other.head),
                 horiz: None,
-                newline_move_mode: false,
             }
         } else {
             Range {
                 anchor: self.from().min(other.from()),
                 head: self.to().max(other.to()),
                 horiz: None,
-                newline_move_mode: false,
             }
         }
     }
@@ -296,11 +285,6 @@ impl Range {
             } else {
                 None
             },
-            newline_move_mode: if new_anchor == self.anchor {
-                self.newline_move_mode
-            } else {
-                false
-            },
         }
     }
 
@@ -324,7 +308,6 @@ impl Range {
                 anchor: self.anchor,
                 head: next_grapheme_boundary(slice, self.head),
                 horiz: self.horiz,
-                newline_move_mode: self.newline_move_mode,
             }
         } else {
             *self
@@ -397,7 +380,6 @@ impl From<(usize, usize)> for Range {
             anchor,
             head,
             horiz: None,
-            newline_move_mode: false,
         }
     }
 }
@@ -502,7 +484,6 @@ impl Selection {
                 anchor,
                 head,
                 horiz: None,
-                newline_move_mode: false,
             }],
             primary_index: 0,
         }
