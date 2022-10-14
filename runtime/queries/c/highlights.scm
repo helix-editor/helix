@@ -51,6 +51,9 @@
   (preproc_directive)
 ] @keyword.directive
 
+(pointer_declarator "*" @type.builtin)
+(abstract_pointer_declarator "*" @type.builtin)
+
 [
   "+"
   "-"
