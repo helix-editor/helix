@@ -539,7 +539,7 @@ where
 }
 
 use helix_core::movement::{
-    move_horizontally, move_horizontally_line_bounded, move_vertically, move_vertically_anchored,
+    move_horizontally, move_horizontally_same_line, move_vertically, move_vertically_anchored,
 };
 
 fn move_char_left(cx: &mut Context) {
@@ -549,7 +549,7 @@ fn move_char_left(cx: &mut Context) {
 fn move_char_left_same_line(cx: &mut Context) {
     move_impl(
         cx,
-        move_horizontally_line_bounded,
+        move_horizontally_same_line,
         Direction::Backward,
         Movement::Move,
     )
@@ -562,7 +562,7 @@ fn move_char_right(cx: &mut Context) {
 fn move_char_right_same_line(cx: &mut Context) {
     move_impl(
         cx,
-        move_horizontally_line_bounded,
+        move_horizontally_same_line,
         Direction::Forward,
         Movement::Move,
     )

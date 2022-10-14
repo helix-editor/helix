@@ -48,7 +48,7 @@ pub fn move_horizontally(
     range.put_cursor(slice, new_pos, behaviour == Movement::Extend)
 }
 
-pub fn move_horizontally_line_bounded(
+pub fn move_horizontally_same_line(
     slice: RopeSlice,
     range: Range,
     dir: Direction,
