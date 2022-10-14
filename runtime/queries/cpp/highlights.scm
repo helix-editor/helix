@@ -34,9 +34,9 @@
 (auto) @type
 "decltype" @type
 
-(ref_qualifier (["&" "&&"]) @type.builtin)
-(reference_declarator (["&" "&&"]) @type.builtin)
-(abstract_reference_declarator (["&" "&&"]) @type.builtin)
+(ref_qualifier ["&" "&&"] @type.builtin)
+(reference_declarator ["&" "&&"] @type.builtin)
+(abstract_reference_declarator ["&" "&&"] @type.builtin)
 
 ; Constants
 
