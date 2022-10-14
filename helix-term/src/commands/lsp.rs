@@ -1,6 +1,6 @@
 use helix_lsp::{
     block_on,
-    lsp::{self, DiagnosticSeverity, NumberOrString},
+    lsp::{self, CodeAction, CodeActionOrCommand, DiagnosticSeverity, NumberOrString},
     util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
@@ -18,7 +18,7 @@ use crate::{
     },
 };
 
-use std::{borrow::Cow, collections::BTreeMap, path::PathBuf, sync::Arc};
+use std::{borrow::Cow, cmp::Ordering, collections::BTreeMap, path::PathBuf, sync::Arc};
 
 /// Gets the language server that is attached to a document, and
 /// if it's not active displays a status message. Using this macro
@@ -211,7 +211,6 @@ fn sym_picker(
                     Ok(path) => path,
                     Err(_) => {
                         let err = format!("unable to convert URI to filepath: {}", uri);
-                        log::error!("{}", err);
                         cx.editor.set_error(err);
                         return;
                     }
@@ -421,6 +420,63 @@ impl ui::menu::Item for lsp::CodeActionOrCommand {
     }
 }
 
+/// Determines the category of the `CodeAction` using the `CodeAction::kind` field.
+/// Returns a number that represent these categories.
+/// Categories with a lower number should be displayed first.
+///
+///
+/// While the `kind` field is defined as open ended in the LSP spec (any value may be used)
+/// in practice a closed set of common values (mostly suggested in the LSP spec) are used.
+/// VSCode displays each of these categories seperatly (seperated by a heading in the codeactions picker)
+/// to make them easier to navigate. Helix does not display these  headings to the user.
+/// However it does sort code actions by their categories to achieve the same order as the VScode picker,
+/// just without the headings.
+///
+/// The order used here is modeled after the [vscode sourcecode](https://github.com/microsoft/vscode/blob/eaec601dd69aeb4abb63b9601a6f44308c8d8c6e/src/vs/editor/contrib/codeAction/browser/codeActionWidget.ts>)
+fn action_category(action: &CodeActionOrCommand) -> u32 {
+    if let CodeActionOrCommand::CodeAction(CodeAction {
+        kind: Some(kind), ..
+    }) = action
+    {
+        let mut components = kind.as_str().split('.');
+        match components.next() {
+            Some("quickfix") => 0,
+            Some("refactor") => match components.next() {
+                Some("extract") => 1,
+                Some("inline") => 2,
+                Some("rewrite") => 3,
+                Some("move") => 4,
+                Some("surround") => 5,
+                _ => 7,
+            },
+            Some("source") => 6,
+            _ => 7,
+        }
+    } else {
+        7
+    }
+}
+
+fn action_prefered(action: &CodeActionOrCommand) -> bool {
+    matches!(
+        action,
+        CodeActionOrCommand::CodeAction(CodeAction {
+            is_preferred: Some(true),
+            ..
+        })
+    )
+}
+
+fn action_fixes_diagnostics(action: &CodeActionOrCommand) -> bool {
+    matches!(
+        action,
+        CodeActionOrCommand::CodeAction(CodeAction {
+            diagnostics: Some(diagnostics),
+            ..
+        }) if !diagnostics.is_empty()
+    )
+}
+
 pub fn code_action(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
@@ -457,37 +513,53 @@ pub fn code_action(cx: &mut Context) {
                 None => return,
             };
 
+            // remove disabled code actions
+            actions.retain(|action| {
+                matches!(
+                    action,
+                    CodeActionOrCommand::Command(_)
+                        | CodeActionOrCommand::CodeAction(CodeAction { disabled: None, .. })
+                )
+            });
+
             if actions.is_empty() {
                 editor.set_status("No code actions available");
                 return;
             }
 
-            // sort by CodeActionKind
-            // this ensures that the most relevant codeactions (quickfix) show up first
-            // while more situational commands (like refactors) show up later
-            // this behaviour is modeled after the behaviour of vscode (https://github.com/microsoft/vscode/blob/eaec601dd69aeb4abb63b9601a6f44308c8d8c6e/src/vs/editor/contrib/codeAction/browser/codeActionWidget.ts)
-
-            actions.sort_by_key(|action| match &action {
-                lsp::CodeActionOrCommand::CodeAction(lsp::CodeAction {
-                    kind: Some(kind), ..
-                }) => {
-                    let mut components = kind.as_str().split('.');
-
-                    match components.next() {
-                        Some("quickfix") => 0,
-                        Some("refactor") => match components.next() {
-                            Some("extract") => 1,
-                            Some("inline") => 2,
-                            Some("rewrite") => 3,
-                            Some("move") => 4,
-                            Some("surround") => 5,
-                            _ => 7,
-                        },
-                        Some("source") => 6,
-                        _ => 7,
-                    }
+            // Sort codeactions into a useful order. This behaviour is only partially described in the LSP spec.
+            // Many details are modeled after vscode because langauge servers are usually tested against it.
+            // VScode sorts the codeaction two times:
+            //
+            // First the codeactions that fix some diagnostics are moved to the front.
+            // If both codeactions fix some diagnostics (or both fix none) the codeaction
+            // that is marked with `is_preffered` is shown first. The codeactions are then shown in seperate
+            // submenus that only contain a certain category (see `action_category`) of actions.
+            //
+            // Below this done in in a single sorting step
+            actions.sort_by(|action1, action2| {
+                // sort actions by category
+                let order = action_category(action1).cmp(&action_category(action2));
+                if order != Ordering::Equal {
+                    return order;
                 }
-                _ => 7,
+                // within the categories sort by relevancy.
+                // Modeled after the `codeActionsComparator` function in vscode:
+                // https://github.com/microsoft/vscode/blob/eaec601dd69aeb4abb63b9601a6f44308c8d8c6e/src/vs/editor/contrib/codeAction/browser/codeAction.ts
+
+                // if one code action fixes a diagnostic but the other one doesn't show it first
+                let order = action_fixes_diagnostics(action1)
+                    .cmp(&action_fixes_diagnostics(action2))
+                    .reverse();
+                if order != Ordering::Equal {
+                    return order;
+                }
+
+                // if one of the codeactions is marked as prefered show it first
+                // otherwise keep the original LSP sorting
+                action_prefered(action1)
+                    .cmp(&action_prefered(action2))
+                    .reverse()
             });
 
             let mut picker = ui::Menu::new(actions, (), move |editor, code_action, event| {
