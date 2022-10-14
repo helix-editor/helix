@@ -2541,7 +2541,8 @@ async fn make_format_callback(
         }
 
         if let Some((path, force)) = write {
-            if let Err(err) = doc.save(path, force) {
+            let id = doc.id();
+            if let Err(err) = editor.save(id, path, force) {
                 editor.set_error(format!("Error saving: {}", err));
             }
         }

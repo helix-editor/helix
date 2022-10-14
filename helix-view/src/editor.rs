@@ -1,6 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::{DocumentSavedEventResult, Mode},
+    document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode},
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
@@ -9,7 +9,7 @@ use crate::{
     Document, DocumentId, View, ViewId,
 };
 
-use futures_util::stream::{select_all::SelectAll, FuturesUnordered};
+use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::Call;
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -29,7 +29,7 @@ use tokio::{
     time::{sleep, Duration, Instant, Sleep},
 };
 
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
@@ -644,12 +644,20 @@ pub struct Breakpoint {
     pub log_message: Option<String>,
 }
 
+use futures_util::stream::{Flatten, Once};
+
 pub struct Editor {
     /// Current editing mode.
     pub mode: Mode,
     pub tree: Tree,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
+
+    // We Flatten<> to resolve the inner DocumentSavedEventFuture. For that we need a stream of streams, hence the Once<>.
+    // https://stackoverflow.com/a/66875668
+    pub saves: HashMap<DocumentId, UnboundedSender<Once<DocumentSavedEventFuture>>>,
+    pub save_queue: SelectAll<Flatten<UnboundedReceiverStream<Once<DocumentSavedEventFuture>>>>,
+
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: Option<char>,
     pub registers: Registers,
@@ -751,6 +759,8 @@ impl Editor {
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
+            saves: HashMap::new(),
+            save_queue: SelectAll::new(),
             count: None,
             selected_register: None,
             macro_recording: None,
@@ -1083,6 +1093,12 @@ impl Editor {
             self.new_document(doc)
         };
 
+        let (save_sender, save_receiver) = tokio::sync::mpsc::unbounded_channel();
+        self.saves.insert(id, save_sender);
+
+        let stream = UnboundedReceiverStream::new(save_receiver).flatten();
+        self.save_queue.push(stream);
+
         self.switch(id, action);
         Ok(id)
     }
@@ -1095,38 +1111,21 @@ impl Editor {
         self._refresh();
     }
 
-    pub async fn close_document(
-        &mut self,
-        doc_id: DocumentId,
-        force: bool,
-    ) -> Result<(), CloseError> {
+    pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> Result<(), CloseError> {
         let doc = match self.documents.get_mut(&doc_id) {
             Some(doc) => doc,
             None => return Err(CloseError::DoesNotExist),
         };
-
-        // flush out any pending writes first to clear the modified status
-        if let Some(Err(err)) = doc.try_flush_saves().await {
-            return Err(CloseError::SaveError(err));
-        }
-
         if !force && doc.is_modified() {
             return Err(CloseError::BufferModified(doc.display_name().into_owned()));
         }
 
-        if let Some(Err(err)) = doc.close().await {
-            return Err(CloseError::SaveError(err));
-        }
+        // This will also disallow any follow-up writes
+        self.saves.remove(&doc_id);
 
-        // Don't fail the whole write because the language server could not
-        // acknowledge the close
         if let Some(language_server) = doc.language_server() {
-            if let Err(err) = language_server
-                .text_document_did_close(doc.identifier())
-                .await
-            {
-                log::error!("Error closing doc in language server: {}", err);
-            }
+            // TODO: track error
+            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
 
         enum Action {
@@ -1184,6 +1183,28 @@ impl Editor {
         }
 
         self._refresh();
+
+        Ok(())
+    }
+
+    pub fn save<P: Into<PathBuf>>(
+        &mut self,
+        doc_id: DocumentId,
+        path: Option<P>,
+        force: bool,
+    ) -> anyhow::Result<()> {
+        // convert a channel of futures to pipe into main queue one by one
+        // via stream.then() ? then push into main future
+
+        let path = path.map(|path| path.into());
+        let doc = doc_mut!(self, &doc_id);
+        let future = doc.save(path, force)?;
+        // TODO: if no self.saves for that doc id then bail
+        // bail!("saves are closed for this document!");
+        use futures_util::stream;
+        self.saves[&doc_id]
+            .send(stream::once(Box::pin(future)))
+            .map_err(|err| anyhow!("failed to send save event: {}", err))?;
 
         Ok(())
     }
@@ -1307,16 +1328,10 @@ impl Editor {
     }
 
     pub async fn wait_event(&mut self) -> EditorEvent {
-        let mut saves: FuturesUnordered<_> = self
-            .documents
-            .values_mut()
-            .map(Document::await_save)
-            .collect();
-
         tokio::select! {
             biased;
 
-            Some(Some(event)) = saves.next() => {
+            Some(event) = self.save_queue.next() => {
                 EditorEvent::DocumentSaved(event)
             }
             Some(config_event) = self.config_events.1.recv() => {

@@ -1,3 +1,4 @@
+use futures_util::StreamExt;
 // Each component declares it's own size constraints and gets fitted based on it's parent.
 // Q: how does this work with popups?
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
@@ -33,11 +34,22 @@ impl<'a> Context<'a> {
     pub fn block_try_flush_writes(&mut self) -> anyhow::Result<()> {
         tokio::task::block_in_place(|| helix_lsp::block_on(self.jobs.finish(self.editor, None)))?;
 
-        for doc in &mut self.editor.documents.values_mut() {
-            tokio::task::block_in_place(|| helix_lsp::block_on(doc.try_flush_saves()))
-                .map(|result| result.map(|_| ()))
-                .unwrap_or(Ok(()))?;
-        }
+        tokio::task::block_in_place(|| {
+            helix_lsp::block_on(async {
+                while let Some(save_event) = self.editor.save_queue.next().await {
+                    match &save_event {
+                        Ok(event) => {
+                            let doc = doc_mut!(self.editor, &event.doc_id);
+                            doc.set_last_saved_revision(event.revision);
+                        }
+                        Err(err) => {
+                            log::error!("error saving document: {}", err);
+                        }
+                    };
+                    // TODO: if is_err: break?
+                }
+            })
+        });
 
         Ok(())
     }

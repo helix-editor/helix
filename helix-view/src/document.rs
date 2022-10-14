@@ -13,10 +13,6 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
-use tokio::sync::mpsc::error::TryRecvError;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-
-use tokio::sync::Mutex;
 
 use helix_core::{
     encoding,
@@ -134,9 +130,6 @@ pub struct Document {
     last_saved_revision: usize,
     version: i32, // should be usize?
     pub(crate) modified_since_accessed: bool,
-    save_sender: Option<UnboundedSender<DocumentSavedEventFuture>>,
-    save_receiver: Option<UnboundedReceiver<DocumentSavedEventFuture>>,
-    current_save: Arc<Mutex<Option<DocumentSavedEventFuture>>>,
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
@@ -357,7 +350,6 @@ impl Document {
         let encoding = encoding.unwrap_or(encoding::UTF_8);
         let changes = ChangeSet::new(&text);
         let old_state = None;
-        let (save_sender, save_receiver) = tokio::sync::mpsc::unbounded_channel();
 
         Self {
             id: DocumentId::default(),
@@ -378,9 +370,6 @@ impl Document {
             savepoint: None,
             last_saved_revision: 0,
             modified_since_accessed: false,
-            save_sender: Some(save_sender),
-            save_receiver: Some(save_receiver),
-            current_save: Arc::new(Mutex::new(None)),
             language_server: None,
         }
     }
@@ -519,21 +508,26 @@ impl Document {
         &mut self,
         path: Option<P>,
         force: bool,
-    ) -> Result<(), anyhow::Error> {
-        self.save_impl::<futures_util::future::Ready<_>, _>(path, force)
+    ) -> Result<
+        impl Future<Output = Result<DocumentSavedEvent, anyhow::Error>> + 'static + Send,
+        anyhow::Error,
+    > {
+        let path = path.map(|path| path.into());
+        self.save_impl(path, force)
+
+        // futures_util::future::Ready<_>,
     }
 
     /// The `Document`'s text is encoded according to its encoding and written to the file located
     /// at its `path()`.
-    fn save_impl<F, P>(&mut self, path: Option<P>, force: bool) -> Result<(), anyhow::Error>
-    where
-        F: Future<Output = Result<Transaction, FormatterError>> + 'static + Send,
-        P: Into<PathBuf>,
-    {
-        if self.save_sender.is_none() {
-            bail!("saves are closed for this document!");
-        }
-
+    fn save_impl(
+        &mut self,
+        path: Option<PathBuf>,
+        force: bool,
+    ) -> Result<
+        impl Future<Output = Result<DocumentSavedEvent, anyhow::Error>> + 'static + Send,
+        anyhow::Error,
+    > {
         log::debug!(
             "submitting save of doc '{:?}'",
             self.path().map(|path| path.to_string_lossy())
@@ -544,7 +538,7 @@ impl Document {
         let text = self.text().clone();
 
         let path = match path {
-            Some(path) => helix_core::path::get_canonicalized_path(&path.into())?,
+            Some(path) => helix_core::path::get_canonicalized_path(&path)?,
             None => {
                 if self.path.is_none() {
                     bail!("Can't save with no path set!");
@@ -564,7 +558,7 @@ impl Document {
         let encoding = self.encoding;
 
         // We encode the file according to the `Document`'s encoding.
-        let save_event = async move {
+        let future = async move {
             use tokio::fs::File;
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
@@ -604,107 +598,15 @@ impl Document {
             Ok(event)
         };
 
-        self.save_sender
-            .as_mut()
-            .unwrap()
-            .send(Box::pin(save_event))
-            .map_err(|err| anyhow!("failed to send save event: {}", err))
-    }
-
-    pub async fn await_save(&mut self) -> Option<DocumentSavedEventResult> {
-        self.await_save_impl(true).await
-    }
-
-    async fn await_save_impl(&mut self, block: bool) -> Option<DocumentSavedEventResult> {
-        let mut current_save = self.current_save.lock().await;
-        if let Some(ref mut save) = *current_save {
-            log::trace!("reawaiting save of '{:?}'", self.path());
-            let result = save.await;
-            *current_save = None;
-            log::trace!("reawait save of '{:?}' result: {:?}", self.path(), result);
-            return Some(result);
-        }
-
-        // return early if the receiver is closed
-        let rx = self.save_receiver.as_mut()?;
-
-        let save_req = if block {
-            rx.recv().await
-        } else {
-            let msg = rx.try_recv();
-
-            if let Err(err) = msg {
-                match err {
-                    TryRecvError::Empty => return None,
-                    TryRecvError::Disconnected => None,
-                }
-            } else {
-                msg.ok()
-            }
-        };
-
-        let save = match save_req {
-            Some(save) => save,
-            None => {
-                self.save_receiver = None;
-                return None;
-            }
-        };
-
-        // save a handle to the future so that when a poll on this
-        // function gets cancelled, we don't lose it
-        *current_save = Some(save);
-        log::trace!("awaiting save of '{:?}'", self.path());
-
-        let result = (*current_save).as_mut().unwrap().await;
-        *current_save = None;
-
-        log::trace!("save of '{:?}' result: {:?}", self.path(), result);
-
-        Some(result)
-    }
-
-    /// Flushes the queue of pending writes. If any fail,
-    /// it stops early before emptying the rest of the queue.
-    pub async fn try_flush_saves(&mut self) -> Option<DocumentSavedEventResult> {
-        self.flush_saves_impl(false).await
-    }
-
-    async fn flush_saves_impl(&mut self, block: bool) -> Option<DocumentSavedEventResult> {
-        let mut final_result = None;
-
-        while let Some(save_event) = self.await_save_impl(block).await {
-            let is_err = match &save_event {
-                Ok(event) => {
-                    self.set_last_saved_revision(event.revision);
-                    false
-                }
-                Err(err) => {
-                    log::error!(
-                        "error saving document {:?}: {}",
-                        self.path().map(|path| path.to_string_lossy()),
-                        err
-                    );
-                    true
-                }
-            };
-
-            final_result = Some(save_event);
-
-            if is_err {
-                break;
-            }
-        }
-
-        final_result
+        Ok(future)
     }
 
     /// Prepares the Document for being closed by stopping any new writes
     /// and flushing through the queue of pending writes. If any fail,
     /// it stops early before emptying the rest of the queue.
     pub async fn close(&mut self) -> Option<DocumentSavedEventResult> {
-        self.save_sender.take();
-        self.flush_saves_impl(true).await
+        // TODO
+        None
     }
 
     /// Detect the programming language based on the file type.

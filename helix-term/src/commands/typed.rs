@@ -79,12 +79,28 @@ fn buffer_close_by_ids_impl(
     doc_ids: &[DocumentId],
     force: bool,
 ) -> anyhow::Result<()> {
+    // TODO: deduplicate with ctx.block_try_flush_writes
+    tokio::task::block_in_place(|| {
+        helix_lsp::block_on(async {
+            while let Some(save_event) = editor.save_queue.next().await {
+                match &save_event {
+                    Ok(event) => {
+                        let doc = doc_mut!(editor, &event.doc_id);
+                        doc.set_last_saved_revision(event.revision);
+                    }
+                    Err(err) => {
+                        log::error!("error saving document: {}", err);
+                    }
+                };
+                // TODO: if is_err: break?
+            }
+        })
+    });
+
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
         .iter()
         .filter_map(|&doc_id| {
-            if let Err(CloseError::BufferModified(name)) = tokio::task::block_in_place(|| {
-                helix_lsp::block_on(editor.close_document(doc_id, force))
-            }) {
+            if let Err(CloseError::BufferModified(name)) = editor.close_document(doc_id, force) {
                 Some((doc_id, name))
             } else {
                 None
@@ -289,7 +305,8 @@ fn write_impl(
     };
 
     if fmt.is_none() {
-        doc.save(path, force)?;
+        let id = doc.id();
+        cx.editor.save(id, path, force)?;
     }
 
     Ok(())
@@ -569,40 +586,45 @@ fn write_all_impl(
         return Ok(());
     }
 
-    let mut errors: Option<String> = None;
+    let mut errors: Vec<&'static str> = Vec::new();
     let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
 
     // save all documents
-    for doc in &mut cx.editor.documents.values_mut() {
-        if doc.path().is_none() {
-            errors = errors
-                .or_else(|| Some(String::new()))
-                .map(|mut errs: String| {
-                    errs.push_str("cannot write a buffer without a filename\n");
-                    errs
-                });
+    let saves: Vec<_> = cx
+        .editor
+        .documents
+        .values()
+        .filter_map(|doc| {
+            if doc.path().is_none() {
+                errors.push("cannot write a buffer without a filename\n");
+                return None;
+            }
 
-            continue;
-        }
+            if !doc.is_modified() {
+                return None;
+            }
 
-        if !doc.is_modified() {
-            continue;
-        }
+            let fmt = if auto_format {
+                doc.auto_format().map(|fmt| {
+                    let callback =
+                        make_format_callback(doc.id(), doc.version(), fmt, Some((None, force)));
+                    jobs.add(Job::with_callback(callback).wait_before_exiting());
+                })
+            } else {
+                None
+            };
 
-        let fmt = if auto_format {
-            doc.auto_format().map(|fmt| {
-                let callback =
-                    make_format_callback(doc.id(), doc.version(), fmt, Some((None, force)));
-                jobs.add(Job::with_callback(callback).wait_before_exiting());
-            })
-        } else {
+            if fmt.is_none() {
+                return Some(doc.id());
+            }
             None
-        };
+        })
+        .collect();
 
-        if fmt.is_none() {
-            doc.save::<PathBuf>(None, force)?;
-        }
+    // manually call save for the rest of docs that don't have a formatter
+    for id in saves {
+        cx.editor.save::<PathBuf>(id, None, force)?;
     }
 
     if quit {
@@ -619,10 +641,8 @@ fn write_all_impl(
         }
     }
 
-    if let Some(errs) = errors {
-        if !force {
-            bail!(errs);
-        }
+    if !errors.is_empty() && !force {
+        bail!("{:?}", errors);
     }
 
     Ok(())
