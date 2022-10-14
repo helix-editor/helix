@@ -6,7 +6,7 @@ use tree_sitter::{Node, QueryCursor};
 use crate::{
     chars::{categorize_char, char_is_line_ending, CharCategory},
     graphemes::{
-        self, next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
+        next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
         prev_grapheme_boundary,
     },
     line_ending::{line_end_char_index, rope_is_line_ending},
@@ -167,7 +167,7 @@ pub fn move_vertically_anchored(
         // Move away from the newline character.
         let end_index = line_end_char_index(&slice, new_row);
         if new_pos == end_index && slice.line(new_row).len_chars() != 1 {
-            new_pos = graphemes::prev_grapheme_boundary(slice, end_index);
+            new_pos = prev_grapheme_boundary(slice, end_index);
         }
 
         (new_pos, horiz)

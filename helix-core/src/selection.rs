@@ -53,7 +53,6 @@ pub struct Range {
     pub anchor: usize,
     /// The head of the range, moved when extending.
     pub head: usize,
-    /// Retains the information about the horizontal column we were on
     pub horiz: Option<u32>,
 }
 
@@ -483,7 +482,7 @@ impl Selection {
             ranges: smallvec![Range {
                 anchor,
                 head,
-                horiz: None,
+                horiz: None
             }],
             primary_index: 0,
         }
