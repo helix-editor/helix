@@ -201,7 +201,9 @@ impl MappableCommand {
         move_char_right, "Move right",
         move_char_right_same_line, "Move right within same line only",
         move_line_up, "Move up",
+        move_line_up_anchored, "Move up with newline anchoring behavior",
         move_line_down, "Move down",
+        move_line_down_anchored, "Move down with newline anchoring behavior",
         move_from_line_end, "Move left from line end",
         extend_char_left, "Extend left",
         extend_char_right, "Extend right",
@@ -537,7 +539,9 @@ where
     doc.set_selection(view.id, selection);
 }
 
-use helix_core::movement::{move_horizontally, move_horizontally_line_bounded, move_vertically};
+use helix_core::movement::{
+    move_horizontally, move_horizontally_line_bounded, move_vertically, move_vertically_anchored,
+};
 
 fn move_char_left(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Backward, Movement::Move)
@@ -569,8 +573,26 @@ fn move_line_up(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Backward, Movement::Move)
 }
 
+fn move_line_up_anchored(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored,
+        Direction::Backward,
+        Movement::Move,
+    )
+}
+
 fn move_line_down(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Forward, Movement::Move)
+}
+
+fn move_line_down_anchored(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored,
+        Direction::Forward,
+        Movement::Move,
+    )
 }
 
 fn move_from_line_end(cx: &mut Context) {
