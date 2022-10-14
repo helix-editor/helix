@@ -104,11 +104,13 @@ pub fn move_vertically(
 
 /// Implements anchored vertical movement.
 ///
-/// Anchored movement behaves differently depending on where the cursor is placed.  If
-/// the cursor is currently on the end of the line (the newline character) then when it
-/// is moving up and down, it stays anchored to the newline as it moves up and down.
+/// Anchored movement behaves differently depending on where the cursor is placed with
+/// regards to newlines.  If the cursor is currently on a newline, then moving up and
+/// down will place you again on the newline of that line.
 ///
-/// Otherwise when it moves up and down it will not move unto the newline character.
+/// If you are not on the newline, then moving up and down will move you to the same
+/// column except if that column is further to the left from where you are.  In that case
+/// it places you on the rightmost column that is not a newline.
 pub fn move_vertically_anchored(
     slice: RopeSlice,
     range: Range,
