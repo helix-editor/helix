@@ -70,8 +70,61 @@ fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) ->
     }
 }
 
+// Returns the position of the bracket that is closing, searching only in
+// the current line, and works on plain text, ignoring the tree-sitter grammar.
+//
+// If the cursor is on an opening or closing bracket, the function
+// behaves equivalent to [`find_matching_bracket`].
+//
+// If no matchig bracket is found on the current line, returns None.
+#[must_use]
+pub fn find_matching_bracket_current_line_plaintext(doc: &Rope, pos: usize) -> Option<usize> {
+    // Don't do anything when the cursor is not on top of a bracket.
+    let mut c = doc.char(pos);
+    if !is_valid_bracket(c) {
+        return None;
+    }
+
+    let bracket = c;
+    let bracket_pos = pos;
+
+    // Determine the direction of the matching
+    let is_fwd = is_forward_bracket(c);
+    let line = doc.byte_to_line(pos);
+    let end = doc.line_to_byte(if is_fwd { line + 1 } else { line });
+    let range = if is_fwd {
+        Range::Forward((pos + 1)..end)
+    } else {
+        Range::Backward((end..pos).rev())
+    };
+
+    let mut open_cnt = 1;
+
+    for pos in range {
+        c = doc.char(pos);
+
+        if !is_valid_bracket(c) {
+            continue;
+        } else if bracket == c {
+            open_cnt += 1;
+        } else if is_valid_pair(doc, bracket_pos, pos) || is_valid_pair(doc, pos, bracket_pos) {
+            open_cnt -= 1;
+        }
+
+        if open_cnt == 0 {
+            return Some(pos);
+        }
+    }
+
+    None
+}
+
 fn is_valid_bracket(c: char) -> bool {
     PAIRS.iter().any(|(l, r)| *l == c || *r == c)
+}
+
+fn is_forward_bracket(c: char) -> bool {
+    PAIRS.iter().any(|(l, _)| *l == c)
 }
 
 fn is_valid_pair(doc: &Rope, start_char: usize, end_char: usize) -> bool {
@@ -89,4 +142,47 @@ fn surrounding_bytes(doc: &Rope, node: &Node) -> Option<(usize, usize)> {
     }
 
     Some((start_byte, end_byte))
+}
+
+enum Range {
+    Forward(std::ops::Range<usize>),
+    Backward(std::iter::Rev<std::ops::Range<usize>>),
+}
+
+impl Iterator for Range {
+    type Item = usize;
+    fn next(&mut self) -> Option<usize> {
+        match self {
+            Range::Forward(range) => range.next(),
+            Range::Backward(range) => range.next(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_find_matching_bracket_current_line_plaintext() {
+        let assert = |input: &str, pos, expected| {
+            let input = &Rope::from(input);
+            let actual = find_matching_bracket_current_line_plaintext(input, pos);
+            assert_eq!(expected, actual.unwrap());
+
+            let reverse = find_matching_bracket_current_line_plaintext(input, actual.unwrap());
+            assert_eq!(pos, reverse.unwrap(), "expected symmetrical behaviour");
+        };
+
+        assert("(hello)", 0, 6);
+        assert("((hello))", 0, 8);
+        assert("((hello))", 1, 7);
+        assert("(((hello)))", 2, 8);
+
+        assert("key: ${value}", 6, 12);
+
+        assert("(paren (paren {bracket}))", 0, 24);
+        assert("(paren (paren {bracket}))", 7, 23);
+        assert("(paren (paren {bracket}))", 14, 22);
+    }
 }

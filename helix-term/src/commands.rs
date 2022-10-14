@@ -4537,7 +4537,14 @@ fn match_brackets(cx: &mut Context) {
             {
                 range.put_cursor(text, pos, cx.editor.mode == Mode::Select)
             } else {
-                range
+                if let Some(pos) = match_brackets::find_matching_bracket_current_line_plaintext(
+                    doc.text(),
+                    range.cursor(text),
+                ) {
+                    range.put_cursor(text, pos, cx.editor.mode == Mode::Select)
+                } else {
+                    range
+                }
             }
         });
         doc.set_selection(view.id, selection);
