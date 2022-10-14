@@ -3372,7 +3372,7 @@ fn yank_main_selection_to_clipboard_impl(
 
     let message_text = match clipboard_type {
         ClipboardType::Clipboard => "yanked main selection to system clipboard",
-        ClipboardType::Selection => "yanked main selection to secondary clipboard",
+        ClipboardType::Selection => "yanked main selection to primary clipboard",
     };
 
     let value = doc.selection(view.id).primary().fragment(text);
