@@ -3339,9 +3339,15 @@ fn yank_joined_to_clipboard_impl(
         .map(Cow::into_owned)
         .collect();
 
+    let clipboard_text = match clipboard_type {
+        ClipboardType::Clipboard => "system clipboard",
+        ClipboardType::Selection => "primary clipboard",
+    };
+
     let msg = format!(
-        "joined and yanked {} selection(s) to system clipboard",
+        "joined and yanked {} selection(s) to {}",
         values.len(),
+        clipboard_text,
     );
 
     let joined = values.join(separator);
