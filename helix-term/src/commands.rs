@@ -204,7 +204,6 @@ impl MappableCommand {
         move_line_up_anchored, "Move up with newline anchoring behavior",
         move_line_down, "Move down",
         move_line_down_anchored, "Move down with newline anchoring behavior",
-        move_from_line_end, "Move left from line end",
         extend_char_left, "Extend left",
         extend_char_right, "Extend right",
         extend_line_up, "Extend up",
@@ -593,29 +592,6 @@ fn move_line_down_anchored(cx: &mut Context) {
         Direction::Forward,
         Movement::Move,
     )
-}
-
-fn move_from_line_end(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let line = range.cursor_line(text);
-        let line_start = text.line_to_char(line);
-
-        let pos = range.cursor(text);
-
-        let last_line_char =
-            graphemes::prev_grapheme_boundary(text, line_end_char_index(&text, line))
-                .max(line_start);
-        if pos == last_line_char + 1 {
-            range.put_cursor(text, last_line_char, false)
-        } else {
-            range
-        }
-    });
-
-    doc.set_selection(view.id, selection);
 }
 
 fn extend_char_left(cx: &mut Context) {
