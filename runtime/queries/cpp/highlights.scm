@@ -1,5 +1,11 @@
 ; Functions
 
+; These casts are parsed as function calls, but are not.
+((identifier) @keyword (#eq? @keyword "static_cast"))
+((identifier) @keyword (#eq? @keyword "dynamic_cast"))
+((identifier) @keyword (#eq? @keyword "reinterpret_cast"))
+((identifier) @keyword (#eq? @keyword "const_cast"))
+
 (call_expression
   function: (qualified_identifier
     name: (identifier) @function))
@@ -59,7 +65,6 @@
   "co_yield"
   "concept"
   "delete"
-  "final"
   "new"
   "operator"
   "requires"
@@ -91,22 +96,27 @@
   "class"  
   "namespace"
   "typename"
+  "template"
 ] @keyword.storage.type
 
 [
   "constexpr"
   "constinit"
   "consteval"
+  "mutable"
+] @keyword.storage.modifier
+
+; Modifiers that aren't plausibly type/storage related.
+[
   "explicit"
   "friend"
-  "mutable"
+  "virtual"
+  (virtual_specifier) ; override/final
   "private"
   "protected"
   "public"
-  "override"
-  "template"
-  "virtual"
-] @keyword.storage.modifier
+  "inline" ; C++ meaning differs from C!
+] @keyword
 
 ; Strings
 
