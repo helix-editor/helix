@@ -1445,7 +1445,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "cairo"
-source = { git = "https://github.com/archseer/tree-sitter-cairo", rev = "5155c6eb40db6d437f4fa41b8bcd8890a1c91716" }
+source = { git = "https://github.com/archseer/tree-sitter-cairo", rev = "e2f9b3d75f483fcfda03cf07e4176869357bfb52" }
 
 [[language]]
 name = "cpon"
