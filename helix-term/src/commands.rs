@@ -3345,9 +3345,15 @@ fn yank_joined_to_clipboard_impl(
         .map(Cow::into_owned)
         .collect();
 
+    let clipboard_text = match clipboard_type {
+        ClipboardType::Clipboard => "system clipboard",
+        ClipboardType::Selection => "primary clipboard",
+    };
+
     let msg = format!(
-        "joined and yanked {} selection(s) to system clipboard",
+        "joined and yanked {} selection(s) to {}",
         values.len(),
+        clipboard_text,
     );
 
     let joined = values.join(separator);
@@ -3376,6 +3382,11 @@ fn yank_main_selection_to_clipboard_impl(
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
 
+    let message_text = match clipboard_type {
+        ClipboardType::Clipboard => "yanked main selection to system clipboard",
+        ClipboardType::Selection => "yanked main selection to primary clipboard",
+    };
+
     let value = doc.selection(view.id).primary().fragment(text);
 
     if let Err(e) = editor
@@ -3385,7 +3396,7 @@ fn yank_main_selection_to_clipboard_impl(
         bail!("Couldn't set system clipboard content: {}", e);
     }
 
-    editor.set_status("yanked main selection to system clipboard");
+    editor.set_status(message_text);
     Ok(())
 }
 
