@@ -131,7 +131,7 @@ pub fn move_vertically_anchored(
     // cases we take advantage that anchored movement sets the horizontal column
     // to the largest possible integer.
     let newline_move_mode = pos == line_end_char_index(&slice, line)
-        && (horiz == !0 || slice.line(line).len_chars() != 1);
+        && (horiz == !0 || !rope_is_line_ending(slice.line(line)));
 
     // Compute the new position.
     let new_row = match dir {
@@ -168,7 +168,7 @@ pub fn move_vertically_anchored(
 
         // Move away from the newline character.
         let end_index = line_end_char_index(&slice, new_row);
-        if new_pos == end_index && slice.line(new_row).len_chars() != 1 {
+        if new_pos == end_index && !rope_is_line_ending(slice.line(new_row)) {
             new_pos = prev_grapheme_boundary(slice, end_index);
         }
 
