@@ -121,7 +121,13 @@ pub fn move_vertically_anchored(
     tab_width: usize,
 ) -> Range {
     let pos = range.cursor(slice);
-    let on_newline = pos == line_end_char_index(&slice, slice.char_to_line(pos));
+    let line = slice.char_to_line(pos);
+
+    // if we are resting on a newline character and we did not just move
+    // across an empty line where the newline_mode_mode flag was negativley
+    // carried we are in newline movement mode.
+    let newline_move_mode = pos == line_end_char_index(&slice, line)
+        && (range.newline_move_mode || slice.line(line).len_chars() != 1);
 
     // Compute the current position's 2d coordinates.
     let Position { row, col } = visual_coords_at_pos(slice, pos, tab_width);
@@ -135,11 +141,17 @@ pub fn move_vertically_anchored(
 
     // if we are already on a newline character, we want to navigate to the
     // newline character on the new line we moved to.
-    let new_pos = if on_newline {
-        let new_pos = pos_at_visual_coords(slice, Position::new(new_row, col), tab_width);
-        line_end_char_index(&slice, slice.char_to_line(new_pos))
+    let (new_pos, newline_move_mode) = if newline_move_mode {
+        let new_pos = line_end_char_index(
+            &slice,
+            slice.char_to_line(pos_at_visual_coords(
+                slice,
+                Position::new(new_row, col),
+                tab_width,
+            )),
+        );
 
-    // otherwise place us on the last character before the actual newline character.
+        (new_pos, true)
     } else {
         let new_col = col.max(horiz as usize);
         let mut new_pos = pos_at_visual_coords(slice, Position::new(new_row, new_col), tab_width);
@@ -150,15 +162,18 @@ pub fn move_vertically_anchored(
         }
 
         // Move away from the newline character.
-        let end_index = line_end_char_index(&slice, slice.char_to_line(new_pos));
-        if new_pos == end_index {
+        let end_index = line_end_char_index(&slice, new_row);
+        if new_pos == end_index && slice.line(new_row).len_chars() != 1 {
             new_pos = graphemes::prev_grapheme_boundary(slice, end_index);
         }
-        new_pos
+
+        // non newline movement mode carries the flag of the range forward
+        (new_pos, range.newline_move_mode)
     };
 
     let mut new_range = range.put_cursor(slice, new_pos, behaviour == Movement::Extend);
     new_range.horiz = Some(horiz);
+    new_range.newline_move_mode = newline_move_mode;
     new_range
 }
 
