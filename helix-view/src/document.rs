@@ -3,6 +3,7 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::Range;
+use helix_loader::cache_dir;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::borrow::Cow;
@@ -562,21 +563,8 @@ impl Document {
 
             // TODO Temporary file creation is a workaround to solve large file corruption
             // that occurs when crashing during a file save
-            let tmp_path = PathBuf::from(std::env::var("HOME").unwrap())
-                .join(".cache/")
-                .join("helix/")
-                .join(format!("~{}", path.file_name().unwrap().to_str().unwrap()));
-
-            if let Some(parent) = tmp_path.parent() {
-                // TODO: display a prompt asking the user if the directories should be created
-                if !parent.exists() {
-                    if force {
-                        std::fs::DirBuilder::new().recursive(true).create(parent)?;
-                    } else {
-                        bail!("can't save file, parent directory does not exist");
-                    }
-                }
-            }
+            let tmp_path =
+                cache_dir().join(format!("~{}", path.file_name().unwrap().to_str().unwrap()));
 
             let mut tmp_file = File::create(&tmp_path).await?;
             to_writer(&mut tmp_file, encoding, &text).await?;
