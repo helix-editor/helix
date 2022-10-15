@@ -18,7 +18,9 @@ use crate::{
     },
 };
 
-use std::{borrow::Cow, cmp::Ordering, collections::BTreeMap, path::PathBuf, sync::Arc};
+use std::{
+    borrow::Cow, cmp::Ordering, collections::BTreeMap, fmt::Write, path::PathBuf, sync::Arc,
+};
 
 /// Gets the language server that is attached to a document, and
 /// if it's not active displays a status message. Using this macro
@@ -43,23 +45,32 @@ impl ui::menu::Item for lsp::Location {
     type Data = PathBuf;
 
     fn label(&self, cwdir: &Self::Data) -> Spans {
-        let file: Cow<'_, str> = (self.uri.scheme() == "file")
-            .then(|| {
-                self.uri
-                    .to_file_path()
-                    .map(|path| {
-                        // strip root prefix
-                        path.strip_prefix(&cwdir)
-                            .map(|path| path.to_path_buf())
-                            .unwrap_or(path)
-                    })
-                    .map(|path| Cow::from(path.to_string_lossy().into_owned()))
-                    .ok()
-            })
-            .flatten()
-            .unwrap_or_else(|| self.uri.as_str().into());
-        let line = self.range.start.line;
-        format!("{}:{}", file, line).into()
+        // The preallocation here will overallocate a few characters since it will account for the
+        // URL's scheme, which is not used most of the time since that scheme will be "file://".
+        // Those extra chars will be used to avoid allocating when writing the line number (in the
+        // common case where it has 5 digits or less, which should be enough for a cast majority
+        // of usages).
+        let mut res = String::with_capacity(self.uri.as_str().len());
+
+        if self.uri.scheme() == "file" {
+            // With the preallocation above and UTF-8 paths already, this closure will do one (1)
+            // allocation, for `to_file_path`, else there will be two (2), with `to_string_lossy`.
+            let mut write_path_to_res = || -> Option<()> {
+                let path = self.uri.to_file_path().ok()?;
+                res.push_str(&path.strip_prefix(&cwdir).unwrap_or(&path).to_string_lossy());
+                Some(())
+            };
+            write_path_to_res();
+        } else {
+            // Never allocates since we declared the string with this capacity already.
+            res.push_str(self.uri.as_str());
+        }
+
+        // Most commonly, this will not allocate, especially on Unix systems where the root prefix
+        // is a simple `/` and not `C:\` (with whatever drive letter)
+        write!(&mut res, ":{}", self.range.start.line)
+            .expect("Will only failed if allocating fail");
+        res.into()
     }
 }
 
@@ -73,10 +84,8 @@ impl ui::menu::Item for lsp::SymbolInformation {
         } else {
             match self.location.uri.to_file_path() {
                 Ok(path) => {
-                    let relative_path = helix_core::path::get_relative_path(path.as_path())
-                        .to_string_lossy()
-                        .into_owned();
-                    format!("{} ({})", &self.name, relative_path).into()
+                    let get_relative_path = path::get_relative_path(path.as_path());
+                    format!("{} ({})", &self.name, get_relative_path.to_string_lossy()).into()
                 }
                 Err(_) => format!("{} ({})", &self.name, &self.location.uri).into(),
             }
@@ -115,24 +124,21 @@ impl ui::menu::Item for PickerDiagnostic {
         // remove background as it is distracting in the picker list
         style.bg = None;
 
-        let code = self
+        let code: Cow<'_, str> = self
             .diag
             .code
             .as_ref()
             .map(|c| match c {
-                NumberOrString::Number(n) => n.to_string(),
-                NumberOrString::String(s) => s.to_string(),
+                NumberOrString::Number(n) => n.to_string().into(),
+                NumberOrString::String(s) => s.as_str().into(),
             })
-            .map(|code| format!(" ({})", code))
             .unwrap_or_default();
 
         let path = match format {
             DiagnosticsFormat::HideSourcePath => String::new(),
             DiagnosticsFormat::ShowSourcePath => {
-                let path = path::get_truncated_path(self.url.path())
-                    .to_string_lossy()
-                    .into_owned();
-                format!("{}: ", path)
+                let path = path::get_truncated_path(self.url.path());
+                format!("{}: ", path.to_string_lossy())
             }
         };
 

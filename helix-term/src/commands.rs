@@ -54,7 +54,7 @@ use crate::{
 
 use crate::job::{self, Jobs};
 use futures_util::StreamExt;
-use std::{collections::HashMap, fmt, future::Future};
+use std::{collections::HashMap, fmt, fmt::Write, future::Future};
 use std::{collections::HashSet, num::NonZeroUsize};
 
 use std::{
@@ -2416,19 +2416,18 @@ impl ui::menu::Item for MappableCommand {
     type Data = ReverseKeymap;
 
     fn label(&self, keymap: &Self::Data) -> Spans {
-        // formats key bindings, multiple bindings are comma separated,
-        // individual key presses are joined with `+`
         let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
-            bindings
-                .iter()
-                .map(|bind| {
-                    bind.iter()
-                        .map(|key| key.to_string())
-                        .collect::<Vec<String>>()
-                        .join("+")
-                })
-                .collect::<Vec<String>>()
-                .join(", ")
+            bindings.iter().fold(String::new(), |mut acc, bind| {
+                if !acc.is_empty() {
+                    acc.push_str(", ");
+                }
+                bind.iter().fold(false, |needs_plus, key| {
+                    write!(&mut acc, "{}{}", if needs_plus { "+" } else { "" }, key)
+                        .expect("Writing to a string can only fail on an Out-Of-Memory error");
+                    true
+                });
+                acc
+            })
         };
 
         match self {
