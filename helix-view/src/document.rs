@@ -565,11 +565,26 @@ impl Document {
             // that occurs when crashing during a file save
             let tmp_path = cache_dir().join(format!("~{:?}", path.file_name().unwrap()));
 
+            if let Some(parent) = tmp_path.parent() {
+                // TODO Temporary fix. Normally, this directory will exist by this point,
+                // but not during the integration tests.
+                if !parent.exists() {
+                    if force {
+                        std::fs::DirBuilder::new().recursive(true).create(parent)?;
+                    } else {
+                        bail!("can't save file, parent directory does not exist");
+                    }
+                }
+            }
+
             let mut tmp_file = File::create(&tmp_path).await?;
             to_writer(&mut tmp_file, encoding, &text).await?;
 
             tokio::fs::copy(&tmp_path, path).await?;
             tokio::fs::remove_file(tmp_path).await?;
+
+            // TODO figure out why rename makes the tests break
+            //tokio::fs::rename(tmp_path, path).await?;
 
             if let Some(language_server) = language_server {
                 if !language_server.is_initialized() {
