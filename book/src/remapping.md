@@ -11,11 +11,11 @@ this:
 ```toml
 # At most one section each of 'keys.normal', 'keys.insert' and 'keys.select'
 [keys.normal]
-C-s = ":w" # Maps the Control-s to the typable command :w which is an alias for :write (save file)
-C-o = ":open ~/.config/helix/config.toml" # Maps the Control-o to opening of the helix config file
+C-s = ":w" # Maps the Ctrl-s to the typable command :w which is an alias for :write (save file)
+C-o = ":open ~/.config/helix/config.toml" # Maps the Ctrl-o to opening of the helix config file
 a = "move_char_left" # Maps the 'a' key to the move_char_left command
 w = "move_line_up" # Maps the 'w' key move_line_up
-"C-S-esc" = "extend_line" # Maps Control-Shift-Escape to extend_line
+"C-S-esc" = "extend_line" # Maps Ctrl-Shift-Escape to extend_line
 g = { a = "code_action" } # Maps `ga` to show possible code actions
 "ret" = ["open_below", "normal_mode"] # Maps the enter key to open_below then re-enter normal mode
 
@@ -25,7 +25,7 @@ j = { k = "normal_mode" } # Maps `jk` to exit insert mode
 ```
 > NOTE: Typable commands can also be remapped, remember to keep the `:` prefix to indicate it's a typable command.
 
-Control, Shift and Alt modifiers are encoded respectively with the prefixes
+Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
 `C-`, `S-` and `A-`. Special keys are encoded as follows:
 
 | Key name     | Representation |

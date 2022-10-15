@@ -244,7 +244,7 @@ These scopes are used for theming the editor interface.
 | `ui.statusline.insert`      | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.select`      | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.separator`   | Separator character in statusline                                                              |
-| `ui.popup`                  | Documentation popups (e.g space-k)                                                             |
+| `ui.popup`                  | Documentation popups (e.g Space + k)                                                             |
 | `ui.popup.info`             | Prompt for multiple key options                                                                |
 | `ui.window`                 | Border lines separating splits                                                                 |
 | `ui.help`                   | Description box for commands                                                                   |
@@ -252,7 +252,7 @@ These scopes are used for theming the editor interface.
 | `ui.text.focus`             |                                                                                                |
 | `ui.text.info`              | The key: command text in `ui.popup.info` boxes                                                 |
 | `ui.virtual.ruler`          | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
-| `ui.virtual.whitespace`     | Visible white-space characters                                                                 |
+| `ui.virtual.whitespace`     | Visible whitespace characters                                                                 |
 | `ui.virtual.indent-guide`   | Vertical indent width guides                                                                   |
 | `ui.menu`                   | Code and command completion menus                                                              |
 | `ui.menu.selected`          | Selected autocomplete item                                                                     |

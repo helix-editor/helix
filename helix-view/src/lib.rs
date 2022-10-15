@@ -53,15 +53,28 @@ pub fn align_view(doc: &Document, view: &mut View, align: Align) {
         .cursor(doc.text().slice(..));
     let line = doc.text().char_to_line(pos);
 
-    let height = view.inner_area().height as usize;
+    let last_line_height = view.inner_area().height.saturating_sub(1) as usize;
 
     let relative = match align {
-        Align::Center => height / 2,
+        Align::Center => last_line_height / 2,
         Align::Top => 0,
-        Align::Bottom => height,
+        Align::Bottom => last_line_height,
     };
 
     view.offset.row = line.saturating_sub(relative);
+}
+
+/// Applies a [`helix_core::Transaction`] to the given [`Document`]
+/// and [`View`].
+pub fn apply_transaction(
+    transaction: &helix_core::Transaction,
+    doc: &mut Document,
+    view: &mut View,
+) -> bool {
+    // This is a short function but it's easy to call `Document::apply`
+    // without calling `View::apply` or in the wrong order. The transaction
+    // must be applied to the document before the view.
+    doc.apply(transaction, view.id) && view.apply(transaction, doc)
 }
 
 pub use document::Document;

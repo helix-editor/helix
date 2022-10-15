@@ -50,6 +50,7 @@ fn test_treesitter_indent(file_name: &str, lang_scope: &str) {
                 indent_query,
                 &syntax,
                 &IndentStyle::Spaces(4),
+                4,
                 text,
                 i,
                 text.line_to_char(i) + pos,
