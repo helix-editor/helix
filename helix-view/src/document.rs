@@ -568,7 +568,8 @@ impl Document {
             let mut tmp_file = File::create(&tmp_path).await?;
             to_writer(&mut tmp_file, encoding, &text).await?;
 
-            tokio::fs::rename(&tmp_path, path).await?;
+            tokio::fs::copy(&tmp_path, path).await?;
+            tokio::fs::remove_file(tmp_path).await?;
 
             if let Some(language_server) = language_server {
                 if !language_server.is_initialized() {
