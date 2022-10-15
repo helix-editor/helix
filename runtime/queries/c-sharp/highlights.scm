@@ -109,8 +109,8 @@
 (comment) @comment
 
 ;; Tokens
-(type_argument_list (["<" ">"] @punctuation.bracket))
-(type_parameter_list (["<" ">"] @punctuation.bracket))
+(type_argument_list ["<" ">"] @punctuation.bracket)
+(type_parameter_list ["<" ">"] @punctuation.bracket)
 
 [
   ";"
