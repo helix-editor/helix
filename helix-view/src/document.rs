@@ -563,7 +563,7 @@ impl Document {
             // TODO Temporary file creation is a workaround to solve large file corruption
             // that occurs when crashing during a file save
             let mut tmp_filename = std::ffi::OsString::from("~");
-            tmp_filename.push(path.file_name().unwrap().to_os_string());
+            tmp_filename.push(path.file_name().unwrap());
 
             let tmp_path = path.parent().unwrap().join(tmp_filename);
 
