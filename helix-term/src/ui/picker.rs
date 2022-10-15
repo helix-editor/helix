@@ -47,6 +47,7 @@ pub struct FilePicker<T: Item> {
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
 
+    preview_file_path: PathBuf,
     /// Line offset from preview's starting point(first_line) to enable preview scrolling
     preview_scroll_offset: (Direction, usize),
     /// Whether to show the preview panel (default true)
@@ -107,6 +108,7 @@ impl<T: Item> FilePicker<T> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: Box::new(preview_fn),
+            preview_file_path: PathBuf::default(),
             preview_scroll_offset: (Direction::Forward, 0),
             show_preview: true,
         }
@@ -209,15 +211,6 @@ impl<T: Item> FilePicker<T> {
         };
     }
 
-    /// Updates FilePicker state if picker::cursor_moved is `true`.
-    /// Used for resetting the preview scroll offset on Picker::move_by()
-    fn on_cursor_move_update(&mut self) {
-        if self.picker.cursor_moved {
-            self.preview_scroll_offset.1 = 0;
-            self.picker.cursor_moved = false;
-        }
-    }
-
     fn toggle_preview(&mut self) {
         self.show_preview = !self.show_preview;
     }
@@ -264,12 +257,15 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         let inner = inner.inner(&margin);
         block.render(preview_area, surface);
 
-        self.on_cursor_move_update();
         // we get the scroll offset here because the lifetimes of
         // FilePicker::get_preview() prohibit the use of self until the final use of doc: `&Document`
         let mut preview_scroll_offset = self.preview_scroll_offset;
 
         if let Some((path, range)) = self.current_file(cx.editor) {
+            if path != self.preview_file_path {
+                preview_scroll_offset = (preview_scroll_offset.0, 0);
+                self.preview_file_path = path.clone();
+            }
             let preview = self.get_preview(&path, cx.editor);
             let doc = match preview.document() {
                 Some(doc) => doc,
@@ -414,8 +410,6 @@ pub struct Picker<T: Item> {
     completion_height: u16,
 
     cursor: usize,
-    /// Used to inform the picker owner on a cursor move
-    cursor_moved: bool,
     // pattern: String,
     prompt: Prompt,
     previous_pattern: String,
@@ -445,7 +439,6 @@ impl<T: Item> Picker<T> {
             matches: Vec::new(),
             filters: Vec::new(),
             cursor: 0,
-            cursor_moved: false,
             prompt,
             previous_pattern: String::new(),
             truncate_start: true,
@@ -552,8 +545,6 @@ impl<T: Item> Picker<T> {
                 self.cursor = self.cursor.saturating_add(len).saturating_sub(amount) % len;
             }
         }
-
-        self.cursor_moved = true;
     }
 
     /// Move the cursor down by exactly one page. After the last page comes the first page.
