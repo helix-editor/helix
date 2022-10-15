@@ -75,36 +75,35 @@ fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) ->
 // This function matches plain text, it ignores tree-sitter grammar.
 // Returns None when no matching bracket is found.
 #[must_use]
-pub fn find_matching_bracket_current_line_plaintext(doc: &Rope, pos: usize) -> Option<usize> {
+pub fn find_matching_bracket_current_line_plaintext(
+    doc: &Rope,
+    cursor_pos: usize,
+) -> Option<usize> {
     // Don't do anything when the cursor is not on top of a bracket.
-    let bracket = doc.char(pos);
+    let bracket = doc.char(cursor_pos);
     if !is_valid_bracket(bracket) {
         return None;
     }
 
-    let bracket_pos = pos;
-
     // Determine the direction of the matching
     let is_fwd = is_forward_bracket(bracket);
-    let line = doc.byte_to_line(pos);
+    let line = doc.byte_to_line(cursor_pos);
     let end = doc.line_to_byte(if is_fwd { line + 1 } else { line });
     let range = if is_fwd {
-        Range::Forward((pos + 1)..end)
+        Range::Forward((cursor_pos + 1)..end)
     } else {
-        Range::Backward((end..pos).rev())
+        Range::Backward((end..cursor_pos).rev())
     };
 
     let mut open_cnt = 1;
 
     for pos in range {
-        let c = doc.char(pos);
-
-        if c == bracket {
+        if doc.char(pos) == bracket {
             open_cnt += 1;
         } else if is_valid_pair(
             doc,
-            if is_fwd { bracket_pos } else { pos },
-            if is_fwd { pos } else { bracket_pos },
+            if is_fwd { cursor_pos } else { pos },
+            if is_fwd { pos } else { cursor_pos },
         ) {
             open_cnt -= 1;
 
@@ -169,8 +168,14 @@ mod tests {
             let actual = find_matching_bracket_current_line_plaintext(input, pos);
             assert_eq!(expected, actual.unwrap());
 
-            let reverse = find_matching_bracket_current_line_plaintext(input, actual.unwrap());
-            assert_eq!(pos, reverse.unwrap(), "expected symmetrical behaviour");
+            let actual = find_matching_bracket_current_line_plaintext(input, expected);
+            assert_eq!(pos, actual.unwrap(), "expected symmetrical behaviour");
+        };
+
+        let assert_no_match = |input: &str, pos| {
+            let input = &Rope::from(input);
+            let actual = find_matching_bracket_current_line_plaintext(input, pos);
+            assert!(actual.is_none(), "expected no match");
         };
 
         assert("(hello)", 0, 6);
@@ -179,9 +184,17 @@ mod tests {
         assert("(((hello)))", 2, 8);
 
         assert("key: ${value}", 6, 12);
+        assert("key: ${value} # (some comment)", 16, 29);
 
         assert("(paren (paren {bracket}))", 0, 24);
         assert("(paren (paren {bracket}))", 7, 23);
         assert("(paren (paren {bracket}))", 14, 22);
+
+        // Verify that this feature only works on the current line.
+        assert_no_match("(prev line\n ) (middle) ( \n next line)", 0);
+        assert_no_match("(prev line\n ) (middle) ( \n next line)", 12);
+        assert("(prev line\n ) (middle) ( \n next line)", 14, 21);
+        assert_no_match("(prev line\n ) (middle) ( \n next line)", 23);
+        assert_no_match("(prev line\n ) (middle) ( \n next line)", 36);
     }
 }
