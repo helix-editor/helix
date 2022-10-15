@@ -34,6 +34,10 @@
 (auto) @type
 "decltype" @type
 
+(ref_qualifier ["&" "&&"] @type.builtin)
+(reference_declarator ["&" "&&"] @type.builtin)
+(abstract_reference_declarator ["&" "&&"] @type.builtin)
+
 ; Constants
 
 (this) @variable.builtin
