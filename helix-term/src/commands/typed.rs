@@ -1,10 +1,11 @@
-use std::ops::Deref;
+use std::{fs, ops::Deref};
 
 use super::*;
 
 use helix_view::{
     apply_transaction,
     editor::{Action, CloseError, ConfigEvent},
+    info,
 };
 use ui::completers::{self, Completer};
 
@@ -1609,6 +1610,21 @@ fn run_shell_command(
     Ok(())
 }
 
+fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let (view, doc) = current!(cx.editor);
+
+    let filename = args;
+    ensure!(!args.is_empty(), "File name required");
+
+    // get contents of selected file
+    let contents = fs::read_to_string(filename[0].to_string()).expect("Invalid file path");
+    paste_impl(&[contents], doc, view, Paste::After, 1);
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2095,6 +2111,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run a shell command",
             fun: run_shell_command,
             completer: Some(completers::directory),
+        },
+    TypableCommand {
+        name: "read",
+        aliases: &["r"],
+        doc: "Copy file to current buffer",
+        fun: read,
+        completer: Some(completers::filename),
         },
     ];
 
