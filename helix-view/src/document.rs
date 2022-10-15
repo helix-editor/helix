@@ -563,8 +563,7 @@ impl Document {
 
             // TODO Temporary file creation is a workaround to solve large file corruption
             // that occurs when crashing during a file save
-            let tmp_path =
-                cache_dir().join(format!("~{}", path.file_name().unwrap().to_str().unwrap()));
+            let tmp_path = cache_dir().join(format!("~{:?}", path.file_name().unwrap()));
 
             let mut tmp_file = File::create(&tmp_path).await?;
             to_writer(&mut tmp_file, encoding, &text).await?;
