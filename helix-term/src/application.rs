@@ -597,13 +597,13 @@ impl Application {
 
                         // trigger textDocument/didOpen for docs that are already open
                         for doc in docs {
-                            let language_id =
-                                doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
-
                             let url = match doc.url() {
                                 Some(url) => url,
                                 None => continue, // skip documents with no path
                             };
+
+                            let language_id =
+                                doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
                             tokio::spawn(language_server.text_document_did_open(
                                 url,
