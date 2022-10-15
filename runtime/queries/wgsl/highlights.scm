@@ -1,102 +1,117 @@
-(const_literal) @constant.numeric
-
-(type_declaration) @type
-
-(function_declaration
-    (identifier) @function)
-
-(struct_declaration
-    (identifier) @type)
-
-(type_constructor_or_function_call_expression
-    (type_declaration) @function)
-
-(parameter
-    (variable_identifier_declaration (identifier) @variable.parameter))
+(int_literal) @constant.numeric.integer
+(float_literal) @constant.numeric.float
+(bool_literal) @constant.builtin.boolean
 
 [
-    "struct"
-    "bitcast"
-    ; "block"
-    "discard"
-    "enable"
-    "fallthrough"
-    "fn"
-    "let"
-    "private"
-    "read"
-    "read_write"
-    "return"
-    "storage"
-    "type"
-    "uniform"
-    "var"
-    "workgroup"
-    "write"
-    (texel_format)
-] @keyword ; TODO reserved keywords
+  "bitcast"
+  "discard"
+  "enable"
+  "fallthrough"
+] @keyword
 
 [
-    (true)
-    (false)
-] @constant.builtin.boolean
-
-[ "," "." ":" ";" ] @punctuation.delimiter
-
-;; brackets
-[
-    "("
-    ")"
-    "["
-    "]"
-    "{"
-    "}"
-] @punctuation.bracket
+  "let"
+  "override"
+  "struct"
+  "type"
+  "var"
+  (texel_format)
+] @keyword.storage.type
 
 [
-    "loop"
-    "for"
-    "break"
-    "continue"
-    "continuing"
+  (access_mode)
+  (address_space)
+] @keyword.storage.modifier
+
+"fn" @keyword.function
+
+"return" @keyword.control.return
+
+["," "." ":" ";"] @punctuation.delimiter
+
+["(" ")" "[" "]" "{" "}"] @punctuation.bracket
+
+(type_declaration ["<" ">"] @punctuation.bracket)
+
+[
+  "break"
+  "continue"
+  "continuing"
+] @keyword.control
+
+[
+  "loop"
+  "for"
+  "while"
 ] @keyword.control.repeat
 
 [
-    "if"
-    "else"
-    "elseif"
-    "switch"
-    "case"
-    "default"
+  "if"
+  "else"
+  "switch"
+  "case"
+  "default"
 ] @keyword.control.conditional
 
 [
-    "&"
-    "&&"
-    "/"
-    "!"
-    "="
-    "=="
-    "!="
-    ">"
-    ">="
-    ">>"
-    "<"
-    "<="
-    "<<"
-    "%"
-    "-"
-    "+"
-    "|"
-    "||"
-    "*"
-    "~"
-    "^"
+  "!"
+  "!="
+  "%"
+  "%="
+  "&"
+  "&&"
+  "&="
+  "*"
+  "*="
+  "+"
+  "++"
+  "+="
+  "-"
+  "--"
+  "-="
+  "->"
+  "/"
+  "/="
+  "<"
+  "<<"
+  "<="
+  "="
+  "=="
+  ">"
+  ">="
+  ">>"
+  "@"
+  "^"
+  "^="
+  "|"
+  "|="
+  "||"
+  "~"
 ] @operator
 
+(function_declaration
+  (identifier) @function)
+
+(parameter
+  (variable_identifier_declaration
+    (identifier) @variable.parameter))
+
+(struct_declaration
+  (identifier) @type)
+
+(struct_declaration
+  (struct_member
+    (variable_identifier_declaration
+      (identifier) @variable.other.member)))
+
+(type_constructor_or_function_call_expression
+  (type_declaration (identifier) @function))
+
+(type_declaration _ @type)
+
 (attribute
-    (identifier) @variable.other.member)
+  (identifier) @attribute)
+
+(identifier) @variable
 
 (comment) @comment
-
-(ERROR) @error

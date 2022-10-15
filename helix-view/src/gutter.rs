@@ -72,7 +72,7 @@ pub fn line_numbers<'doc>(
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
     let line_number = editor.config().line_number;
-    let mode = doc.mode;
+    let mode = editor.mode;
 
     Box::new(move |line: usize, selected: bool, out: &mut String| {
         if line == last_line && !draw_last {
@@ -100,6 +100,17 @@ pub fn line_numbers<'doc>(
             Some(style)
         }
     })
+}
+
+pub fn padding<'doc>(
+    _editor: &'doc Editor,
+    _doc: &'doc Document,
+    _view: &View,
+    _theme: &Theme,
+    _is_focused: bool,
+    _width: usize,
+) -> GutterFn<'doc> {
+    Box::new(|_line: usize, _selected: bool, _out: &mut String| None)
 }
 
 #[inline(always)]

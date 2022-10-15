@@ -1,15 +1,20 @@
 mod completion;
 pub(crate) mod editor;
+mod fuzzy_match;
 mod info;
+pub mod lsp;
 mod markdown;
 pub mod menu;
 pub mod overlay;
 mod picker;
-mod popup;
+pub mod popup;
 mod prompt;
 mod spinner;
+mod statusline;
 mod text;
 
+use crate::compositor::{Component, Compositor};
+use crate::job;
 pub use completion::Completion;
 pub use editor::EditorView;
 pub use markdown::Markdown;
@@ -22,7 +27,7 @@ pub use text::Text;
 
 use helix_core::regex::Regex;
 use helix_core::regex::RegexBuilder;
-use helix_view::{Document, Editor, View};
+use helix_view::Editor;
 
 use std::path::PathBuf;
 
@@ -34,8 +39,21 @@ pub fn prompt(
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
     let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
-    // Calculate initial completion
+    // Calculate the initial completion
     prompt.recalculate_completion(cx.editor);
+    cx.push_layer(Box::new(prompt));
+}
+
+pub fn prompt_with_input(
+    cx: &mut crate::commands::Context,
+    prompt: std::borrow::Cow<'static, str>,
+    input: String,
+    history_register: Option<char>,
+    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
+) {
+    let prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn)
+        .with_line(input, cx.editor);
     cx.push_layer(Box::new(prompt));
 }
 
@@ -44,7 +62,7 @@ pub fn regex_prompt(
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
-    fun: impl Fn(&mut View, &mut Document, Regex, PromptEvent) + 'static,
+    fun: impl Fn(&mut Editor, Regex, PromptEvent) + 'static,
 ) {
     let (view, doc) = current!(cx.editor);
     let doc_id = view.doc;
@@ -91,11 +109,42 @@ pub fn regex_prompt(
                                 view.jumps.push((doc_id, snapshot.clone()));
                             }
 
-                            fun(view, doc, regex, event);
+                            fun(cx.editor, regex, event);
 
+                            let (view, doc) = current!(cx.editor);
                             view.ensure_cursor_in_view(doc, config.scrolloff);
                         }
-                        Err(_err) => (), // TODO: mark command line as error
+                        Err(err) => {
+                            let (view, doc) = current!(cx.editor);
+                            doc.set_selection(view.id, snapshot.clone());
+                            view.offset = offset_snapshot;
+
+                            if event == PromptEvent::Validate {
+                                let callback = async move {
+                                    let call: job::Callback = Box::new(
+                                        move |_editor: &mut Editor, compositor: &mut Compositor| {
+                                            let contents = Text::new(format!("{}", err));
+                                            let size = compositor.size();
+                                            let mut popup = Popup::new("invalid-regex", contents)
+                                                .position(Some(helix_core::Position::new(
+                                                    size.height as usize - 2, // 2 = statusline + commandline
+                                                    0,
+                                                )))
+                                                .auto_close(true);
+                                            popup.required_size((size.width, size.height));
+
+                                            compositor.replace_or_push("invalid-regex", popup);
+                                        },
+                                    );
+                                    Ok(call)
+                                };
+
+                                cx.jobs.callback(callback);
+                            } else {
+                                // Update
+                                // TODO: mark command line as error
+                            }
+                        }
                     }
                 }
             }
@@ -238,6 +287,7 @@ pub mod completers {
         names.push("default".into());
         names.push("base16_default".into());
         names.sort();
+        names.dedup();
 
         let mut names: Vec<_> = names
             .into_iter()
@@ -261,14 +311,28 @@ pub mod completers {
         names
     }
 
+    /// Recursive function to get all keys from this value and add them to vec
+    fn get_keys(value: &serde_json::Value, vec: &mut Vec<String>, scope: Option<&str>) {
+        if let Some(map) = value.as_object() {
+            for (key, value) in map.iter() {
+                let key = match scope {
+                    Some(scope) => format!("{}.{}", scope, key),
+                    None => key.clone(),
+                };
+                get_keys(value, vec, Some(&key));
+                if !value.is_object() {
+                    vec.push(key);
+                }
+            }
+        }
+    }
+
     pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
-            serde_json::json!(Config::default())
-                .as_object()
-                .unwrap()
-                .keys()
-                .cloned()
-                .collect()
+            let mut keys = Vec::new();
+            let json = serde_json::json!(Config::default());
+            get_keys(&json, &mut keys, None);
+            keys
         });
 
         let matcher = Matcher::default();
@@ -300,13 +364,19 @@ pub mod completers {
     pub fn language(editor: &Editor, input: &str) -> Vec<Completion> {
         let matcher = Matcher::default();
 
-        let mut matches: Vec<_> = editor
+        let text: String = "text".into();
+
+        let language_ids = editor
             .syn_loader
             .language_configs()
-            .filter_map(|config| {
+            .map(|config| &config.language_id)
+            .chain(std::iter::once(&text));
+
+        let mut matches: Vec<_> = language_ids
+            .filter_map(|language_id| {
                 matcher
-                    .fuzzy_match(&config.language_id, input)
-                    .map(|score| (&config.language_id, score))
+                    .fuzzy_match(language_id, input)
+                    .map(|score| (language_id, score))
             })
             .collect();
 
@@ -344,7 +414,7 @@ pub mod completers {
     }
 
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
-    fn filename_impl<F>(editor: &Editor, input: &str, filter_fn: F) -> Vec<Completion>
+    fn filename_impl<F>(_editor: &Editor, input: &str, filter_fn: F) -> Vec<Completion>
     where
         F: Fn(&ignore::DirEntry) -> FileMatch,
     {
@@ -376,7 +446,7 @@ pub mod completers {
 
         let mut files: Vec<_> = WalkBuilder::new(&dir)
             .hidden(false)
-            .follow_links(editor.config().file_picker.follow_symlinks)
+            .follow_links(false) // We're scanning over depth 1
             .max_depth(Some(1))
             .build()
             .filter_map(|file| {

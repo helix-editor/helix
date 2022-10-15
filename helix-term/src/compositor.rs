@@ -4,8 +4,6 @@
 use helix_core::Position;
 use helix_view::graphics::{CursorKind, Rect};
 
-use crossterm::event::Event;
-
 #[cfg(feature = "integration")]
 use tui::backend::TestBackend;
 use tui::buffer::Buffer as Surface;
@@ -18,9 +16,10 @@ pub enum EventResult {
     Consumed(Option<Callback>),
 }
 
+use crate::job::Jobs;
 use helix_view::Editor;
 
-use crate::job::Jobs;
+pub use helix_view::input::Event;
 
 pub struct Context<'a> {
     pub editor: &'a mut Editor,
@@ -30,7 +29,7 @@ pub struct Context<'a> {
 
 pub trait Component: Any + AnyComponent {
     /// Process input events, return true if handled.
-    fn handle_event(&mut self, _event: Event, _ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, _event: &Event, _ctx: &mut Context) -> EventResult {
         EventResult::Ignored(None)
     }
     // , args: ()
@@ -150,10 +149,18 @@ impl Compositor {
         self.layers.pop()
     }
 
-    pub fn handle_event(&mut self, event: Event, cx: &mut Context) -> bool {
+    pub fn remove(&mut self, id: &'static str) -> Option<Box<dyn Component>> {
+        let idx = self
+            .layers
+            .iter()
+            .position(|layer| layer.id() == Some(id))?;
+        Some(self.layers.remove(idx))
+    }
+
+    pub fn handle_event(&mut self, event: &Event, cx: &mut Context) -> bool {
         // If it is a key event and a macro is being recorded, push the key event to the recording.
         if let (Event::Key(key), Some((_, keys))) = (event, &mut cx.editor.macro_recording) {
-            keys.push(key.into());
+            keys.push(*key);
         }
 
         let mut callbacks = Vec::new();

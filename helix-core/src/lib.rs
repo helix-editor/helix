@@ -46,10 +46,42 @@ pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
 /// * Git repository root if no marker detected
 /// * Top-most folder containing a root marker if not git repository detected
 /// * Current working directory as fallback
-pub fn find_root(root: Option<&str>, root_markers: &[String]) -> Option<std::path::PathBuf> {
-    helix_loader::find_root_impl(root, root_markers)
-        .first()
-        .cloned()
+pub fn find_root(root: Option<&str>, root_markers: &[String]) -> std::path::PathBuf {
+    let current_dir = std::env::current_dir().expect("unable to determine current directory");
+
+    let root = match root {
+        Some(root) => {
+            let root = std::path::Path::new(root);
+            if root.is_absolute() {
+                root.to_path_buf()
+            } else {
+                current_dir.join(root)
+            }
+        }
+        None => current_dir.clone(),
+    };
+
+    let mut top_marker = None;
+    for ancestor in root.ancestors() {
+        if root_markers
+            .iter()
+            .any(|marker| ancestor.join(marker).exists())
+        {
+            top_marker = Some(ancestor);
+        }
+
+        if ancestor.join(".git").is_dir() {
+            // Top marker is repo root if not root marker was detected yet
+            if top_marker.is_none() {
+                top_marker = Some(ancestor);
+            }
+            // Don't go higher than repo if we're in one
+            break;
+        }
+    }
+
+    // Return the found top marker or the current_dir as fallback
+    top_marker.map_or(current_dir, |a| a.to_path_buf())
 }
 
 pub use ropey::{str_utils, Rope, RopeBuilder, RopeSlice};

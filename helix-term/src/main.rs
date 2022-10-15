@@ -61,10 +61,13 @@ ARGS:
 FLAGS:
     -h, --help                     Prints help information
     --tutor                        Loads the tutorial
-    --health [LANG]                Checks for potential errors in editor setup
-                                   If given, checks for config errors in language LANG
+    --health [CATEGORY]            Checks for potential errors in editor setup
+                                   CATEGORY can be a language or one of 'clipboard', 'languages'
+                                   or 'all'. 'all' is the default if not specified.
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
+    -c, --config <file>            Specifies a file to use for configuration
     -v                             Increases logging verbosity each use for up to 3 times
+    --log                          Specifies a file to use for logging
                                    (default file: {})
     -V, --version                  Prints version information
     --vsplit                       Splits all given files vertically into different windows
@@ -108,10 +111,11 @@ FLAGS:
     }
 
     if args.build_grammars {
-        helix_loader::grammar::build_grammars()?;
+        helix_loader::grammar::build_grammars(None)?;
         return Ok(0);
     }
 
+    let logpath = args.log_file.as_ref().cloned().unwrap_or(logpath);
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 
     let config_dir = helix_loader::config_dir();
@@ -119,14 +123,15 @@ FLAGS:
         std::fs::create_dir_all(&config_dir).ok();
     }
 
-    let config = match std::fs::read_to_string(config_dir.join("config.toml")) {
+    helix_loader::initialize_config_file(args.config_file.clone());
+
+    let config = match std::fs::read_to_string(helix_loader::config_file()) {
         Ok(config) => toml::from_str(&config)
             .map(helix_term::keymap::merge_keys)
             .unwrap_or_else(|err| {
                 eprintln!("Bad config: {}", err);
                 eprintln!("Press <ENTER> to continue with default config");
                 use std::io::Read;
-                // This waits for an enter press.
                 let _ = std::io::stdin().read(&mut []);
                 Config::default()
             }),
