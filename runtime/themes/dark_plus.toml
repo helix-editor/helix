@@ -56,9 +56,9 @@
 "ui.background" = { fg = "light_gray", bg = "dark_gray2" }
 
 "ui.window" = { bg = "widget" }
-"ui.popup" = { bg = "widget" }
-"ui.help" = { bg = "widget" }
-"ui.menu" = { bg = "widget" }
+"ui.popup" = { fg = "text", bg = "widget" }
+"ui.help" = { fg = "text", bg = "widget" }
+"ui.menu" = { fg = "text", bg = "widget" }
 "ui.menu.selected" = { bg = "dark_blue2" }
 
 # TODO: Alternate bg colour for `ui.cursor.match` and `ui.selection`.
@@ -72,14 +72,20 @@
 "ui.linenr" = { fg = "dark_gray" }
 "ui.linenr.selected" = { fg = "light_gray2" }
 
+"ui.cursorline.primary" = { bg = "dark_gray3" }
 "ui.statusline" = { fg = "white", bg = "blue" }
 "ui.statusline.inactive" = { fg = "white", bg = "blue" }
+
+"ui.bufferline" = { fg = "text", bg = "widget" }
+"ui.bufferline.active" = { fg = "white", bg = "blue" }
+"ui.bufferline.background" = { bg = "background" }
 
 "ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "white" }
 
-"ui.virtual" = { fg = "dark_gray" }
+"ui.virtual.whitespace" = { fg = "dark_gray" }
 "ui.virtual.ruler" = { bg = "borders" }
+"ui.virtual.indent-guide" = { fg = "dark_gray4" }
 
 "warning" = { fg = "gold2" }
 "error" = { fg = "red" }
@@ -100,6 +106,8 @@ light_gray2 = "#c6c6c6"
 light_gray3 = "#eeeeee"
 dark_gray = "#858585"
 dark_gray2 = "#1e1e1e"
+dark_gray3 = "#282828"
+dark_gray4 = "#404040"
 blue = "#007acc"
 blue2 = "#569CD6"
 blue3 = "#6796E6"

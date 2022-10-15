@@ -13,11 +13,11 @@
 "ui.help" = { fg = "white", bg = "black" }
 "ui.cursor" = { fg = "light-gray", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "light-gray", modifiers = ["reversed"] }
-"ui.virtual" = "light-gray"
+"ui.virtual.whitespace" = "light-gray"
 "variable" = "light-red"
 "constant.numeric" = "yellow"
 "constant" = "yellow"
-"attributes" = "yellow"
+"attribute" = "yellow"
 "type" = "light-yellow"
 "ui.cursor.match" = { fg = "light-yellow", modifiers = ["underlined"] }
 "string"  = "light-green"

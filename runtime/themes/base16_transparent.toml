@@ -1,0 +1,71 @@
+# Author: GreasySlug <9619abgoni@gmail.com>
+
+"ui.background" = { fg = "white"}
+"ui.background.separator" = { fg = "gray" }
+"ui.menu" = { fg = "gray" }
+"ui.menu.selected" = { modifiers = ["reversed"] }
+"ui.menu.scroll" = { fg = "light-gray" }
+"ui.linenr" = { fg = "light-gray" }
+"ui.linenr.selected" = { fg = "white",  modifiers = ["bold"] }
+"ui.popup" = { fg = "white" }
+"ui.window" = { fg = "white" }
+"ui.selection" = { modifiers = [ "reversed"] }
+"comment" = { fg = "gray", modifiers = ["italic"] }
+"ui.statusline" = { fg = "white" }
+"ui.statusline.inactive" = { fg = "gray" }
+"ui.statusline.normal" = { fg = "blue", modifiers = ["reversed"] }
+"ui.statusline.insert" = { fg = "green", modifiers = ["reversed"] }
+"ui.statusline.select" = { fg = "magenta", modifiers = ["reversed"] }
+"ui.help" = { fg = "light-gray" }
+"ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "light-yellow", modifiers = ["underlined"] }
+"ui.cursor.primary" = { modifiers = ["reversed", "slow_blink"] }
+"ui.cursor.secondary" = { modifiers = ["reversed"] }
+"ui.virtual.ruler" = { fg = "gray", modifiers = ["reversed"] }
+"ui.virtual.whitespace" = "gray"
+"ui.virtual.indent-guide" = "gray"
+
+"variable" = "light-red"
+"constant.numeric" = "yellow"
+"constant" = "yellow"
+"attribute" = "yellow"
+"type" = "light-yellow"
+"string"  = "light-green"
+"variable.other.member" = "green"
+"constant.character.escape" = "light-cyan"
+"function" = "light-blue"
+"constructor" = "light-blue"
+"special" = "light-blue"
+"keyword" = "light-magenta"
+"label" = "light-magenta"
+"namespace" = "light-magenta"
+
+"markup.heading" = "light-blue"
+"markup.list" = "light-red"
+"markup.bold" = { fg = "light-yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "light-magenta", modifiers = ["italic"] }
+"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.text" = "light-red"
+"markup.quote" = "light-cyan"
+"markup.raw" = "green"
+"markup.normal" = { fg = "blue" }
+"markup.insert" = { fg = "green" }
+"markup.select" = { fg = "magenta" }
+
+"diff.plus" = "light-green"
+"diff.delta" = "yellow"
+"diff.minus" = "light-red"
+
+"ui.gutter" = "gray" 
+"info" = "light-blue" 
+"hint" = "gray" 
+"debug" = "gray"  
+"warning" = "yellow" 
+"error" = "light-red" 
+
+"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.info" = { fg = "light-blue", modifiers = ["underlined"] }
+"diagnostic.hint" = { fg = "gray", modifiers = ["underlined"] }
+"diagnostic.debug" ={ fg ="gray",  modifiers = ["underlined"] }
+"diagnostic.warning" = { fg = "yellow", modifiers = ["underlined"] }
+"diagnostic.error" = { fg ="light-red", modifiers = ["underlined"] }

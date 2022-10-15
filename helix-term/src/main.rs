@@ -1,6 +1,8 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Error, Result};
+use crossterm::event::EventStream;
 use helix_term::application::Application;
 use helix_term::args::Args;
+use helix_term::config::Config;
 use std::path::PathBuf;
 
 fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
@@ -59,12 +61,17 @@ ARGS:
 FLAGS:
     -h, --help                     Prints help information
     --tutor                        Loads the tutorial
-    --health [LANG]                Checks for potential errors in editor setup
-                                   If given, checks for config errors in language LANG
+    --health [CATEGORY]            Checks for potential errors in editor setup
+                                   CATEGORY can be a language or one of 'clipboard', 'languages'
+                                   or 'all'. 'all' is the default if not specified.
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
+    -c, --config <file>            Specifies a file to use for configuration
     -v                             Increases logging verbosity each use for up to 3 times
+    --log                          Specifies a file to use for logging
                                    (default file: {})
     -V, --version                  Prints version information
+    --vsplit                       Splits all given files vertically into different windows
+    --hsplit                       Splits all given files horizontally into different windows
 ",
         env!("CARGO_PKG_NAME"),
         env!("VERSION_AND_GIT_HASH"),
@@ -104,16 +111,38 @@ FLAGS:
     }
 
     if args.build_grammars {
-        helix_loader::grammar::build_grammars()?;
+        helix_loader::grammar::build_grammars(None)?;
         return Ok(0);
     }
 
+    let logpath = args.log_file.as_ref().cloned().unwrap_or(logpath);
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 
-    // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app = Application::new(args).context("unable to create new application")?;
+    let config_dir = helix_loader::config_dir();
+    if !config_dir.exists() {
+        std::fs::create_dir_all(&config_dir).ok();
+    }
 
-    let exit_code = app.run().await?;
+    helix_loader::initialize_config_file(args.config_file.clone());
+
+    let config = match std::fs::read_to_string(helix_loader::config_file()) {
+        Ok(config) => toml::from_str(&config)
+            .map(helix_term::keymap::merge_keys)
+            .unwrap_or_else(|err| {
+                eprintln!("Bad config: {}", err);
+                eprintln!("Press <ENTER> to continue with default config");
+                use std::io::Read;
+                let _ = std::io::stdin().read(&mut []);
+                Config::default()
+            }),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
+        Err(err) => return Err(Error::new(err)),
+    };
+
+    // TODO: use the thread local executor to spawn the application task separately from the work pool
+    let mut app = Application::new(args, config).context("unable to create new application")?;
+
+    let exit_code = app.run(&mut EventStream::new()).await?;
 
     Ok(exit_code)
 }

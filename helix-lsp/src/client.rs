@@ -1,11 +1,11 @@
 use crate::{
+    jsonrpc,
     transport::{Payload, Transport},
     Call, Error, OffsetEncoding, Result,
 };
 
 use anyhow::anyhow;
 use helix_core::{find_root, ChangeSet, Rope};
-use jsonrpc_core as jsonrpc;
 use lsp_types as lsp;
 use serde::Deserialize;
 use serde_json::Value;
@@ -34,7 +34,7 @@ pub struct Client {
     pub(crate) capabilities: OnceCell<lsp::ServerCapabilities>,
     offset_encoding: OffsetEncoding,
     config: Option<Value>,
-    root_path: Option<std::path::PathBuf>,
+    root_path: std::path::PathBuf,
     root_uri: Option<lsp::Url>,
     workspace_folders: Vec<lsp::WorkspaceFolder>,
     req_timeout: u64,
@@ -49,6 +49,7 @@ impl Client {
         root_markers: &[String],
         id: usize,
         req_timeout: u64,
+        doc_path: Option<&std::path::PathBuf>,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
         // Resolve path to the binary
         let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
@@ -72,11 +73,12 @@ impl Client {
         let (server_rx, server_tx, initialize_notify) =
             Transport::start(reader, writer, stderr, id);
 
-        let root_path = find_root(None, root_markers);
+        let root_path = find_root(
+            doc_path.and_then(|x| x.parent().and_then(|x| x.to_str())),
+            root_markers,
+        );
 
-        let root_uri = root_path
-            .clone()
-            .and_then(|root| lsp::Url::from_file_path(root).ok());
+        let root_uri = lsp::Url::from_file_path(root_path.clone()).ok();
 
         // TODO: support multiple workspace folders
         let workspace_folders = root_uri
@@ -271,8 +273,8 @@ impl Client {
     // -------------------------------------------------------------------------------------------
 
     pub(crate) async fn initialize(&self) -> Result<lsp::InitializeResult> {
-        if self.config.is_some() {
-            log::info!("Using custom LSP config: {}", self.config.as_ref().unwrap());
+        if let Some(config) = &self.config {
+            log::info!("Using custom LSP config: {}", config);
         }
 
         #[allow(deprecated)]
@@ -281,10 +283,7 @@ impl Client {
             workspace_folders: Some(self.workspace_folders.clone()),
             // root_path is obsolete, but some clients like pyright still use it so we specify both.
             // clients will prefer _uri if possible
-            root_path: self
-                .root_path
-                .clone()
-                .and_then(|path| path.to_str().map(|path| path.to_owned())),
+            root_path: self.root_path.to_str().map(|path| path.to_owned()),
             root_uri: self.root_uri.clone(),
             initialization_options: self.config.clone(),
             capabilities: lsp::ClientCapabilities {
@@ -294,6 +293,11 @@ impl Client {
                         dynamic_registration: Some(false),
                     }),
                     workspace_folders: Some(true),
+                    apply_edit: Some(true),
+                    symbol: Some(lsp::WorkspaceSymbolClientCapabilities {
+                        dynamic_registration: Some(false),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
@@ -319,6 +323,16 @@ impl Client {
                         // if not specified, rust-analyzer returns plaintext marked as markdown but
                         // badly formatted.
                         content_format: Some(vec![lsp::MarkupKind::Markdown]),
+                        ..Default::default()
+                    }),
+                    signature_help: Some(lsp::SignatureHelpClientCapabilities {
+                        signature_information: Some(lsp::SignatureInformationSettings {
+                            documentation_format: Some(vec![lsp::MarkupKind::Markdown]),
+                            parameter_information: Some(lsp::ParameterInformationSettings {
+                                label_offset_support: Some(true),
+                            }),
+                            active_parameter_support: Some(true),
+                        }),
                         ..Default::default()
                     }),
                     rename: Some(lsp::RenameClientCapabilities {
@@ -645,7 +659,12 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> impl Future<Output = Result<Value>> {
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        // Return early if signature help is not supported
+        capabilities.signature_help_provider.as_ref()?;
+
         let params = lsp::SignatureHelpParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
@@ -656,7 +675,7 @@ impl Client {
             // lsp::SignatureHelpContext
         };
 
-        self.call::<lsp::request::SignatureHelpRequest>(params)
+        Some(self.call::<lsp::request::SignatureHelpRequest>(params))
     }
 
     pub fn text_document_hover(
@@ -757,6 +776,26 @@ impl Client {
             .await?;
 
         Ok(response.unwrap_or_default())
+    }
+
+    pub fn text_document_document_highlight(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> impl Future<Output = Result<Value>> {
+        let params = lsp::DocumentHighlightParams {
+            text_document_position_params: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
+            partial_result_params: lsp::PartialResultParams {
+                partial_result_token: None,
+            },
+        };
+
+        self.call::<lsp::request::DocumentHighlightRequest>(params)
     }
 
     fn goto_request<
@@ -896,8 +935,8 @@ impl Client {
             Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_)) => (),
             // None | Some(false)
             _ => {
+                log::warn!("rename_symbol failed: The server does not support rename");
                 let err = "The server does not support rename";
-                log::warn!("rename_symbol failed: {}", err);
                 return Err(anyhow!(err));
             }
         };
