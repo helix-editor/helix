@@ -10,6 +10,8 @@ For everything else (e.g., how to install supported language servers), see the [
 
 Refer the [FAQ] for common questions.
 
+[中文文档在此](https://zjp-cn.github.io/helix-book)
+
 [FAQ]: https://github.com/helix-editor/helix/wiki/FAQ
 [usage]: ./usage.md
 [keymap]: ./keymap.md
