@@ -1358,7 +1358,7 @@ fn sort(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         return Ok(());
     }
 
-    sort_impl(cx, args, false)
+    sort_impl(cx, args, false, false)
 }
 
 fn sort_reverse(
@@ -1370,13 +1370,38 @@ fn sort_reverse(
         return Ok(());
     }
 
-    sort_impl(cx, args, true)
+    sort_impl(cx, args, true, false)
+}
+
+fn sort_numeric(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    sort_impl(cx, args, false, true)
+}
+
+fn sort_numeric_reverse(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    sort_impl(cx, args, true, true)
 }
 
 fn sort_impl(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
     reverse: bool,
+    alphanumeric: bool,
 ) -> anyhow::Result<()> {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -1388,9 +1413,11 @@ fn sort_impl(
         .map(|fragment| fragment.chunks().collect())
         .collect();
 
-    fragments.sort_by(match reverse {
-        true => |a: &Tendril, b: &Tendril| b.cmp(a),
-        false => |a: &Tendril, b: &Tendril| a.cmp(b),
+    fragments.sort_by(match (reverse, alphanumeric) {
+        (true, false) => |a: &Tendril, b: &Tendril| b.cmp(a),
+        (false, false) => |a: &Tendril, b: &Tendril| a.cmp(b),
+        (true, true) => |a: &Tendril, b: &Tendril| alphanumeric_sort::compare_str(b, a),
+        (false, true) => |a: &Tendril, b: &Tendril| alphanumeric_sort::compare_str(a, b),
     });
 
     let transaction = Transaction::change(
@@ -2031,6 +2058,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Sort ranges in selection in reverse order.",
             fun: sort_reverse,
+            completer: None,
+        },
+        TypableCommand {
+            name: "sortn",
+            aliases: &[],
+            doc: "Sort ranges in selection in alphanumeric order.",
+            fun: sort_numeric,
+            completer: None,
+        },
+        TypableCommand {
+            name: "rsortn",
+            aliases: &[],
+            doc: "Sort ranges in selection in reverse order in alphanumeric order.",
+            fun: sort_numeric_reverse,
             completer: None,
         },
         TypableCommand {
