@@ -2071,7 +2071,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "insert-output",
             aliases: &[],
-            doc: "Run shell command, inserting output after each selection.",
+            doc: "Run shell command, inserting output before each selection.",
             fun: insert_output,
             completer: None,
         },
