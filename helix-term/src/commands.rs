@@ -4535,10 +4535,8 @@ fn match_brackets(cx: &mut Context) {
         let is_select = cx.editor.mode == Mode::Select;
         let selection = doc.selection(view.id).clone().transform(|range| {
             let pos = range.cursor(text_slice);
-            if let Some(pos) = match_brackets::find_matching_bracket_fuzzy(syntax, text, pos) {
-                range.put_cursor(text_slice, pos, is_select)
-            } else if let Some(pos) =
-                match_brackets::find_matching_bracket_current_line_plaintext(text, pos)
+            if let Some(pos) = match_brackets::find_matching_bracket_fuzzy(syntax, text, pos)
+                .or_else(|| match_brackets::find_matching_bracket_current_line_plaintext(text, pos))
             {
                 range.put_cursor(text_slice, pos, is_select)
             } else {
