@@ -94,7 +94,7 @@ pub fn find_matching_bracket_current_line_plaintext(
         return None;
     }
 
-    // Determine the direction of the matching
+    // Determine the direction of the matching.
     let is_fwd = is_forward_bracket(bracket);
     let line = doc.byte_to_line(cursor_pos);
     let end = doc.line_to_byte(if is_fwd { line + 1 } else { line });
@@ -114,12 +114,11 @@ pub fn find_matching_bracket_current_line_plaintext(
             if is_fwd { cursor_pos } else { pos },
             if is_fwd { pos } else { cursor_pos },
         ) {
-            open_cnt -= 1;
-
             // Return when all pending brackets have been closed.
-            if open_cnt == 0 {
+            if open_cnt == 1 {
                 return Some(pos);
             }
+            open_cnt -= 1;
         }
     }
 
