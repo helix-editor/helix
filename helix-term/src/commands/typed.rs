@@ -1490,31 +1490,6 @@ fn numeric_cmp(a: impl AsRef<str>, b: impl AsRef<str>) -> std::cmp::Ordering {
     }
 }
 
-#[test]
-fn test_numeric_cmp() {
-    let expected = [
-        "hi-1.png",
-        "hi-01.png",
-        "hi-2.png",
-        "hi-003.png",
-        "hi-4.png",
-        "hi-11.png",
-    ];
-
-    let mut example = [
-        "hi-003.png",
-        "hi-01.png",
-        "hi-1.png",
-        "hi-11.png",
-        "hi-2.png",
-        "hi-4.png",
-    ];
-
-    example.sort_by(|a, b| numeric_cmp(a, b));
-
-    assert_eq!(example, expected);
-}
-
 fn reflow(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2151,7 +2126,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "rsortn",
             aliases: &[],
-            doc: "Sort ranges in selection in reverse order in alphanumeric order.",
+            doc: "Sort ranges in selection in reverse alphanumeric order.",
             fun: sort_numeric_reverse,
             completer: None,
         },
@@ -2326,4 +2301,32 @@ pub fn command_mode(cx: &mut Context) {
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
     cx.push_layer(Box::new(prompt));
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_numeric_cmp() {
+        let expected = [
+            "hi-1.png",
+            "hi-01.png",
+            "hi-2.png",
+            "hi-003.png",
+            "hi-4.png",
+            "hi-11.png",
+        ];
+
+        let mut example = [
+            "hi-003.png",
+            "hi-01.png",
+            "hi-1.png",
+            "hi-11.png",
+            "hi-2.png",
+            "hi-4.png",
+        ];
+
+        example.sort_by(|a, b| super::numeric_cmp(a, b));
+
+        assert_eq!(example, expected);
+    }
 }
