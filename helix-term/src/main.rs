@@ -35,7 +35,6 @@ fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
 
 fn main() -> Result<()> {
     let exit_code = main_impl()?;
-    log::info!("Hello! Starting the program!");
     std::process::exit(exit_code);
 }
 
