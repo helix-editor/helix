@@ -40,7 +40,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       RUST_BACKTRACE: 1
-      HELIX_LOG_LEVEL: info
+      HELIX_LOG_LEVEL: debug
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
