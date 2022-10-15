@@ -1,5 +1,5 @@
 use crate::compositor::{Component, Context, Event, EventResult};
-use helix_view::editor::CompleteAction;
+use helix_view::{apply_transaction, editor::CompleteAction};
 use tui::buffer::Buffer as Surface;
 use tui::text::Spans;
 
@@ -143,11 +143,11 @@ impl Completion {
             let (view, doc) = current!(editor);
 
             // if more text was entered, remove it
-            doc.restore(view.id);
+            doc.restore(view);
 
             match event {
                 PromptEvent::Abort => {
-                    doc.restore(view.id);
+                    doc.restore(view);
                     editor.last_completion = None;
                 }
                 PromptEvent::Update => {
@@ -164,7 +164,7 @@ impl Completion {
 
                     // initialize a savepoint
                     doc.savepoint();
-                    doc.apply(&transaction, view.id);
+                    apply_transaction(&transaction, doc, view);
 
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
@@ -183,7 +183,7 @@ impl Completion {
                         trigger_offset,
                     );
 
-                    doc.apply(&transaction, view.id);
+                    apply_transaction(&transaction, doc, view);
 
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
@@ -213,7 +213,7 @@ impl Completion {
                                 additional_edits.clone(),
                                 offset_encoding, // TODO: should probably transcode in Client
                             );
-                            doc.apply(&transaction, view.id);
+                            apply_transaction(&transaction, doc, view);
                         }
                     }
                 }
