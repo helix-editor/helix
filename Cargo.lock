@@ -12,12 +12,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "alphanumeric-sort"
-version = "1.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77e9c9abb82613923ec78d7a461595d52491ba7240f3c64c0bbe0e6d98e0fce0"
-
-[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -471,7 +465,6 @@ dependencies = [
 name = "helix-term"
 version = "0.6.0"
 dependencies = [
- "alphanumeric-sort",
  "anyhow",
  "arc-swap",
  "chrono",

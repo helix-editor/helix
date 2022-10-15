@@ -1416,8 +1416,8 @@ fn sort_impl(
     fragments.sort_by(match (reverse, alphanumeric) {
         (true, false) => |a: &Tendril, b: &Tendril| b.cmp(a),
         (false, false) => |a: &Tendril, b: &Tendril| a.cmp(b),
-        (true, true) => |a: &Tendril, b: &Tendril| alphanumeric_sort::compare_str(b, a),
-        (false, true) => |a: &Tendril, b: &Tendril| alphanumeric_sort::compare_str(a, b),
+        (true, true) => |a: &Tendril, b: &Tendril| numeric_cmp(b, a),
+        (false, true) => |a: &Tendril, b: &Tendril| numeric_cmp(a, b),
     });
 
     let transaction = Transaction::change(
@@ -1432,6 +1432,87 @@ fn sort_impl(
     doc.append_changes_to_history(view.id);
 
     Ok(())
+}
+
+/// Compares two str, char by char, except for groups of ascii digits which are
+/// compared as single numbers (detail: leading zeroes make a number bigger)
+fn numeric_cmp(a: impl AsRef<str>, b: impl AsRef<str>) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+
+    fn advance_once(c: &str) -> &str {
+        let mut c = c.chars();
+        let _ = c.next();
+        c.as_str()
+    }
+
+    fn advance_while(s: &str, mut f: impl FnMut(char) -> bool) -> (&str, &str) {
+        let i = s
+            .char_indices()
+            .find(|&(_, c)| !f(c))
+            .map_or(s.len(), |(i, _)| i);
+        s.split_at(i)
+    }
+
+    let mut a = a.as_ref();
+    let mut b = b.as_ref();
+
+    loop {
+        match (a.chars().next(), b.chars().next()) {
+            (Some(ca), Some(cb)) => {
+                if ca.is_ascii_digit() && cb.is_ascii_digit() {
+                    let (a_zeroes, a_rem) = advance_while(a, |c| c == '0');
+                    let (b_zeroes, b_rem) = advance_while(b, |c| c == '0');
+
+                    let (a_digits, a_rem) = advance_while(a_rem, |c| c.is_ascii_digit());
+                    let (b_digits, b_rem) = advance_while(b_rem, |c| c.is_ascii_digit());
+
+                    match (a_digits.len().cmp(&b_digits.len()))
+                        .then_with(|| a_digits.cmp(b_digits))
+                        .then_with(|| a_zeroes.len().cmp(&b_zeroes.len()))
+                    {
+                        Ordering::Equal => {
+                            a = a_rem;
+                            b = b_rem;
+                        }
+                        x => return x,
+                    }
+                } else if ca != cb {
+                    return ca.cmp(&cb);
+                } else {
+                    a = advance_once(a);
+                    b = advance_once(b);
+                }
+            }
+            (Some(_), None) => return Ordering::Greater,
+            (None, Some(_)) => return Ordering::Less,
+            (None, None) => return Ordering::Equal,
+        }
+    }
+}
+
+#[test]
+fn test_numeric_cmp() {
+    let expected = [
+        "hi-1.png",
+        "hi-01.png",
+        "hi-2.png",
+        "hi-003.png",
+        "hi-4.png",
+        "hi-11.png",
+    ];
+
+    let mut example = [
+        "hi-003.png",
+        "hi-01.png",
+        "hi-1.png",
+        "hi-11.png",
+        "hi-2.png",
+        "hi-4.png",
+    ];
+
+    example.sort_by(|a, b| numeric_cmp(a, b));
+
+    assert_eq!(example, expected);
 }
 
 fn reflow(
