@@ -70,26 +70,22 @@ fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) ->
     }
 }
 
-// Returns the position of the bracket that is closing, searching only in
-// the current line, and works on plain text, ignoring the tree-sitter grammar.
-//
-// If the cursor is on an opening or closing bracket, the function
-// behaves equivalent to [`find_matching_bracket`].
-//
-// If no matchig bracket is found on the current line, returns None.
+// Returns the position of the bracket that is closing.
+// This function only searches on the current line, either forwards or backwards.
+// This function matches plain text, it ignores tree-sitter grammar.
+// Returns None when no matching bracket is found.
 #[must_use]
 pub fn find_matching_bracket_current_line_plaintext(doc: &Rope, pos: usize) -> Option<usize> {
     // Don't do anything when the cursor is not on top of a bracket.
-    let mut c = doc.char(pos);
-    if !is_valid_bracket(c) {
+    let bracket = doc.char(pos);
+    if !is_valid_bracket(bracket) {
         return None;
     }
 
-    let bracket = c;
     let bracket_pos = pos;
 
     // Determine the direction of the matching
-    let is_fwd = is_forward_bracket(c);
+    let is_fwd = is_forward_bracket(bracket);
     let line = doc.byte_to_line(pos);
     let end = doc.line_to_byte(if is_fwd { line + 1 } else { line });
     let range = if is_fwd {
@@ -101,18 +97,21 @@ pub fn find_matching_bracket_current_line_plaintext(doc: &Rope, pos: usize) -> O
     let mut open_cnt = 1;
 
     for pos in range {
-        c = doc.char(pos);
+        let c = doc.char(pos);
 
-        if !is_valid_bracket(c) {
-            continue;
-        } else if bracket == c {
+        if c == bracket {
             open_cnt += 1;
-        } else if is_valid_pair(doc, bracket_pos, pos) || is_valid_pair(doc, pos, bracket_pos) {
+        } else if is_valid_pair(
+            doc,
+            if is_fwd { bracket_pos } else { pos },
+            if is_fwd { pos } else { bracket_pos },
+        ) {
             open_cnt -= 1;
-        }
 
-        if open_cnt == 0 {
-            return Some(pos);
+            // Return when all pending brackets have been closed.
+            if open_cnt == 0 {
+                return Some(pos);
+            }
         }
     }
 
