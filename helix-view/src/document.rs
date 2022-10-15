@@ -562,13 +562,26 @@ impl Document {
 
             // TODO Temporary file creation is a workaround to solve large file corruption
             // that occurs when crashing during a file save
-            let mut tmp_path = path.clone();
-            tmp_path.set_file_name(format!(".~{}", path.file_name().unwrap().to_str().unwrap()));
+            let tmp_path = PathBuf::from(std::env::var("HOME").unwrap())
+                .join(".cache/")
+                .join("helix/")
+                .join(format!("~{}", path.file_name().unwrap().to_str().unwrap()));
+
+            if let Some(parent) = tmp_path.parent() {
+                // TODO: display a prompt asking the user if the directories should be created
+                if !parent.exists() {
+                    if force {
+                        std::fs::DirBuilder::new().recursive(true).create(parent)?;
+                    } else {
+                        bail!("can't save file, parent directory does not exist");
+                    }
+                }
+            }
+
             let mut tmp_file = File::create(&tmp_path).await?;
             to_writer(&mut tmp_file, encoding, &text).await?;
 
-            tokio::fs::copy(&tmp_path, path).await?;
-            tokio::fs::remove_file(tmp_path).await?;
+            tokio::fs::rename(&tmp_path, path).await?;
 
             if let Some(language_server) = language_server {
                 if !language_server.is_initialized() {
