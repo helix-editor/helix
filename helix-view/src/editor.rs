@@ -1062,6 +1062,13 @@ impl Editor {
             DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
         doc.id = id;
         self.documents.insert(id, doc);
+
+        let (save_sender, save_receiver) = tokio::sync::mpsc::unbounded_channel();
+        self.saves.insert(id, save_sender);
+
+        let stream = UnboundedReceiverStream::new(save_receiver).flatten();
+        self.save_queue.push(stream);
+
         id
     }
 
@@ -1094,12 +1101,6 @@ impl Editor {
 
             self.new_document(doc)
         };
-
-        let (save_sender, save_receiver) = tokio::sync::mpsc::unbounded_channel();
-        self.saves.insert(id, save_sender);
-
-        let stream = UnboundedReceiverStream::new(save_receiver).flatten();
-        self.save_queue.push(stream);
 
         self.switch(id, action);
         Ok(id)
