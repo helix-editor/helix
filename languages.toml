@@ -1835,3 +1835,17 @@ roots = []
 [[grammar]]
 name = "wast"
 source = { git = "https://github.com/wasm-lsp/tree-sitter-wasm", rev = "2ca28a9f9d709847bf7a3de0942a84e912f59088", subpath = "wast" }
+
+[[language]]
+name = "groovy"
+scope = "source.groovy"
+injection-regex = "groovy"
+file-types = ["groovy", "gvy", "gy", "gsh"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "java", args = ["-jar", "/Users/zephaniahong/Desktop/groovy-language-server/build/libs/groovy-language-server-all.jar"]}
+roots = []
+
+[[grammar]]
+name = "java"
+source = { git = "https://github.com/tree-sitter/tree-sitter-java", rev = "bd6186c24d5eb13b4623efac9d944dcc095c0dad" }
