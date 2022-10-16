@@ -302,16 +302,7 @@ impl EditorView {
         let mut warning_vec = Vec::new();
         let mut error_vec = Vec::new();
 
-        let diagnostics = doc.diagnostics();
-
-        // Diagnostics must be sorted by range. Otherwise, the merge strategy
-        // below would not be accurate.
-        debug_assert!(diagnostics
-            .windows(2)
-            .all(|window| window[0].range.start <= window[1].range.start
-                && window[0].range.end <= window[1].range.end));
-
-        for diagnostic in diagnostics {
+        for diagnostic in doc.diagnostics() {
             // Separate diagnostics into different Vecs by severity.
             let (vec, scope) = match diagnostic.severity {
                 Some(Severity::Info) => (&mut info_vec, info),
@@ -325,6 +316,11 @@ impl EditorView {
             // merge the two together. Otherwise push a new span.
             match vec.last_mut() {
                 Some((_, range)) if diagnostic.range.start <= range.end => {
+                    // This branch merges overlapping diagnostics, assuming that the current
+                    // diagnostic starts on range.start or later. If this assertion fails,
+                    // we will discard some part of `diagnostic`. This implies that
+                    // `doc.diagnostics()` is not sorted by `diagnostic.range`.
+                    debug_assert!(range.start <= diagnostic.range.start);
                     range.end = diagnostic.range.end.max(range.end)
                 }
                 _ => vec.push((scope, diagnostic.range.start..diagnostic.range.end)),
