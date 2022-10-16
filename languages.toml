@@ -606,6 +606,7 @@ indent = { tab-width = 4, unit = "    " }
 name = "julia"
 source = { git = "https://github.com/tree-sitter/tree-sitter-julia", rev = "fc60b7cce87da7a1b7f8cb0f9371c3dc8b684500" }
 
+
 [[language]]
 name = "java"
 scope = "source.java"
@@ -1836,6 +1837,7 @@ roots = []
 name = "wast"
 source = { git = "https://github.com/wasm-lsp/tree-sitter-wasm", rev = "2ca28a9f9d709847bf7a3de0942a84e912f59088", subpath = "wast" }
 
+
 [[language]]
 name = "groovy"
 scope = "source.groovy"
@@ -1848,4 +1850,9 @@ roots = []
 
 [[grammar]]
 name = "groovy"
-source = { git = "https://github.com/codieboomboom/tree-sitter-groovy", rev = "de8e0c727a0de8cbc6f4e4884cba2d4e7c740570" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-java", rev = "bd6186c24d5eb13b4623efac9d944dcc095c0dad" }
+
+# [[grammar]]
+# name = "groovy"
+# source = { git = "https://github.com/codieboomboom/tree-sitter-groovy", rev = "de8e0c727a0de8cbc6f4e4884cba2d4e7c740570" }
+
