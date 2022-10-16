@@ -968,9 +968,6 @@ impl Application {
         //        errors along the way
         let mut errs = Vec::new();
 
-        // TODO: deduplicate with ctx.block_try_flush_writes
-        tokio::task::block_in_place(|| helix_lsp::block_on(self.editor.flush_writes()));
-
         if let Err(err) = self
             .jobs
             .finish(&mut self.editor, Some(&mut self.compositor))
