@@ -368,7 +368,13 @@ impl LanguageConfiguration {
             None
         } else {
             let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
-                .map_err(|e| log::info!("{}", e))
+                .map_err(|err| {
+                    log::error!(
+                        "Failed to load tree-sitter parser for language {:?}: {}",
+                        self.language_id,
+                        err
+                    )
+                })
                 .ok()?;
             let config = HighlightConfiguration::new(
                 language,
