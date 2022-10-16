@@ -1,7 +1,8 @@
-use std::{fmt::Write, ops::Deref};
+use std::ops::Deref;
 
 use super::*;
 
+use helix_core::syntax::pretty_print_tree;
 use helix_view::{
     apply_transaction,
     editor::{Action, CloseError, ConfigEvent},
@@ -1473,57 +1474,9 @@ fn tree_sitter_subtree(
             .root_node()
             .descendant_for_byte_range(from, to)
         {
-            fn pretty_print_node(
-                node: Node<'_>,
-                sexpr: &mut String,
-                is_root: bool,
-                field_name: Option<&str>,
-                depth: usize,
-            ) -> anyhow::Result<()> {
-                fn is_visible(node: Node<'_>) -> bool {
-                    node.is_missing()
-                        || (node.is_named() && node.language().node_kind_is_visible(node.kind_id()))
-                }
-
-                if is_visible(node) {
-                    write!(sexpr, "{:depth$}", "")?;
-
-                    if let Some(field_name) = field_name {
-                        write!(sexpr, "{}: ", field_name)?;
-                    }
-
-                    write!(sexpr, "({}", node.kind())?;
-                } else if is_root {
-                    write!(sexpr, "(\"{}\")", node.kind())?;
-                }
-
-                for child_idx in 0..node.child_count() {
-                    if let Some(child) = node.child(child_idx) {
-                        if is_visible(child) {
-                            sexpr.push('\n');
-                        }
-
-                        pretty_print_node(
-                            child,
-                            sexpr,
-                            false,
-                            node.field_name_for_child(child_idx as u32),
-                            depth + 2,
-                        )?;
-                    }
-                }
-
-                if is_visible(node) {
-                    write!(sexpr, ")")?;
-                }
-
-                Ok(())
-            }
-
-            let mut sexpr = String::new();
-            pretty_print_node(selected_node, &mut sexpr, true, None, 0)?;
-
-            let contents = format!("```tsq\n{}\n```", sexpr);
+            let mut contents = String::from("```tsq\n");
+            pretty_print_tree(&mut contents, selected_node)?;
+            contents.push_str("\n```");
 
             let callback = async move {
                 let call: job::Callback =
