@@ -7,13 +7,15 @@ use helix_core::syntax::Highlight;
 use helix_core::syntax::HighlightEvent;
 use helix_core::text_annotations::TextAnnotations;
 use helix_core::{visual_offset_from_block, Position, RopeSlice};
-use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
+use helix_view::editor::WhitespaceFeature;
 use helix_view::graphics::Rect;
 use helix_view::theme::Style;
 use helix_view::view::ViewPosition;
 use helix_view::Document;
 use helix_view::Theme;
 use tui::buffer::Buffer as Surface;
+
+use super::trailing_whitespace::{TrailingWhitespaceTracker, WhitespaceKind};
 
 pub trait LineDecoration {
     fn render_background(&mut self, _renderer: &mut TextRenderer, _pos: LinePos) {}
@@ -320,6 +322,7 @@ pub struct TextRenderer<'a> {
     pub draw_indent_guides: bool,
     pub col_offset: usize,
     pub viewport: Rect,
+    pub trailing_whitespace_tracker: TrailingWhitespaceTracker,
 }
 
 impl<'a> TextRenderer<'a> {
@@ -331,49 +334,24 @@ impl<'a> TextRenderer<'a> {
         viewport: Rect,
     ) -> TextRenderer<'a> {
         let editor_config = doc.config.load();
-        let WhitespaceConfig {
-            render: ws_render,
-            characters: ws_chars,
-        } = &editor_config.whitespace;
 
         let tab_width = doc.tab_width();
-        let tab = if ws_render.tab() == WhitespaceRenderValue::All {
-            std::iter::once(ws_chars.tab)
-                .chain(std::iter::repeat(ws_chars.tabpad).take(tab_width - 1))
-                .collect()
-        } else {
-            " ".repeat(tab_width)
-        };
-        let virtual_tab = " ".repeat(tab_width);
-        let newline = if ws_render.newline() == WhitespaceRenderValue::All {
-            ws_chars.newline.into()
-        } else {
-            " ".to_owned()
-        };
-
-        let space = if ws_render.space() == WhitespaceRenderValue::All {
-            ws_chars.space.into()
-        } else {
-            " ".to_owned()
-        };
-        let nbsp = if ws_render.nbsp() == WhitespaceRenderValue::All {
-            ws_chars.nbsp.into()
-        } else {
-            " ".to_owned()
-        };
-
         let text_style = theme.get("ui.text");
-
         let indent_width = doc.indent_style.indent_width(tab_width) as u16;
+
+        let ws = &editor_config.whitespace;
+        let regular_ws = WhitespaceFeature::Regular.palette(ws, tab_width);
+        let trailing_ws = WhitespaceFeature::Trailing.palette(ws, tab_width);
+        let trailing_whitespace_tracker = TrailingWhitespaceTracker::new(&ws.render, trailing_ws);
 
         TextRenderer {
             surface,
             indent_guide_char: editor_config.indent_guides.character.into(),
-            newline,
-            nbsp,
-            space,
-            tab,
-            virtual_tab,
+            newline: regular_ws.newline,
+            nbsp: regular_ws.nbsp,
+            space: regular_ws.space,
+            tab: regular_ws.tab,
+            virtual_tab: regular_ws.virtual_tab,
             whitespace_style: theme.get("ui.virtual.whitespace"),
             indent_width,
             starting_indent: col_offset / indent_width as usize
@@ -388,6 +366,7 @@ impl<'a> TextRenderer<'a> {
             draw_indent_guides: editor_config.indent_guides.render,
             viewport,
             col_offset,
+            trailing_whitespace_tracker,
         }
     }
 
@@ -417,28 +396,65 @@ impl<'a> TextRenderer<'a> {
         } else {
             &self.tab
         };
-        let grapheme = match grapheme {
+        let mut whitespace_kind = WhitespaceKind::None;
+        let grapheme_value = match grapheme {
             Grapheme::Tab { width } => {
+                whitespace_kind = WhitespaceKind::Tab(width);
                 let grapheme_tab_width = char_to_byte_idx(tab, width);
                 &tab[..grapheme_tab_width]
             }
             // TODO special rendering for other whitespaces?
-            Grapheme::Other { ref g } if g == " " => space,
-            Grapheme::Other { ref g } if g == "\u{00A0}" => nbsp,
+            Grapheme::Other { ref g } if g == " " => {
+                whitespace_kind = WhitespaceKind::Space;
+                space
+            }
+            Grapheme::Other { ref g } if g == "\u{00A0}" => {
+                whitespace_kind = WhitespaceKind::NonBreakingSpace;
+                nbsp
+            }
             Grapheme::Other { ref g } => g,
-            Grapheme::Newline => &self.newline,
+            Grapheme::Newline => {
+                whitespace_kind = WhitespaceKind::Newline;
+                &self.newline
+            }
         };
 
-        let in_bounds = self.col_offset <= position.col
-            && position.col < self.viewport.width as usize + self.col_offset;
+        self.trailing_whitespace_tracker
+            .track(position.col, whitespace_kind);
+
+        let viewport_right_edge = self.viewport.width as usize + self.col_offset - 1;
+        let in_bounds = self.col_offset <= position.col && position.col <= viewport_right_edge;
 
         if in_bounds {
-            self.surface.set_string(
-                self.viewport.x + (position.col - self.col_offset) as u16,
-                self.viewport.y + position.row as u16,
-                grapheme,
-                style,
-            );
+            if self.trailing_whitespace_tracker.is_enabled()
+                && (grapheme == Grapheme::Newline || position.col == viewport_right_edge)
+            {
+                if let Some((from, trailing_whitespace)) = self.trailing_whitespace_tracker.get() {
+                    let offset = if from < self.col_offset {
+                        0
+                    } else {
+                        from - self.col_offset
+                    };
+                    let begin_at = if from < self.col_offset {
+                        self.col_offset - from
+                    } else {
+                        0
+                    };
+                    self.surface.set_string(
+                        self.viewport.x + offset as u16,
+                        self.viewport.y + position.row as u16,
+                        &trailing_whitespace[char_to_byte_idx(&trailing_whitespace, begin_at)..],
+                        style,
+                    );
+                }
+            } else {
+                self.surface.set_string(
+                    self.viewport.x + (position.col - self.col_offset) as u16,
+                    self.viewport.y + position.row as u16,
+                    grapheme_value,
+                    style,
+                );
+            }
         } else if cut_off_start != 0 && cut_off_start < width {
             // partially on screen
             let rect = Rect::new(
