@@ -1,5 +1,22 @@
 use std::borrow::Cow;
 
+/// Auto escape for shellwords usage.
+pub fn escape(input: &str) -> Cow<'_, str> {
+    if !input.chars().any(|x| x.is_ascii_whitespace()) {
+        Cow::Borrowed(input)
+    } else if cfg!(unix) {
+        Cow::Owned(input.chars().fold(String::new(), |mut buf, c| {
+            if c.is_ascii_whitespace() {
+                buf.push('\\');
+            }
+            buf.push(c);
+            buf
+        }))
+    } else {
+        Cow::Owned(format!("\"{}\"", input))
+    }
+}
+
 /// Get the vec of escaped / quoted / doublequoted filenames from the input str
 pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
     enum State {

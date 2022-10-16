@@ -1,5 +1,6 @@
 use crate::compositor::{Component, Compositor, Context, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
+use helix_core::shellwords;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
 use std::{borrow::Cow, ops::RangeFrom};
@@ -335,7 +336,10 @@ impl Prompt {
 
         let (range, item) = &self.completion[index];
 
-        self.line.replace_range(range.clone(), item);
+        // since we are using shellwords to parse arguments, make sure
+        // that whitespace in files is properly escaped.
+        let item = shellwords::escape(item);
+        self.line.replace_range(range.clone(), &item);
 
         self.move_end();
     }
