@@ -247,6 +247,7 @@ impl MappableCommand {
         extend_search_next, "Add next search match to selection",
         extend_search_prev, "Add previous search match to selection",
         search_selection, "Use current selection as search pattern",
+        make_search_word_bounded, "Modify current search to make it word bounded",
         global_search, "Global search in workspace folder",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
@@ -1789,6 +1790,29 @@ fn search_selection(cx: &mut Context) {
     let msg = format!("register '{}' set to '{}'", '/', &regex);
     cx.editor.registers.get_mut('/').push(regex);
     cx.editor.set_status(msg);
+}
+
+fn make_search_word_bounded(cx: &mut Context) {
+    let regex = match cx.editor.registers.last('/') {
+        Some(regex) => regex,
+        None => return,
+    };
+    let mut new_regex = String::new();
+    let mut modified = false;
+    if !regex.starts_with("\\b") {
+        new_regex.push_str("\\b");
+        modified = true;
+    }
+    new_regex.push_str(regex);
+    if !regex.ends_with("\\b") {
+        new_regex.push_str("\\b");
+        modified = true;
+    }
+    if modified {
+        let msg = format!("register '{}' set to '{}'", '/', &new_regex);
+        cx.editor.registers.get_mut('/').push(new_regex);
+        cx.editor.set_status(msg);
+    }
 }
 
 fn global_search(cx: &mut Context) {
