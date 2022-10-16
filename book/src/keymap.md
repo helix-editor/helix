@@ -167,10 +167,13 @@ These sub-modes are accessible from normal mode and typically switch back to nor
 
 #### View mode
 
+Accessed by typing `z` in [normal mode](#normal-mode).
+
 View mode is intended for scrolling and manipulating the view without changing
-the selection. The "sticky" variant of this mode is persistent; use the Escape
-key to return to normal mode after usage (useful when you're simply looking
-over text and not actively editing it).
+the selection. The "sticky" variant of this mode (accessed by typing `Z` in
+normal mode) is persistent; use the Escape key to return to normal mode after
+usage (useful when you're simply looking over text and not actively editing
+it).
 
 
 | Key                  | Description                                               | Command             |
@@ -187,6 +190,8 @@ over text and not actively editing it).
 | `Ctrl-u`             | Move half page up                                         | `half_page_up`      |
 
 #### Goto mode
+
+Accessed by typing `g` in [normal mode](#normal-mode).
 
 Jumps to various locations.
 
@@ -213,9 +218,10 @@ Jumps to various locations.
 
 #### Match mode
 
-Enter this mode using `m` from normal mode. See the relevant section
-in [Usage](./usage.md) for an explanation about [surround](./usage.md#surround)
-and [textobject](./usage.md#textobject) usage.
+Accessed by typing `m` in [normal mode](#normal-mode).
+
+See the relevant section in [Usage](./usage.md) for an explanation about
+[surround](./usage.md#surround) and [textobject](./usage.md#textobject) usage.
 
 | Key              | Description                                     | Command                    |
 | -----            | -----------                                     | -------                    |
@@ -229,6 +235,8 @@ and [textobject](./usage.md#textobject) usage.
 TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
 #### Window mode
+
+Accessed by typing `Ctrl-w` in [normal mode](#normal-mode).
 
 This layer is similar to Vim keybindings as Kakoune does not support window.
 
@@ -252,8 +260,9 @@ This layer is similar to Vim keybindings as Kakoune does not support window.
 
 #### Space mode
 
-This layer is a kludge of mappings, mostly pickers.
+Accessed by typing `Space` in [normal mode](#normal-mode).
 
+This layer is a kludge of mappings, mostly pickers.
 
 | Key     | Description                                                             | Command                             |
 | -----   | -----------                                                             | -------                             |
