@@ -494,6 +494,7 @@ pub enum WhitespaceRenderValue {
     // TODO
     // Selection,
     All,
+    Trailing,
 }
 
 impl WhitespaceRender {

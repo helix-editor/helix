@@ -484,6 +484,16 @@ impl EditorView {
             }
         };
 
+        // Trailing whitespace tracking
+        let is_trailing_whitespace_enabled =
+            whitespace.render.space() == WhitespaceRenderValue::Trailing;
+        let mut tracking_trailing_whitespace = false;
+        let mut tracking_trailing_whitespace_from = 0;
+        let trailing_space = match whitespace.render.space() {
+            WhitespaceRenderValue::Trailing => &space,
+            WhitespaceRenderValue::None | WhitespaceRenderValue::All => " ",
+        };
+
         'outer: for event in highlights {
             match event {
                 HighlightEvent::HighlightStart(span) => {
@@ -503,12 +513,15 @@ impl EditorView {
                         .iter()
                         .fold(text_style, |acc, span| acc.patch(theme.highlight(span.0)));
 
-                    let space = if whitespace.render.space() == WhitespaceRenderValue::All
-                        && !is_trailing_cursor
-                    {
-                        &space
-                    } else {
-                        " "
+                    let space = match whitespace.render.space() {
+                        WhitespaceRenderValue::All => {
+                            if !is_trailing_cursor {
+                                &space
+                            } else {
+                                " "
+                            }
+                        }
+                        WhitespaceRenderValue::None | WhitespaceRenderValue::Trailing => " ",
                     };
 
                     let nbsp = if whitespace.render.nbsp() == WhitespaceRenderValue::All
@@ -527,6 +540,21 @@ impl EditorView {
 
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
                             if !out_of_bounds {
+                                // Highlight trailing whitespace feature.
+                                // A line break has been found, which means we should be enforcing the rendering
+                                // of the trailing whitespace.
+                                if is_trailing_whitespace_enabled && tracking_trailing_whitespace {
+                                    tracking_trailing_whitespace = false;
+                                    surface.set_string(
+                                        viewport.x + tracking_trailing_whitespace_from,
+                                        viewport.y + line,
+                                        trailing_space.repeat(
+                                            (visual_x - tracking_trailing_whitespace_from) as usize,
+                                        ),
+                                        style.patch(whitespace_style),
+                                    );
+                                }
+
                                 // we still want to render an empty cell with the style
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
@@ -608,6 +636,17 @@ impl EditorView {
                                 draw_indent_guides(visual_x, line, surface);
                                 is_in_indent_area = false;
                                 last_line_indent_level = visual_x;
+                            }
+
+                            // Highlight trailing whitespace feature.
+                            // This block decides when to start/stop tracking whitespace.
+                            if is_trailing_whitespace_enabled {
+                                if is_whitespace && !tracking_trailing_whitespace {
+                                    tracking_trailing_whitespace = true;
+                                    tracking_trailing_whitespace_from = visual_x;
+                                } else if !is_whitespace && tracking_trailing_whitespace {
+                                    tracking_trailing_whitespace = false;
+                                }
                             }
 
                             visual_x = visual_x.saturating_add(width as u16);
