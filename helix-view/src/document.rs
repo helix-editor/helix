@@ -13,6 +13,7 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
+use tokio::io::AsyncReadExt;
 
 use helix_core::{
     encoding,
@@ -562,14 +563,53 @@ impl Document {
 
             // TODO Temporary file creation is a workaround to solve large file corruption
             // that occurs when crashing during a file save
+
+            // running 5 tests
+            // test test::write::test_write_concurrent ... ignored
+            // test test::write::test_write_fail_mod_flag ... ignored
+            // test test::write::test_write_fail_new_path ... ignored
+            // 2022-10-15T23:53:23.412 helix_view::clipboard::provider [WARN] No clipboard provider found! Yanking and pasting will be internal to Helix
+            // 2022-10-15T23:53:23.412 helix_view::clipboard::provider [WARN] No clipboard provider found! Yanking and pasting will be internal to Helix
+            // 2022-10-15T23:53:23.673 helix_view::document [INFO] logs are getting printed
+            // 2022-10-15T23:53:23.673 helix_view::document [INFO] logs are still getting printed
+            // 2022-10-15T23:53:23.674 helix_view::document [INFO] logs are still yet getting printed
+            // 2022-10-15T23:53:23.674 helix_view::document [INFO] and yet they still be printed
+            // 2022-10-15T23:53:23.674 helix_view::document [INFO] I can't belive i'm doing this
+            // 2022-10-15T23:53:23.680 helix_view::document [INFO] logs are getting printed
+            // 2022-10-15T23:53:23.680 helix_view::document [INFO] logs are still getting printed
+            // 2022-10-15T23:53:23.680 helix_view::document [INFO] logs are still yet getting printed
+            // 2022-10-15T23:53:23.680 helix_view::document [INFO] and yet they still be printed
+            // 2022-10-15T23:53:23.680 helix_view::document [INFO] I can't belive i'm doing this
+            // test test::write::test_write_quit ... FAILED
+            // test test::write::test_write ... FAILED
             let mut tmp_filename = std::ffi::OsString::from("~");
             tmp_filename.push(path.file_name().unwrap());
 
             let tmp_path = path.parent().unwrap().join(tmp_filename);
 
             let mut tmp_file = File::create(&tmp_path).await?;
+            log::info!("logs are getting printed");
+
             to_writer(&mut tmp_file, encoding, &text).await?;
+            log::info!("logs are still getting printed");
+
+            let mut tmp_file_content = String::new();
+            log::info!("logs are still yet getting printed");
+
+            let mut actual_file_content = String::new();
+            log::info!("and yet they still be printed");
+
+            let mut actual_file = File::create(&path).await?;
+            log::info!("I can't belive i'm doing this");
+
+            tmp_file.read_to_string(&mut tmp_file_content).await?;
+            log::info!("tmp file contents: {}", tmp_file_content);
+
             tokio::fs::rename(tmp_path, path).await?;
+            log::info!("I renamed the file");
+
+            actual_file.read_to_string(&mut actual_file_content).await?;
+            log::info!("actual file contents after rename: {}", actual_file_content);
 
             if let Some(language_server) = language_server {
                 if !language_server.is_initialized() {
