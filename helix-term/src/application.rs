@@ -977,18 +977,7 @@ impl Application {
             errs.push(err);
         };
 
-        for doc in self.editor.documents_mut() {
-            if let Some(Err(err)) = doc.close().await {
-                if let Some(path) = doc.path() {
-                    log::error!(
-                        "Error saving document '{}': {}",
-                        path.to_string_lossy(),
-                        err
-                    );
-                }
-                errs.push(err);
-            }
-        }
+        self.editor.flush_writes().await;
 
         if self.editor.close_language_servers(None).await.is_err() {
             log::error!("Timed out waiting for language servers to shutdown");
