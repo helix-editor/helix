@@ -47,6 +47,8 @@ pub struct FilePicker<T: Item> {
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
 
+    /// preview window height
+    preview_height: u16,
     preview_file_path: PathBuf,
     /// Line offset from preview's starting point(first_line) to enable preview scrolling
     preview_scroll_offset: (Direction, usize),
@@ -108,6 +110,7 @@ impl<T: Item> FilePicker<T> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: Box::new(preview_fn),
+            preview_height: 0,
             preview_file_path: PathBuf::default(),
             preview_scroll_offset: (Direction::Forward, 0),
             show_preview: true,
@@ -351,7 +354,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
         if let Event::Key(key_event) = event {
             match key_event {
-                alt!('u') | shift!(Up) if self.show_preview => {
+                alt!('k') | shift!(Up) if self.show_preview => {
                     self.move_preview_by(
                         ctx.editor.config().scroll_lines.unsigned_abs(),
                         Direction::Backward,
@@ -359,9 +362,41 @@ impl<T: Item + 'static> Component for FilePicker<T> {
 
                     return EventResult::Consumed(None);
                 }
-                alt!('d') | shift!(Down) if self.show_preview => {
+                alt!('j') | shift!(Down) if self.show_preview => {
                     self.move_preview_by(
                         ctx.editor.config().scroll_lines.unsigned_abs(),
+                        Direction::Forward,
+                    );
+
+                    return EventResult::Consumed(None);
+                }
+                alt!('u') if self.show_preview => {
+                    self.move_preview_by(
+                        self.preview_height.saturating_div(2) as usize,
+                        Direction::Backward,
+                    );
+
+                    return EventResult::Consumed(None);
+                }
+                alt!('d') if self.show_preview => {
+                    self.move_preview_by(
+                        self.preview_height.saturating_div(2) as usize,
+                        Direction::Forward,
+                    );
+
+                    return EventResult::Consumed(None);
+                }
+                alt!('b') if self.show_preview => {
+                    self.move_preview_by(
+                        self.preview_height as usize,
+                        Direction::Backward,
+                    );
+
+                    return EventResult::Consumed(None);
+                }
+                alt!('f') if self.show_preview => {
+                    self.move_preview_by(
+                        self.preview_height as usize,
                         Direction::Forward,
                     );
 
@@ -386,6 +421,8 @@ impl<T: Item + 'static> Component for FilePicker<T> {
     }
 
     fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
+        self.preview_height = height.saturating_sub(2);
+        
         let picker_width = if width > MIN_AREA_WIDTH_FOR_PREVIEW {
             width / 2
         } else {
