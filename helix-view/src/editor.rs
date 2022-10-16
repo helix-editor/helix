@@ -657,6 +657,7 @@ pub struct Editor {
     // https://stackoverflow.com/a/66875668
     pub saves: HashMap<DocumentId, UnboundedSender<Once<DocumentSavedEventFuture>>>,
     pub save_queue: SelectAll<Flatten<UnboundedReceiverStream<Once<DocumentSavedEventFuture>>>>,
+    pub write_count: usize,
 
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: Option<char>,
@@ -761,6 +762,7 @@ impl Editor {
             documents: BTreeMap::new(),
             saves: HashMap::new(),
             save_queue: SelectAll::new(),
+            write_count: 0,
             count: None,
             selected_register: None,
             macro_recording: None,
@@ -1206,6 +1208,8 @@ impl Editor {
             .send(stream::once(Box::pin(future)))
             .map_err(|err| anyhow!("failed to send save event: {}", err))?;
 
+        self.write_count += 1;
+
         Ok(())
     }
 
@@ -1332,6 +1336,7 @@ impl Editor {
             biased;
 
             Some(event) = self.save_queue.next() => {
+                self.write_count -= 1;
                 EditorEvent::DocumentSaved(event)
             }
             Some(config_event) = self.config_events.1.recv() => {
@@ -1350,17 +1355,21 @@ impl Editor {
     }
 
     pub async fn flush_writes(&mut self) {
-        while let Some(save_event) = self.save_queue.next().await {
-            match &save_event {
-                Ok(event) => {
-                    let doc = doc_mut!(self, &event.doc_id);
-                    doc.set_last_saved_revision(event.revision);
-                }
-                Err(err) => {
-                    log::error!("error saving document: {}", err);
-                }
-            };
-            // TODO: if is_err: break?
+        while self.write_count > 0 {
+            if let Some(save_event) = self.save_queue.next().await {
+                match &save_event {
+                    Ok(event) => {
+                        let doc = doc_mut!(self, &event.doc_id);
+                        doc.set_last_saved_revision(event.revision);
+                    }
+                    Err(err) => {
+                        log::error!("error saving document: {}", err);
+                    }
+                };
+                // TODO: if is_err: break?
+
+                self.write_count -= 1;
+            }
         }
     }
 }
