@@ -601,14 +601,6 @@ impl Document {
         Ok(future)
     }
 
-    /// Prepares the Document for being closed by stopping any new writes
-    /// and flushing through the queue of pending writes. If any fail,
-    /// it stops early before emptying the rest of the queue.
-    pub async fn close(&mut self) -> Option<DocumentSavedEventResult> {
-        // TODO
-        None
-    }
-
     /// Detect the programming language based on the file type.
     pub fn detect_language(&mut self, config_loader: Arc<syntax::Loader>) {
         if let Some(path) = &self.path {
