@@ -517,10 +517,12 @@ and therefore requires the corresponding query file to work properly.</p>
 </tbody></table>
 </div>
 <h4 id="view-mode"><a class="header" href="#view-mode">View mode</a></h4>
+<p>Accessed by typing <code>z</code> in <a href="keymap.html#normal-mode">normal mode</a>.</p>
 <p>View mode is intended for scrolling and manipulating the view without changing
-the selection. The &quot;sticky&quot; variant of this mode is persistent; use the Escape
-key to return to normal mode after usage (useful when you're simply looking
-over text and not actively editing it).</p>
+the selection. The &quot;sticky&quot; variant of this mode (accessed by typing <code>Z</code> in
+normal mode) is persistent; use the Escape key to return to normal mode after
+usage (useful when you're simply looking over text and not actively editing
+it).</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>z</code>, <code>c</code></td><td>Vertically center the line</td><td><code>align_view_center</code></td></tr>
 <tr><td><code>t</code></td><td>Align the line to the top of the screen</td><td><code>align_view_top</code></td></tr>
@@ -535,6 +537,7 @@ over text and not actively editing it).</p>
 </tbody></table>
 </div>
 <h4 id="goto-mode"><a class="header" href="#goto-mode">Goto mode</a></h4>
+<p>Accessed by typing <code>g</code> in <a href="keymap.html#normal-mode">normal mode</a>.</p>
 <p>Jumps to various locations.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>g</code></td><td>Go to line number <code>&lt;n&gt;</code> else start of file</td><td><code>goto_file_start</code></td></tr>
@@ -558,9 +561,9 @@ over text and not actively editing it).</p>
 </tbody></table>
 </div>
 <h4 id="match-mode"><a class="header" href="#match-mode">Match mode</a></h4>
-<p>Enter this mode using <code>m</code> from normal mode. See the relevant section
-in <a href="./usage.html">Usage</a> for an explanation about <a href="./usage.html#surround">surround</a>
-and <a href="./usage.html#textobject">textobject</a> usage.</p>
+<p>Accessed by typing <code>m</code> in <a href="keymap.html#normal-mode">normal mode</a>.</p>
+<p>See the relevant section in <a href="./usage.html">Usage</a> for an explanation about
+<a href="./usage.html#surround">surround</a> and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>m</code></td><td>Goto matching bracket (<strong>TS</strong>)</td><td><code>match_brackets</code></td></tr>
 <tr><td><code>s</code> <code>&lt;char&gt;</code></td><td>Surround current selection with <code>&lt;char&gt;</code></td><td><code>surround_add</code></td></tr>
@@ -572,6 +575,7 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 </div>
 <p>TODO: Mappings for selecting syntax nodes (a superset of <code>[</code>).</p>
 <h4 id="window-mode"><a class="header" href="#window-mode">Window mode</a></h4>
+<p>Accessed by typing <code>Ctrl-w</code> in <a href="keymap.html#normal-mode">normal mode</a>.</p>
 <p>This layer is similar to Vim keybindings as Kakoune does not support window.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>w</code>, <code>Ctrl-w</code></td><td>Switch to next window</td><td><code>rotate_view</code></td></tr>
@@ -592,6 +596,7 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 </tbody></table>
 </div>
 <h4 id="space-mode"><a class="header" href="#space-mode">Space mode</a></h4>
+<p>Accessed by typing <code>Space</code> in <a href="keymap.html#normal-mode">normal mode</a>.</p>
 <p>This layer is a kludge of mappings, mostly pickers.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>f</code></td><td>Open file picker</td><td><code>file_picker</code></td></tr>
