@@ -351,7 +351,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
         if let Event::Key(key_event) = event {
             match key_event {
-                alt!('u') | shift!(Up) => {
+                alt!('u') | shift!(Up) if self.show_preview => {
                     self.move_preview_by(
                         ctx.editor.config().scroll_lines.unsigned_abs(),
                         Direction::Backward,
@@ -359,7 +359,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
 
                     return EventResult::Consumed(None);
                 }
-                alt!('d') | shift!(Down) => {
+                alt!('d') | shift!(Down) if self.show_preview => {
                     self.move_preview_by(
                         ctx.editor.config().scroll_lines.unsigned_abs(),
                         Direction::Forward,
