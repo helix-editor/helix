@@ -2,7 +2,6 @@ use std::ops::Deref;
 
 use super::*;
 
-use helix_core::syntax::pretty_print_tree;
 use helix_view::{
     apply_transaction,
     editor::{Action, CloseError, ConfigEvent},
@@ -1475,7 +1474,7 @@ fn tree_sitter_subtree(
             .descendant_for_byte_range(from, to)
         {
             let mut contents = String::from("```tsq\n");
-            pretty_print_tree(&mut contents, selected_node)?;
+            helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
             contents.push_str("\n```");
 
             let callback = async move {
