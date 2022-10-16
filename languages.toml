@@ -1848,4 +1848,4 @@ roots = []
 
 [[grammar]]
 name = "groovy"
-source = { git = "https://github.com/tree-sitter/tree-sitter-java", rev = "bd6186c24d5eb13b4623efac9d944dcc095c0dad" }
+source = { git = "https://github.com/codieboomboom/tree-sitter-groovy", rev = "de8e0c727a0de8cbc6f4e4884cba2d4e7c740570" }
