@@ -1847,5 +1847,5 @@ language-server = { command = "java", args = ["-jar", "/Users/zephaniahong/Deskt
 roots = []
 
 [[grammar]]
-name = "java"
+name = "groovy"
 source = { git = "https://github.com/tree-sitter/tree-sitter-java", rev = "bd6186c24d5eb13b4623efac9d944dcc095c0dad" }
