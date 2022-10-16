@@ -243,4 +243,18 @@ mod test {
         ];
         assert_eq!(expected, result);
     }
+
+    #[cfg(unix)]
+    fn test_escaping_unix() {
+        assert_eq!(escape("foobar"), Cow::Borrowed("foobar"));
+        assert_eq!(escape("foo bar"), Cow::Borrowed("foo\\ bar"));
+        assert_eq!(escape("foo\tbar"), Cow::Borrowed("foo\\\tbar"));
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_escaping_windows() {
+        assert_eq!(escape("foobar"), Cow::Borrowed("foobar"));
+        assert_eq!(escape("foo bar"), Cow::Borrowed("\"foo bar\""));
+    }
 }
