@@ -9,6 +9,7 @@ pub struct Args {
     pub display_version: bool,
     pub health: bool,
     pub health_arg: Option<String>,
+    pub print_path: Option<String>,
     pub load_tutor: bool,
     pub fetch_grammars: bool,
     pub build_grammars: bool,
@@ -44,6 +45,10 @@ impl Args {
                     args.health = true;
                     args.health_arg = argv.next_if(|opt| !opt.starts_with('-'));
                 }
+                "--print-path" => match argv.next().as_deref() {
+                    Some(path) => args.print_path = Some(path.into()),
+                    None => anyhow::bail!("--print-path must specify a kind"),
+                },
                 "-g" | "--grammar" => match argv.next().as_deref() {
                     Some("fetch") => args.fetch_grammars = true,
                     Some("build") => args.build_grammars = true,

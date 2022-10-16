@@ -1,4 +1,4 @@
-use anyhow::{Context, Error, Result};
+use anyhow::{anyhow, Context, Error, Result};
 use crossterm::event::EventStream;
 use helix_term::application::Application;
 use helix_term::args::Args;
@@ -64,6 +64,8 @@ FLAGS:
     --health [CATEGORY]            Checks for potential errors in editor setup
                                    CATEGORY can be a language or one of 'clipboard', 'languages'
                                    or 'all'. 'all' is the default if not specified.
+    --print-path [KIND]            Prints the path of a specific kind ('config-dir', 'config-file',
+                                   'runtime-dir', 'cache-dir', 'log-file', or 'lang-config-file').
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
     -c, --config <file>            Specifies a file to use for configuration
     -v                             Increases logging verbosity each use for up to 3 times
@@ -112,6 +114,19 @@ FLAGS:
 
     if args.build_grammars {
         helix_loader::grammar::build_grammars(None)?;
+        return Ok(0);
+    }
+
+    if let Some(ref kind) = args.print_path {
+        match kind.as_str() {
+            "config-dir" => println!("{}", helix_loader::config_dir().display()),
+            "config-file" => println!("{}", helix_loader::config_file().display()),
+            "runtime-dir" => println!("{}", helix_loader::runtime_dir().display()),
+            "cache-dir" => println!("{}", helix_loader::cache_dir().display()),
+            "log-file" => println!("{}", helix_loader::log_file().display()),
+            "lang-config-file" => println!("{}", helix_loader::lang_config_file().display()),
+            _ => return Err(anyhow!("unknown path kind {}", kind)),
+        }
         return Ok(0);
     }
 
