@@ -47,6 +47,12 @@ pub enum InsertEvent {
     TriggerCompletion,
 }
 
+pub enum WhitespaceKind {
+    Space,
+    NonBreakingSpace,
+    Tab(usize),
+}
+
 impl Default for EditorView {
     fn default() -> Self {
         Self::new(Keymaps::default())
@@ -435,15 +441,18 @@ impl EditorView {
         let mut visual_x = 0u16;
         let mut line = 0u16;
         let tab_width = doc.tab_width();
+
+        let tab_char: String = std::iter::once(characters.tab)
+            .chain(std::iter::repeat(characters.tabpad).take(tab_width - 1))
+            .collect();
+        let tab_char_empty = " ".repeat(tab_width);
         let tab = if whitespace.render.tab() == WhitespaceRenderValue::All {
-            std::iter::once(characters.tab)
-                .chain(std::iter::repeat(characters.tabpad).take(tab_width - 1))
-                .collect()
+            &tab_char
         } else {
-            " ".repeat(tab_width)
+            &tab_char_empty
         };
-        let space = characters.space.to_string();
-        let nbsp = characters.nbsp.to_string();
+        let space_char = characters.space.to_string();
+        let nbsp_char = characters.nbsp.to_string();
         let newline = if whitespace.render.newline() == WhitespaceRenderValue::All {
             characters.newline.to_string()
         } else {
@@ -487,13 +496,9 @@ impl EditorView {
         // Trailing whitespace tracking
         let is_trailing_whitespace_enabled =
             whitespace.render.space() == WhitespaceRenderValue::Trailing;
-        let trailing_whitespace = if whitespace.render.space() == WhitespaceRenderValue::Trailing {
-            &space
-        } else {
-            " "
-        };
         let mut tracking_trailing_whitespace = false;
         let mut tracking_trailing_whitespace_from = 0;
+        let mut tracking_trailing_whitespace_kinds: Vec<WhitespaceKind> = vec![];
 
         'outer: for event in highlights {
             match event {
@@ -517,7 +522,7 @@ impl EditorView {
                     let space = if whitespace.render.space() == WhitespaceRenderValue::All
                         && !is_trailing_cursor
                     {
-                        &space
+                        &space_char
                     } else {
                         " "
                     };
@@ -525,7 +530,7 @@ impl EditorView {
                     let nbsp = if whitespace.render.nbsp() == WhitespaceRenderValue::All
                         && is_trailing_cursor
                     {
-                        &nbsp
+                        &nbsp_char
                     } else {
                         " "
                     };
@@ -543,12 +548,21 @@ impl EditorView {
                                 // of the trailing whitespace.
                                 if is_trailing_whitespace_enabled && tracking_trailing_whitespace {
                                     tracking_trailing_whitespace = false;
+
+                                    let trailing_whitespace = tracking_trailing_whitespace_kinds
+                                        .iter()
+                                        .map(|k| match k {
+                                            WhitespaceKind::Space => &space_char,
+                                            WhitespaceKind::NonBreakingSpace => &nbsp_char,
+                                            WhitespaceKind::Tab(width) => &tab_char[..*width],
+                                        })
+                                        .collect::<Vec<&str>>()
+                                        .join("");
+
                                     surface.set_string(
                                         viewport.x + tracking_trailing_whitespace_from,
                                         viewport.y + line,
-                                        trailing_whitespace.repeat(
-                                            (visual_x - tracking_trailing_whitespace_from) as usize,
-                                        ),
+                                        &trailing_whitespace,
                                         style.patch(whitespace_style),
                                     );
                                 }
@@ -575,20 +589,28 @@ impl EditorView {
                         } else {
                             let grapheme = Cow::from(grapheme);
                             let is_whitespace;
+                            let mut whitespace_kind = WhitespaceKind::Space;
 
                             let (display_grapheme, width) = if grapheme == "\t" {
                                 is_whitespace = true;
                                 // make sure we display tab as appropriate amount of spaces
                                 let visual_tab_width = tab_width - (visual_x as usize % tab_width);
                                 let grapheme_tab_width =
-                                    helix_core::str_utils::char_to_byte_idx(&tab, visual_tab_width);
-
+                                    helix_core::str_utils::char_to_byte_idx(tab, visual_tab_width);
+                                let trailing_grapheme_tab_width =
+                                    helix_core::str_utils::char_to_byte_idx(
+                                        &tab_char,
+                                        visual_tab_width,
+                                    );
+                                whitespace_kind = WhitespaceKind::Tab(trailing_grapheme_tab_width);
                                 (&tab[..grapheme_tab_width], visual_tab_width)
                             } else if grapheme == " " {
                                 is_whitespace = true;
+                                whitespace_kind = WhitespaceKind::Space;
                                 (space, 1)
                             } else if grapheme == "\u{00A0}" {
                                 is_whitespace = true;
+                                whitespace_kind = WhitespaceKind::NonBreakingSpace;
                                 (nbsp, 1)
                             } else {
                                 is_whitespace = false;
@@ -639,9 +661,13 @@ impl EditorView {
                             // Highlight trailing whitespace feature.
                             // This block decides when to start/stop tracking whitespace.
                             if is_trailing_whitespace_enabled {
-                                if is_whitespace && !tracking_trailing_whitespace {
-                                    tracking_trailing_whitespace = true;
-                                    tracking_trailing_whitespace_from = visual_x;
+                                if is_whitespace {
+                                    if !tracking_trailing_whitespace {
+                                        tracking_trailing_whitespace = true;
+                                        tracking_trailing_whitespace_from = visual_x;
+                                        tracking_trailing_whitespace_kinds.clear();
+                                    }
+                                    tracking_trailing_whitespace_kinds.push(whitespace_kind);
                                 } else if !is_whitespace && tracking_trailing_whitespace {
                                     tracking_trailing_whitespace = false;
                                 }
