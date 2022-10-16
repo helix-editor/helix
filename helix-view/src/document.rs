@@ -589,7 +589,8 @@ impl Document {
 
             let mut tmp_file = File::create(&tmp_path).await?;
             log::info!("logs are getting printed");
-
+            log::info!("temp file location: {:?}", tmp_path);
+            log::info!("actual file location: {:?}", path);
             to_writer(&mut tmp_file, encoding, &text).await?;
             log::info!("logs are still getting printed");
 
