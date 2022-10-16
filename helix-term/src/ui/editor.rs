@@ -487,12 +487,13 @@ impl EditorView {
         // Trailing whitespace tracking
         let is_trailing_whitespace_enabled =
             whitespace.render.space() == WhitespaceRenderValue::Trailing;
+        let trailing_whitespace = if whitespace.render.space() == WhitespaceRenderValue::Trailing {
+            &space
+        } else {
+            " "
+        };
         let mut tracking_trailing_whitespace = false;
         let mut tracking_trailing_whitespace_from = 0;
-        let trailing_space = match whitespace.render.space() {
-            WhitespaceRenderValue::Trailing => &space,
-            WhitespaceRenderValue::None | WhitespaceRenderValue::All => " ",
-        };
 
         'outer: for event in highlights {
             match event {
@@ -513,19 +514,16 @@ impl EditorView {
                         .iter()
                         .fold(text_style, |acc, span| acc.patch(theme.highlight(span.0)));
 
-                    let space = match whitespace.render.space() {
-                        WhitespaceRenderValue::All => {
-                            if !is_trailing_cursor {
-                                &space
-                            } else {
-                                " "
-                            }
-                        }
-                        WhitespaceRenderValue::None | WhitespaceRenderValue::Trailing => " ",
+                    let space = if whitespace.render.space() == WhitespaceRenderValue::All
+                        && !is_trailing_cursor
+                    {
+                        &space
+                    } else {
+                        " "
                     };
 
                     let nbsp = if whitespace.render.nbsp() == WhitespaceRenderValue::All
-                        && text.len_chars() < end
+                        && is_trailing_cursor
                     {
                         &nbsp
                     } else {
@@ -548,7 +546,7 @@ impl EditorView {
                                     surface.set_string(
                                         viewport.x + tracking_trailing_whitespace_from,
                                         viewport.y + line,
-                                        trailing_space.repeat(
+                                        trailing_whitespace.repeat(
                                             (visual_x - tracking_trailing_whitespace_from) as usize,
                                         ),
                                         style.patch(whitespace_style),
