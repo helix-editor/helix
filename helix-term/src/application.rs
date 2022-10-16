@@ -1,5 +1,5 @@
 use arc_swap::{access::Map, ArcSwap};
-use futures_util::{Stream, StreamExt};
+use futures_util::Stream;
 use helix_core::{
     diagnostic::{DiagnosticTag, NumberOrString},
     path::get_relative_path,
@@ -969,22 +969,7 @@ impl Application {
         let mut errs = Vec::new();
 
         // TODO: deduplicate with ctx.block_try_flush_writes
-        tokio::task::block_in_place(|| {
-            helix_lsp::block_on(async {
-                while let Some(save_event) = self.editor.save_queue.next().await {
-                    match &save_event {
-                        Ok(event) => {
-                            let doc = doc_mut!(self.editor, &event.doc_id);
-                            doc.set_last_saved_revision(event.revision);
-                        }
-                        Err(err) => {
-                            log::error!("error saving document: {}", err);
-                        }
-                    };
-                    // TODO: if is_err: break?
-                }
-            })
-        });
+        tokio::task::block_in_place(|| helix_lsp::block_on(self.editor.flush_writes()));
 
         if let Err(err) = self
             .jobs

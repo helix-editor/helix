@@ -80,22 +80,7 @@ fn buffer_close_by_ids_impl(
     force: bool,
 ) -> anyhow::Result<()> {
     // TODO: deduplicate with ctx.block_try_flush_writes
-    tokio::task::block_in_place(|| {
-        helix_lsp::block_on(async {
-            while let Some(save_event) = editor.save_queue.next().await {
-                match &save_event {
-                    Ok(event) => {
-                        let doc = doc_mut!(editor, &event.doc_id);
-                        doc.set_last_saved_revision(event.revision);
-                    }
-                    Err(err) => {
-                        log::error!("error saving document: {}", err);
-                    }
-                };
-                // TODO: if is_err: break?
-            }
-        })
-    });
+    tokio::task::block_in_place(|| helix_lsp::block_on(editor.flush_writes()));
 
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
         .iter()

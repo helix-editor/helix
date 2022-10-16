@@ -1348,4 +1348,19 @@ impl Editor {
             }
         }
     }
+
+    pub async fn flush_writes(&mut self) {
+        while let Some(save_event) = self.save_queue.next().await {
+            match &save_event {
+                Ok(event) => {
+                    let doc = doc_mut!(self, &event.doc_id);
+                    doc.set_last_saved_revision(event.revision);
+                }
+                Err(err) => {
+                    log::error!("error saving document: {}", err);
+                }
+            };
+            // TODO: if is_err: break?
+        }
+    }
 }
