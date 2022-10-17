@@ -1060,7 +1060,21 @@ fn tree_sitter_scopes(
 
     let pos = doc.selection(view.id).primary().cursor(text);
     let scopes = indent::get_scopes(doc.syntax(), text, pos);
-    cx.editor.set_status(format!("scopes: {:?}", &scopes));
+
+    let contents = format!("```json\n{:?}\n````", scopes);
+
+    let callback = async move {
+        let call: job::Callback =
+            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                let popup = Popup::new("hover", contents).auto_close(true);
+                compositor.replace_or_push("hover", popup);
+            });
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+
     Ok(())
 }
 
