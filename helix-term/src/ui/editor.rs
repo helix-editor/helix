@@ -491,7 +491,7 @@ impl EditorView {
         };
 
         // Trailing whitespace tracking
-        let mut trailing_whitespace_tracker = TrailingWhitespaceTracker::new(
+        let mut trailing_whitespace = TrailingWhitespaceTracker::new(
             &whitespace.render,
             space_char,
             nbsp_char,
@@ -545,8 +545,7 @@ impl EditorView {
                                 // Highlight trailing whitespace feature.
                                 // A line break has been found, which means we should be enforcing the rendering
                                 // of the trailing whitespace.
-                                if let Some((from, trailing_whitespace)) =
-                                    trailing_whitespace_tracker.get()
+                                if let Some((from, trailing_whitespace)) = trailing_whitespace.get()
                                 {
                                     surface.set_string(
                                         viewport.x + from,
@@ -586,7 +585,7 @@ impl EditorView {
                                 let visual_tab_width = tab_width - (visual_x as usize % tab_width);
                                 let grapheme_tab_width =
                                     helix_core::str_utils::char_to_byte_idx(tab, visual_tab_width);
-                                if trailing_whitespace_tracker.enabled() {
+                                if trailing_whitespace.enabled() {
                                     let trailing_grapheme_tab_width =
                                         helix_core::str_utils::char_to_byte_idx(
                                             tab_char,
@@ -600,13 +599,13 @@ impl EditorView {
                                 (&tab[..grapheme_tab_width], visual_tab_width)
                             } else if grapheme == " " {
                                 is_whitespace = true;
-                                if trailing_whitespace_tracker.enabled() {
+                                if trailing_whitespace.enabled() {
                                     whitespace_kind = WhitespaceKind::Space;
                                 }
                                 (space, 1)
                             } else if grapheme == "\u{00A0}" {
                                 is_whitespace = true;
-                                if trailing_whitespace_tracker.enabled() {
+                                if trailing_whitespace.enabled() {
                                     whitespace_kind = WhitespaceKind::NonBreakingSpace;
                                 }
                                 (nbsp, 1)
@@ -657,8 +656,8 @@ impl EditorView {
                             }
 
                             // Highlight trailing whitespace feature.
-                            if trailing_whitespace_tracker.enabled() {
-                                trailing_whitespace_tracker.track(visual_x, whitespace_kind);
+                            if trailing_whitespace.enabled() {
+                                trailing_whitespace.track(visual_x, whitespace_kind);
                             }
 
                             visual_x = visual_x.saturating_add(width as u16);

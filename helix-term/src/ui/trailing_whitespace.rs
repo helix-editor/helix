@@ -77,6 +77,7 @@ impl<'a> TrailingWhitespaceTracker<'a> {
         self.tracking_content.push(kind);
     }
 
+    #[must_use]
     pub fn get(&mut self) -> Option<(u16, String)> {
         if !self.enabled || !self.tracking {
             return None;
@@ -196,7 +197,7 @@ mod tests {
         assert_eq!("SNT", display);
 
         // Now we break the sequence
-        sut.reset();
+        sut.track(6, WhitespaceKind::None);
         let trailing = sut.get();
         assert!(trailing.is_none());
 
