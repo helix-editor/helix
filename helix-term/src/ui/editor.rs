@@ -50,7 +50,7 @@ pub enum InsertEvent {
 pub enum WhitespaceKind {
     Space,
     NonBreakingSpace,
-    Tab(usize),
+    Tab(usize, usize),
 }
 
 impl Default for EditorView {
@@ -494,8 +494,12 @@ impl EditorView {
         };
 
         // Trailing whitespace tracking
-        let is_trailing_whitespace_enabled =
+        let is_trailing_space_enabled =
             whitespace.render.space() == WhitespaceRenderValue::Trailing;
+        let is_trailing_nbsp_enabled = whitespace.render.nbsp() == WhitespaceRenderValue::Trailing;
+        let is_trailing_tab_enabled = whitespace.render.tab() == WhitespaceRenderValue::Trailing;
+        let is_trailing_whitespace_enabled =
+            is_trailing_space_enabled || is_trailing_nbsp_enabled || is_trailing_tab_enabled;
         let mut tracking_trailing_whitespace = false;
         let mut tracking_trailing_whitespace_from = 0;
         let mut tracking_trailing_whitespace_kinds: Vec<WhitespaceKind> = vec![];
@@ -548,13 +552,31 @@ impl EditorView {
                                 // of the trailing whitespace.
                                 if is_trailing_whitespace_enabled && tracking_trailing_whitespace {
                                     tracking_trailing_whitespace = false;
-
                                     let trailing_whitespace = tracking_trailing_whitespace_kinds
                                         .iter()
                                         .map(|k| match k {
-                                            WhitespaceKind::Space => &space_char,
-                                            WhitespaceKind::NonBreakingSpace => &nbsp_char,
-                                            WhitespaceKind::Tab(width) => &tab_char[..*width],
+                                            WhitespaceKind::Space => {
+                                                if is_trailing_space_enabled {
+                                                    &space_char
+                                                } else {
+                                                    space
+                                                }
+                                            }
+                                            WhitespaceKind::NonBreakingSpace => {
+                                                if is_trailing_nbsp_enabled {
+                                                    &nbsp_char
+                                                } else {
+                                                    nbsp
+                                                }
+                                            }
+
+                                            WhitespaceKind::Tab(original_width, trailing_width) => {
+                                                if is_trailing_tab_enabled {
+                                                    &tab_char[..*trailing_width]
+                                                } else {
+                                                    &tab[..*original_width]
+                                                }
+                                            }
                                         })
                                         .collect::<Vec<&str>>()
                                         .join("");
@@ -602,7 +624,10 @@ impl EditorView {
                                         &tab_char,
                                         visual_tab_width,
                                     );
-                                whitespace_kind = WhitespaceKind::Tab(trailing_grapheme_tab_width);
+                                whitespace_kind = WhitespaceKind::Tab(
+                                    grapheme_tab_width,
+                                    trailing_grapheme_tab_width,
+                                );
                                 (&tab[..grapheme_tab_width], visual_tab_width)
                             } else if grapheme == " " {
                                 is_whitespace = true;
