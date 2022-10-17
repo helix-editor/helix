@@ -1667,12 +1667,7 @@ fn search_impl(
         };
 
         doc.set_selection(view.id, selection);
-        // TODO: is_cursor_in_view does the same calculation as ensure_cursor_in_view
-        if view.is_cursor_in_view(doc, 0) {
-            view.ensure_cursor_in_view(doc, scrolloff);
-        } else {
-            align_view(doc, view, Align::Center)
-        }
+        view.ensure_cursor_in_view_center(doc, scrolloff);
     };
 }
 
@@ -2434,8 +2429,10 @@ fn jumplist_picker(cx: &mut Context) {
         (),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
+            let config = cx.editor.config();
             let (view, doc) = current!(cx.editor);
             doc.set_selection(view.id, meta.selection.clone());
+            view.ensure_cursor_in_view_center(doc, config.scrolloff);
         },
         |editor, meta| {
             let doc = &editor.documents.get(&meta.id)?;
@@ -4205,6 +4202,7 @@ fn match_brackets(cx: &mut Context) {
 
 fn jump_forward(cx: &mut Context) {
     let count = cx.count();
+    let config = cx.editor.config();
     let view = view_mut!(cx.editor);
     let doc_id = view.doc;
 
@@ -4218,12 +4216,13 @@ fn jump_forward(cx: &mut Context) {
         }
 
         doc.set_selection(view.id, selection);
-        align_view(doc, view, Align::Center);
+        view.ensure_cursor_in_view_center(doc, config.scrolloff);
     };
 }
 
 fn jump_backward(cx: &mut Context) {
     let count = cx.count();
+    let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
     let doc_id = doc.id();
 
@@ -4237,7 +4236,7 @@ fn jump_backward(cx: &mut Context) {
         }
 
         doc.set_selection(view.id, selection);
-        align_view(doc, view, Align::Center);
+        view.ensure_cursor_in_view_center(doc, config.scrolloff);
     };
 }
 
