@@ -1,6 +1,7 @@
 use crate::{
+    alt,
     compositor::{Component, Compositor, Context, Event, EventResult},
-    alt, ctrl, key, shift,
+    ctrl, key, shift,
     ui::{self, fuzzy_match::FuzzyQuery, EditorView},
 };
 use tui::{
@@ -410,18 +411,12 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                     return EventResult::Consumed(None);
                 }
                 alt!('b') if self.show_preview => {
-                    self.move_preview_by(
-                        self.preview_height as usize,
-                        Direction::Backward,
-                    );
+                    self.move_preview_by(self.preview_height as usize, Direction::Backward);
 
                     return EventResult::Consumed(None);
                 }
                 alt!('f') if self.show_preview => {
-                    self.move_preview_by(
-                        self.preview_height as usize,
-                        Direction::Forward,
-                    );
+                    self.move_preview_by(self.preview_height as usize, Direction::Forward);
 
                     return EventResult::Consumed(None);
                 }
@@ -445,7 +440,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
 
     fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
         self.preview_height = height.saturating_sub(2);
-        
+
         let picker_width = if width > MIN_AREA_WIDTH_FOR_PREVIEW {
             width / 2
         } else {
