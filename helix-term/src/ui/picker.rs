@@ -1,7 +1,6 @@
 use crate::{
-    alt,
     compositor::{Component, Compositor, Context, Event, EventResult},
-    ctrl, key, shift,
+    alt, ctrl, key, shift,
     ui::{self, EditorView},
 };
 use tui::{
