@@ -4831,7 +4831,7 @@ fn increment_impl(cx: &mut Context, amount: i64) {
     let selection = doc.selection(view.id);
     let text = doc.text().slice(..);
     let mut new_selection_ranges = SmallVec::new();
-    let mut comulative_length_diff: i128 = 0;
+    let mut cumulative_length_diff: i128 = 0;
     let mut changes = vec![];
     let mut last_change_to = 0;
 
@@ -4852,11 +4852,11 @@ fn increment_impl(cx: &mut Context, amount: i64) {
             // We must keep track of the adjustments to the documents lengh from things like `-1` -> `0`
             // or `9` -> `10` and move the resulting selections around accordingly.
             let range_start: usize =
-                ((original_text_range.from() as i128) + comulative_length_diff) as usize;
+                ((original_text_range.from() as i128) + cumulative_length_diff) as usize;
             let range_after_change = Range::new(range_start, range_start + 1);
 
             new_selection_ranges.push(range_after_change);
-            comulative_length_diff += length_diff;
+            cumulative_length_diff += length_diff;
             last_change_to = original_text_range.to();
             changes.push((
                 original_text_range.from(),
