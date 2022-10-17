@@ -8,13 +8,15 @@ use crate::{
 };
 
 use arc_swap::{ArcSwap, Guard};
+use bitflags::bitflags;
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
 use std::{
     borrow::Cow,
     cell::RefCell,
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashMap, VecDeque},
     fmt,
+    mem::replace,
     path::Path,
     str::FromStr,
     sync::Arc,
@@ -366,7 +368,13 @@ impl LanguageConfiguration {
             None
         } else {
             let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
-                .map_err(|e| log::info!("{}", e))
+                .map_err(|err| {
+                    log::error!(
+                        "Failed to load tree-sitter parser for language {:?}: {}",
+                        self.language_id,
+                        err
+                    )
+                })
                 .ok()?;
             let config = HighlightConfiguration::new(
                 language,
@@ -594,6 +602,7 @@ impl Syntax {
             tree: None,
             config,
             depth: 0,
+            flags: LayerUpdateFlags::empty(),
             ranges: vec![Range {
                 start_byte: 0,
                 end_byte: usize::MAX,
@@ -656,9 +665,10 @@ impl Syntax {
                 }
             }
 
-            for layer in &mut self.layers.values_mut() {
+            for layer in self.layers.values_mut() {
                 // The root layer always covers the whole range (0..usize::MAX)
                 if layer.depth == 0 {
+                    layer.flags = LayerUpdateFlags::MODIFIED;
                     continue;
                 }
 
@@ -689,6 +699,8 @@ impl Syntax {
                                 edit.new_end_position,
                                 point_sub(range.end_point, edit.old_end_position),
                             );
+
+                            layer.flags |= LayerUpdateFlags::MOVED;
                         }
                         // if the edit starts in the space before and extends into the range
                         else if edit.start_byte < range.start_byte {
@@ -703,11 +715,13 @@ impl Syntax {
                                 edit.new_end_position,
                                 point_sub(range.end_point, edit.old_end_position),
                             );
+                            layer.flags = LayerUpdateFlags::MODIFIED;
                         }
                         // If the edit is an insertion at the start of the tree, shift
                         else if edit.start_byte == range.start_byte && is_pure_insertion {
                             range.start_byte = edit.new_end_byte;
                             range.start_point = edit.new_end_position;
+                            layer.flags |= LayerUpdateFlags::MOVED;
                         } else {
                             range.end_byte = range
                                 .end_byte
@@ -717,6 +731,7 @@ impl Syntax {
                                 edit.new_end_position,
                                 point_sub(range.end_point, edit.old_end_position),
                             );
+                            layer.flags = LayerUpdateFlags::MODIFIED;
                         }
                     }
                 }
@@ -731,27 +746,33 @@ impl Syntax {
 
             let source_slice = source.slice(..);
 
-            let mut touched = HashSet::new();
-
-            // TODO: we should be able to avoid editing & parsing layers with ranges earlier in the document before the edit
-
             while let Some(layer_id) = queue.pop_front() {
-                // Mark the layer as touched
-                touched.insert(layer_id);
-
                 let layer = &mut self.layers[layer_id];
+
+                // Mark the layer as touched
+                layer.flags |= LayerUpdateFlags::TOUCHED;
 
                 // If a tree already exists, notify it of changes.
                 if let Some(tree) = &mut layer.tree {
-                    for edit in edits.iter().rev() {
-                        // Apply the edits in reverse.
-                        // If we applied them in order then edit 1 would disrupt the positioning of edit 2.
-                        tree.edit(edit);
+                    if layer
+                        .flags
+                        .intersects(LayerUpdateFlags::MODIFIED | LayerUpdateFlags::MOVED)
+                    {
+                        for edit in edits.iter().rev() {
+                            // Apply the edits in reverse.
+                            // If we applied them in order then edit 1 would disrupt the positioning of edit 2.
+                            tree.edit(edit);
+                        }
                     }
-                }
 
-                // Re-parse the tree.
-                layer.parse(&mut ts_parser.parser, source)?;
+                    if layer.flags.contains(LayerUpdateFlags::MODIFIED) {
+                        // Re-parse the tree.
+                        layer.parse(&mut ts_parser.parser, source)?;
+                    }
+                } else {
+                    // always parse if this layer has never been parsed before
+                    layer.parse(&mut ts_parser.parser, source)?;
+                }
 
                 // Switch to an immutable borrow.
                 let layer = &self.layers[layer_id];
@@ -855,6 +876,8 @@ impl Syntax {
                             config,
                             depth,
                             ranges,
+                            // set the modified flag to ensure the layer is parsed
+                            flags: LayerUpdateFlags::empty(),
                         })
                     });
 
@@ -868,8 +891,11 @@ impl Syntax {
             // Return the cursor back in the pool.
             ts_parser.cursors.push(cursor);
 
-            // Remove all untouched layers
-            self.layers.retain(|id, _| touched.contains(&id));
+            // Reset all `LayerUpdateFlags` and remove all untouched layers
+            self.layers.retain(|_, layer| {
+                replace(&mut layer.flags, LayerUpdateFlags::empty())
+                    .contains(LayerUpdateFlags::TOUCHED)
+            });
 
             Ok(())
         })
@@ -968,6 +994,16 @@ impl Syntax {
     // TODO: Folding
 }
 
+bitflags! {
+    /// Flags that track the status of a layer
+    /// in the `Sytaxn::update` function
+    struct LayerUpdateFlags : u32{
+        const MODIFIED = 0b001;
+        const MOVED = 0b010;
+        const TOUCHED = 0b100;
+    }
+}
+
 #[derive(Debug)]
 pub struct LanguageLayer {
     // mode
@@ -975,7 +1011,8 @@ pub struct LanguageLayer {
     pub config: Arc<HighlightConfiguration>,
     pub(crate) tree: Option<Tree>,
     pub ranges: Vec<Range>,
-    pub depth: usize,
+    pub depth: u32,
+    flags: LayerUpdateFlags,
 }
 
 impl LanguageLayer {
@@ -1191,7 +1228,7 @@ struct HighlightIter<'a> {
     layers: Vec<HighlightIterLayer<'a>>,
     iter_count: usize,
     next_event: Option<HighlightEvent>,
-    last_highlight_range: Option<(usize, usize, usize)>,
+    last_highlight_range: Option<(usize, usize, u32)>,
 }
 
 // Adapter to convert rope chunks to bytes
@@ -1224,7 +1261,7 @@ struct HighlightIterLayer<'a> {
     config: &'a HighlightConfiguration,
     highlight_end_stack: Vec<usize>,
     scope_stack: Vec<LocalScope<'a>>,
-    depth: usize,
+    depth: u32,
     ranges: &'a [Range],
 }
 

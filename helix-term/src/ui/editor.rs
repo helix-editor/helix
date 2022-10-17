@@ -16,6 +16,7 @@ use helix_core::{
     visual_coords_at_pos, LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
+    apply_transaction,
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
@@ -122,8 +123,15 @@ impl EditorView {
             Self::highlight_cursorcolumn(doc, view, surface, theme);
         }
 
-        let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
-        let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
+        let mut highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
+        for diagnostic in Self::doc_diagnostics_highlights(doc, theme) {
+            // Most of the `diagnostic` Vecs are empty most of the time. Skipping
+            // a merge for any empty Vec saves a significant amount of work.
+            if diagnostic.is_empty() {
+                continue;
+            }
+            highlights = Box::new(syntax::merge(highlights, diagnostic));
+        }
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
@@ -267,7 +275,7 @@ impl EditorView {
     pub fn doc_diagnostics_highlights(
         doc: &Document,
         theme: &Theme,
-    ) -> Vec<(usize, std::ops::Range<usize>)> {
+    ) -> [Vec<(usize, std::ops::Range<usize>)>; 5] {
         use helix_core::diagnostic::Severity;
         let get_scope_of = |scope| {
             theme
@@ -288,22 +296,38 @@ impl EditorView {
         let error = get_scope_of("diagnostic.error");
         let r#default = get_scope_of("diagnostic"); // this is a bit redundant but should be fine
 
-        doc.diagnostics()
-            .iter()
-            .map(|diagnostic| {
-                let diagnostic_scope = match diagnostic.severity {
-                    Some(Severity::Info) => info,
-                    Some(Severity::Hint) => hint,
-                    Some(Severity::Warning) => warning,
-                    Some(Severity::Error) => error,
-                    _ => r#default,
-                };
-                (
-                    diagnostic_scope,
-                    diagnostic.range.start..diagnostic.range.end,
-                )
-            })
-            .collect()
+        let mut default_vec: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
+        let mut info_vec = Vec::new();
+        let mut hint_vec = Vec::new();
+        let mut warning_vec = Vec::new();
+        let mut error_vec = Vec::new();
+
+        for diagnostic in doc.diagnostics() {
+            // Separate diagnostics into different Vecs by severity.
+            let (vec, scope) = match diagnostic.severity {
+                Some(Severity::Info) => (&mut info_vec, info),
+                Some(Severity::Hint) => (&mut hint_vec, hint),
+                Some(Severity::Warning) => (&mut warning_vec, warning),
+                Some(Severity::Error) => (&mut error_vec, error),
+                _ => (&mut default_vec, r#default),
+            };
+
+            // If any diagnostic overlaps ranges with the prior diagnostic,
+            // merge the two together. Otherwise push a new span.
+            match vec.last_mut() {
+                Some((_, range)) if diagnostic.range.start <= range.end => {
+                    // This branch merges overlapping diagnostics, assuming that the current
+                    // diagnostic starts on range.start or later. If this assertion fails,
+                    // we will discard some part of `diagnostic`. This implies that
+                    // `doc.diagnostics()` is not sorted by `diagnostic.range`.
+                    debug_assert!(range.start <= diagnostic.range.start);
+                    range.end = diagnostic.range.end.max(range.end)
+                }
+                _ => vec.push((scope, diagnostic.range.start..diagnostic.range.end)),
+            }
+        }
+
+        [default_vec, info_vec, hint_vec, warning_vec, error_vec]
     }
 
     /// Get highlight spans for selections in a document view.
@@ -988,7 +1012,7 @@ impl EditorView {
                         InsertEvent::CompletionApply(compl) => {
                             let (view, doc) = current!(cxt.editor);
 
-                            doc.restore(view.id);
+                            doc.restore(view);
 
                             let text = doc.text().slice(..);
                             let cursor = doc.selection(view.id).primary().cursor(text);
@@ -1002,7 +1026,7 @@ impl EditorView {
                                     (shift_position(start), shift_position(end), t)
                                 }),
                             );
-                            doc.apply(&tx, view.id);
+                            apply_transaction(&tx, doc, view);
                         }
                         InsertEvent::TriggerCompletion => {
                             let (_, doc) = current!(cxt.editor);
@@ -1066,7 +1090,7 @@ impl EditorView {
         editor.clear_idle_timer(); // don't retrigger
     }
 
-    pub fn handle_idle_timeout(&mut self, cx: &mut crate::compositor::Context) -> EventResult {
+    pub fn handle_idle_timeout(&mut self, cx: &mut commands::Context) -> EventResult {
         if self.completion.is_some()
             || cx.editor.mode != Mode::Insert
             || !cx.editor.config().auto_completion
@@ -1074,15 +1098,7 @@ impl EditorView {
             return EventResult::Ignored(None);
         }
 
-        let mut cx = commands::Context {
-            register: None,
-            editor: cx.editor,
-            jobs: cx.jobs,
-            count: None,
-            callback: None,
-            on_next_key_callback: None,
-        };
-        crate::commands::insert::idle_completion(&mut cx);
+        crate::commands::insert::idle_completion(cx);
 
         EventResult::Consumed(None)
     }
@@ -1403,6 +1419,7 @@ impl Component for EditorView {
             }
 
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
+            Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
             Event::FocusGained | Event::FocusLost => EventResult::Ignored(None),
         }
     }

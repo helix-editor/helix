@@ -184,7 +184,7 @@ args = { console = "internalConsole", attachCommands = [ "platform select remote
 
 [[grammar]]
 name = "c"
-source = { git = "https://github.com/tree-sitter/tree-sitter-c", rev = "f05e279aedde06a25801c3f2b2cc8ac17fac52ae" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-c", rev = "7175a6dd5fc1cee660dce6fe23f6043d75af424a" }
 
 [[language]]
 name = "cpp"
@@ -221,7 +221,7 @@ args = { console = "internalConsole", attachCommands = [ "platform select remote
 
 [[grammar]]
 name = "cpp"
-source = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev = "e8dcc9d2b404c542fd236ea5f7208f90be8a6e89" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev = "d5e90fba898f320db48d81ddedd78d52c67c1fed" }
 
 [[language]]
 name = "c-sharp"
@@ -232,6 +232,25 @@ roots = ["sln", "csproj"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "\t" }
 language-server = { command = "OmniSharp", args = [ "--languageserver" ] }
+
+[language.debugger]
+name = "netcoredbg"
+transport = "tcp"
+command = "netcoredbg"
+args = [ "--interpreter=vscode" ]
+port-arg = "--server={}"
+
+[[language.debugger.templates]]
+name = "launch"
+request = "launch"
+completion = [ { name = "path to dll", completion = "filename" } ]
+args = { type = "coreclr", console = "internalConsole", internalConsoleOptions = "openOnSessionStart", program = "{0}" }
+
+[[language.debugger.templates]]
+name = "attach"
+request = "attach"
+completion = [ "pid" ]
+args = { processId = "{0}" }
 
 [[grammar]]
 name = "c-sharp"
@@ -667,7 +686,7 @@ language-server = { command = "lua-language-server", args = [] }
 
 [[grammar]]
 name = "lua"
-source = { git = "https://github.com/nvim-treesitter/tree-sitter-lua", rev = "6f5d40190ec8a0aa8c8410699353d820f4f7d7a6" }
+source = { git = "https://github.com/MunifTanjim/tree-sitter-lua", rev = "887dfd4e83c469300c279314ff1619b1d0b85b91" }
 
 [[language]]
 name = "svelte"
@@ -722,6 +741,19 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "haskell"
 source = { git = "https://github.com/tree-sitter/tree-sitter-haskell", rev = "b6ec26f181dd059eedd506fa5fbeae1b8e5556c8" }
+
+[[language]]
+name = "purescript"
+scope = "source.purescript"
+injection-regex = "purescript"
+file-types = ["purs"]
+roots = ["spago.dhall", "bower.json"]
+comment-token = "--"
+language-server = { command = "purescript-language-server", args = ["--stdio"] }
+indent = { tab-width = 2, unit = "  " }
+auto-format = true
+formatter = { command = "purs-tidy", args = ["format"] }
+grammar = "haskell"
 
 [[language]]
 name = "zig"
@@ -1408,12 +1440,12 @@ scope = "source.cairo"
 injection-regex = "cairo"
 file-types = ["cairo"]
 roots = []
-comment-token = "#"
+comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "cairo"
-source = { git = "https://github.com/archseer/tree-sitter-cairo", rev = "5155c6eb40db6d437f4fa41b8bcd8890a1c91716" }
+source = { git = "https://github.com/archseer/tree-sitter-cairo", rev = "b249662a1eefeb4d71c9529cdd971e74fecc10fe" }
 
 [[language]]
 name = "cpon"

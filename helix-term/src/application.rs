@@ -435,18 +435,13 @@ impl Application {
     }
 
     pub fn handle_idle_timeout(&mut self) {
-        use crate::compositor::EventResult;
-        let editor_view = self
-            .compositor
-            .find::<ui::EditorView>()
-            .expect("expected at least one EditorView");
-
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,
         };
-        if let EventResult::Consumed(_) = editor_view.handle_idle_timeout(&mut cx) {
+        let should_render = self.compositor.handle_event(&Event::IdleTimeout, &mut cx);
+        if should_render {
             self.render();
         }
     }
