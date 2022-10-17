@@ -1,99 +1,111 @@
-use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
+use helix_view::editor::{WhitespaceRender, WhitespaceRenderValue};
 
+#[derive(PartialEq)]
 pub enum WhitespaceKind {
+    None,
     Space,
     NonBreakingSpace,
     Tab(usize, usize),
 }
 
-pub struct TrailingWhitespaceTracker {
-    tracker_enabled: bool,
-    is_space_enabled: bool,
-    is_nbsp_enabled: bool,
-    is_tab_enabled: bool,
+pub struct TrailingWhitespaceTracker<'a> {
+    enabled: bool,
 
-    is_tracking: bool,
+    tracking: bool,
     tracking_from: u16,
-    tracked: Vec<WhitespaceKind>,
+    tracking_content: Vec<WhitespaceKind>,
+
+    space: &'a str,
+    nbsp: &'a str,
+    tab: &'a str,
+    tab_enabled: bool,
 }
 
-impl TrailingWhitespaceTracker {
-    pub fn new(cfg: &WhitespaceConfig) -> Self {
-        let space_enabled = cfg.render.space() == WhitespaceRenderValue::Trailing;
-        let nbsp_enabled = cfg.render.nbsp() == WhitespaceRenderValue::Trailing;
-        let tab_enabled = cfg.render.tab() == WhitespaceRenderValue::Trailing;
-        let enabled = space_enabled || nbsp_enabled || tab_enabled;
+impl<'a> TrailingWhitespaceTracker<'a> {
+    pub fn new(
+        cfg: &WhitespaceRender,
+        space: &'a str,
+        nbsp: &'a str,
+        tab: &'a str,
+        tab_empty: &'a str,
+    ) -> Self {
+        let space_enabled = matches!(
+            cfg.space(),
+            WhitespaceRenderValue::Trailing | WhitespaceRenderValue::All
+        );
+        let nbsp_enabled = matches!(
+            cfg.nbsp(),
+            WhitespaceRenderValue::Trailing | WhitespaceRenderValue::All
+        );
+        let tab_enabled = matches!(
+            cfg.tab(),
+            WhitespaceRenderValue::Trailing | WhitespaceRenderValue::All
+        );
+
+        let enabled = cfg.space() == WhitespaceRenderValue::Trailing
+            || cfg.nbsp() == WhitespaceRenderValue::Trailing
+            || cfg.tab() == WhitespaceRenderValue::Trailing;
+
         Self {
-            tracker_enabled: enabled,
-            is_space_enabled: space_enabled,
-            is_nbsp_enabled: nbsp_enabled,
-            is_tab_enabled: tab_enabled,
+            enabled,
 
-            is_tracking: false,
+            tracking: false,
             tracking_from: 0,
-            tracked: vec![],
+            tracking_content: vec![],
+
+            space: if space_enabled { space } else { " " },
+            nbsp: if nbsp_enabled { nbsp } else { " " },
+            tab: if tab_enabled { tab } else { tab_empty },
+            tab_enabled,
         }
     }
 
-    pub fn is_enabled(&self) -> bool {
-        self.tracker_enabled
+    pub fn enabled(&self) -> bool {
+        self.enabled
     }
 
-    pub fn track_nonwhitespace(&mut self) {
-        self.is_tracking = false;
-    }
-
-    pub fn track_whitespace(&mut self, from: u16, kind: WhitespaceKind) {
-        if !self.is_tracking {
-            self.is_tracking = true;
+    pub fn track(&mut self, from: u16, kind: WhitespaceKind) {
+        if kind == WhitespaceKind::None {
+            self.reset();
+            return;
+        }
+        if !self.tracking {
+            self.tracking = true;
             self.tracking_from = from;
-            self.tracked.clear();
+            self.tracking_content.clear();
         }
-        self.tracked.push(kind);
+        self.tracking_content.push(kind);
     }
 
-    pub fn get_trailing_whitespace(
-        &mut self,
-        space_char: &str,
-        space: &str,
-        nbsp_char: &str,
-        nbsp: &str,
-        tab_char: &str,
-        tab: &str,
-    ) -> Option<(u16, String)> {
-        if !self.tracker_enabled || !self.is_tracking {
+    pub fn get(&mut self) -> Option<(u16, String)> {
+        if !self.enabled || !self.tracking {
             return None;
         }
 
-        self.is_tracking = false;
-        let trailing_space = if self.is_space_enabled {
-            space_char
-        } else {
-            space
-        };
-        let trailing_nbsp = if self.is_nbsp_enabled {
-            nbsp_char
-        } else {
-            nbsp
-        };
+        self.tracking = false;
         let trailing_whitespace = self
-            .tracked
+            .tracking_content
             .iter()
             .map(|kind| match kind {
-                WhitespaceKind::Space => trailing_space,
-                WhitespaceKind::NonBreakingSpace => trailing_nbsp,
+                WhitespaceKind::Space => self.space,
+                WhitespaceKind::NonBreakingSpace => self.nbsp,
                 WhitespaceKind::Tab(original_width, trailing_width) => {
-                    if self.is_tab_enabled {
-                        &tab_char[..*trailing_width]
+                    &self.tab[..*(if self.tab_enabled {
+                        trailing_width
                     } else {
-                        &tab[..*original_width]
-                    }
+                        original_width
+                    })]
                 }
+                WhitespaceKind::None => "",
             })
             .collect::<Vec<&str>>()
             .join("");
 
         Some((self.tracking_from, trailing_whitespace))
+    }
+
+    fn reset(&mut self) {
+        self.tracking = false;
     }
 }
 
@@ -105,10 +117,10 @@ mod tests {
     #[test]
     fn test_default_trailing_whitespace_tracker() {
         let cfg = &WhitespaceConfig::default();
-        let sut = TrailingWhitespaceTracker::new(cfg);
+        let sut = TrailingWhitespaceTracker::new(&cfg.render, " ", " ", " ", " ");
 
         assert!(
-            !sut.is_enabled(),
+            !sut.enabled(),
             "trailing whitespace is not enabled by default"
         );
     }
@@ -117,85 +129,83 @@ mod tests {
     fn test_trailing_whitespace_tracker_basic_config_enables() {
         let mut cfg = &mut WhitespaceConfig::default();
         cfg.render = WhitespaceRender::Basic(WhitespaceRenderValue::Trailing);
-        let sut = TrailingWhitespaceTracker::new(cfg);
+        let sut = TrailingWhitespaceTracker::new(&cfg.render, " ", " ", " ", " ");
 
         assert!(
-            sut.is_enabled(),
+            sut.enabled(),
             "basic config set to trailing should enable the tracker"
         );
     }
 
     #[test]
     fn test_trailing_whitespace_tracker_specific_configs_enables() {
-        let mut cfg = &mut WhitespaceConfig::default();
-        cfg.render = WhitespaceRender::Specific {
+        let cfg = &WhitespaceRender::Specific {
             default: Some(WhitespaceRenderValue::None),
             space: Some(WhitespaceRenderValue::Trailing),
             nbsp: None,
             tab: None,
             newline: None,
         };
-
-        let sut = TrailingWhitespaceTracker::new(cfg);
+        let sut = TrailingWhitespaceTracker::new(cfg, " ", " ", " ", " ");
         assert!(
-            sut.is_enabled(),
+            sut.enabled(),
             "should be enabled when space trailing is enabled"
         );
 
-        cfg.render = WhitespaceRender::Specific {
+        let cfg = &WhitespaceRender::Specific {
             default: Some(WhitespaceRenderValue::None),
             space: None,
             nbsp: Some(WhitespaceRenderValue::Trailing),
             tab: None,
             newline: None,
         };
-        let sut = TrailingWhitespaceTracker::new(cfg);
+        let sut = TrailingWhitespaceTracker::new(cfg, " ", " ", " ", " ");
         assert!(
-            sut.is_enabled(),
+            sut.enabled(),
             "should be enabled when nbsp trailing is enabled"
         );
 
-        cfg.render = WhitespaceRender::Specific {
+        let cfg = &WhitespaceRender::Specific {
             default: Some(WhitespaceRenderValue::None),
             space: None,
             nbsp: None,
             tab: Some(WhitespaceRenderValue::Trailing),
             newline: None,
         };
-        let sut = TrailingWhitespaceTracker::new(cfg);
+        let sut = TrailingWhitespaceTracker::new(cfg, " ", " ", " ", " ");
         assert!(
-            sut.is_enabled(),
+            sut.enabled(),
             "hould be enabled when tab trailing is enabled"
         );
     }
 
     #[test]
     fn test_trailing_whitespace_tracker_correctly_tracks_sequences() {
-        let mut cfg = &mut WhitespaceConfig::default();
-        cfg.render = WhitespaceRender::Basic(WhitespaceRenderValue::Trailing);
-        let mut sut = TrailingWhitespaceTracker::new(cfg);
+        let cfg = &WhitespaceRender::Basic(WhitespaceRenderValue::Trailing);
 
-        sut.track_whitespace(5, WhitespaceKind::Space);
-        sut.track_whitespace(6, WhitespaceKind::NonBreakingSpace);
-        sut.track_whitespace(7, WhitespaceKind::Tab(1, 1));
+        let mut sut = TrailingWhitespaceTracker::new(cfg, "S", "N", "T", "E");
 
-        let trailing = sut.get_trailing_whitespace("S", " ", "N", " ", "T", " ");
+        sut.track(5, WhitespaceKind::Space);
+        sut.track(6, WhitespaceKind::NonBreakingSpace);
+        sut.track(7, WhitespaceKind::Tab(1, 1));
+
+        let trailing = sut.get();
         assert!(trailing.is_some());
         let (from, display) = trailing.unwrap();
         assert_eq!(5, from);
         assert_eq!("SNT", display);
 
         // Now we break the sequence
-        sut.track_nonwhitespace();
-        let trailing = sut.get_trailing_whitespace("S", " ", "N", " ", "T", " ");
+        sut.reset();
+        let trailing = sut.get();
         assert!(trailing.is_none());
 
         // Now we track again
-        sut.track_whitespace(10, WhitespaceKind::Tab(1, 1));
-        sut.track_whitespace(11, WhitespaceKind::NonBreakingSpace);
-        sut.track_whitespace(12, WhitespaceKind::Space);
+        sut.track(10, WhitespaceKind::Tab(1, 1));
+        sut.track(11, WhitespaceKind::NonBreakingSpace);
+        sut.track(12, WhitespaceKind::Space);
 
-        let trailing = sut.get_trailing_whitespace("S", " ", "N", " ", "T", " ");
+        let trailing = sut.get();
         assert!(trailing.is_some());
         let (from, display) = trailing.unwrap();
         assert_eq!(10, from);
