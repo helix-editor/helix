@@ -1835,3 +1835,17 @@ roots = []
 [[grammar]]
 name = "wast"
 source = { git = "https://github.com/wasm-lsp/tree-sitter-wasm", rev = "2ca28a9f9d709847bf7a3de0942a84e912f59088", subpath = "wast" }
+
+[[language]]
+name = "move"
+scope = "source.move"
+injection-regex = "move"
+file-types = ["move"]
+roots = ["Move.toml"]
+comment-token = "//"
+language-server = { command = "move-analyzer" }
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "move"
+source = { git = "https://github.com/move-hub/tree-sitter-move", rev = "93527b2c4845293384759e8ebee8fdd8a0878ad8" }

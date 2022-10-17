@@ -72,6 +72,7 @@
 | markdown.inline | ✓ |  |  |  |
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
+| move |  |  |  | `move-analyzer` |
 | nickel | ✓ |  | ✓ | `nls` |
 | nix | ✓ |  |  | `rnix-lsp` |
 | nu | ✓ |  |  |  |
