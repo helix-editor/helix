@@ -212,4 +212,28 @@ mod tests {
         assert_eq!(10, from);
         assert_eq!("TNS", display);
     }
+
+    #[test]
+    fn test_trailing_whitespace_tracker_correctly_fallsback_empty_characters() {
+        let cfg = &WhitespaceRender::Specific {
+            default: Some(WhitespaceRenderValue::None),
+            space: None,
+            nbsp: None,
+            tab: None,
+            newline: None,
+        };
+
+        let mut sut = TrailingWhitespaceTracker::new(cfg, "S", "N", "T", "E");
+        sut.enabled = true; // forcefully enable the tracker
+
+        sut.track(5, WhitespaceKind::Space);
+        sut.track(6, WhitespaceKind::NonBreakingSpace);
+        sut.track(7, WhitespaceKind::Tab(1, 1));
+
+        let trailing = sut.get();
+        assert!(trailing.is_some());
+        let (from, display) = trailing.unwrap();
+        assert_eq!(5, from);
+        assert_eq!("  E", display);
+    }
 }
