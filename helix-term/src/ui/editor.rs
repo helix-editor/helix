@@ -551,25 +551,22 @@ impl EditorView {
                                 // A line break has been found, which means we should be enforcing the rendering
                                 // of the trailing whitespace.
                                 if is_trailing_whitespace_enabled && tracking_trailing_whitespace {
+                                    let trailing_space = if is_trailing_space_enabled {
+                                        &space_char
+                                    } else {
+                                        space
+                                    };
+                                    let trailing_nbsp = if is_trailing_nbsp_enabled {
+                                        &nbsp_char
+                                    } else {
+                                        nbsp
+                                    };
                                     tracking_trailing_whitespace = false;
                                     let trailing_whitespace = tracking_trailing_whitespace_kinds
                                         .iter()
                                         .map(|k| match k {
-                                            WhitespaceKind::Space => {
-                                                if is_trailing_space_enabled {
-                                                    &space_char
-                                                } else {
-                                                    space
-                                                }
-                                            }
-                                            WhitespaceKind::NonBreakingSpace => {
-                                                if is_trailing_nbsp_enabled {
-                                                    &nbsp_char
-                                                } else {
-                                                    nbsp
-                                                }
-                                            }
-
+                                            WhitespaceKind::Space => trailing_space,
+                                            WhitespaceKind::NonBreakingSpace => trailing_nbsp,
                                             WhitespaceKind::Tab(original_width, trailing_width) => {
                                                 if is_trailing_tab_enabled {
                                                     &tab_char[..*trailing_width]
