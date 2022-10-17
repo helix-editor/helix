@@ -527,7 +527,7 @@ impl EditorView {
                     };
 
                     let nbsp = if whitespace.render.nbsp() == WhitespaceRenderValue::All
-                        && is_trailing_cursor
+                        && !is_trailing_cursor
                     {
                         nbsp_char
                     } else {
