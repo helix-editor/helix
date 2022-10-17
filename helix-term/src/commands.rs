@@ -1865,10 +1865,15 @@ fn global_search(cx: &mut Context) {
                     .hidden(file_picker_config.hidden)
                     .parents(file_picker_config.parents)
                     .ignore(file_picker_config.ignore)
+                    .follow_links(file_picker_config.follow_symlinks)
                     .git_ignore(file_picker_config.git_ignore)
                     .git_global(file_picker_config.git_global)
                     .git_exclude(file_picker_config.git_exclude)
                     .max_depth(file_picker_config.max_depth)
+                    // We always want to ignore the .git directory, otherwise if
+                    // `ignore` is turned off above, we end up with a lot of noise
+                    // in our picker.
+                    .filter_entry(|entry| entry.file_name() != ".git")
                     .build_parallel()
                     .run(|| {
                         let mut searcher = searcher.clone();
