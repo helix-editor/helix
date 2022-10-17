@@ -12,7 +12,7 @@ pub struct TrailingWhitespaceTracker<'a> {
     enabled: bool,
 
     tracking: bool,
-    tracking_from: u16,
+    tracking_from: usize,
     tracking_content: Vec<WhitespaceKind>,
 
     space: &'a str,
@@ -64,7 +64,7 @@ impl<'a> TrailingWhitespaceTracker<'a> {
         self.enabled
     }
 
-    pub fn track(&mut self, from: u16, kind: WhitespaceKind) {
+    pub fn track(&mut self, from: usize, kind: WhitespaceKind) {
         if kind == WhitespaceKind::None {
             self.reset();
             return;
@@ -78,7 +78,7 @@ impl<'a> TrailingWhitespaceTracker<'a> {
     }
 
     #[must_use]
-    pub fn get(&mut self) -> Option<(u16, String)> {
+    pub fn get(&mut self) -> Option<(usize, String)> {
         if !self.enabled || !self.tracking {
             return None;
         }
