@@ -37,8 +37,8 @@ use anyhow::{Context, Error};
 
 use crossterm::{
     event::{
-        DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
-        Event as CrosstermEvent,
+        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
+        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent,
     },
     execute, terminal,
     tty::IsTty,
@@ -102,6 +102,7 @@ fn restore_term() -> Result<(), Error> {
     execute!(
         stdout,
         DisableBracketedPaste,
+        DisableFocusChange,
         terminal::LeaveAlternateScreen
     )?;
     terminal::disable_raw_mode()?;
@@ -925,7 +926,12 @@ impl Application {
     async fn claim_term(&mut self) -> Result<(), Error> {
         terminal::enable_raw_mode()?;
         let mut stdout = stdout();
-        execute!(stdout, terminal::EnterAlternateScreen, EnableBracketedPaste)?;
+        execute!(
+            stdout,
+            terminal::EnterAlternateScreen,
+            EnableBracketedPaste,
+            EnableFocusChange
+        )?;
         execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
         if self.config.load().editor.mouse {
             execute!(stdout, EnableMouseCapture)?;
