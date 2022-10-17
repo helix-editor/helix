@@ -1202,10 +1202,12 @@ impl Editor {
         let path = path.map(|path| path.into());
         let doc = doc_mut!(self, &doc_id);
         let future = doc.save(path, force)?;
-        // TODO: if no self.saves for that doc id then bail
-        // bail!("saves are closed for this document!");
+
         use futures_util::stream;
-        self.saves[&doc_id]
+
+        self.saves
+            .get(&doc_id)
+            .ok_or_else(|| anyhow::format_err!("saves are closed for this document!"))?
             .send(stream::once(Box::pin(future)))
             .map_err(|err| anyhow!("failed to send save event: {}", err))?;
 
