@@ -435,7 +435,7 @@ pub fn goto_first_diag_workspace(cx: &mut Context) {
             };
             goto_pos(editor, pos);
         }
-        None => return,
+        None => (),
     }
 }
 
@@ -462,7 +462,7 @@ pub fn goto_last_diag_workspace(cx: &mut Context) {
             };
             goto_pos(editor, pos);
         }
-        None => return,
+        None => (),
     }
 }
 
@@ -488,10 +488,10 @@ pub fn goto_next_diag_workspace(cx: &mut Context) {
                             let pos = diag.range.start;
                             goto_pos(editor, pos)
                         }
-                        None => return,
+                        None => (),
                     }
                 }
-                None => return,
+                None => (),
             }
         }
     }
@@ -519,10 +519,10 @@ pub fn goto_prev_diag_workspace(cx: &mut Context) {
                             let pos = diag.range.start;
                             goto_pos(editor, pos)
                         }
-                        None => return,
+                        None => (),
                     }
                 }
-                None => return,
+                None => (),
             }
         }
     }

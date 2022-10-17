@@ -2856,7 +2856,7 @@ pub fn get_next_diag_pos(
             .find(|diag| diag.range.start < cursor_pos),
     };
 
-    return diag.map(|d| d.range.start);
+    diag.map(|d| d.range.start)
 }
 
 /// Finds the next/previous document with diagnostics in it.
@@ -2876,8 +2876,7 @@ pub fn get_next_diag_doc(
             iter.next().or_else(|| {
                 editor_diagnostics
                     .iter()
-                    .filter(|(_, diags)| !diags.is_empty())
-                    .next()
+                    .find(|(_, diags)| !diags.is_empty())
             })
         }
         Direction::Backward => {
