@@ -29,7 +29,7 @@ use tokio::{
     time::{sleep, Duration, Instant, Sleep},
 };
 
-use anyhow::{anyhow, Error};
+use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
@@ -1355,22 +1355,24 @@ impl Editor {
         }
     }
 
-    pub async fn flush_writes(&mut self) {
+    pub async fn flush_writes(&mut self) -> anyhow::Result<()> {
         while self.write_count > 0 {
             if let Some(save_event) = self.save_queue.next().await {
-                match &save_event {
-                    Ok(event) => {
-                        let doc = doc_mut!(self, &event.doc_id);
-                        doc.set_last_saved_revision(event.revision);
-                    }
+                self.write_count -= 1;
+
+                let save_event = match save_event {
+                    Ok(event) => event,
                     Err(err) => {
-                        log::error!("error saving document: {}", err);
+                        self.set_error(err.to_string());
+                        bail!(err);
                     }
                 };
-                // TODO: if is_err: break?
 
-                self.write_count -= 1;
+                let doc = doc_mut!(self, &save_event.doc_id);
+                doc.set_last_saved_revision(save_event.revision);
             }
         }
+
+        Ok(())
     }
 }

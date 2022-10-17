@@ -977,7 +977,10 @@ impl Application {
             errs.push(err);
         };
 
-        self.editor.flush_writes().await;
+        if let Err(err) = self.editor.flush_writes().await {
+            log::error!("Error writing: {}", err);
+            errs.push(err);
+        }
 
         if self.editor.close_language_servers(None).await.is_err() {
             log::error!("Timed out waiting for language servers to shutdown");

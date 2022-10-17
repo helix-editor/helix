@@ -75,17 +75,16 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
 }
 
 fn buffer_close_by_ids_impl(
-    editor: &mut Editor,
+    cx: &mut compositor::Context,
     doc_ids: &[DocumentId],
     force: bool,
 ) -> anyhow::Result<()> {
-    // TODO: deduplicate with ctx.block_try_flush_writes
-    tokio::task::block_in_place(|| helix_lsp::block_on(editor.flush_writes()));
+    cx.block_try_flush_writes()?;
 
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
         .iter()
         .filter_map(|&doc_id| {
-            if let Err(CloseError::BufferModified(name)) = editor.close_document(doc_id, force) {
+            if let Err(CloseError::BufferModified(name)) = cx.editor.close_document(doc_id, force) {
                 Some((doc_id, name))
             } else {
                 None
@@ -94,11 +93,11 @@ fn buffer_close_by_ids_impl(
         .unzip();
 
     if let Some(first) = modified_ids.first() {
-        let current = doc!(editor);
+        let current = doc!(cx.editor);
         // If the current document is unmodified, and there are modified
         // documents, switch focus to the first modified doc.
         if !modified_ids.contains(&current.id()) {
-            editor.switch(*first, Action::Replace);
+            cx.editor.switch(*first, Action::Replace);
         }
         bail!(
             "{} unsaved buffer(s) remaining: {:?}",
@@ -157,7 +156,7 @@ fn buffer_close(
     }
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, false)
+    buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
 fn force_buffer_close(
@@ -170,7 +169,7 @@ fn force_buffer_close(
     }
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, true)
+    buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
 fn buffer_gather_others_impl(editor: &mut Editor) -> Vec<DocumentId> {
@@ -192,7 +191,7 @@ fn buffer_close_others(
     }
 
     let document_ids = buffer_gather_others_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, false)
+    buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
 fn force_buffer_close_others(
@@ -205,7 +204,7 @@ fn force_buffer_close_others(
     }
 
     let document_ids = buffer_gather_others_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, true)
+    buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
 fn buffer_gather_all_impl(editor: &mut Editor) -> Vec<DocumentId> {
@@ -222,7 +221,7 @@ fn buffer_close_all(
     }
 
     let document_ids = buffer_gather_all_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, false)
+    buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
 fn force_buffer_close_all(
@@ -235,7 +234,7 @@ fn force_buffer_close_all(
     }
 
     let document_ids = buffer_gather_all_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, true)
+    buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
 fn buffer_next(
