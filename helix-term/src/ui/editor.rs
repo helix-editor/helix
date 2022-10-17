@@ -24,7 +24,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{borrow::Cow, path::PathBuf};
+use std::{borrow::Cow, cmp::min, path::PathBuf};
 
 use tui::buffer::Buffer as Surface;
 
@@ -468,12 +468,18 @@ impl EditorView {
             let starting_indent =
                 (offset.col / tab_width) + config.indent_guides.skip_levels as usize;
 
-            for i in starting_indent..(indent_level / tab_width) {
+            // Don't draw indent guides outside of view
+            let end_indent = min(
+                indent_level,
+                // Add tab_width - 1 to round up, since the first visible
+                // indent might be a bit after offset.col
+                offset.col + viewport.width as usize + (tab_width - 1),
+            ) / tab_width;
+
+            for i in starting_indent..end_indent {
                 let x = (viewport.x as usize + (i * tab_width) - offset.col) as u16;
                 let y = viewport.y + line;
-                if !surface.in_bounds(x, y) {
-                    break;
-                }
+                debug_assert!(surface.in_bounds(x, y));
                 surface.set_string(x, y, &indent_guide_char, indent_guide_style);
             }
         };
