@@ -1,0 +1,105 @@
+# Author: Ramojus Lapinskas <ramojus.lap@gmail.com>
+
+"comment" = { fg = "highlight_three" }
+"comment.block.documentation" = { bg = "_t4", modifiers = ["italic"] }
+
+"constant" = { fg = "_t4" }
+"function" = { fg = "_t10" }
+"function.method" = { fg = "_t10" }
+"function.macro" = { fg = "_t7" }
+"keyword.storage.modifier" = { fg = "_t7" }
+"keyword.control.import" = { fg = "_t8" }
+"keyword.control" = { fg = "_t8" }
+"keyword.function" = { fg = "_t7" }
+"keyword" = { fg = "_t6" }
+"operator" = { fg = "_t8" }
+"punctuation" = { fg = "_t9" }
+"string" = { fg = "_t6", modifiers = ["italic"] }
+"string.regexp" = { fg = "_t6" }
+"tag" = { fg = "_t4" }
+"type" = { fg = "_t8", modifiers = ["bold"] }
+"namespace" = { fg = "_t6", modifiers = ["bold"] }
+"variable" = { fg = "_t5" }
+"label" = { fg = "_t4" }
+
+"diff.plus" = { fg = "_t4" }
+"diff.delta" = { fg = "_t4" }
+"diff.minus" = { fg = "_t4" }
+
+"ui.cursor.insert" = { fg = "_t2", bg = "highlight" }
+"ui.cursor.select" = { fg = "_t2", bg = "highlight_two" }
+"ui.cursor" = { fg = "_t1", bg = "highlight_three" }
+"ui.cursor.match" = { fg = "highlight", bg = "_t1", modifiers = ["bold"] }
+
+"ui.linenr" = { fg = "_t3", bg = "_t1" }
+"ui.linenr.selected" = { fg = "highlight_three", bg = "_t1" }
+"ui.gutter" = { bg = "_t1" }
+
+"ui.background" = { fg = "_t4", bg = "_t2" }
+"ui.background.separator" = { fg = "_t3" }
+"ui.help" = { fg = "_t4", bg = "_t1" }
+"ui.menu" = { fg = "_t4", bg = "_t1" }
+"ui.menu.selected" = { fg = "highlight_three", bg = "_t1" }
+"ui.popup" = { fg = "_t4", bg = "_t1" }
+"ui.window" = { fg = "_t4" }
+
+"ui.selection.primary" = { bg = "black" }
+"ui.selection" = { bg = "black" }
+
+"ui.cursorline.primary" = { bg = "_t1" }
+
+"ui.statusline" = { fg = "_t4", bg = "_t1" }
+"ui.statusline.inactive" = { fg = "_t4", bg = "_t1" }
+"ui.statusline.normal" = { fg = "_t3", bg = "_t1" }
+"ui.statusline.insert" = { fg = "_t3", bg = "_t1" }
+"ui.statusline.select" = { fg = "highlight", bg = "_t4" }
+
+"ui.text" = { fg = "_t4" }
+"ui.text.focus" = { fg = "highlight_three", modifiers = ["bold"] }
+#
+"ui.virtual.ruler" = { bg = "_t1" }
+"ui.virtual.indent-guide" = { fg = "_t3" }
+"ui.virtual.whitespace" = { fg = "_t3" }
+
+"diagnostic" = { modifiers = ["underlined"] }
+"error" = { fg = "error", modifiers = ["bold"] }
+"warning" = { fg = "warning", modifiers = ["bold"] }
+"info" = { fg = "info", modifiers = ["bold"] }
+"hint" = { fg = "display", modifiers = ["bold"] }
+"special" = { fg = "_t7", modifiers = ["bold"] }
+
+"markup.heading" = { fg = "_t4" }
+"markup.list" = { fg = "_t4" }
+"markup.bold" = { fg = "_t4" }
+"markup.italic" = { fg = "_t4" }
+"markup.link.url" = { fg = "_t4", modifiers = ["underlined"] }
+"markup.link.text" = { fg = "_t4" }
+"markup.quote" = { fg = "_t4" }
+"markup.raw" = { fg = "_t4" }
+
+[palette]
+_t1 = "#0f0c0c"
+_t2 = "#151111"
+_t3 = "#423b3b"
+_t4 = "#535557"
+_t5 = "#646b6d"
+_t6 = "#627879"
+_t7 = "#be6063"
+_t8 = "#98b4af"
+_t9 = "#bec9c9"
+_t10 = "#d8e6e4"
+
+
+highlight = "#3f36f2"
+highlight_two = "#b3814d"
+highlight_three = "#d4d987"
+
+black = "#000000"
+
+comment = "#396884"
+comment_doc = "#234048"
+
+error = "#ff0900"
+warning = "#ffbf00"
+display = "#57ff89"
+info = "#dad7d5"
