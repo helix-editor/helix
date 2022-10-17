@@ -1590,7 +1590,7 @@ fn run_shell_command_impl(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     event: PromptEvent,
-    behavior: ShellBehavior
+    behavior: ShellBehavior,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
