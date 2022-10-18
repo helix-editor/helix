@@ -17,7 +17,7 @@ jobs:
       uses: cachix/install-nix-action@v17
 
     - name: Authenticate with Cachix
-      uses: cachix/cachix-action@v10
+      uses: cachix/cachix-action@v11
       with:
         name: helix
         authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
