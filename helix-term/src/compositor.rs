@@ -80,6 +80,7 @@ pub struct Compositor {
     area: Rect,
 
     pub(crate) last_picker: Option<Box<dyn Component>>,
+    pub(crate) full_redraw: bool,
 }
 
 impl Compositor {
@@ -88,6 +89,7 @@ impl Compositor {
             layers: Vec::new(),
             area,
             last_picker: None,
+            full_redraw: false,
         }
     }
 
@@ -205,6 +207,10 @@ impl Compositor {
             .iter_mut()
             .find(|component| component.id() == Some(id))
             .and_then(|component| component.as_any_mut().downcast_mut())
+    }
+
+    pub fn need_full_redraw(&mut self) {
+        self.full_redraw = true;
     }
 }
 
