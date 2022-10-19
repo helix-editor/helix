@@ -409,7 +409,8 @@ impl Component for Completion {
                 let x = popup_x + popup_width;
                 let y = popup_y;
 
-                if let Some((rel_width, rel_height)) = markdown_popup.required_size((width, height)) {
+                if let Some((rel_width, rel_height)) = markdown_popup.required_size((width, height))
+                {
                     width = rel_width.min(width);
                     height = rel_height.min(height);
                 }
