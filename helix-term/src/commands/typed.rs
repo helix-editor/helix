@@ -2135,7 +2135,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "redraw",
             aliases: &[],
-            doc: "Refresh the whole UI, helps recovering from terminal glitches",
+            doc: "Clear and re-render the whole UI",
             fun: redraw,
             completer: None,
         },
