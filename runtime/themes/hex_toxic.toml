@@ -1,5 +1,3 @@
-# Author: Ramojus Lapinskas <ramojus.lap@gmail.com>
-
 "comment" = { fg = "t1" }
 "comment.block.documentation" = { fg = "t1", modifiers = ["italic"] }
 
