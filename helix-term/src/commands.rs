@@ -2885,7 +2885,7 @@ pub mod insert {
 
     /// Exclude the cursor in range.
     fn exclude_cursor(text: RopeSlice, range: Range, cursor: Range) -> Range {
-        if range.to() == cursor.to() {
+        if range.to() == cursor.to() && text.len_chars() != cursor.to() {
             Range::new(
                 range.from(),
                 graphemes::prev_grapheme_boundary(text, cursor.to()),
