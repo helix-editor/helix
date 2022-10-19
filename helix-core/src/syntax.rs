@@ -2024,18 +2024,18 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
     }
 }
 
-pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node<'_>) -> fmt::Result {
+pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result {
     pretty_print_tree_impl(fmt, node, true, None, 0)
 }
 
 fn pretty_print_tree_impl<W: fmt::Write>(
     fmt: &mut W,
-    node: Node<'_>,
+    node: Node,
     is_root: bool,
     field_name: Option<&str>,
     depth: usize,
 ) -> fmt::Result {
-    fn is_visible(node: Node<'_>) -> bool {
+    fn is_visible(node: Node) -> bool {
         node.is_missing()
             || (node.is_named() && node.language().node_kind_is_visible(node.kind_id()))
     }
