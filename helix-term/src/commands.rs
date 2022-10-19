@@ -1033,9 +1033,9 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         .collect();
     let primary = selections.primary();
     if selections.len() == 1 && primary.to() - primary.from() == 1 {
-        let current_word = movement::move_next_long_word_start(
+        let current_word = movement::move_prev_long_word_start(
             text.slice(..),
-            movement::move_prev_long_word_start(text.slice(..), primary, 1),
+            movement::move_next_long_word_start(text.slice(..), primary, 1),
             1,
         );
         paths.clear();
@@ -1045,7 +1045,8 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         );
     }
     for sel in paths {
-        let p = sel.trim();
+        let surrounding_chars: &[_] = &['\'', '"', '(', ')'];
+        let p = sel.trim().trim_matches(surrounding_chars);
         if !p.is_empty() {
             if let Err(e) = cx.editor.open(&PathBuf::from(p), action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
