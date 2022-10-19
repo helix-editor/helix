@@ -207,11 +207,11 @@
 (goto_statement (goto) @keyword (identifier) @label)
 
 (string_literal) @string
-(int_literal) @number
-(float_literal) @number
-(char_literal) @number
+(int_literal) @constant.numeric.integer
+(float_literal) @constant.numeric.float
+(char_literal) @constant.character
 (identifier) @variable
-(at_attribute) @property
+(at_attribute) @attribute
 
 ; everything after __EOF_ is plain text
-(end_file) @text
+(end_file) @ui.text
