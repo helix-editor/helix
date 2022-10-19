@@ -11,6 +11,7 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Deserializer};
 use toml::{map::Map, Value};
 
+use crate::graphics::UnderlineStyle;
 pub use crate::graphics::{Color, Modifier, Style};
 
 pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
@@ -378,19 +379,48 @@ impl ThemePalette {
             .ok_or(format!("Theme: invalid modifier: {}", value))
     }
 
+    pub fn parse_underline_style(value: &Value) -> Result<UnderlineStyle, String> {
+        value
+            .as_str()
+            .and_then(|s| s.parse().ok())
+            .ok_or(format!("Theme: invalid underline style: {}", value))
+    }
+
     pub fn parse_style(&self, style: &mut Style, value: Value) -> Result<(), String> {
         if let Value::Table(entries) = value {
-            for (name, value) in entries {
+            for (name, mut value) in entries {
                 match name.as_str() {
                     "fg" => *style = style.fg(self.parse_color(value)?),
                     "bg" => *style = style.bg(self.parse_color(value)?),
+                    "underline" => {
+                        let table = value
+                            .as_table_mut()
+                            .ok_or("Theme: underline must be table")?;
+                        if let Some(value) = table.remove("color") {
+                            *style = style.underline_color(self.parse_color(value)?);
+                        }
+                        if let Some(value) = table.remove("style") {
+                            *style = style.underline_style(Self::parse_underline_style(&value)?);
+                        }
+
+                        if let Some(attr) = table.keys().next() {
+                            return Err(format!("Theme: invalid underline attribute: {attr}"));
+                        }
+                    }
                     "modifiers" => {
                         let modifiers = value
                             .as_array()
                             .ok_or("Theme: modifiers should be an array")?;
 
                         for modifier in modifiers {
-                            *style = style.add_modifier(Self::parse_modifier(modifier)?);
+                            if modifier
+                                .as_str()
+                                .map_or(false, |modifier| modifier == "underlined")
+                            {
+                                *style = style.underline_style(UnderlineStyle::Line);
+                            } else {
+                                *style = style.add_modifier(Self::parse_modifier(modifier)?);
+                            }
                         }
                     }
                     _ => return Err(format!("Theme: invalid style attribute: {}", name)),

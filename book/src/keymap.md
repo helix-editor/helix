@@ -221,7 +221,7 @@ Jumps to various locations.
 Accessed by typing `m` in [normal mode](#normal-mode).
 
 See the relevant section in [Usage](./usage.md) for an explanation about
-[surround](./usage.md#surround) and [textobject](./usage.md#textobject) usage.
+[surround](./usage.md#surround) and [textobject](./usage.md#textobjects) usage.
 
 | Key              | Description                                     | Command                    |
 | -----            | -----------                                     | -------                    |
