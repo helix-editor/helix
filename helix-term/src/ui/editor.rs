@@ -2,7 +2,7 @@ use crate::{
     commands,
     compositor::{Component, Context, Event, EventResult},
     job, key,
-    keymap::{KeymapResult, Keymaps},
+    keymap::{KeyTrieNode, KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
 
@@ -20,6 +20,7 @@ use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
+    info::Delay,
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
@@ -921,7 +922,11 @@ impl EditorView {
         let mut last_mode = mode;
         self.pseudo_pending.extend(self.keymaps.pending());
         let key_result = self.keymaps.get(mode, event);
-        cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
+        let is_pending = matches!(key_result, KeymapResult::Pending(_));
+        if !is_pending {
+            // if there is no pending popup, reset autoinfo immediately
+            cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
+        }
 
         let mut execute_command = |command: &commands::MappableCommand| {
             command.execute(cxt);
@@ -959,7 +964,7 @@ impl EditorView {
             KeymapResult::Matched(command) => {
                 execute_command(command);
             }
-            KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
+            KeymapResult::Pending(node) => self.handle_pending_node(cxt, node),
             KeymapResult::MatchedSequence(commands) => {
                 for command in commands {
                     execute_command(command);
@@ -1055,6 +1060,50 @@ impl EditorView {
                 }
             }
         }
+    }
+
+    fn handle_pending_node(&mut self, cxt: &mut commands::Context, node: &KeyTrieNode) {
+        let infobox = node.infobox();
+
+        let auto_info_delay = cxt.editor.config().auto_info_delay;
+        if auto_info_delay.is_zero() || node.is_sticky {
+            cxt.editor.autoinfo = Some(infobox);
+            return;
+        }
+
+        // if autoinfo popup already opened
+        if cxt
+            .editor
+            .autoinfo
+            .as_ref()
+            .map(|info| !info.is_delayed())
+            .unwrap_or(false)
+        {
+            // replace it without any delay
+            cxt.editor.autoinfo = Some(infobox);
+            return;
+        }
+
+        let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
+
+        let infobox_delayed = infobox.with_delay(Delay { cancel_tx });
+        cxt.editor.autoinfo = Some(infobox_delayed);
+
+        let callback = async move {
+            let call: job::Callback = tokio::select! {
+                // delay timed out
+                _ = tokio::time::sleep(auto_info_delay) => Box::new(move |editor, _compositor| {
+                    if let Some(autoinfo) = &mut editor.autoinfo {
+                        autoinfo.delay = None
+                    }
+                }),
+                // delay cancelled
+                _ = cancel_rx => Box::new(move |_editor, _compositor| {}),
+            };
+            Ok(call)
+        };
+
+        cxt.jobs.callback(callback);
     }
 
     pub fn set_completion(
@@ -1461,7 +1510,9 @@ impl Component for EditorView {
 
         if config.auto_info {
             if let Some(mut info) = cx.editor.autoinfo.take() {
-                info.render(area, surface, cx);
+                if !info.is_delayed() {
+                    info.render(area, surface, cx);
+                }
                 cx.editor.autoinfo = Some(info)
             }
         }
