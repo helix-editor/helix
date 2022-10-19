@@ -162,12 +162,13 @@
 ] @punctuation.delimiter
 
 [
-    (null)
     (true)
     (false)
-] @constant.language
+] @constant.builtin.boolean
 
-(special_keyword) @constant.language
+(null) @constant.builtin
+
+(special_keyword) @constant.builtin
 
 (directive) @keyword.directive
 (shebang) @keyword.directive
@@ -190,7 +191,7 @@
     (ulong)
     (real)
     (double)
-] @type
+] @type.builtin
 
 [
     (cent)
@@ -201,7 +202,7 @@
     (creal)
     (double)
     (cfloat)
-] @type.deprecated
+] @warning ; these types are deprecated
 
 (label (identifier) @label)
 (goto_statement (goto) @keyword (identifier) @label)
