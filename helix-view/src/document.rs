@@ -14,6 +14,8 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+
 use helix_core::{
     encoding,
     history::{History, UndoKind},
@@ -30,6 +32,10 @@ use crate::{apply_transaction, DocumentId, Editor, View, ViewId};
 const BUF_SIZE: usize = 8192;
 
 const DEFAULT_INDENT: IndentStyle = IndentStyle::Tabs;
+
+/// Threshold for file to be treated as "big".
+/// Big files have their syntax disabled.
+const BIG_FILE_THRESHOLD: usize = 128 * 1024 * 1024; // 128 Megabytes
 
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 
@@ -83,6 +89,11 @@ impl Serialize for Mode {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum DocumentEvent {
+    DisabledSyntax = 0,
+}
+
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
@@ -102,6 +113,8 @@ pub struct Document {
     syntax: Option<Syntax>,
     /// Corresponding language scope name. Usually `source.<lang>`.
     pub(crate) language: Option<Arc<LanguageConfiguration>>,
+    /// Sets if syntax parser should be used or not
+    pub enable_syntax: bool,
 
     /// Pending changes since last history commit.
     changes: ChangeSet,
@@ -121,6 +134,11 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
+
+    pub document_events: (
+        UnboundedSender<DocumentEvent>,
+        UnboundedReceiver<DocumentEvent>,
+    ),
 }
 
 use std::{fmt, mem};
@@ -350,6 +368,7 @@ impl Document {
             restore_cursor: false,
             syntax: None,
             language: None,
+            enable_syntax: true,
             changes,
             old_state,
             diagnostics: Vec::new(),
@@ -359,6 +378,7 @@ impl Document {
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_server: None,
+            document_events: unbounded_channel(),
         }
     }
 
@@ -647,6 +667,15 @@ impl Document {
         // and error out when document is saved
         self.path = path;
 
+        if self.text.len_bytes() > BIG_FILE_THRESHOLD {
+            self.enable_syntax = false;
+            // Notify that syntax has been disabled
+            self.document_events
+                .0
+                .send(DocumentEvent::DisabledSyntax)
+                .unwrap();
+        }
+
         Ok(())
     }
 
@@ -658,9 +687,14 @@ impl Document {
         loader: Option<Arc<helix_core::syntax::Loader>>,
     ) {
         if let (Some(language_config), Some(loader)) = (language_config, loader) {
-            if let Some(highlight_config) = language_config.highlight_config(&loader.scopes()) {
-                let syntax = Syntax::new(&self.text, highlight_config, loader);
-                self.syntax = Some(syntax);
+            if self.enable_syntax {
+                if let Some(highlight_config) = language_config.highlight_config(&loader.scopes()) {
+                    let syntax = Syntax::new(&self.text, highlight_config, loader);
+                    self.syntax = Some(syntax);
+                }
+            } else {
+                // If there is some syntax and it should be disabled, disable it.
+                self.syntax = None;
             }
 
             self.language = Some(language_config);

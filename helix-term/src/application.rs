@@ -6,7 +6,9 @@ use helix_core::{
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{align_view, editor::ConfigEvent, theme, tree::Layout, Align, Editor};
+use helix_view::{
+    align_view, document::DocumentEvent, editor::ConfigEvent, theme, tree::Layout, Align, Editor,
+};
 use serde_json::json;
 
 use crate::{
@@ -285,6 +287,9 @@ impl Application {
 
             use futures_util::StreamExt;
 
+            let view = self.editor.tree.get(self.editor.tree.focus);
+            let document_in_focus = self.editor.documents.get_mut(&view.doc);
+
             tokio::select! {
                 biased;
 
@@ -312,6 +317,10 @@ impl Application {
                 }
                 Some(config_event) = self.editor.config_events.1.recv() => {
                     self.handle_config_events(config_event);
+                    self.render();
+                }
+                Some(document_event) = document_in_focus.unwrap().document_events.1.recv(), if document_in_focus.is_some() => {
+                    self.handle_document_events(document_event);
                     self.render();
                 }
                 Some(callback) = self.jobs.futures.next() => {
@@ -835,6 +844,24 @@ impl Application {
             }
             Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
         }
+    }
+
+    pub fn handle_document_events(&mut self, document_event: DocumentEvent) {
+        match document_event {
+            DocumentEvent::DisabledSyntax => self.compositor.push(ui::yesno_prompt(
+                &self.editor,
+                "File is big. Do you want to enable syntax highlighting anyway (it will slow down the editor) ? ".into(),
+                ui::YesNoAnswer::No,
+                move |cx: &mut crate::compositor::Context, answer: ui::YesNoAnswer| {
+                    if let ui::YesNoAnswer::Yes = answer {
+                        let view = cx.editor.tree.get(cx.editor.tree.focus);
+                        let document_in_focus = cx.editor.documents.get_mut(&view.doc).unwrap();
+                        document_in_focus.enable_syntax = true;
+                        document_in_focus.detect_language(cx.editor.syn_loader.clone());
+                    }
+                },
+            )),
+        };
     }
 
     async fn claim_term(&mut self) -> Result<(), Error> {

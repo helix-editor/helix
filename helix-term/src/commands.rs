@@ -435,7 +435,7 @@ impl MappableCommand {
         decrement, "Decrement item under cursor",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
-        command_palette, "Open command palette",
+        command_palette, "Open command pallete",
     );
 }
 
