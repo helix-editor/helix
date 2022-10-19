@@ -144,9 +144,9 @@
 <p>The names &quot;default&quot; and &quot;base16_default&quot; are reserved for the builtin themes and cannot be overridden by user defined themes.</p>
 <p>The default theme.toml can be found <a href="https://github.com/helix-editor/helix/blob/master/theme.toml">here</a>, and user submitted themes <a href="https://github.com/helix-editor/helix/blob/master/runtime/themes">here</a>. </p>
 <p>Each line in the theme file is specified as below:</p>
-<pre><code class="language-toml">key = { fg = &quot;#ffffff&quot;, bg = &quot;#000000&quot;, modifiers = [&quot;bold&quot;, &quot;italic&quot;] }
+<pre><code class="language-toml">key = { fg = &quot;#ffffff&quot;, bg = &quot;#000000&quot;, underline = { color = &quot;#ff0000&quot;, style = &quot;curl&quot;}, modifiers = [&quot;bold&quot;, &quot;italic&quot;] }
 </code></pre>
-<p>where <code>key</code> represents what you want to style, <code>fg</code> specifies the foreground color, <code>bg</code> the background color, and <code>modifiers</code> is a list of style modifiers. <code>bg</code> and <code>modifiers</code> can be omitted to defer to the defaults.</p>
+<p>where <code>key</code> represents what you want to style, <code>fg</code> specifies the foreground color, <code>bg</code> the background color, <code>underline</code> the underline <code>style</code>/<code>color</code>, and <code>modifiers</code> is a list of style modifiers. <code>bg</code>, <code>underline</code> and <code>modifiers</code> can be omitted to defer to the defaults.</p>
 <p>To specify only the foreground color:</p>
 <pre><code class="language-toml">key = &quot;#ffffff&quot;
 </code></pre>
@@ -201,6 +201,21 @@ over it and is merged into the default palette.</p>
 <tr><td><code>reversed</code></td></tr>
 <tr><td><code>hidden</code></td></tr>
 <tr><td><code>crossed_out</code></td></tr>
+</tbody></table>
+</div>
+<blockquote>
+<p>Note: The <code>underlined</code> modifier is deprecated and only available for backwards compatibility.
+Its behavior is equivalent to setting <code>underline.style=&quot;line&quot;</code>.</p>
+</blockquote>
+<h3 id="underline-style"><a class="header" href="#underline-style">Underline Style</a></h3>
+<p>One of the following values may be used as a value for <code>underline.style</code>. </p>
+<p>Some styles might not be supported by your terminal emulator.</p>
+<div class="table-wrapper"><table><thead><tr><th>Modifier</th></tr></thead><tbody>
+<tr><td><code>line</code></td></tr>
+<tr><td><code>curl</code></td></tr>
+<tr><td><code>dashed</code></td></tr>
+<tr><td><code>dot</code></td></tr>
+<tr><td><code>double_line</code></td></tr>
 </tbody></table>
 </div>
 <h3 id="inheritance"><a class="header" href="#inheritance">Inheritance</a></h3>
