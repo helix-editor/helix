@@ -30,16 +30,16 @@
 "attribute" = "aqua"
 "constructor" = "yellow"
 "module" = "blue"
-"property" = "yellow"
 "special" = "orange"
 
 "ui.background" = { bg = "bg0" }
 "ui.cursor" = { fg = "bg0", bg = "fg" }
-"ui.cursor.match" = { fg = "grey3", bg = "grey2" }
+"ui.cursor.match" = { fg = "grey0", bg = "grey2" }
 "ui.cursor.insert" = { fg = "bg0", bg = "bg_yellow" }
 "ui.cursor.select" = { fg = "bg0", bg = "bg_yellow" }
 "ui.linenr" = "yellow"
 "ui.linenr.selected" = { fg = "fg", modifiers = ["bold", "underlined"] }
+"ui.cursorline" = { fg = "grey1", bg = "bg2" }
 "ui.statusline" = { fg = "grey1", bg = "bg2" }
 "ui.statusline.inactive" = { fg = "grey2", bg = "bg1" }
 "ui.popup" = { fg = "grey2", bg = "bg1" }
@@ -50,13 +50,14 @@
 "ui.menu" = { fg = "fg", bg = "bg2" }
 "ui.menu.selected" = { fg = "bg0", bg = "bg_yellow" }
 "ui.selection" = { bg = "bg3" }
-"ui.virtual" = "grey2"
+"ui.virtual.whitespace" = "bg2"
+"ui.virtual.ruler" = { bg = "grey2" } 
 
 "hint" = "blue"
 "info" = "aqua"
 "warning" = "yellow"
 "error" = "nasty-red"
-"diagnostic" = { fg = "dark-red", Modifiers = ["underlined"] }
+"diagnostic" = { fg = "nasty-red", modifiers = ["underlined"] }
 
 "diff.plus" = { fg = "green" }
 "diff.delta" = { fg = "orange" }
@@ -69,7 +70,7 @@
 "markup.link.url" = "cyan"
 "markup.link.text" = "pink"
 "markup.quote" = { fg = "yellow", modifiers = ["italic"] }
-"markup.raw" = { fg = "foreground" }
+"markup.raw" = { fg = "fg" }
 
 [palette]
 
@@ -98,3 +99,4 @@ purple = "#d0c4d4"
 grey0 = "#aaaeb3"
 grey1 = "#e1e1e3"
 grey2 = "#646669"
+pink = "#e06c75"

@@ -1,36 +1,64 @@
-; inherits: javascript
+; Namespaces
 
-; Types
+(internal_module
+  [((identifier) @namespace) ((nested_identifier (identifier) @namespace))])
 
-(type_identifier) @type
-(predefined_type) @type.builtin
+(ambient_declaration "global" @namespace)
 
-((identifier) @type
- (#match? @type "^[A-Z]"))
-
-(type_arguments
-  "<" @punctuation.bracket
-  ">" @punctuation.bracket)
 
 ; Variables
 
 (required_parameter (identifier) @variable.parameter)
 (optional_parameter (identifier) @variable.parameter)
 
+; Punctuation
+
+[
+  ":"
+] @punctuation.delimiter
+
+(optional_parameter "?" @punctuation.special)
+(property_signature "?" @punctuation.special)
+
+(conditional_type ["?" ":"] @operator)
+
+
+
 ; Keywords
 
 [
   "abstract"
   "declare"
-  "enum"
   "export"
+  "infer"
   "implements"
-  "interface"
   "keyof"
   "namespace"
+] @keyword
+
+[
+  "type"
+  "interface"
+  "enum"
+] @keyword.storage.type
+
+[
+  "public"
   "private"
   "protected"
-  "public"
-  "type"
   "readonly"
-] @keyword
+] @keyword.storage.modifier
+
+; inherits: ecma
+
+; Types
+
+(type_identifier) @type
+(predefined_type) @type.builtin
+
+(type_arguments
+  "<" @punctuation.bracket
+  ">" @punctuation.bracket)
+
+((identifier) @type
+ (#match? @type "^[A-Z]"))

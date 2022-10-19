@@ -2,13 +2,37 @@ pub mod config;
 pub mod grammar;
 
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
+use std::path::PathBuf;
 
-pub static RUNTIME_DIR: once_cell::sync::Lazy<std::path::PathBuf> =
-    once_cell::sync::Lazy::new(runtime_dir);
+pub static RUNTIME_DIR: once_cell::sync::Lazy<PathBuf> = once_cell::sync::Lazy::new(runtime_dir);
 
-pub fn runtime_dir() -> std::path::PathBuf {
+static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+
+pub fn initialize_config_file(specified_file: Option<PathBuf>) {
+    let config_file = specified_file.unwrap_or_else(|| {
+        let config_dir = config_dir();
+
+        if !config_dir.exists() {
+            std::fs::create_dir_all(&config_dir).ok();
+        }
+
+        config_dir.join("config.toml")
+    });
+
+    // We should only initialize this value once.
+    CONFIG_FILE.set(config_file).ok();
+}
+
+pub fn runtime_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
         return dir.into();
+    }
+
+    if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
+        // this is the directory of the crate being run by cargo, we need the workspace path so we take the parent
+        let path = std::path::PathBuf::from(dir).parent().unwrap().join(RT_DIR);
+        log::debug!("runtime dir: {}", path.to_string_lossy());
+        return path;
     }
 
     const RT_DIR: &str = "runtime";
@@ -17,19 +41,16 @@ pub fn runtime_dir() -> std::path::PathBuf {
         return conf_dir;
     }
 
-    if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        // this is the directory of the crate being run by cargo, we need the workspace path so we take the parent
-        return std::path::PathBuf::from(dir).parent().unwrap().join(RT_DIR);
-    }
-
     // fallback to location of the executable being run
+    // canonicalize the path in case the executable is symlinked
     std::env::current_exe()
         .ok()
+        .and_then(|path| std::fs::canonicalize(path).ok())
         .and_then(|path| path.parent().map(|path| path.to_path_buf().join(RT_DIR)))
         .unwrap()
 }
 
-pub fn config_dir() -> std::path::PathBuf {
+pub fn config_dir() -> PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
     let mut path = strategy.config_dir();
@@ -37,8 +58,8 @@ pub fn config_dir() -> std::path::PathBuf {
     path
 }
 
-pub fn local_config_dirs() -> Vec<std::path::PathBuf> {
-    let directories = find_root_impl(None, &[".helix".to_string()])
+pub fn local_config_dirs() -> Vec<PathBuf> {
+    let directories = find_local_config_dirs()
         .into_iter()
         .map(|path| path.join(".helix"))
         .collect();
@@ -46,7 +67,7 @@ pub fn local_config_dirs() -> Vec<std::path::PathBuf> {
     directories
 }
 
-pub fn cache_dir() -> std::path::PathBuf {
+pub fn cache_dir() -> PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
     let mut path = strategy.cache_dir();
@@ -54,44 +75,31 @@ pub fn cache_dir() -> std::path::PathBuf {
     path
 }
 
-pub fn config_file() -> std::path::PathBuf {
-    config_dir().join("config.toml")
+pub fn config_file() -> PathBuf {
+    CONFIG_FILE
+        .get()
+        .map(|path| path.to_path_buf())
+        .unwrap_or_else(|| config_dir().join("config.toml"))
 }
 
-pub fn lang_config_file() -> std::path::PathBuf {
+pub fn lang_config_file() -> PathBuf {
     config_dir().join("languages.toml")
 }
 
-pub fn log_file() -> std::path::PathBuf {
+pub fn log_file() -> PathBuf {
     cache_dir().join("helix.log")
 }
 
-pub fn find_root_impl(root: Option<&str>, root_markers: &[String]) -> Vec<std::path::PathBuf> {
+pub fn find_local_config_dirs() -> Vec<PathBuf> {
     let current_dir = std::env::current_dir().expect("unable to determine current directory");
     let mut directories = Vec::new();
 
-    let root = match root {
-        Some(root) => {
-            let root = std::path::Path::new(root);
-            if root.is_absolute() {
-                root.to_path_buf()
-            } else {
-                current_dir.join(root)
-            }
-        }
-        None => current_dir,
-    };
-
-    for ancestor in root.ancestors() {
-        // don't go higher than repo
+    for ancestor in current_dir.ancestors() {
         if ancestor.join(".git").is_dir() {
-            // Use workspace if detected from marker
             directories.push(ancestor.to_path_buf());
+            // Don't go higher than repo if we're in one
             break;
-        } else if root_markers
-            .iter()
-            .any(|marker| ancestor.join(marker).exists())
-        {
+        } else if ancestor.join(".helix").is_dir() {
             directories.push(ancestor.to_path_buf());
         }
     }
@@ -111,11 +119,7 @@ pub fn find_root_impl(root: Option<&str>, root_markers: &[String]) -> Vec<std::p
 /// documents that use a top-level array of values like the `languages.toml`,
 /// where one usually wants to override or add to the array instead of
 /// replacing it altogether.
-pub fn merge_toml_values(
-    left: toml::Value,
-    right: toml::Value,
-    merge_toplevel_arrays: bool,
-) -> toml::Value {
+pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usize) -> toml::Value {
     use toml::Value;
 
     fn get_name(v: &Value) -> Option<&str> {
@@ -129,7 +133,7 @@ pub fn merge_toml_values(
             // that you can specify a sub-set of languages in an overriding
             // `languages.toml` but that nested arrays like Language Server
             // arguments are replaced instead of merged.
-            if merge_toplevel_arrays {
+            if merge_depth > 0 {
                 left_items.reserve(right_items.len());
                 for rvalue in right_items {
                     let lvalue = get_name(&rvalue)
@@ -138,7 +142,7 @@ pub fn merge_toml_values(
                         })
                         .map(|lpos| left_items.remove(lpos));
                     let mvalue = match lvalue {
-                        Some(lvalue) => merge_toml_values(lvalue, rvalue, false),
+                        Some(lvalue) => merge_toml_values(lvalue, rvalue, merge_depth - 1),
                         None => rvalue,
                     };
                     left_items.push(mvalue);
@@ -149,18 +153,22 @@ pub fn merge_toml_values(
             }
         }
         (Value::Table(mut left_map), Value::Table(right_map)) => {
-            for (rname, rvalue) in right_map {
-                match left_map.remove(&rname) {
-                    Some(lvalue) => {
-                        let merged_value = merge_toml_values(lvalue, rvalue, merge_toplevel_arrays);
-                        left_map.insert(rname, merged_value);
-                    }
-                    None => {
-                        left_map.insert(rname, rvalue);
+            if merge_depth > 0 {
+                for (rname, rvalue) in right_map {
+                    match left_map.remove(&rname) {
+                        Some(lvalue) => {
+                            let merged_value = merge_toml_values(lvalue, rvalue, merge_depth - 1);
+                            left_map.insert(rname, merged_value);
+                        }
+                        None => {
+                            left_map.insert(rname, rvalue);
+                        }
                     }
                 }
+                Value::Table(left_map)
+            } else {
+                Value::Table(right_map)
             }
-            Value::Table(left_map)
         }
         // Catch everything else we didn't handle, and use the right value
         (_, value) => value,
@@ -185,7 +193,7 @@ mod merge_toml_tests {
             .expect("Couldn't parse built-in languages config");
         let user: Value = toml::from_str(USER).unwrap();
 
-        let merged = merge_toml_values(base, user, true);
+        let merged = merge_toml_values(base, user, 3);
         let languages = merged.get("language").unwrap().as_array().unwrap();
         let nix = languages
             .iter()
@@ -218,7 +226,7 @@ mod merge_toml_tests {
             .expect("Couldn't parse built-in languages config");
         let user: Value = toml::from_str(USER).unwrap();
 
-        let merged = merge_toml_values(base, user, true);
+        let merged = merge_toml_values(base, user, 3);
         let languages = merged.get("language").unwrap().as_array().unwrap();
         let ts = languages
             .iter()

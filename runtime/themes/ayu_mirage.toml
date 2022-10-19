@@ -1,0 +1,81 @@
+# Author: André Sá <enkodr@outlook.com>
+# Based on the AYU theme colors from https://github.com/dempfi/ayu
+
+# Syntax highlighting
+"type" = { fg = "blue" }
+"type.builtin" = { fg = "blue" }
+"constructor" = { fg = "green" }
+"constant" = { fg = "magenta" }
+"string" = { fg = "green" }
+"string.regexp" = { fg = "orange" }
+"string.special" = { fg = "yellow" }
+"comment" = { fg = "gray", modifiers = ["italic"] }
+"variable" = { fg = "foreground" }
+"variable.parameter" = { fg = "yellow" }
+"label" = { fg = "orange" }
+"punctuation" = { fg = "foreground" }
+"keyword" = { fg = "orange" }
+"keyword.control" = { fg = "yellow" }
+"keyword.directive" = { fg = "yellow" }
+"operator" = { fg = "orange" }
+"function" = { fg = "yellow", modifiers = ["bold"] }
+"tag" = { fg = "blue" }
+"namespace" = { fg = "blue" }
+"markup.heading" = { fg = "orange" }
+"markup.list" = { fg = "yellow" }
+"markup.raw.block" = { bg = "gray", fg = "orange" }
+"markup.link.url" = { fg = "blue" }
+"markup.link.text" = { fg = "yellow" }
+"markup.link.label" = { fg = "green" }
+"markup.quote" = { fg = "yellow" }
+"diff.plus" = { fg = "green" }
+"diff.minus" = { fg = "red" }
+"diff.delta" = { fg = "green" }
+
+# Interface
+"ui.background"= { bg = "background" }
+"ui.cursor" = { bg = "green", fg = "dark_gray" }
+"ui.cursor.primary" = { bg = "orange", fg = "dark_gray" }
+"ui.cursor.match" = { fg = "orange" }
+"ui.linenr" = { fg = "dark_gray" }
+"ui.linenr.selected" = { fg = "orange" }
+"ui.cursorline" = { bg = "black" }
+"ui.statusline" = { fg = "foreground", bg = "black" }
+"ui.popup" = { bg = "black" }
+"ui.window" = { fg = "dark_gray" }
+"ui.help" = { fg = "foreground", bg = "black" }
+"ui.text" = { fg = "foreground" }
+"ui.text.focus" = { bg = "dark_gray", fg = "foreground" }
+"ui.text.info" = { fg = "foreground" }
+"ui.virtual.whitespace" = { fg = "dark_gray" }
+"ui.virtual.ruler" = { bg = "black" }
+"ui.menu" = { fg = "foreground", bg = "black" }
+"ui.menu.selected" = { bg = "orange", fg = "background" }
+"ui.selection" = { bg = "dark_gray" }
+"warning" = { fg = "yellow" }
+"error" = { fg = "red", modifiers = ["bold"] }
+"info" = { fg = "blue", modifiers = ["bold"] }
+"hint" = { fg = "blue", modifiers = ["bold"] }
+"diagnostic"= { fg = "red", modifiers = ["underlined"] }
+"diagnostic.info"= { fg = "blue", modifiers = ["underlined"] }
+"diagnostic.warning"= { fg = "yellow", modifiers = ["underlined"] }
+"diagnostic.error"= { fg = "red", modifiers = ["underlined"] }
+"ui.bufferline" = { fg = "gray", bg = "black" }
+"ui.bufferline.active" = { fg = "foreground", bg = "background" }
+
+"special" = { fg = "orange" }
+
+[palette]
+background = "#242936"
+foreground = "#cccac2"
+
+black = "#1a1f29"
+blue = "#73d0ff"
+dark_gray = "#8a919959"
+cyan = "#80bfff"
+gray = "#565b66"
+green = "#d5ff80"
+magenta = "#dfbfff"
+orange = "#ffad66"
+red = "#f28779"
+yellow = "#ffcc77"

@@ -6,10 +6,9 @@ We provide pre-built binaries on the [GitHub Releases page](https://github.com/h
 
 ## OSX
 
-A Homebrew tap is available:
+Helix is available in homebrew-core:
 
 ```
-brew tap helix-editor/helix
 brew install helix
 ```
 
@@ -22,8 +21,12 @@ the project root. The flake can also be used to spin up a reproducible developme
 shell for working on Helix with `nix develop`.
 
 Flake outputs are cached for each push to master using
-[Cachix](https://www.cachix.org/). With Cachix
-[installed](https://docs.cachix.org/installation), `cachix use helix` will
+[Cachix](https://www.cachix.org/). The flake is configured to
+automatically make use of this cache assuming the user accepts
+the new settings on first use.
+
+If you are using a version of Nix without flakes enabled you can
+[install Cachix cli](https://docs.cachix.org/installation); `cachix use helix` will
 configure Nix to use cached outputs when possible.
 
 ### Arch Linux
@@ -57,26 +60,48 @@ cargo install --path helix-term
 
 This will install the `hx` binary to `$HOME/.cargo/bin`.
 
-Helix also needs it's runtime files so make sure to copy/symlink the `runtime/` directory into the
+Helix also needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
 config directory (for example `~/.config/helix/runtime` on Linux/macOS). This location can be overridden
 via the `HELIX_RUNTIME` environment variable.
 
-| OS        | command   |
-|-----------|-----------|
-|windows    |`xcopy runtime %AppData%/helix/runtime`|
-|linux/macos|`ln -s $PWD/runtime ~/.config/helix/runtime`
+| OS                  | command                                          |
+| ------------------- | ------------------------------------------------ |
+| windows(cmd.exe)    | `xcopy /e /i runtime %AppData%/helix/runtime`    |
+| windows(powershell) | `xcopy /e /i runtime $Env:AppData\helix\runtime` |
+| linux/macos         | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
 
-## Finishing up the installation 
+To use Helix in desktop environments that supports [XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html), including Gnome and KDE, copy the provided `.desktop` file to the correct folder:
 
-To make sure everything is set up as expected you should finally run the helix healthcheck via 
+```bash
+cp contrib/Helix.desktop ~/.local/share/applications
+```
+
+To use another terminal than the default, you will need to modify the `.desktop` file. For example, to use `kitty`:
+
+```bash
+sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
+sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
+```
+
+Please note: there is no icon for Helix yet, so the system default will be used.
+
+## Finishing up the installation
+
+To make sure everything is set up as expected you should finally run the helix healthcheck via
+
 ```
 hx --health
 ```
-For more information on the information displayed in the healthcheck results refer to [Healthcheck](https://github.com/helix-editor/helix/wiki/Healthcheck).
 
+For more information on the information displayed in the health check results refer to [Healthcheck](https://github.com/helix-editor/helix/wiki/Healthcheck).
 
-## Building tree-sitter grammars
+### Building tree-sitter grammars
 
 Tree-sitter grammars must be fetched and compiled if not pre-packaged.
 Fetch grammars with `hx --grammar fetch` (requires `git`) and compile them
 with `hx --grammar build` (requires a C++ compiler).
+
+### Installing language servers
+
+Language servers can optionally be installed if you want their features (auto-complete, diagnostics etc.).
+Follow the [instructions on the wiki page](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers) to add your language servers of choice.
