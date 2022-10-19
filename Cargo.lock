@@ -508,6 +508,7 @@ dependencies = [
  "helix-core",
  "helix-view",
  "serde",
+ "termini",
  "unicode-segmentation",
 ]
 
@@ -1098,6 +1099,15 @@ dependencies = [
  "redox_syscall",
  "remove_dir_all",
  "winapi",
+]
+
+[[package]]
+name = "termini"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "394766021ef3dae8077f080518cdf5360831990f77f5708d5e3594c9b3efa2f9"
+dependencies = [
+ "dirs-next",
 ]
 
 [[package]]
