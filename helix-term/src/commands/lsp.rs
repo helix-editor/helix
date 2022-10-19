@@ -8,10 +8,11 @@ use tui::text::{Span, Spans};
 
 use super::{align_view, push_jump, Align, Context, Editor, Open};
 
-use helix_core::{path, Selection};
+use helix_core::{movement::Direction, path, Selection};
 use helix_view::{apply_transaction, editor::Action, theme::Style};
 
 use crate::{
+    commands::{get_next_diag_doc, get_next_diag_pos, goto_pos},
     compositor::{self, Compositor},
     ui::{
         self, lsp::SignatureHelp, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent,
@@ -409,6 +410,122 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
         offset_encoding,
     );
     cx.push_layer(Box::new(overlayed(picker)));
+}
+
+pub fn goto_first_diag_workspace(cx: &mut Context) {
+    let editor = &mut cx.editor;
+
+    let mut diagnostics = editor
+        .diagnostics
+        .iter()
+        .filter(|(_, diags)| !diags.is_empty())
+        .map(|(url, _)| url);
+
+    let diag = diagnostics.next();
+    match diag {
+        Some(url) => {
+            let path = url.to_file_path().unwrap();
+            editor
+                .open(&path, Action::Replace)
+                .expect("editor.open failed");
+            let doc = doc!(editor);
+            let pos = match doc.diagnostics().first() {
+                Some(diag) => diag.range.start,
+                None => return,
+            };
+            goto_pos(editor, pos);
+        }
+        None => (),
+    }
+}
+
+pub fn goto_last_diag_workspace(cx: &mut Context) {
+    let editor = &mut cx.editor;
+
+    let diagnostics = editor
+        .diagnostics
+        .iter()
+        .filter(|(_, diags)| !diags.is_empty())
+        .map(|(url, _)| url);
+
+    let diag = diagnostics.last();
+    match diag {
+        Some(url) => {
+            let path = url.to_file_path().unwrap();
+            editor
+                .open(&path, Action::Replace)
+                .expect("editor.open failed");
+            let doc = doc!(editor);
+            let pos = match doc.diagnostics().last() {
+                Some(diag) => diag.range.start,
+                None => return,
+            };
+            goto_pos(editor, pos);
+        }
+        None => (),
+    }
+}
+
+pub fn goto_next_diag_workspace(cx: &mut Context) {
+    let editor = &mut cx.editor;
+    let (view, doc) = current!(editor);
+
+    let doc_next_diag_pos = get_next_diag_pos(view, doc, Direction::Forward);
+
+    match doc_next_diag_pos {
+        Some(pos) => goto_pos(editor, pos),
+        None => {
+            let diagnostics = editor.diagnostics.clone();
+            let next_doc = get_next_diag_doc(doc, diagnostics, Direction::Forward);
+            match next_doc {
+                Some(path) => {
+                    editor
+                        .open(&path, Action::Replace)
+                        .expect("editor.open failed");
+                    let doc = doc!(editor);
+                    match doc.diagnostics().get(0) {
+                        Some(diag) => {
+                            let pos = diag.range.start;
+                            goto_pos(editor, pos)
+                        }
+                        None => (),
+                    }
+                }
+                None => (),
+            }
+        }
+    }
+}
+
+pub fn goto_prev_diag_workspace(cx: &mut Context) {
+    let editor = &mut cx.editor;
+    let (view, doc) = current!(editor);
+
+    let doc_prev_diag_pos = get_next_diag_pos(view, doc, Direction::Backward);
+
+    match doc_prev_diag_pos {
+        Some(pos) => goto_pos(editor, pos),
+        None => {
+            let diagnostics = editor.diagnostics.clone();
+            let next_doc = get_next_diag_doc(doc, diagnostics, Direction::Backward);
+            match next_doc {
+                Some(path) => {
+                    editor
+                        .open(&path, Action::Replace)
+                        .expect("editor.open failed");
+                    let doc = doc!(editor);
+                    match doc.diagnostics().last() {
+                        Some(diag) => {
+                            let pos = diag.range.start;
+                            goto_pos(editor, pos)
+                        }
+                        None => (),
+                    }
+                }
+                None => (),
+            }
+        }
+    }
 }
 
 impl ui::menu::Item for lsp::CodeActionOrCommand {

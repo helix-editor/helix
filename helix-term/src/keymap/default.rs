@@ -107,6 +107,10 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "t" => goto_prev_test,
             "p" => goto_prev_paragraph,
             "space" => add_newline_above,
+            "[" => { "Workspace"
+                "d" => goto_prev_diag_workspace,
+                "D" => goto_first_diag_workspace,
+            },
         },
         "]" => { "Right bracket"
             "d" => goto_next_diag,
@@ -118,6 +122,10 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "t" => goto_next_test,
             "p" => goto_next_paragraph,
             "space" => add_newline_below,
+            "]" => { "Workspace"
+                "d" => goto_next_diag_workspace,
+                "D" => goto_last_diag_workspace,
+            },
         },
 
         "/" => search,
