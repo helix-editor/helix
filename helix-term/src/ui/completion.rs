@@ -396,7 +396,7 @@ impl Component for Completion {
                 );
             }
 
-            let markdown_doc = self.active_markdown_doc.1.as_mut().unwrap();
+            let markdown_popup = self.active_markdown_doc.1.as_mut().unwrap();
 
             let (popup_x, popup_y) = self.popup.get_rel_position(area, cx);
             let (popup_width, _popup_height) = self.popup.get_size();
@@ -409,7 +409,7 @@ impl Component for Completion {
                 let x = popup_x + popup_width;
                 let y = popup_y;
 
-                if let Some((rel_width, rel_height)) = markdown_doc.required_size((width, height)) {
+                if let Some((rel_width, rel_height)) = markdown_popup.required_size((width, height)) {
                     width = rel_width.min(width);
                     height = rel_height.min(height);
                 }
@@ -433,7 +433,7 @@ impl Component for Completion {
             // clear area
             let background = cx.editor.theme.get("ui.popup");
             surface.clear_with(area, background);
-            markdown_doc.render(area, surface, cx);
+            markdown_popup.render(area, surface, cx);
         }
     }
 }

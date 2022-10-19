@@ -203,7 +203,7 @@ impl<T: Component> Component for Popup<T> {
         let max_height = if !self.is_completion_popup {
             26.min(viewport.1.saturating_sub(2))
         } else {
-            viewport.1.saturating_sub(2)
+            viewport.1
         }; // add some spacing in the viewport
 
         let inner = Rect::new(0, 0, max_width, max_height).inner(&self.margin);
