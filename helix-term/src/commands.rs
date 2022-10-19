@@ -4917,7 +4917,7 @@ fn jump_mode_word(cx: &mut Context) {
     let text = doc.text().slice(..);
     let range = doc.selection(view.id).primary();
 
-    let mut fwd_jump_locations = Vec::new();
+    let mut forward_jump_locations = Vec::new();
     for n in 1.. {
         let next = movement::move_next_word_start(text, range, n);
         // Check that the cursor is within the file before attempting further operations.
@@ -4936,17 +4936,17 @@ fn jump_mode_word(cx: &mut Context) {
             continue;
         }
         // Avoid adjacent jump locations
-        if fwd_jump_locations
+        if forward_jump_locations
             .last()
             .map(|(pos, _)| cursor_pos - pos <= 1)
             .unwrap_or(false)
         {
             continue;
         }
-        fwd_jump_locations.push((cursor_pos, next.anchor));
+        forward_jump_locations.push((cursor_pos, next.anchor));
     }
 
-    let mut bck_jump_locations = Vec::new();
+    let mut backward_jump_locations = Vec::new();
     for n in 1.. {
         let next = movement::move_prev_word_start(text, range, n);
         let cursor_pos = next.cursor(text);
@@ -4960,20 +4960,20 @@ fn jump_mode_word(cx: &mut Context) {
             }
             continue;
         }
-        if bck_jump_locations
+        if backward_jump_locations
             .last()
             .map(|(pos, _)| pos - cursor_pos <= 1)
             .unwrap_or(false)
         {
             continue;
         }
-        bck_jump_locations.push((cursor_pos, next.anchor));
+        backward_jump_locations.push((cursor_pos, next.anchor));
         if cursor_pos == 0 {
             break;
         }
     }
 
-    jump_mode_impl(cx, [fwd_jump_locations, bck_jump_locations]);
+    jump_mode_impl(cx, forward_jump_locations, backward_jump_locations);
 }
 
 fn jump_mode_search(cx: &mut Context) {
@@ -4999,7 +4999,7 @@ fn jump_mode_search_impl(cx: &mut Context, extend: bool) {
             (range.cursor(text), range.anchor)
         };
 
-        let mut fwd_jump_locations = Vec::new();
+        let mut forward_jump_locations = Vec::new();
         for n in 1.. {
             let next = search::find_nth_next(text, c, cursor + 1, n);
             match next {
@@ -5011,12 +5011,12 @@ fn jump_mode_search_impl(cx: &mut Context, extend: bool) {
                     if !view.is_cursor_in_view(pos, doc, 0) {
                         continue;
                     }
-                    fwd_jump_locations.push((pos, if extend { anchor } else { pos }));
+                    forward_jump_locations.push((pos, if extend { anchor } else { pos }));
                 }
                 _ => break,
             }
         }
-        let mut bck_jump_locations = Vec::new();
+        let mut backward_jump_locations = Vec::new();
         for n in 1.. {
             let next = search::find_nth_prev(text, c, cursor, n);
             match next {
@@ -5028,25 +5028,29 @@ fn jump_mode_search_impl(cx: &mut Context, extend: bool) {
                     if !view.is_cursor_in_view(pos, doc, 0) {
                         continue;
                     }
-                    bck_jump_locations.push((pos, if extend { anchor } else { pos }));
+                    backward_jump_locations.push((pos, if extend { anchor } else { pos }));
                 }
                 _ => break,
             }
         }
 
-        jump_mode_impl(cx, [fwd_jump_locations, bck_jump_locations]);
+        jump_mode_impl(cx, forward_jump_locations, backward_jump_locations);
     });
 }
 
-fn jump_mode_impl(cx: &mut Context, [fwd_jumps, bck_jumps]: [Vec<(usize, usize)>; 2]) {
+fn jump_mode_impl(
+    cx: &mut Context,
+    forward_jumps: Vec<(usize, usize)>,
+    backward_jumps: Vec<(usize, usize)>,
+) {
     const JUMP_KEYS: &[u8] = b"asdghklqwertyuiopzxcvbnmfj;";
 
-    let jump_locations = fwd_jumps
+    let jump_locations = forward_jumps
         .into_iter()
         .map(Some)
         .chain(std::iter::repeat(None))
         .zip(
-            bck_jumps
+            backward_jumps
                 .into_iter()
                 .map(Some)
                 .chain(std::iter::repeat(None)),
