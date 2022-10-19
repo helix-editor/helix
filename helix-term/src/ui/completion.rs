@@ -1,4 +1,7 @@
-use crate::compositor::{Component, Context, Event, EventResult};
+use crate::{
+    compositor::{Component, Context, Event, EventResult},
+    ctrl, key,
+};
 use helix_view::{apply_transaction, editor::CompleteAction};
 use tui::buffer::Buffer as Surface;
 use tui::text::Spans;
@@ -6,11 +9,7 @@ use tui::text::Spans;
 use std::borrow::Cow;
 
 use helix_core::{Change, Transaction};
-use helix_view::{
-    graphics::Rect,
-    input::{KeyCode, KeyEvent},
-    Document, Editor,
-};
+use helix_view::{graphics::Rect, Document, Editor};
 
 use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
@@ -85,6 +84,7 @@ pub struct Completion {
     #[allow(dead_code)]
     trigger_offset: usize,
     // TODO: maintain a completioncontext with trigger kind & trigger char
+    active_markdown_doc: (String, Option<Box<Popup<Markdown>>>),
 }
 
 impl Completion {
@@ -224,6 +224,7 @@ impl Completion {
             popup,
             start_offset,
             trigger_offset,
+            active_markdown_doc: (String::new(), None),
         };
 
         // need to recompute immediately in case start_offset != trigger_offset
@@ -299,13 +300,21 @@ impl Completion {
 
 impl Component for Completion {
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
-        // let the Editor handle Esc instead
-        if let Event::Key(KeyEvent {
-            code: KeyCode::Esc, ..
-        }) = event
-        {
-            return EventResult::Ignored(None);
+        if let Event::Key(key_event) = event {
+            match key_event {
+                // let the Editor handle Esc instead
+                key!(Esc) => {
+                    return EventResult::Ignored(None);
+                }
+
+                ctrl!('u') | ctrl!('d') if self.active_markdown_doc.1.is_some() => {
+                    let popup = self.active_markdown_doc.1.as_mut().unwrap();
+                    return popup.handle_event(event, cx);
+                }
+                _ => {}
+            }
         }
+
         self.popup.handle_event(event, cx)
     }
 
@@ -330,53 +339,64 @@ impl Component for Completion {
             let coords = helix_core::visual_coords_at_pos(text, cursor_pos, doc.tab_width());
             let cursor_pos = (coords.row - view.offset.row) as u16;
 
-            let mut markdown_doc = match &option.documentation {
-                Some(lsp::Documentation::String(contents))
-                | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
-                    kind: lsp::MarkupKind::PlainText,
-                    value: contents,
-                })) => {
-                    // TODO: convert to wrapped text
-                    Markdown::new(
-                        format!(
-                            "```{}\n{}\n```\n{}",
-                            language,
-                            option.detail.as_deref().unwrap_or_default(),
-                            contents.clone()
-                        ),
-                        cx.editor.syn_loader.clone(),
-                    )
-                }
-                Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
-                    kind: lsp::MarkupKind::Markdown,
-                    value: contents,
-                })) => {
-                    // TODO: set language based on doc scope
-                    Markdown::new(
-                        format!(
-                            "```{}\n{}\n```\n{}",
-                            language,
-                            option.detail.as_deref().unwrap_or_default(),
-                            contents.clone()
-                        ),
-                        cx.editor.syn_loader.clone(),
-                    )
-                }
-                None if option.detail.is_some() => {
-                    // TODO: copied from above
+            if option.label != self.active_markdown_doc.0 {
+                let markdown_doc = match &option.documentation {
+                    Some(lsp::Documentation::String(contents))
+                    | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
+                        kind: lsp::MarkupKind::PlainText,
+                        value: contents,
+                    })) => {
+                        // TODO: convert to wrapped text
+                        Markdown::new(
+                            format!(
+                                "```{}\n{}\n```\n{}",
+                                language,
+                                option.detail.as_deref().unwrap_or_default(),
+                                contents.clone()
+                            ),
+                            cx.editor.syn_loader.clone(),
+                        )
+                    }
+                    Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
+                        kind: lsp::MarkupKind::Markdown,
+                        value: contents,
+                    })) => {
+                        // TODO: set language based on doc scope
+                        Markdown::new(
+                            format!(
+                                "```{}\n{}\n```\n{}",
+                                language,
+                                option.detail.as_deref().unwrap_or_default(),
+                                contents.clone()
+                            ),
+                            cx.editor.syn_loader.clone(),
+                        )
+                    }
+                    None if option.detail.is_some() => {
+                        // TODO: copied from above
 
-                    // TODO: set language based on doc scope
-                    Markdown::new(
-                        format!(
-                            "```{}\n{}\n```",
-                            language,
-                            option.detail.as_deref().unwrap_or_default(),
-                        ),
-                        cx.editor.syn_loader.clone(),
-                    )
-                }
-                None => return,
-            };
+                        // TODO: set language based on doc scope
+                        Markdown::new(
+                            format!(
+                                "```{}\n{}\n```",
+                                language,
+                                option.detail.as_deref().unwrap_or_default(),
+                            ),
+                            cx.editor.syn_loader.clone(),
+                        )
+                    }
+                    None => return,
+                };
+
+                self.active_markdown_doc = (
+                    option.label.clone(),
+                    Some(Box::new(
+                        Popup::new("documentation-popup", markdown_doc).completion_popup(true),
+                    )),
+                );
+            }
+
+            let markdown_doc = self.active_markdown_doc.1.as_mut().unwrap();
 
             let (popup_x, popup_y) = self.popup.get_rel_position(area, cx);
             let (popup_width, _popup_height) = self.popup.get_size();

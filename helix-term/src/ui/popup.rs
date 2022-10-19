@@ -22,6 +22,7 @@ pub struct Popup<T: Component> {
     auto_close: bool,
     ignore_escape_key: bool,
     id: &'static str,
+    is_completion_popup: bool,
 }
 
 impl<T: Component> Popup<T> {
@@ -37,6 +38,7 @@ impl<T: Component> Popup<T> {
             auto_close: false,
             ignore_escape_key: false,
             id,
+            is_completion_popup: false,
         }
     }
 
@@ -73,6 +75,11 @@ impl<T: Component> Popup<T> {
     /// would be required to exit insert mode.
     pub fn ignore_escape_key(mut self, ignore: bool) -> Self {
         self.ignore_escape_key = ignore;
+        self
+    }
+
+    pub fn completion_popup(mut self, is_completion: bool) -> Self {
+        self.is_completion_popup = is_completion;
         self
     }
 
@@ -188,8 +195,16 @@ impl<T: Component> Component for Popup<T> {
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        let max_width = 120.min(viewport.0);
-        let max_height = 26.min(viewport.1.saturating_sub(2)); // add some spacing in the viewport
+        let max_width = if !self.is_completion_popup {
+            120.min(viewport.0)
+        } else {
+            viewport.0
+        };
+        let max_height = if !self.is_completion_popup {
+            26.min(viewport.1.saturating_sub(2))
+        } else {
+            viewport.1.saturating_sub(2)
+        }; // add some spacing in the viewport
 
         let inner = Rect::new(0, 0, max_width, max_height).inner(&self.margin);
 
@@ -217,10 +232,13 @@ impl<T: Component> Component for Popup<T> {
 
         cx.scroll = Some(self.scroll);
 
-        let (rel_x, rel_y) = self.get_rel_position(viewport, cx);
-
         // clip to viewport
-        let area = viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1));
+        let area = if !self.is_completion_popup {
+            let (rel_x, rel_y) = self.get_rel_position(viewport, cx);
+            viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1))
+        } else {
+            viewport
+        };
 
         // clear area
         let background = cx.editor.theme.get("ui.popup");
