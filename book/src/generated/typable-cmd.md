@@ -69,4 +69,4 @@
 | `:append-output` | Run shell command, appending output after each selection. |
 | `:pipe` | Pipe each selection to the shell command. |
 | `:run-shell-command`, `:sh` | Run a shell command |
-| `:redraw` | Refresh the whole UI, helps recovering from terminal glitches |
+| `:redraw` | Clear and re-render the whole UI |
