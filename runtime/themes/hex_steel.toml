@@ -1,7 +1,9 @@
+# Author: Ramojus Lapinskas <ramojus.lap@gmail.com>
+
 "comment" = { fg = "highlight_three" }
 "comment.block.documentation" = { bg = "_t4", modifiers = ["italic"] }
 
-"constant" = { fg = "_t4" }
+"constant" = { fg = "highlight_four" }
 "function" = { fg = "_t10" }
 "function.method" = { fg = "_t10" }
 "function.macro" = { fg = "_t7" }
@@ -17,7 +19,7 @@
 "tag" = { fg = "_t4" }
 "type" = { fg = "_t8", modifiers = ["bold"] }
 "namespace" = { fg = "_t6", modifiers = ["bold"] }
-"variable" = { fg = "_t5" }
+"variable" = { fg = "_t4" }
 "label" = { fg = "_t4" }
 
 "diff.plus" = { fg = "_t4" }
@@ -76,21 +78,22 @@
 "markup.raw" = { fg = "_t4" }
 
 [palette]
-_t1 = "#0f0c0c"
-_t2 = "#151111"
-_t3 = "#423b3b"
-_t4 = "#535557"
-_t5 = "#646b6d"
-_t6 = "#627879"
-_t7 = "#be6063"
-_t8 = "#98b4af"
-_t9 = "#bec9c9"
-_t10 = "#d8e6e4"
+_t1 = "#0f0b0b"
+_t2 = "#161010"
+_t3 = "#5b5555"
+_t4 = "#656869"
+_t5 = "#727b7c"
+_t6 = "#6e8789"
+_t7 = "#d85c60"
+_t8 = "#9bc1bb"
+_t9 = "#b5c5c5"
+_t10 = "#c0d0ce"
 
 
 highlight = "#3f36f2"
 highlight_two = "#b3814d"
 highlight_three = "#d4d987"
+highlight_four = "#f78c5e"
 
 black = "#000000"
 
