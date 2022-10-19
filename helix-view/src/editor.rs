@@ -1323,7 +1323,7 @@ impl Editor {
         timeout: Option<u64>,
     ) -> Result<(), tokio::time::error::Elapsed> {
         tokio::time::timeout(
-            Duration::from_millis(timeout.unwrap_or(10000)),
+            Duration::from_millis(timeout.unwrap_or(3000)),
             future::join_all(
                 self.language_servers
                     .iter_clients()
