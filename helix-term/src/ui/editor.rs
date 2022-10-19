@@ -416,83 +416,80 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
     ) -> Option<Vec<usize>> {
-        if let Some(syntax) = doc.syntax() {
-            let tree = syntax.tree();
-            let text = doc.text().slice(..);
-            let cursor_byte = doc.selection(view.id).primary().cursor(text);
-            let context_nodes = doc
-                .language_config()
-                .and_then(|lc| lc.sticky_context_nodes.as_ref());
+        let syntax = doc.syntax()?;
+        let tree = syntax.tree();
+        let text = doc.text().slice(..);
+        let cursor_byte = doc.selection(view.id).primary().cursor(text);
+        let context_nodes = doc
+            .language_config()
+            .and_then(|lc| lc.sticky_context_nodes.as_ref());
 
-            let mut parent = tree
-                .root_node()
-                .descendant_for_byte_range(cursor_byte, cursor_byte)
-                .and_then(|n| n.parent());
+        let mut parent = tree
+            .root_node()
+            .descendant_for_byte_range(cursor_byte, cursor_byte)
+            .and_then(|n| n.parent());
 
-            // context is list of numbers of lines that should be rendered in the LSP context
-            let mut context: Vec<usize> = Vec::new();
+        // context is list of numbers of lines that should be rendered in the LSP context
+        let mut context: Vec<usize> = Vec::new();
 
-            while let Some(node) = parent {
-                let line = text.byte_to_line(node.start_byte());
+        while let Some(node) = parent {
+            let line = text.byte_to_line(node.start_byte());
 
-                // if parent of previous node is still on the same line, use the parent node
-                if let Some(&prev_line) = context.last() {
-                    if prev_line == line {
-                        context.pop();
-                    }
+            // if parent of previous node is still on the same line, use the parent node
+            if let Some(&prev_line) = context.last() {
+                if prev_line == line {
+                    context.pop();
                 }
-
-                if context_nodes.map_or(true, |nodes| nodes.iter().any(|n| n == node.kind())) {
-                    context.push(line);
-                }
-
-                parent = node.parent();
+            }
+            if context_nodes.map_or(true, |nodes| nodes.iter().any(|n| n == node.kind())) {
+                context.push(line);
             }
 
-            // we render from top most (last in the list)
-            context.reverse();
-
-            // TODO: this probably needs it's own style, although it seems to work well even with cursorline
-            let context_style = theme.get("ui.cursorline.primary");
-            let mut context_area = view.inner_area(doc);
-            context_area.height = 1;
-
-            let mut line_numbers = Vec::new();
-            for line_num in context {
-                if line_num >= view.offset.row {
-                    continue;
-                }
-                surface.clear_with(context_area, context_style);
-
-                let offset = Position::new(line_num, 0);
-                let highlights = Self::doc_syntax_highlights(doc, offset, 1, theme);
-                Self::render_text_highlights(
-                    doc,
-                    offset,
-                    context_area,
-                    surface,
-                    theme,
-                    highlights,
-                    &editor.config(),
-                );
-
-                context_area.y += 1;
-                let line_number = match editor.config().line_number {
-                    LineNumber::Absolute => line_num,
-                    LineNumber::Relative => {
-                        let res = text.byte_to_line(cursor_byte) - line_num;
-                        match res {
-                            n if n < 2 => 1,
-                            _ => res - 1,
-                        }
-                    }
-                };
-                line_numbers.push(line_number);
-            }
-            Some(line_numbers)
-        } else {
-            None
+            parent = node.parent();
         }
+
+        // we render from top most (last in the list)
+        context.reverse();
+
+        // TODO: this probably needs it's own style, although it seems to work well even with cursorline
+        let context_style = theme.get("ui.cursorline.primary");
+        let mut context_area = view.inner_area(doc);
+        context_area.height = 1;
+
+        let mut line_numbers = Vec::new();
+        for line_num in context {
+            if line_num >= view.offset.row {
+                continue;
+            }
+            surface.clear_with(context_area, context_style);
+
+            let offset = Position::new(line_num, 0);
+            let highlights = Self::doc_syntax_highlights(doc, offset, 1, theme);
+            Self::render_text_highlights(
+                doc,
+                offset,
+                context_area,
+                surface,
+                theme,
+                highlights,
+                &editor.config(),
+            );
+
+            context_area.y += 1;
+            let line_number = match editor.config().line_number {
+                LineNumber::Absolute => line_num,
+                LineNumber::Relative => {
+                    let res = text.byte_to_line(cursor_byte) - line_num;
+                    match res {
+                        n if n < 2 => 1,
+                        _ => res - 1,
+                    }
+                }
+            };
+            line_numbers.push(line_number);
+        }
+
+        Some(line_numbers)
     }
 
     pub fn render_text_highlights<H: Iterator<Item = HighlightEvent>>(
