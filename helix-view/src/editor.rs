@@ -65,6 +65,39 @@ where
     )
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub enum PickerLayoutDirection {
+    Horizontal,
+    Vertical,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct PickerConfig {
+    /// The weight of the picker. The heavier compared to the other weights, the more
+    /// space will be allocated to the picker.
+    pub picker_weight: u8,
+    /// The weight of the picker. The heavier compared to the other weights, the more
+    /// space will be allocated to the preview.
+    ///
+    /// A weight of 0 will disable the preview entirely.
+    pub preview_weight: u8,
+    /// The direction in which to split the file picker. Possible values are `horizontal`
+    /// (picker next to preview) or `vertical` (picker above preview).
+    pub layout_direction: PickerLayoutDirection,
+}
+
+impl Default for PickerConfig {
+    fn default() -> Self {
+        Self {
+            picker_weight: 1,
+            preview_weight: 1,
+            layout_direction: PickerLayoutDirection::Horizontal,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
@@ -148,6 +181,7 @@ pub struct Config {
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
+    pub picker: PickerConfig,
     pub file_picker: FilePickerConfig,
     /// Configuration of the statusline elements
     pub statusline: StatusLineConfig,
@@ -593,6 +627,7 @@ impl Default for Config {
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
+            picker: PickerConfig::default(),
             file_picker: FilePickerConfig::default(),
             statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
