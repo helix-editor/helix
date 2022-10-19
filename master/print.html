@@ -176,6 +176,14 @@ sudo dnf install helix
 <h3 id="void-linux"><a class="header" href="#void-linux">Void Linux</a></h3>
 <pre><code>sudo xbps-install helix
 </code></pre>
+<h2 id="windows"><a class="header" href="#windows">Windows</a></h2>
+<p>Helix can be installed using <a href="https://scoop.sh/">Scoop</a> or <a href="https://chocolatey.org/">Chocolatey</a>.</p>
+<p><strong>Scoop:</strong></p>
+<pre><code>scoop install helix
+</code></pre>
+<p><strong>Chocolatey:</strong></p>
+<pre><code>choco install helix
+</code></pre>
 <h2 id="build-from-source"><a class="header" href="#build-from-source">Build from source</a></h2>
 <pre><code>git clone https://github.com/helix-editor/helix
 cd helix
@@ -185,12 +193,21 @@ cargo install --path helix-term
 <p>Helix also needs its runtime files so make sure to copy/symlink the <code>runtime/</code> directory into the
 config directory (for example <code>~/.config/helix/runtime</code> on Linux/macOS). This location can be overridden
 via the <code>HELIX_RUNTIME</code> environment variable.</p>
-<div class="table-wrapper"><table><thead><tr><th>OS</th><th>command</th></tr></thead><tbody>
-<tr><td>windows(cmd.exe)</td><td><code>xcopy /e /i runtime %AppData%/helix/runtime</code></td></tr>
-<tr><td>windows(powershell)</td><td><code>xcopy /e /i runtime $Env:AppData\helix\runtime</code></td></tr>
-<tr><td>linux/macos</td><td><code>ln -s $PWD/runtime ~/.config/helix/runtime</code></td></tr>
+<div class="table-wrapper"><table><thead><tr><th>OS</th><th>Command</th></tr></thead><tbody>
+<tr><td>Windows (Cmd)</td><td><code>xcopy /e /i runtime %AppData%\helix\runtime</code></td></tr>
+<tr><td>Windows (PowerShell)</td><td><code>xcopy /e /i runtime $Env:AppData\helix\runtime</code></td></tr>
+<tr><td>Linux / MacOS</td><td><code>ln -s $PWD/runtime ~/.config/helix/runtime</code></td></tr>
 </tbody></table>
 </div>
+<p>Starting with Windows Vista you can also create symbolic links on Windows. Note that this requires
+elevated priviliges - i.e. PowerShell or Cmd must be run as administrator.</p>
+<p><strong>PowerShell:</strong></p>
+<pre><code class="language-powershell">New-Item -ItemType SymbolicLink -Target &quot;runtime&quot; -Path &quot;$Env:AppData\helix\runtime&quot;
+</code></pre>
+<p><strong>Cmd:</strong></p>
+<pre><code class="language-cmd">cd %appdata%\helix
+mklink /D runtime &quot;&lt;helix-repo&gt;\runtime&quot;
+</code></pre>
 <p>To use Helix in desktop environments that supports <a href="https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html">XDG desktop menu</a>, including Gnome and KDE, copy the provided <code>.desktop</code> file to the correct folder:</p>
 <pre><code class="language-bash">cp contrib/Helix.desktop ~/.local/share/applications
 </code></pre>
