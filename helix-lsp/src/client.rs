@@ -77,6 +77,7 @@ impl Client {
             doc_path.and_then(|x| x.parent().and_then(|x| x.to_str())),
             root_markers,
         );
+        log::info!("root_path: {root_path:?}");
 
         let root_uri = lsp::Url::from_file_path(root_path.clone()).ok();
 

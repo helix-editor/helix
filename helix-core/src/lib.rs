@@ -42,12 +42,17 @@ pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
 /// Find project root.
 ///
 /// Order of detection:
+/// * `ROOT` environment variable
 /// * Top-most folder containing a root marker in current git repository
 /// * Git repository root if no marker detected
 /// * Top-most folder containing a root marker if not git repository detected
 /// * Current working directory as fallback
 pub fn find_root(root: Option<&str>, root_markers: &[String]) -> std::path::PathBuf {
-    let current_dir = std::env::current_dir().expect("unable to determine current directory");
+    use std::env;
+    if let Ok(path) = env::var("ROOT") {
+        return path.into();
+    }
+    let current_dir = env::current_dir().expect("unable to determine current directory");
 
     let root = match root {
         Some(root) => {
