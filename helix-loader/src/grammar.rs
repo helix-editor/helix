@@ -67,7 +67,6 @@ pub fn get_language(name: &str) -> Result<Language> {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn get_language(name: &str) -> Result<Language> {
     use libloading::{Library, Symbol};
-    let name = name.to_ascii_lowercase();
     let mut library_path = crate::runtime_dir().join("grammars").join(&name);
     library_path.set_extension(DYLIB_EXTENSION);
 
