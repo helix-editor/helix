@@ -634,7 +634,7 @@ fn write_all_quit(
         return Ok(());
     }
     write_all_impl(cx, false, true)?;
-    quit_all_impl(cx.editor, false)
+    quit_all_impl(cx, false)
 }
 
 fn force_write_all_quit(
@@ -646,18 +646,19 @@ fn force_write_all_quit(
         return Ok(());
     }
     let _ = write_all_impl(cx, true, true);
-    quit_all_impl(cx.editor, true)
+    quit_all_impl(cx, true)
 }
 
-fn quit_all_impl(editor: &mut Editor, force: bool) -> anyhow::Result<()> {
+fn quit_all_impl(cx: &mut compositor::Context, force: bool) -> anyhow::Result<()> {
+    cx.block_try_flush_writes()?;
     if !force {
-        buffers_remaining_impl(editor)?;
+        buffers_remaining_impl(cx.editor)?;
     }
 
     // close all views
-    let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
+    let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
     for view_id in views {
-        editor.close(view_id);
+        cx.editor.close(view_id);
     }
 
     Ok(())
@@ -672,8 +673,7 @@ fn quit_all(
         return Ok(());
     }
 
-    cx.block_try_flush_writes()?;
-    quit_all_impl(cx.editor, false)
+    quit_all_impl(cx, false)
 }
 
 fn force_quit_all(
@@ -685,7 +685,7 @@ fn force_quit_all(
         return Ok(());
     }
 
-    quit_all_impl(cx.editor, true)
+    quit_all_impl(cx, true)
 }
 
 fn cquit(
@@ -703,8 +703,7 @@ fn cquit(
         .unwrap_or(1);
 
     cx.editor.exit_code = exit_code;
-    cx.block_try_flush_writes()?;
-    quit_all_impl(cx.editor, false)
+    quit_all_impl(cx, false)
 }
 
 fn force_cquit(
@@ -722,7 +721,7 @@ fn force_cquit(
         .unwrap_or(1);
     cx.editor.exit_code = exit_code;
 
-    quit_all_impl(cx.editor, true)
+    quit_all_impl(cx, true)
 }
 
 fn theme(
