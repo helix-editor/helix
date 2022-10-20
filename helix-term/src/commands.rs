@@ -3233,8 +3233,8 @@ pub mod insert {
         let text = doc.text().slice(..);
 
         let selection = doc.selection(view.id).clone().transform(|range| {
-            let cursor = Range::point(range.cursor(text));
-            let next = movement::move_prev_word_start(text, cursor, count);
+            let anchor = movement::move_prev_word_start(text, range, count).from();
+            let next = Range::new(anchor, range.cursor(text));
             exclude_cursor(text, next, range)
         });
         delete_selection_insert_mode(doc, view, &selection);
@@ -3247,10 +3247,11 @@ pub mod insert {
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
 
-        let selection = doc
-            .selection(view.id)
-            .clone()
-            .transform(|range| movement::move_next_word_start(text, range, count));
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            let head = movement::move_next_word_end(text, range, count).to();
+            Range::new(range.cursor(text), head)
+        });
+
         delete_selection_insert_mode(doc, view, &selection);
 
         lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
