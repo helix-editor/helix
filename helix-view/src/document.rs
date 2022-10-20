@@ -61,6 +61,8 @@ pub const DEFAULT_LANGUAGE_NAME: &str = "text";
 
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 
+pub const REFACTOR_BUFFER_NAME: &str = "[refactor]";
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal = 0,
@@ -136,6 +138,15 @@ pub enum DocumentOpenError {
     IrregularFile,
     #[error(transparent)]
     IoError(#[from] io::Error),
+}
+
+#[derive(Clone)]
+pub enum DocumentType {
+    File,
+    Refactor {
+        matches: HashMap<PathBuf, Vec<(usize, String)>>,
+        line_map: HashMap<(PathBuf, usize), usize>,
+    },
 }
 
 pub struct Document {
@@ -221,6 +232,7 @@ pub struct DocumentColorSwatches {
     pub color_swatches: Vec<InlineAnnotation>,
     pub colors: Vec<syntax::Highlight>,
     pub color_swatches_padding: Vec<InlineAnnotation>,
+    pub document_type: DocumentType,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -728,6 +740,48 @@ impl Document {
             color_swatches: None,
             color_swatch_controller: TaskController::new(),
             syn_loader,
+            document_type: DocumentType::File,
+        }
+    }
+
+    pub fn refactor(
+        text: Rope,
+        matches: HashMap<PathBuf, Vec<(usize, String)>>,
+        line_map: HashMap<(PathBuf, usize), usize>,
+        encoding: Option<&'static encoding::Encoding>,
+        config: Arc<dyn DynAccess<Config>>,
+    ) -> Self {
+        let encoding = encoding.unwrap_or(encoding::UTF_8);
+        let changes = ChangeSet::new(&text);
+        let old_state = None;
+
+        Self {
+            id: DocumentId::default(),
+            path: None,
+            encoding,
+            text,
+            selections: HashMap::default(),
+            inlay_hints: HashMap::default(),
+            inlay_hints_oudated: false,
+            indent_style: DEFAULT_INDENT,
+            line_ending: DEFAULT_LINE_ENDING,
+            restore_cursor: false,
+            syntax: None,
+            language: None,
+            changes,
+            old_state,
+            diagnostics: Vec::new(),
+            version: 0,
+            history: Cell::new(History::default()),
+            savepoints: Vec::new(),
+            last_saved_time: SystemTime::now(),
+            last_saved_revision: 0,
+            modified_since_accessed: false,
+            language_server: None,
+            diff_handle: None,
+            config,
+            version_control_head: None,
+            document_type: DocumentType::Refactor { matches, line_map },
         }
     }
 
@@ -1730,16 +1784,24 @@ impl Document {
 
     /// If there are unsaved modifications.
     pub fn is_modified(&self) -> bool {
-        let history = self.history.take();
-        let current_revision = history.current_revision();
-        self.history.set(history);
-        log::debug!(
-            "id {} modified - last saved: {}, current: {}",
-            self.id,
-            self.last_saved_revision,
-            current_revision
-        );
-        current_revision != self.last_saved_revision || !self.changes.is_empty()
+        match self.document_type {
+            DocumentType::File => {
+                let history = self.history.take();
+                let current_revision = history.current_revision();
+                self.history.set(history);
+                log::debug!(
+                    "id {} modified - last saved: {}, current: {}",
+                    self.id,
+                    self.last_saved_revision,
+                    current_revision
+                );
+                current_revision != self.last_saved_revision || !self.changes.is_empty()
+            }
+            DocumentType::Refactor {
+                matches: _,
+                line_map: _,
+            } => false,
+        }
     }
 
     /// Save modifications to history, and so [`Self::is_modified`] will return false.
