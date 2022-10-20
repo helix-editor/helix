@@ -1835,3 +1835,18 @@ roots = []
 [[grammar]]
 name = "wast"
 source = { git = "https://github.com/wasm-lsp/tree-sitter-wasm", rev = "2ca28a9f9d709847bf7a3de0942a84e912f59088", subpath = "wast" }
+
+[[language]]
+name = "d"
+scope = "source.d"
+file-types = [ "d", "dd" ]
+roots = []
+comment-token = "//"
+injection-regex = "d"
+indent = { tab-width = 4, unit = "    "}
+language-server = { command = "serve-d" }
+formatter = { command = "dfmt" }
+
+[[grammar]]
+name = "d"
+source = { git = "https://github.com/gdamore/tree-sitter-d", rev="601c4a1e8310fb2f3c43fa8a923d0d27497f3c04" }
