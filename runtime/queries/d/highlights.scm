@@ -19,6 +19,8 @@
 (call_expression (identifier) @function)
 (call_expression (type (identifier) @function))
 
+(module_fqn) @namespace
+
 [
     (abstract)
     (alias)
@@ -27,22 +29,16 @@
     (assert)
     (auto)
     (cast)
-    (class)
     (const)
     (debug)
-    (delegate)
     (delete)
     (deprecated)
-    (enum)
     (export)
     (extern)
     (final)
-    (function)
     (immutable)
-    (import)
     (in)
     (inout)
-    (interface)
     (invariant)
     (is)
     (lazy)
@@ -63,7 +59,6 @@
     (scope)
     (shared)
     (static)
-    (struct)
     (super)
     (synchronized)
     (template)
@@ -71,7 +66,6 @@
     (throw)
     (typeid)
     (typeof)
-    (union)
     (unittest)
     (version)
     (with)
@@ -82,6 +76,16 @@
 ] @keyword
 
 [
+    (class)
+    (struct)
+    (interface)
+    (union)
+    (enum)
+    (function)
+    (delegate)
+] @keyword.storage.type
+
+[
     (break)
     (case)
     (catch)
@@ -90,16 +94,22 @@
     (default)
     (finally)
     (else)
-    (for)
-    (foreach)
-    (foreach_reverse)
     (goto)
     (if)
     (switch)
     (try)
-    (return)
-    (while)
 ] @keyword.control
+
+(return) @keyword.control.return
+
+(import) @keyword.control.import
+
+[
+    (for)
+    (foreach)
+    (foreach_reverse)
+    (while)
+] @keyword.control.repeat
 
 [
     (not_in)
@@ -132,10 +142,6 @@
     ">>>"
     "!"
     "!="
-    "("
-    ")"
-    "["
-    "]"
     "?"
     "$"
     "="
@@ -153,6 +159,13 @@
     "@"
     "=>"
 ] @operator
+
+[
+    "("
+    ")"
+    "["
+    "]"
+] @punctuation.bracket
 
 [
     ";"
