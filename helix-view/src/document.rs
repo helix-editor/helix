@@ -1052,14 +1052,6 @@ impl Document {
             .map_or(4, |config| config.tab_width) // fallback to 4 columns
     }
 
-    /// Returns a string containing a single level of indentation.
-    ///
-    /// TODO: we might not need this function anymore, since the information
-    /// is conveniently available in `Document::indent_style` now.
-    pub fn indent_unit(&self) -> &'static str {
-        self.indent_style.as_str()
-    }
-
     pub fn changes(&self) -> &ChangeSet {
         &self.changes
     }
