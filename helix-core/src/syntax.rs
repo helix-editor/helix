@@ -61,6 +61,12 @@ pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
 }
 
+impl Default for Configuration {
+    fn default() -> Self {
+        crate::config::default_syntax_loader()
+    }
+}
+
 // largely based on tree-sitter/cli/src/loader.rs
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
@@ -465,9 +471,10 @@ impl Loader {
 
             for file_type in &config.file_types {
                 // entry().or_insert(Vec::new).push(language_id);
+                let file_type = file_type.replace('/', &std::path::MAIN_SEPARATOR.to_string());
                 loader
                     .language_config_ids_by_file_type
-                    .insert(file_type.clone(), language_id);
+                    .insert(file_type, language_id);
             }
             for shebang in &config.shebangs {
                 loader
@@ -492,6 +499,17 @@ impl Loader {
                 path.extension()
                     .and_then(|extension| extension.to_str())
                     .and_then(|extension| self.language_config_ids_by_file_type.get(extension))
+            })
+            .or_else(|| {
+                self.language_config_ids_by_file_type
+                    .iter()
+                    .find_map(|(file_type, id)| {
+                        if path.to_str()?.ends_with(file_type) {
+                            Some(id)
+                        } else {
+                            None
+                        }
+                    })
             });
 
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())

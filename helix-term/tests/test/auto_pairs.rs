@@ -13,6 +13,7 @@ async fn auto_pairs_basic() -> anyhow::Result<()> {
             },
             ..Default::default()
         },
+        helpers::test_syntax_conf(None),
         ("#[\n|]#", "i(<esc>", "(#[|\n]#"),
     )
     .await?;
