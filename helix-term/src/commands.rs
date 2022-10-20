@@ -2478,12 +2478,12 @@ pub fn command_palette(cx: &mut Context) {
 
 fn last_picker(cx: &mut Context) {
     // TODO: last picker does not seem to work well with buffer_picker
-    cx.callback = Some(Box::new(|compositor: &mut Compositor, _| {
+    cx.callback = Some(Box::new(|compositor, cx| {
         if let Some(picker) = compositor.last_picker.take() {
             compositor.push(picker);
+        } else {
+            cx.editor.set_error("no last picker")
         }
-        // XXX: figure out how to show error when no last picker lifetime
-        // cx.editor.set_error("no last picker")
     }));
 }
 
