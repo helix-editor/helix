@@ -32,7 +32,7 @@ use helix_core::{
 };
 use helix_view::{
     clipboard::ClipboardType,
-    document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
+    document::{FormatterError, Mode, REFACTOR_BUFFER_NAME, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
     info::Info,
     input::KeyEvent,
@@ -277,6 +277,7 @@ impl MappableCommand {
         search_selection, "Use current selection as search pattern",
         make_search_word_bounded, "Modify current search to make it word bounded",
         global_search, "Global search in workspace folder",
+        global_refactor, "Global refactoring in workspace folder",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
@@ -2155,6 +2156,275 @@ fn global_search(cx: &mut Context) {
     cx.jobs.callback(show_picker);
 }
 
+fn global_refactor(cx: &mut Context) {
+    let document_type = doc!(cx.editor).document_type.clone();
+
+    match &document_type {
+        helix_view::document::DocumentType::File => {
+            let (all_matches_sx, all_matches_rx) =
+                tokio::sync::mpsc::unbounded_channel::<(PathBuf, usize, String)>();
+            let config = cx.editor.config();
+            let smart_case = config.search.smart_case;
+            let file_picker_config = config.file_picker.clone();
+
+            let reg = cx.register.unwrap_or('/');
+
+            // Restrict to current file type if possible
+            let file_extension = doc!(cx.editor).path().and_then(|f| f.extension());
+            let file_glob = if let Some(file_glob) = file_extension.and_then(|f| f.to_str()) {
+                let mut tb = ignore::types::TypesBuilder::new();
+                tb.add("p", &(String::from("*.") + file_glob))
+                    .ok()
+                    .and_then(|_| {
+                        tb.select("all");
+                        tb.build().ok()
+                    })
+            } else {
+                None
+            };
+
+            let encoding = Some(doc!(cx.editor).encoding());
+
+            let completions = search_completions(cx, Some(reg));
+            ui::regex_prompt(
+                cx,
+                "global-refactor:".into(),
+                Some(reg),
+                move |_editor: &Editor, input: &str| {
+                    completions
+                        .iter()
+                        .filter(|comp| comp.starts_with(input))
+                        .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
+                        .collect()
+                },
+                move |editor, regex, event| {
+                    if event != PromptEvent::Validate {
+                        return;
+                    }
+
+                    if let Ok(matcher) = RegexMatcherBuilder::new()
+                        .case_smart(smart_case)
+                        .build(regex.as_str())
+                    {
+                        let searcher = SearcherBuilder::new()
+                            .binary_detection(BinaryDetection::quit(b'\x00'))
+                            .build();
+
+                        let mut checked = HashSet::<PathBuf>::new();
+                        let file_extension = editor.documents
+                            [&editor.tree.get(editor.tree.focus).doc]
+                            .path()
+                            .and_then(|f| f.extension());
+                        for doc in editor.documents() {
+                            searcher
+                                .clone()
+                                .search_slice(
+                                    matcher.clone(),
+                                    doc.text().to_string().as_bytes(),
+                                    sinks::UTF8(|line_num, matched| {
+                                        if let Some(path) = doc.path() {
+                                            if let Some(extension) = path.extension() {
+                                                if let Some(file_extension) = file_extension {
+                                                    if file_extension == extension {
+                                                        all_matches_sx
+                                                            .send((
+                                                                path.clone(),
+                                                                line_num as usize - 1,
+                                                                String::from(
+                                                                    matched
+                                                                        .strip_suffix("\r\n")
+                                                                        .or_else(|| {
+                                                                            matched
+                                                                                .strip_suffix('\n')
+                                                                        })
+                                                                        .unwrap_or(matched),
+                                                                ),
+                                                            ))
+                                                            .unwrap();
+                                                    }
+                                                }
+                                            }
+                                            // Exclude from file search
+                                            checked.insert(path.clone());
+                                        }
+                                        Ok(true)
+                                    }),
+                                )
+                                .ok();
+                        }
+
+                        let search_root = std::env::current_dir()
+                            .expect("Global search error: Failed to get current dir");
+                        let mut wb = WalkBuilder::new(search_root);
+                        wb.hidden(file_picker_config.hidden)
+                            .parents(file_picker_config.parents)
+                            .ignore(file_picker_config.ignore)
+                            .git_ignore(file_picker_config.git_ignore)
+                            .git_global(file_picker_config.git_global)
+                            .git_exclude(file_picker_config.git_exclude)
+                            .max_depth(file_picker_config.max_depth);
+                        if let Some(file_glob) = &file_glob {
+                            wb.types(file_glob.clone());
+                        }
+                        wb.build_parallel().run(|| {
+                            let mut searcher = searcher.clone();
+                            let matcher = matcher.clone();
+                            let all_matches_sx = all_matches_sx.clone();
+                            let checked = checked.clone();
+                            Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
+                                let entry = match entry {
+                                    Ok(entry) => entry,
+                                    Err(_) => return WalkState::Continue,
+                                };
+
+                                match entry.file_type() {
+                                    Some(entry) if entry.is_file() => {}
+                                    // skip everything else
+                                    _ => return WalkState::Continue,
+                                };
+
+                                let result = searcher.search_path(
+                                    &matcher,
+                                    entry.path(),
+                                    sinks::UTF8(|line_num, matched| {
+                                        let path = entry.clone().into_path();
+                                        if !checked.contains(&path) {
+                                            all_matches_sx
+                                                .send((
+                                                    path,
+                                                    line_num as usize - 1,
+                                                    String::from(
+                                                        matched
+                                                            .strip_suffix("\r\n")
+                                                            .or_else(|| matched.strip_suffix('\n'))
+                                                            .unwrap_or(matched),
+                                                    ),
+                                                ))
+                                                .unwrap();
+                                        }
+                                        Ok(true)
+                                    }),
+                                );
+
+                                if let Err(err) = result {
+                                    log::error!(
+                                        "Global search error: {}, {}",
+                                        entry.path().display(),
+                                        err
+                                    );
+                                }
+                                WalkState::Continue
+                            })
+                        });
+                    }
+                },
+            );
+
+            let show_refactor = async move {
+                let all_matches: Vec<(PathBuf, usize, String)> =
+                    UnboundedReceiverStream::new(all_matches_rx).collect().await;
+                let call: job::Callback = Callback::Editor(Box::new(move |editor: &mut Editor| {
+                    if all_matches.is_empty() {
+                        editor.set_status("No matches found");
+                        return;
+                    }
+                    let mut matches: HashMap<PathBuf, Vec<(usize, String)>> = HashMap::new();
+                    for (path, line, text) in all_matches {
+                        if let Some(vec) = matches.get_mut(&path) {
+                            vec.push((line, text));
+                        } else {
+                            let v = Vec::from([(line, text)]);
+                            matches.insert(path, v);
+                        }
+                    }
+
+                    let language_id = doc!(editor).language_id().map(String::from);
+
+                    let mut doc_text = Rope::new();
+                    let mut line_map = HashMap::new();
+
+                    let mut count = 0;
+                    for (key, value) in &matches {
+                        for (line, text) in value {
+                            doc_text.insert(doc_text.len_chars(), text);
+                            doc_text.insert(doc_text.len_chars(), "\n");
+                            line_map.insert((key.clone(), *line), count);
+                            count += 1;
+                        }
+                    }
+                    doc_text.split_off(doc_text.len_chars().saturating_sub(1));
+                    let mut doc = Document::refactor(
+                        doc_text,
+                        matches,
+                        line_map,
+                        encoding,
+                        editor.config.clone(),
+                    );
+                    if let Some(language_id) = language_id {
+                        doc.set_language_by_language_id(&language_id, editor.syn_loader.clone())
+                            .ok();
+                    };
+                    editor.new_file_from_document(Action::Replace, doc);
+                }));
+                Ok(call)
+            };
+            cx.jobs.callback(show_refactor);
+        }
+        helix_view::document::DocumentType::Refactor { matches, line_map } => {
+            let refactor_id = doc!(cx.editor).id();
+            let replace_text = doc!(cx.editor).text().clone();
+            let view = view!(cx.editor).clone();
+            let mut documents: usize = 0;
+            let mut count: usize = 0;
+            for (key, value) in matches {
+                let mut changes = Vec::<(usize, usize, String)>::new();
+                for (line, text) in value {
+                    if let Some(re_line) = line_map.get(&(key.clone(), *line)) {
+                        let mut replace = replace_text
+                            .get_line(*re_line)
+                            .unwrap_or_else(|| "\n".into())
+                            .to_string()
+                            .clone();
+                        replace = replace.strip_suffix('\n').unwrap_or(&replace).to_string();
+                        if text != &replace {
+                            changes.push((*line, text.chars().count(), replace));
+                        }
+                    }
+                }
+                if !changes.is_empty() {
+                    if let Some(doc) = cx
+                        .editor
+                        .open(key, Action::Load)
+                        .ok()
+                        .and_then(|id| cx.editor.document_mut(id))
+                    {
+                        documents += 1;
+                        let mut applychanges = Vec::<(usize, usize, Option<Tendril>)>::new();
+                        for (line, length, text) in changes {
+                            if doc.text().len_lines() > line {
+                                let start = doc.text().line_to_char(line);
+                                applychanges.push((
+                                    start,
+                                    start + length,
+                                    Some(Tendril::from(text.to_string())),
+                                ));
+                                count += 1;
+                            }
+                        }
+                        let transaction = Transaction::change(doc.text(), applychanges.into_iter());
+                        doc.apply(&transaction, view.id);
+                    }
+                }
+            }
+            cx.editor.set_status(format!(
+                "Refactored {} documents, {} lines changed.",
+                documents, count
+            ));
+            cx.editor.close_document(refactor_id, true).ok();
+        }
+    }
+}
+
 enum Extend {
     Above,
     Below,
@@ -2454,6 +2724,7 @@ fn buffer_picker(cx: &mut Context) {
         path: Option<PathBuf>,
         is_modified: bool,
         is_current: bool,
+        is_refactor: bool,
     }
 
     impl ui::menu::Item for BufferMeta {
@@ -2464,9 +2735,13 @@ fn buffer_picker(cx: &mut Context) {
                 .path
                 .as_deref()
                 .map(helix_core::path::get_relative_path);
-            let path = match path.as_deref().and_then(Path::to_str) {
-                Some(path) => path,
-                None => SCRATCH_BUFFER_NAME,
+            let path = if self.is_refactor {
+                REFACTOR_BUFFER_NAME
+            } else {
+                match path.as_deref().and_then(Path::to_str) {
+                    Some(path) => path,
+                    None => SCRATCH_BUFFER_NAME,
+                }
             };
 
             let mut flags = String::new();
@@ -2486,6 +2761,13 @@ fn buffer_picker(cx: &mut Context) {
         path: doc.path().cloned(),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
+        is_refactor: matches!(
+            &doc.document_type,
+            helix_view::document::DocumentType::Refactor {
+                matches: _,
+                line_map: _
+            }
+        ),
     };
 
     let picker = FilePicker::new(
