@@ -286,6 +286,8 @@ impl AppBuilder {
         self
     }
 
+    // Remove this attribute once `with_config` is used in a test:
+    #[allow(dead_code)]
     pub fn with_config(mut self, config: Config) -> Self {
         self.config = config;
         self
