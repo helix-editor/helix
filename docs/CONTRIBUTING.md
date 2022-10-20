@@ -35,7 +35,8 @@ to `cargo install` anything either).
 Integration tests for helix-term can be run with `cargo integration-test`. Code
 contributors are strongly encouraged to write integration tests for their code.
 Existing tests can be used as examples. Helpers can be found in
-[helpers.rs][helpers.rs]
+[helpers.rs][helpers.rs]. The log level can be set with the `HELIX_LOG_LEVEL`
+environment variable, e.g. `HELIX_LOG_LEVEL=debug cargo integration-test`.
 
 ## Minimum Stable Rust Version (MSRV) Policy
 

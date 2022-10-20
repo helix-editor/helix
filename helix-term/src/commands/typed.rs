@@ -1,5 +1,7 @@
 use std::ops::Deref;
 
+use crate::job::Job;
+
 use super::*;
 
 use helix_view::{
@@ -19,6 +21,8 @@ pub struct TypableCommand {
 }
 
 fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    log::debug!("quitting...");
+
     if event != PromptEvent::Validate {
         return Ok(());
     }
@@ -30,6 +34,7 @@ fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         buffers_remaining_impl(cx.editor)?
     }
 
+    cx.block_try_flush_writes()?;
     cx.editor.close(view!(cx.editor).id);
 
     Ok(())
@@ -70,14 +75,16 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
 }
 
 fn buffer_close_by_ids_impl(
-    editor: &mut Editor,
+    cx: &mut compositor::Context,
     doc_ids: &[DocumentId],
     force: bool,
 ) -> anyhow::Result<()> {
+    cx.block_try_flush_writes()?;
+
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
         .iter()
         .filter_map(|&doc_id| {
-            if let Err(CloseError::BufferModified(name)) = editor.close_document(doc_id, force) {
+            if let Err(CloseError::BufferModified(name)) = cx.editor.close_document(doc_id, force) {
                 Some((doc_id, name))
             } else {
                 None
@@ -86,11 +93,11 @@ fn buffer_close_by_ids_impl(
         .unzip();
 
     if let Some(first) = modified_ids.first() {
-        let current = doc!(editor);
+        let current = doc!(cx.editor);
         // If the current document is unmodified, and there are modified
         // documents, switch focus to the first modified doc.
         if !modified_ids.contains(&current.id()) {
-            editor.switch(*first, Action::Replace);
+            cx.editor.switch(*first, Action::Replace);
         }
         bail!(
             "{} unsaved buffer(s) remaining: {:?}",
@@ -149,7 +156,7 @@ fn buffer_close(
     }
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, false)
+    buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
 fn force_buffer_close(
@@ -162,7 +169,7 @@ fn force_buffer_close(
     }
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, true)
+    buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
 fn buffer_gather_others_impl(editor: &mut Editor) -> Vec<DocumentId> {
@@ -184,7 +191,7 @@ fn buffer_close_others(
     }
 
     let document_ids = buffer_gather_others_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, false)
+    buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
 fn force_buffer_close_others(
@@ -197,7 +204,7 @@ fn force_buffer_close_others(
     }
 
     let document_ids = buffer_gather_others_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, true)
+    buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
 fn buffer_gather_all_impl(editor: &mut Editor) -> Vec<DocumentId> {
@@ -214,7 +221,7 @@ fn buffer_close_all(
     }
 
     let document_ids = buffer_gather_all_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, false)
+    buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
 fn force_buffer_close_all(
@@ -227,7 +234,7 @@ fn force_buffer_close_all(
     }
 
     let document_ids = buffer_gather_all_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, true)
+    buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
 fn buffer_next(
@@ -261,39 +268,29 @@ fn write_impl(
     path: Option<&Cow<str>>,
     force: bool,
 ) -> anyhow::Result<()> {
-    let auto_format = cx.editor.config().auto_format;
+    let editor_auto_fmt = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
     let doc = doc_mut!(cx.editor);
+    let path = path.map(AsRef::as_ref);
 
-    if let Some(ref path) = path {
-        doc.set_path(Some(path.as_ref().as_ref()))
-            .context("invalid filepath")?;
-    }
-    if doc.path().is_none() {
-        bail!("cannot write a buffer without a filename");
-    }
-    let fmt = if auto_format {
+    let fmt = if editor_auto_fmt {
         doc.auto_format().map(|fmt| {
-            let shared = fmt.shared();
             let callback = make_format_callback(
                 doc.id(),
                 doc.version(),
-                Modified::SetUnmodified,
-                shared.clone(),
+                fmt,
+                Some((path.map(Into::into), force)),
             );
-            jobs.callback(callback);
-            shared
+
+            jobs.add(Job::with_callback(callback).wait_before_exiting());
         })
     } else {
         None
     };
-    let future = doc.format_and_save(fmt, force);
-    cx.jobs.add(Job::new(future).wait_before_exiting());
 
-    if path.is_some() {
+    if fmt.is_none() {
         let id = doc.id();
-        doc.detect_language(cx.editor.syn_loader.clone());
-        let _ = cx.editor.refresh_language_server(id);
+        cx.editor.save(id, path, force)?;
     }
 
     Ok(())
@@ -348,8 +345,7 @@ fn format(
 
     let doc = doc!(cx.editor);
     if let Some(format) = doc.format() {
-        let callback =
-            make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
+        let callback = make_format_callback(doc.id(), doc.version(), format, None);
         cx.jobs.callback(callback);
     }
 
@@ -520,7 +516,7 @@ fn write_quit(
     }
 
     write_impl(cx, args.first(), false)?;
-    helix_lsp::block_on(cx.jobs.finish())?;
+    cx.block_try_flush_writes()?;
     quit(cx, &[], event)
 }
 
@@ -534,6 +530,7 @@ fn force_write_quit(
     }
 
     write_impl(cx, args.first(), true)?;
+    cx.block_try_flush_writes()?;
     force_quit(cx, &[], event)
 }
 
@@ -573,40 +570,50 @@ fn write_all_impl(
         return Ok(());
     }
 
-    let mut errors = String::new();
+    let mut errors: Vec<&'static str> = Vec::new();
     let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
+
     // save all documents
-    for doc in &mut cx.editor.documents.values_mut() {
-        if doc.path().is_none() {
-            errors.push_str("cannot write a buffer without a filename\n");
-            continue;
-        }
+    let saves: Vec<_> = cx
+        .editor
+        .documents
+        .values()
+        .filter_map(|doc| {
+            if doc.path().is_none() {
+                errors.push("cannot write a buffer without a filename\n");
+                return None;
+            }
 
-        if !doc.is_modified() {
-            continue;
-        }
+            if !doc.is_modified() {
+                return None;
+            }
 
-        let fmt = if auto_format {
-            doc.auto_format().map(|fmt| {
-                let shared = fmt.shared();
-                let callback = make_format_callback(
-                    doc.id(),
-                    doc.version(),
-                    Modified::SetUnmodified,
-                    shared.clone(),
-                );
-                jobs.callback(callback);
-                shared
-            })
-        } else {
+            let fmt = if auto_format {
+                doc.auto_format().map(|fmt| {
+                    let callback =
+                        make_format_callback(doc.id(), doc.version(), fmt, Some((None, force)));
+                    jobs.add(Job::with_callback(callback).wait_before_exiting());
+                })
+            } else {
+                None
+            };
+
+            if fmt.is_none() {
+                return Some(doc.id());
+            }
             None
-        };
-        let future = doc.format_and_save(fmt, force);
-        jobs.add(Job::new(future).wait_before_exiting());
+        })
+        .collect();
+
+    // manually call save for the rest of docs that don't have a formatter
+    for id in saves {
+        cx.editor.save::<PathBuf>(id, None, force)?;
     }
 
     if quit {
+        cx.block_try_flush_writes()?;
+
         if !force {
             buffers_remaining_impl(cx.editor)?;
         }
@@ -618,7 +625,11 @@ fn write_all_impl(
         }
     }
 
-    bail!(errors)
+    if !errors.is_empty() && !force {
+        bail!("{:?}", errors);
+    }
+
+    Ok(())
 }
 
 fn write_all(
@@ -680,6 +691,7 @@ fn quit_all(
         return Ok(());
     }
 
+    cx.block_try_flush_writes()?;
     quit_all_impl(cx.editor, false)
 }
 
@@ -708,8 +720,9 @@ fn cquit(
         .first()
         .and_then(|code| code.parse::<i32>().ok())
         .unwrap_or(1);
-    cx.editor.exit_code = exit_code;
 
+    cx.editor.exit_code = exit_code;
+    cx.block_try_flush_writes()?;
     quit_all_impl(cx.editor, false)
 }
 
@@ -1064,12 +1077,13 @@ fn tree_sitter_scopes(
     let contents = format!("```json\n{:?}\n````", scopes);
 
     let callback = async move {
-        let call: job::Callback =
-            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
                 let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
                 let popup = Popup::new("hover", contents).auto_close(true);
                 compositor.replace_or_push("hover", popup);
-            });
+            },
+        ));
         Ok(call)
     };
 
@@ -1492,12 +1506,13 @@ fn tree_sitter_subtree(
             contents.push_str("\n```");
 
             let callback = async move {
-                let call: job::Callback =
-                    Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                let call: job::Callback = Callback::EditorCompositor(Box::new(
+                    move |editor: &mut Editor, compositor: &mut Compositor| {
                         let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
                         let popup = Popup::new("hover", contents).auto_close(true);
                         compositor.replace_or_push("hover", popup);
-                    });
+                    },
+                ));
                 Ok(call)
             };
 
@@ -1605,8 +1620,8 @@ fn run_shell_command(
 
     if !output.is_empty() {
         let callback = async move {
-            let call: job::Callback =
-                Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                move |editor: &mut Editor, compositor: &mut Compositor| {
                     let contents = ui::Markdown::new(
                         format!("```sh\n{}\n```", output),
                         editor.syn_loader.clone(),
@@ -1615,7 +1630,8 @@ fn run_shell_command(
                         helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
                     ));
                     compositor.replace_or_push("shell", popup);
-                });
+                },
+            ));
             Ok(call)
         };
 

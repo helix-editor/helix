@@ -70,7 +70,9 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
 async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
     let test = |content: &str, expected_sel: Selection| -> anyhow::Result<()> {
         let file = helpers::temp_file_with_contents(content)?;
-        let mut app = helpers::app_with_file(file.path())?;
+        let mut app = helpers::AppBuilder::new()
+            .with_file(file.path(), None)
+            .build()?;
 
         let (view, doc) = helix_view::current!(app.editor);
         let sel = doc.selection(view.id).clone();
@@ -115,6 +117,7 @@ async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::
             ..Default::default()
         },
         Config::default(),
+        helpers::test_syntax_conf(None),
         (
             helpers::platform_line(indoc! {"\
                 #[/|]#// Increments
@@ -146,6 +149,7 @@ async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Res
             ..Default::default()
         },
         Config::default(),
+        helpers::test_syntax_conf(None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -178,6 +182,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
             ..Default::default()
         },
         Config::default(),
+        helpers::test_syntax_conf(None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -208,6 +213,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
             ..Default::default()
         },
         Config::default(),
+        helpers::test_syntax_conf(None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments

@@ -83,6 +83,18 @@ impl Serialize for Mode {
     }
 }
 
+/// A snapshot of the text of a document that we want to write out to disk
+#[derive(Debug, Clone)]
+pub struct DocumentSavedEvent {
+    pub revision: usize,
+    pub doc_id: DocumentId,
+    pub path: PathBuf,
+    pub text: Rope,
+}
+
+pub type DocumentSavedEventResult = Result<DocumentSavedEvent, anyhow::Error>;
+pub type DocumentSavedEventFuture = BoxFuture<'static, DocumentSavedEventResult>;
+
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
@@ -492,45 +504,61 @@ impl Document {
         Some(fut.boxed())
     }
 
-    pub fn save(&mut self, force: bool) -> impl Future<Output = Result<(), anyhow::Error>> {
-        self.save_impl::<futures_util::future::Ready<_>>(None, force)
-    }
-
-    pub fn format_and_save(
+    pub fn save<P: Into<PathBuf>>(
         &mut self,
-        formatting: Option<impl Future<Output = Result<Transaction, FormatterError>>>,
+        path: Option<P>,
         force: bool,
-    ) -> impl Future<Output = anyhow::Result<()>> {
-        self.save_impl(formatting, force)
+    ) -> Result<
+        impl Future<Output = Result<DocumentSavedEvent, anyhow::Error>> + 'static + Send,
+        anyhow::Error,
+    > {
+        let path = path.map(|path| path.into());
+        self.save_impl(path, force)
+
+        // futures_util::future::Ready<_>,
     }
 
-    // TODO: do we need some way of ensuring two save operations on the same doc can't run at once?
-    // or is that handled by the OS/async layer
     /// The `Document`'s text is encoded according to its encoding and written to the file located
     /// at its `path()`.
-    ///
-    /// If `formatting` is present, it supplies some changes that we apply to the text before saving.
-    fn save_impl<F: Future<Output = Result<Transaction, FormatterError>>>(
+    fn save_impl(
         &mut self,
-        formatting: Option<F>,
+        path: Option<PathBuf>,
         force: bool,
-    ) -> impl Future<Output = Result<(), anyhow::Error>> {
+    ) -> Result<
+        impl Future<Output = Result<DocumentSavedEvent, anyhow::Error>> + 'static + Send,
+        anyhow::Error,
+    > {
+        log::debug!(
+            "submitting save of doc '{:?}'",
+            self.path().map(|path| path.to_string_lossy())
+        );
+
         // we clone and move text + path into the future so that we asynchronously save the current
         // state without blocking any further edits.
+        let text = self.text().clone();
 
-        let mut text = self.text().clone();
-        let path = self.path.clone().expect("Can't save with no path set!");
-        let identifier = self.identifier();
+        let path = match path {
+            Some(path) => helix_core::path::get_canonicalized_path(&path)?,
+            None => {
+                if self.path.is_none() {
+                    bail!("Can't save with no path set!");
+                }
 
+                self.path.as_ref().unwrap().clone()
+            }
+        };
+
+        let identifier = self.path().map(|_| self.identifier());
         let language_server = self.language_server.clone();
 
         // mark changes up to now as saved
-        self.reset_modified();
+        let current_rev = self.get_current_revision();
+        let doc_id = self.id();
 
         let encoding = self.encoding;
 
         // We encode the file according to the `Document`'s encoding.
-        async move {
+        let future = async move {
             use tokio::fs::File;
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
@@ -543,39 +571,34 @@ impl Document {
                 }
             }
 
-            if let Some(fmt) = formatting {
-                match fmt.await {
-                    Ok(transaction) => {
-                        let success = transaction.changes().apply(&mut text);
-                        if !success {
-                            // This shouldn't happen, because the transaction changes were generated
-                            // from the same text we're saving.
-                            log::error!("failed to apply format changes before saving");
-                        }
-                    }
-                    Err(err) => {
-                        // formatting failed: report error, and save file without modifications
-                        log::error!("{}", err);
-                    }
-                }
-            }
-
-            let mut file = File::create(path).await?;
+            let mut file = File::create(&path).await?;
             to_writer(&mut file, encoding, &text).await?;
+
+            let event = DocumentSavedEvent {
+                revision: current_rev,
+                doc_id,
+                path,
+                text: text.clone(),
+            };
 
             if let Some(language_server) = language_server {
                 if !language_server.is_initialized() {
-                    return Ok(());
+                    return Ok(event);
                 }
-                if let Some(notification) =
-                    language_server.text_document_did_save(identifier, &text)
-                {
-                    notification.await?;
+
+                if let Some(identifier) = identifier {
+                    if let Some(notification) =
+                        language_server.text_document_did_save(identifier, &text)
+                    {
+                        notification.await?;
+                    }
                 }
             }
 
-            Ok(())
-        }
+            Ok(event)
+        };
+
+        Ok(future)
     }
 
     /// Detect the programming language based on the file type.
@@ -930,6 +953,12 @@ impl Document {
         let history = self.history.take();
         let current_revision = history.current_revision();
         self.history.set(history);
+        log::debug!(
+            "id {} modified - last saved: {}, current: {}",
+            self.id,
+            self.last_saved_revision,
+            current_revision
+        );
         current_revision != self.last_saved_revision || !self.changes.is_empty()
     }
 
@@ -939,6 +968,30 @@ impl Document {
         let current_revision = history.current_revision();
         self.history.set(history);
         self.last_saved_revision = current_revision;
+    }
+
+    /// Set the document's latest saved revision to the given one.
+    pub fn set_last_saved_revision(&mut self, rev: usize) {
+        log::debug!(
+            "doc {} revision updated {} -> {}",
+            self.id,
+            self.last_saved_revision,
+            rev
+        );
+        self.last_saved_revision = rev;
+    }
+
+    /// Get the document's latest saved revision.
+    pub fn get_last_saved_revision(&mut self) -> usize {
+        self.last_saved_revision
+    }
+
+    /// Get the current revision number
+    pub fn get_current_revision(&mut self) -> usize {
+        let history = self.history.take();
+        let current_revision = history.current_revision();
+        self.history.set(history);
+        current_revision
     }
 
     /// Corresponding language scope name. Usually `source.<lang>`.

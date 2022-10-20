@@ -22,5 +22,6 @@ mod test {
     mod commands;
     mod movement;
     mod prompt;
+    mod splits;
     mod write;
 }
