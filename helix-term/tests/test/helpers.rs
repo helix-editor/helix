@@ -143,8 +143,26 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
 
 /// Generates language configs that merge in overrides, like a user language
 /// config. The argument string must be a raw TOML document.
+///
+/// By default, language server configuration is dropped from the languages.toml
+/// document. If a language-server is necessary for a test, it must be explicitly
+/// added in `overrides`.
 pub fn test_syntax_conf(overrides: Option<String>) -> helix_core::syntax::Configuration {
     let mut lang = helix_loader::config::default_lang_config();
+
+    for lang_config in lang
+        .as_table_mut()
+        .expect("Expected languages.toml to be a table")
+        .get_mut("language")
+        .expect("Expected languages.toml to have \"language\" keys")
+        .as_array_mut()
+        .expect("Expected an array of language configurations")
+    {
+        lang_config
+            .as_table_mut()
+            .expect("Expected language config to be a TOML table")
+            .remove("language-server");
+    }
 
     if let Some(overrides) = overrides {
         let override_toml = toml::from_str(&overrides).unwrap();
@@ -236,12 +254,22 @@ pub fn new_readonly_tempfile() -> anyhow::Result<NamedTempFile> {
     Ok(file)
 }
 
-#[derive(Default)]
 pub struct AppBuilder {
     args: Args,
     config: Config,
     syn_conf: helix_core::syntax::Configuration,
     input: Option<(String, Selection)>,
+}
+
+impl Default for AppBuilder {
+    fn default() -> Self {
+        Self {
+            args: Args::default(),
+            config: Config::default(),
+            syn_conf: test_syntax_conf(None),
+            input: None,
+        }
+    }
 }
 
 impl AppBuilder {
