@@ -85,6 +85,7 @@ impl Transport {
         buffer: &mut String,
     ) -> Result<ServerMessage> {
         let mut content_length = None;
+        let mut content = Vec::new();
         loop {
             buffer.truncate(0);
             if reader.read_line(buffer).await? == 0 {
@@ -119,8 +120,9 @@ impl Transport {
 
         let content_length = content_length.context("missing content length")?;
 
-        //TODO: reuse vector
-        let mut content = vec![0; content_length];
+        content.clear();
+        content.reserve(content_length);
+
         reader.read_exact(&mut content).await?;
         let msg = std::str::from_utf8(&content).context("invalid utf8 from server")?;
 
