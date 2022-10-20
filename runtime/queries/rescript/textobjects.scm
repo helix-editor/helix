@@ -24,7 +24,8 @@
 ; Comments
 ;---------
 
-(comment) @comment.around
+(comment) @comment.inside
+(comment)+ @comment.around
 
 ; Parameters
 ;-----------
