@@ -50,7 +50,7 @@ These configuration keys are available:
 | `name`                | The name of the language                                      |
 | `scope`               | A string like `source.js` that identifies the language. Currently, we strive to match the scope names used by popular TextMate grammars and by the Linguist library. Usually `source.<name>` or `text.<name>` in case of markup languages |
 | `injection-regex`     | regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential [language injection][treesitter-language-injection] site. |
-| `file-types`          | The filetypes of the language, for example `["yml", "yaml"]`. Extensions and full file names are supported.  |
+| `file-types`          | The filetypes of the language, for example `["yml", "yaml"]`. This attempts to match by exact file name (`.zshrc`), then by file extension (`toml`), then by path suffix (`.git/config`). |
 | `shebangs`            | The interpreters from the shebang line, for example `["sh", "bash"]` |
 | `roots`               | A set of marker files to look for when trying to find the workspace root. For example `Cargo.lock`, `yarn.lock` |
 | `auto-format`         | Whether to autoformat this language when saving               |
