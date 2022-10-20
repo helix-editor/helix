@@ -50,6 +50,23 @@ sudo dnf install helix
 sudo xbps-install helix
 ```
 
+## Windows
+
+Helix can be installed using [Scoop](https://scoop.sh/) or [Chocolatey](https://chocolatey.org/).
+
+**Scoop:**
+
+```
+scoop install helix
+```
+
+**Chocolatey:**
+
+```
+choco install helix
+```
+
+
 ## Build from source
 
 ```
@@ -64,11 +81,27 @@ Helix also needs its runtime files so make sure to copy/symlink the `runtime/` d
 config directory (for example `~/.config/helix/runtime` on Linux/macOS). This location can be overridden
 via the `HELIX_RUNTIME` environment variable.
 
-| OS                  | command                                          |
-| ------------------- | ------------------------------------------------ |
-| windows(cmd.exe)    | `xcopy /e /i runtime %AppData%/helix/runtime`    |
-| windows(powershell) | `xcopy /e /i runtime $Env:AppData\helix\runtime` |
-| linux/macos         | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
+| OS                   | Command                                          |
+| -------------------- | ------------------------------------------------ |
+| Windows (Cmd)        | `xcopy /e /i runtime %AppData%\helix\runtime`    |
+| Windows (PowerShell) | `xcopy /e /i runtime $Env:AppData\helix\runtime` |
+| Linux / MacOS        | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
+
+Starting with Windows Vista you can also create symbolic links on Windows. Note that this requires
+elevated priviliges - i.e. PowerShell or Cmd must be run as administrator.
+
+**PowerShell:**
+
+```powershell
+New-Item -ItemType SymbolicLink -Target "runtime" -Path "$Env:AppData\helix\runtime"
+```
+
+**Cmd:**
+
+```cmd
+cd %appdata%\helix
+mklink /D runtime "<helix-repo>\runtime"
+```
 
 To use Helix in desktop environments that supports [XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html), including Gnome and KDE, copy the provided `.desktop` file to the correct folder:
 

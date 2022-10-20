@@ -1487,7 +1487,9 @@ fn tree_sitter_subtree(
             .root_node()
             .descendant_for_byte_range(from, to)
         {
-            let contents = format!("```tsq\n{}\n```", selected_node.to_sexp());
+            let mut contents = String::from("```tsq\n");
+            helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
+            contents.push_str("\n```");
 
             let callback = async move {
                 let call: job::Callback =

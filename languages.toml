@@ -591,7 +591,7 @@ name = "julia"
 scope = "source.julia"
 injection-regex = "julia"
 file-types = ["jl"]
-roots = []
+roots = ["Manifest.toml", "Project.toml"]
 comment-token = "#"
 language-server = { command = "julia", args = [
     "--startup-file=no",
