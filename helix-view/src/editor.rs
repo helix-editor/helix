@@ -1,4 +1,5 @@
 use crate::{
+    align_view,
     clipboard::{get_clipboard_provider, ClipboardProvider},
     document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode},
     graphics::{CursorKind, Rect},
@@ -6,7 +7,7 @@ use crate::{
     input::KeyEvent,
     theme::{self, Theme},
     tree::{self, Tree},
-    Document, DocumentId, View, ViewId,
+    Align, Document, DocumentId, View, ViewId,
 };
 
 use futures_util::stream::select_all::SelectAll;
@@ -957,13 +958,7 @@ impl Editor {
         let doc = doc_mut!(self, &doc_id);
         doc.ensure_view_init(view.id);
 
-        // TODO: reuse align_view
-        let pos = doc
-            .selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..));
-        let line = doc.text().char_to_line(pos);
-        view.offset.row = line.saturating_sub(view.inner_area().height as usize / 2);
+        align_view(doc, view, Align::Center);
     }
 
     pub fn switch(&mut self, id: DocumentId, action: Action) {
