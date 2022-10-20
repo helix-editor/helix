@@ -1,6 +1,3 @@
-; Queries for nvim-treesitter/nvim-treesitter-textobjects
-;--------------------------------------------------------
-
 ; Classes (modules)
 ;------------------
 

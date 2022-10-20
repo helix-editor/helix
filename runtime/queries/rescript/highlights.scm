@@ -12,13 +12,8 @@
   (unit_type)
 ] @type
 
-
-(list "list{" @type)
-(list_pattern "list{" @type)
-
-; To ensure that the closing curly bracket is the same color (scope) as the opening curly bracket
-(list "}" @type (#set! "priority" 105))
-(list_pattern "}" @type (#set! "priority" 105))
+(list ["list{" "}"] @type)
+(list_pattern ["list{" "}"] @type)
 
 [
   (variant_identifier)
@@ -87,7 +82,7 @@
 ] @keyword.directive
 
 (extension_identifier) @keyword
-("%") @keyword.
+("%") @keyword
 
 ; Misc
 ;-----
