@@ -2,7 +2,10 @@ use std::ops::Deref;
 
 use super::*;
 
-use helix_view::editor::{Action, ConfigEvent};
+use helix_view::{
+    apply_transaction,
+    editor::{Action, CloseError, ConfigEvent},
+};
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -71,8 +74,29 @@ fn buffer_close_by_ids_impl(
     doc_ids: &[DocumentId],
     force: bool,
 ) -> anyhow::Result<()> {
-    for &doc_id in doc_ids {
-        editor.close_document(doc_id, force)?;
+    let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
+        .iter()
+        .filter_map(|&doc_id| {
+            if let Err(CloseError::BufferModified(name)) = editor.close_document(doc_id, force) {
+                Some((doc_id, name))
+            } else {
+                None
+            }
+        })
+        .unzip();
+
+    if let Some(first) = modified_ids.first() {
+        let current = doc!(editor);
+        // If the current document is unmodified, and there are modified
+        // documents, switch focus to the first modified doc.
+        if !modified_ids.contains(&current.id()) {
+            editor.switch(*first, Action::Replace);
+        }
+        bail!(
+            "{} unsaved buffer(s) remaining: {:?}",
+            modified_names.len(),
+            modified_names
+        );
     }
 
     Ok(())
@@ -441,7 +465,7 @@ fn set_line_ending(
             }
         }),
     );
-    doc.apply(&transaction, view.id);
+    apply_transaction(&transaction, doc, view);
     doc.append_changes_to_history(view.id);
 
     Ok(())
@@ -459,7 +483,7 @@ fn earlier(
     let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
 
     let (view, doc) = current!(cx.editor);
-    let success = doc.earlier(view.id, uk);
+    let success = doc.earlier(view, uk);
     if !success {
         cx.editor.set_status("Already at oldest change");
     }
@@ -478,7 +502,7 @@ fn later(
 
     let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
     let (view, doc) = current!(cx.editor);
-    let success = doc.later(view.id, uk);
+    let success = doc.later(view, uk);
     if !success {
         cx.editor.set_status("Already at newest change");
     }
@@ -513,23 +537,26 @@ fn force_write_quit(
     force_quit(cx, &[], event)
 }
 
-/// Results an error if there are modified buffers remaining and sets editor error,
-/// otherwise returns `Ok(())`
+/// Results in an error if there are modified buffers remaining and sets editor
+/// error, otherwise returns `Ok(())`. If the current document is unmodified,
+/// and there are modified documents, switches focus to one of them.
 pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> {
-    let modified: Vec<_> = editor
+    let (modified_ids, modified_names): (Vec<_>, Vec<_>) = editor
         .documents()
         .filter(|doc| doc.is_modified())
-        .map(|doc| {
-            doc.relative_path()
-                .map(|path| path.to_string_lossy().to_string())
-                .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
-        })
-        .collect();
-    if !modified.is_empty() {
+        .map(|doc| (doc.id(), doc.display_name()))
+        .unzip();
+    if let Some(first) = modified_ids.first() {
+        let current = doc!(editor);
+        // If the current document is unmodified, and there are modified
+        // documents, switch focus to the first modified doc.
+        if !modified_ids.contains(&current.id()) {
+            editor.switch(*first, Action::Replace);
+        }
         bail!(
             "{} unsaved buffer(s) remaining: {:?}",
-            modified.len(),
-            modified
+            modified_names.len(),
+            modified_names
         );
     }
     Ok(())
@@ -715,7 +742,10 @@ fn theme(
             cx.editor.unset_theme_preview();
         }
         PromptEvent::Update => {
-            if let Some(theme_name) = args.first() {
+            if args.is_empty() {
+                // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
+                cx.editor.unset_theme_preview();
+            } else if let Some(theme_name) = args.first() {
                 if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
                     if !(true_color || theme.is_16_color()) {
                         bail!("Unsupported theme: theme requires true color support");
@@ -856,7 +886,7 @@ fn replace_selections_with_clipboard_impl(
                 (range.from(), range.to(), Some(contents.as_str().into()))
             });
 
-            doc.apply(&transaction, view.id);
+            apply_transaction(&transaction, doc, view);
             doc.append_changes_to_history(view.id);
             Ok(())
         }
@@ -977,9 +1007,43 @@ fn reload(
 
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
-    doc.reload(view.id).map(|_| {
+    doc.reload(view).map(|_| {
         view.ensure_cursor_in_view(doc, scrolloff);
     })
+}
+
+fn lsp_restart(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_view, doc) = current!(cx.editor);
+    let config = doc
+        .language_config()
+        .context("LSP not defined for the current document")?;
+
+    let scope = config.scope.clone();
+    cx.editor.language_servers.restart(config, doc.path())?;
+
+    // This collect is needed because refresh_language_server would need to re-borrow editor.
+    let document_ids_to_refresh: Vec<DocumentId> = cx
+        .editor
+        .documents()
+        .filter_map(|doc| match doc.language_config() {
+            Some(config) if config.scope.eq(&scope) => Some(doc.id()),
+            _ => None,
+        })
+        .collect();
+
+    for document_id in document_ids_to_refresh {
+        cx.editor.refresh_language_server(document_id);
+    }
+
+    Ok(())
 }
 
 fn tree_sitter_scopes(
@@ -996,7 +1060,21 @@ fn tree_sitter_scopes(
 
     let pos = doc.selection(view.id).primary().cursor(text);
     let scopes = indent::get_scopes(doc.syntax(), text, pos);
-    cx.editor.set_status(format!("scopes: {:?}", &scopes));
+
+    let contents = format!("```json\n{:?}\n````", scopes);
+
+    let callback = async move {
+        let call: job::Callback =
+            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                let popup = Popup::new("hover", contents).auto_close(true);
+                compositor.replace_or_push("hover", popup);
+            });
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+
     Ok(())
 }
 
@@ -1147,7 +1225,7 @@ fn tutor(
         return Ok(());
     }
 
-    let path = helix_loader::runtime_dir().join("tutor.txt");
+    let path = helix_loader::runtime_dir().join("tutor");
     cx.editor.open(&path, Action::Replace)?;
     // Unset path to prevent accidentally saving to the original tutor file.
     doc_mut!(cx.editor).set_path(None)?;
@@ -1159,18 +1237,41 @@ pub(super) fn goto_line_number(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
+    match event {
+        PromptEvent::Abort => {
+            if let Some(line_number) = cx.editor.last_line_number {
+                goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
+                let (view, doc) = current!(cx.editor);
+                view.ensure_cursor_in_view(doc, line_number);
+                cx.editor.last_line_number = None;
+            }
+            return Ok(());
+        }
+        PromptEvent::Validate => {
+            ensure!(!args.is_empty(), "Line number required");
+            cx.editor.last_line_number = None;
+        }
+        PromptEvent::Update => {
+            if args.is_empty() {
+                if let Some(line_number) = cx.editor.last_line_number {
+                    // When a user hits backspace and there are no numbers left,
+                    // we can bring them back to their original line
+                    goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
+                    let (view, doc) = current!(cx.editor);
+                    view.ensure_cursor_in_view(doc, line_number);
+                    cx.editor.last_line_number = None;
+                }
+                return Ok(());
+            }
+            let (view, doc) = current!(cx.editor);
+            let text = doc.text().slice(..);
+            let line = doc.selection(view.id).primary().cursor_line(text);
+            cx.editor.last_line_number.get_or_insert(line + 1);
+        }
     }
-
-    ensure!(!args.is_empty(), "Line number required");
-
     let line = args[0].parse::<usize>()?;
-
     goto_line_impl(cx.editor, NonZeroUsize::new(line));
-
     let (view, doc) = current!(cx.editor);
-
     view.ensure_cursor_in_view(doc, line);
     Ok(())
 }
@@ -1253,7 +1354,12 @@ fn language(
     }
 
     let doc = doc_mut!(cx.editor);
-    doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone());
+
+    if args[0] == "text" {
+        doc.set_language(None, None)
+    } else {
+        doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone())?;
+    }
     doc.detect_indent_and_line_ending();
 
     let id = doc.id();
@@ -1309,7 +1415,7 @@ fn sort_impl(
             .map(|(s, fragment)| (s.from(), s.to(), Some(fragment))),
     );
 
-    doc.apply(&transaction, view.id);
+    apply_transaction(&transaction, doc, view);
     doc.append_changes_to_history(view.id);
 
     Ok(())
@@ -1324,6 +1430,7 @@ fn reflow(
         return Ok(());
     }
 
+    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
 
     const DEFAULT_MAX_LEN: usize = 79;
@@ -1352,8 +1459,9 @@ fn reflow(
         (range.from(), range.to(), Some(reflowed_text))
     });
 
-    doc.apply(&transaction, view.id);
+    apply_transaction(&transaction, doc, view);
     doc.append_changes_to_history(view.id);
+    view.ensure_cursor_in_view(doc, scrolloff);
 
     Ok(())
 }
@@ -1379,7 +1487,9 @@ fn tree_sitter_subtree(
             .root_node()
             .descendant_for_byte_range(from, to)
         {
-            let contents = format!("```tsq\n{}\n```", selected_node.to_sexp());
+            let mut contents = String::from("```tsq\n");
+            helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
+            contents.push_str("\n```");
 
             let callback = async move {
                 let call: job::Callback =
@@ -1828,6 +1938,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: None,
         },
         TypableCommand {
+            name: "lsp-restart",
+            aliases: &[],
+            doc: "Restarts the Language Server that is in use by the current doc",
+            fun: lsp_restart,
+            completer: None,
+        },
+        TypableCommand {
             name: "tree-sitter-scopes",
             aliases: &[],
             doc: "Display tree sitter scopes, primarily for theming and development.",
@@ -1970,7 +2087,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "insert-output",
             aliases: &[],
-            doc: "Run shell command, inserting output after each selection.",
+            doc: "Run shell command, inserting output before each selection.",
             fun: insert_output,
             completer: None,
         },

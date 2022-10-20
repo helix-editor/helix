@@ -59,9 +59,9 @@ pub fn default() -> HashMap<Mode, Keymap> {
         ":" => command_mode,
 
         "i" => insert_mode,
-        "I" => prepend_to_line,
+        "I" => insert_at_line_start,
         "a" => append_mode,
-        "A" => append_to_line,
+        "A" => insert_at_line_end,
         "o" => open_below,
         "O" => open_above,
 
@@ -85,7 +85,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "A-n" | "A-right" => select_next_sibling,
 
         "%" => select_all,
-        "x" => extend_line,
+        "x" => extend_line_below,
         "X" => extend_to_line_bounds,
         "A-x" => shrink_to_line_bounds,
 
@@ -144,6 +144,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "<" => unindent,
         "=" => format_selections,
         "J" => join_selections,
+        "A-J" => join_selections_space,
         "K" => keep_selections,
         "A-K" => remove_selections,
 
@@ -208,11 +209,11 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "j" => jumplist_picker,
             "s" => symbol_picker,
             "S" => workspace_symbol_picker,
-            "g" => diagnostics_picker,
-            "G" => workspace_diagnostics_picker,
+            "d" => diagnostics_picker,
+            "D" => workspace_diagnostics_picker,
             "a" => code_action,
             "'" => last_picker,
-            "d" => { "Debug (experimental)" sticky=true
+            "g" => { "Debug (experimental)" sticky=true
                 "l" => dap_launch,
                 "b" => dap_toggle_breakpoint,
                 "c" => dap_continue,
@@ -342,43 +343,27 @@ pub fn default() -> HashMap<Mode, Keymap> {
     let insert = keymap!({ "Insert mode"
         "esc" => normal_mode,
 
-        "backspace" => delete_char_backward,
-        "C-h" => delete_char_backward,
-        "del" => delete_char_forward,
-        "C-d" => delete_char_forward,
-        "ret" => insert_newline,
-        "C-j" => insert_newline,
-        "tab" => insert_tab,
-        "C-w" => delete_word_backward,
-        "A-backspace" => delete_word_backward,
-        "A-d" => delete_word_forward,
-        "A-del" => delete_word_forward,
         "C-s" => commit_undo_checkpoint,
+        "C-x" => completion,
+        "C-r" => insert_register,
 
-        "left" => move_char_left,
-        "C-b" => move_char_left,
-        "down" => move_line_down,
+        "C-w" | "A-backspace" => delete_word_backward,
+        "A-d" | "A-del" => delete_word_forward,
+        "C-u" => kill_to_line_start,
+        "C-k" => kill_to_line_end,
+        "C-h" | "backspace" => delete_char_backward,
+        "C-d" | "del" => delete_char_forward,
+        "C-j" | "ret" => insert_newline,
+        "tab" => insert_tab,
+
         "up" => move_line_up,
+        "down" => move_line_down,
+        "left" => move_char_left,
         "right" => move_char_right,
-        "C-f" => move_char_right,
-        "A-b" => move_prev_word_end,
-        "C-left" => move_prev_word_end,
-        "A-f" => move_next_word_start,
-        "C-right" => move_next_word_start,
-        "A-<" => goto_file_start,
-        "A->" => goto_file_end,
         "pageup" => page_up,
         "pagedown" => page_down,
         "home" => goto_line_start,
-        "C-a" => goto_line_start,
         "end" => goto_line_end_newline,
-        "C-e" => goto_line_end_newline,
-
-        "C-k" => kill_to_line_end,
-        "C-u" => kill_to_line_start,
-
-        "C-x" => completion,
-        "C-r" => insert_register,
     });
     hashmap!(
         Mode::Normal => Keymap::new(normal),

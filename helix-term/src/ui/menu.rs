@@ -105,7 +105,7 @@ impl<T: Item> Menu<T> {
                 .iter()
                 .enumerate()
                 .filter_map(|(index, option)| {
-                    let text: String = option.filter_text(&self.editor_data).into();
+                    let text = option.filter_text(&self.editor_data);
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
                     self.matcher
                         .fuzzy_match(&text, pattern)
@@ -225,9 +225,9 @@ impl<T: Item> Menu<T> {
 use super::PromptEvent as MenuEvent;
 
 impl<T: Item + 'static> Component for Menu<T> {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let event = match event {
-            Event::Key(event) => event,
+            Event::Key(event) => *event,
             _ => return EventResult::Ignored(None),
         };
 

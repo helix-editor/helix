@@ -61,6 +61,7 @@ These configuration keys are available:
 | `config`              | Language Server configuration                                 |
 | `grammar`             | The tree-sitter grammar to use (defaults to the value of `name`) |
 | `formatter`           | The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout |
+| `max-line-length`     | Maximum line length. Used for the `:reflow` command           |
 
 ### Language Server configuration
 

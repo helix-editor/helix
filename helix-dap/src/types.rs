@@ -726,7 +726,7 @@ pub mod events {
     #[serde(tag = "event", content = "body")]
     // seq is omitted as unused and is not sent by some implementations
     pub enum Event {
-        Initialized,
+        Initialized(Option<DebuggerCapabilities>),
         Stopped(Stopped),
         Continued(Continued),
         Exited(Exited),

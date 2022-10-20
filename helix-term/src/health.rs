@@ -83,6 +83,33 @@ pub fn general() -> std::io::Result<()> {
     Ok(())
 }
 
+pub fn clipboard() -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+
+    let board = get_clipboard_provider();
+    match board.name().as_ref() {
+        "none" => {
+            writeln!(
+                stdout,
+                "{}",
+                "System clipboard provider: Not installed".red()
+            )?;
+            writeln!(
+                stdout,
+                "    {}",
+                "For troubleshooting system clipboard issues, refer".red()
+            )?;
+            writeln!(stdout, "    {}",
+                "https://github.com/helix-editor/helix/wiki/Troubleshooting#copypaste-fromto-system-clipboard-not-working"
+            .red().underlined())?;
+        }
+        name => writeln!(stdout, "System clipboard provider: {}", name)?,
+    }
+
+    Ok(())
+}
+
 pub fn languages_all() -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
@@ -142,7 +169,7 @@ pub fn languages_all() -> std::io::Result<()> {
 
     let check_binary = |cmd: Option<String>| match cmd {
         Some(cmd) => match which::which(&cmd) {
-            Ok(_) => column(&format!("✔ {}", cmd), Color::Green),
+            Ok(_) => column(&format!("✓ {}", cmd), Color::Green),
             Err(_) => column(&format!("✘ {}", cmd), Color::Red),
         },
         None => column("None", Color::Yellow),
@@ -162,7 +189,7 @@ pub fn languages_all() -> std::io::Result<()> {
 
         for ts_feat in TsFeature::all() {
             match load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok() {
-                true => column("✔", Color::Green),
+                true => column("✓", Color::Green),
                 false => column("✘", Color::Red),
             }
         }
@@ -271,7 +298,7 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
     let mut stdout = stdout.lock();
 
     let found = match load_runtime_file(lang, feature.runtime_filename()).is_ok() {
-        true => "✔".green(),
+        true => "✓".green(),
         false => "✘".red(),
     };
     writeln!(stdout, "{} queries: {}", feature.short_title(), found)?;
@@ -281,13 +308,15 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
 
 pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
     match health_arg.as_deref() {
-        Some("all") => languages_all()?,
-        Some(lang) => language(lang.to_string())?,
-        None => {
+        Some("languages") => languages_all()?,
+        Some("clipboard") => clipboard()?,
+        None | Some("all") => {
             general()?;
+            clipboard()?;
             writeln!(std::io::stdout().lock())?;
             languages_all()?;
         }
+        Some(lang) => language(lang.to_string())?,
     }
     Ok(())
 }

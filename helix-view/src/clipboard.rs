@@ -139,7 +139,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     }
 }
 
-mod provider {
+pub mod provider {
     use super::{ClipboardProvider, ClipboardType};
     use anyhow::Result;
     use std::borrow::Cow;
@@ -161,6 +161,13 @@ mod provider {
                 buf: String::new(),
                 primary_buf: String::new(),
             }
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    impl Default for NopProvider {
+        fn default() -> Self {
+            Self::new()
         }
     }
 
@@ -225,12 +232,11 @@ mod provider {
         use super::*;
         use anyhow::{bail, Context as _, Result};
 
-        #[cfg(not(windows))]
         pub fn exists(executable_name: &str) -> bool {
             which::which(executable_name).is_ok()
         }
 
-        #[cfg(not(any(windows, target_os = "macos")))]
+        #[cfg(not(windows))]
         pub fn env_var_is_set(env_var_name: &str) -> bool {
             std::env::var_os(env_var_name).is_some()
         }

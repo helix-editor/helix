@@ -44,6 +44,7 @@
 | `:show-directory`, `:pwd` | Show the current working directory. |
 | `:encoding` | Set encoding. Based on `https://encoding.spec.whatwg.org`. |
 | `:reload` | Discard changes and reload from the source file. |
+| `:lsp-restart` | Restarts the Language Server that is in use by the current doc |
 | `:tree-sitter-scopes` | Display tree sitter scopes, primarily for theming and development. |
 | `:debug-start`, `:dbg` | Start a debug session from a given template with given parameters. |
 | `:debug-remote`, `:dbg-tcp` | Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters. |
@@ -64,7 +65,7 @@
 | `:config-reload` | Refresh user config. |
 | `:config-open` | Open the user config.toml file. |
 | `:log-open` | Open the helix log file. |
-| `:insert-output` | Run shell command, inserting output after each selection. |
+| `:insert-output` | Run shell command, inserting output before each selection. |
 | `:append-output` | Run shell command, appending output after each selection. |
 | `:pipe` | Pipe each selection to the shell command. |
 | `:run-shell-command`, `:sh` | Run a shell command |

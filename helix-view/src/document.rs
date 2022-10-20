@@ -5,6 +5,7 @@ use helix_core::auto_pairs::AutoPairs;
 use helix_core::Range;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -23,7 +24,7 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
-use crate::{DocumentId, Editor, ViewId};
+use crate::{apply_transaction, DocumentId, Editor, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -90,8 +91,6 @@ pub struct Document {
     path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
 
-    /// Current editing mode.
-    pub mode: Mode,
     pub restore_cursor: bool,
 
     /// Current indent style.
@@ -133,7 +132,6 @@ impl fmt::Debug for Document {
             .field("selections", &self.selections)
             .field("path", &self.path)
             .field("encoding", &self.encoding)
-            .field("mode", &self.mode)
             .field("restore_cursor", &self.restore_cursor)
             .field("syntax", &self.syntax)
             .field("language", &self.language)
@@ -349,7 +347,6 @@ impl Document {
             selections: HashMap::default(),
             indent_style: DEFAULT_INDENT,
             line_ending: DEFAULT_LINE_ENDING,
-            mode: Mode::Normal,
             restore_cursor: false,
             syntax: None,
             language: None,
@@ -411,7 +408,11 @@ impl Document {
     // We can't use anyhow::Result here since the output of the future has to be
     // clonable to be used as shared future. So use a custom error type.
     pub fn format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
-        if let Some(formatter) = self.language_config().and_then(|c| c.formatter.clone()) {
+        if let Some(formatter) = self
+            .language_config()
+            .and_then(|c| c.formatter.clone())
+            .filter(|formatter| which::which(&formatter.command).is_ok())
+        {
             use std::process::Stdio;
             let text = self.text().clone();
             let mut process = tokio::process::Command::new(&formatter.command);
@@ -440,17 +441,22 @@ impl Document {
                     .await
                     .map_err(|_| FormatterError::WaitForOutputFailed)?;
 
-                if !output.stderr.is_empty() {
-                    return Err(FormatterError::Stderr(
-                        String::from_utf8_lossy(&output.stderr).to_string(),
-                    ));
-                }
-
                 if !output.status.success() {
-                    return Err(FormatterError::NonZeroExitStatus);
+                    if !output.stderr.is_empty() {
+                        let err = String::from_utf8_lossy(&output.stderr).to_string();
+                        log::error!("Formatter error: {}", err);
+                        return Err(FormatterError::NonZeroExitStatus(Some(err)));
+                    }
+
+                    return Err(FormatterError::NonZeroExitStatus(None));
+                } else if !output.stderr.is_empty() {
+                    log::debug!(
+                        "Formatter printed to stderr: {}",
+                        String::from_utf8_lossy(&output.stderr).to_string()
+                    );
                 }
 
-                let str = String::from_utf8(output.stdout)
+                let str = std::str::from_utf8(&output.stdout)
                     .map_err(|_| FormatterError::InvalidUtf8Output)?;
 
                 Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
@@ -538,12 +544,19 @@ impl Document {
             }
 
             if let Some(fmt) = formatting {
-                let transaction = fmt.await?;
-                let success = transaction.changes().apply(&mut text);
-                if !success {
-                    // This shouldn't happen, because the transaction changes were generated
-                    // from the same text we're saving.
-                    log::error!("failed to apply format changes before saving");
+                match fmt.await {
+                    Ok(transaction) => {
+                        let success = transaction.changes().apply(&mut text);
+                        if !success {
+                            // This shouldn't happen, because the transaction changes were generated
+                            // from the same text we're saving.
+                            log::error!("failed to apply format changes before saving");
+                        }
+                    }
+                    Err(err) => {
+                        // formatting failed: report error, and save file without modifications
+                        log::error!("{}", err);
+                    }
                 }
             }
 
@@ -588,7 +601,7 @@ impl Document {
     }
 
     /// Reload the document from its path.
-    pub fn reload(&mut self, view_id: ViewId) -> Result<(), Error> {
+    pub fn reload(&mut self, view: &mut View) -> Result<(), Error> {
         let encoding = &self.encoding;
         let path = self.path().filter(|path| path.exists());
 
@@ -604,8 +617,8 @@ impl Document {
         // This is not considered a modification of the contents of the file regardless
         // of the encoding.
         let transaction = helix_core::diff::compare_ropes(self.text(), &rope);
-        self.apply(&transaction, view_id);
-        self.append_changes_to_history(view_id);
+        apply_transaction(&transaction, self, view);
+        self.append_changes_to_history(view.id);
         self.reset_modified();
 
         self.detect_indent_and_line_ending();
@@ -671,9 +684,12 @@ impl Document {
         &mut self,
         language_id: &str,
         config_loader: Arc<syntax::Loader>,
-    ) {
-        let language_config = config_loader.language_config_for_language_id(language_id);
-        self.set_language(language_config, Some(config_loader));
+    ) -> anyhow::Result<()> {
+        let language_config = config_loader
+            .language_config_for_language_id(language_id)
+            .ok_or_else(|| anyhow!("invalid language id: {}", language_id))?;
+        self.set_language(Some(language_config), Some(config_loader));
+        Ok(())
     }
 
     /// Set the LSP.
@@ -773,6 +789,8 @@ impl Document {
                 diagnostic.range.end = changes.map_pos(diagnostic.range.end, Assoc::After);
                 diagnostic.line = self.text.char_to_line(diagnostic.range.start);
             }
+            self.diagnostics
+                .sort_unstable_by_key(|diagnostic| diagnostic.range);
 
             // emit lsp notification
             if let Some(language_server) = self.language_server() {
@@ -792,6 +810,9 @@ impl Document {
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
+    /// Instead of calling this function directly, use [crate::apply_transaction]
+    /// to ensure that the transaction is applied to the appropriate [`View`] as
+    /// well.
     pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
@@ -813,11 +834,11 @@ impl Document {
         success
     }
 
-    fn undo_redo_impl(&mut self, view_id: ViewId, undo: bool) -> bool {
+    fn undo_redo_impl(&mut self, view: &mut View, undo: bool) -> bool {
         let mut history = self.history.take();
         let txn = if undo { history.undo() } else { history.redo() };
         let success = if let Some(txn) = txn {
-            self.apply_impl(txn, view_id)
+            self.apply_impl(txn, view.id) && view.apply(txn, self)
         } else {
             false
         };
@@ -831,26 +852,26 @@ impl Document {
     }
 
     /// Undo the last modification to the [`Document`]. Returns whether the undo was successful.
-    pub fn undo(&mut self, view_id: ViewId) -> bool {
-        self.undo_redo_impl(view_id, true)
+    pub fn undo(&mut self, view: &mut View) -> bool {
+        self.undo_redo_impl(view, true)
     }
 
     /// Redo the last modification to the [`Document`]. Returns whether the redo was successful.
-    pub fn redo(&mut self, view_id: ViewId) -> bool {
-        self.undo_redo_impl(view_id, false)
+    pub fn redo(&mut self, view: &mut View) -> bool {
+        self.undo_redo_impl(view, false)
     }
 
     pub fn savepoint(&mut self) {
         self.savepoint = Some(Transaction::new(self.text()));
     }
 
-    pub fn restore(&mut self, view_id: ViewId) {
+    pub fn restore(&mut self, view: &mut View) {
         if let Some(revert) = self.savepoint.take() {
-            self.apply(&revert, view_id);
+            apply_transaction(&revert, self, view);
         }
     }
 
-    fn earlier_later_impl(&mut self, view_id: ViewId, uk: UndoKind, earlier: bool) -> bool {
+    fn earlier_later_impl(&mut self, view: &mut View, uk: UndoKind, earlier: bool) -> bool {
         let txns = if earlier {
             self.history.get_mut().earlier(uk)
         } else {
@@ -858,7 +879,7 @@ impl Document {
         };
         let mut success = false;
         for txn in txns {
-            if self.apply_impl(&txn, view_id) {
+            if self.apply_impl(&txn, view.id) && view.apply(&txn, self) {
                 success = true;
             }
         }
@@ -870,13 +891,13 @@ impl Document {
     }
 
     /// Undo modifications to the [`Document`] according to `uk`.
-    pub fn earlier(&mut self, view_id: ViewId, uk: UndoKind) -> bool {
-        self.earlier_later_impl(view_id, uk, true)
+    pub fn earlier(&mut self, view: &mut View, uk: UndoKind) -> bool {
+        self.earlier_later_impl(view, uk, true)
     }
 
     /// Redo modifications to the [`Document`] according to `uk`.
-    pub fn later(&mut self, view_id: ViewId, uk: UndoKind) -> bool {
-        self.earlier_later_impl(view_id, uk, false)
+    pub fn later(&mut self, view: &mut View, uk: UndoKind) -> bool {
+        self.earlier_later_impl(view, uk, false)
     }
 
     /// Commit pending changes to history
@@ -920,28 +941,33 @@ impl Document {
         self.last_saved_revision = current_revision;
     }
 
-    /// Current editing mode for the [`Document`].
-    pub fn mode(&self) -> Mode {
-        self.mode
-    }
-
     /// Corresponding language scope name. Usually `source.<lang>`.
-    pub fn language(&self) -> Option<&str> {
+    pub fn language_scope(&self) -> Option<&str> {
         self.language
             .as_ref()
             .map(|language| language.scope.as_str())
+    }
+
+    /// Language name for the document. Corresponds to the `name` key in
+    /// `languages.toml` configuration.
+    pub fn language_name(&self) -> Option<&str> {
+        self.language
+            .as_ref()
+            .map(|language| language.language_id.as_str())
     }
 
     /// Language ID for the document. Either the `language-id` from the
     /// `language-server` configuration, or the document language if no
     /// `language-id` has been specified.
     pub fn language_id(&self) -> Option<&str> {
-        self.language_config()?
+        let language_config = self.language.as_deref()?;
+
+        language_config
             .language_server
             .as_ref()?
             .language_id
             .as_deref()
-            .or_else(|| Some(self.language()?.rsplit_once('.')?.1))
+            .or(Some(language_config.language_id.as_str()))
     }
 
     /// Corresponding [`LanguageConfiguration`].
@@ -1014,6 +1040,12 @@ impl Document {
         self.path
             .as_deref()
             .map(helix_core::path::get_relative_path)
+    }
+
+    pub fn display_name(&self) -> Cow<'static, str> {
+        self.relative_path()
+            .map(|path| path.to_string_lossy().to_string().into())
+            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
     }
 
     // transact(Fn) ?
@@ -1092,10 +1124,9 @@ pub enum FormatterError {
     },
     BrokenStdin,
     WaitForOutputFailed,
-    Stderr(String),
     InvalidUtf8Output,
     DiskReloadError(String),
-    NonZeroExitStatus,
+    NonZeroExitStatus(Option<String>),
 }
 
 impl std::error::Error for FormatterError {}
@@ -1108,10 +1139,12 @@ impl Display for FormatterError {
             }
             Self::BrokenStdin => write!(f, "Could not write to formatter stdin"),
             Self::WaitForOutputFailed => write!(f, "Waiting for formatter output failed"),
-            Self::Stderr(output) => write!(f, "Formatter error: {}", output),
             Self::InvalidUtf8Output => write!(f, "Invalid UTF-8 formatter output"),
             Self::DiskReloadError(error) => write!(f, "Error reloading file from disk: {}", error),
-            Self::NonZeroExitStatus => write!(f, "Formatter exited with non zero exit status:"),
+            Self::NonZeroExitStatus(Some(output)) => write!(f, "Formatter error: {}", output),
+            Self::NonZeroExitStatus(None) => {
+                write!(f, "Formatter exited with non zero exit status")
+            }
         }
     }
 }

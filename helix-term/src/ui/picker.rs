@@ -1,7 +1,7 @@
 use crate::{
     compositor::{Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
-    ui::{self, EditorView},
+    ui::{self, fuzzy_match::FuzzyQuery, EditorView},
 };
 use tui::{
     buffer::Buffer as Surface,
@@ -9,7 +9,6 @@ use tui::{
 };
 
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
-use fuzzy_matcher::FuzzyMatcher;
 use tui::widgets::Widget;
 
 use std::time::Instant;
@@ -161,6 +160,27 @@ impl<T: Item> FilePicker<T> {
         self.preview_cache.insert(path.to_owned(), preview);
         Preview::Cached(&self.preview_cache[path])
     }
+
+    fn handle_idle_timeout(&mut self, cx: &mut Context) -> EventResult {
+        // Try to find a document in the cache
+        let doc = self
+            .current_file(cx.editor)
+            .and_then(|(path, _range)| self.preview_cache.get_mut(&path))
+            .and_then(|cache| match cache {
+                CachedPreview::Document(doc) => Some(doc),
+                _ => None,
+            });
+
+        // Then attempt to highlight it if it has no language set
+        if let Some(doc) = doc {
+            if doc.language_config().is_none() {
+                let loader = cx.editor.syn_loader.clone();
+                doc.detect_language(loader);
+            }
+        }
+
+        EventResult::Consumed(None)
+    }
 }
 
 impl<T: Item + 'static> Component for FilePicker<T> {
@@ -260,7 +280,10 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         }
     }
 
-    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
+        if let Event::IdleTimeout = event {
+            return self.handle_idle_timeout(ctx);
+        }
         // TODO: keybinds for scrolling preview
         self.picker.handle_event(event, ctx)
     }
@@ -287,8 +310,6 @@ pub struct Picker<T: Item> {
     matcher: Box<Matcher>,
     /// (index, score)
     matches: Vec<(usize, i64)>,
-    /// Filter over original options.
-    filters: Vec<usize>, // could be optimized into bit but not worth it now
 
     /// Current height of the completions box
     completion_height: u16,
@@ -323,7 +344,6 @@ impl<T: Item> Picker<T> {
             editor_data,
             matcher: Box::new(Matcher::default()),
             matches: Vec::new(),
-            filters: Vec::new(),
             cursor: 0,
             prompt,
             previous_pattern: String::new(),
@@ -365,18 +385,14 @@ impl<T: Item> Picker<T> {
                     .map(|(index, _option)| (index, 0)),
             );
         } else if pattern.starts_with(&self.previous_pattern) {
-            // TODO: remove when retain_mut is in stable rust
-            #[allow(unused_imports, deprecated)]
-            use retain_mut::RetainMut;
-
+            let query = FuzzyQuery::new(pattern);
             // optimization: if the pattern is a more specific version of the previous one
             // then we can score the filtered set.
-            #[allow(unstable_name_collisions)]
             self.matches.retain_mut(|(index, score)| {
                 let option = &self.options[*index];
                 let text = option.sort_text(&self.editor_data);
 
-                match self.matcher.fuzzy_match(&text, pattern) {
+                match query.fuzzy_match(&text, &self.matcher) {
                     Some(s) => {
                         // Update the score
                         *score = s;
@@ -389,23 +405,17 @@ impl<T: Item> Picker<T> {
             self.matches
                 .sort_unstable_by_key(|(_, score)| Reverse(*score));
         } else {
+            let query = FuzzyQuery::new(pattern);
             self.matches.clear();
             self.matches.extend(
                 self.options
                     .iter()
                     .enumerate()
                     .filter_map(|(index, option)| {
-                        // filter options first before matching
-                        if !self.filters.is_empty() {
-                            // TODO: this filters functionality seems inefficient,
-                            // instead store and operate on filters if any
-                            self.filters.binary_search(&index).ok()?;
-                        }
-
                         let text = option.filter_text(&self.editor_data);
 
-                        self.matcher
-                            .fuzzy_match(&text, pattern)
+                        query
+                            .fuzzy_match(&text, &self.matcher)
                             .map(|score| (index, score))
                     }),
             );
@@ -465,16 +475,16 @@ impl<T: Item> Picker<T> {
             .map(|(index, _score)| &self.options[*index])
     }
 
-    pub fn save_filter(&mut self, cx: &Context) {
-        self.filters.clear();
-        self.filters
-            .extend(self.matches.iter().map(|(index, _)| *index));
-        self.filters.sort_unstable(); // used for binary search later
-        self.prompt.clear(cx);
-    }
-
     pub fn toggle_preview(&mut self) {
         self.show_preview = !self.show_preview;
+    }
+
+    fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+        if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
+            // TODO: recalculate only if pattern changed
+            self.score();
+        }
+        EventResult::Consumed(None)
     }
 }
 
@@ -489,9 +499,10 @@ impl<T: Item + 'static> Component for Picker<T> {
         Some(viewport)
     }
 
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let key_event = match event {
-            Event::Key(event) => event,
+            Event::Key(event) => *event,
+            Event::Paste(..) => return self.prompt_handle_event(event, cx),
             Event::Resize(..) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored(None),
         };
@@ -500,6 +511,9 @@ impl<T: Item + 'static> Component for Picker<T> {
             // remove the layer
             compositor.last_picker = compositor.pop();
         })));
+
+        // So that idle timeout retriggers
+        cx.editor.reset_idle_timer();
 
         match key_event {
             shift!(Tab) | key!(Up) | ctrl!('p') => {
@@ -541,17 +555,11 @@ impl<T: Item + 'static> Component for Picker<T> {
                 }
                 return close_fn;
             }
-            ctrl!(' ') => {
-                self.save_filter(cx);
-            }
             ctrl!('t') => {
                 self.toggle_preview();
             }
             _ => {
-                if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
-                    // TODO: recalculate only if pattern changed
-                    self.score();
-                }
+                self.prompt_handle_event(event, cx);
             }
         }
 
@@ -629,9 +637,8 @@ impl<T: Item + 'static> Component for Picker<T> {
             }
 
             let spans = option.label(&self.editor_data);
-            let (_score, highlights) = self
-                .matcher
-                .fuzzy_indices(&String::from(&spans), self.prompt.line())
+            let (_score, highlights) = FuzzyQuery::new(self.prompt.line())
+                .fuzzy_indicies(&String::from(&spans), &self.matcher)
                 .unwrap_or_default();
 
             spans.0.into_iter().fold(inner, |pos, span| {
