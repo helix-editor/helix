@@ -3017,7 +3017,7 @@ pub mod insert {
         // TODO: round out to nearest indentation level (for example a line with 3 spaces should
         // indent by one to reach 4 spaces).
 
-        let indent = Tendril::from(doc.indent_unit());
+        let indent = Tendril::from(doc.indent_style.as_str());
         let transaction = Transaction::insert(
             doc.text(),
             &doc.selection(view.id).clone().cursors(doc.text().slice(..)),
@@ -3117,7 +3117,7 @@ pub mod insert {
         let count = cx.count();
         let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
-        let indent_unit = doc.indent_unit();
+        let indent_unit = doc.indent_style.as_str();
         let tab_size = doc.tab_width();
         let auto_pairs = doc.auto_pairs(cx.editor);
 
@@ -3642,7 +3642,7 @@ fn indent(cx: &mut Context) {
     let lines = get_lines(doc, view.id);
 
     // Indent by one level
-    let indent = Tendril::from(doc.indent_unit().repeat(count));
+    let indent = Tendril::from(doc.indent_style.as_str().repeat(count));
 
     let transaction = Transaction::change(
         doc.text(),
