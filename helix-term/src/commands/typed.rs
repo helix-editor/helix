@@ -559,17 +559,11 @@ pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> 
     Ok(())
 }
 
-fn write_all_impl(
+pub fn write_all_impl(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
-    event: PromptEvent,
-    quit: bool,
     force: bool,
+    write_scratch: bool,
 ) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-
     let mut errors: Vec<&'static str> = Vec::new();
     let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
@@ -580,12 +574,13 @@ fn write_all_impl(
         .documents
         .values()
         .filter_map(|doc| {
-            if doc.path().is_none() {
-                errors.push("cannot write a buffer without a filename\n");
+            if !doc.is_modified() {
                 return None;
             }
-
-            if !doc.is_modified() {
+            if doc.path().is_none() {
+                if write_scratch {
+                    errors.push("cannot write a buffer without a filename\n");
+                }
                 return None;
             }
 
@@ -611,20 +606,6 @@ fn write_all_impl(
         cx.editor.save::<PathBuf>(id, None, force)?;
     }
 
-    if quit {
-        cx.block_try_flush_writes()?;
-
-        if !force {
-            buffers_remaining_impl(cx.editor)?;
-        }
-
-        // close all views
-        let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
-        for view_id in views {
-            cx.editor.close(view_id);
-        }
-    }
-
     if !errors.is_empty() && !force {
         bail!("{:?}", errors);
     }
@@ -634,49 +615,50 @@ fn write_all_impl(
 
 fn write_all(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    _args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    write_all_impl(cx, args, event, false, false)
+    write_all_impl(cx, false, true)
 }
 
 fn write_all_quit(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    _args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    write_all_impl(cx, args, event, true, false)
+    write_all_impl(cx, false, true)?;
+    quit_all_impl(cx, false)
 }
 
 fn force_write_all_quit(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    _args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    write_all_impl(cx, args, event, true, true)
+    let _ = write_all_impl(cx, true, true);
+    quit_all_impl(cx, true)
 }
 
-fn quit_all_impl(editor: &mut Editor, force: bool) -> anyhow::Result<()> {
+fn quit_all_impl(cx: &mut compositor::Context, force: bool) -> anyhow::Result<()> {
+    cx.block_try_flush_writes()?;
     if !force {
-        buffers_remaining_impl(editor)?;
+        buffers_remaining_impl(cx.editor)?;
     }
 
     // close all views
-    let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
+    let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
     for view_id in views {
-        editor.close(view_id);
+        cx.editor.close(view_id);
     }
 
     Ok(())
@@ -691,8 +673,7 @@ fn quit_all(
         return Ok(());
     }
 
-    cx.block_try_flush_writes()?;
-    quit_all_impl(cx.editor, false)
+    quit_all_impl(cx, false)
 }
 
 fn force_quit_all(
@@ -704,7 +685,7 @@ fn force_quit_all(
         return Ok(());
     }
 
-    quit_all_impl(cx.editor, true)
+    quit_all_impl(cx, true)
 }
 
 fn cquit(
@@ -722,8 +703,7 @@ fn cquit(
         .unwrap_or(1);
 
     cx.editor.exit_code = exit_code;
-    cx.block_try_flush_writes()?;
-    quit_all_impl(cx.editor, false)
+    quit_all_impl(cx, false)
 }
 
 fn force_cquit(
@@ -741,7 +721,7 @@ fn force_cquit(
         .unwrap_or(1);
     cx.editor.exit_code = exit_code;
 
-    quit_all_impl(cx.editor, true)
+    quit_all_impl(cx, true)
 }
 
 fn theme(
@@ -2141,7 +2121,7 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
             .collect()
     });
 
-pub fn command_mode(cx: &mut Context) {
+pub(super) fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
