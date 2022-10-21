@@ -1097,10 +1097,15 @@ impl EditorView {
     }
 
     pub fn handle_idle_timeout(&mut self, cx: &mut commands::Context) -> EventResult {
-        if self.completion.is_some()
-            || cx.editor.mode != Mode::Insert
-            || !cx.editor.config().auto_completion
-        {
+        if let Some(completion) = &mut self.completion {
+            return if completion.ensure_item_resolved(cx) {
+                EventResult::Consumed(None)
+            } else {
+                EventResult::Ignored(None)
+            };
+        }
+
+        if cx.editor.mode != Mode::Insert || !cx.editor.config().auto_completion {
             return EventResult::Ignored(None);
         }
 
