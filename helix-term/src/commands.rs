@@ -32,6 +32,7 @@ use helix_core::{
     RopeSlice, Selection, SmallVec, Tendril, Transaction,
 };
 use helix_view::{
+    apply_transaction,
     clipboard::ClipboardType,
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, CompleteAction, Motion},
@@ -76,6 +77,8 @@ use serde::de::{self, Deserialize, Deserializer};
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
+use itertools::FoldWhile::{Continue, Done};
+use itertools::Itertools;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 pub type OnKeyCallback = Box<dyn FnOnce(&mut Context, KeyEvent)>;
@@ -326,6 +329,8 @@ impl MappableCommand {
         goto_declaration, "Goto declaration",
         add_newline_above, "Add newline above",
         add_newline_below, "Add newline below",
+        move_selection_above, "Move current line or selection up",
+        move_selection_below, "Move current line or selection down",
         goto_type_definition, "Goto type definition",
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto line number <n> else file start",
@@ -5457,6 +5462,168 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
 
     let transaction = Transaction::change(text, changes);
     doc.apply(&transaction, view.id);
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum MoveSelection {
+    Below,
+    Above,
+}
+
+/// Predict where selection cursor should be after moving the code block up or down.
+/// This function makes it look like the selection didn't change relative
+/// to the text that have been moved.
+fn get_adjusted_selection_pos(
+    doc: &Document,
+    // text: &Rope,
+    range: Range,
+    pos: usize,
+    direction: &MoveSelection,
+) -> usize {
+    let text = doc.text();
+    let slice = text.slice(..);
+    let (selection_start_line, selection_end_line) = range.line_range(slice);
+    let next_line = match direction {
+        MoveSelection::Above => selection_start_line.saturating_sub(1),
+        MoveSelection::Below => selection_end_line + 1,
+    };
+    if next_line == selection_start_line || next_line >= text.len_lines() {
+        pos
+    } else {
+        let next_line_len = {
+            // This omits the next line (above or below) when counting the future position of head/anchor
+            let line_start = text.line_to_char(next_line);
+            let line_end = line_end_char_index(&slice, next_line);
+            line_end.saturating_sub(line_start)
+        };
+
+        let cursor = coords_at_pos(slice, pos);
+        let pos_line = text.char_to_line(pos);
+        let start_line_pos = text.line_to_char(pos_line);
+        let ending_len = doc.line_ending.len_chars();
+        match direction {
+            MoveSelection::Above => start_line_pos + cursor.col - next_line_len - ending_len,
+            MoveSelection::Below => start_line_pos + cursor.col + next_line_len + ending_len,
+        }
+    }
+}
+
+/// Move line or block of text in specified direction.
+/// The function respects single line, single selection, multiple lines using
+/// several cursors and multiple selections.
+fn move_selection(cx: &mut Context, direction: MoveSelection) {
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id);
+    let text = doc.text();
+    let slice = text.slice(..);
+    let all_changes = selection.into_iter().map(|range| {
+        let (start, end) = range.line_range(slice);
+        let line_start = text.line_to_char(start);
+        let line_end = line_end_char_index(&slice, end);
+        let line = text.slice(line_start..line_end).to_string();
+
+        let next_line = match direction {
+            MoveSelection::Above => start.saturating_sub(1),
+            MoveSelection::Below => end + 1,
+        };
+
+        if next_line == start || next_line >= text.len_lines() {
+            vec![(line_start, line_end, Some(line.into()))]
+        } else {
+            let next_line_start = text.line_to_char(next_line);
+            let next_line_end = line_end_char_index(&slice, next_line);
+
+            let next_line_text = text.slice(next_line_start..next_line_end).to_string();
+
+            match direction {
+                MoveSelection::Above => vec![
+                    (next_line_start, next_line_end, Some(line.into())),
+                    (line_start, line_end, Some(next_line_text.into())),
+                ],
+                MoveSelection::Below => vec![
+                    (line_start, line_end, Some(next_line_text.into())),
+                    (next_line_start, next_line_end, Some(line.into())),
+                ],
+            }
+        }
+    });
+
+    // Conflicts might arise when two cursors are pointing to adjacent lines.
+    // The resulting change vector would contain two changes referring the same lines,
+    // which would make the transaction to panic.
+    // Conflicts are resolved by picking only the top change in such case.
+    fn remove_conflicts(changes: Vec<Change>) -> Vec<Change> {
+        if changes.len() > 2 {
+            changes
+                .into_iter()
+                .fold_while(vec![], |mut acc: Vec<Change>, change| {
+                    if let Some(last_change) = acc.pop() {
+                        if last_change.0 >= change.0 || last_change.1 >= change.1 {
+                            acc.push(last_change);
+                            Done(acc)
+                        } else {
+                            acc.push(last_change);
+                            acc.push(change);
+                            Continue(acc)
+                        }
+                    } else {
+                        acc.push(change);
+                        Continue(acc)
+                    }
+                })
+                .into_inner()
+        } else {
+            changes
+        }
+    }
+    let flat: Vec<Change> = all_changes.into_iter().flatten().unique().collect();
+    let filtered = remove_conflicts(flat);
+
+    let new_selection = selection.clone().transform(|range| {
+        let anchor_pos = get_adjusted_selection_pos(doc, range, range.anchor, &direction);
+        let head_pos = get_adjusted_selection_pos(doc, range, range.head, &direction);
+
+        Range::new(anchor_pos, head_pos)
+    });
+    let transaction = Transaction::change(doc.text(), filtered.into_iter());
+
+    // Analogically to the conflicting line changes, selections can also panic
+    // in case the ranges would overlap.
+    // Only one selection is returned to prevent that.
+    let selections_collide = || -> bool {
+        let mut last: Option<Range> = None;
+        for range in new_selection.iter() {
+            let line = range.cursor_line(slice);
+            match last {
+                Some(last_r) => {
+                    let last_line = last_r.cursor_line(slice);
+                    if range.overlaps(&last_r) || last_line + 1 == line || last_line == line {
+                        return true;
+                    } else {
+                        last = Some(*range);
+                    };
+                }
+                None => last = Some(*range),
+            };
+        }
+        false
+    };
+    let cleaned_selection = if new_selection.len() > 1 && selections_collide() {
+        new_selection.into_single()
+    } else {
+        new_selection
+    };
+
+    apply_transaction(&transaction, doc, view);
+    doc.set_selection(view.id, cleaned_selection);
+}
+
+fn move_selection_below(cx: &mut Context) {
+    move_selection(cx, MoveSelection::Below)
+}
+
+fn move_selection_above(cx: &mut Context) {
+    move_selection(cx, MoveSelection::Above)
 }
 
 enum IncrementDirection {
