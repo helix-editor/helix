@@ -2106,14 +2106,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
         TypableCommand {
             name: "insert-output",
-            aliases: &[],
+            aliases: &["io"],
             doc: "Run shell command, inserting output before each selection.",
             fun: insert_output,
             completer: None,
         },
         TypableCommand {
             name: "append-output",
-            aliases: &[],
+            aliases: &["ao"],
             doc: "Run shell command, appending output after each selection.",
             fun: append_output,
             completer: None,
