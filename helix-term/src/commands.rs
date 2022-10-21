@@ -1058,10 +1058,19 @@ fn goto_url(cx: &mut Context) {
 
     let (view, doc) = current_ref!(cx.editor);
     let selection = doc.selection(view.id).primary();
-    let text = doc
-        .text()
-        .slice(selection.from()..selection.to())
-        .to_string();
+    let text = doc.text();
+
+    let text = if selection.to() - selection.from() == 1 {
+        let current_word = movement::move_next_long_word_start(
+            text.slice(..),
+            movement::move_prev_long_word_start(text.slice(..), selection, 1),
+            1,
+        );
+        text.slice(current_word.from()..current_word.to())
+            .to_string()
+    } else {
+        text.slice(selection.from()..selection.to()).to_string()
+    };
 
     match Url::parse(&text) {
         Ok(url) => {
