@@ -105,8 +105,8 @@ mklink /D runtime "<helix-repo>\runtime"
 
 The runtime location can be overridden via the `HELIX_RUNTIME` environment variable.
 
-> NOTE: if `HELIX_RUNTIME` is set prior to calling `cargo install --path helix-term`
-> , tree-sitter grammars will be built in `$HELIX_RUNTIME/grammars`.
+> NOTE: if `HELIX_RUNTIME` is set prior to calling `cargo install --path helix-term`,
+> tree-sitter grammars will be built in `$HELIX_RUNTIME/grammars`.
 
 If you plan on keeping the repo locally, an alternative to copying/symlinking
 runtime files is to set `HELIX_RUNTIME=/path/to/helix/runtime`
