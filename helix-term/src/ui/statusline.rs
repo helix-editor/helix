@@ -340,8 +340,21 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let file_type = context.doc.language_name().unwrap_or("text");
+    let visible = context.focused;
 
-    write(context, format!(" {} ", file_type), None);
+    write(
+        context,
+        format!(" {} ", file_type),
+        if visible && context.editor.config().color_modes {
+            match context.editor.mode() {
+                Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
+                Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
+                Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
+            }
+        } else {
+            None
+        },
+    );
 }
 
 fn render_file_name<F>(context: &mut RenderContext, write: F)
