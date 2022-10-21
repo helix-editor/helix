@@ -1053,8 +1053,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-regex", rev = "e1cf
 name = "git-config"
 scope = "source.gitconfig"
 roots = []
-# TODO: allow specifying file-types as a regex so we can read directory names (e.g. `.git/config`)
-file-types = [".gitmodules", ".gitconfig", ".git/config", ".config/git/config"]
+file-types = [".gitmodules", ".gitconfig", { suffix = ".git/config" }, { suffix = ".config/git/config" }]
 injection-regex = "git-config"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
@@ -1491,7 +1490,7 @@ source = { git = "https://github.com/bearcove/tree-sitter-meson", rev = "feea83b
 [[language]]
 name = "sshclientconfig"
 scope = "source.sshclientconfig"
-file-types = [".ssh/config", "/etc/ssh/ssh_config"]
+file-types = [{ suffix = ".ssh/config" }, { suffix = "/etc/ssh/ssh_config" }]
 roots = []
 
 [[grammar]]
