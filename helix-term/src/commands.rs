@@ -1032,21 +1032,25 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         .map(|r| text.slice(r.from()..r.to()).to_string())
         .collect();
     let primary = selections.primary();
-    if selections.len() == 1 && primary.to() - primary.from() == 1 {
+    if primary.len() == 1 {
         let count = cx.count();
-        let new_selection = selections.clone().transform(|range| {
-            textobject::textobject_word(
-                text.slice(..),
-                range,
-                textobject::TextObject::Inside,
-                count,
-                true,
-            )
-        });
-        paths = new_selection
-            .iter()
-            .map(|r| text.slice(r.from()..r.to()).to_string())
-            .collect();
+        let current_word = selections
+            .clone()
+            .transform(|range| {
+                textobject::textobject_word(
+                    text.slice(..),
+                    range,
+                    textobject::TextObject::Inside,
+                    count,
+                    true,
+                )
+            })
+            .primary();
+        paths.clear();
+        paths.push(
+            text.slice(current_word.from()..current_word.to())
+                .to_string(),
+        );
     }
     for sel in paths {
         let surrounding_chars: &[_] = &['\'', '"', '(', ')'];
