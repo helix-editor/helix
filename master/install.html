@@ -180,7 +180,7 @@ sudo dnf install helix
 cd helix
 cargo install --path helix-term
 </code></pre>
-<p>This will install the <code>hx</code> binary to <code>$HOME/.cargo/bin</code>.</p>
+<p>This will install the <code>hx</code> binary to <code>$HOME/.cargo/bin</code> and build tree-sitter grammars in <code>./runtime/grammars</code>.</p>
 <p>Helix also needs its runtime files so make sure to copy/symlink the <code>runtime/</code> directory into the
 config directory (for example <code>~/.config/helix/runtime</code> on Linux/macOS). This location can be overridden
 via the <code>HELIX_RUNTIME</code> environment variable.</p>
@@ -199,6 +199,14 @@ elevated priviliges - i.e. PowerShell or Cmd must be run as administrator.</p>
 <pre><code class="language-cmd">cd %appdata%\helix
 mklink /D runtime &quot;&lt;helix-repo&gt;\runtime&quot;
 </code></pre>
+<p>The runtime location can be overridden via the <code>HELIX_RUNTIME</code> environment variable.</p>
+<blockquote>
+<p>NOTE: if <code>HELIX_RUNTIME</code> is set prior to calling <code>cargo install --path helix-term</code>,
+tree-sitter grammars will be built in <code>$HELIX_RUNTIME/grammars</code>.</p>
+</blockquote>
+<p>If you plan on keeping the repo locally, an alternative to copying/symlinking
+runtime files is to set <code>HELIX_RUNTIME=/path/to/helix/runtime</code>
+(<code>HELIX_RUNTIME=$PWD/runtime</code> if you're in the helix repo directory).</p>
 <p>To use Helix in desktop environments that supports <a href="https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html">XDG desktop menu</a>, including Gnome and KDE, copy the provided <code>.desktop</code> file to the correct folder:</p>
 <pre><code class="language-bash">cp contrib/Helix.desktop ~/.local/share/applications
 </code></pre>
