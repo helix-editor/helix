@@ -1,0 +1,105 @@
+"comment" = { fg = "highlight_three" }
+"comment.block.documentation" = { bg = "t4", modifiers = ["italic"] }
+
+"constant" = { fg = "t11" }
+"function" = { fg = "t10" }
+"function.method" = { fg = "t10" }
+"function.macro" = { fg = "t7" }
+"keyword.storage.modifier" = { fg = "t7" }
+"keyword.control.import" = { fg = "t8" }
+"keyword.control" = { fg = "t8" }
+"keyword.function" = { fg = "t7" }
+"keyword" = { fg = "t6" }
+"operator" = { fg = "t8" }
+"punctuation" = { fg = "t9" }
+"string" = { fg = "t6", modifiers = ["italic"] }
+"string.regexp" = { fg = "t6" }
+"tag" = { fg = "t4" }
+"type" = { fg = "t8", modifiers = ["bold"] }
+"namespace" = { fg = "t6", modifiers = ["bold"] }
+"variable" = { fg = "t4" }
+"label" = { fg = "t4" }
+
+"diff.plus" = { fg = "t4" }
+"diff.delta" = { fg = "t4" }
+"diff.minus" = { fg = "t4" }
+
+"ui.cursor.insert" = { fg = "t2", bg = "highlight" }
+"ui.cursor.select" = { fg = "t2", bg = "highlight_two" }
+"ui.cursor" = { fg = "t1", bg = "highlight_three" }
+"ui.cursor.match" = { fg = "highlight", bg = "t1", modifiers = ["bold"] }
+
+"ui.linenr" = { fg = "t3", bg = "t1" }
+"ui.linenr.selected" = { fg = "highlight_three", bg = "t1" }
+"ui.gutter" = { bg = "t1" }
+
+"ui.background" = { fg = "t4", bg = "t2" }
+"ui.background.separator" = { fg = "t3" }
+"ui.help" = { fg = "t4", bg = "t1" }
+"ui.menu" = { fg = "t4", bg = "t1" }
+"ui.menu.selected" = { fg = "highlight_three", bg = "t1" }
+"ui.popup" = { fg = "t4", bg = "t1" }
+"ui.window" = { fg = "t4" }
+
+"ui.selection.primary" = { bg = "selection" }
+"ui.selection" = { bg = "selection" }
+
+"ui.cursorline.primary" = { bg = "t1" }
+
+"ui.statusline" = { fg = "t4", bg = "t1" }
+"ui.statusline.inactive" = { fg = "t4", bg = "t1" }
+"ui.statusline.normal" = { fg = "t3", bg = "t1" }
+"ui.statusline.insert" = { fg = "t3", bg = "t1" }
+"ui.statusline.select" = { fg = "highlight", bg = "t4" }
+
+"ui.text" = { fg = "t4" }
+"ui.text.focus" = { fg = "highlight_three", modifiers = ["bold"] }
+#
+"ui.virtual.ruler" = { bg = "t1" }
+"ui.virtual.indent-guide" = { fg = "t3" }
+"ui.virtual.whitespace" = { fg = "t3" }
+
+"diagnostic" = { modifiers = ["underlined"] }
+"error" = { fg = "error", modifiers = ["bold"] }
+"warning" = { fg = "warning", modifiers = ["bold"] }
+"info" = { fg = "info", modifiers = ["bold"] }
+"hint" = { fg = "display", modifiers = ["bold"] }
+"special" = { fg = "t7", modifiers = ["bold"] }
+
+"markup.heading" = { fg = "t4" }
+"markup.list" = { fg = "t4" }
+"markup.bold" = { fg = "t4" }
+"markup.italic" = { fg = "t4" }
+"markup.link.url" = { fg = "t4", modifiers = ["underlined"] }
+"markup.link.text" = { fg = "t4" }
+"markup.quote" = { fg = "t4" }
+"markup.raw" = { fg = "t4" }
+
+[palette]
+t1 = "#0f0b0b"
+t2 = "#161010"
+t3 = "#5b5555"
+t4 = "#656869"
+t5 = "#727b7c"
+t6 = "#6e8789"
+t7 = "#d85c60"
+t8 = "#9bc1bb"
+t9 = "#b5c5c5"
+t10 = "#c0d0ce"
+t11 = "#f78c5e"
+
+highlight = "#3f36f2"
+highlight_two = "#f69c3c"
+highlight_three = "#d4d987"
+
+selection = "#032d4a"
+
+black = "#000000"
+
+comment = "#396884"
+comment_doc = "#234048"
+
+error = "#ff0900"
+warning = "#ffbf00"
+display = "#57ff89"
+info = "#dad7d5"
