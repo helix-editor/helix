@@ -34,7 +34,7 @@ pub fn print(s: &str) -> (String, Selection) {
     let mut left = String::with_capacity(s.len());
 
     'outer: while let Some(c) = iter.next() {
-        let start = left.len();
+        let start = left.chars().count();
 
         if c != '#' {
             left.push(c);
@@ -63,6 +63,7 @@ pub fn print(s: &str) -> (String, Selection) {
                 left.push(c);
                 continue;
             }
+
             if !head_at_beg {
                 let prev = left.pop().unwrap();
                 if prev != '|' {
@@ -71,15 +72,18 @@ pub fn print(s: &str) -> (String, Selection) {
                     continue;
                 }
             }
+
             iter.next(); // skip "#"
 
             if is_primary {
                 primary_idx = Some(ranges.len());
             }
+
             let (anchor, head) = match head_at_beg {
-                true => (left.len(), start),
-                false => (start, left.len()),
+                true => (left.chars().count(), start),
+                false => (start, left.chars().count()),
             };
+
             ranges.push(Range::new(anchor, head));
             continue 'outer;
         }
@@ -95,6 +99,7 @@ pub fn print(s: &str) -> (String, Selection) {
         Some(i) => i,
         None => panic!("missing primary `#[|]#` {:?}", s),
     };
+
     let selection = Selection::new(ranges, primary);
     (left, selection)
 }
@@ -140,4 +145,120 @@ pub fn plain(s: &str, selection: Selection) -> String {
         out.insert_str(i, s);
     }
     out
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn print_single() {
+        assert_eq!(
+            (String::from("hello"), Selection::single(1, 0)),
+            print("#[|h]#ello")
+        );
+        assert_eq!(
+            (String::from("hello"), Selection::single(0, 1)),
+            print("#[h|]#ello")
+        );
+        assert_eq!(
+            (String::from("hello"), Selection::single(4, 0)),
+            print("#[|hell]#o")
+        );
+        assert_eq!(
+            (String::from("hello"), Selection::single(0, 4)),
+            print("#[hell|]#o")
+        );
+        assert_eq!(
+            (String::from("hello"), Selection::single(5, 0)),
+            print("#[|hello]#")
+        );
+        assert_eq!(
+            (String::from("hello"), Selection::single(0, 5)),
+            print("#[hello|]#")
+        );
+    }
+
+    #[test]
+    fn print_multi() {
+        assert_eq!(
+            (
+                String::from("hello"),
+                Selection::new(
+                    SmallVec::from_slice(&[Range::new(1, 0), Range::new(5, 4)]),
+                    0
+                )
+            ),
+            print("#[|h]#ell#(|o)#")
+        );
+        assert_eq!(
+            (
+                String::from("hello"),
+                Selection::new(
+                    SmallVec::from_slice(&[Range::new(0, 1), Range::new(4, 5)]),
+                    0
+                )
+            ),
+            print("#[h|]#ell#(o|)#")
+        );
+        assert_eq!(
+            (
+                String::from("hello"),
+                Selection::new(
+                    SmallVec::from_slice(&[Range::new(2, 0), Range::new(5, 3)]),
+                    0
+                )
+            ),
+            print("#[|he]#l#(|lo)#")
+        );
+        assert_eq!(
+            (
+                String::from("hello\r\nhello\r\nhello\r\n"),
+                Selection::new(
+                    SmallVec::from_slice(&[
+                        Range::new(7, 5),
+                        Range::new(21, 19),
+                        Range::new(14, 12)
+                    ]),
+                    0
+                )
+            ),
+            print("hello#[|\r\n]#hello#(|\r\n)#hello#(|\r\n)#")
+        );
+    }
+
+    #[test]
+    fn print_multi_byte_code_point() {
+        assert_eq!(
+            (String::from("„“"), Selection::single(1, 0)),
+            print("#[|„]#“")
+        );
+        assert_eq!(
+            (String::from("„“"), Selection::single(2, 1)),
+            print("„#[|“]#")
+        );
+        assert_eq!(
+            (String::from("„“"), Selection::single(0, 1)),
+            print("#[„|]#“")
+        );
+        assert_eq!(
+            (String::from("„“"), Selection::single(1, 2)),
+            print("„#[“|]#")
+        );
+        assert_eq!(
+            (String::from("they said „hello“"), Selection::single(11, 10)),
+            print("they said #[|„]#hello“")
+        );
+    }
+
+    #[test]
+    fn print_multi_code_point_grapheme() {
+        assert_eq!(
+            (
+                String::from("hello 👨‍👩‍👧‍👦 goodbye"),
+                Selection::single(13, 6)
+            ),
+            print("hello #[|👨‍👩‍👧‍👦]# goodbye")
+        );
+    }
 }
