@@ -1,6 +1,6 @@
 use super::*;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn auto_indent_c() -> anyhow::Result<()> {
     test_with_config(
         Args {

@@ -8,7 +8,7 @@ use helix_view::doc;
 
 use super::*;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
@@ -92,7 +92,7 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
     let mut app = helpers::AppBuilder::new()
@@ -133,7 +133,7 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 
@@ -158,7 +158,7 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_scratch_no_path_fails() -> anyhow::Result<()> {
     helpers::test_key_sequence_with_input_text(
         None,
@@ -179,7 +179,7 @@ async fn test_write_scratch_no_path_fails() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
     let mut file = tempfile::Builder::new().suffix(".rs").tempfile()?;
 
@@ -203,7 +203,7 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_new_path() -> anyhow::Result<()> {
     let mut file1 = tempfile::NamedTempFile::new().unwrap();
     let mut file2 = tempfile::NamedTempFile::new().unwrap();
@@ -249,7 +249,7 @@ async fn test_write_new_path() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_fail_new_path() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
 

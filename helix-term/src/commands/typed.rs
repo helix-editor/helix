@@ -51,6 +51,7 @@ fn force_quit(
 
     ensure!(args.is_empty(), ":quit! takes no arguments");
 
+    cx.block_try_flush_writes()?;
     cx.editor.close(view!(cx.editor).id);
 
     Ok(())
