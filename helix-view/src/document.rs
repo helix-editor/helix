@@ -1372,7 +1372,7 @@ mod test {
                     .to_string();
                 let expectation = std::fs::read_to_string(ref_path).unwrap();
                 assert_eq!(text[..], expectation[..]);
-            }  
+            }
         };
         ($name:ident, $label:expr) => {
             decode!($name, $label, $label);
@@ -1389,11 +1389,11 @@ mod test {
                 let ref_path = base_path.join(format!("{}_out_ref.txt", $label));
                 assert!(path.exists());
                 assert!(ref_path.exists());
-    
+
                 let text = Rope::from_str(&std::fs::read_to_string(path).unwrap());
                 let mut buf: Vec<u8> = Vec::new();
                 helix_lsp::block_on(to_writer(&mut buf, encoding, &text)).unwrap();
-    
+
                 let expectation = std::fs::read(ref_path).unwrap();
                 assert_eq!(buf, expectation);
             }
