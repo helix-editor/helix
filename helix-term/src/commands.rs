@@ -4855,6 +4855,7 @@ fn increment_impl(cx: &mut Context, amount: i64) {
     let selection = doc.selection(view.id);
     let text = doc.text().slice(..);
 
+    let mut amount = amount;
     let changes: Vec<_> = selection
         .ranges()
         .iter()
@@ -4869,6 +4870,15 @@ fn increment_impl(cx: &mut Context, amount: i64) {
                 };
 
             let (range, new_text) = incrementor.increment(amount);
+
+            // If the ammount is positive, increase the increment amount by 1
+            let mut value = 1;
+
+            // If the ammount is negative, increase the increment amount by - 1
+            if amount < 0 {
+                value = -1;
+            }
+            amount = amount + value;
 
             Some((range.from(), range.to(), Some(new_text)))
         })
