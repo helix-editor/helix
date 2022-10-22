@@ -48,3 +48,5 @@
   (language_identifier)
   (quote_content)
 ] @markup.raw.block
+
+(parameter) @variable.parameter

@@ -94,10 +94,6 @@
 (unary_operator operator: _ @operator)
 ["/" ":" "->"] @operator
 
-(tripledot) @comment.discard
-
-(comment) @comment
-
 ; Macros
 (macro
   "?"+ @constant
@@ -112,8 +108,14 @@
 ((variable) @comment.discard
  (#match? @comment.discard "^_"))
 
+(tripledot) @comment.discard
+
+[(comment) (line_comment) (shebang)] @comment
+
 ; Basic types
 (variable) @variable
+((atom) @constant.builtin.boolean
+ (#match? @constant.builtin.boolean "^(true|false)$"))
 (atom) @string.special.symbol
 (string) @string
 (character) @constant.character
