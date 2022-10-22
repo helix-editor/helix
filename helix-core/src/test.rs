@@ -1,5 +1,6 @@
 //! Test helpers.
 use crate::{Range, Selection};
+use ropey::Rope;
 use smallvec::SmallVec;
 use std::cmp::Reverse;
 use unicode_segmentation::UnicodeSegmentation;
@@ -148,10 +149,12 @@ pub fn print(s: &str) -> (String, Selection) {
 ///     "#[a|]#b#(|c)#".to_owned()
 /// );
 /// ```
-pub fn plain(s: &str, selection: &Selection) -> String {
+pub fn plain<R: Into<Rope>>(s: R, selection: &Selection) -> String {
+    let s = s.into();
     let primary = selection.primary_index();
-    let mut out = String::with_capacity(s.len() + 5 * selection.len());
-    out.push_str(s);
+    let mut out = String::with_capacity(s.len_bytes() + 5 * selection.len());
+    out.push_str(&s.to_string());
+
     let mut insertion: Vec<_> = selection
         .iter()
         .enumerate()
@@ -164,7 +167,9 @@ pub fn plain(s: &str, selection: &Selection) -> String {
                 (false, false) => [(range.anchor, ")#"), (range.head, "#(|")],
             }
         })
+        .map(|(char_idx, marker)| (s.char_to_byte(char_idx), marker))
         .collect();
+
     // insert in reverse order
     insertion.sort_unstable_by_key(|k| Reverse(k.0));
     for (i, s) in insertion {
@@ -173,7 +178,6 @@ pub fn plain(s: &str, selection: &Selection) -> String {
     out
 }
 
-#[allow(clippy::module_inception)]
 #[cfg(test)]
 #[allow(clippy::module_inception)]
 mod test {
@@ -287,6 +291,96 @@ mod test {
                 Selection::single(13, 6)
             ),
             print("hello #[|👨‍👩‍👧‍👦]# goodbye")
+        );
+    }
+
+    #[test]
+    fn plain_single() {
+        assert_eq!("#[|h]#ello", plain("hello", &Selection::single(1, 0)));
+        assert_eq!("#[h|]#ello", plain("hello", &Selection::single(0, 1)));
+        assert_eq!("#[|hell]#o", plain("hello", &Selection::single(4, 0)));
+        assert_eq!("#[hell|]#o", plain("hello", &Selection::single(0, 4)));
+        assert_eq!("#[|hello]#", plain("hello", &Selection::single(5, 0)));
+        assert_eq!("#[hello|]#", plain("hello", &Selection::single(0, 5)));
+    }
+
+    #[test]
+    fn plain_multi() {
+        assert_eq!(
+            plain(
+                "hello",
+                &Selection::new(
+                    SmallVec::from_slice(&[Range::new(1, 0), Range::new(5, 4)]),
+                    0
+                )
+            ),
+            String::from("#[|h]#ell#(|o)#")
+        );
+        assert_eq!(
+            plain(
+                "hello",
+                &Selection::new(
+                    SmallVec::from_slice(&[Range::new(0, 1), Range::new(4, 5)]),
+                    0
+                )
+            ),
+            String::from("#[h|]#ell#(o|)#")
+        );
+        assert_eq!(
+            plain(
+                "hello",
+                &Selection::new(
+                    SmallVec::from_slice(&[Range::new(2, 0), Range::new(5, 3)]),
+                    0
+                )
+            ),
+            String::from("#[|he]#l#(|lo)#")
+        );
+        assert_eq!(
+            plain(
+                "hello\r\nhello\r\nhello\r\n",
+                &Selection::new(
+                    SmallVec::from_slice(&[
+                        Range::new(7, 5),
+                        Range::new(21, 19),
+                        Range::new(14, 12)
+                    ]),
+                    0
+                )
+            ),
+            String::from("hello#[|\r\n]#hello#(|\r\n)#hello#(|\r\n)#")
+        );
+    }
+
+    #[test]
+    fn plain_multi_byte_code_point() {
+        assert_eq!(
+            plain("„“", &Selection::single(1, 0)),
+            String::from("#[|„]#“")
+        );
+        assert_eq!(
+            plain("„“", &Selection::single(2, 1)),
+            String::from("„#[|“]#")
+        );
+        assert_eq!(
+            plain("„“", &Selection::single(0, 1)),
+            String::from("#[„|]#“")
+        );
+        assert_eq!(
+            plain("„“", &Selection::single(1, 2)),
+            String::from("„#[“|]#")
+        );
+        assert_eq!(
+            plain("they said „hello“", &Selection::single(11, 10)),
+            String::from("they said #[|„]#hello“")
+        );
+    }
+
+    #[test]
+    fn plain_multi_code_point_grapheme() {
+        assert_eq!(
+            plain("hello 👨‍👩‍👧‍👦 goodbye", &Selection::single(13, 6)),
+            String::from("hello #[|👨‍👩‍👧‍👦]# goodbye")
         );
     }
 }
