@@ -435,6 +435,8 @@ impl MappableCommand {
         rename_symbol, "Rename symbol",
         increment, "Increment item under cursor",
         decrement, "Decrement item under cursor",
+        increasing_increment, "Increment item under cursor. Increment amount increases by 1 each item",
+        decreasing_decrement, "Decrement item under cursor. Decreament amount decreases by 1 each item",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
@@ -4810,12 +4812,20 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
 
 /// Increment object under cursor by count.
 fn increment(cx: &mut Context) {
-    increment_impl(cx, cx.count() as i64);
+    increment_impl(cx, cx.count() as i64, 0);
 }
 
 /// Decrement object under cursor by count.
 fn decrement(cx: &mut Context) {
-    increment_impl(cx, -(cx.count() as i64));
+    increment_impl(cx, -(cx.count() as i64), 0);
+}
+/// Increment object under cursor by count. Each increment increases by 1.
+fn increasing_increment(cx: &mut Context) {
+    increment_impl(cx, cx.count() as i64, 1);
+}
+/// Decrement object under cursor by count. Each decrement decreases by -1.
+fn decreasing_decrement(cx: &mut Context) {
+    increment_impl(cx, -(cx.count() as i64), -1);
 }
 
 /// This function differs from find_next_char_impl in that it stops searching at the newline, but also
@@ -4839,7 +4849,7 @@ fn find_next_char_until_newline<M: CharMatcher>(
 }
 
 /// Decrement object under cursor by `amount`.
-fn increment_impl(cx: &mut Context, amount: i64) {
+fn increment_impl(cx: &mut Context, amount: i64, increase_by: i64) {
     // TODO: when incrementing or decrementing a number that gets a new digit or lose one, the
     // selection is updated improperly.
     find_char_impl(
@@ -4871,14 +4881,7 @@ fn increment_impl(cx: &mut Context, amount: i64) {
 
             let (range, new_text) = incrementor.increment(amount);
 
-            // If the ammount is positive, increase the increment amount by 1
-            let mut value = 1;
-
-            // If the ammount is negative, increase the increment amount by - 1
-            if amount < 0 {
-                value = -1;
-            }
-            amount = amount + value;
+            amount += increase_by;
 
             Some((range.from(), range.to(), Some(new_text)))
         })
