@@ -206,6 +206,14 @@ impl<T: Item> Menu<T> {
         })
     }
 
+    pub fn selection_mut(&mut self) -> Option<&mut T> {
+        self.cursor.and_then(|cursor| {
+            self.matches
+                .get(cursor)
+                .map(|(index, _score)| &mut self.options[*index])
+        })
+    }
+
     pub fn is_empty(&self) -> bool {
         self.matches.is_empty()
     }
