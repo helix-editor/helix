@@ -1641,7 +1641,7 @@ formatter = { command = &quot;mylang-formatter&quot; , args = [&quot;--stdin&quo
 <tr><td><code>name</code></td><td>The name of the language</td></tr>
 <tr><td><code>scope</code></td><td>A string like <code>source.js</code> that identifies the language. Currently, we strive to match the scope names used by popular TextMate grammars and by the Linguist library. Usually <code>source.&lt;name&gt;</code> or <code>text.&lt;name&gt;</code> in case of markup languages</td></tr>
 <tr><td><code>injection-regex</code></td><td>regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection">language injection</a> site.</td></tr>
-<tr><td><code>file-types</code></td><td>The filetypes of the language, for example <code>[&quot;yml&quot;, &quot;yaml&quot;]</code>. This attempts to match by exact file name (<code>.zshrc</code>), then by file extension (<code>toml</code>), then by path suffix (<code>.git/config</code>).</td></tr>
+<tr><td><code>file-types</code></td><td>The filetypes of the language, for example <code>[&quot;yml&quot;, &quot;yaml&quot;]</code>. See the file-type detection section below.</td></tr>
 <tr><td><code>shebangs</code></td><td>The interpreters from the shebang line, for example <code>[&quot;sh&quot;, &quot;bash&quot;]</code></td></tr>
 <tr><td><code>roots</code></td><td>A set of marker files to look for when trying to find the workspace root. For example <code>Cargo.lock</code>, <code>yarn.lock</code></td></tr>
 <tr><td><code>auto-format</code></td><td>Whether to autoformat this language when saving</td></tr>
@@ -1655,6 +1655,28 @@ formatter = { command = &quot;mylang-formatter&quot; , args = [&quot;--stdin&quo
 <tr><td><code>max-line-length</code></td><td>Maximum line length. Used for the <code>:reflow</code> command</td></tr>
 </tbody></table>
 </div>
+<h3 id="file-type-detection-and-the-file-types-key"><a class="header" href="#file-type-detection-and-the-file-types-key">File-type detection and the <code>file-types</code> key</a></h3>
+<p>Helix determines which language configuration to use with the <code>file-types</code> key
+from the above section. <code>file-types</code> is a list of strings or tables, for
+example:</p>
+<pre><code class="language-toml">file-types = [&quot;Makefile&quot;, &quot;toml&quot;, { suffix = &quot;.git/config&quot; }]
+</code></pre>
+<p>When determining a language configuration to use, Helix searches the file-types
+with the following priorities:</p>
+<ol>
+<li>Exact match: if the filename of a file is an exact match of a string in a
+<code>file-types</code> list, that language wins. In the example above, <code>&quot;Makefile&quot;</code>
+will match against <code>Makefile</code> files.</li>
+<li>Extension: if there are no exact matches, any <code>file-types</code> string that
+matches the file extension of a given file wins. In the example above, the
+<code>&quot;toml&quot;</code> matches files like <code>Cargo.toml</code> or <code>languages.toml</code>.</li>
+<li>Suffix: if there are still no matches, any values in <code>suffix</code> tables
+are checked against the full path of the given file. In the example above,
+the <code>{ suffix = &quot;.git/config&quot; }</code> would match against any <code>config</code> files
+in <code>.git</code> directories. Note: <code>/</code> is used as the directory separator but is
+replaced at runtime with the appropriate path separator for the operating
+system, so this rule would match against <code>.git\config</code> files on Windows.</li>
+</ol>
 <h3 id="language-server-configuration"><a class="header" href="#language-server-configuration">Language Server configuration</a></h3>
 <p>The <code>language-server</code> field takes the following keys:</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
