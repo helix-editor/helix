@@ -1,100 +1,25 @@
-# Author: Ramojus Lapinskas <ramojus.lap@gmail.com>
-
-"comment" = { fg = "t1" }
-"comment.block.documentation" = { fg = "t1", modifiers = ["italic"] }
-
-"constant" = { fg = "t1" }
-"function" = { fg = "t5" }
-"keyword.storage.modifier" = { fg = "t4" }
-"keyword.control.import" = { fg = "t5" }
-"keyword.control" = { fg = "t5" }
-"keyword.function" = { fg = "t4" }
-"keyword" = { fg = "t3" }
-"operator" = { fg = "t5" }
-"punctuation" = { fg = "t6" }
-"string" = { fg = "t3", modifiers = ["italic"] }
-"string.regexp" = { fg = "t3" }
-"tag" = { fg = "t1" }
-"type" = { fg = "t7", modifiers = ["bold"] }
-"namespace" = { fg = "t6", modifiers = ["bold"] }
-"variable" = { fg = "t2" }
-"label" = { fg = "t1" }
-
-"diff.plus" = { fg = "t1" }
-"diff.delta" = { fg = "t1" }
-"diff.minus" = { fg = "t1" }
-
-"ui.cursor.insert" = { fg = "background", bg = "highlight" }
-"ui.cursor.select" = { fg = "background", bg = "highlight_two" }
-"ui.cursor" = { fg = "ui_background", bg = "highlight_three" }
-"ui.cursor.match" = { fg = "highlight", bg = "ui_background", modifiers = [
-    "bold",
-] }
-
-"ui.linenr" = { fg = "t1", bg = "background" }
-"ui.linenr.selected" = { fg = "highlight_three", bg = "ui_background" }
-"ui.gutter" = { bg = "background" }
-
-"ui.background" = { fg = "t1", bg = "background" }
-"ui.background.separator" = { fg = "t1" }
-"ui.help" = { fg = "t1", bg = "ui_background" }
-"ui.menu" = { fg = "t1", bg = "ui_background" }
-"ui.menu.selected" = { fg = "highlight_three", bg = "ui_background" }
-"ui.popup" = { fg = "t1", bg = "ui_background" }
-"ui.window" = { fg = "t1" }
-
-"ui.selection.primary" = { bg = "black" }
-"ui.selection" = { bg = "black" }
-
-"ui.cursorline.primary" = { bg = "ui_background" }
-
-"ui.statusline" = { fg = "t1", bg = "ui_background" }
-"ui.statusline.inactive" = { fg = "t1", bg = "ui_background" }
-"ui.statusline.normal" = { fg = "ui_t1", bg = "ui_background" }
-"ui.statusline.insert" = { fg = "ui_t1", bg = "ui_background" }
-"ui.statusline.select" = { fg = "highlight", bg = "ui_background" }
-
-"ui.text" = { fg = "t1" }
-"ui.text.focus" = { fg = "highlight_three", modifiers = ["bold"] }
-#
-"ui.virtual.ruler" = { bg = "ui_background" }
-"ui.virtual.indent-guide" = { fg = "ui_t1" }
-"ui.virtual.whitespace" = { fg = "ui_t1" }
-
-"diagnostic" = { modifiers = ["underlined"] }
-"error" = { fg = "error", modifiers = ["bold"] }
-"warning" = { fg = "warning", modifiers = ["bold"] }
-"info" = { fg = "info", modifiers = ["bold"] }
-"hint" = { fg = "display", modifiers = ["bold"] }
-"special" = { fg = "t4", modifiers = ["bold"] }
-
-"markup.heading" = { fg = "t1" }
-"markup.list" = { fg = "t1" }
-"markup.bold" = { fg = "t1" }
-"markup.italic" = { fg = "t1" }
-"markup.link.url" = { fg = "t1", modifiers = ["underlined"] }
-"markup.link.text" = { fg = "t1" }
-"markup.quote" = { fg = "t1" }
-"markup.raw" = { fg = "t1" }
+inherits = "hex_steel"
 
 [palette]
-background = "#1b232f"
-t1 = "#737d93"
-t2 = "#6f91bc"
-t3 = "#8bb2b9"
-t4 = "#e0aea1"
-t5 = "#b0bd9f"
-t6 = "#b3ccd0"
-t7 = "#b0d4d8"
+t1 = "#101719"
+t2 = "#152432"
+t3 = "#4b5968"
+t4 = "#8792ab"
+t5 = "#6f91bc"
+t6 = "#8bb2b9"
+t7 = "#eeac90"
+t8 = "#b0bd9f"
+t9 = "#b3ccd0"
+t10 = "#b0d4d8"
+t11 = "#ffbf52"
 
-ui_background = "#101719"
-ui_t1 = "#293d53"
-
-highlight = "#ff2e74"
-highlight_two = "#ffbf52"
-highlight_three = "#8eff52"
+highlight = "#ff2e5f"
+highlight_two = "#0affa9"
+highlight_three = "#d7ff52"
 
 black = "#000000"
+
+selection = "#290019"
 
 comment = "#396884"
 comment_doc = "#234048"

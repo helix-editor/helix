@@ -1053,8 +1053,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-regex", rev = "e1cf
 name = "git-config"
 scope = "source.gitconfig"
 roots = []
-# TODO: allow specifying file-types as a regex so we can read directory names (e.g. `.git/config`)
-file-types = [".gitmodules", ".gitconfig"]
+file-types = [".gitmodules", ".gitconfig", { suffix = ".git/config" }, { suffix = ".config/git/config" }]
 injection-regex = "git-config"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
@@ -1140,7 +1139,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "rescript"
-source = { git = "https://github.com/jaredramirez/tree-sitter-rescript", rev = "4cd7ba91696886fdaca086fb32b5fd8cc294a129" }
+source = { git = "https://github.com/jaredramirez/tree-sitter-rescript", rev = "65609807c628477f3b94052e7ef895885ac51c3c" }
 
 [[language]]
 name = "erlang"
@@ -1491,7 +1490,7 @@ source = { git = "https://github.com/bearcove/tree-sitter-meson", rev = "feea83b
 [[language]]
 name = "sshclientconfig"
 scope = "source.sshclientconfig"
-file-types = [".ssh/config", "/etc/ssh/ssh_config"]
+file-types = [{ suffix = ".ssh/config" }, { suffix = "/etc/ssh/ssh_config" }]
 roots = []
 
 [[grammar]]
@@ -1835,3 +1834,18 @@ roots = []
 [[grammar]]
 name = "wast"
 source = { git = "https://github.com/wasm-lsp/tree-sitter-wasm", rev = "2ca28a9f9d709847bf7a3de0942a84e912f59088", subpath = "wast" }
+
+[[language]]
+name = "d"
+scope = "source.d"
+file-types = [ "d", "dd" ]
+roots = []
+comment-token = "//"
+injection-regex = "d"
+indent = { tab-width = 4, unit = "    "}
+language-server = { command = "serve-d" }
+formatter = { command = "dfmt" }
+
+[[grammar]]
+name = "d"
+source = { git = "https://github.com/gdamore/tree-sitter-d", rev="601c4a1e8310fb2f3c43fa8a923d0d27497f3c04" }

@@ -41,7 +41,7 @@ cd helix
 cargo install --path helix-term
 ```
 
-This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars.
+This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars in `./runtime/grammars`.
 
 Helix needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
 config directory (for example `~/.config/helix/runtime` on Linux/macOS, or `%AppData%/helix/runtime` on Windows).
@@ -68,7 +68,14 @@ cd %appdata%\helix
 mklink /D runtime "<helix-repo>\runtime"
 ```
 
-This location can be overridden via the `HELIX_RUNTIME` environment variable.
+The runtime location can be overridden via the `HELIX_RUNTIME` environment variable.
+
+> NOTE: if `HELIX_RUNTIME` is set prior to calling `cargo install --path helix-term`,
+> tree-sitter grammars will be built in `$HELIX_RUNTIME/grammars`.
+
+If you plan on keeping the repo locally, an alternative to copying/symlinking
+runtime files is to set `HELIX_RUNTIME=/path/to/helix/runtime`
+(`HELIX_RUNTIME=$PWD/runtime` if you're in the helix repo directory).
 
 Packages already solve this for you by wrapping the `hx` binary with a wrapper
 that sets the variable to the install dir.

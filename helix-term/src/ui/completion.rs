@@ -295,6 +295,27 @@ impl Completion {
     pub fn is_empty(&self) -> bool {
         self.popup.contents().is_empty()
     }
+
+    pub fn ensure_item_resolved(&mut self, cx: &mut commands::Context) -> bool {
+        // > If computing full completion items is expensive, servers can additionally provide a
+        // > handler for the completion item resolve request. ...
+        // > A typical use case is for example: the `textDocument/completion` request doesn't fill
+        // > in the `documentation` property for returned completion items since it is expensive
+        // > to compute. When the item is selected in the user interface then a
+        // > 'completionItem/resolve' request is sent with the selected completion item as a parameter.
+        // > The returned completion item should have the documentation property filled in.
+        // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
+        match self.popup.contents_mut().selection_mut() {
+            Some(item) if item.documentation.is_none() => {
+                let doc = doc!(cx.editor);
+                if let Some(resolved_item) = Self::resolve_completion_item(doc, item.clone()) {
+                    *item = resolved_item;
+                }
+                true
+            }
+            _ => false,
+        }
+    }
 }
 
 impl Component for Completion {

@@ -1,21 +1,25 @@
-use std::{
-    io::{Read, Write},
-    ops::RangeInclusive,
-};
+use std::ops::RangeInclusive;
 
 use helix_core::diagnostic::Severity;
-use helix_term::application::Application;
 
 use super::*;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_quit_fail() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
 
     test_key_sequence(
-        &mut helpers::app_with_file(file.path())?,
+        &mut app,
         Some("ihello<esc>:wq<ret>"),
         Some(&|app| {
+            let mut docs: Vec<_> = app.editor.documents().collect();
+            assert_eq!(1, docs.len());
+
+            let doc = docs.pop().unwrap();
+            assert_eq!(Some(file.path()), doc.path().map(PathBuf::as_path));
             assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
         }),
         false,
@@ -25,11 +29,10 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[tokio::test]
-#[ignore]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     test_key_sequences(
-        &mut Application::new(Args::default(), Config::default())?,
+        &mut helpers::AppBuilder::new().build()?,
         vec![
             (
                 None,
@@ -69,8 +72,12 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
 
     command.push_str(":buffer<minus>close<ret>");
 
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+
     test_key_sequence(
-        &mut helpers::app_with_file(file.path())?,
+        &mut app,
         Some(&command),
         Some(&|app| {
             assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status());
@@ -82,17 +89,12 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     )
     .await?;
 
-    file.as_file_mut().flush()?;
-    file.as_file_mut().sync_all()?;
-
-    let mut file_content = String::new();
-    file.as_file_mut().read_to_string(&mut file_content)?;
-    assert_eq!(RANGE.end().to_string(), file_content);
+    helpers::assert_file_has_content(file.as_file_mut(), &RANGE.end().to_string())?;
 
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_selection_duplication() -> anyhow::Result<()> {
     // Forward
     test((
