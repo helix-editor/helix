@@ -1182,6 +1182,7 @@ dependencies = [
  "futures-util",
  "helix-core",
  "helix-loader",
+ "helix-parsec",
  "log",
  "lsp-types",
  "serde",

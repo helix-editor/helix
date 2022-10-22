@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use anyhow::{anyhow, Result};
 
 use crate::{util::lsp_pos_to_pos, OffsetEncoding};
@@ -52,6 +54,112 @@ pub struct Snippet<'a> {
 
 pub fn parse(s: &str) -> Result<Snippet<'_>> {
     parser::parse(s).map_err(|rest| anyhow!("Failed to parse snippet. Remaining input: {}", rest))
+}
+
+pub fn into_transaction<'a>(
+    snippet: Snippet<'a>,
+    doc: &helix_core::Rope,
+    selection: &helix_core::Selection,
+    edit: &lsp_types::TextEdit,
+    line_ending: &str,
+    offset_encoding: OffsetEncoding,
+) -> helix_core::Transaction {
+    use helix_core::{smallvec, Range, Selection, Transaction};
+    use SnippetElement::*;
+
+    let text = doc.slice(..);
+    let primary_cursor = selection.primary().cursor(text);
+
+    let start_offset = match lsp_pos_to_pos(doc, edit.range.start, offset_encoding) {
+        Some(start) => start as i128 - primary_cursor as i128,
+        None => return Transaction::new(doc),
+    };
+    let end_offset = match lsp_pos_to_pos(doc, edit.range.end, offset_encoding) {
+        Some(end) => end as i128 - primary_cursor as i128,
+        None => return Transaction::new(doc),
+    };
+
+    let newline_with_offset = format!(
+        "{line_ending}{blank:width$}",
+        width = edit.range.start.character as usize,
+        blank = ""
+    );
+
+    let mut insert = String::new();
+    let mut offset = (primary_cursor as i128 + start_offset) as usize;
+    let mut tabstops: Vec<Range> = Vec::new();
+
+    for element in snippet.elements {
+        match element {
+            Text(text) => {
+                // small optimization to avoid calling replace when it's unnecessary
+                let text = if text.contains('\n') {
+                    Cow::Owned(text.replace('\n', &newline_with_offset))
+                } else {
+                    Cow::Borrowed(text)
+                };
+                offset += text.chars().count();
+                insert.push_str(&text);
+            }
+            Variable {
+                name: _name,
+                regex: None,
+                r#default,
+            } => {
+                // TODO: variables. For now, fall back to the default, which defaults to "".
+                let text = r#default.unwrap_or_default();
+                offset += text.chars().count();
+                insert.push_str(text);
+            }
+            Tabstop { .. } => {
+                // TODO: tabstop indexing: 0 is final cursor position. 1,2,.. are positions.
+                // TODO: merge tabstops with the same index
+                tabstops.push(Range::point(offset));
+            }
+            Placeholder {
+                tabstop: _tabstop,
+                value,
+            } => match value.as_ref() {
+                // https://doc.rust-lang.org/beta/unstable-book/language-features/box-patterns.html
+                // would make this a bit nicer
+                Text(text) => {
+                    let len_chars = text.chars().count();
+                    tabstops.push(Range::new(offset, offset + len_chars + 1));
+                    offset += len_chars;
+                    insert.push_str(text);
+                }
+                other => {
+                    log::error!(
+                        "Discarding snippet: generating a transaction for placeholder contents {:?} is unimplemented.",
+                        other
+                    );
+                    return Transaction::new(doc);
+                }
+            },
+            other => {
+                log::error!(
+                    "Discarding snippet: generating a transaction for {:?} is unimplemented.",
+                    other
+                );
+                return Transaction::new(doc);
+            }
+        }
+    }
+
+    let transaction = Transaction::change_by_selection(doc, selection, |range| {
+        let cursor = range.cursor(text);
+        (
+            (cursor as i128 + start_offset) as usize,
+            (cursor as i128 + end_offset) as usize,
+            Some(insert.clone().into()),
+        )
+    });
+
+    if let Some(first) = tabstops.first() {
+        transaction.with_selection(Selection::new(smallvec![*first], 0))
+    } else {
+        transaction
+    }
 }
 
 mod parser {
