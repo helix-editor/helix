@@ -73,11 +73,11 @@ impl Default for Configuration {
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
     pub language_id: String, // c-sharp, rust
-    pub scope: String,           // source.rust
-    pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
+    pub scope: String,             // source.rust
+    pub file_types: Vec<FileType>, // filename extension or ends_with? <Gemfile, rb, etc>
     #[serde(default)]
     pub shebangs: Vec<String>, // interpreter(s) associated with language
-    pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
+    pub roots: Vec<String>,        // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
     pub max_line_length: Option<usize>,
 
@@ -123,6 +123,78 @@ pub struct LanguageConfiguration {
     pub auto_pairs: Option<AutoPairs>,
 
     pub rulers: Option<Vec<u16>>, // if set, override editor's rulers
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum FileType {
+    /// The extension of the file, either the `Path::extension` or the full
+    /// filename if the file does not have an extension.
+    Extension(String),
+    /// The suffix of a file. This is compared to a given file's absolute
+    /// path, so it can be used to detect files based on their directories.
+    Suffix(String),
+}
+
+impl Serialize for FileType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeMap;
+
+        match self {
+            FileType::Extension(extension) => serializer.serialize_str(extension),
+            FileType::Suffix(suffix) => {
+                let mut map = serializer.serialize_map(Some(1))?;
+                map.serialize_entry("suffix", &suffix.replace(std::path::MAIN_SEPARATOR, "/"))?;
+                map.end()
+            }
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for FileType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        struct FileTypeVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for FileTypeVisitor {
+            type Value = FileType;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("string or table")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(FileType::Extension(value.to_string()))
+            }
+
+            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+            where
+                M: serde::de::MapAccess<'de>,
+            {
+                match map.next_entry::<String, String>()? {
+                    Some((key, suffix)) if key == "suffix" => Ok(FileType::Suffix(
+                        suffix.replace('/', &std::path::MAIN_SEPARATOR.to_string()),
+                    )),
+                    Some((key, _value)) => Err(serde::de::Error::custom(format!(
+                        "unknown key in `file-types` list: {}",
+                        key
+                    ))),
+                    None => Err(serde::de::Error::custom(
+                        "expected a `suffix` key in the `file-types` entry",
+                    )),
+                }
+            }
+        }
+
+        deserializer.deserialize_any(FileTypeVisitor)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -454,7 +526,8 @@ impl LanguageConfiguration {
 pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
-    language_config_ids_by_file_type: HashMap<String, usize>, // Vec<usize>
+    language_config_ids_by_extension: HashMap<String, usize>, // Vec<usize>
+    language_config_ids_by_suffix: HashMap<String, usize>,
     language_config_ids_by_shebang: HashMap<String, usize>,
 
     scopes: ArcSwap<Vec<String>>,
@@ -464,7 +537,8 @@ impl Loader {
     pub fn new(config: Configuration) -> Self {
         let mut loader = Self {
             language_configs: Vec::new(),
-            language_config_ids_by_file_type: HashMap::new(),
+            language_config_ids_by_extension: HashMap::new(),
+            language_config_ids_by_suffix: HashMap::new(),
             language_config_ids_by_shebang: HashMap::new(),
             scopes: ArcSwap::from_pointee(Vec::new()),
         };
@@ -475,10 +549,14 @@ impl Loader {
 
             for file_type in &config.file_types {
                 // entry().or_insert(Vec::new).push(language_id);
-                let file_type = file_type.replace('/', &std::path::MAIN_SEPARATOR.to_string());
-                loader
-                    .language_config_ids_by_file_type
-                    .insert(file_type, language_id);
+                match file_type {
+                    FileType::Extension(extension) => loader
+                        .language_config_ids_by_extension
+                        .insert(extension.clone(), language_id),
+                    FileType::Suffix(suffix) => loader
+                        .language_config_ids_by_suffix
+                        .insert(suffix.clone(), language_id),
+                };
             }
             for shebang in &config.shebangs {
                 loader
@@ -498,14 +576,14 @@ impl Loader {
         let configuration_id = path
             .file_name()
             .and_then(|n| n.to_str())
-            .and_then(|file_name| self.language_config_ids_by_file_type.get(file_name))
+            .and_then(|file_name| self.language_config_ids_by_extension.get(file_name))
             .or_else(|| {
                 path.extension()
                     .and_then(|extension| extension.to_str())
-                    .and_then(|extension| self.language_config_ids_by_file_type.get(extension))
+                    .and_then(|extension| self.language_config_ids_by_extension.get(extension))
             })
             .or_else(|| {
-                self.language_config_ids_by_file_type
+                self.language_config_ids_by_suffix
                     .iter()
                     .find_map(|(file_type, id)| {
                         if path.to_str()?.ends_with(file_type) {

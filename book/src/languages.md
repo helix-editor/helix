@@ -50,7 +50,7 @@ These configuration keys are available:
 | `name`                | The name of the language                                      |
 | `scope`               | A string like `source.js` that identifies the language. Currently, we strive to match the scope names used by popular TextMate grammars and by the Linguist library. Usually `source.<name>` or `text.<name>` in case of markup languages |
 | `injection-regex`     | regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential [language injection][treesitter-language-injection] site. |
-| `file-types`          | The filetypes of the language, for example `["yml", "yaml"]`. This attempts to match by exact file name (`.zshrc`), then by file extension (`toml`), then by path suffix (`.git/config`). |
+| `file-types`          | The filetypes of the language, for example `["yml", "yaml"]`. See the file-type detection section below. |
 | `shebangs`            | The interpreters from the shebang line, for example `["sh", "bash"]` |
 | `roots`               | A set of marker files to look for when trying to find the workspace root. For example `Cargo.lock`, `yarn.lock` |
 | `auto-format`         | Whether to autoformat this language when saving               |
@@ -62,6 +62,32 @@ These configuration keys are available:
 | `grammar`             | The tree-sitter grammar to use (defaults to the value of `name`) |
 | `formatter`           | The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout |
 | `max-line-length`     | Maximum line length. Used for the `:reflow` command           |
+
+### File-type detection and the `file-types` key
+
+Helix determines which language configuration to use with the `file-types` key
+from the above section. `file-types` is a list of strings or tables, for
+example:
+
+```toml
+file-types = ["Makefile", "toml", { suffix = ".git/config" }]
+```
+
+When determining a language configuration to use, Helix searches the file-types
+with the following priorities:
+
+1. Exact match: if the filename of a file is an exact match of a string in a
+   `file-types` list, that language wins. In the example above, `"Makefile"`
+   will match against `Makefile` files.
+2. Extension: if there are no exact matches, any `file-types` string that
+   matches the file extension of a given file wins. In the example above, the
+   `"toml"` matches files like `Cargo.toml` or `languages.toml`.
+3. Suffix: if there are still no matches, any values in `suffix` tables
+   are checked against the full path of the given file. In the example above,
+   the `{ suffix = ".git/config" }` would match against any `config` files
+   in `.git` directories. Note: `/` is used as the directory separator but is
+   replaced at runtime with the appropriate path separator for the operating
+   system, so this rule would match against `.git\config` files on Windows.
 
 ### Language Server configuration
 
