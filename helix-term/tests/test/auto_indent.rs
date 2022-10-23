@@ -11,14 +11,13 @@ async fn auto_indent_c() -> anyhow::Result<()> {
         helpers::test_syntax_conf(None),
         // switches to append mode?
         (
-            helpers::platform_line("void foo() {#[|}]#").as_ref(),
+            helpers::platform_line("void foo() {#[|}]#"),
             "i<ret><esc>",
             helpers::platform_line(indoc! {"\
                 void foo() {
                   #[|\n]#\
                 }
-            "})
-            .as_ref(),
+            "}),
         ),
     )
     .await?;

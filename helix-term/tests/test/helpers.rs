@@ -22,8 +22,13 @@ pub struct TestCase {
     pub out_selection: Selection,
 }
 
-impl<S: Into<String>> From<(S, S, S)> for TestCase {
-    fn from((input, keys, output): (S, S, S)) -> Self {
+impl<S, R, V> From<(S, R, V)> for TestCase
+where
+    S: Into<String>,
+    R: Into<String>,
+    V: Into<String>,
+{
+    fn from((input, keys, output): (S, R, V)) -> Self {
         let (in_text, in_selection) = test::print(&input.into());
         let (out_text, out_selection) = test::print(&output.into());
 
