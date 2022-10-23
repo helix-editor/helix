@@ -395,7 +395,7 @@ async fn cursor_position_append_eof() -> anyhow::Result<()> {
     test((
         "#[foo|]#",
         "abar<esc>",
-        helpers::platform_line("#[foobar|]#\n").as_ref(),
+        helpers::platform_line("#[foobar|]#\n"),
     ))
     .await?;
 
@@ -403,7 +403,7 @@ async fn cursor_position_append_eof() -> anyhow::Result<()> {
     test((
         "#[|foo]#",
         "abar<esc>",
-        helpers::platform_line("#[foobar|]#\n").as_ref(),
+        helpers::platform_line("#[foobar|]#\n"),
     ))
     .await?;
 
@@ -425,16 +425,14 @@ async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::
                 fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }
-            "})
-            .as_ref(),
+            "}),
             "]fv]f",
             helpers::platform_line(indoc! {"\
                 /// Increments
                 #[fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }|]#
-            "})
-            .as_ref(),
+            "}),
         ),
     )
     .await?;
@@ -457,16 +455,14 @@ async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Res
                 #[fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }|]#
-            "})
-            .as_ref(),
+            "}),
             "v[f",
             helpers::platform_line(indoc! {"\
                 /// Increments
                 #[fn inc(x: usize) -> usize { x + 1 }|]#
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }
-            "})
-            .as_ref(),
+            "}),
         ),
     )
     .await?;
@@ -492,8 +488,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
                 fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 #[fn ident(x: usize) -> usize { x }|]#
-            "})
-            .as_ref(),
+            "}),
             "v[f",
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -502,8 +497,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
                 #[|fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 ]#fn ident(x: usize) -> usize { x }
-            "})
-            .as_ref(),
+            "}),
         ),
     )
     .await?;
@@ -523,8 +517,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
                 fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 #[fn ident(x: usize) -> usize { x }|]#
-            "})
-            .as_ref(),
+            "}),
             "v[f[f",
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -533,8 +526,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
                 fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 ]#fn ident(x: usize) -> usize { x }
-            "})
-            .as_ref(),
+            "}),
         ),
     )
     .await?;
