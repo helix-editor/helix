@@ -66,7 +66,9 @@ pub fn find_root(root: Option<&str>, root_markers: &[String]) -> std::path::Path
             .iter()
             .any(|marker| ancestor.join(marker).exists())
         {
-            top_marker = Some(ancestor);
+            if top_marker.is_none() {
+                top_marker = Some(ancestor);
+            }
         }
 
         if ancestor.join(".git").is_dir() {
