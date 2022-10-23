@@ -9,7 +9,7 @@ use anyhow::bail;
 use crossterm::event::{Event, KeyEvent};
 use helix_core::{diagnostic::Severity, test, Selection, Transaction};
 use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
-use helix_view::{doc, editor::LspConfig, input::parse_macro, Editor};
+use helix_view::{current_ref, doc, editor::LspConfig, input::parse_macro, Editor};
 use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -64,6 +64,11 @@ pub async fn test_key_sequences(
     let num_inputs = inputs.len();
 
     for (i, (in_keys, test_fn)) in inputs.into_iter().enumerate() {
+        let (view, doc) = current_ref!(app.editor);
+        let state = test::plain(&doc.text().to_string(), doc.selection(view.id));
+
+        log::debug!("executing test with document state:\n\n-----\n\n{}", state);
+
         if let Some(in_keys) = in_keys {
             for key_event in parse_macro(in_keys)?.into_iter() {
                 let key = Event::Key(KeyEvent::from(key_event));
@@ -73,6 +78,16 @@ pub async fn test_key_sequences(
         }
 
         let app_exited = !app.event_loop_until_idle(&mut rx_stream).await;
+
+        if !app_exited {
+            let (view, doc) = current_ref!(app.editor);
+            let state = test::plain(&doc.text().to_string(), doc.selection(view.id));
+
+            log::debug!(
+                "finished running test with document state:\n\n-----\n\n{}",
+                state
+            );
+        }
 
         // the app should not exit from any test until the last one
         if i < num_inputs - 1 && app_exited {
