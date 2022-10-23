@@ -14,8 +14,8 @@ pub fn query_check() -> Result<(), DynError> {
     ];
 
     for language in lang_config().language {
-        let language_name = language.language_id.to_ascii_lowercase();
-        let grammar_name = language.grammar.unwrap_or(language.language_id);
+        let language_name = &language.language_id;
+        let grammar_name = language.grammar.as_ref().unwrap_or(language_name);
         for query_file in query_files {
             let language = get_language(&grammar_name);
             let query_text = read_query(&language_name, query_file);

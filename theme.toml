@@ -72,11 +72,10 @@ label = "honey"
 "ui.menu.selected" = { fg = "revolver", bg = "white" }
 "ui.menu.scroll" = { fg = "lavender", bg = "comet" }
 
-diagnostic = { modifiers = ["underlined"] }
-# "diagnostic.hint" = { fg = "revolver", bg = "lilac" }
-# "diagnostic.info" = { fg = "revolver", bg = "lavender" }
-# "diagnostic.warning" = { fg = "revolver", bg = "honey" }
-# "diagnostic.error" = { fg = "revolver", bg = "apricot" }
+"diagnostic.hint" = { underline = { color = "silver", style = "curl" } }
+"diagnostic.info" = { underline = { color = "delta", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "lightning", style = "curl" } }
+"diagnostic.error" = { underline = { color = "apricot", style = "curl" } }
 
 warning = "lightning"
 error = "apricot"

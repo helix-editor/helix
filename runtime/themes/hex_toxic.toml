@@ -1,0 +1,30 @@
+inherits = "hex_steel"
+
+[palette]
+t1 = "#101719"
+t2 = "#152432"
+t3 = "#4b5968"
+t4 = "#8792ab"
+t5 = "#6f91bc"
+t6 = "#8bb2b9"
+t7 = "#eeac90"
+t8 = "#b0bd9f"
+t9 = "#b3ccd0"
+t10 = "#b0d4d8"
+t11 = "#ffbf52"
+
+highlight = "#ff2e5f"
+highlight_two = "#0affa9"
+highlight_three = "#d7ff52"
+
+black = "#000000"
+
+selection = "#290019"
+
+comment = "#396884"
+comment_doc = "#234048"
+
+error = "#ff0900"
+warning = "#ffbf00"
+display = "#57ff89"
+info = "#dad7d5"
