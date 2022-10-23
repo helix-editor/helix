@@ -356,14 +356,14 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "C-j" | "ret" => insert_newline,
         "tab" => insert_tab,
 
-        "up" => move_line_up,
-        "down" => move_line_down,
-        "left" => move_char_left,
-        "right" => move_char_right,
+        "C-p" | "up" => move_line_up,
+        "C-n" | "down" => move_line_down,
+        "C-b" | "left" => move_char_left,
+        "C-f" | "right" => move_char_right,
         "pageup" => page_up,
         "pagedown" => page_down,
-        "home" => goto_line_start,
-        "end" => goto_line_end_newline,
+        "C-a" | "home" => goto_line_start,
+        "C-e" | "end" => goto_line_end_newline,
     });
     hashmap!(
         Mode::Normal => Keymap::new(normal),
