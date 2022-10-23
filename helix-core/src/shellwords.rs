@@ -3,8 +3,9 @@ use std::borrow::Cow;
 /// Get the vec of escaped / quoted / doublequoted filenames from the input str
 pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
     enum State {
-        Normal,
-        NormalEscaped,
+        OnWhitespace,
+        Unquoted,
+        UnquotedEscaped,
         Quoted,
         QuoteEscaped,
         Dquoted,
@@ -13,7 +14,7 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
 
     use State::*;
 
-    let mut state = Normal;
+    let mut state = Unquoted;
     let mut args: Vec<Cow<str>> = Vec::new();
     let mut escaped = String::with_capacity(input.len());
 
@@ -22,16 +23,7 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
 
     for (i, c) in input.char_indices() {
         state = match state {
-            Normal => match c {
-                '\\' => {
-                    if cfg!(unix) {
-                        escaped.push_str(&input[start..i]);
-                        start = i + 1;
-                        NormalEscaped
-                    } else {
-                        Normal
-                    }
-                }
+            OnWhitespace => match c {
                 '"' => {
                     end = i;
                     Dquoted
@@ -40,13 +32,38 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
                     end = i;
                     Quoted
                 }
+                '\\' => {
+                    if cfg!(unix) {
+                        escaped.push_str(&input[start..i]);
+                        start = i + 1;
+                        UnquotedEscaped
+                    } else {
+                        OnWhitespace
+                    }
+                }
                 c if c.is_ascii_whitespace() => {
                     end = i;
-                    Normal
+                    OnWhitespace
                 }
-                _ => Normal,
+                _ => Unquoted,
             },
-            NormalEscaped => Normal,
+            Unquoted => match c {
+                '\\' => {
+                    if cfg!(unix) {
+                        escaped.push_str(&input[start..i]);
+                        start = i + 1;
+                        UnquotedEscaped
+                    } else {
+                        Unquoted
+                    }
+                }
+                c if c.is_ascii_whitespace() => {
+                    end = i;
+                    OnWhitespace
+                }
+                _ => Unquoted,
+            },
+            UnquotedEscaped => Unquoted,
             Quoted => match c {
                 '\\' => {
                     if cfg!(unix) {
@@ -59,7 +76,7 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
                 }
                 '\'' => {
                     end = i;
-                    Normal
+                    OnWhitespace
                 }
                 _ => Quoted,
             },
@@ -76,7 +93,7 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
                 }
                 '"' => {
                     end = i;
-                    Normal
+                    OnWhitespace
                 }
                 _ => Dquoted,
             },
@@ -192,6 +209,20 @@ mod test {
             Cow::from(")(*&^%"),
             Cow::from(r#"a\\b"#),
             //last ' just changes to quoted but since we dont have anything after it, it should be ignored
+        ];
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn test_lists() {
+        let input =
+            r#":set statusline.center ["file-type","file-encoding"] '["list", "in", "qoutes"]'"#;
+        let result = shellwords(input);
+        let expected = vec![
+            Cow::from(":set"),
+            Cow::from("statusline.center"),
+            Cow::from(r#"["file-type","file-encoding"]"#),
+            Cow::from(r#"["list", "in", "qoutes"]"#),
         ];
         assert_eq!(expected, result);
     }

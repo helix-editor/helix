@@ -508,6 +508,7 @@ dependencies = [
  "helix-core",
  "helix-view",
  "serde",
+ "termini",
  "unicode-segmentation",
 ]
 
@@ -1101,6 +1102,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "termini"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "394766021ef3dae8077f080518cdf5360831990f77f5708d5e3594c9b3efa2f9"
+dependencies = [
+ "dirs-next",
+]
+
+[[package]]
 name = "textwrap"
 version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1197,9 +1207,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-stream"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6edf2d6bc038a43d31353570e27270603f4648d18f5ed10c0e179abe43255af"
+checksum = "d660770404473ccd7bc9f8b28494a811bc18542b915c0855c51e8f419d5223ce"
 dependencies = [
  "futures-core",
  "pin-project-lite",

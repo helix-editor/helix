@@ -17,7 +17,7 @@ pub trait ClipboardProvider: std::fmt::Debug {
 #[cfg(not(windows))]
 macro_rules! command_provider {
     (paste => $get_prg:literal $( , $get_arg:literal )* ; copy => $set_prg:literal $( , $set_arg:literal )* ; ) => {{
-        log::info!(
+        log::debug!(
             "Using {} to interact with the system clipboard",
             if $set_prg != $get_prg { format!("{}+{}", $set_prg, $get_prg)} else { $set_prg.to_string() }
         );
