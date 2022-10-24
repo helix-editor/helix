@@ -139,9 +139,10 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_goto_file_impl() -> anyhow::Result<()> {
     let file = tempfile::NamedTempFile::new()?;
-    
+
     fn match_paths(app: &Application, matches: Vec<&str>) -> usize {
-        app.editor.documents()
+        app.editor
+            .documents()
             .map(|d| d.path())
             .flatten()
             .map(|p| p.file_name())
@@ -149,7 +150,7 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
             .filter(|n| matches.iter().any(|m| &OsStr::new(m) == n))
             .count()
     }
-    
+
     // Single selection
     test_key_sequence(
         &mut AppBuilder::new().with_file(file.path(), None).build()?,
@@ -160,7 +161,7 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
         false,
     )
     .await?;
-    
+
     // Multiple selection
     test_key_sequence(
         &mut AppBuilder::new().with_file(file.path(), None).build()?,
@@ -171,7 +172,7 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
         false,
     )
     .await?;
-    
+
     // Cursor on first quote
     test_key_sequence(
         &mut AppBuilder::new().with_file(file.path(), None).build()?,
@@ -182,7 +183,7 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
         false,
     )
     .await?;
-    
+
     // Cursor on last quote
     test_key_sequence(
         &mut AppBuilder::new().with_file(file.path(), None).build()?,
@@ -193,7 +194,6 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
         false,
     )
     .await?;
-    
-    
+
     Ok(())
 }
