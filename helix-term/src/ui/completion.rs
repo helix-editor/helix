@@ -85,6 +85,7 @@ pub struct Completion {
     trigger_offset: usize,
     // TODO: maintain a completioncontext with trigger kind & trigger char
     active_markdown_doc: (String, Option<Box<Popup<Markdown>>>),
+    markdown_area: Rect,
 }
 
 impl Completion {
@@ -225,6 +226,7 @@ impl Completion {
             start_offset,
             trigger_offset,
             active_markdown_doc: (String::new(), None),
+            markdown_area: Rect::default(),
         };
 
         // need to recompute immediately in case start_offset != trigger_offset
@@ -348,19 +350,20 @@ impl Component for Completion {
 
         // if we have a selection, render a markdown popup on top/below with info
         if let Some(option) = self.popup.contents().selection() {
-            // need to render:
-            // option.detail
-            // ---
-            // option.documentation
-
-            let (view, doc) = current!(cx.editor);
-            let language = doc.language_name().unwrap_or("");
-            let text = doc.text().slice(..);
-            let cursor_pos = doc.selection(view.id).primary().cursor(text);
-            let coords = helix_core::visual_coords_at_pos(text, cursor_pos, doc.tab_width());
-            let cursor_pos = (coords.row - view.offset.row) as u16;
-
+            // update with the new option's doc
             if option.label != self.active_markdown_doc.0 {
+                // need to render:
+                // option.detail
+                // ---
+                // option.documentation
+
+                let (view, doc) = current!(cx.editor);
+                let language = doc.language_name().unwrap_or("");
+                let text = doc.text().slice(..);
+                let cursor_pos = doc.selection(view.id).primary().cursor(text);
+                let coords = helix_core::visual_coords_at_pos(text, cursor_pos, doc.tab_width());
+                let cursor_pos = (coords.row - view.offset.row) as u16;
+
                 let markdown_doc = match &option.documentation {
                     Some(lsp::Documentation::String(contents))
                     | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
@@ -412,50 +415,58 @@ impl Component for Completion {
                 self.active_markdown_doc = (
                     option.label.clone(),
                     Some(Box::new(
-                        Popup::new("documentation-popup", markdown_doc).completion_popup(true),
+                        Popup::new("documentation-popup", markdown_doc).force_viewport_render(true),
                     )),
                 );
-            }
 
-            let markdown_popup = self.active_markdown_doc.1.as_mut().unwrap();
+                let markdown_popup = self.active_markdown_doc.1.as_mut().unwrap();
 
-            let (popup_x, popup_y) = self.popup.get_rel_position(area, cx);
-            let (popup_width, _popup_height) = self.popup.get_size();
-            let mut width = area
-                .width
-                .saturating_sub(popup_x)
-                .saturating_sub(popup_width);
-            let area = if width > 30 {
-                let mut height = area.height.saturating_sub(popup_y);
-                let x = popup_x + popup_width;
-                let y = popup_y;
+                let (popup_x, popup_y) = self.popup.get_rel_position(area, cx);
+                let (popup_width, _popup_height) = self.popup.get_size();
+                let mut width = area
+                    .width
+                    .saturating_sub(popup_x)
+                    .saturating_sub(popup_width);
+                let area = if width > 30 {
+                    let mut height = area.height.saturating_sub(popup_y);
+                    let x = popup_x + popup_width;
+                    let y = popup_y;
 
-                if let Some((rel_width, rel_height)) = markdown_popup.required_size((width, height))
-                {
-                    width = rel_width.min(width);
-                    height = rel_height.min(height);
-                }
-                Rect::new(x, y, width, height)
-            } else {
-                let half = area.height / 2;
-                let height = 15.min(half);
-                // we want to make sure the cursor is visible (not hidden behind the documentation)
-                let y = if cursor_pos + area.y
-                    >= (cx.editor.tree.area().height - height - 2/* statusline + commandline */)
-                {
-                    0
+                    if let Some((rel_width, rel_height)) =
+                        markdown_popup.required_size((width, height))
+                    {
+                        width = rel_width.min(width);
+                        height = rel_height.min(height);
+                    }
+                    Rect::new(x, y, width, height)
                 } else {
-                    // -2 to subtract command line + statusline. a bit of a hack, because of splits.
-                    area.height.saturating_sub(height).saturating_sub(2)
+                    let half = area.height / 2;
+                    let height = 15.min(half);
+                    // we want to make sure the cursor is visible (not hidden behind the documentation)
+                    let y = if cursor_pos + area.y
+                        >= (cx.editor.tree.area().height - height - 2/* statusline + commandline */)
+                    {
+                        0
+                    } else {
+                        // -2 to subtract command line + statusline. a bit of a hack, because of splits.
+                        area.height.saturating_sub(height).saturating_sub(2)
+                    };
+
+                    Rect::new(0, y, area.width, height)
                 };
 
-                Rect::new(0, y, area.width, height)
-            };
+                self.markdown_area = area;
+            }
 
+            // render documentation
             // clear area
             let background = cx.editor.theme.get("ui.popup");
-            surface.clear_with(area, background);
-            markdown_popup.render(area, surface, cx);
+            surface.clear_with(self.markdown_area, background);
+            self.active_markdown_doc
+                .1
+                .as_mut()
+                .unwrap()
+                .render(self.markdown_area, surface, cx);
         }
     }
 }

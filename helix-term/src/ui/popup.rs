@@ -22,7 +22,7 @@ pub struct Popup<T: Component> {
     auto_close: bool,
     ignore_escape_key: bool,
     id: &'static str,
-    is_completion_popup: bool,
+    is_forced_on_viewport: bool,
 }
 
 impl<T: Component> Popup<T> {
@@ -38,7 +38,7 @@ impl<T: Component> Popup<T> {
             auto_close: false,
             ignore_escape_key: false,
             id,
-            is_completion_popup: false,
+            is_forced_on_viewport: false,
         }
     }
 
@@ -78,8 +78,12 @@ impl<T: Component> Popup<T> {
         self
     }
 
-    pub fn completion_popup(mut self, is_completion: bool) -> Self {
-        self.is_completion_popup = is_completion;
+    /// Makes the Popup render inside the whole given viewport
+    /// in `Popup::render()`, utilising all of its space.
+    /// This ignores the predefined (max_width, max_height) limitations
+    /// in `required_size()` and circumvents `get_rel_position()`.
+    pub fn force_viewport_render(mut self, render_in_viewport: bool) -> Self {
+        self.is_forced_on_viewport = render_in_viewport;
         self
     }
 
@@ -195,12 +199,12 @@ impl<T: Component> Component for Popup<T> {
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        let max_width = if !self.is_completion_popup {
+        let max_width = if !self.is_forced_on_viewport {
             120.min(viewport.0)
         } else {
             viewport.0
         };
-        let max_height = if !self.is_completion_popup {
+        let max_height = if !self.is_forced_on_viewport {
             26.min(viewport.1.saturating_sub(2))
         } else {
             viewport.1
@@ -233,7 +237,7 @@ impl<T: Component> Component for Popup<T> {
         cx.scroll = Some(self.scroll);
 
         // clip to viewport
-        let area = if !self.is_completion_popup {
+        let area = if !self.is_forced_on_viewport {
             let (rel_x, rel_y) = self.get_rel_position(viewport, cx);
             viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1))
         } else {
