@@ -22,6 +22,7 @@ pub struct Popup<T: Component> {
     auto_close: bool,
     ignore_escape_key: bool,
     id: &'static str,
+    has_scrollbar: bool,
 }
 
 impl<T: Component> Popup<T> {
@@ -37,6 +38,7 @@ impl<T: Component> Popup<T> {
             auto_close: false,
             ignore_escape_key: false,
             id,
+            has_scrollbar: true,
         }
     }
 
@@ -126,6 +128,14 @@ impl<T: Component> Popup<T> {
         } else {
             self.scroll = self.scroll.saturating_sub(offset);
         }
+    }
+    
+    /// Enables the Popup's scrollbar.
+    /// Consider disabling the scrollbar in case the child 
+    /// already has its own.
+    pub fn with_scrollbar(mut self, enable_scrollbar: bool) -> Self {
+        self.has_scrollbar = enable_scrollbar;
+        self
     }
 
     pub fn contents(&self) -> &T {
@@ -228,6 +238,41 @@ impl<T: Component> Component for Popup<T> {
 
         let inner = area.inner(&self.margin);
         self.contents.render(inner, surface, cx);
+
+        // render scrollbar if contents do not fit 
+        if self.has_scrollbar {
+            let win_height = inner.height as usize;
+            let len = self.child_size.1 as usize;
+            let fits = len <= win_height;
+            let theme = &cx.editor.theme;
+            let scroll = self.scroll;
+
+            const fn div_ceil(a: usize, b: usize) -> usize {
+                (a + b - 1) / b
+            }
+
+            let scroll_height = div_ceil(win_height.pow(2), len).min(win_height as usize);
+            let scroll_line = (win_height - scroll_height) * scroll
+                / std::cmp::max(1, len.saturating_sub(win_height));
+
+            let scroll_style = theme.get("ui.menu.scroll");
+            for (i, _) in (scroll..(scroll + win_height).min(len)).enumerate() {
+                let cell = &mut surface[(area.x + area.width - 1, area.y + i as u16)];
+
+                if !fits {
+                    // Draw scroll track
+                    cell.set_symbol("▐"); // right half block
+                    cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
+                }
+
+                let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
+
+                if !fits && is_marked {
+                    // Draw scroll thumb
+                    cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
+                }
+            }
+        }
     }
 
     fn id(&self) -> Option<&'static str> {
