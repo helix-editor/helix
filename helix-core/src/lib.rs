@@ -72,7 +72,7 @@ pub fn find_root(root: Option<&str>, root_markers: &[String]) -> std::path::Path
     }
 
     // If no root folder or git repo is found, return current_dir as fallback.
-    return current_dir.to_path_buf();
+    current_dir
 }
 
 pub use ropey::{str_utils, Rope, RopeBuilder, RopeSlice};
