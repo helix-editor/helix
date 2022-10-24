@@ -361,16 +361,32 @@ impl Tree {
             })
     }
 
+    /// Get reference to a [View] by index.
+    /// # Panics
+    ///
+    /// Panics if `index` is not in self.nodes, or if the node's content is not [Content::View]. This can be checked with [Self::contains].
     pub fn get(&self, index: ViewId) -> &View {
+        self.try_get(index).unwrap()
+    }
+
+    /// Try to get reference to a [View] by index. Returns `None` if node content is not a [Content::View]
+    /// # Panics
+    ///
+    /// Panics if `index` is not in self.nodes. This can be checked with [Self::contains]
+    pub fn try_get(&self, index: ViewId) -> Option<&View> {
         match &self.nodes[index] {
             Node {
                 content: Content::View(view),
                 ..
-            } => view,
-            _ => unreachable!(),
+            } => Some(view),
+            _ => None,
         }
     }
 
+    /// Get a mutable reference to a [View] by index.
+    /// # Panics
+    ///
+    /// Panics if `index` is not in self.nodes, or if the node's content is not [Content::View]. This can be checked with [Self::contains].
     pub fn get_mut(&mut self, index: ViewId) -> &mut View {
         match &mut self.nodes[index] {
             Node {
@@ -379,6 +395,11 @@ impl Tree {
             } => view,
             _ => unreachable!(),
         }
+    }
+
+    /// Check if tree contains a [Node] with a given index.
+    pub fn contains(&self, index: ViewId) -> bool {
+        self.nodes.contains_key(index)
     }
 
     pub fn is_empty(&self) -> bool {
@@ -599,12 +620,6 @@ impl Tree {
             }
         }
         Some(child_id)
-    }
-
-    pub fn focus_direction(&mut self, direction: Direction) {
-        if let Some(id) = self.find_split_in_direction(self.focus, direction) {
-            self.focus = id;
-        }
     }
 
     pub fn focus_next(&mut self) {

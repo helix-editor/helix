@@ -1,24 +1,32 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
 use helix_core::{
-    config::{default_syntax_loader, user_syntax_loader},
+    diagnostic::{DiagnosticTag, NumberOrString},
+    path::get_relative_path,
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{align_view, editor::ConfigEvent, theme, tree::Layout, Align, Editor};
+use helix_view::{
+    align_view,
+    document::DocumentSavedEventResult,
+    editor::{ConfigEvent, EditorEvent},
+    theme,
+    tree::Layout,
+    Align, Editor,
+};
 use serde_json::json;
 
 use crate::{
     args::Args,
     commands::apply_workspace_edit,
-    compositor::Compositor,
+    compositor::{Compositor, Event},
     config::Config,
     job::Jobs,
     keymap::Keymaps,
     ui::{self, overlay::overlayed},
 };
 
-use log::{error, warn};
+use log::{debug, error, warn};
 use std::{
     io::{stdin, stdout, Write},
     sync::Arc,
@@ -28,7 +36,10 @@ use std::{
 use anyhow::{Context, Error};
 
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture, Event},
+    event::{
+        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
+        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent,
+    },
     execute, terminal,
     tty::IsTty,
 };
@@ -81,16 +92,36 @@ fn setup_integration_logging() {
         .apply();
 }
 
+fn restore_term() -> Result<(), Error> {
+    let mut stdout = stdout();
+    // reset cursor shape
+    write!(stdout, "\x1B[0 q")?;
+    // Ignore errors on disabling, this might trigger on windows if we call
+    // disable without calling enable previously
+    let _ = execute!(stdout, DisableMouseCapture);
+    execute!(
+        stdout,
+        DisableBracketedPaste,
+        DisableFocusChange,
+        terminal::LeaveAlternateScreen
+    )?;
+    terminal::disable_raw_mode()?;
+    Ok(())
+}
+
 impl Application {
-    pub fn new(args: Args, config: Config) -> Result<Self, Error> {
+    pub fn new(
+        args: Args,
+        config: Config,
+        syn_loader_conf: syntax::Configuration,
+    ) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
         setup_integration_logging();
 
         use helix_view::editor::Action;
 
-        let config_dir = helix_loader::config_dir();
         let theme_loader = std::sync::Arc::new(theme::Loader::new(
-            &config_dir,
+            &helix_loader::config_dir(),
             &helix_loader::runtime_dir(),
         ));
 
@@ -110,14 +141,6 @@ impl Application {
             })
             .unwrap_or_else(|| theme_loader.default_theme(true_color));
 
-        let syn_loader_conf = user_syntax_loader().unwrap_or_else(|err| {
-            eprintln!("Bad language config: {}", err);
-            eprintln!("Press <ENTER> to continue with default language config");
-            use std::io::Read;
-            // This waits for an enter press.
-            let _ = std::io::stdin().read(&mut []);
-            default_syntax_loader()
-        });
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         let mut compositor = Compositor::new().context("build compositor")?;
@@ -138,7 +161,7 @@ impl Application {
         compositor.push(editor_view);
 
         if args.load_tutor {
-            let path = helix_loader::runtime_dir().join("tutor.txt");
+            let path = helix_loader::runtime_dir().join("tutor");
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
@@ -176,7 +199,7 @@ impl Application {
                         // `--vsplit` or `--hsplit` are used, the file which is
                         // opened last is focused on.
                         let view_id = editor.tree.focus;
-                        let doc = editor.document_mut(doc_id).unwrap();
+                        let doc = doc_mut!(editor, &doc_id);
                         let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
                         doc.set_selection(view_id, pos);
                     }
@@ -205,8 +228,8 @@ impl Application {
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
         #[cfg(not(windows))]
-        let signals =
-            Signals::new(&[signal::SIGTSTP, signal::SIGCONT]).context("build signal handler")?;
+        let signals = Signals::new(&[signal::SIGTSTP, signal::SIGCONT, signal::SIGUSR1])
+            .context("build signal handler")?;
 
         let app = Self {
             compositor,
@@ -226,6 +249,10 @@ impl Application {
         Ok(app)
     }
 
+    #[cfg(feature = "integration")]
+    fn render(&mut self) {}
+
+    #[cfg(not(feature = "integration"))]
     fn render(&mut self) {
         let compositor = &mut self.compositor;
 
@@ -256,9 +283,6 @@ impl Application {
     where
         S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
     {
-        #[cfg(feature = "integration")]
-        let mut idle_handled = false;
-
         loop {
             if self.editor.should_close() {
                 return false;
@@ -275,26 +299,6 @@ impl Application {
                 Some(signal) = self.signals.next() => {
                     self.handle_signals(signal).await;
                 }
-                Some((id, call)) = self.editor.language_servers.incoming.next() => {
-                    self.handle_language_server_message(call, id).await;
-                    // limit render calls for fast language server messages
-                    let last = self.editor.language_servers.incoming.is_empty();
-
-                    if last || self.last_render.elapsed() > LSP_DEADLINE {
-                        self.render();
-                        self.last_render = Instant::now();
-                    }
-                }
-                Some(payload) = self.editor.debugger_events.next() => {
-                    let needs_render = self.editor.handle_debugger_message(payload).await;
-                    if needs_render {
-                        self.render();
-                    }
-                }
-                Some(config_event) = self.editor.config_events.1.recv() => {
-                    self.handle_config_events(config_event);
-                    self.render();
-                }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
@@ -303,26 +307,22 @@ impl Application {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
                 }
-                _ = &mut self.editor.idle_timer => {
-                    // idle timeout
-                    self.editor.clear_idle_timer();
-                    self.handle_idle_timeout();
+                event = self.editor.wait_event() => {
+                    let _idle_handled = self.handle_editor_event(event).await;
 
                     #[cfg(feature = "integration")]
                     {
-                        idle_handled = true;
+                        if _idle_handled {
+                            return true;
+                        }
                     }
                 }
             }
 
             // for integration tests only, reset the idle timer after every
-            // event to make a signal when test events are done processing
+            // event to signal when test events are done processing
             #[cfg(feature = "integration")]
             {
-                if idle_handled {
-                    return true;
-                }
-
                 self.editor.reset_idle_timer();
             }
         }
@@ -347,29 +347,39 @@ impl Application {
         self.editor.refresh_config();
     }
 
-    fn refresh_config(&mut self) {
-        let config = Config::load_default().unwrap_or_else(|err| {
-            self.editor.set_error(err.to_string());
-            Config::default()
-        });
-
-        // Refresh theme
+    /// Refresh theme after config change
+    fn refresh_theme(&mut self, config: &Config) {
         if let Some(theme) = config.theme.clone() {
             let true_color = self.true_color();
-            self.editor.set_theme(
-                self.theme_loader
-                    .load(&theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
-                    .unwrap_or_else(|| self.theme_loader.default_theme(true_color)),
-            );
+            match self.theme_loader.load(&theme) {
+                Ok(theme) => {
+                    if true_color || theme.is_16_color() {
+                        self.editor.set_theme(theme);
+                    } else {
+                        self.editor
+                            .set_error("theme requires truecolor support, which is not available");
+                    }
+                }
+                Err(err) => {
+                    let err_string = format!("failed to load theme `{}` - {}", theme, err);
+                    self.editor.set_error(err_string);
+                }
+            }
         }
+    }
 
-        self.config.store(Arc::new(config));
+    fn refresh_config(&mut self) {
+        match Config::load_default() {
+            Ok(config) => {
+                self.refresh_theme(&config);
+
+                // Store new config
+                self.config.store(Arc::new(config));
+            }
+            Err(err) => {
+                self.editor.set_error(err.to_string());
+            }
+        }
     }
 
     fn true_color(&self) -> bool {
@@ -386,7 +396,7 @@ impl Application {
         match signal {
             signal::SIGTSTP => {
                 self.compositor.save_cursor();
-                self.restore_term().unwrap();
+                restore_term().unwrap();
                 low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
             }
             signal::SIGCONT => {
@@ -397,43 +407,145 @@ impl Application {
                 self.compositor.load_cursor();
                 self.render();
             }
+            signal::SIGUSR1 => {
+                self.refresh_config();
+                self.render();
+            }
             _ => unreachable!(),
         }
     }
 
     pub fn handle_idle_timeout(&mut self) {
-        use crate::compositor::EventResult;
-        let editor_view = self
-            .compositor
-            .find::<ui::EditorView>()
-            .expect("expected at least one EditorView");
-
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,
         };
-        if let EventResult::Consumed(_) = editor_view.handle_idle_timeout(&mut cx) {
+        let should_render = self.compositor.handle_event(&Event::IdleTimeout, &mut cx);
+        if should_render {
             self.render();
         }
     }
 
-    pub fn handle_terminal_events(&mut self, event: Result<Event, crossterm::ErrorKind>) {
+    pub fn handle_document_write(&mut self, doc_save_event: DocumentSavedEventResult) {
+        let doc_save_event = match doc_save_event {
+            Ok(event) => event,
+            Err(err) => {
+                self.editor.set_error(err.to_string());
+                return;
+            }
+        };
+
+        let doc = match self.editor.document_mut(doc_save_event.doc_id) {
+            None => {
+                warn!(
+                    "received document saved event for non-existent doc id: {}",
+                    doc_save_event.doc_id
+                );
+
+                return;
+            }
+            Some(doc) => doc,
+        };
+
+        debug!(
+            "document {:?} saved with revision {}",
+            doc.path(),
+            doc_save_event.revision
+        );
+
+        doc.set_last_saved_revision(doc_save_event.revision);
+
+        let lines = doc_save_event.text.len_lines();
+        let bytes = doc_save_event.text.len_bytes();
+
+        if doc.path() != Some(&doc_save_event.path) {
+            if let Err(err) = doc.set_path(Some(&doc_save_event.path)) {
+                log::error!(
+                    "error setting path for doc '{:?}': {}",
+                    doc.path(),
+                    err.to_string(),
+                );
+
+                self.editor.set_error(err.to_string());
+                return;
+            }
+
+            let loader = self.editor.syn_loader.clone();
+
+            // borrowing the same doc again to get around the borrow checker
+            let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
+            let id = doc.id();
+            doc.detect_language(loader);
+            let _ = self.editor.refresh_language_server(id);
+        }
+
+        // TODO: fix being overwritten by lsp
+        self.editor.set_status(format!(
+            "'{}' written, {}L {}B",
+            get_relative_path(&doc_save_event.path).to_string_lossy(),
+            lines,
+            bytes
+        ));
+    }
+
+    #[inline(always)]
+    pub async fn handle_editor_event(&mut self, event: EditorEvent) -> bool {
+        log::debug!("received editor event: {:?}", event);
+
+        match event {
+            EditorEvent::DocumentSaved(event) => {
+                self.handle_document_write(event);
+                self.render();
+            }
+            EditorEvent::ConfigEvent(event) => {
+                self.handle_config_events(event);
+                self.render();
+            }
+            EditorEvent::LanguageServerMessage((id, call)) => {
+                self.handle_language_server_message(call, id).await;
+                // limit render calls for fast language server messages
+                let last = self.editor.language_servers.incoming.is_empty();
+
+                if last || self.last_render.elapsed() > LSP_DEADLINE {
+                    self.render();
+                    self.last_render = Instant::now();
+                }
+            }
+            EditorEvent::DebuggerEvent(payload) => {
+                let needs_render = self.editor.handle_debugger_message(payload).await;
+                if needs_render {
+                    self.render();
+                }
+            }
+            EditorEvent::IdleTimer => {
+                self.editor.clear_idle_timer();
+                self.handle_idle_timeout();
+
+                #[cfg(feature = "integration")]
+                {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    pub fn handle_terminal_events(&mut self, event: Result<CrosstermEvent, crossterm::ErrorKind>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,
         };
         // Handle key events
-        let should_redraw = match event {
-            Ok(Event::Resize(width, height)) => {
+        let should_redraw = match event.unwrap() {
+            CrosstermEvent::Resize(width, height) => {
                 self.compositor.resize(width, height);
-
                 self.compositor
-                    .handle_event(Event::Resize(width, height), &mut cx)
+                    .handle_event(&Event::Resize(width, height), &mut cx)
             }
-            Ok(event) => self.compositor.handle_event(event, &mut cx),
-            Err(x) => panic!("{}", x),
+            event => self.compositor.handle_event(&event.into(), &mut cx),
         };
 
         if should_redraw && !self.editor.should_close() {
@@ -485,11 +597,16 @@ impl Application {
 
                         // trigger textDocument/didOpen for docs that are already open
                         for doc in docs {
+                            let url = match doc.url() {
+                                Some(url) => url,
+                                None => continue, // skip documents with no path
+                            };
+
                             let language_id =
                                 doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
                             tokio::spawn(language_server.text_document_did_open(
-                                doc.url().unwrap(),
+                                url,
                                 doc.version(),
                                 doc.text(),
                                 language_id,
@@ -511,7 +628,12 @@ impl Application {
                                     use helix_core::diagnostic::{Diagnostic, Range, Severity::*};
                                     use lsp::DiagnosticSeverity;
 
-                                    let language_server = doc.language_server().unwrap();
+                                    let language_server = if let Some(language_server) = doc.language_server() {
+                                        language_server
+                                    } else {
+                                        log::warn!("Discarding diagnostic because language server is not initialized: {:?}", diagnostic);
+                                        return None;
+                                    };
 
                                     // TODO: convert inside server
                                     let start = if let Some(start) = lsp_pos_to_pos(
@@ -556,13 +678,40 @@ impl Application {
                                         }
                                     };
 
+                                    let code = match diagnostic.code.clone() {
+                                        Some(x) => match x {
+                                            lsp::NumberOrString::Number(x) => {
+                                                Some(NumberOrString::Number(x))
+                                            }
+                                            lsp::NumberOrString::String(x) => {
+                                                Some(NumberOrString::String(x))
+                                            }
+                                        },
+                                        None => None,
+                                    };
+
+                                    let tags = if let Some(ref tags) = diagnostic.tags {
+                                        let new_tags = tags.iter().filter_map(|tag| {
+                                            match *tag {
+                                                lsp::DiagnosticTag::DEPRECATED => Some(DiagnosticTag::Deprecated),
+                                                lsp::DiagnosticTag::UNNECESSARY => Some(DiagnosticTag::Unnecessary),
+                                                _ => None
+                                            }
+                                        }).collect();
+
+                                        new_tags
+                                    } else {
+                                        Vec::new()
+                                    };
+
                                     Some(Diagnostic {
                                         range: Range { start, end },
                                         line: diagnostic.range.start.line as usize,
                                         message: diagnostic.message.clone(),
                                         severity,
-                                        // code
-                                        // source
+                                        code,
+                                        tags,
+                                        source: diagnostic.source.clone()
                                     })
                                 })
                                 .collect();
@@ -777,23 +926,16 @@ impl Application {
     async fn claim_term(&mut self) -> Result<(), Error> {
         terminal::enable_raw_mode()?;
         let mut stdout = stdout();
-        execute!(stdout, terminal::EnterAlternateScreen)?;
+        execute!(
+            stdout,
+            terminal::EnterAlternateScreen,
+            EnableBracketedPaste,
+            EnableFocusChange
+        )?;
         execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
         if self.config.load().editor.mouse {
             execute!(stdout, EnableMouseCapture)?;
         }
-        Ok(())
-    }
-
-    fn restore_term(&mut self) -> Result<(), Error> {
-        let mut stdout = stdout();
-        // reset cursor shape
-        write!(stdout, "\x1B[2 q")?;
-        // Ignore errors on disabling, this might trigger on windows if we call
-        // disable without calling enable previously
-        let _ = execute!(stdout, DisableMouseCapture);
-        execute!(stdout, terminal::LeaveAlternateScreen)?;
-        terminal::disable_raw_mode()?;
         Ok(())
     }
 
@@ -808,27 +950,51 @@ impl Application {
         std::panic::set_hook(Box::new(move |info| {
             // We can't handle errors properly inside this closure.  And it's
             // probably not a good idea to `unwrap()` inside a panic handler.
-            // So we just ignore the `Result`s.
-            let _ = execute!(std::io::stdout(), DisableMouseCapture);
-            let _ = execute!(std::io::stdout(), terminal::LeaveAlternateScreen);
-            let _ = terminal::disable_raw_mode();
+            // So we just ignore the `Result`.
+            let _ = restore_term();
             hook(info);
         }));
 
         self.event_loop(input_stream).await;
-        self.close().await?;
-        self.restore_term()?;
+
+        let close_errs = self.close().await;
+        restore_term()?;
+
+        for err in close_errs {
+            self.editor.exit_code = 1;
+            eprintln!("Error: {}", err);
+        }
 
         Ok(self.editor.exit_code)
     }
 
-    pub async fn close(&mut self) -> anyhow::Result<()> {
-        self.jobs.finish().await?;
+    pub async fn close(&mut self) -> Vec<anyhow::Error> {
+        // [NOTE] we intentionally do not return early for errors because we
+        //        want to try to run as much cleanup as we can, regardless of
+        //        errors along the way
+        let mut errs = Vec::new();
+
+        if let Err(err) = self
+            .jobs
+            .finish(&mut self.editor, Some(&mut self.compositor))
+            .await
+        {
+            log::error!("Error executing job: {}", err);
+            errs.push(err);
+        };
+
+        if let Err(err) = self.editor.flush_writes().await {
+            log::error!("Error writing: {}", err);
+            errs.push(err);
+        }
 
         if self.editor.close_language_servers(None).await.is_err() {
             log::error!("Timed out waiting for language servers to shutdown");
-        };
+            errs.push(anyhow::format_err!(
+                "Timed out waiting for language servers to shutdown"
+            ));
+        }
 
-        Ok(())
+        errs
     }
 }

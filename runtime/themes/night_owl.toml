@@ -60,7 +60,6 @@
 'function.special' = { fg = 'pink' }
 'tag' = { fg = 'blue' }
 'namespace' = { fg = 'peach' }
-'property' = { fg = 'green' }
 'special' = { fg = 'greyE' }
 'module' = { fg = 'greyE' }
 'attribute' = { fg = 'paleblue' }

@@ -4,8 +4,6 @@
 use helix_core::Position;
 use helix_view::graphics::{CursorKind, Rect};
 
-use crossterm::event::Event;
-
 #[cfg(feature = "integration")]
 use tui::backend::TestBackend;
 use tui::buffer::Buffer as Surface;
@@ -18,9 +16,10 @@ pub enum EventResult {
     Consumed(Option<Callback>),
 }
 
+use crate::job::Jobs;
 use helix_view::Editor;
 
-use crate::job::Jobs;
+pub use helix_view::input::Event;
 
 pub struct Context<'a> {
     pub editor: &'a mut Editor,
@@ -28,9 +27,19 @@ pub struct Context<'a> {
     pub jobs: &'a mut Jobs,
 }
 
+impl<'a> Context<'a> {
+    /// Waits on all pending jobs, and then tries to flush all pending write
+    /// operations for all documents.
+    pub fn block_try_flush_writes(&mut self) -> anyhow::Result<()> {
+        tokio::task::block_in_place(|| helix_lsp::block_on(self.jobs.finish(self.editor, None)))?;
+        tokio::task::block_in_place(|| helix_lsp::block_on(self.editor.flush_writes()))?;
+        Ok(())
+    }
+}
+
 pub trait Component: Any + AnyComponent {
     /// Process input events, return true if handled.
-    fn handle_event(&mut self, _event: Event, _ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, _event: &Event, _ctx: &mut Context) -> EventResult {
         EventResult::Ignored(None)
     }
     // , args: ()
@@ -158,10 +167,10 @@ impl Compositor {
         Some(self.layers.remove(idx))
     }
 
-    pub fn handle_event(&mut self, event: Event, cx: &mut Context) -> bool {
+    pub fn handle_event(&mut self, event: &Event, cx: &mut Context) -> bool {
         // If it is a key event and a macro is being recorded, push the key event to the recording.
         if let (Event::Key(key), Some((_, keys))) = (event, &mut cx.editor.macro_recording) {
-            keys.push(key.into());
+            keys.push(*key);
         }
 
         let mut callbacks = Vec::new();

@@ -1,4 +1,4 @@
-use helix_core::{coords_at_pos, encoding};
+use helix_core::{coords_at_pos, encoding, Position};
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
@@ -143,6 +143,10 @@ where
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
         helix_view::editor::StatusLineElement::Selections => render_selections,
         helix_view::editor::StatusLineElement::Position => render_position,
+        helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
+        helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
+        helix_view::editor::StatusLineElement::Separator => render_separator,
+        helix_view::editor::StatusLineElement::Spacer => render_spacer,
     }
 }
 
@@ -151,16 +155,16 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let visible = context.focused;
-
+    let modenames = &context.editor.config().statusline.mode;
     write(
         context,
         format!(
             " {} ",
             if visible {
-                match context.doc.mode() {
-                    Mode::Insert => "INS",
-                    Mode::Select => "SEL",
-                    Mode::Normal => "NOR",
+                match context.editor.mode() {
+                    Mode::Insert => &modenames.insert,
+                    Mode::Select => &modenames.select,
+                    Mode::Normal => &modenames.normal,
                 }
             } else {
                 // If not focused, explicitly leave an empty space instead of returning None.
@@ -168,7 +172,7 @@ where
             }
         ),
         if visible && context.editor.config().color_modes {
-            match context.doc.mode() {
+            match context.editor.mode() {
                 Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
                 Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
                 Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
@@ -250,22 +254,47 @@ where
     );
 }
 
-fn render_position<F>(context: &mut RenderContext, write: F)
-where
-    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-{
-    let position = coords_at_pos(
+fn get_position(context: &RenderContext) -> Position {
+    coords_at_pos(
         context.doc.text().slice(..),
         context
             .doc
             .selection(context.view.id)
             .primary()
             .cursor(context.doc.text().slice(..)),
-    );
+    )
+}
 
+fn render_position<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let position = get_position(context);
     write(
         context,
         format!(" {}:{} ", position.row + 1, position.col + 1),
+        None,
+    );
+}
+
+fn render_total_line_numbers<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let total_line_numbers = context.doc.text().len_lines();
+
+    write(context, format!(" {} ", total_line_numbers), None);
+}
+
+fn render_position_percentage<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let position = get_position(context);
+    let maxrows = context.doc.text().len_lines();
+    write(
+        context,
+        format!("{}%", (position.row + 1) * 100 / maxrows),
         None,
     );
 }
@@ -310,7 +339,7 @@ fn render_file_type<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let file_type = context.doc.language_id().unwrap_or("text");
+    let file_type = context.doc.language_name().unwrap_or("text");
 
     write(context, format!(" {} ", file_type), None);
 }
@@ -333,4 +362,24 @@ where
     };
 
     write(context, title, None);
+}
+
+fn render_separator<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let sep = &context.editor.config().statusline.separator;
+
+    write(
+        context,
+        sep.to_string(),
+        Some(context.editor.theme.get("ui.statusline.separator")),
+    );
+}
+
+fn render_spacer<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    write(context, String::from(" "), None);
 }

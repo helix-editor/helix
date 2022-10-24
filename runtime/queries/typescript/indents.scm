@@ -1,4 +1,4 @@
-; inherits: javascript
+; inherits: ecma
 
 [
   (enum_declaration) 

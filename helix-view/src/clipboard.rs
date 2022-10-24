@@ -17,6 +17,10 @@ pub trait ClipboardProvider: std::fmt::Debug {
 #[cfg(not(windows))]
 macro_rules! command_provider {
     (paste => $get_prg:literal $( , $get_arg:literal )* ; copy => $set_prg:literal $( , $set_arg:literal )* ; ) => {{
+        log::debug!(
+            "Using {} to interact with the system clipboard",
+            if $set_prg != $get_prg { format!("{}+{}", $set_prg, $get_prg)} else { $set_prg.to_string() }
+        );
         Box::new(provider::command::Provider {
             get_cmd: provider::command::Config {
                 prg: $get_prg,
@@ -36,6 +40,10 @@ macro_rules! command_provider {
      primary_paste => $pr_get_prg:literal $( , $pr_get_arg:literal )* ;
      primary_copy => $pr_set_prg:literal $( , $pr_set_arg:literal )* ;
     ) => {{
+        log::info!(
+            "Using {} to interact with the system and selection (primary) clipboard",
+            if $set_prg != $get_prg { format!("{}+{}", $set_prg, $get_prg)} else { $set_prg.to_string() }
+        );
         Box::new(provider::command::Provider {
             get_cmd: provider::command::Config {
                 prg: $get_prg,
@@ -131,7 +139,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     }
 }
 
-mod provider {
+pub mod provider {
     use super::{ClipboardProvider, ClipboardType};
     use anyhow::Result;
     use std::borrow::Cow;
@@ -146,10 +154,20 @@ mod provider {
     #[cfg(not(target_os = "windows"))]
     impl NopProvider {
         pub fn new() -> Self {
+            log::warn!(
+                "No clipboard provider found! Yanking and pasting will be internal to Helix"
+            );
             Self {
                 buf: String::new(),
                 primary_buf: String::new(),
             }
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    impl Default for NopProvider {
+        fn default() -> Self {
+            Self::new()
         }
     }
 
@@ -184,6 +202,7 @@ mod provider {
     #[cfg(target_os = "windows")]
     impl ClipboardProvider for WindowsProvider {
         fn name(&self) -> Cow<str> {
+            log::info!("Using clipboard-win to interact with the system clipboard");
             Cow::Borrowed("clipboard-win")
         }
 
@@ -213,12 +232,11 @@ mod provider {
         use super::*;
         use anyhow::{bail, Context as _, Result};
 
-        #[cfg(not(windows))]
         pub fn exists(executable_name: &str) -> bool {
             which::which(executable_name).is_ok()
         }
 
-        #[cfg(not(any(windows, target_os = "macos")))]
+        #[cfg(not(windows))]
         pub fn env_var_is_set(env_var_name: &str) -> bool {
             std::env::var_os(env_var_name).is_some()
         }

@@ -62,7 +62,6 @@
 # SYNTAX HIGHLIGHTING ==============================
 # All the keys here are Treesitter scopes.
 
-'property' = { fg = "red" } # Regex group names.
 'special' = { fg = "mid-blue"} # Special symbols e.g `?` in Rust, `...` in Hare.
 'attribute' = { fg = "yellow" } # Class attributes, html tag attributes.
 
@@ -175,7 +174,7 @@
 # Version control changes.
 
 'diff.plus' = "light-green" # { } # Additions.
-'diff.minus' = "yelllow" # { } # Deletions.
+'diff.minus' = "yellow" # { } # Deletions.
 'diff.delta' = "red" # { } # Modifications.
 # 'diff.delta.moved' = { } # Renamed or moved files / changes.
 
