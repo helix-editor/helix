@@ -1,16 +1,18 @@
 use crate::{
+    align_view,
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::Mode,
+    document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode},
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
     theme::{self, Theme},
     tree::{self, Tree},
-    Document, DocumentId, View, ViewId,
+    Align, Document, DocumentId, View, ViewId,
 };
 
-use futures_util::future;
 use futures_util::stream::select_all::SelectAll;
+use futures_util::{future, StreamExt};
+use helix_lsp::Call;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -28,7 +30,7 @@ use tokio::{
     time::{sleep, Duration, Instant, Sleep},
 };
 
-use anyhow::Error;
+use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
@@ -65,7 +67,7 @@ where
     )
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
     /// IgnoreOptions
@@ -138,6 +140,8 @@ pub struct Config {
     pub auto_completion: bool,
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
+    /// Automatic save on focus lost. Defaults to false.
+    pub auto_save: bool,
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(
@@ -172,7 +176,7 @@ pub struct Config {
     pub color_modes: bool,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct TerminalConfig {
     pub command: String,
@@ -225,7 +229,7 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
     None
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
     /// Display LSP progress messages below statusline
@@ -246,7 +250,7 @@ impl Default for LspConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct SearchConfig {
     /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
@@ -255,7 +259,7 @@ pub struct SearchConfig {
     pub wrap_around: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct StatusLineConfig {
     pub left: Vec<StatusLineElement>,
@@ -279,7 +283,7 @@ impl Default for StatusLineConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct ModeConfig {
     pub normal: String,
@@ -458,7 +462,7 @@ impl std::str::FromStr for GutterType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WhitespaceConfig {
     pub render: WhitespaceRender,
@@ -590,6 +594,7 @@ impl Default for Config {
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             auto_format: true,
+            auto_save: false,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
@@ -643,12 +648,21 @@ pub struct Breakpoint {
     pub log_message: Option<String>,
 }
 
+use futures_util::stream::{Flatten, Once};
+
 pub struct Editor {
     /// Current editing mode.
     pub mode: Mode,
     pub tree: Tree,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
+
+    // We Flatten<> to resolve the inner DocumentSavedEventFuture. For that we need a stream of streams, hence the Once<>.
+    // https://stackoverflow.com/a/66875668
+    pub saves: HashMap<DocumentId, UnboundedSender<Once<DocumentSavedEventFuture>>>,
+    pub save_queue: SelectAll<Flatten<UnboundedReceiverStream<Once<DocumentSavedEventFuture>>>>,
+    pub write_count: usize,
+
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: Option<char>,
     pub registers: Registers,
@@ -688,6 +702,15 @@ pub struct Editor {
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
 }
 
+#[derive(Debug)]
+pub enum EditorEvent {
+    DocumentSaved(DocumentSavedEventResult),
+    ConfigEvent(ConfigEvent),
+    LanguageServerMessage((usize, Call)),
+    DebuggerEvent(dap::Payload),
+    IdleTimer,
+}
+
 #[derive(Debug, Clone)]
 pub enum ConfigEvent {
     Refresh,
@@ -719,6 +742,8 @@ pub enum CloseError {
     DoesNotExist,
     /// Buffer is modified
     BufferModified(String),
+    /// Document failed to save
+    SaveError(anyhow::Error),
 }
 
 impl Editor {
@@ -739,6 +764,9 @@ impl Editor {
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
+            saves: HashMap::new(),
+            save_queue: SelectAll::new(),
+            write_count: 0,
             count: None,
             selected_register: None,
             macro_recording: None,
@@ -804,12 +832,16 @@ impl Editor {
 
     #[inline]
     pub fn set_status<T: Into<Cow<'static, str>>>(&mut self, status: T) {
-        self.status_msg = Some((status.into(), Severity::Info));
+        let status = status.into();
+        log::debug!("editor status: {}", status);
+        self.status_msg = Some((status, Severity::Info));
     }
 
     #[inline]
     pub fn set_error<T: Into<Cow<'static, str>>>(&mut self, error: T) {
-        self.status_msg = Some((error.into(), Severity::Error));
+        let error = error.into();
+        log::error!("editor error: {}", error);
+        self.status_msg = Some((error, Severity::Error));
     }
 
     #[inline]
@@ -929,13 +961,7 @@ impl Editor {
         let doc = doc_mut!(self, &doc_id);
         doc.ensure_view_init(view.id);
 
-        // TODO: reuse align_view
-        let pos = doc
-            .selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..));
-        let line = doc.text().char_to_line(pos);
-        view.offset.row = line.saturating_sub(view.inner_area().height as usize / 2);
+        align_view(doc, view, Align::Center);
     }
 
     pub fn switch(&mut self, id: DocumentId, action: Action) {
@@ -1034,6 +1060,13 @@ impl Editor {
             DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
         doc.id = id;
         self.documents.insert(id, doc);
+
+        let (save_sender, save_receiver) = tokio::sync::mpsc::unbounded_channel();
+        self.saves.insert(id, save_sender);
+
+        let stream = UnboundedReceiverStream::new(save_receiver).flatten();
+        self.save_queue.push(stream);
+
         id
     }
 
@@ -1080,16 +1113,19 @@ impl Editor {
     }
 
     pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> Result<(), CloseError> {
-        let doc = match self.documents.get(&doc_id) {
+        let doc = match self.documents.get_mut(&doc_id) {
             Some(doc) => doc,
             None => return Err(CloseError::DoesNotExist),
         };
-
         if !force && doc.is_modified() {
             return Err(CloseError::BufferModified(doc.display_name().into_owned()));
         }
 
+        // This will also disallow any follow-up writes
+        self.saves.remove(&doc_id);
+
         if let Some(language_server) = doc.language_server() {
+            // TODO: track error
             tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
 
@@ -1148,6 +1184,32 @@ impl Editor {
         }
 
         self._refresh();
+
+        Ok(())
+    }
+
+    pub fn save<P: Into<PathBuf>>(
+        &mut self,
+        doc_id: DocumentId,
+        path: Option<P>,
+        force: bool,
+    ) -> anyhow::Result<()> {
+        // convert a channel of futures to pipe into main queue one by one
+        // via stream.then() ? then push into main future
+
+        let path = path.map(|path| path.into());
+        let doc = doc_mut!(self, &doc_id);
+        let future = doc.save(path, force)?;
+
+        use futures_util::stream;
+
+        self.saves
+            .get(&doc_id)
+            .ok_or_else(|| anyhow::format_err!("saves are closed for this document!"))?
+            .send(stream::once(Box::pin(future)))
+            .map_err(|err| anyhow!("failed to send save event: {}", err))?;
+
+        self.write_count += 1;
 
         Ok(())
     }
@@ -1252,14 +1314,14 @@ impl Editor {
         }
     }
 
-    /// Closes language servers with timeout. The default timeout is 500 ms, use
+    /// Closes language servers with timeout. The default timeout is 10000 ms, use
     /// `timeout` parameter to override this.
     pub async fn close_language_servers(
         &self,
         timeout: Option<u64>,
     ) -> Result<(), tokio::time::error::Elapsed> {
         tokio::time::timeout(
-            Duration::from_millis(timeout.unwrap_or(500)),
+            Duration::from_millis(timeout.unwrap_or(3000)),
             future::join_all(
                 self.language_servers
                     .iter_clients()
@@ -1268,5 +1330,49 @@ impl Editor {
         )
         .await
         .map(|_| ())
+    }
+
+    pub async fn wait_event(&mut self) -> EditorEvent {
+        tokio::select! {
+            biased;
+
+            Some(event) = self.save_queue.next() => {
+                self.write_count -= 1;
+                EditorEvent::DocumentSaved(event)
+            }
+            Some(config_event) = self.config_events.1.recv() => {
+                EditorEvent::ConfigEvent(config_event)
+            }
+            Some(message) = self.language_servers.incoming.next() => {
+                EditorEvent::LanguageServerMessage(message)
+            }
+            Some(event) = self.debugger_events.next() => {
+                EditorEvent::DebuggerEvent(event)
+            }
+            _ = &mut self.idle_timer => {
+                EditorEvent::IdleTimer
+            }
+        }
+    }
+
+    pub async fn flush_writes(&mut self) -> anyhow::Result<()> {
+        while self.write_count > 0 {
+            if let Some(save_event) = self.save_queue.next().await {
+                self.write_count -= 1;
+
+                let save_event = match save_event {
+                    Ok(event) => event,
+                    Err(err) => {
+                        self.set_error(err.to_string());
+                        bail!(err);
+                    }
+                };
+
+                let doc = doc_mut!(self, &save_event.doc_id);
+                doc.set_last_saved_revision(save_event.revision);
+            }
+        }
+
+        Ok(())
     }
 }
