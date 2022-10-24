@@ -1978,7 +1978,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "update",
             aliases: &[],
-            doc: "Write changes only if it has been modified.",
+            doc: "Write changes only if the file has been modified.",
             fun: update,
             completer: None,
         },
