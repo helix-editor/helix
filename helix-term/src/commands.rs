@@ -4811,8 +4811,8 @@ fn increment_impl(cx: &mut Context, amount: i64) {
         let selected_text: Cow<str> = text.slice(range.from()..range.to()).into();
         let new_from = ((range.from() as i128) + cumulative_length_diff) as usize;
         let incremented = [
-            DateTimeIncrementor::increment,
             IntegerIncrementor::increment,
+            DateTimeIncrementor::increment,
         ]
         .iter()
         .find_map(|incrementor| incrementor(selected_text.as_ref(), amount));
