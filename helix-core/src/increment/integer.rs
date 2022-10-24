@@ -1,360 +1,123 @@
-use std::borrow::Cow;
+const SEPARATOR: char = '_';
 
-use ropey::RopeSlice;
-
-use super::Increment;
-
-use crate::{
-    textobject::{textobject_word, TextObject},
-    Range, Tendril,
-};
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct IntegerIncrementor<'a> {
-    value: i64,
-    radix: u32,
-    range: Range,
-
-    text: RopeSlice<'a>,
-}
-
-impl<'a> IntegerIncrementor<'a> {
-    /// Return information about an integer under range if there is one.
-    /// Integer includes possible negative sign, digits in bases 2, 8, 10, or 16 and underscores.
-    /// Integer does not include decimal point or trailing underscores.
-    /// Examples:
-    ///    -1, 99, 0xABCD, 0b1010, 0o1234567, 1_000_000
-    pub fn from_range(text: RopeSlice, range: Range) -> Option<IntegerIncrementor> {
-        // If the cursor is on the minus sign of an integer we want to get the word textobject
-        // to the right of it.
-        let range = if range.to() < text.len_chars()
-            && range.len() <= 1
-            && text.char(range.from()) == '-'
-        {
-            Range::new(range.from() + 1, range.to() + 1)
-        } else {
-            range
-        };
-
-        let mut range = textobject_word(text, range, TextObject::Inside, 1, false);
-
-        // If there is a minus sign to the left of the word object, we want to include it in the range.
-        if range.from() > 0 && text.char(range.from() - 1) == '-' {
-            range = range.extend(range.from() - 1, range.from())
-        };
-
-        // If there are trailing underscores, remove them from the range.
-        while !range.is_empty() && text.char(range.to() - 1) == '_' {
-            range = Range::new(range.from(), range.to() - 1)
-        }
-
-        let word: String = text
-            .slice(range.from()..range.to())
-            .chars()
-            .filter(|&c| c != '_')
-            .collect();
-        let (radix, prefixed) = if word.starts_with("0x") {
-            (16, true)
-        } else if word.starts_with("0o") {
-            (8, true)
-        } else if word.starts_with("0b") {
-            (2, true)
-        } else {
-            (10, false)
-        };
-
-        let number = if prefixed { &word[2..] } else { &word };
-
-        let value = i128::from_str_radix(number, radix).ok()?;
-        if (value.is_positive() && value.leading_zeros() < 64)
-            || (value.is_negative() && value.leading_ones() < 64)
+pub struct IntegerIncrementor;
+impl IntegerIncrementor {
+    /// Increment an integer.
+    ///
+    /// Supported bases:
+    ///     2 with prefix 0b
+    ///     8 with prefix 0o
+    ///     10 with no prefix
+    ///     16 with prefix 0x
+    ///
+    /// An integer can contain `_` as a separator but may not start or end with a separator.
+    /// Base 10 integers can go negative, but bases 2, 8, and 16 cannot.
+    /// All addition and subtraction is saturating.
+    pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
+        if selected_text.is_empty()
+            || selected_text.ends_with(SEPARATOR)
+            || selected_text.starts_with(SEPARATOR)
         {
             return None;
         }
 
-        let value = value as i64;
-        Some(IntegerIncrementor {
-            range,
-            value,
-            radix,
-            text,
-        })
-    }
-}
-
-impl<'a> Increment for IntegerIncrementor<'a> {
-    fn increment(&self, amount: i64) -> (Range, Tendril) {
-        let old_text: Cow<str> = self.text.slice(self.range.from()..self.range.to()).into();
-        let old_length = old_text.len();
-        let new_value = self.value.wrapping_add(amount);
+        let radix = if selected_text.starts_with("0x") {
+            16
+        } else if selected_text.starts_with("0o") {
+            8
+        } else if selected_text.starts_with("0b") {
+            2
+        } else {
+            10
+        };
 
         // Get separator indexes from right to left.
-        let separator_rtl_indexes: Vec<usize> = old_text
+        let separator_rtl_indexes: Vec<usize> = selected_text
             .chars()
             .rev()
             .enumerate()
-            .filter_map(|(i, c)| if c == '_' { Some(i) } else { None })
+            .filter_map(|(i, c)| if c == SEPARATOR { Some(i) } else { None })
             .collect();
 
-        let format_length = if self.radix == 10 {
-            match (self.value.is_negative(), new_value.is_negative()) {
-                (true, false) => old_length - 1,
-                (false, true) => old_length + 1,
-                _ => old_text.len(),
+        let word: String = selected_text.chars().filter(|&c| c != SEPARATOR).collect();
+
+        let mut new_text = if radix == 10 {
+            let number = &word;
+            let value = i128::from_str_radix(number, radix).ok()?;
+            let new_value = value.saturating_add(amount as i128);
+
+            let format_length = match (value.is_negative(), new_value.is_negative()) {
+                (true, false) => number.len() - 1,
+                (false, true) => number.len() + 1,
+                _ => number.len(),
+            } - separator_rtl_indexes.len();
+
+            if number.starts_with('0') || number.starts_with("-0") {
+                format!("{:01$}", new_value, format_length)
+            } else {
+                format!("{}", new_value)
             }
         } else {
-            old_text.len() - 2
-        } - separator_rtl_indexes.len();
+            let number = &word[2..];
+            let value = u128::from_str_radix(number, radix).ok()?;
+            let new_value = (value as i128).saturating_add(amount as i128);
+            let new_value = if new_value < 0 { 0 } else { new_value };
+            let format_length = selected_text.len() - 2 - separator_rtl_indexes.len();
 
-        let mut new_text = match self.radix {
-            2 => format!("0b{:01$b}", new_value, format_length),
-            8 => format!("0o{:01$o}", new_value, format_length),
-            10 if old_text.starts_with('0') || old_text.starts_with("-0") => {
-                format!("{:01$}", new_value, format_length)
-            }
-            10 => format!("{}", new_value),
-            16 => {
-                let (lower_count, upper_count): (usize, usize) =
-                    old_text.chars().skip(2).fold((0, 0), |(lower, upper), c| {
-                        (
-                            lower + c.is_ascii_lowercase().then(|| 1).unwrap_or(0),
-                            upper + c.is_ascii_uppercase().then(|| 1).unwrap_or(0),
-                        )
-                    });
-                if upper_count > lower_count {
-                    format!("0x{:01$X}", new_value, format_length)
-                } else {
-                    format!("0x{:01$x}", new_value, format_length)
+            match radix {
+                2 => format!("0b{:01$b}", new_value, format_length),
+                8 => format!("0o{:01$o}", new_value, format_length),
+                16 => {
+                    let (lower_count, upper_count): (usize, usize) =
+                        number.chars().fold((0, 0), |(lower, upper), c| {
+                            (
+                                lower + c.is_ascii_lowercase().then(|| 1).unwrap_or(0),
+                                upper + c.is_ascii_uppercase().then(|| 1).unwrap_or(0),
+                            )
+                        });
+                    if upper_count > lower_count {
+                        format!("0x{:01$X}", new_value, format_length)
+                    } else {
+                        format!("0x{:01$x}", new_value, format_length)
+                    }
                 }
+                _ => unimplemented!("radix not supported: {}", radix),
             }
-            _ => unimplemented!("radix not supported: {}", self.radix),
         };
 
         // Add separators from original number.
         for &rtl_index in &separator_rtl_indexes {
             if rtl_index < new_text.len() {
-                let new_index = new_text.len() - rtl_index;
-                new_text.insert(new_index, '_');
+                let new_index = new_text.len().saturating_sub(rtl_index);
+                if new_index > 0 {
+                    new_text.insert(new_index, SEPARATOR);
+                }
             }
         }
 
         // Add in additional separators if necessary.
-        if new_text.len() > old_length && !separator_rtl_indexes.is_empty() {
+        if new_text.len() > selected_text.len() && !separator_rtl_indexes.is_empty() {
             let spacing = match separator_rtl_indexes.as_slice() {
                 [.., b, a] => a - b - 1,
                 _ => separator_rtl_indexes[0],
             };
 
-            let prefix_length = if self.radix == 10 { 0 } else { 2 };
-            if let Some(mut index) = new_text.find('_') {
+            let prefix_length = if radix == 10 { 0 } else { 2 };
+            if let Some(mut index) = new_text.find(SEPARATOR) {
                 while index - prefix_length > spacing {
                     index -= spacing;
-                    new_text.insert(index, '_');
+                    new_text.insert(index, SEPARATOR);
                 }
             }
         }
 
-        (self.range, new_text.into())
+        Some(new_text)
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::Rope;
-
-    #[test]
-    fn test_decimal_at_point() {
-        let rope = Rope::from_str("Test text 12345 more text.");
-        let range = Range::point(12);
-        assert_eq!(
-            IntegerIncrementor::from_range(rope.slice(..), range),
-            Some(IntegerIncrementor {
-                range: Range::new(10, 15),
-                value: 12345,
-                radix: 10,
-                text: rope.slice(..),
-            })
-        );
-    }
-
-    #[test]
-    fn test_uppercase_hexadecimal_at_point() {
-        let rope = Rope::from_str("Test text 0x123ABCDEF more text.");
-        let range = Range::point(12);
-        assert_eq!(
-            IntegerIncrementor::from_range(rope.slice(..), range),
-            Some(IntegerIncrementor {
-                range: Range::new(10, 21),
-                value: 0x123ABCDEF,
-                radix: 16,
-                text: rope.slice(..),
-            })
-        );
-    }
-
-    #[test]
-    fn test_lowercase_hexadecimal_at_point() {
-        let rope = Rope::from_str("Test text 0xfa3b4e more text.");
-        let range = Range::point(12);
-        assert_eq!(
-            IntegerIncrementor::from_range(rope.slice(..), range),
-            Some(IntegerIncrementor {
-                range: Range::new(10, 18),
-                value: 0xfa3b4e,
-                radix: 16,
-                text: rope.slice(..),
-            })
-        );
-    }
-
-    #[test]
-    fn test_octal_at_point() {
-        let rope = Rope::from_str("Test text 0o1074312 more text.");
-        let range = Range::point(12);
-        assert_eq!(
-            IntegerIncrementor::from_range(rope.slice(..), range),
-            Some(IntegerIncrementor {
-                range: Range::new(10, 19),
-                value: 0o1074312,
-                radix: 8,
-                text: rope.slice(..),
-            })
-        );
-    }
-
-    #[test]
-    fn test_binary_at_point() {
-        let rope = Rope::from_str("Test text 0b10111010010101 more text.");
-        let range = Range::point(12);
-        assert_eq!(
-            IntegerIncrementor::from_range(rope.slice(..), range),
-            Some(IntegerIncrementor {
-                range: Range::new(10, 26),
-                value: 0b10111010010101,
-                radix: 2,
-                text: rope.slice(..),
-            })
-        );
-    }
-
-    #[test]
-    fn test_negative_decimal_at_point() {
-        let rope = Rope::from_str("Test text -54321 more text.");
-        let range = Range::point(12);
-        assert_eq!(
-            IntegerIncrementor::from_range(rope.slice(..), range),
-            Some(IntegerIncrementor {
-                range: Range::new(10, 16),
-                value: -54321,
-                radix: 10,
-                text: rope.slice(..),
-            })
-        );
-    }
-
-    #[test]
-    fn test_decimal_with_leading_zeroes_at_point() {
-        let rope = Rope::from_str("Test text 000045326 more text.");
-        let range = Range::point(12);
-        assert_eq!(
-            IntegerIncrementor::from_range(rope.slice(..), range),
-            Some(IntegerIncrementor {
-                range: Range::new(10, 19),
-                value: 45326,
-                radix: 10,
-                text: rope.slice(..),
-            })
-        );
-    }
-
-    #[test]
-    fn test_negative_decimal_cursor_on_minus_sign() {
-        let rope = Rope::from_str("Test text -54321 more text.");
-        let range = Range::point(10);
-        assert_eq!(
-            IntegerIncrementor::from_range(rope.slice(..), range),
-            Some(IntegerIncrementor {
-                range: Range::new(10, 16),
-                value: -54321,
-                radix: 10,
-                text: rope.slice(..),
-            })
-        );
-    }
-
-    #[test]
-    fn test_number_under_range_start_of_rope() {
-        let rope = Rope::from_str("100");
-        let range = Range::point(0);
-        assert_eq!(
-            IntegerIncrementor::from_range(rope.slice(..), range),
-            Some(IntegerIncrementor {
-                range: Range::new(0, 3),
-                value: 100,
-                radix: 10,
-                text: rope.slice(..),
-            })
-        );
-    }
-
-    #[test]
-    fn test_number_under_range_end_of_rope() {
-        let rope = Rope::from_str("100");
-        let range = Range::point(2);
-        assert_eq!(
-            IntegerIncrementor::from_range(rope.slice(..), range),
-            Some(IntegerIncrementor {
-                range: Range::new(0, 3),
-                value: 100,
-                radix: 10,
-                text: rope.slice(..),
-            })
-        );
-    }
-
-    #[test]
-    fn test_number_surrounded_by_punctuation() {
-        let rope = Rope::from_str(",100;");
-        let range = Range::point(1);
-        assert_eq!(
-            IntegerIncrementor::from_range(rope.slice(..), range),
-            Some(IntegerIncrementor {
-                range: Range::new(1, 4),
-                value: 100,
-                radix: 10,
-                text: rope.slice(..),
-            })
-        );
-    }
-
-    #[test]
-    fn test_not_a_number_point() {
-        let rope = Rope::from_str("Test text 45326 more text.");
-        let range = Range::point(6);
-        assert_eq!(IntegerIncrementor::from_range(rope.slice(..), range), None);
-    }
-
-    #[test]
-    fn test_number_too_large_at_point() {
-        let rope = Rope::from_str("Test text 0xFFFFFFFFFFFFFFFFF more text.");
-        let range = Range::point(12);
-        assert_eq!(IntegerIncrementor::from_range(rope.slice(..), range), None);
-    }
-
-    #[test]
-    fn test_number_cursor_one_right_of_number() {
-        let rope = Rope::from_str("100 ");
-        let range = Range::point(3);
-        assert_eq!(IntegerIncrementor::from_range(rope.slice(..), range), None);
-    }
-
-    #[test]
-    fn test_number_cursor_one_left_of_number() {
-        let rope = Rope::from_str(" 100");
-        let range = Range::point(0);
-        assert_eq!(IntegerIncrementor::from_range(rope.slice(..), range), None);
-    }
 
     #[test]
     fn test_increment_basic_decimal_numbers() {
@@ -371,14 +134,9 @@ mod test {
         ];
 
         for (original, amount, expected) in tests {
-            let rope = Rope::from_str(original);
-            let range = Range::point(0);
             assert_eq!(
-                IntegerIncrementor::from_range(rope.slice(..), range)
-                    .unwrap()
-                    .increment(amount)
-                    .1,
-                Tendril::from(expected)
+                IntegerIncrementor::increment(original, amount).unwrap(),
+                expected
             );
         }
     }
@@ -389,23 +147,18 @@ mod test {
             ("0x0100", 1, "0x0101"),
             ("0x0100", -1, "0x00ff"),
             ("0x0001", -1, "0x0000"),
-            ("0x0000", -1, "0xffffffffffffffff"),
-            ("0xffffffffffffffff", 1, "0x0000000000000000"),
-            ("0xffffffffffffffff", 2, "0x0000000000000001"),
+            ("0x0000", -1, "0x0000"),
+            ("0xffffffffffffffff", 1, "0x10000000000000000"),
+            ("0xffffffffffffffff", 2, "0x10000000000000001"),
             ("0xffffffffffffffff", -1, "0xfffffffffffffffe"),
             ("0xABCDEF1234567890", 1, "0xABCDEF1234567891"),
             ("0xabcdef1234567890", 1, "0xabcdef1234567891"),
         ];
 
         for (original, amount, expected) in tests {
-            let rope = Rope::from_str(original);
-            let range = Range::point(0);
             assert_eq!(
-                IntegerIncrementor::from_range(rope.slice(..), range)
-                    .unwrap()
-                    .increment(amount)
-                    .1,
-                Tendril::from(expected)
+                IntegerIncrementor::increment(original, amount).unwrap(),
+                expected
             );
         }
     }
@@ -419,21 +172,16 @@ mod test {
             ("0o7777", 1, "0o10000"),
             ("0o1000", -1, "0o0777"),
             ("0o0107", 10, "0o0121"),
-            ("0o0000", -1, "0o1777777777777777777777"),
-            ("0o1777777777777777777777", 1, "0o0000000000000000000000"),
-            ("0o1777777777777777777777", 2, "0o0000000000000000000001"),
+            ("0o0000", -1, "0o0000"),
+            ("0o1777777777777777777777", 1, "0o2000000000000000000000"),
+            ("0o1777777777777777777777", 2, "0o2000000000000000000001"),
             ("0o1777777777777777777777", -1, "0o1777777777777777777776"),
         ];
 
         for (original, amount, expected) in tests {
-            let rope = Rope::from_str(original);
-            let range = Range::point(0);
             assert_eq!(
-                IntegerIncrementor::from_range(rope.slice(..), range)
-                    .unwrap()
-                    .increment(amount)
-                    .1,
-                Tendril::from(expected)
+                IntegerIncrementor::increment(original, amount).unwrap(),
+                expected
             );
         }
     }
@@ -449,20 +197,16 @@ mod test {
             ("0b00111111", 10, "0b01001001"),
             ("0b11111111", 1, "0b100000000"),
             ("0b10000000", -1, "0b01111111"),
-            (
-                "0b0000",
-                -1,
-                "0b1111111111111111111111111111111111111111111111111111111111111111",
-            ),
+            ("0b0000", -1, "0b0000"),
             (
                 "0b1111111111111111111111111111111111111111111111111111111111111111",
                 1,
-                "0b0000000000000000000000000000000000000000000000000000000000000000",
+                "0b10000000000000000000000000000000000000000000000000000000000000000",
             ),
             (
                 "0b1111111111111111111111111111111111111111111111111111111111111111",
                 2,
-                "0b0000000000000000000000000000000000000000000000000000000000000001",
+                "0b10000000000000000000000000000000000000000000000000000000000000001",
             ),
             (
                 "0b1111111111111111111111111111111111111111111111111111111111111111",
@@ -472,14 +216,9 @@ mod test {
         ];
 
         for (original, amount, expected) in tests {
-            let rope = Rope::from_str(original);
-            let range = Range::point(0);
             assert_eq!(
-                IntegerIncrementor::from_range(rope.slice(..), range)
-                    .unwrap()
-                    .increment(amount)
-                    .1,
-                Tendril::from(expected)
+                IntegerIncrementor::increment(original, amount).unwrap(),
+                expected
             );
         }
     }
@@ -491,39 +230,24 @@ mod test {
             ("1_000_000", -1, "999_999"),
             ("-999_999", -1, "-1_000_000"),
             ("0x0000_0000_0001", 0x1_ffff_0000, "0x0001_ffff_0001"),
-            ("0x0000_0000_0001", 0x1_ffff_0000, "0x0001_ffff_0001"),
-            ("0x0000_0000_0001", 0x1_ffff_0000, "0x0001_ffff_0001"),
-            ("0x0000_0000", -1, "0xffff_ffff_ffff_ffff"),
-            ("0x0000_0000_0000", -1, "0xffff_ffff_ffff_ffff"),
+            ("0x0000_0000", -1, "0x0000_0000"),
+            ("0x0000_0000_0000", -1, "0x0000_0000_0000"),
             ("0b01111111_11111111", 1, "0b10000000_00000000"),
             ("0b11111111_11111111", 1, "0b1_00000000_00000000"),
         ];
 
         for (original, amount, expected) in tests {
-            let rope = Rope::from_str(original);
-            let range = Range::point(0);
             assert_eq!(
-                IntegerIncrementor::from_range(rope.slice(..), range)
-                    .unwrap()
-                    .increment(amount)
-                    .1,
-                Tendril::from(expected)
+                IntegerIncrementor::increment(original, amount).unwrap(),
+                expected
             );
         }
     }
 
     #[test]
-    fn test_number_trailing_separator_ignored() {
-        let rope = Rope::from_str("1_000_000_");
-        let range = Range::point(0);
-        assert_eq!(
-            IntegerIncrementor::from_range(rope.slice(..), range),
-            Some(IntegerIncrementor {
-                range: Range::new(0, 9),
-                value: 1000000,
-                radix: 10,
-                text: rope.slice(..),
-            })
-        );
+    fn test_leading_and_trailing_separators_arent_a_match() {
+        assert_eq!(IntegerIncrementor::increment("9_", 1), None);
+        assert_eq!(IntegerIncrementor::increment("_9", 1), None);
+        assert_eq!(IntegerIncrementor::increment("_9_", 1), None);
     }
 }

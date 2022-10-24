@@ -131,29 +131,3 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
     .await?;
     Ok(())
 }
-
-#[tokio::test]
-async fn increment_integer_test() -> anyhow::Result<()> {
-    // correct selection placement with multiple -1 to zero
-    // `-1-1-2-1-1` becomes `00-100`
-    test((
-        "#[-|]#1#(-|)#1#(-|)#2#(-|)#1#(-|)#1",
-        "<C-a>",
-        "#[0|]##(0|)##(-|)#1#(0|)##(0|)#",
-    ))
-    .await?;
-
-    // correct selection placement with multiple -1 to zero, incremented twice
-    // `-1-1-2-1-1` becomes `00-100` then `01-99`
-    test((
-        "#[-|]#1#(-|)#1#(-|)#2#(-|)#1#(-|)#1",
-        "<C-a><C-a>",
-        "#[0|]#1#(-|)#99",
-    ))
-    .await?;
-
-    // correct selection placement with multiple 9 to 10
-    // `9 9 9` becomes `10 10 10`
-    test(("#[9|]# #(9|)# #(9|)#", "<C-a>", "#[1|]#0 #(1|)#0 #(1|)#0")).await?;
-    Ok(())
-}

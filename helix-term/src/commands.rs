@@ -11,7 +11,7 @@ use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
     increment::date_time::DateTimeIncrementor,
-    increment::{integer::IntegerIncrementor, Increment},
+    increment::integer::IntegerIncrementor,
     indent,
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
@@ -4796,85 +4796,48 @@ fn decrement(cx: &mut Context) {
     increment_impl(cx, -(cx.count() as i64));
 }
 
-/// This function differs from find_next_char_impl in that it stops searching at the newline, but also
-/// starts searching at the current character, instead of the next.
-/// It does not want to start at the next character because this function is used for incrementing
-/// number and we don't want to move forward if we're already on a digit.
-fn find_next_char_until_newline<M: CharMatcher>(
-    text: RopeSlice,
-    char_matcher: M,
-    pos: usize,
-    _count: usize,
-    _inclusive: bool,
-) -> Option<usize> {
-    // Since we send the current line to find_nth_next instead of the whole text, we need to adjust
-    // the position we send to this function so that it's relative to that line and its returned
-    // position since it's expected this function returns a global position.
-    let line_index = text.char_to_line(pos);
-    let pos_delta = text.line_to_char(line_index);
-    let pos = pos - pos_delta;
-    search::find_nth_next(text.line(line_index), char_matcher, pos, 1).map(|pos| pos + pos_delta)
-}
-
-/// Decrement object under cursor by `amount`.
+/// Increment object under cursor by `amount`.
+/// A negative `amount` will decrement object under cursor.
 fn increment_impl(cx: &mut Context, amount: i64) {
-    find_char_impl(
-        cx.editor,
-        &find_next_char_until_newline,
-        true,
-        false,
-        char::is_ascii_digit,
-        1,
-    );
-
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
     let text = doc.text().slice(..);
+
     let mut new_selection_ranges = SmallVec::new();
     let mut cumulative_length_diff: i128 = 0;
     let mut changes = vec![];
-    let mut last_change_to = 0;
 
     for range in selection {
-        let (original_text_range, new_text) =
-            if let Some(incrementor) = DateTimeIncrementor::from_range(text, *range) {
-                incrementor.increment(amount)
-            } else if let Some(incrementor) = IntegerIncrementor::from_range(text, *range) {
-                incrementor.increment(amount)
-            } else {
-                continue;
-            };
+        let selected_text: Cow<str> = text.slice(range.from()..range.to()).into();
+        let new_from = ((range.from() as i128) + cumulative_length_diff) as usize;
+        let incremented = [
+            DateTimeIncrementor::increment,
+            IntegerIncrementor::increment,
+        ]
+        .iter()
+        .find_map(|incrementor| incrementor(selected_text.as_ref(), amount));
 
-        if changes.is_empty() || original_text_range.from() >= last_change_to {
-            let length_diff = (new_text.len() as i128)
-                - ((original_text_range.to() - original_text_range.from()) as i128);
-            // Selection after increment is the first character of the new number.
-            // We must keep track of the adjustments to the documents lengh from things like `-1` -> `0`
-            // or `9` -> `10` and move the resulting selections around accordingly.
-            let range_start: usize =
-                ((original_text_range.from() as i128) + cumulative_length_diff) as usize;
-            let range_after_change = Range::new(range_start, range_start + 1);
-
-            new_selection_ranges.push(range_after_change);
-            cumulative_length_diff += length_diff;
-            last_change_to = original_text_range.to();
-            changes.push((
-                original_text_range.from(),
-                original_text_range.to(),
-                Some(new_text),
-            ));
+        match incremented {
+            None => {
+                let new_range = Range::new(
+                    new_from,
+                    (range.to() as i128 + cumulative_length_diff) as usize,
+                );
+                new_selection_ranges.push(new_range);
+            }
+            Some(new_text) => {
+                let new_range = Range::new(new_from, new_from + new_text.len());
+                cumulative_length_diff += new_text.len() as i128 - selected_text.len() as i128;
+                new_selection_ranges.push(new_range);
+                changes.push((range.from(), range.to(), Some(new_text.into())));
+            }
         }
     }
 
     if !changes.is_empty() {
-        let new_selection_primary = selection
-            .primary_index()
-            .min(new_selection_ranges.len() - 1);
-        let new_selection = Selection::new(new_selection_ranges, new_selection_primary);
-
+        let new_selection = Selection::new(new_selection_ranges, selection.primary_index());
         let transaction = Transaction::change(doc.text(), changes.into_iter());
         let transaction = transaction.with_selection(new_selection);
-
         apply_transaction(&transaction, doc, view);
     }
 }
