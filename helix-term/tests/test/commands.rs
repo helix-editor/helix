@@ -1,6 +1,8 @@
 use std::ops::RangeInclusive;
 
 use helix_core::diagnostic::Severity;
+use helix_term::application::Application;
+use std::ffi::OsStr;
 
 use super::*;
 
@@ -131,5 +133,67 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
         .as_str(),
     ))
     .await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_goto_file_impl() -> anyhow::Result<()> {
+    let file = tempfile::NamedTempFile::new()?;
+    
+    fn match_paths(app: &Application, matches: Vec<&str>) -> usize {
+        app.editor.documents()
+            .map(|d| d.path())
+            .flatten()
+            .map(|p| p.file_name())
+            .flatten()
+            .filter(|n| matches.iter().any(|m| &OsStr::new(m) == n))
+            .count()
+    }
+    
+    // Single selection
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        Some("ione.js<esc>%gf"),
+        Some(&|app| {
+            assert_eq!(1, match_paths(app, ["one.js"].to_vec()));
+        }),
+        false,
+    )
+    .await?;
+    
+    // Multiple selection
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        Some("ione.js<ret>two.js<esc>%<A-s>gf"),
+        Some(&|app| {
+            assert_eq!(2, match_paths(app, ["one.js", "two.js"].to_vec()));
+        }),
+        false,
+    )
+    .await?;
+    
+    // Cursor on first quote
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        Some("iimport 'one.js'<esc>B;gf"),
+        Some(&|app| {
+            assert_eq!(1, match_paths(app, ["one.js"].to_vec()));
+        }),
+        false,
+    )
+    .await?;
+    
+    // Cursor on last quote
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        Some("iimport 'one.js'<esc>bgf"),
+        Some(&|app| {
+            assert_eq!(1, match_paths(app, ["one.js"].to_vec()));
+        }),
+        false,
+    )
+    .await?;
+    
+    
     Ok(())
 }
