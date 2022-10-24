@@ -129,9 +129,9 @@ impl<T: Component> Popup<T> {
             self.scroll = self.scroll.saturating_sub(offset);
         }
     }
-    
+
     /// Enables the Popup's scrollbar.
-    /// Consider disabling the scrollbar in case the child 
+    /// Consider disabling the scrollbar in case the child
     /// already has its own.
     pub fn with_scrollbar(mut self, enable_scrollbar: bool) -> Self {
         self.has_scrollbar = enable_scrollbar;
@@ -239,7 +239,7 @@ impl<T: Component> Component for Popup<T> {
         let inner = area.inner(&self.margin);
         self.contents.render(inner, surface, cx);
 
-        // render scrollbar if contents do not fit 
+        // render scrollbar if contents do not fit
         if self.has_scrollbar {
             let win_height = inner.height as usize;
             let len = self.child_size.1 as usize;
