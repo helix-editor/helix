@@ -1023,6 +1023,7 @@ fn goto_file_vsplit(cx: &mut Context) {
     goto_file_impl(cx, Action::VerticalSplit);
 }
 
+/// Goto files in selection.
 fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text();
@@ -1032,30 +1033,30 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         .map(|r| text.slice(r.from()..r.to()).to_string())
         .collect();
     let primary = selections.primary();
-    if primary.len() == 1 {
+    // Checks whether the current selection is empty
+    if selections.len() == 1 && primary.len() == 1 {
         let count = cx.count();
-        let current_word = selections
-            .clone()
-            .transform(|range| {
-                textobject::textobject_word(
-                    text.slice(..),
-                    range,
-                    textobject::TextObject::Inside,
-                    count,
-                    true,
-                )
-            })
-            .primary();
+        // In this case it selects the long word under the cursor
+        let current_word = textobject::textobject_word(
+            text.slice(..),
+            primary,
+            textobject::TextObject::Inside,
+            count,
+            true,
+        );
+        // Trims some surrounding chars so that the actual file is opened.
+        let surrounding_chars: &[_] = &['\'', '"', '(', ')'];
         paths.clear();
         paths.push(
             text.slice(current_word.from()..current_word.to())
+                .to_string()
+                .trim_matches(surrounding_chars)
                 .to_string(),
         );
     }
     for sel in paths {
-        let surrounding_chars: &[_] = &['\'', '"', '(', ')'];
-        let p = sel.trim().trim_matches(surrounding_chars);
-        if !p.is_empty() {
+        if !sel.is_empty() {
+            let p = sel.trim();
             if let Err(e) = cx.editor.open(&PathBuf::from(p), action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
             }
