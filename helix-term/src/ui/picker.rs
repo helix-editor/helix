@@ -248,8 +248,14 @@ impl<T: Item + 'static> Component for FilePicker<T> {
 
             let offset = Position::new(first_line, 0);
 
-            let highlights =
+            let mut highlights =
                 EditorView::doc_syntax_highlights(doc, offset, area.height, &cx.editor.theme);
+            for spans in EditorView::doc_diagnostics_highlights(doc, &cx.editor.theme) {
+                if spans.is_empty() {
+                    continue;
+                }
+                highlights = Box::new(helix_core::syntax::merge(highlights, spans));
+            }
             EditorView::render_text_highlights(
                 doc,
                 offset,
