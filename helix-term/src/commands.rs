@@ -1033,10 +1033,10 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         .map(|r| text.slice(r.from()..r.to()).to_string())
         .collect();
     let primary = selections.primary();
-    // Checks whether the current selection is empty
+    // Checks whether there is only one selection with a width of 1
     if selections.len() == 1 && primary.len() == 1 {
         let count = cx.count();
-        // In this case it selects the long word under the cursor
+        // In this case it selects the WORD under the cursor
         let current_word = textobject::textobject_word(
             text.slice(..),
             primary,

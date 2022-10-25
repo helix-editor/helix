@@ -2,7 +2,6 @@ use std::ops::RangeInclusive;
 
 use helix_core::diagnostic::Severity;
 use helix_term::application::Application;
-use std::ffi::OsStr;
 
 use super::*;
 
@@ -143,11 +142,8 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
     fn match_paths(app: &Application, matches: Vec<&str>) -> usize {
         app.editor
             .documents()
-            .map(|d| d.path())
-            .flatten()
-            .map(|p| p.file_name())
-            .flatten()
-            .filter(|n| matches.iter().any(|m| &OsStr::new(m) == n))
+            .filter_map(|d| d.path()?.file_name())
+            .filter(|n| matches.iter().any(|m| *m == n.to_string_lossy()))
             .count()
     }
 
