@@ -218,13 +218,21 @@ impl View {
             };
             (row, col)
         };
-        let offset_without_centering = new_offset(0);
         let current_offset = (self.offset.row, self.offset.col);
         if centering {
-            (offset_without_centering == current_offset).then(|| new_offset(scrolloff))
+            // return None if cursor is out of view
+            let offset = new_offset(0);
+            (offset == current_offset).then(|| {
+                if scrolloff == 0 {
+                    offset
+                } else {
+                    new_offset(scrolloff)
+                }
+            })
         } else {
-            // TODO: use 'then_some' when 1.62 <= MSRV
-            (offset_without_centering != current_offset).then(|| offset_without_centering)
+            // return None if cursor is in (view - scrolloff)
+            let offset = new_offset(scrolloff);
+            (offset != current_offset).then(|| offset) // TODO: use 'then_some' when 1.62 <= MSRV
         }
     }
 
