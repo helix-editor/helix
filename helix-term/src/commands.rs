@@ -4544,10 +4544,7 @@ fn shell_keep_pipe(cx: &mut Context) {
 }
 
 fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<(Tendril, bool)> {
-    tokio::task::block_in_place(|| {
-        let runtime = tokio::runtime::Handle::current();
-        runtime.block_on(shell_impl_async(shell, cmd, input))
-    })
+    tokio::task::block_in_place(|| helix_lsp::block_on(shell_impl_async(shell, cmd, input)))
 }
 
 async fn shell_impl_async(
