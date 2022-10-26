@@ -1036,9 +1036,10 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     // Checks whether there is only one selection with a width of 1
     if selections.len() == 1 && primary.len() == 1 {
         let count = cx.count();
+        let text_slice = text.slice(..);
         // In this case it selects the WORD under the cursor
         let current_word = textobject::textobject_word(
-            text.slice(..),
+            text_slice,
             primary,
             textobject::TextObject::Inside,
             count,
@@ -1048,8 +1049,8 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         let surrounding_chars: &[_] = &['\'', '"', '(', ')'];
         paths.clear();
         paths.push(
-            text.slice(current_word.from()..current_word.to())
-                .to_string()
+            current_word
+                .fragment(text_slice)
                 .trim_matches(surrounding_chars)
                 .to_string(),
         );
