@@ -356,19 +356,12 @@ impl<T: Item + 'static> Component for Menu<T> {
         let fits = len <= win_height;
 
         let scroll_style = theme.get("ui.menu.scroll");
-        for (i, _) in (scroll..(scroll + win_height).min(len)).enumerate() {
-            let cell = &mut surface[(area.x + area.width - 1, area.y + i as u16)];
+        if !fits {
+            // Draw scroll thumb
+            for i in scroll_line..(scroll_line + scroll_height) {
+                let cell = &mut surface[(area.x + area.width - 1, area.y + i as u16)];
 
-            if !fits {
-                // Draw scroll track
                 cell.set_symbol("▐"); // right half block
-                cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
-            }
-
-            let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
-
-            if !fits && is_marked {
-                // Draw scroll thumb
                 cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
             }
         }
