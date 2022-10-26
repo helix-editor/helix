@@ -11,7 +11,7 @@ mod test {
 
     use self::helpers::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn hello_world() -> anyhow::Result<()> {
         test(("#[\n|]#", "ihello world<esc>", "hello world#[|\n]#")).await?;
         Ok(())
@@ -21,5 +21,7 @@ mod test {
     mod auto_pairs;
     mod commands;
     mod movement;
+    mod prompt;
+    mod splits;
     mod write;
 }

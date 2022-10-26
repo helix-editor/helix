@@ -2,7 +2,7 @@ use std::fmt::Write;
 
 use crate::{
     editor::GutterType,
-    graphics::{Color, Modifier, Style},
+    graphics::{Color, Style, UnderlineStyle},
     Document, Editor, Theme, View,
 };
 
@@ -105,7 +105,7 @@ pub fn line_numbers<'doc>(
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
     let line_number = editor.config().line_number;
-    let mode = doc.mode;
+    let mode = editor.mode;
 
     Box::new(move |line: usize, selected: bool, out: &mut String| {
         if line == last_line && !draw_last {
@@ -190,7 +190,7 @@ pub fn breakpoints<'doc>(
             .find(|breakpoint| breakpoint.line == line)?;
 
         let mut style = if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
-            error.add_modifier(Modifier::UNDERLINED)
+            error.underline_style(UnderlineStyle::Line)
         } else if breakpoint.condition.is_some() {
             error
         } else if breakpoint.log_message.is_some() {

@@ -1,5 +1,12 @@
-use crate::{editor::GutterType, graphics::Rect, Document, DocumentId, ViewId};
-use helix_core::{pos_at_visual_coords, visual_coords_at_pos, Position, RopeSlice, Selection};
+use crate::{
+    editor::GutterType,
+    graphics::Rect,
+    gutter::{self, Gutter},
+    Document, DocumentId, ViewId,
+};
+use helix_core::{
+    pos_at_visual_coords, visual_coords_at_pos, Position, RopeSlice, Selection, Transaction,
+};
 
 use std::fmt;
 
@@ -57,6 +64,22 @@ impl JumpList {
 
     pub fn get(&self) -> &[Jump] {
         &self.jumps
+    }
+
+    /// Applies a [`Transaction`] of changes to the jumplist.
+    /// This is necessary to ensure that changes to documents do not leave jump-list
+    /// selections pointing to parts of the text which no longer exist.
+    fn apply(&mut self, transaction: &Transaction, doc: &Document) {
+        let text = doc.text().slice(..);
+
+        for (doc_id, selection) in &mut self.jumps {
+            if doc.id() == *doc_id {
+                *selection = selection
+                    .clone()
+                    .map(transaction.changes())
+                    .ensure_invariants(text);
+            }
+        }
     }
 }
 
@@ -315,6 +338,14 @@ impl View {
     //         (None, None) => return,
     //     }
     // }
+
+    /// Applies a [`Transaction`] to the view.
+    /// Instead of calling this function directly, use [crate::apply_transaction]
+    /// which applies a transaction to the [`Document`] and view together.
+    pub fn apply(&mut self, transaction: &Transaction, doc: &Document) -> bool {
+        self.jumps.apply(transaction, doc);
+        true
+    }
 }
 
 #[cfg(test)]

@@ -2,10 +2,10 @@
 
 "ui.background" = { fg = "white"}
 "ui.background.separator" = { fg = "gray" }
-"ui.menu" = { fg = "greay" }
+"ui.menu" = { fg = "gray" }
 "ui.menu.selected" = { modifiers = ["reversed"] }
 "ui.menu.scroll" = { fg = "light-gray" }
-"ui.linenr" = { fg = "light-grey" }
+"ui.linenr" = { fg = "light-gray" }
 "ui.linenr.selected" = { fg = "white",  modifiers = ["bold"] }
 "ui.popup" = { fg = "white" }
 "ui.window" = { fg = "white" }
@@ -28,7 +28,7 @@
 "variable" = "light-red"
 "constant.numeric" = "yellow"
 "constant" = "yellow"
-"attributes" = "yellow"
+"attribute" = "yellow"
 "type" = "light-yellow"
 "string"  = "light-green"
 "variable.other.member" = "green"
@@ -50,7 +50,7 @@
 "markup.raw" = "green"
 "markup.normal" = { fg = "blue" }
 "markup.insert" = { fg = "green" }
-"markup.select" = { fg = "purple" }
+"markup.select" = { fg = "magenta" }
 
 "diff.plus" = "light-green"
 "diff.delta" = "yellow"

@@ -17,7 +17,7 @@ pub trait ClipboardProvider: std::fmt::Debug {
 #[cfg(not(windows))]
 macro_rules! command_provider {
     (paste => $get_prg:literal $( , $get_arg:literal )* ; copy => $set_prg:literal $( , $set_arg:literal )* ; ) => {{
-        log::info!(
+        log::debug!(
             "Using {} to interact with the system clipboard",
             if $set_prg != $get_prg { format!("{}+{}", $set_prg, $get_prg)} else { $set_prg.to_string() }
         );
@@ -139,7 +139,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     }
 }
 
-mod provider {
+pub mod provider {
     use super::{ClipboardProvider, ClipboardType};
     use anyhow::Result;
     use std::borrow::Cow;
@@ -161,6 +161,13 @@ mod provider {
                 buf: String::new(),
                 primary_buf: String::new(),
             }
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    impl Default for NopProvider {
+        fn default() -> Self {
+            Self::new()
         }
     }
 
@@ -225,12 +232,11 @@ mod provider {
         use super::*;
         use anyhow::{bail, Context as _, Result};
 
-        #[cfg(not(windows))]
         pub fn exists(executable_name: &str) -> bool {
             which::which(executable_name).is_ok()
         }
 
-        #[cfg(not(any(windows, target_os = "macos")))]
+        #[cfg(not(windows))]
         pub fn env_var_is_set(env_var_name: &str) -> bool {
             std::env::var_os(env_var_name).is_some()
         }

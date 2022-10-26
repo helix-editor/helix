@@ -56,9 +56,9 @@
 "ui.background" = { fg = "light_gray", bg = "dark_gray2" }
 
 "ui.window" = { bg = "widget" }
-"ui.popup" = { bg = "widget" }
-"ui.help" = { bg = "widget" }
-"ui.menu" = { bg = "widget" }
+"ui.popup" = { fg = "text", bg = "widget" }
+"ui.help" = { fg = "text", bg = "widget" }
+"ui.menu" = { fg = "text", bg = "widget" }
 "ui.menu.selected" = { bg = "dark_blue2" }
 
 # TODO: Alternate bg colour for `ui.cursor.match` and `ui.selection`.
@@ -76,6 +76,10 @@
 "ui.statusline" = { fg = "white", bg = "blue" }
 "ui.statusline.inactive" = { fg = "white", bg = "blue" }
 
+"ui.bufferline" = { fg = "text", bg = "widget" }
+"ui.bufferline.active" = { fg = "white", bg = "blue" }
+"ui.bufferline.background" = { bg = "background" }
+
 "ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "white" }
 
@@ -88,7 +92,8 @@
 "info" = { fg = "light_blue" }
 "hint" = { fg = "light_gray3" }
 
-diagnostic = { modifiers = ["underlined"] }
+"diagnostic.error".underline = { color = "red", style = "curl" }
+"diagnostic".underline = { color = "gold", style = "curl" }
 
 [palette]
 white = "#ffffff"

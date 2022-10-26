@@ -36,6 +36,11 @@ set edit:completion:arg-completer[hx] = {|@args|
       edit:complete-filename $args[-1] | each { |v| put $v[stem] }
       return
     } 
+    # When we have --log, we need a file
+    if (has-values "log" $args[-2]) {
+      edit:complete-filename $args[-1] | each { |v| put $v[stem] }
+      return
+    } 
   } 
   edit:complete-filename $args[-1] | each { |v| put $v[stem]}
   $candidate "--help" "(Prints help information)"
@@ -46,4 +51,5 @@ set edit:completion:arg-completer[hx] = {|@args|
   $candidate "--vsplit" "(Splits all given files vertically)"
   $candidate "--hsplit" "(Splits all given files horizontally)"
   $candidate "--config" "(Specifies a file to use for configuration)"
+  $candidate "--log" "(Specifies a file to write log data into)"
 }
