@@ -97,6 +97,16 @@ impl Completion {
         start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
+        // Sort completion items according to their preselect status (given by the LSP server)
+        let mut items = items;
+        items.sort_by(|item1, item2| {
+            item2
+                .preselect
+                .unwrap_or(false)
+                .cmp(&item1.preselect.unwrap_or(false))
+        });
+
+        // Then create the menu
         let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
             fn item_to_transaction(
                 doc: &Document,
