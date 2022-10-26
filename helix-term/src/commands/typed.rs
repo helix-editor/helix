@@ -772,16 +772,21 @@ fn theme(
             };
         }
         PromptEvent::Validate => {
-            let theme_name = args.first().with_context(|| "Theme name not provided")?;
-            let theme = cx
-                .editor
-                .theme_loader
-                .load(theme_name)
-                .with_context(|| "Theme does not exist")?;
-            if !(true_color || theme.is_16_color()) {
-                bail!("Unsupported theme: theme requires true color support");
+            if let Some(theme_name) = args.first() {
+                let theme = cx
+                    .editor
+                    .theme_loader
+                    .load(theme_name)
+                    .with_context(|| "Theme does not exist")?;
+                if !(true_color || theme.is_16_color()) {
+                    bail!("Unsupported theme: theme requires true color support");
+                }
+                cx.editor.set_theme(theme);
+            } else {
+                let name = cx.editor.theme.name().to_string();
+
+                cx.editor.set_status(name);
             }
-            cx.editor.set_theme(theme);
         }
     };
 
@@ -1866,7 +1871,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "theme",
             aliases: &[],
-            doc: "Change the editor theme.",
+            doc: "Change the editor theme (show current theme if no name specified).",
             fun: theme,
             completer: Some(completers::theme),
         },
