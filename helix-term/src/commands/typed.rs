@@ -1029,6 +1029,24 @@ fn reload(
     })
 }
 
+/// Update the [`Document`] if it has been modified.
+fn update(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_view, doc) = current!(cx.editor);
+    if doc.is_modified() {
+        write(cx, args, event)
+    } else {
+        Ok(())
+    }
+}
+
 fn lsp_restart(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1955,6 +1973,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Discard changes and reload from the source file.",
             fun: reload,
+            completer: None,
+        },
+        TypableCommand {
+            name: "update",
+            aliases: &[],
+            doc: "Write changes only if the file has been modified.",
+            fun: update,
             completer: None,
         },
         TypableCommand {
