@@ -943,7 +943,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "markdown"
-source = { git = "https://github.com/MDeiml/tree-sitter-markdown", rev = "d5740f0fe4b8e4603f2229df107c5c9ef5eec389", subpath = "tree-sitter-markdown" }
+source = { git = "https://github.com/MDeiml/tree-sitter-markdown", rev = "a7de4be29783a6e25f3240c90afea52f2417faa3", subpath = "tree-sitter-markdown" }
 
 [[language]]
 name = "markdown.inline"
@@ -955,7 +955,7 @@ grammar = "markdown_inline"
 
 [[grammar]]
 name = "markdown_inline"
-source = { git = "https://github.com/MDeiml/tree-sitter-markdown", rev = "d5740f0fe4b8e4603f2229df107c5c9ef5eec389", subpath = "tree-sitter-markdown-inline" }
+source = { git = "https://github.com/MDeiml/tree-sitter-markdown", rev = "a7de4be29783a6e25f3240c90afea52f2417faa3", subpath = "tree-sitter-markdown-inline" }
 
 [[language]]
 name = "dart"
