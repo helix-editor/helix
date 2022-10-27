@@ -1849,3 +1849,15 @@ formatter = { command = "dfmt" }
 [[grammar]]
 name = "d"
 source = { git = "https://github.com/gdamore/tree-sitter-d", rev="601c4a1e8310fb2f3c43fa8a923d0d27497f3c04" }
+
+[[language]]
+name = "kdl"
+scope = "source.kdl"
+file-types = ["kdl"]
+roots = []
+comment-token = "//"
+injection-regex = "kdl"
+
+[[grammar]]
+name = "kdl"
+source = { git = "https://github.com/Unoqwy/tree-sitter-kdl", rev = "e1cd292c6d15df6610484e1d4b5c987ecad52373" }
