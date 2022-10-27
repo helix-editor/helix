@@ -2104,18 +2104,7 @@ enum Operation {
 
 fn delete_selection_impl(cx: &mut Context, op: Operation) {
     let (view, doc) = current!(cx.editor);
-
-    let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
-
-    if cx.register != Some('_') {
-        // first yank the selection
-        let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
-        let reg_name = cx.register.unwrap_or('"');
-        let registers = &mut cx.editor.registers;
-        let reg = registers.get_mut(reg_name);
-        reg.write(values);
-    };
 
     // then delete
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
@@ -2143,20 +2132,20 @@ fn delete_selection_insert_mode(doc: &mut Document, view: &mut View, selection: 
 }
 
 fn delete_selection(cx: &mut Context) {
+    yank_impl(cx);
     delete_selection_impl(cx, Operation::Delete);
 }
 
 fn delete_selection_noyank(cx: &mut Context) {
-    cx.register = Some('_');
     delete_selection_impl(cx, Operation::Delete);
 }
 
 fn change_selection(cx: &mut Context) {
+    yank_impl(cx);
     delete_selection_impl(cx, Operation::Change);
 }
 
 fn change_selection_noyank(cx: &mut Context) {
-    cx.register = Some('_');
     delete_selection_impl(cx, Operation::Change);
 }
 
@@ -3318,7 +3307,8 @@ fn commit_undo_checkpoint(cx: &mut Context) {
 
 // Yank / Paste
 
-fn yank(cx: &mut Context) {
+// yank impl is unified impl for yanking in different circumstances
+fn yank_impl(cx: &mut Context) -> usize {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
@@ -3327,16 +3317,24 @@ fn yank(cx: &mut Context) {
         .fragments(text)
         .map(Cow::into_owned)
         .collect();
-
-    let msg = format!(
-        "yanked {} selection(s) to register {}",
-        values.len(),
-        cx.register.unwrap_or('"')
-    );
+    
+    let length = values.len();
 
     cx.editor
         .registers
         .write(cx.register.unwrap_or('"'), values);
+
+    length
+}
+
+fn yank(cx: &mut Context) {
+    let length = yank_impl(cx);
+
+    let msg = format!(
+        "yanked {} selection(s) to register {}",
+        length,
+        cx.register.unwrap_or('"')
+    );
 
     cx.editor.set_status(msg);
     exit_select_mode(cx);
