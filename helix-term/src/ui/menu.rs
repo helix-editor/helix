@@ -319,11 +319,6 @@ impl<T: Item + 'static> Component for Menu<T> {
             (a + b - 1) / b
         }
 
-        let scroll_height = std::cmp::min(div_ceil(win_height.pow(2), len), win_height);
-
-        let scroll_line = (win_height - scroll_height) * scroll
-            / std::cmp::max(1, len.saturating_sub(win_height));
-
         let rows = options.iter().map(|option| option.row(&self.editor_data));
         let table = Table::new(rows)
             .style(style)
@@ -356,8 +351,12 @@ impl<T: Item + 'static> Component for Menu<T> {
         let fits = len <= win_height;
 
         let scroll_style = theme.get("ui.menu.scroll");
-        let mut cell;
         if !fits {
+            let scroll_height = div_ceil(win_height.pow(2), len).min(win_height);
+            let scroll_line = (win_height - scroll_height) * scroll
+                / std::cmp::max(1, len.saturating_sub(win_height));
+
+            let mut cell;
             for i in 0..win_height {
                 cell = &mut surface[(area.right() - 1, area.top() + i as u16)];
 

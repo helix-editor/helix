@@ -244,20 +244,19 @@ impl<T: Component> Component for Popup<T> {
             let win_height = inner.height as usize;
             let len = self.child_size.1 as usize;
             let fits = len <= win_height;
-            let theme = &cx.editor.theme;
             let scroll = self.scroll;
+            let scroll_style = cx.editor.theme.get("ui.menu.scroll");
 
             const fn div_ceil(a: usize, b: usize) -> usize {
                 (a + b - 1) / b
             }
 
-            let scroll_height = div_ceil(win_height.pow(2), len).min(win_height);
-            let scroll_line = (win_height - scroll_height) * scroll
-                / std::cmp::max(1, len.saturating_sub(win_height));
-
-            let scroll_style = theme.get("ui.menu.scroll");
-            let mut cell;
             if !fits {
+                let scroll_height = div_ceil(win_height.pow(2), len).min(win_height);
+                let scroll_line = (win_height - scroll_height) * scroll
+                    / std::cmp::max(1, len.saturating_sub(win_height));
+
+                let mut cell;
                 for i in 0..win_height {
                     cell = &mut surface[(area.right() - 1, area.top() + i as u16)];
 
