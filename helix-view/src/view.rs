@@ -28,7 +28,7 @@ impl JumpList {
     pub fn push(&mut self, jump: Jump) {
         self.jumps.truncate(self.current);
         // don't push duplicates
-        if self.jumps.last() != Some(&jump) {
+        if !self.jumps.contains(&jump) {
             self.jumps.push(jump);
             self.current = self.jumps.len();
         }
