@@ -74,11 +74,7 @@
 "info" = { fg = "yellow_accent" }
 "warning" = { fg = "orange_accent" }
 "error" = { fg = "diff_red_accent" }
-"diagnostic" = { modifiers = ["underlined"], underline = { style = "curl" } } # .hint / .info / .warning / .error
-# "diagnostic.hint" = { modifiers = ["underlined"] }
-# "diagnostic.info" = { modifiers = ["underlined"] }
-# "diagnostic.warning" = { modifiers = ["underlined"] }
-# "diagnostic.error" = { modifiers = ["underlined"] }
+"diagnostic". underline = { style = "curl"  } 
 
 [palette]
 darkest = "#0F0F0F"
