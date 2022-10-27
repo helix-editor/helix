@@ -319,7 +319,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             (a + b - 1) / b
         }
 
-        let scroll_height = std::cmp::min(div_ceil(win_height.pow(2), len), win_height as usize);
+        let scroll_height = std::cmp::min(div_ceil(win_height.pow(2), len), win_height);
 
         let scroll_line = (win_height - scroll_height) * scroll
             / std::cmp::max(1, len.saturating_sub(win_height));

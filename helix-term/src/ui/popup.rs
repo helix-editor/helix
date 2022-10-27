@@ -251,7 +251,7 @@ impl<T: Component> Component for Popup<T> {
                 (a + b - 1) / b
             }
 
-            let scroll_height = div_ceil(win_height.pow(2), len).min(win_height as usize);
+            let scroll_height = div_ceil(win_height.pow(2), len).min(win_height);
             let scroll_line = (win_height - scroll_height) * scroll
                 / std::cmp::max(1, len.saturating_sub(win_height));
 
