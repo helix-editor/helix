@@ -15,11 +15,7 @@ impl Register {
     }
 
     pub fn new_with_values(name: char, values: Vec<String>) -> Self {
-        if name == '_' {
-            Self::new(name)
-        } else {
-            Self { name, values }
-        }
+        Self { name, values }
     }
 
     pub const fn name(&self) -> char {
@@ -31,15 +27,11 @@ impl Register {
     }
 
     pub fn write(&mut self, values: Vec<String>) {
-        if self.name != '_' {
-            self.values = values;
-        }
+        self.values = values;
     }
 
     pub fn push(&mut self, value: String) {
-        if self.name != '_' {
-            self.values.push(value);
-        }
+        self.values.push(value);
     }
 }
 

@@ -3317,7 +3317,7 @@ fn yank_impl(cx: &mut Context) -> usize {
         .fragments(text)
         .map(Cow::into_owned)
         .collect();
-    
+
     let length = values.len();
 
     cx.editor

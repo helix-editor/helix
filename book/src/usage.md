@@ -23,10 +23,8 @@ If there is a selected register before invoking a change or delete command, the 
 | `/`                | Last search           |
 | `:`                | Last executed command |
 | `"`                | Last yanked text      |
-| `_`                | Black hole            |
 
 > There is no special register for copying to system clipboard, instead special commands and keybindings are provided. See the [keymap](keymap.md#space-mode) for the specifics.
-> The black hole register works as a no-op register, meaning no data will be written to / read from it.
 
 ## Surround
 
