@@ -4665,6 +4665,8 @@ fn shell_impl(
 
     if input.is_some() || cfg!(windows) {
         process.stdin(Stdio::piped());
+    } else {
+        process.stdin(Stdio::null());
     }
 
     let mut process = match process.spawn() {
