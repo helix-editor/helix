@@ -256,13 +256,20 @@ impl<T: Component> Component for Popup<T> {
                 / std::cmp::max(1, len.saturating_sub(win_height));
 
             let scroll_style = theme.get("ui.menu.scroll");
+            let mut cell;
             if !fits {
-                // Draw scroll thumb
-                for i in scroll_line..(scroll_line + scroll_height) {
-                    let cell = &mut surface[(area.x + area.width - 1, area.y + i as u16)];
+                for i in 0..win_height {
+                    cell = &mut surface[(area.right() - 1, area.top() + i as u16)];
 
                     cell.set_symbol("▐"); // right half block
-                    cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
+
+                    if scroll_line <= i && i < scroll_line + scroll_height {
+                        // Draw scroll thumb
+                        cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
+                    } else {
+                        // Draw scroll track
+                        cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
+                    }
                 }
             }
         }
