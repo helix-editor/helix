@@ -92,19 +92,13 @@ impl Completion {
 
     pub fn new(
         editor: &Editor,
-        items: Vec<CompletionItem>,
+        mut items: Vec<CompletionItem>,
         offset_encoding: helix_lsp::OffsetEncoding,
         start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
         // Sort completion items according to their preselect status (given by the LSP server)
-        let mut items = items;
-        items.sort_by(|item1, item2| {
-            item2
-                .preselect
-                .unwrap_or(false)
-                .cmp(&item1.preselect.unwrap_or(false))
-        });
+        items.sort_by_key(|item| !item.preselect.unwrap_or(false));
 
         // Then create the menu
         let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
