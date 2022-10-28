@@ -1023,6 +1023,7 @@ fn goto_file_vsplit(cx: &mut Context) {
     goto_file_impl(cx, Action::VerticalSplit);
 }
 
+/// Goto files in selection.
 fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text();
@@ -1032,15 +1033,25 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         .map(|r| text.slice(r.from()..r.to()).to_string())
         .collect();
     let primary = selections.primary();
-    if selections.len() == 1 && primary.to() - primary.from() == 1 {
-        let current_word = movement::move_next_long_word_start(
-            text.slice(..),
-            movement::move_prev_long_word_start(text.slice(..), primary, 1),
-            1,
+    // Checks whether there is only one selection with a width of 1
+    if selections.len() == 1 && primary.len() == 1 {
+        let count = cx.count();
+        let text_slice = text.slice(..);
+        // In this case it selects the WORD under the cursor
+        let current_word = textobject::textobject_word(
+            text_slice,
+            primary,
+            textobject::TextObject::Inside,
+            count,
+            true,
         );
+        // Trims some surrounding chars so that the actual file is opened.
+        let surrounding_chars: &[_] = &['\'', '"', '(', ')'];
         paths.clear();
         paths.push(
-            text.slice(current_word.from()..current_word.to())
+            current_word
+                .fragment(text_slice)
+                .trim_matches(surrounding_chars)
                 .to_string(),
         );
     }
@@ -2432,8 +2443,8 @@ impl ui::menu::Item for MappableCommand {
 
         match self {
             MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String) {
-                Some(bindings) => format!("{} ({}) [{}]", doc, fmt_binding(bindings), name).into(),
-                None => format!("{} [{}]", doc, name).into(),
+                Some(bindings) => format!("{} ({}) [:{}]", doc, fmt_binding(bindings), name).into(),
+                None => format!("{} [:{}]", doc, name).into(),
             },
             MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
                 Some(bindings) => format!("{} ({}) [{}]", doc, fmt_binding(bindings), name).into(),
