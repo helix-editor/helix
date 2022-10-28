@@ -1,8 +1,4 @@
-use crate::{
-    editor::GutterType,
-    graphics::Rect,
-    Document, DocumentId, ViewId,
-};
+use crate::{editor::GutterType, graphics::Rect, Document, DocumentId, ViewId};
 use helix_core::{
     pos_at_visual_coords, visual_coords_at_pos, Position, RopeSlice, Selection, Transaction,
 };
