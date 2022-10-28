@@ -4574,18 +4574,22 @@ async fn shell_impl_async(
             return Err(e.into());
         }
     };
-    let mut stdin = process.stdin.take().unwrap();
-    let input_task = tokio::spawn(async move {
-        if let Some(input) = input {
-            helix_view::document::to_writer(&mut stdin, encoding::UTF_8, &input).await?;
-        }
-        Ok::<_, anyhow::Error>(())
-    });
-    let (output, _) = tokio::join! {
-        process.wait_with_output(),
-        input_task,
+    let output = if let Some(mut stdin) = process.stdin.take() {
+        let input_task = tokio::spawn(async move {
+            if let Some(input) = input {
+                helix_view::document::to_writer(&mut stdin, encoding::UTF_8, &input).await?;
+            }
+            Ok::<_, anyhow::Error>(())
+        });
+        let (output, _) = tokio::join! {
+            process.wait_with_output(),
+            input_task,
+        };
+        output?
+    } else {
+        // Process has no stdin, so we just take the output
+        process.wait_with_output().await?
     };
-    let output = output?;
 
     if !output.stderr.is_empty() {
         log::error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
