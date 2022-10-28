@@ -11,7 +11,7 @@
 (keyword) @keyword
 
 (string) @string
-(number) @number
+(number) @constant.numeric
 (boolean) @constant.builtin.boolean
 
 "." @punctuation.delimiter
