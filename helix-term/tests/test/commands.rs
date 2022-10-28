@@ -152,7 +152,7 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
         &mut AppBuilder::new().with_file(file.path(), None).build()?,
         Some("ione.js<esc>%gf"),
         Some(&|app| {
-            assert_eq!(1, match_paths(app, ["one.js"].to_vec()));
+            assert_eq!(1, match_paths(app, vec!["one.js"]));
         }),
         false,
     )
@@ -163,7 +163,7 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
         &mut AppBuilder::new().with_file(file.path(), None).build()?,
         Some("ione.js<ret>two.js<esc>%<A-s>gf"),
         Some(&|app| {
-            assert_eq!(2, match_paths(app, ["one.js", "two.js"].to_vec()));
+            assert_eq!(2, match_paths(app, vec!["one.js", "two.js"]));
         }),
         false,
     )
@@ -174,7 +174,7 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
         &mut AppBuilder::new().with_file(file.path(), None).build()?,
         Some("iimport 'one.js'<esc>B;gf"),
         Some(&|app| {
-            assert_eq!(1, match_paths(app, ["one.js"].to_vec()));
+            assert_eq!(1, match_paths(app, vec!["one.js"]));
         }),
         false,
     )
@@ -185,7 +185,7 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
         &mut AppBuilder::new().with_file(file.path(), None).build()?,
         Some("iimport 'one.js'<esc>bgf"),
         Some(&|app| {
-            assert_eq!(1, match_paths(app, ["one.js"].to_vec()));
+            assert_eq!(1, match_paths(app, vec!["one.js"]));
         }),
         false,
     )
