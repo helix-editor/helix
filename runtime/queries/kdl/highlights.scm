@@ -3,7 +3,7 @@
 
 (node
     name: (identifier) @function)
-(prop (identifier) @property)
+(prop (identifier) @attribute)
 (type) @type
 
 (bare_identifier) @variable.other.member
