@@ -3434,7 +3434,12 @@ enum Paste {
 }
 
 fn paste_impl(values: &[String], doc: &mut Document, view: &mut View, action: Paste, count: usize) {
+    if values.is_empty() {
+        return;
+    }
+
     let repeat = std::iter::repeat(
+        // `values` is asserted to have at least one entry above.
         values
             .last()
             .map(|value| Tendril::from(value.repeat(count)))
