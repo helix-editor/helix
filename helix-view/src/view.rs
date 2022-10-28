@@ -1,7 +1,6 @@
 use crate::{
     editor::GutterType,
     graphics::Rect,
-    gutter::{self, Gutter},
     Document, DocumentId, ViewId,
 };
 use helix_core::{

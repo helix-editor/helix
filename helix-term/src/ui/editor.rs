@@ -883,7 +883,7 @@ impl EditorView {
             .or_else(|| theme.try_get_exact("ui.cursorcolumn"))
             .unwrap_or_else(|| theme.get("ui.cursorline.secondary"));
 
-        let inner_area = view.inner_area();
+        let inner_area = view.inner_area(doc);
         let offset = view.offset.col;
 
         let selection = doc.selection(view.id);
