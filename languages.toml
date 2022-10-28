@@ -1872,3 +1872,16 @@ formatter = { command = "dfmt" }
 [[grammar]]
 name = "d"
 source = { git = "https://github.com/gdamore/tree-sitter-d", rev="601c4a1e8310fb2f3c43fa8a923d0d27497f3c04" }
+
+[[language]]
+name = "vhs"
+scope = "source.vhs"
+file-types = ["tape"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+grammar = "vhs"
+
+[[grammar]]
+name = "vhs"
+source = { git = "https://github.com/charmbracelet/tree-sitter-vhs", rev = "c6d81f34c011c29ee86dd73b45a8ecc9f2e2bdaf" }

@@ -120,6 +120,7 @@
 | v | ✓ |  |  | `vls` |
 | vala | ✓ |  |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |
+| vhs | ✓ |  |  |  |
 | vue | ✓ |  |  | `vls` |
 | wast | ✓ |  |  |  |
 | wat | ✓ |  |  |  |
