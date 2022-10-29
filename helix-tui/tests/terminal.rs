@@ -4,12 +4,12 @@ use helix_tui::{
 };
 
 #[test]
-fn terminal_buffer_size_should_be_limited() {
+fn terminal_buffer_size_should_not_be_limited() {
     let backend = TestBackend::new(400, 400);
     let terminal = Terminal::new(backend).unwrap();
     let size = terminal.backend().size().unwrap();
-    assert_eq!(size.width, 255);
-    assert_eq!(size.height, 255);
+    assert_eq!(size.width, 400);
+    assert_eq!(size.height, 400);
 }
 
 // #[test]

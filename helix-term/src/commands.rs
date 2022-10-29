@@ -9,7 +9,7 @@ use tui::text::Spans;
 pub use typed::*;
 
 use helix_core::{
-    comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes,
+    comment, coords_at_pos, encoding, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
     increment::date_time::DateTimeIncrementor,
     increment::{number::NumberIncrementor, Increment},
@@ -1024,6 +1024,7 @@ fn goto_file_vsplit(cx: &mut Context) {
     goto_file_impl(cx, Action::VerticalSplit);
 }
 
+/// Goto files in selection.
 fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text();
@@ -1033,15 +1034,25 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         .map(|r| text.slice(r.from()..r.to()).to_string())
         .collect();
     let primary = selections.primary();
-    if selections.len() == 1 && primary.to() - primary.from() == 1 {
-        let current_word = movement::move_next_long_word_start(
-            text.slice(..),
-            movement::move_prev_long_word_start(text.slice(..), primary, 1),
-            1,
+    // Checks whether there is only one selection with a width of 1
+    if selections.len() == 1 && primary.len() == 1 {
+        let count = cx.count();
+        let text_slice = text.slice(..);
+        // In this case it selects the WORD under the cursor
+        let current_word = textobject::textobject_word(
+            text_slice,
+            primary,
+            textobject::TextObject::Inside,
+            count,
+            true,
         );
+        // Trims some surrounding chars so that the actual file is opened.
+        let surrounding_chars: &[_] = &['\'', '"', '(', ')'];
         paths.clear();
         paths.push(
-            text.slice(current_word.from()..current_word.to())
+            current_word
+                .fragment(text_slice)
+                .trim_matches(surrounding_chars)
                 .to_string(),
         );
     }
@@ -1350,7 +1361,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     let range = doc.selection(view.id).primary();
     let text = doc.text().slice(..);
 
-    let cursor = coords_at_pos(text, range.cursor(text));
+    let cursor = visual_coords_at_pos(text, range.cursor(text), doc.tab_width());
     let doc_last_line = doc.text().len_lines().saturating_sub(1);
 
     let last_line = view.last_line(doc);
@@ -1382,7 +1393,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
 
     // If cursor needs moving, replace primary selection
     if line != cursor.row {
-        let head = pos_at_coords(text, Position::new(line, cursor.col), true); // this func will properly truncate to line end
+        let head = pos_at_visual_coords(text, Position::new(line, cursor.col), doc.tab_width()); // this func will properly truncate to line end
 
         let anchor = if cx.editor.mode == Mode::Select {
             range.anchor
@@ -2466,8 +2477,8 @@ impl ui::menu::Item for MappableCommand {
 
         match self {
             MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String) {
-                Some(bindings) => format!("{} ({}) [{}]", doc, fmt_binding(bindings), name).into(),
-                None => format!("{} [{}]", doc, name).into(),
+                Some(bindings) => format!("{} ({}) [:{}]", doc, fmt_binding(bindings), name).into(),
+                None => format!("{} [:{}]", doc, name).into(),
             },
             MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
                 Some(bindings) => format!("{} ({}) [{}]", doc, fmt_binding(bindings), name).into(),
@@ -4658,7 +4669,7 @@ fn shell_keep_pipe(cx: &mut Context) {
 
             for (i, range) in selection.ranges().iter().enumerate() {
                 let fragment = range.slice(text);
-                let (_output, success) = match shell_impl(shell, input, Some(fragment)) {
+                let (_output, success) = match shell_impl(shell, input, Some(fragment.into())) {
                     Ok(result) => result,
                     Err(err) => {
                         cx.editor.set_error(err.to_string());
@@ -4686,13 +4697,17 @@ fn shell_keep_pipe(cx: &mut Context) {
     );
 }
 
-fn shell_impl(
+fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<(Tendril, bool)> {
+    tokio::task::block_in_place(|| helix_lsp::block_on(shell_impl_async(shell, cmd, input)))
+}
+
+async fn shell_impl_async(
     shell: &[String],
     cmd: &str,
-    input: Option<RopeSlice>,
+    input: Option<Rope>,
 ) -> anyhow::Result<(Tendril, bool)> {
-    use std::io::Write;
-    use std::process::{Command, Stdio};
+    use std::process::Stdio;
+    use tokio::process::Command;
     ensure!(!shell.is_empty(), "No shell set");
 
     let mut process = Command::new(&shell[0]);
@@ -4715,13 +4730,22 @@ fn shell_impl(
             return Err(e.into());
         }
     };
-    if let Some(input) = input {
-        let mut stdin = process.stdin.take().unwrap();
-        for chunk in input.chunks() {
-            stdin.write_all(chunk.as_bytes())?;
-        }
-    }
-    let output = process.wait_with_output()?;
+    let output = if let Some(mut stdin) = process.stdin.take() {
+        let input_task = tokio::spawn(async move {
+            if let Some(input) = input {
+                helix_view::document::to_writer(&mut stdin, encoding::UTF_8, &input).await?;
+            }
+            Ok::<_, anyhow::Error>(())
+        });
+        let (output, _) = tokio::join! {
+            process.wait_with_output(),
+            input_task,
+        };
+        output?
+    } else {
+        // Process has no stdin, so we just take the output
+        process.wait_with_output().await?
+    };
 
     if !output.status.success() {
         if !output.stderr.is_empty() {
@@ -4759,7 +4783,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
 
     for range in selection.ranges() {
         let fragment = range.slice(text);
-        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment)) {
+        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment.into())) {
             Ok(result) => result,
             Err(err) => {
                 cx.editor.set_error(err.to_string());

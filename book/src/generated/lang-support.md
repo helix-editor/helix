@@ -60,6 +60,7 @@
 | jsonnet | ✓ |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ |  |  | `julia` |
+| kdl | ✓ |  |  |  |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ | ✓ |  | `texlab` |
 | lean | ✓ |  |  | `lean` |
@@ -120,10 +121,12 @@
 | v | ✓ |  |  | `vls` |
 | vala | ✓ |  |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |
+| vhs | ✓ |  |  |  |
 | vue | ✓ |  |  | `vls` |
 | wast | ✓ |  |  |  |
 | wat | ✓ |  |  |  |
 | wgsl | ✓ |  |  | `wgsl_analyzer` |
 | xit | ✓ |  |  |  |
+| xml | ✓ |  | ✓ |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |
 | zig | ✓ | ✓ | ✓ | `zls` |
