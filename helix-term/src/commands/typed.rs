@@ -322,7 +322,7 @@ fn force_write(
     write_impl(cx, args.first(), true)
 }
 
-fn rename_impl(cx: &mut compositor::Context, new_name: Option<&Cow<str>>) -> anyhow::Result<()> {
+fn rename_impl(cx: &mut compositor::Context, new_name: Cow<str>) -> anyhow::Result<()> {
     let (_view, doc) = current!(cx.editor);
 
     let path = if let Some(path) = doc.relative_path() {
