@@ -359,9 +359,7 @@ fn rename(
         return Ok(());
     }
 
-    if args.len() != 1 {
-        anyhow::bail!("Bad arguments. Usage: `:rename new_name`");
-    }
+    ensure!(args.len() == 1, "Bad arguments. Usage: `:rename new_name`");
 
     rename_impl(cx, args.first())?;
 
