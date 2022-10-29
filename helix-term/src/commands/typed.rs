@@ -328,7 +328,7 @@ fn rename_impl(cx: &mut compositor::Context, new_name: Cow<str>) -> anyhow::Resu
     let path = if let Some(path) = doc.relative_path() {
         path
     } else {
-        return Err(anyhow!("File does not exist to rename."));
+        bail!("File must exist to rename.");
     };
 
     let mut new_path = path.clone();
