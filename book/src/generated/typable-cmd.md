@@ -11,7 +11,7 @@
 | `:buffer-close-all!`, `:bca!`, `:bcloseall!` | Force close all buffers ignoring unsaved changes without quitting. |
 | `:buffer-next`, `:bn`, `:bnext` | Goto next buffer. |
 | `:buffer-previous`, `:bp`, `:bprev` | Goto previous buffer. |
-| `:rename`, `:r` | Rename file. Accepts a file name arg (:rename new_name.txt) |
+| `:rename`, `:rnm` | Rename file. Accepts a file name arg (:rename new_name.txt) |
 | `:write`, `:w` | Write changes to disk. Accepts an optional path (:write some/path.txt) |
 | `:write!`, `:w!` | Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write some/path.txt) |
 | `:new`, `:n` | Create a new scratch buffer. |

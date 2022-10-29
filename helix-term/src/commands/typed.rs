@@ -1787,7 +1787,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
         TypableCommand {
             name: "rename",
-            aliases: &["r"],
+            aliases: &["rnm"],
             doc: "Rename file. Accepts a file name arg (:rename new_name.txt)",
             fun: rename,
             completer: Some(completers::filename),
