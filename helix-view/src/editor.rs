@@ -734,6 +734,8 @@ pub enum Action {
     Replace,
     HorizontalSplit,
     VerticalSplit,
+    BufferClose,
+    BufferCloseForce,
 }
 
 /// Error thrown on failed document closed
@@ -1047,6 +1049,8 @@ impl Editor {
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
             }
+            Action::BufferClose => {}
+            Action::BufferCloseForce => {}
         }
 
         self._refresh();

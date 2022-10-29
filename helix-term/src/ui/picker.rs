@@ -24,6 +24,7 @@ use helix_core::{movement::Direction, Position};
 use helix_view::{
     editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
+    input::KeyEvent,
     Document, Editor,
 };
 
@@ -89,9 +90,10 @@ impl<T: Item> FilePicker<T> {
         editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
+        key_event_callback_fn: impl Fn(&mut Context, &T, &KeyEvent) -> Option<PickerAction<T>> + 'static,
     ) -> Self {
         let truncate_start = true;
-        let mut picker = Picker::new(options, editor_data, callback_fn);
+        let mut picker = Picker::new(options, editor_data, callback_fn, key_event_callback_fn);
         picker.truncate_start = truncate_start;
 
         Self {
@@ -309,6 +311,10 @@ impl<T: Item + 'static> Component for FilePicker<T> {
     }
 }
 
+pub enum PickerAction<T: Item> {
+    UpdateOptions(Vec<T>),
+}
+
 pub struct Picker<T: Item> {
     options: Vec<T>,
     editor_data: T::Data,
@@ -330,6 +336,7 @@ pub struct Picker<T: Item> {
     show_preview: bool,
 
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
+    key_event_callback_fn: Box<dyn Fn(&mut Context, &T, &KeyEvent) -> Option<PickerAction<T>>>,
 }
 
 impl<T: Item> Picker<T> {
@@ -337,6 +344,7 @@ impl<T: Item> Picker<T> {
         options: Vec<T>,
         editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
+        key_event_callback_fn: impl Fn(&mut Context, &T, &KeyEvent) -> Option<PickerAction<T>> + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".into(),
@@ -357,6 +365,7 @@ impl<T: Item> Picker<T> {
             show_preview: true,
             callback_fn: Box::new(callback_fn),
             completion_height: 0,
+            key_event_callback_fn: Box::new(key_event_callback_fn),
         };
 
         // scoring on empty input:
@@ -485,6 +494,17 @@ impl<T: Item> Picker<T> {
         self.show_preview = !self.show_preview;
     }
 
+    pub fn set_options(&mut self, options: Vec<T>) {
+        self.options = options;
+        self.matches.clear();
+        self.matches.extend(
+            self.options
+                .iter()
+                .enumerate()
+                .map(|(index, _option)| (index, 0)),
+        );
+    }
+
     fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
             // TODO: recalculate only if pattern changed
@@ -567,6 +587,15 @@ impl<T: Item + 'static> Component for Picker<T> {
             _ => {
                 self.prompt_handle_event(event, cx);
             }
+        }
+
+        // handle any external key_events
+        match self
+            .selection()
+            .and_then(|option| (self.key_event_callback_fn)(cx, option, &key_event))
+        {
+            Some(PickerAction::UpdateOptions(options)) => self.set_options(options),
+            None => {}
         }
 
         EventResult::Consumed(None)

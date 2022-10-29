@@ -19,7 +19,7 @@ pub use completion::Completion;
 pub use editor::EditorView;
 pub use markdown::Markdown;
 pub use menu::Menu;
-pub use picker::{FileLocation, FilePicker, Picker};
+pub use picker::{FileLocation, FilePicker, Picker, PickerAction};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
@@ -231,6 +231,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
             }
         },
         |_editor, path| Some((path.clone(), None)),
+        |_, _, _| None,
     )
 }
 

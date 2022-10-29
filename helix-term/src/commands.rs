@@ -2,6 +2,7 @@ pub(crate) mod dap;
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
+use crate::ctrl;
 pub use dap::*;
 pub use lsp::*;
 use tui::text::Spans;
@@ -49,7 +50,7 @@ use crate::{
     compositor::{self, Component, Compositor},
     job::Callback,
     keymap::ReverseKeymap,
-    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
+    ui::{self, overlay::overlayed, FilePicker, Picker, PickerAction, Popup, Prompt, PromptEvent},
 };
 
 use crate::job::{self, Jobs};
@@ -1962,6 +1963,7 @@ fn global_search(cx: &mut Context) {
                     |_editor, FileResult { path, line_num }| {
                         Some((path.clone(), Some((*line_num, *line_num))))
                     },
+                    |_, _, _| None,
                 );
                 compositor.push(Box::new(overlayed(picker)));
             },
@@ -2301,7 +2303,7 @@ fn buffer_picker(cx: &mut Context) {
         }
     }
 
-    let new_meta = |doc: &Document| BufferMeta {
+    let new_meta = move |doc: &Document| BufferMeta {
         id: doc.id(),
         path: doc.path().cloned(),
         is_modified: doc.is_modified(),
@@ -2326,6 +2328,37 @@ fn buffer_picker(cx: &mut Context) {
                 .primary()
                 .cursor_line(doc.text().slice(..));
             Some((meta.path.clone()?, Some((line, line))))
+        },
+        move |cx, meta, key_event| match key_event {
+            ctrl!('x') => {
+                if cx.editor.close_document(meta.id, false).is_err() {
+                    cx.editor.set_error("Cannot close buffer");
+                    None
+                } else {
+                    let updated_options = cx
+                        .editor
+                        .documents
+                        .iter()
+                        .map(|(_, doc)| new_meta(doc))
+                        .collect();
+                    Some(PickerAction::UpdateOptions(updated_options))
+                }
+            }
+            ctrl!('X') => {
+                if cx.editor.close_document(meta.id, true).is_err() {
+                    cx.editor.set_error("Cannot force close buffer");
+                    None
+                } else {
+                    let updated_options = cx
+                        .editor
+                        .documents
+                        .iter()
+                        .map(|(_, doc)| new_meta(doc))
+                        .collect();
+                    Some(PickerAction::UpdateOptions(updated_options))
+                }
+            }
+            _ => None,
         },
     );
     cx.push_layer(Box::new(overlayed(picker)));
@@ -2408,6 +2441,7 @@ fn jumplist_picker(cx: &mut Context) {
             let line = meta.selection.primary().cursor_line(doc.text().slice(..));
             Some((meta.path.clone()?, Some((line, line))))
         },
+        |_, _, _| None,
     );
     cx.push_layer(Box::new(overlayed(picker)));
 }
@@ -2459,17 +2493,22 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
-                let mut ctx = Context {
-                    register: None,
-                    count: std::num::NonZeroUsize::new(1),
-                    editor: cx.editor,
-                    callback: None,
-                    on_next_key_callback: None,
-                    jobs: cx.jobs,
-                };
-                command.execute(&mut ctx);
-            });
+            let picker = Picker::new(
+                commands,
+                keymap,
+                move |cx, command, _action| {
+                    let mut ctx = Context {
+                        register: None,
+                        count: std::num::NonZeroUsize::new(1),
+                        editor: cx.editor,
+                        callback: None,
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
+                    command.execute(&mut ctx);
+                },
+                |_, _, _| None,
+            );
             compositor.push(Box::new(overlayed(picker)));
         },
     ));

@@ -241,6 +241,7 @@ fn sym_picker(
             }
         },
         move |_editor, symbol| Some(location_to_file_location(&symbol.location)),
+        |_, _, _| None,
     )
     .truncate_start(false)
 }
@@ -304,6 +305,7 @@ fn diag_picker(
             let location = lsp::Location::new(url.clone(), diag.range);
             Some(location_to_file_location(&location))
         },
+        |_, _, _| None,
     )
     .truncate_start(false)
 }
@@ -817,6 +819,7 @@ fn goto_impl(
                     jump_to_location(cx.editor, location, offset_encoding, action)
                 },
                 move |_editor, location| Some(location_to_file_location(location)),
+                |_, _, _| None,
             );
             compositor.push(Box::new(overlayed(picker)));
         }
