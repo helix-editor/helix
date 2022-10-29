@@ -9,7 +9,7 @@ use tui::text::{Span, Spans};
 use super::{align_view, push_jump, Align, Context, Editor, Open};
 
 use helix_core::{path, Selection};
-use helix_view::{apply_transaction, editor::Action, theme::Style};
+use helix_view::{apply_transaction, document::Mode, editor::Action, theme::Style};
 
 use crate::{
     compositor::{self, Compositor},
@@ -954,6 +954,14 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
                 || SignatureHelp::visible_popup(compositor).is_some()
                 || was_manually_invoked)
             {
+                return;
+            }
+
+            // If the signature help invocation is automatic, don't show it outside of Insert Mode:
+            // it very probably means the server was a little slow to respond and the user has
+            // already moved on to something else, making a signature help popup will just be an
+            // annoyance, see https://github.com/helix-editor/helix/issues/3112
+            if !was_manually_invoked && editor.mode != Mode::Insert {
                 return;
             }
 
