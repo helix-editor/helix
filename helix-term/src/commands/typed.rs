@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::{ffi::OsStr, ops::Deref};
 
 use crate::job::Job;
 
@@ -320,6 +320,52 @@ fn force_write(
     }
 
     write_impl(cx, args.first(), true)
+}
+
+fn rename_impl(cx: &mut compositor::Context, new_name: Option<&Cow<str>>) -> anyhow::Result<()> {
+    let (_view, doc) = current!(cx.editor);
+
+    let path = if let Some(path) = doc.relative_path() {
+        path
+    } else {
+        return Err(anyhow!("File does not exist to rename."));
+    };
+
+    let mut new_path = path.clone();
+    new_path.set_file_name(OsStr::new(new_name.unwrap().as_ref()));
+
+    if new_path.parent() != path.parent() {
+        cx.editor.set_status("Root path must be same.");
+        return Ok(());
+    }
+
+    if new_path.exists() {
+        cx.editor.set_status("File already exist.");
+        return Ok(());
+    }
+
+    std::fs::rename(path, new_path.as_path())?;
+    doc.set_path(Some(new_path.as_path()))?;
+
+    Ok(())
+}
+
+fn rename(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:rename new_name`");
+    }
+
+    rename_impl(cx, args.first())?;
+
+    Ok(())
 }
 
 fn new_file(
@@ -1744,6 +1790,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["bp", "bprev"],
             doc: "Goto previous buffer.",
             fun: buffer_previous,
+            completer: None,
+        },
+        TypableCommand {
+            name: "rename",
+            aliases: &["r"],
+            doc: "Rename file. Accepts a file name arg (:rename new_name.txt)",
+            fun: rename,
             completer: None,
         },
         TypableCommand {
