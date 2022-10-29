@@ -1052,6 +1052,58 @@ fn update(
     }
 }
 
+fn lsp_workspace_command(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_, doc) = current!(cx.editor);
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => {
+            cx.editor
+                .set_status("Language server not active for current buffer");
+            return Ok(());
+        }
+    };
+
+    let options = match &language_server.capabilities().execute_command_provider {
+        Some(options) => options,
+        None => {
+            cx.editor
+                .set_status("Workspace commands are not supported for this language server");
+            return Ok(());
+        }
+    };
+    let commands = options
+        .commands
+        .iter()
+        .map(|command| helix_lsp::lsp::Command {
+            title: command.clone(),
+            command: command.clone(),
+            arguments: None,
+        })
+        .collect::<Vec<_>>();
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |_editor: &mut Editor, compositor: &mut Compositor| {
+                let picker = ui::Picker::new(commands, (), |cx, command, _action| {
+                    execute_lsp_command(cx.editor, command.clone());
+                });
+                compositor.push(Box::new(overlayed(picker)))
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
+    Ok(())
+}
+
 fn lsp_restart(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1985,6 +2037,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Write changes only if the file has been modified.",
             fun: update,
+            completer: None,
+        },
+        TypableCommand {
+            name: "lsp-workspace-command",
+            aliases: &[],
+            doc: "Open workspace command picker",
+            fun: lsp_workspace_command,
             completer: None,
         },
         TypableCommand {

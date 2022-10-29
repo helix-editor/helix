@@ -268,7 +268,6 @@ impl MappableCommand {
         file_picker, "Open file picker",
         file_picker_in_current_directory, "Open file picker at current working directory",
         code_action, "Perform code action",
-        workspace_command_picker, "Open workspace command picker",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
         symbol_picker, "Open symbol picker",
