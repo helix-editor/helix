@@ -322,7 +322,7 @@ fn force_write(
     write_impl(cx, args.first(), true)
 }
 
-fn rename_impl(cx: &mut compositor::Context, new_name: Cow<str>) -> anyhow::Result<()> {
+fn rename_impl(cx: &mut compositor::Context, new_name: &str) -> anyhow::Result<()> {
     let (_view, doc) = current!(cx.editor);
 
     let path = if let Some(path) = doc.relative_path() {
@@ -332,9 +332,12 @@ fn rename_impl(cx: &mut compositor::Context, new_name: Cow<str>) -> anyhow::Resu
     };
 
     let mut new_path = path.clone();
-    new_path.set_file_name(OsStr::new(new_name.as_ref()));
+    new_path.set_file_name(OsStr::new(new_name));
 
-    ensure!(new_path.parent() == path.parent(), "Root path must be the same.");
+    ensure!(
+        new_path.parent() == path.parent(),
+        "Root path must be the same."
+    );
 
     ensure!(!new_path.exists(), "File already exists.");
 
@@ -355,7 +358,7 @@ fn rename(
 
     ensure!(args.len() == 1, "Bad arguments. Usage: `:rename new_name`");
 
-    rename_impl(cx, *args.first().unwrap())
+    rename_impl(cx, args.first().unwrap())
 }
 
 fn new_file(
