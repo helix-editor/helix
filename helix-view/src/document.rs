@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 
+use crate::worker::Worker;
 use helix_core::{
     encoding,
     history::{History, State, UndoKind},
@@ -133,6 +134,9 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
+
+    // for completion
+    worker: Option<Arc<Worker>>,
 }
 
 use std::{fmt, mem};
@@ -346,7 +350,11 @@ use helix_lsp::lsp;
 use url::Url;
 
 impl Document {
-    pub fn from(text: Rope, encoding: Option<&'static encoding::Encoding>) -> Self {
+    pub fn from(
+        text: Rope,
+        encoding: Option<&'static encoding::Encoding>,
+        worker: Option<Arc<Worker>>,
+    ) -> Self {
         let encoding = encoding.unwrap_or(encoding::UTF_8);
         let changes = ChangeSet::new(&text);
         let old_state = None;
@@ -371,6 +379,14 @@ impl Document {
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_server: None,
+            worker,
+        }
+    }
+
+    pub fn new(worker: Option<Arc<Worker>>) -> Self {
+        Document {
+            worker,
+            ..Default::default()
         }
     }
 
@@ -381,6 +397,7 @@ impl Document {
         path: &Path,
         encoding: Option<&'static encoding::Encoding>,
         config_loader: Option<Arc<syntax::Loader>>,
+        worker: Option<Arc<Worker>>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding) = if path.exists() {
@@ -392,7 +409,7 @@ impl Document {
             (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding)
         };
 
-        let mut doc = Self::from(rope, Some(encoding));
+        let mut doc = Self::from(rope, Some(encoding), worker);
 
         // set the path and try detecting the language
         doc.set_path(Some(path))?;
@@ -402,7 +419,21 @@ impl Document {
 
         doc.detect_indent_and_line_ending();
 
+        doc.extract_words_by_worker(doc.text().to_string());
+
         Ok(doc)
+    }
+
+    fn extract_words_by_worker(&self, text: String) {
+        if let Some(worker) = &self.worker {
+            worker.extract_words(self.id, text);
+        }
+    }
+
+    fn extract_line_words_by_worker(&self, lines: Vec<(usize, Option<String>)>) {
+        if let Some(worker) = &self.worker {
+            worker.extract_line_words(self.id, lines);
+        }
     }
 
     /// The same as [`format`], but only returns formatting changes if auto-formatting
@@ -514,8 +545,6 @@ impl Document {
     > {
         let path = path.map(|path| path.into());
         self.save_impl(path, force)
-
-        // futures_util::future::Ready<_>,
     }
 
     /// The `Document`'s text is encoded according to its encoding and written to the file located
@@ -550,6 +579,7 @@ impl Document {
 
         let identifier = self.path().map(|_| self.identifier());
         let language_server = self.language_server.clone();
+        let worker = self.worker.clone();
 
         // mark changes up to now as saved
         let current_rev = self.get_current_revision();
@@ -593,6 +623,10 @@ impl Document {
                         notification.await?;
                     }
                 }
+            }
+
+            if let Some(worker) = worker {
+                worker.extract_words(doc_id, text.to_string())
             }
 
             Ok(event)
@@ -645,6 +679,8 @@ impl Document {
         self.reset_modified();
 
         self.detect_indent_and_line_ending();
+
+        self.extract_words_by_worker(self.text().to_string());
 
         Ok(())
     }
@@ -762,6 +798,8 @@ impl Document {
     fn apply_impl(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         let old_doc = self.text().clone();
 
+        let old_pos = self.selection(view_id).primary().cursor(old_doc.slice(..));
+
         let success = transaction.changes().apply(&mut self.text);
 
         if success {
@@ -826,6 +864,49 @@ impl Document {
 
                 if let Some(notify) = notify {
                     tokio::spawn(notify);
+                }
+            }
+
+            // find affected lines, sync lines text with worker doc-line index
+            if self.worker.is_some() {
+                let new_pos = self
+                    .selection(view_id)
+                    .primary()
+                    .cursor(self.text.slice(..));
+
+                let old_line = old_doc.char_to_line(old_pos);
+                let new_line = self.text.char_to_line(new_pos);
+
+                if old_line == new_line {
+                    self.extract_line_words_by_worker(vec![(
+                        old_line,
+                        self.text.get_line(old_line).map(String::from),
+                    )]);
+                } else {
+                    let range = if old_line < new_line {
+                        old_line..new_line
+                    } else {
+                        new_line..old_line
+                    };
+
+                    if range.end - range.start > 100 {
+                        // on too many lines changed - use whole text
+                        self.extract_words_by_worker(self.text.to_string());
+                    } else {
+                        let lines_text = range
+                            .into_iter()
+                            .map(|line_idx| {
+                                if let Some(line_text) = self.text.get_line(line_idx) {
+                                    (line_idx, Some(line_text.to_string()))
+                                } else {
+                                    // line not found - mark it to remove
+                                    (line_idx, None)
+                                }
+                            })
+                            .collect::<Vec<(usize, Option<String>)>>();
+
+                        self.extract_line_words_by_worker(lines_text);
+                    }
                 }
             }
         }
@@ -1039,6 +1120,10 @@ impl Document {
         server.is_initialized().then(|| server)
     }
 
+    pub fn worker(&self) -> Option<&Worker> {
+        self.worker.as_deref()
+    }
+
     #[inline]
     /// Tree-sitter AST tree
     pub fn syntax(&self) -> Option<&Syntax> {
@@ -1157,7 +1242,7 @@ impl Document {
 impl Default for Document {
     fn default() -> Self {
         let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
-        Self::from(text, None)
+        Self::from(text, None, None)
     }
 }
 
@@ -1202,7 +1287,7 @@ mod test {
     fn changeset_to_changes_ignore_line_endings() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello\r\nworld");
-        let mut doc = Document::from(text, None);
+        let mut doc = Document::from(text, None, None);
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(0, 0));
 
@@ -1236,7 +1321,7 @@ mod test {
     fn changeset_to_changes() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello");
-        let mut doc = Document::from(text, None);
+        let mut doc = Document::from(text, None, None);
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(5, 5));
 

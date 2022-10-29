@@ -517,6 +517,7 @@ fn write_quit(
         return Ok(());
     }
 
+    cx.editor.worker.finish();
     write_impl(cx, args.first(), false)?;
     cx.block_try_flush_writes()?;
     quit(cx, &[], event)
@@ -531,6 +532,7 @@ fn force_write_quit(
         return Ok(());
     }
 
+    cx.editor.worker.finish();
     write_impl(cx, args.first(), true)?;
     cx.block_try_flush_writes()?;
     force_quit(cx, &[], event)
@@ -625,7 +627,7 @@ pub fn write_all_impl(
         })
         .collect();
 
-    // manually call save for the rest of docs that don't have a formatter
+    // manually callsave for the rest of docs that don't have a formatter
     for id in saves {
         cx.editor.save::<PathBuf>(id, None, force)?;
     }

@@ -32,6 +32,7 @@ use tokio::{
 
 use anyhow::{anyhow, bail, Error};
 
+use crate::worker::Worker;
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
 use helix_core::Position;
@@ -711,6 +712,7 @@ pub struct Editor {
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
+    pub worker: Arc<Worker>,
 }
 
 #[derive(Debug)]
@@ -803,6 +805,7 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
+            worker: Arc::new(Worker::new()),
         }
     }
 
@@ -1070,6 +1073,7 @@ impl Editor {
         self.next_document_id =
             DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
         doc.id = id;
+
         self.documents.insert(id, doc);
 
         let (save_sender, save_receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -1088,12 +1092,15 @@ impl Editor {
     }
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
-        self.new_file_from_document(action, Document::default())
+        self.new_file_from_document(action, Document::new(Some(self.worker.clone())))
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
         let (rope, encoding) = crate::document::from_reader(&mut stdin(), None)?;
-        Ok(self.new_file_from_document(action, Document::from(rope, Some(encoding))))
+        Ok(self.new_file_from_document(
+            action,
+            Document::from(rope, Some(encoding), Some(self.worker.clone())),
+        ))
     }
 
     // ??? possible use for integration tests
@@ -1104,7 +1111,12 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::open(&path, None, Some(self.syn_loader.clone()))?;
+            let mut doc = Document::open(
+                &path,
+                None,
+                Some(self.syn_loader.clone()),
+                Some(self.worker.clone()),
+            )?;
 
             let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
 

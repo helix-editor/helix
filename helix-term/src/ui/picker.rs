@@ -174,7 +174,7 @@ impl<T: Item> FilePicker<T> {
                             }
                             _ => {
                                 // TODO: enable syntax highlighting; blocked by async rendering
-                                Document::open(path, None, None)
+                                Document::open(path, None, None, None)
                                     .map(|doc| CachedPreview::Document(Box::new(doc)))
                                     .unwrap_or(CachedPreview::NotFound)
                             }

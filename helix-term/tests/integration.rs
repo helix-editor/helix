@@ -20,6 +20,7 @@ mod test {
     mod auto_indent;
     mod auto_pairs;
     mod commands;
+    mod completion;
     mod movement;
     mod prompt;
     mod splits;

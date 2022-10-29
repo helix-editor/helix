@@ -18,6 +18,7 @@ pub mod keyboard;
 pub mod theme;
 pub mod tree;
 pub mod view;
+pub mod worker;
 
 use std::num::NonZeroUsize;
 
