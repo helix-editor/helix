@@ -361,9 +361,7 @@ fn rename(
 
     ensure!(args.len() == 1, "Bad arguments. Usage: `:rename new_name`");
 
-    rename_impl(cx, args.first())?;
-
-    Ok(())
+    rename_impl(cx, *args.first().unwrap())
 }
 
 fn new_file(
