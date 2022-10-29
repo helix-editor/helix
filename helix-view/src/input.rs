@@ -6,11 +6,15 @@ use std::fmt;
 
 pub use crate::keyboard::{KeyCode, KeyModifiers};
 
-#[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Hash)]
 pub enum Event {
+    FocusGained,
+    FocusLost,
     Key(KeyEvent),
     Mouse(MouseEvent),
+    Paste(String),
     Resize(u16, u16),
+    IdleTimeout,
 }
 
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
@@ -57,6 +61,7 @@ pub enum MouseButton {
 pub struct KeyEvent {
     pub code: KeyCode,
     pub modifiers: KeyModifiers,
+    // TODO: crossterm now supports kind & state if terminal supports kitty's extended protocol
 }
 
 impl KeyEvent {
@@ -112,6 +117,8 @@ pub(crate) mod keys {
     pub(crate) const ESC: &str = "esc";
     pub(crate) const SPACE: &str = "space";
     pub(crate) const MINUS: &str = "minus";
+    pub(crate) const LESS_THAN: &str = "lt";
+    pub(crate) const GREATER_THAN: &str = "gt";
 }
 
 impl fmt::Display for KeyEvent {
@@ -152,6 +159,8 @@ impl fmt::Display for KeyEvent {
             KeyCode::Esc => f.write_str(keys::ESC)?,
             KeyCode::Char(' ') => f.write_str(keys::SPACE)?,
             KeyCode::Char('-') => f.write_str(keys::MINUS)?,
+            KeyCode::Char('<') => f.write_str(keys::LESS_THAN)?,
+            KeyCode::Char('>') => f.write_str(keys::GREATER_THAN)?,
             KeyCode::F(i) => f.write_fmt(format_args!("F{}", i))?,
             KeyCode::Char(c) => f.write_fmt(format_args!("{}", c))?,
         };
@@ -224,6 +233,8 @@ impl std::str::FromStr for KeyEvent {
             keys::ESC => KeyCode::Esc,
             keys::SPACE => KeyCode::Char(' '),
             keys::MINUS => KeyCode::Char('-'),
+            keys::LESS_THAN => KeyCode::Char('<'),
+            keys::GREATER_THAN => KeyCode::Char('>'),
             single if single.chars().count() == 1 => KeyCode::Char(single.chars().next().unwrap()),
             function if function.len() > 1 && function.starts_with('F') => {
                 let function: String = function.chars().skip(1).collect();
@@ -271,6 +282,9 @@ impl From<crossterm::event::Event> for Event {
             crossterm::event::Event::Key(key) => Self::Key(key.into()),
             crossterm::event::Event::Mouse(mouse) => Self::Mouse(mouse.into()),
             crossterm::event::Event::Resize(w, h) => Self::Resize(w, h),
+            crossterm::event::Event::FocusGained => Self::FocusGained,
+            crossterm::event::Event::FocusLost => Self::FocusLost,
+            crossterm::event::Event::Paste(s) => Self::Paste(s),
         }
     }
 }
@@ -299,7 +313,7 @@ impl From<crossterm::event::MouseEventKind> for MouseEventKind {
     fn from(kind: crossterm::event::MouseEventKind) -> Self {
         match kind {
             crossterm::event::MouseEventKind::Down(button) => Self::Down(button.into()),
-            crossterm::event::MouseEventKind::Up(button) => Self::Down(button.into()),
+            crossterm::event::MouseEventKind::Up(button) => Self::Up(button.into()),
             crossterm::event::MouseEventKind::Drag(button) => Self::Drag(button.into()),
             crossterm::event::MouseEventKind::Moved => Self::Moved,
             crossterm::event::MouseEventKind::ScrollDown => Self::ScrollDown,
@@ -321,7 +335,11 @@ impl From<crossterm::event::MouseButton> for MouseButton {
 
 #[cfg(feature = "term")]
 impl From<crossterm::event::KeyEvent> for KeyEvent {
-    fn from(crossterm::event::KeyEvent { code, modifiers }: crossterm::event::KeyEvent) -> Self {
+    fn from(
+        crossterm::event::KeyEvent {
+            code, modifiers, ..
+        }: crossterm::event::KeyEvent,
+    ) -> Self {
         if code == crossterm::event::KeyCode::BackTab {
             // special case for BackTab -> Shift-Tab
             let mut modifiers: KeyModifiers = modifiers.into();
@@ -349,11 +367,15 @@ impl From<KeyEvent> for crossterm::event::KeyEvent {
             crossterm::event::KeyEvent {
                 code: crossterm::event::KeyCode::BackTab,
                 modifiers: modifiers.into(),
+                kind: crossterm::event::KeyEventKind::Press,
+                state: crossterm::event::KeyEventState::NONE,
             }
         } else {
             crossterm::event::KeyEvent {
                 code: code.into(),
                 modifiers: modifiers.into(),
+                kind: crossterm::event::KeyEventKind::Press,
+                state: crossterm::event::KeyEventState::NONE,
             }
         }
     }
@@ -533,8 +555,6 @@ mod test {
 
     #[test]
     fn parsing_unsupported_named_keys() {
-        assert!(str::parse::<KeyEvent>("lt").is_err());
-        assert!(str::parse::<KeyEvent>("gt").is_err());
         assert!(str::parse::<KeyEvent>("plus").is_err());
         assert!(str::parse::<KeyEvent>("percent").is_err());
         assert!(str::parse::<KeyEvent>("semicolon").is_err());

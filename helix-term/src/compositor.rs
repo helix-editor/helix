@@ -27,9 +27,19 @@ pub struct Context<'a> {
     pub jobs: &'a mut Jobs,
 }
 
+impl<'a> Context<'a> {
+    /// Waits on all pending jobs, and then tries to flush all pending write
+    /// operations for all documents.
+    pub fn block_try_flush_writes(&mut self) -> anyhow::Result<()> {
+        tokio::task::block_in_place(|| helix_lsp::block_on(self.jobs.finish(self.editor, None)))?;
+        tokio::task::block_in_place(|| helix_lsp::block_on(self.editor.flush_writes()))?;
+        Ok(())
+    }
+}
+
 pub trait Component: Any + AnyComponent {
     /// Process input events, return true if handled.
-    fn handle_event(&mut self, _event: Event, _ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, _event: &Event, _ctx: &mut Context) -> EventResult {
         EventResult::Ignored(None)
     }
     // , args: ()
@@ -157,10 +167,10 @@ impl Compositor {
         Some(self.layers.remove(idx))
     }
 
-    pub fn handle_event(&mut self, event: Event, cx: &mut Context) -> bool {
+    pub fn handle_event(&mut self, event: &Event, cx: &mut Context) -> bool {
         // If it is a key event and a macro is being recorded, push the key event to the recording.
         if let (Event::Key(key), Some((_, keys))) = (event, &mut cx.editor.macro_recording) {
-            keys.push(key);
+            keys.push(*key);
         }
 
         let mut callbacks = Vec::new();
