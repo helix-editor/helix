@@ -503,6 +503,8 @@ impl<T: Item> Picker<T> {
                 .enumerate()
                 .map(|(index, _option)| (index, 0)),
         );
+        self.score();
+        self.move_by(1, Direction::Backward);
     }
 
     fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
@@ -585,17 +587,17 @@ impl<T: Item + 'static> Component for Picker<T> {
                 self.toggle_preview();
             }
             _ => {
-                self.prompt_handle_event(event, cx);
+                // handle any external key_events
+                match self
+                    .selection()
+                    .and_then(|option| (self.key_event_callback_fn)(cx, option, &key_event))
+                {
+                    Some(PickerAction::UpdateOptions(options)) => self.set_options(options),
+                    None => {
+                        self.prompt_handle_event(event, cx);
+                    }
+                }
             }
-        }
-
-        // handle any external key_events
-        match self
-            .selection()
-            .and_then(|option| (self.key_event_callback_fn)(cx, option, &key_event))
-        {
-            Some(PickerAction::UpdateOptions(options)) => self.set_options(options),
-            None => {}
         }
 
         EventResult::Consumed(None)
