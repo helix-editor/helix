@@ -332,7 +332,7 @@ fn rename_impl(cx: &mut compositor::Context, new_name: Cow<str>) -> anyhow::Resu
     };
 
     let mut new_path = path.clone();
-    new_path.set_file_name(OsStr::new(new_name.unwrap().as_ref()));
+    new_path.set_file_name(OsStr::new(new_name.as_ref()));
 
     if new_path.parent() != path.parent() {
         cx.editor.set_status("Root path must be same.");
