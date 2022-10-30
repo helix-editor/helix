@@ -258,7 +258,7 @@ impl<T: Component> Component for Popup<T> {
 
                 let mut cell;
                 for i in 0..win_height {
-                    cell = &mut surface[(area.right() - 1, area.top() + i as u16)];
+                    cell = &mut surface[(inner.right() - 1, inner.top() + i as u16)];
 
                     cell.set_symbol("▐"); // right half block
 
