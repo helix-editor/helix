@@ -1,9 +1,46 @@
+(keyword_gist) @function.builtin
+(keyword_btree) @function.builtin
+(keyword_btree) @function.builtin
+(keyword_hash) @function.builtin
+(keyword_spgist) @function.builtin
+(keyword_gin) @function.builtin
+(keyword_brin) @function.builtin
+(keyword_float) @function.builtin
+
+(invocation
+  name: (identifier) @function.builtin
+  parameter: [(field)]? @variable.other.member)
+  
+(count
+  name: (identifier) @function.builtin
+  parameter: [(field)]? @variable.other.member)
+  
+(table_reference
+  name: (identifier) @namespace)
+
+(relation
+  table_alias: (identifier) @variable.parameter)
+  
+(field
+  name: (identifier) @variable.other.member)
+  
+(field
+  table_alias: (identifier) @variable.parameter
+  name: (identifier) @variable.other.member)
+
+
 (comment) @comment
 
 [
   "("
   ")"
 ] @punctuation.bracket
+
+[
+  ";"
+  ","
+  "."
+] @punctuation.delimiter
 
 [
   "*"
@@ -29,11 +66,8 @@
 
 (literal) @string
 
-(set_schema schema: (identifier) @namespace)
-(table_reference schema: (identifier) @namespace)
-(table_expression schema: (identifier) @namespace)
-(all_fields schema: (identifier) @namespace)
-(field schema: (identifier) @namespace)
+((literal) @constant.numeric
+  (#match? @constant.numeric "^(-?\d*\.?\d*)$"))
 
 [
   (keyword_select)
@@ -54,8 +88,10 @@
   (keyword_lateral)
   (keyword_on)
   (keyword_not)
-  (keyword_order_by)
-  (keyword_group_by)
+  (keyword_order)
+  (keyword_group)
+  (keyword_partition)
+  (keyword_by)
   (keyword_having)
   (keyword_desc)
   (keyword_asc)
@@ -89,6 +125,8 @@
   (keyword_auto_increment)
   (keyword_default)
   (keyword_cascade)
+  (keyword_between)
+  (keyword_window)
   (keyword_with)
   (keyword_no)
   (keyword_data)
