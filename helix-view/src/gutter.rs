@@ -8,6 +8,7 @@ use crate::{
 
 fn count_digits(n: usize) -> usize {
     // NOTE: if int_log gets standardized in stdlib, can use checked_log10
+    // (https://github.com/rust-lang/rust/issues/70887#issue)
     std::iter::successors(Some(n), |&n| (n >= 10).then(|| n / 10)).count()
 }
 
@@ -16,7 +17,7 @@ pub type Gutter =
     for<'doc> fn(&'doc Editor, &'doc Document, &View, &Theme, bool, usize) -> GutterFn<'doc>;
 
 impl GutterType {
-    pub fn row_styler<'doc>(
+    pub fn style<'doc>(
         self,
         editor: &'doc Editor,
         doc: &'doc Document,
