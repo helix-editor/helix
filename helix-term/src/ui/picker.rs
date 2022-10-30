@@ -317,7 +317,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                 Direction::Forward => preview_scroll_offset.1.min(
                     doc_height
                         .saturating_sub(first_line)
-                        .saturating_sub(inner.height as usize)
+                        .saturating_sub(inner.height as usize),
                 ),
             };
 
