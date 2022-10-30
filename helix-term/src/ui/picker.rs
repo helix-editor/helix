@@ -300,6 +300,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                     return;
                 }
             };
+            let doc_height = doc.text().len_lines();
 
             // align to middle
             let first_line = range
@@ -310,16 +311,13 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                 })
                 .unwrap_or(0);
 
-            // limit scroll offset between [-first_line, doc.text().len_lines() - first_line - preview height + 1]
-            // +1 is so to assert that preview scrolls up to one line after the end of the file
+            // limit scroll offset between [-first_line, doc.text().len_lines() - first_line - preview height]
             preview_scroll_offset.1 = match preview_scroll_offset.0 {
                 Direction::Backward => preview_scroll_offset.1.min(first_line),
                 Direction::Forward => preview_scroll_offset.1.min(
-                    doc.text()
-                        .len_lines()
+                    doc_height
                         .saturating_sub(first_line)
                         .saturating_sub(inner.height as usize)
-                        + 1,
                 ),
             };
 
@@ -351,6 +349,37 @@ impl<T: Item + 'static> Component for FilePicker<T> {
             );
 
             self.preview_scroll_offset = preview_scroll_offset;
+
+            let win_height = inner.height as usize;
+            let len = doc_height;
+            let fits = len <= win_height;
+            let scroll = offset.row;
+            let scroll_style = cx.editor.theme.get("ui.menu.scroll");
+
+            const fn div_ceil(a: usize, b: usize) -> usize {
+                (a + b - 1) / b
+            }
+
+            if !fits {
+                let scroll_height = div_ceil(win_height.pow(2), len).min(win_height);
+                let scroll_line = (win_height - scroll_height) * scroll
+                    / std::cmp::max(1, len.saturating_sub(win_height));
+
+                let mut cell;
+                for i in 0..win_height {
+                    cell = &mut surface[(inner.right() - 1, inner.top() + i as u16)];
+
+                    cell.set_symbol("▐"); // right half block
+
+                    if scroll_line <= i && i < scroll_line + scroll_height {
+                        // Draw scroll thumb
+                        cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
+                    } else {
+                        // Draw scroll track
+                        cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
+                    }
+                }
+            }
 
             // highlight the line
             if let Some((start, end)) = range {
