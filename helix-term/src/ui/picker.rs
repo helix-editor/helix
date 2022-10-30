@@ -315,6 +315,8 @@ pub enum PickerAction<T: Item> {
     UpdateOptions(Vec<T>),
 }
 
+type KeyEventCallback<T> = Box<dyn Fn(&mut Context, &T, &KeyEvent) -> Option<PickerAction<T>>>;
+
 pub struct Picker<T: Item> {
     options: Vec<T>,
     editor_data: T::Data,
@@ -336,7 +338,7 @@ pub struct Picker<T: Item> {
     show_preview: bool,
 
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
-    key_event_callback_fn: Box<dyn Fn(&mut Context, &T, &KeyEvent) -> Option<PickerAction<T>>>,
+    key_event_callback_fn: KeyEventCallback<T>,
 }
 
 impl<T: Item> Picker<T> {
