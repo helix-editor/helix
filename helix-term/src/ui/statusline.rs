@@ -137,6 +137,7 @@ where
         helix_view::editor::StatusLineElement::Mode => render_mode,
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
+        helix_view::editor::StatusLineElement::FileAbsPath => render_file_abs_path,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
@@ -342,6 +343,26 @@ where
     let file_type = context.doc.language_name().unwrap_or("text");
 
     write(context, format!(" {} ", file_type), None);
+}
+
+fn render_file_abs_path<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let title = {
+        let path = context.doc.canonicalized_path();
+        let path = path
+            .as_ref()
+            .map(|p| p.to_string_lossy())
+            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
+        format!(
+            " {}{} ",
+            path,
+            if context.doc.is_modified() { "[+]" } else { "" }
+        )
+    };
+
+    write(context, title, None);
 }
 
 fn render_file_name<F>(context: &mut RenderContext, write: F)

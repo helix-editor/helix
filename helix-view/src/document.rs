@@ -1087,6 +1087,17 @@ impl Document {
             .map(helix_core::path::get_relative_path)
     }
 
+    pub fn canonicalized_path(&self) -> Option<PathBuf> {
+        if let Some(path) = self.path.as_deref() {
+            helix_core::path::get_canonicalized_path(path).ok()
+        } else {
+            None
+        }
+        // self.path
+        //     .as_deref()
+        //     .map(helix_core::path::get_canonicalized_path)
+    }
+
     pub fn display_name(&self) -> Cow<'static, str> {
         self.relative_path()
             .map(|path| path.to_string_lossy().to_string().into())
