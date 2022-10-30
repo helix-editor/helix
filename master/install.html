@@ -168,12 +168,22 @@ sudo dnf install helix
 <pre><code>sudo xbps-install helix
 </code></pre>
 <h2 id="windows"><a class="header" href="#windows">Windows</a></h2>
-<p>Helix can be installed using <a href="https://scoop.sh/">Scoop</a> or <a href="https://chocolatey.org/">Chocolatey</a>.</p>
+<p>Helix can be installed using <a href="https://scoop.sh/">Scoop</a>, <a href="https://chocolatey.org/">Chocolatey</a>
+or <a href="https://msys2.org/">MSYS2</a>.</p>
 <p><strong>Scoop:</strong></p>
 <pre><code>scoop install helix
 </code></pre>
 <p><strong>Chocolatey:</strong></p>
 <pre><code>choco install helix
+</code></pre>
+<p><strong>MSYS2:</strong></p>
+<pre><code>pacman -S mingw-w64-i686-helix
+</code></pre>
+<p>or</p>
+<pre><code>pacman -S mingw-w64-x86_64-helix
+</code></pre>
+<p>or</p>
+<pre><code>pacman -S mingw-w64-ucrt-x86_64-helix
 </code></pre>
 <h2 id="build-from-source"><a class="header" href="#build-from-source">Build from source</a></h2>
 <pre><code>git clone https://github.com/helix-editor/helix
