@@ -14,9 +14,11 @@ pub mod info;
 pub use helix_input::input;
 pub use helix_input::keyboard;
 pub mod register;
+pub use helix_integrated_terminal::terminal;
 pub use helix_graphics::theme;
 pub mod tree;
 pub mod view;
+
 
 use std::num::NonZeroUsize;
 

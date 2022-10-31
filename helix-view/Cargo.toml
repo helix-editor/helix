@@ -25,6 +25,7 @@ helix-dap = { path = "../helix-dap" }
 helix-vcs = { path = "../helix-vcs" }
 helix-graphics = { path = "../helix-graphics" }
 helix-input = { path = "../helix-input" }
+helix-integrated-terminal = { path = "../helix-integrated-terminal" }
 
 bitflags.workspace = true
 anyhow = "1"

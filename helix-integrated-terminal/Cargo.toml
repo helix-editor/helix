@@ -1,0 +1,27 @@
+[package]
+name = "helix-integrated-terminal"
+description = "An integrated terminal for Helix, using alacritty_terminal."
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+helix-input = { path = "../helix-input" }
+helix-graphics = { path = "../helix-graphics" }
+helix-lsp = { path = "../helix-lsp" }
+
+futures = "0.3"
+thiserror.workspace = true
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
+anyhow = "1"
+log = "~0.4"
+alacritty_terminal = "0.25.1"
+polling = "3.11.0"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2.177"
