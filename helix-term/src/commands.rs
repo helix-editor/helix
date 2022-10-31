@@ -435,8 +435,6 @@ impl MappableCommand {
         rename_symbol, "Rename symbol",
         increment, "Increment item under cursor",
         decrement, "Decrement item under cursor",
-        increasing_increment, "Increment item under cursor. Increment amount increases by 1 each item",
-        decreasing_decrement, "Decrement item under cursor. Decreament amount decreases by 1 each item",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
@@ -4810,22 +4808,27 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
     apply_transaction(&transaction, doc, view);
 }
 
+/// If the register is '#', then it will return 1. Otherwise it will be 0
+fn get_increase_by_value(cx: &mut Context) -> i64 {
+    match cx.register {
+        Some(value) => match value.eq(&'#') {
+            true => 1,
+            false => 0,
+        },
+        None => 0,
+    }
+}
+
 /// Increment object under cursor by count.
 fn increment(cx: &mut Context) {
-    increment_impl(cx, cx.count() as i64, 0);
+    let increase_by = get_increase_by_value(cx);
+    increment_impl(cx, cx.count() as i64, increase_by);
 }
 
 /// Decrement object under cursor by count.
 fn decrement(cx: &mut Context) {
-    increment_impl(cx, -(cx.count() as i64), 0);
-}
-/// Increment object under cursor by count. Each increment increases by 1.
-fn increasing_increment(cx: &mut Context) {
-    increment_impl(cx, cx.count() as i64, 1);
-}
-/// Decrement object under cursor by count. Each decrement decreases by -1.
-fn decreasing_decrement(cx: &mut Context) {
-    increment_impl(cx, -(cx.count() as i64), -1);
+    let decrease_by = -get_increase_by_value(cx);
+    increment_impl(cx, -(cx.count() as i64), decrease_by);
 }
 
 /// This function differs from find_next_char_impl in that it stops searching at the newline, but also

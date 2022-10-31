@@ -311,9 +311,6 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "C-a" => increment,
         "C-x" => decrement,
-
-        "C-A-a" => increasing_increment,
-        "C-A-x" => decreasing_decrement,
     });
     let mut select = normal.clone();
     select.merge_nodes(keymap!({ "Select mode"
