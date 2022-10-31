@@ -678,6 +678,12 @@ impl Application {
                     return true;
                 }
             }
+            EditorEvent::TerminalEvent(event) => {
+                let needs_render = self.editor.handle_virtual_terminal_events(event).await;
+                if needs_render {
+                    self.render().await;
+                }
+            }
         }
 
         false

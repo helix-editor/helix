@@ -20,6 +20,8 @@ pub use helix_input::keyboard;
 pub use helix_graphics::graphics;
 pub use helix_graphics::theme;
 
+pub use helix_terminal_view::terminal;
+
 use std::num::NonZeroUsize;
 
 // uses NonZeroUsize so Option<DocumentId> use a byte rather than two

@@ -1,0 +1,27 @@
+[package]
+name = "helix-terminal-view"
+description = "A terminal view for Helix."
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+helix-input = { path = "../helix-input" }
+helix-graphics = { path = "../helix-graphics" }
+helix-lsp = { path = "../helix-lsp" }
+
+futures = "0.3"
+thiserror.workspace = true
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
+tokio-stream = "0.1"
+tokio-util = { version = "0.7.16", features = ["io", "io-util"] }
+portable-pty = "0.9.0"
+bytes = "1.2.1"
+anyhow = "1"
+log = "~0.4"
+alacritty_terminal = "0.25.1"
