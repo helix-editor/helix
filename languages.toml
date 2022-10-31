@@ -1937,5 +1937,5 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "wit"
-source = { git = "https://github.com/hh9527/tree-sitter-wit", rev = "1ba571b9930029b7a9836593d4ab29a2ea3f7717" }
+source = { git = "https://github.com/hh9527/tree-sitter-wit", rev = "c917790ab9aec50c5fd664cbfad8dd45110cfff3" }
  
