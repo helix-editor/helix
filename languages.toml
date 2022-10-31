@@ -1917,3 +1917,25 @@ roots = []
 [[grammar]]
 name = "xml"
 source = { git = "https://github.com/RenjiSann/tree-sitter-xml", rev = "422528a43630db6dcc1e222d1c5ee3babd559473" }
+
+[[language]]
+name = "wit"
+scope = "source.wit"
+injection-regex = "wit"
+file-types = ["wit"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+"'" = "'"
+"<" = ">"
+
+[[grammar]]
+name = "wit"
+source = { git = "https://github.com/hh9527/tree-sitter-wit", rev = "c917790ab9aec50c5fd664cbfad8dd45110cfff3" }
+ 
