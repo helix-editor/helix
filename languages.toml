@@ -1942,4 +1942,4 @@ roots = []
 
 [[grammar]]
 name = "ini"
-source = { git = "https://github.com/seshotake/tree-sitter-ini", rev = "d46570961fa12a1ab66ec7fab86741299c0090ed" }
+source = { git = "https://github.com/justinmk/tree-sitter-ini", rev = "4d247fb876b4ae6b347687de4a179511bf67fcbc" }
