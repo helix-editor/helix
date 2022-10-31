@@ -52,7 +52,8 @@ sudo xbps-install helix
 
 ## Windows
 
-Helix can be installed using [Scoop](https://scoop.sh/) or [Chocolatey](https://chocolatey.org/).
+Helix can be installed using [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
+or [MSYS2](https://msys2.org/).
 
 **Scoop:**
 
@@ -66,6 +67,23 @@ scoop install helix
 choco install helix
 ```
 
+**MSYS2:**
+
+```
+pacman -S mingw-w64-i686-helix
+```
+
+or
+
+```
+pacman -S mingw-w64-x86_64-helix
+```
+
+or
+
+```
+pacman -S mingw-w64-ucrt-x86_64-helix
+```
 
 ## Build from source
 
