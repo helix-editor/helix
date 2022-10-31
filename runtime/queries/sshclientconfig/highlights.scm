@@ -8,7 +8,7 @@
 (add_keys_to_agent_value) @constant.builtin.boolean
 
 (address_family) @keyword
-(address_family_value) @constant.builtin.string
+(address_family_value) @constant.builtin
 
 (batch_mode) @keyword
 (batch_mode_value) @constant.builtin.boolean
@@ -26,7 +26,7 @@
 (canonicalize_fallback_local_value) @constant.builtin.boolean
 
 (canonicalize_hostname) @keyword
-(canonicalize_hostname_value) @constant.builtin.string
+(canonicalize_hostname_value) @constant.builtin
 
 (canonicalize_max_dots) @keyword
 (canonicalize_max_dots_value) @constant.numeric.integer
@@ -35,7 +35,7 @@
 (canonicalize_permitted_cnames_value) @string
 
 (ca_signature_algorithms) @keyword
-(ca_signature_algorithms_value) @constant.builtin.string
+(ca_signature_algorithms_value) @string
 
 (certificate_file) @keyword
 (certificate_file_value) @string.special.path
@@ -47,10 +47,10 @@
 (check_host_ip_value) @constant.builtin.boolean
 
 (cipher) @keyword
-(cipher_value) @constant.builtin.string
+(cipher_value) @string
 
 (ciphers) @keyword
-(ciphers_value) @constant.builtin.string
+(ciphers_value) @string
 
 (clear_all_forwardings) @keyword
 (clear_all_forwardings_value) @constant.builtin.boolean
@@ -67,7 +67,7 @@
 (connection_attempts_value) @constant.numeric.integer
 
 (control_master) @keyword
-(control_master_value) @constant.builtin.string
+(control_master_value) @constant.builtin
 
 (control_path) @keyword
 (control_path_value) @string.special.path
@@ -88,7 +88,7 @@
 (exit_on_forward_failure_value) @constant.builtin.boolean
 
 (fingerprint_hash) @keyword
-(fingerprint_hash_value) @constant.builtin.string
+(fingerprint_hash_value) @constant.builtin
 
 (fork_after_authentication) @keyword
 (fork_after_authentication_value) @constant.builtin.boolean
@@ -100,7 +100,7 @@
 (forward_x11_value) @constant.builtin.boolean
 
 (forward_x11_timeout) @keyword
-(forward_x11_timeout_value) @string.special.time
+(forward_x11_timeout_value) @constant.numeric.integer
 
 (forward_x11_trusted) @keyword
 (forward_x11_trusted_value) @constant.builtin.boolean
@@ -121,7 +121,7 @@
 (gssapi_delegate_credentials_value) @constant.builtin.boolean
 
 (gssapi_kex_algorithms) @keyword
-(gssapi_kex_algorithms_value) @constant.builtin.string
+(gssapi_kex_algorithms_value) @string
 
 (gssapi_key_exchange) @keyword
 (gssapi_key_exchange_value) @constant.builtin.boolean
@@ -139,13 +139,13 @@
 (hash_known_hosts_value) @constant.builtin.boolean
 
 (host_key_algorithms) @keyword
-(host_key_algorithms_value) @constant.builtin.string
+(host_key_algorithms_value) @string
 
 (host_key_alias) @keyword
 (host_key_alias_value) @string
 
 (hostbased_accepted_algorithms) @keyword
-(hostbased_accepted_algorithms_value) @constant.builtin.string
+(hostbased_accepted_algorithms_value) @string
 
 (hostbased_authentication) @keyword
 (hostbased_authentication_value) @constant.builtin.boolean
@@ -169,16 +169,16 @@
 (include_value) @string.special.path
 
 (ip_qos) @keyword
-(ip_qos_value) @constant.builtin.string
+(ip_qos_value) @constant.builtin
 
 (kbd_interactive_authentication) @keyword
 (kbd_interactive_authentication_value) @constant.builtin.boolean
 
 (kbd_interactive_devices) @keyword
-(kbd_interactive_devices_value) @constant.builtin.string
+(kbd_interactive_devices_value) @string
 
 (kex_algorithms) @keyword
-(kex_algorithms_value) @constant.builtin.string
+(kex_algorithms_value) @string
 
 (known_hosts_command) @keyword
 (known_hosts_command_value) @string
@@ -190,13 +190,13 @@
 (local_forward_value) @string
 
 (log_level) @keyword
-(log_level_value) @constant.builtin.string
+(log_level_value) @constant.builtin
 
 (log_verbose) @keyword
 (log_verbose_value) @string
 
 (macs) @keyword
-(macs_value) @constant.builtin.string
+(macs_value) @string
 
 (no_host_authentication_for_localhost) @keyword
 (no_host_authentication_for_localhost_value) @constant.builtin.boolean
@@ -220,7 +220,7 @@
 (port_value) @constant.numeric.integer
 
 (preferred_authentications) @keyword
-(preferred_authentications_value) @constant.builtin.string
+(preferred_authentications_value) @string
 
 (protocol) @keyword
 (protocol_value) @constant.numeric.integer
@@ -235,13 +235,13 @@
 (proxy_use_fdpass_value) @constant.builtin.boolean
 
 (pubkey_accepted_algorithms) @keyword
-(pubkey_accepted_algorithms_value) @constant.builtin.string
+(pubkey_accepted_algorithms_value) @string
 
 (pubkey_accepted_key_types) @keyword
-(pubkey_accepted_key_types_value) @constant.builtin.string
+(pubkey_accepted_key_types_value) @string
 
 (pubkey_authentication) @keyword
-(pubkey_authentication_value) @constant.builtin.string
+(pubkey_authentication_value) @constant.builtin
 
 (rekey_limit) @keyword
 (rekey_limit_value) @string
@@ -253,7 +253,7 @@
 (remote_forward_value) @string
 
 (request_tty) @keyword
-(request_tty_value) @constant.builtin.string
+(request_tty_value) @constant.builtin
 
 (revoked_host_keys) @keyword
 (revoked_host_keys_value) @string.special.path
@@ -271,7 +271,7 @@
 (server_alive_interval_value) @constant.numeric.integer
 
 (session_type) @keyword
-(session_type_value) @constant.builtin.string
+(session_type_value) @constant.builtin
 
 (set_env) @keyword
 (set_env_value) @string
@@ -286,10 +286,10 @@
 (stream_local_bind_unlink_value) @constant.builtin.boolean
 
 (strict_host_key_checking) @keyword
-(strict_host_key_checking_value) @constant.builtin.string
+(strict_host_key_checking_value) @constant.builtin
 
 (syslog_facility) @keyword
-(syslog_facility_value) @constant.builtin.string
+(syslog_facility_value) @constant.builtin
 
 (tcp_keep_alive) @keyword
 (tcp_keep_alive_value) @constant.builtin.boolean
@@ -297,13 +297,13 @@
 (keep_alive_value) @constant.builtin.boolean
 
 (tunnel) @keyword
-(tunnel_value) @constant.builtin.string
+(tunnel_value) @constant.builtin
 
 (tunnel_device) @keyword
 (tunnel_device_value) @string
 
 (update_host_keys) @keyword
-(update_host_keys_value) @constant.builtin.string
+(update_host_keys_value) @constant.builtin
 
 (use_keychain) @keyword
 (use_keychain_value) @constant.builtin.boolean
@@ -315,7 +315,7 @@
 (user_known_hosts_file_value) @string.special.path
 
 (verify_host_key_dns) @keyword
-(verify_host_key_dns_value) @constant.builtin.string
+(verify_host_key_dns_value) @constant.builtin
 
 (visual_host_key) @keyword
 (visual_host_key_value) @constant.builtin.boolean
