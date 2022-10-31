@@ -8,7 +8,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nci = {
-      url = "github:yusdacra/nix-cargo-integration";
+      url = "path:/home/patriot/proj/nix-cargo-integration";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
@@ -21,73 +21,111 @@
     ...
   }: let
     lib = nixpkgs.lib;
+    ncl = nci.lib.nci-lib;
     mkRootPath = rel:
       builtins.path {
         path = "${toString ./.}/${rel}";
         name = rel;
       };
+    filteredSource = let
+      pathsToIgnore = [
+        ".envrc"
+        ".ignore"
+        ".github"
+        "runtime"
+        "screenshot.png"
+        "book"
+        "contrib"
+        "docs"
+        "README.md"
+        "CHANGELOG.md"
+        "shell.nix"
+        "default.nix"
+        "grammars.nix"
+        "flake.nix"
+        "flake.lock"
+      ];
+      ignorePaths = path: type: let
+        split = lib.splitString "/" path;
+        actual = lib.drop 4 split;
+        _path = lib.concatStringsSep "/" actual;
+      in
+        lib.all (n: ! (lib.hasPrefix n _path)) pathsToIgnore;
+    in
+      builtins.path {
+        name = "helix-source";
+        path = toString ./.;
+        # filter out unnecessary paths
+        filter = ignorePaths;
+      };
     outputs = nci.lib.makeOutputs {
       root = ./.;
-      renameOutputs = {"helix-term" = "helix";};
-      # Set default app to hx (binary is from helix-term release build)
-      # Set default package to helix-term release build
-      defaultOutputs = {
-        app = "hx";
-        package = "helix";
-      };
-      overrides = {
-        cCompiler = common:
-          with common.pkgs;
-            if stdenv.isLinux
-            then gcc
-            else clang;
-        crateOverrides = common: _: {
-          helix-term = prev: {
-            src = builtins.path {
-              name = "helix-source";
-              path = toString ./.;
-              # filter out unneeded stuff that cause rebuilds
-              filter = path: type:
-                lib.all
-                (n: builtins.baseNameOf path != n)
-                [
-                  ".envrc"
-                  ".ignore"
-                  ".github"
-                  "runtime"
-                  "screenshot.png"
-                  "book"
-                  "contrib"
-                  "docs"
-                  "README.md"
-                  "shell.nix"
-                  "default.nix"
-                  "grammars.nix"
-                  "flake.nix"
-                  "flake.lock"
-                ];
-            };
-
-            # disable fetching and building of tree-sitter grammars in the helix-term build.rs
-            HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
-
-            buildInputs = (prev.buildInputs or []) ++ [common.cCompiler.cc.lib];
-
-            # link languages and theme toml files since helix-term expects them (for tests)
-            preConfigure = ''
-              ${prev.preConfigure or ""}
-              ${
-                lib.concatMapStringsSep
-                "\n"
-                (path: "ln -sf ${mkRootPath path} ..")
-                ["languages.toml" "theme.toml" "base16_theme.toml"]
-              }
-            '';
-
-            meta.mainProgram = "hx";
+      config = common: {
+        outputs = {
+          rename = {"helix-term" = "helix";};
+          # Set default app to hx (binary is from helix-term release build)
+          # Set default package to helix-term release build
+          defaults = {
+            app = "hx";
+            package = "helix";
           };
         };
-        shell = common: prev: {
+        cCompiler.package = with common.pkgs;
+          if stdenv.isLinux
+          then gcc
+          else clang;
+      };
+      pkgConfig = common: {
+        helix-term.overrides.fix-build.overrideAttrs = prev: {
+          src = filteredSource;
+
+          # disable fetching and building of tree-sitter grammars in the helix-term build.rs
+          HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
+
+          buildInputs = ncl.addBuildInputs prev [common.config.cCompiler.package.cc.lib];
+
+          # link languages and theme toml files since helix-term expects them (for tests)
+          preConfigure = ''
+            ${prev.preConfigure or ""}
+            ${
+              lib.concatMapStringsSep
+              "\n"
+              (path: "ln -sf ${mkRootPath path} ..")
+              ["languages.toml" "theme.toml" "base16_theme.toml"]
+            }
+          '';
+
+          meta.mainProgram = "hx";
+        };
+        # Wrap helix with runtime
+        helix-term.wrapper = _: old: let
+          inherit (common) pkgs;
+          makeOverridableHelix = old: config: let
+            grammars = pkgs.callPackage ./grammars.nix config;
+            runtimeDir = pkgs.runCommand "helix-runtime" {} ''
+              mkdir -p $out
+              ln -s ${mkRootPath "runtime"}/* $out
+              rm -r $out/grammars
+              ln -s ${grammars} $out/grammars
+            '';
+            helix-wrapped =
+              common.internal.pkgsSet.utils.wrapDerivation old
+              {
+                nativeBuildInputs = [pkgs.makeWrapper];
+                makeWrapperArgs = config.makeWrapperArgs or [];
+              }
+              ''
+                rm -rf $out/bin
+                mkdir -p $out/bin
+                ln -sf ${old}/bin/* $out/bin/
+                wrapProgram "$out/bin/hx" ''${makeWrapperArgs[@]} --set HELIX_RUNTIME "${runtimeDir}"
+              '';
+          in
+            helix-wrapped
+            // {override = makeOverridableHelix old;};
+        in
+          makeOverridableHelix old {};
+        helix-term.shell = prev: {
           packages =
             prev.packages
             ++ (
@@ -118,57 +156,18 @@
         };
       };
     };
-    makeOverridableHelix = system: old: config: let
-      pkgs = nixpkgs.legacyPackages.${system};
-      grammars = pkgs.callPackage ./grammars.nix config;
-      runtimeDir = pkgs.runCommand "helix-runtime" {} ''
-        mkdir -p $out
-        ln -s ${mkRootPath "runtime"}/* $out
-        rm -r $out/grammars
-        ln -s ${grammars} $out/grammars
-      '';
-      helix-wrapped =
-        pkgs.runCommand "${old.name}-wrapped"
-        {
-          inherit (old) pname version meta;
-
-          nativeBuildInputs = [pkgs.makeWrapper];
-          makeWrapperArgs = config.makeWrapperArgs or [];
-        }
-        ''
-          mkdir -p $out
-          cp -r --no-preserve=mode,ownership ${old}/* $out/
-          chmod +x $out/bin/*
-          wrapProgram "$out/bin/hx" ''${makeWrapperArgs[@]} --set HELIX_RUNTIME "${runtimeDir}"
-        '';
-    in
-      helix-wrapped
-      // {override = makeOverridableHelix system old;};
   in
     outputs
     // {
-      apps =
-        lib.mapAttrs
-        (
-          system: apps: rec {
-            default = hx;
-            hx = {
-              type = "app";
-              program = lib.getExe self.${system}.packages.helix;
-            };
-          }
-        )
-        outputs.apps;
       packages =
         lib.mapAttrs
         (
-          system: packages: rec {
-            default = helix;
-            helix = makeOverridableHelix system helix-unwrapped {};
-            helix-debug = makeOverridableHelix system helix-unwrapped-debug {};
-            helix-unwrapped = packages.helix;
-            helix-unwrapped-debug = packages.helix-debug;
-          }
+          system: packages:
+            packages
+            // {
+              helix-unwrapped = packages.helix.passthru.unwrapped;
+              helix-unwrapped-debug = packages.helix-debug.passthru.unwrapped;
+            }
         )
         outputs.packages;
     };
