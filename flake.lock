@@ -144,23 +144,26 @@
         ]
       },
       "locked": {
-        "lastModified": 1667198417,
-        "narHash": "sha256-SAEUJ0OAPs22CrkFd57l7i62ckWyh5yENr45bP32Qdc=",
-        "path": "/home/patriot/proj/nix-cargo-integration",
-        "type": "path"
+        "lastModified": 1667232647,
+        "narHash": "sha256-cFo7G8BqYShgL9m7yD6p+SHAZ+aIt2guuF69LV235n8=",
+        "owner": "yusdacra",
+        "repo": "nix-cargo-integration",
+        "rev": "16082f7b4e42ce140a562fa630bcf8e96eadeb59",
+        "type": "github"
       },
       "original": {
-        "path": "/home/patriot/proj/nix-cargo-integration",
-        "type": "path"
+        "owner": "yusdacra",
+        "repo": "nix-cargo-integration",
+        "type": "github"
       }
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1667050928,
-        "narHash": "sha256-xOn0ZgjImIyeecEsrjxuvlW7IW5genTwvvnDQRFncB8=",
+        "lastModified": 1667142599,
+        "narHash": "sha256-OLJxsg9VqfKjFkerOxWtNIkibsCvxsv5A8wNWO1MeWk=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "fdebb81f45a1ba2c4afca5fd9f526e1653ad0949",
+        "rev": "412b9917cea092f3d39f9cd5dead4effd5bc4053",
         "type": "github"
       },
       "original": {
