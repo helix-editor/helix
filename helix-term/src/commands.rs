@@ -1,11 +1,13 @@
 pub(crate) mod dap;
 pub(crate) mod lsp;
 pub(crate) mod typed;
+pub(crate) mod vte;
 
 pub use dap::*;
 pub use lsp::*;
 use tui::text::Spans;
 pub use typed::*;
+pub use vte::*;
 
 use helix_core::{
     comment, coords_at_pos, encoding, find_first_non_whitespace_char, find_root, graphemes,
@@ -438,6 +440,8 @@ impl MappableCommand {
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
+        toggle_terminal, "Toggle integrated terminal",
+        close_terminal, "Close active terminal",
     );
 }
 

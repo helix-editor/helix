@@ -11,6 +11,7 @@ pub mod popup;
 mod prompt;
 mod spinner;
 mod statusline;
+mod terminal;
 mod text;
 
 use crate::compositor::{Component, Compositor};

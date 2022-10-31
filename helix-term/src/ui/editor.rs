@@ -38,6 +38,7 @@ pub struct EditorView {
     pseudo_pending: Vec<KeyEvent>,
     last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
+    pub(crate) terminal: super::terminal::Terminal,
     spinners: ProgressSpinners,
 }
 
@@ -62,6 +63,7 @@ impl EditorView {
             pseudo_pending: Vec::new(),
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
+            terminal: super::terminal::Terminal::new(),
             spinners: ProgressSpinners::default(),
         }
     }
@@ -94,6 +96,7 @@ impl EditorView {
                 None
             }
         });
+
         if let Some(frame) = stack_frame {
             if doc.path().is_some()
                 && frame
@@ -356,7 +359,7 @@ impl EditorView {
         let cursor_scope = match mode {
             Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
             Mode::Select => theme.find_scope_index("ui.cursor.select"),
-            Mode::Normal => Some(base_cursor_scope),
+            _ => Some(base_cursor_scope),
         }
         .unwrap_or(base_cursor_scope);
 
@@ -1304,6 +1307,10 @@ impl Component for EditorView {
         event: &Event,
         context: &mut crate::compositor::Context,
     ) -> EventResult {
+        if let Some(result) = self.terminal.handle_event(event, context) {
+            return result;
+        }
+
         let mut cx = commands::Context {
             editor: context.editor,
             count: None,
@@ -1466,8 +1473,20 @@ impl Component for EditorView {
             editor_area = editor_area.clip_top(1);
         }
 
+        let original_height = editor_area.height;
+        if cx.editor.terminals.visible {
+            editor_area = editor_area.clip_bottom(editor_area.height / 2);
+        }
+
         // if the terminal size suddenly changed, we need to trigger a resize
         cx.editor.resize(editor_area);
+
+        if cx.editor.terminals.visible {
+            let mut term_area = editor_area;
+            term_area.height = original_height - editor_area.height;
+            term_area.y += editor_area.height;
+            self.terminal.render(term_area, surface, cx);
+        }
 
         if use_bufferline {
             Self::render_bufferline(cx.editor, area.with_height(1), surface);
@@ -1549,11 +1568,22 @@ impl Component for EditorView {
         }
     }
 
-    fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        match editor.cursor() {
-            // All block cursors are drawn manually
-            (pos, CursorKind::Block) => (pos, CursorKind::Hidden),
-            cursor => cursor,
+    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+        if editor.terminals.visible {
+            let mut a = area;
+            a.y += a.height;
+
+            if let Some(v) = self.terminal.get_cursor(a, editor) {
+                v
+            } else {
+                (None, CursorKind::Hidden)
+            }
+        } else {
+            match editor.cursor() {
+                // All block cursors are drawn manually
+                (pos, CursorKind::Block) => (pos, CursorKind::Hidden),
+                cursor => cursor,
+            }
         }
     }
 }

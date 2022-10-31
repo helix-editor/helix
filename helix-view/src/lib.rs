@@ -10,11 +10,13 @@ pub mod gutter;
 pub mod handlers {
     pub mod dap;
     pub mod lsp;
+    pub mod vte;
 }
 pub mod base64;
 pub mod info;
 pub mod input;
 pub mod keyboard;
+pub mod terminal;
 pub mod theme;
 pub mod tree;
 pub mod view;

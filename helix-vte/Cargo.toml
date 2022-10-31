@@ -1,0 +1,15 @@
+[package]
+name = "helix-vte"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+futures = "0.3.25"
+thiserror = "1.0.37"
+tokio = { version = "1.21.2", features = ["sync", "process", "net", "io-util"] }
+tokio-stream = "0.1.11"
+nix = "0.25.0"
+libc = "0.2.137"
+tokio-util = { version = "0.7.4", features = ["io"] }
+pty-process = { version = "0.2.1", git = "https://github.com/andreytkachenko/pty-process", features = ["async"]}
+bytes = "1.2.1"
