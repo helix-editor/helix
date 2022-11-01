@@ -107,7 +107,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "a" => goto_prev_parameter,
             "A" => goto_first_parameter,
             "o" => goto_prev_comment,
-            "O" => goto_first_comment
+            "O" => goto_first_comment,
             "t" => goto_prev_test,
             "T" => goto_first_test,
             "p" => goto_prev_paragraph,

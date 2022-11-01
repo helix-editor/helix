@@ -28,6 +28,25 @@ pub enum Movement {
     Move,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum JumpTarget {
+    Next,
+    Prev,
+    First,
+    Last,
+}
+
+impl Into<Direction> for JumpTarget {
+    fn into(self) -> Direction {
+        match self {
+            JumpTarget::Next => Direction::Forward,
+            JumpTarget::Prev => Direction::Backward,
+            JumpTarget::First => Direction::Backward,
+            JumpTarget::Last => Direction::Forward,
+        }
+    }
+}
+
 pub fn move_horizontally(
     slice: RopeSlice,
     range: Range,
@@ -395,7 +414,7 @@ pub fn goto_treesitter_object(
     slice: RopeSlice,
     range: Range,
     object_name: &str,
-    dir: Direction,
+    target: JumpTarget,
     slice_tree: Node,
     lang_config: &LanguageConfiguration,
     count: usize,
@@ -416,13 +435,15 @@ pub fn goto_treesitter_object(
             &mut cursor,
         )?;
 
-        let node = match dir {
-            Direction::Forward => nodes
+        let node = match target {
+            JumpTarget::Next => nodes
                 .filter(|n| n.start_byte() > byte_pos)
                 .min_by_key(|n| n.start_byte())?,
-            Direction::Backward => nodes
+            JumpTarget::Prev => nodes
                 .filter(|n| n.end_byte() < byte_pos)
                 .max_by_key(|n| n.end_byte())?,
+            JumpTarget::First => nodes.min_by_key(|n| n.start_byte())?,
+            JumpTarget::Last => nodes.max_by_key(|n| n.end_byte())?,
         };
 
         let len = slice.len_bytes();

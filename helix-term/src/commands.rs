@@ -16,7 +16,7 @@ use helix_core::{
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
-    movement::{self, Direction},
+    movement::{self, Direction, JumpTarget},
     object, pos_at_coords, pos_at_visual_coords,
     regex::{self, Regex, RegexBuilder},
     search::{self, CharMatcher},
@@ -990,12 +990,14 @@ where
 
 fn goto_first_paragraph(cx: &mut Context) {
     goto_file_start(cx);
-    goto_next_paragraph(cx)
+    goto_next_paragraph(cx);
+    flip_selections(cx)
 }
 
 fn goto_last_paragraph(cx: &mut Context) {
     goto_file_end(cx);
-    goto_prev_paragraph(cx)
+    goto_prev_paragraph(cx);
+    flip_selections(cx)
 }
 
 fn goto_prev_paragraph(cx: &mut Context) {
@@ -4350,7 +4352,7 @@ fn scroll_down(cx: &mut Context) {
     scroll(cx, cx.count(), Direction::Forward);
 }
 
-fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direction) {
+fn goto_ts_object_impl(cx: &mut Context, object: &'static str, target: JumpTarget) {
     let count = cx.count();
     let motion = move |editor: &mut Editor| {
         let (view, doc) = current!(editor);
@@ -4363,7 +4365,7 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
                     text,
                     range,
                     object,
-                    direction,
+                    target,
                     root,
                     lang_config,
                     count,
@@ -4378,7 +4380,7 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
 
                     Range::new(range.anchor, head)
                 } else {
-                    new_range.with_direction(direction)
+                    new_range.with_direction(target.into())
                 }
             });
 
@@ -4392,93 +4394,84 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
 }
 
 fn goto_first_function(cx: &mut Context) {
-    goto_file_start(cx);
-    goto_next_function(cx)
+    goto_ts_object_impl(cx, "function", JumpTarget::First)
 }
 
 fn goto_last_function(cx: &mut Context) {
-    goto_file_end(cx);
-    goto_prev_function(cx)
+    goto_ts_object_impl(cx, "function", JumpTarget::Last)
 }
 
 fn goto_next_function(cx: &mut Context) {
-    goto_ts_object_impl(cx, "function", Direction::Forward)
+    goto_ts_object_impl(cx, "function", JumpTarget::Next)
 }
 
 fn goto_prev_function(cx: &mut Context) {
-    goto_ts_object_impl(cx, "function", Direction::Backward)
+    goto_ts_object_impl(cx, "function", JumpTarget::Prev)
 }
 
 fn goto_first_class(cx: &mut Context) {
-    goto_file_start(cx);
-    goto_next_class(cx)
+    goto_ts_object_impl(cx, "class", JumpTarget::First)
 }
 
 fn goto_last_class(cx: &mut Context) {
-    goto_file_end(cx);
-    goto_prev_class(cx)
+    goto_ts_object_impl(cx, "class", JumpTarget::Last)
 }
 
 fn goto_next_class(cx: &mut Context) {
-    goto_ts_object_impl(cx, "class", Direction::Forward)
+    goto_ts_object_impl(cx, "class", JumpTarget::Next)
 }
 
 fn goto_prev_class(cx: &mut Context) {
-    goto_ts_object_impl(cx, "class", Direction::Backward)
+    goto_ts_object_impl(cx, "class", JumpTarget::Prev)
 }
 
+// TODO: These next two should probably be anchored within the closest function
 fn goto_first_parameter(cx: &mut Context) {
-    goto_file_start(cx);
-    goto_next_parameter(cx)
+    goto_ts_object_impl(cx, "parameter", JumpTarget::First)
 }
 
 fn goto_last_parameter(cx: &mut Context) {
-    goto_file_end(cx);
-    goto_prev_parameter(cx)
+    goto_ts_object_impl(cx, "parameter", JumpTarget::Last)
 }
 
 fn goto_next_parameter(cx: &mut Context) {
-    goto_ts_object_impl(cx, "parameter", Direction::Forward)
+    goto_ts_object_impl(cx, "parameter", JumpTarget::Next)
 }
 
 fn goto_prev_parameter(cx: &mut Context) {
-    goto_ts_object_impl(cx, "parameter", Direction::Backward)
+    goto_ts_object_impl(cx, "parameter", JumpTarget::Prev)
 }
 
 fn goto_first_comment(cx: &mut Context) {
-    goto_file_start(cx);
-    goto_next_comment(cx)
+    goto_ts_object_impl(cx, "comment", JumpTarget::First)
 }
 
 fn goto_last_comment(cx: &mut Context) {
-    goto_file_end(cx);
-    goto_prev_comment(cx)
+    goto_ts_object_impl(cx, "comment", JumpTarget::Last)
 }
 
 fn goto_next_comment(cx: &mut Context) {
-    goto_ts_object_impl(cx, "comment", Direction::Forward)
+    goto_ts_object_impl(cx, "comment", JumpTarget::Next)
 }
 
 fn goto_prev_comment(cx: &mut Context) {
-    goto_ts_object_impl(cx, "comment", Direction::Backward)
+    goto_ts_object_impl(cx, "comment", JumpTarget::Prev)
 }
 
 fn goto_first_test(cx: &mut Context) {
-    goto_file_start(cx);
-    goto_next_test(cx)
+    goto_ts_object_impl(cx, "test", JumpTarget::First)
 }
 
 fn goto_last_test(cx: &mut Context) {
-    goto_file_end(cx);
-    goto_prev_test(cx)
+    goto_ts_object_impl(cx, "test", JumpTarget::Last)
 }
 
 fn goto_next_test(cx: &mut Context) {
-    goto_ts_object_impl(cx, "test", Direction::Forward)
+    goto_ts_object_impl(cx, "test", JumpTarget::Next)
 }
 
 fn goto_prev_test(cx: &mut Context) {
-    goto_ts_object_impl(cx, "test", Direction::Backward)
+    goto_ts_object_impl(cx, "test", JumpTarget::Prev)
 }
 
 fn select_textobject_around(cx: &mut Context) {
