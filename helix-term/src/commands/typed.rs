@@ -1140,9 +1140,7 @@ fn get_character_info(
             );
 
             if let encoding::EncoderResult::Unmappable(char) = result {
-                cx.editor
-                    .set_error(format!("{char:?} cannot be mapped to {}", encoding.name()));
-                return Ok(());
+                bail!("{char:?} cannot be mapped to {}", encoding.name());
             }
 
             for byte in &bytes[current_byte..] {
