@@ -2183,12 +2183,10 @@ pub(super) fn command_mode(cx: &mut Context) {
             static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
                 Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);
 
-            // we use .this over split_whitespace() because we care about empty segments
-            let parts = input.split(' ').collect::<Vec<&str>>();
-
             // simple heuristic: if there's no just one part, complete command name.
             // if there's a space, per command completion kicks in.
-            if parts.len() <= 1 {
+            // we use .this over split_whitespace() because we care about empty segments
+            if input.split(' ').count() <= 1 {
                 let mut matches: Vec<_> = typed::TYPABLE_COMMAND_LIST
                     .iter()
                     .filter_map(|command| {
@@ -2204,12 +2202,13 @@ pub(super) fn command_mode(cx: &mut Context) {
                     .map(|(name, _)| (0.., name.into()))
                     .collect()
             } else {
+                let parts = shellwords::shellwords(input);
                 let part = parts.last().unwrap();
 
                 if let Some(typed::TypableCommand {
                     completer: Some(completer),
                     ..
-                }) = typed::TYPABLE_COMMAND_MAP.get(parts[0])
+                }) = typed::TYPABLE_COMMAND_MAP.get(&parts[0] as &str)
                 {
                     completer(editor, part)
                         .into_iter()

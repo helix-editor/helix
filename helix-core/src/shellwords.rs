@@ -1,5 +1,22 @@
 use std::borrow::Cow;
 
+/// Auto escape for shellwords usage.
+pub fn escape(input: &str) -> Cow<'_, str> {
+    if !input.chars().any(|x| x.is_ascii_whitespace()) {
+        Cow::Borrowed(input)
+    } else if cfg!(unix) {
+        Cow::Owned(input.chars().fold(String::new(), |mut buf, c| {
+            if c.is_ascii_whitespace() {
+                buf.push('\\');
+            }
+            buf.push(c);
+            buf
+        }))
+    } else {
+        Cow::Owned(format!("\"{}\"", input))
+    }
+}
+
 /// Get the vec of escaped / quoted / doublequoted filenames from the input str
 pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
     enum State {
@@ -225,5 +242,19 @@ mod test {
             Cow::from(r#"["list", "in", "qoutes"]"#),
         ];
         assert_eq!(expected, result);
+    }
+
+    #[cfg(unix)]
+    fn test_escaping_unix() {
+        assert_eq!(escape("foobar"), Cow::Borrowed("foobar"));
+        assert_eq!(escape("foo bar"), Cow::Borrowed("foo\\ bar"));
+        assert_eq!(escape("foo\tbar"), Cow::Borrowed("foo\\\tbar"));
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_escaping_windows() {
+        assert_eq!(escape("foobar"), Cow::Borrowed("foobar"));
+        assert_eq!(escape("foo bar"), Cow::Borrowed("\"foo bar\""));
     }
 }
