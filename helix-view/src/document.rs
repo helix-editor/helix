@@ -1088,14 +1088,9 @@ impl Document {
     }
 
     pub fn canonicalized_path(&self) -> Option<PathBuf> {
-        if let Some(path) = self.path.as_deref() {
-            helix_core::path::get_canonicalized_path(path).ok()
-        } else {
-            None
-        }
-        // self.path
-        //     .as_deref()
-        //     .map(helix_core::path::get_canonicalized_path)
+        self.path
+            .as_ref()
+            .and_then(|p| helix_core::path::get_canonicalized_path(p).ok())
     }
 
     pub fn display_name(&self) -> Cow<'static, str> {
