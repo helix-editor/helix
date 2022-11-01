@@ -399,16 +399,28 @@ impl MappableCommand {
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
+        goto_first_function, "Goto first function",
+        goto_last_function, "Goto last function",
         goto_next_function, "Goto next function",
         goto_prev_function, "Goto previous function",
+        goto_first_class, "Goto first class",
+        goto_last_class, "Goto last class",
         goto_next_class, "Goto next class",
         goto_prev_class, "Goto previous class",
+        goto_first_parameter, "Goto first parameter",
+        goto_last_parameter, "Goto last parameter",
         goto_next_parameter, "Goto next parameter",
         goto_prev_parameter, "Goto previous parameter",
+        goto_first_comment, "Goto first comment",
+        goto_last_comment, "Goto last comment",
         goto_next_comment, "Goto next comment",
         goto_prev_comment, "Goto previous comment",
+        goto_first_test, "Goto first test",
+        goto_last_test, "Goto last test",
         goto_next_test, "Goto next test",
         goto_prev_test, "Goto previous test",
+        goto_first_paragraph, "Goto first paragraph",
+        goto_last_paragraph, "Goto last paragraph",
         goto_next_paragraph, "Goto next paragraph",
         goto_prev_paragraph, "Goto previous paragraph",
         dap_launch, "Launch debug target",
@@ -974,6 +986,16 @@ where
     };
     motion(cx.editor);
     cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+fn goto_first_paragraph(cx: &mut Context) {
+    goto_file_start(cx);
+    goto_next_paragraph(cx)
+}
+
+fn goto_last_paragraph(cx: &mut Context) {
+    goto_file_end(cx);
+    goto_prev_paragraph(cx)
 }
 
 fn goto_prev_paragraph(cx: &mut Context) {
@@ -4369,12 +4391,32 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
     cx.editor.last_motion = Some(Motion(Box::new(motion)));
 }
 
+fn goto_first_function(cx: &mut Context) {
+    goto_file_start(cx);
+    goto_next_function(cx)
+}
+
+fn goto_last_function(cx: &mut Context) {
+    goto_file_end(cx);
+    goto_prev_function(cx)
+}
+
 fn goto_next_function(cx: &mut Context) {
     goto_ts_object_impl(cx, "function", Direction::Forward)
 }
 
 fn goto_prev_function(cx: &mut Context) {
     goto_ts_object_impl(cx, "function", Direction::Backward)
+}
+
+fn goto_first_class(cx: &mut Context) {
+    goto_file_start(cx);
+    goto_next_class(cx)
+}
+
+fn goto_last_class(cx: &mut Context) {
+    goto_file_end(cx);
+    goto_prev_class(cx)
 }
 
 fn goto_next_class(cx: &mut Context) {
@@ -4385,6 +4427,16 @@ fn goto_prev_class(cx: &mut Context) {
     goto_ts_object_impl(cx, "class", Direction::Backward)
 }
 
+fn goto_first_parameter(cx: &mut Context) {
+    goto_file_start(cx);
+    goto_next_parameter(cx)
+}
+
+fn goto_last_parameter(cx: &mut Context) {
+    goto_file_end(cx);
+    goto_prev_parameter(cx)
+}
+
 fn goto_next_parameter(cx: &mut Context) {
     goto_ts_object_impl(cx, "parameter", Direction::Forward)
 }
@@ -4393,12 +4445,32 @@ fn goto_prev_parameter(cx: &mut Context) {
     goto_ts_object_impl(cx, "parameter", Direction::Backward)
 }
 
+fn goto_first_comment(cx: &mut Context) {
+    goto_file_start(cx);
+    goto_next_comment(cx)
+}
+
+fn goto_last_comment(cx: &mut Context) {
+    goto_file_end(cx);
+    goto_prev_comment(cx)
+}
+
 fn goto_next_comment(cx: &mut Context) {
     goto_ts_object_impl(cx, "comment", Direction::Forward)
 }
 
 fn goto_prev_comment(cx: &mut Context) {
     goto_ts_object_impl(cx, "comment", Direction::Backward)
+}
+
+fn goto_first_test(cx: &mut Context) {
+    goto_file_start(cx);
+    goto_next_test(cx)
+}
+
+fn goto_last_test(cx: &mut Context) {
+    goto_file_end(cx);
+    goto_prev_test(cx)
 }
 
 fn goto_next_test(cx: &mut Context) {
