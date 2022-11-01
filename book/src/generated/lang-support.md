@@ -15,6 +15,7 @@
 | cpp | ✓ | ✓ | ✓ | `clangd` |
 | css | ✓ |  |  | `vscode-css-language-server` |
 | cue | ✓ |  |  | `cuelsp` |
+| d | ✓ | ✓ | ✓ | `serve-d` |
 | dart | ✓ |  | ✓ | `dart` |
 | devicetree | ✓ |  |  |  |
 | diff | ✓ |  |  |  |
@@ -26,6 +27,7 @@
 | elixir | ✓ | ✓ |  | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
 | elvish | ✓ |  |  | `elvish` |
+| env | ✓ |  |  |  |
 | erb | ✓ |  |  |  |
 | erlang | ✓ | ✓ |  | `erlang_ls` |
 | esdl | ✓ |  |  |  |
@@ -52,6 +54,7 @@
 | html | ✓ |  |  | `vscode-html-language-server` |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
+| ini | ✓ |  |  |  |
 | java | ✓ |  |  | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | jsdoc | ✓ |  |  |  |
@@ -59,6 +62,7 @@
 | jsonnet | ✓ |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ |  |  | `julia` |
+| kdl | ✓ |  |  |  |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ | ✓ |  | `texlab` |
 | lean | ✓ |  |  | `lean` |
@@ -120,10 +124,13 @@
 | v | ✓ |  |  | `vls` |
 | vala | ✓ |  |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |
+| vhs | ✓ |  |  |  |
 | vue | ✓ |  |  | `vls` |
 | wast | ✓ |  |  |  |
 | wat | ✓ |  |  |  |
 | wgsl | ✓ |  |  | `wgsl_analyzer` |
+| wit | ✓ |  | ✓ |  |
 | xit | ✓ |  |  |  |
+| xml | ✓ |  | ✓ |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |
-| zig | ✓ |  | ✓ | `zls` |
+| zig | ✓ | ✓ | ✓ | `zls` |

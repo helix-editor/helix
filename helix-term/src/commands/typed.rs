@@ -1,5 +1,7 @@
 use std::ops::Deref;
 
+use crate::job::Job;
+
 use super::*;
 
 use helix_view::{
@@ -19,6 +21,8 @@ pub struct TypableCommand {
 }
 
 fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    log::debug!("quitting...");
+
     if event != PromptEvent::Validate {
         return Ok(());
     }
@@ -30,6 +34,7 @@ fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         buffers_remaining_impl(cx.editor)?
     }
 
+    cx.block_try_flush_writes()?;
     cx.editor.close(view!(cx.editor).id);
 
     Ok(())
@@ -46,6 +51,7 @@ fn force_quit(
 
     ensure!(args.is_empty(), ":quit! takes no arguments");
 
+    cx.block_try_flush_writes()?;
     cx.editor.close(view!(cx.editor).id);
 
     Ok(())
@@ -70,14 +76,16 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
 }
 
 fn buffer_close_by_ids_impl(
-    editor: &mut Editor,
+    cx: &mut compositor::Context,
     doc_ids: &[DocumentId],
     force: bool,
 ) -> anyhow::Result<()> {
+    cx.block_try_flush_writes()?;
+
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
         .iter()
         .filter_map(|&doc_id| {
-            if let Err(CloseError::BufferModified(name)) = editor.close_document(doc_id, force) {
+            if let Err(CloseError::BufferModified(name)) = cx.editor.close_document(doc_id, force) {
                 Some((doc_id, name))
             } else {
                 None
@@ -86,11 +94,11 @@ fn buffer_close_by_ids_impl(
         .unzip();
 
     if let Some(first) = modified_ids.first() {
-        let current = doc!(editor);
+        let current = doc!(cx.editor);
         // If the current document is unmodified, and there are modified
         // documents, switch focus to the first modified doc.
         if !modified_ids.contains(&current.id()) {
-            editor.switch(*first, Action::Replace);
+            cx.editor.switch(*first, Action::Replace);
         }
         bail!(
             "{} unsaved buffer(s) remaining: {:?}",
@@ -149,7 +157,7 @@ fn buffer_close(
     }
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, false)
+    buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
 fn force_buffer_close(
@@ -162,7 +170,7 @@ fn force_buffer_close(
     }
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, true)
+    buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
 fn buffer_gather_others_impl(editor: &mut Editor) -> Vec<DocumentId> {
@@ -184,7 +192,7 @@ fn buffer_close_others(
     }
 
     let document_ids = buffer_gather_others_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, false)
+    buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
 fn force_buffer_close_others(
@@ -197,7 +205,7 @@ fn force_buffer_close_others(
     }
 
     let document_ids = buffer_gather_others_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, true)
+    buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
 fn buffer_gather_all_impl(editor: &mut Editor) -> Vec<DocumentId> {
@@ -214,7 +222,7 @@ fn buffer_close_all(
     }
 
     let document_ids = buffer_gather_all_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, false)
+    buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
 fn force_buffer_close_all(
@@ -227,7 +235,7 @@ fn force_buffer_close_all(
     }
 
     let document_ids = buffer_gather_all_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, true)
+    buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
 fn buffer_next(
@@ -261,39 +269,30 @@ fn write_impl(
     path: Option<&Cow<str>>,
     force: bool,
 ) -> anyhow::Result<()> {
-    let auto_format = cx.editor.config().auto_format;
+    let editor_auto_fmt = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
-    let doc = doc_mut!(cx.editor);
+    let (view, doc) = current!(cx.editor);
+    let path = path.map(AsRef::as_ref);
 
-    if let Some(ref path) = path {
-        doc.set_path(Some(path.as_ref().as_ref()))
-            .context("invalid filepath")?;
-    }
-    if doc.path().is_none() {
-        bail!("cannot write a buffer without a filename");
-    }
-    let fmt = if auto_format {
+    let fmt = if editor_auto_fmt {
         doc.auto_format().map(|fmt| {
-            let shared = fmt.shared();
             let callback = make_format_callback(
                 doc.id(),
                 doc.version(),
-                Modified::SetUnmodified,
-                shared.clone(),
+                view.id,
+                fmt,
+                Some((path.map(Into::into), force)),
             );
-            jobs.callback(callback);
-            shared
+
+            jobs.add(Job::with_callback(callback).wait_before_exiting());
         })
     } else {
         None
     };
-    let future = doc.format_and_save(fmt, force);
-    cx.jobs.add(Job::new(future).wait_before_exiting());
 
-    if path.is_some() {
+    if fmt.is_none() {
         let id = doc.id();
-        doc.detect_language(cx.editor.syn_loader.clone());
-        let _ = cx.editor.refresh_language_server(id);
+        cx.editor.save(id, path, force)?;
     }
 
     Ok(())
@@ -346,10 +345,9 @@ fn format(
         return Ok(());
     }
 
-    let doc = doc!(cx.editor);
+    let (view, doc) = current!(cx.editor);
     if let Some(format) = doc.format() {
-        let callback =
-            make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
+        let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
         cx.jobs.callback(callback);
     }
 
@@ -520,7 +518,7 @@ fn write_quit(
     }
 
     write_impl(cx, args.first(), false)?;
-    helix_lsp::block_on(cx.jobs.finish())?;
+    cx.block_try_flush_writes()?;
     quit(cx, &[], event)
 }
 
@@ -534,6 +532,7 @@ fn force_write_quit(
     }
 
     write_impl(cx, args.first(), true)?;
+    cx.block_try_flush_writes()?;
     force_quit(cx, &[], event)
 }
 
@@ -562,110 +561,128 @@ pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> 
     Ok(())
 }
 
-fn write_all_impl(
+pub fn write_all_impl(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
-    event: PromptEvent,
-    quit: bool,
     force: bool,
+    write_scratch: bool,
 ) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-
-    let mut errors = String::new();
+    let mut errors: Vec<&'static str> = Vec::new();
     let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
+    let current_view = view!(cx.editor);
+
     // save all documents
-    for doc in &mut cx.editor.documents.values_mut() {
-        if doc.path().is_none() {
-            errors.push_str("cannot write a buffer without a filename\n");
-            continue;
-        }
+    let saves: Vec<_> = cx
+        .editor
+        .documents
+        .values_mut()
+        .filter_map(|doc| {
+            if !doc.is_modified() {
+                return None;
+            }
+            if doc.path().is_none() {
+                if write_scratch {
+                    errors.push("cannot write a buffer without a filename\n");
+                }
+                return None;
+            }
 
-        if !doc.is_modified() {
-            continue;
-        }
+            // Look for a view to apply the formatting change to. If the document
+            // is in the current view, just use that. Otherwise, since we don't
+            // have any other metric available for better selection, just pick
+            // the first view arbitrarily so that we still commit the document
+            // state for undos. If somehow we have a document that has not been
+            // initialized with any view, initialize it with the current view.
+            let target_view = if doc.selections().contains_key(&current_view.id) {
+                current_view.id
+            } else if let Some(view) = doc.selections().keys().next() {
+                *view
+            } else {
+                doc.ensure_view_init(current_view.id);
+                current_view.id
+            };
 
-        let fmt = if auto_format {
-            doc.auto_format().map(|fmt| {
-                let shared = fmt.shared();
-                let callback = make_format_callback(
-                    doc.id(),
-                    doc.version(),
-                    Modified::SetUnmodified,
-                    shared.clone(),
-                );
-                jobs.callback(callback);
-                shared
-            })
-        } else {
+            let fmt = if auto_format {
+                doc.auto_format().map(|fmt| {
+                    let callback = make_format_callback(
+                        doc.id(),
+                        doc.version(),
+                        target_view,
+                        fmt,
+                        Some((None, force)),
+                    );
+                    jobs.add(Job::with_callback(callback).wait_before_exiting());
+                })
+            } else {
+                None
+            };
+
+            if fmt.is_none() {
+                return Some(doc.id());
+            }
+
             None
-        };
-        let future = doc.format_and_save(fmt, force);
-        jobs.add(Job::new(future).wait_before_exiting());
+        })
+        .collect();
+
+    // manually call save for the rest of docs that don't have a formatter
+    for id in saves {
+        cx.editor.save::<PathBuf>(id, None, force)?;
     }
 
-    if quit {
-        if !force {
-            buffers_remaining_impl(cx.editor)?;
-        }
-
-        // close all views
-        let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
-        for view_id in views {
-            cx.editor.close(view_id);
-        }
+    if !errors.is_empty() && !force {
+        bail!("{:?}", errors);
     }
 
-    bail!(errors)
+    Ok(())
 }
 
 fn write_all(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    _args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    write_all_impl(cx, args, event, false, false)
+    write_all_impl(cx, false, true)
 }
 
 fn write_all_quit(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    _args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    write_all_impl(cx, args, event, true, false)
+    write_all_impl(cx, false, true)?;
+    quit_all_impl(cx, false)
 }
 
 fn force_write_all_quit(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    _args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    write_all_impl(cx, args, event, true, true)
+    let _ = write_all_impl(cx, true, true);
+    quit_all_impl(cx, true)
 }
 
-fn quit_all_impl(editor: &mut Editor, force: bool) -> anyhow::Result<()> {
+fn quit_all_impl(cx: &mut compositor::Context, force: bool) -> anyhow::Result<()> {
+    cx.block_try_flush_writes()?;
     if !force {
-        buffers_remaining_impl(editor)?;
+        buffers_remaining_impl(cx.editor)?;
     }
 
     // close all views
-    let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
+    let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
     for view_id in views {
-        editor.close(view_id);
+        cx.editor.close(view_id);
     }
 
     Ok(())
@@ -680,7 +697,7 @@ fn quit_all(
         return Ok(());
     }
 
-    quit_all_impl(cx.editor, false)
+    quit_all_impl(cx, false)
 }
 
 fn force_quit_all(
@@ -692,7 +709,7 @@ fn force_quit_all(
         return Ok(());
     }
 
-    quit_all_impl(cx.editor, true)
+    quit_all_impl(cx, true)
 }
 
 fn cquit(
@@ -708,9 +725,9 @@ fn cquit(
         .first()
         .and_then(|code| code.parse::<i32>().ok())
         .unwrap_or(1);
-    cx.editor.exit_code = exit_code;
 
-    quit_all_impl(cx.editor, false)
+    cx.editor.exit_code = exit_code;
+    quit_all_impl(cx, false)
 }
 
 fn force_cquit(
@@ -728,7 +745,7 @@ fn force_cquit(
         .unwrap_or(1);
     cx.editor.exit_code = exit_code;
 
-    quit_all_impl(cx.editor, true)
+    quit_all_impl(cx, true)
 }
 
 fn theme(
@@ -755,16 +772,21 @@ fn theme(
             };
         }
         PromptEvent::Validate => {
-            let theme_name = args.first().with_context(|| "Theme name not provided")?;
-            let theme = cx
-                .editor
-                .theme_loader
-                .load(theme_name)
-                .with_context(|| "Theme does not exist")?;
-            if !(true_color || theme.is_16_color()) {
-                bail!("Unsupported theme: theme requires true color support");
+            if let Some(theme_name) = args.first() {
+                let theme = cx
+                    .editor
+                    .theme_loader
+                    .load(theme_name)
+                    .with_context(|| "Theme does not exist")?;
+                if !(true_color || theme.is_16_color()) {
+                    bail!("Unsupported theme: theme requires true color support");
+                }
+                cx.editor.set_theme(theme);
+            } else {
+                let name = cx.editor.theme.name().to_string();
+
+                cx.editor.set_status(name);
             }
-            cx.editor.set_theme(theme);
         }
     };
 
@@ -1012,6 +1034,24 @@ fn reload(
     })
 }
 
+/// Update the [`Document`] if it has been modified.
+fn update(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_view, doc) = current!(cx.editor);
+    if doc.is_modified() {
+        write(cx, args, event)
+    } else {
+        Ok(())
+    }
+}
+
 fn lsp_restart(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1060,7 +1100,22 @@ fn tree_sitter_scopes(
 
     let pos = doc.selection(view.id).primary().cursor(text);
     let scopes = indent::get_scopes(doc.syntax(), text, pos);
-    cx.editor.set_status(format!("scopes: {:?}", &scopes));
+
+    let contents = format!("```json\n{:?}\n````", scopes);
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                let popup = Popup::new("hover", contents).auto_close(true);
+                compositor.replace_or_push("hover", popup);
+            },
+        ));
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+
     Ok(())
 }
 
@@ -1473,15 +1528,18 @@ fn tree_sitter_subtree(
             .root_node()
             .descendant_for_byte_range(from, to)
         {
-            let contents = format!("```tsq\n{}\n```", selected_node.to_sexp());
+            let mut contents = String::from("```tsq\n");
+            helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
+            contents.push_str("\n```");
 
             let callback = async move {
-                let call: job::Callback =
-                    Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                let call: job::Callback = Callback::EditorCompositor(Box::new(
+                    move |editor: &mut Editor, compositor: &mut Compositor| {
                         let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
                         let popup = Popup::new("hover", contents).auto_close(true);
                         compositor.replace_or_push("hover", popup);
-                    });
+                    },
+                ));
                 Ok(call)
             };
 
@@ -1589,8 +1647,8 @@ fn run_shell_command(
 
     if !output.is_empty() {
         let callback = async move {
-            let call: job::Callback =
-                Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                move |editor: &mut Editor, compositor: &mut Compositor| {
                     let contents = ui::Markdown::new(
                         format!("```sh\n{}\n```", output),
                         editor.syn_loader.clone(),
@@ -1599,7 +1657,8 @@ fn run_shell_command(
                         helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
                     ));
                     compositor.replace_or_push("shell", popup);
-                });
+                },
+            ));
             Ok(call)
         };
 
@@ -1812,7 +1871,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "theme",
             aliases: &[],
-            doc: "Change the editor theme.",
+            doc: "Change the editor theme (show current theme if no name specified).",
             fun: theme,
             completer: Some(completers::theme),
         },
@@ -1919,6 +1978,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Discard changes and reload from the source file.",
             fun: reload,
+            completer: None,
+        },
+        TypableCommand {
+            name: "update",
+            aliases: &[],
+            doc: "Write changes only if the file has been modified.",
+            fun: update,
             completer: None,
         },
         TypableCommand {
@@ -2109,7 +2175,7 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
             .collect()
     });
 
-pub fn command_mode(cx: &mut Context) {
+pub(super) fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
