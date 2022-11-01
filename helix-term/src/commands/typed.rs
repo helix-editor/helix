@@ -1054,7 +1054,7 @@ fn update(
 
 fn lsp_workspace_command(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1080,27 +1080,46 @@ fn lsp_workspace_command(
             return Ok(());
         }
     };
-    let commands = options
-        .commands
-        .iter()
-        .map(|command| helix_lsp::lsp::Command {
-            title: command.clone(),
-            command: command.clone(),
-            arguments: None,
-        })
-        .collect::<Vec<_>>();
-    let callback = async move {
-        let call: job::Callback = Callback::EditorCompositor(Box::new(
-            move |_editor: &mut Editor, compositor: &mut Compositor| {
-                let picker = ui::Picker::new(commands, (), |cx, command, _action| {
-                    execute_lsp_command(cx.editor, command.clone());
-                });
-                compositor.push(Box::new(overlayed(picker)))
-            },
-        ));
-        Ok(call)
-    };
-    cx.jobs.callback(callback);
+    if args.is_empty() {
+        let commands = options
+            .commands
+            .iter()
+            .map(|command| helix_lsp::lsp::Command {
+                title: command.clone(),
+                command: command.clone(),
+                arguments: None,
+            })
+            .collect::<Vec<_>>();
+        let callback = async move {
+            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                move |_editor: &mut Editor, compositor: &mut Compositor| {
+                    let picker = ui::Picker::new(commands, (), |cx, command, _action| {
+                        execute_lsp_command(cx.editor, command.clone());
+                    });
+                    compositor.push(Box::new(overlayed(picker)))
+                },
+            ));
+            Ok(call)
+        };
+        cx.jobs.callback(callback);
+    } else {
+        let command = args.join(" ");
+        if options.commands.iter().any(|c| c == &command) {
+            execute_lsp_command(
+                cx.editor,
+                helix_lsp::lsp::Command {
+                    title: command.clone(),
+                    arguments: None,
+                    command,
+                },
+            );
+        } else {
+            cx.editor.set_status(format!(
+                "`{command}` is not supported for this language server"
+            ));
+            return Ok(());
+        }
+    }
     Ok(())
 }
 
@@ -2044,7 +2063,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Open workspace command picker",
             fun: lsp_workspace_command,
-            completer: None,
+            completer: Some(completers::lsp_workspace_command),
         },
         TypableCommand {
             name: "lsp-restart",
