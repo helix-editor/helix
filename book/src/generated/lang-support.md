@@ -27,6 +27,7 @@
 | elixir | ✓ | ✓ |  | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
 | elvish | ✓ |  |  | `elvish` |
+| env | ✓ |  |  |  |
 | erb | ✓ |  |  |  |
 | erlang | ✓ | ✓ |  | `erlang_ls` |
 | esdl | ✓ |  |  |  |
@@ -53,6 +54,7 @@
 | html | ✓ |  |  | `vscode-html-language-server` |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
+| ini | ✓ |  |  |  |
 | java | ✓ |  |  | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | jsdoc | ✓ |  |  |  |

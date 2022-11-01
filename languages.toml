@@ -1938,4 +1938,29 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "wit"
 source = { git = "https://github.com/hh9527/tree-sitter-wit", rev = "c917790ab9aec50c5fd664cbfad8dd45110cfff3" }
- 
+
+[[language]]
+name = "env"
+scope = "source.env"
+file-types = [".env", ".env.local", ".env.development", ".env.production"]
+injection-regex = "env"
+comment-token = "#"
+indent = { tab-width = 4, unit = "\t" }
+roots = []
+
+[[grammar]]
+name = "env"
+source = { git = "https://github.com/seshotake/tree-sitter-env", rev = "e6c6bb1e7b51d481cba463fe949f083cf22d81f7" }
+
+[[language]]
+name = "ini"
+scope = "source.ini"
+file-types = ["ini"]
+injection-regex = "ini"
+comment-token = "#"
+indent = { tab-width = 4, unit = "\t" }
+roots = []
+
+[[grammar]]
+name = "ini"
+source = { git = "https://github.com/justinmk/tree-sitter-ini", rev = "4d247fb876b4ae6b347687de4a179511bf67fcbc" }
