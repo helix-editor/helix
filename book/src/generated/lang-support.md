@@ -128,6 +128,7 @@
 | wast | ✓ |  |  |  |
 | wat | ✓ |  |  |  |
 | wgsl | ✓ |  |  | `wgsl_analyzer` |
+| wit | ✓ |  | ✓ |  |
 | xit | ✓ |  |  |  |
 | xml | ✓ |  | ✓ |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |
