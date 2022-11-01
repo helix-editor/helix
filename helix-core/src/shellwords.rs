@@ -244,6 +244,7 @@ mod test {
         assert_eq!(expected, result);
     }
 
+    #[test]
     #[cfg(unix)]
     fn test_escaping_unix() {
         assert_eq!(escape("foobar"), Cow::Borrowed("foobar"));
