@@ -137,7 +137,7 @@ where
         helix_view::editor::StatusLineElement::Mode => render_mode,
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
-        helix_view::editor::StatusLineElement::FileAbsPath => render_file_abs_path,
+        helix_view::editor::StatusLineElement::FileAbsolutePath => render_file_absolute_path,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
@@ -345,7 +345,7 @@ where
     write(context, format!(" {} ", file_type), None);
 }
 
-fn render_file_abs_path<F>(context: &mut RenderContext, write: F)
+fn render_file_absolute_path<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {

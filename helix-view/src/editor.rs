@@ -314,7 +314,7 @@ pub enum StatusLineElement {
     FileName,
 
     /// The file absolute path, including a dirty flag if it's unsaved
-    FileAbsPath,
+    FileAbsolutePath,
 
     /// The file encoding
     FileEncoding,
