@@ -65,6 +65,37 @@
 (function_capture module: (atom) @namespace)
 (function_capture function: (atom) @function)
 
+; Ignored variables
+((variable) @comment.discard
+ (#match? @comment.discard "^_"))
+
+; Parameters
+; specs
+((attribute
+   name: (atom) @keyword
+   (stab_clause
+     pattern: (arguments (variable) @variable.parameter)
+     body: (variable)? @variable.parameter))
+ (#match? @keyword "(spec|callback)"))
+; functions
+(function_clause pattern: (arguments (variable) @variable.parameter))
+; anonymous functions
+(stab_clause pattern: (arguments (variable) @variable.parameter))
+; parametric types
+((attribute
+    name: (atom) @keyword
+    (arguments
+      (binary_operator
+        left: (call (arguments (variable) @variable.parameter))
+        operator: "::")))
+ (#match? @keyword "(type|opaque)"))
+; macros
+((attribute
+   name: (atom) @keyword
+   (arguments
+     (call (arguments (variable) @variable.parameter))))
+ (#eq? @keyword "define"))
+
 ; Records
 (record_content
   (binary_operator
@@ -105,9 +136,6 @@
   name: (_) @keyword.directive)
 
 ; Comments
-((variable) @comment.discard
- (#match? @comment.discard "^_"))
-
 (tripledot) @comment.discard
 
 [(comment) (line_comment) (shebang)] @comment
