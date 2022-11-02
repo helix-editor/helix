@@ -227,16 +227,16 @@ impl EditorView {
         _theme: &Theme,
     ) -> Box<dyn Iterator<Item = HighlightEvent> + 'doc> {
         let text = doc.text().slice(..);
-        let last_line = std::cmp::min(
-            // Saturating subs to make it inclusive zero indexing.
-            (offset.row + height as usize).saturating_sub(1),
-            doc.text().len_lines().saturating_sub(1),
-        );
 
         let range = {
-            // calculate viewport byte ranges
-            let start = text.line_to_byte(offset.row);
-            let end = text.line_to_byte(last_line + 1);
+            // Calculate viewport byte ranges:
+            // Saturating subs to make it inclusive zero indexing.
+            let last_line = doc.text().len_lines().saturating_sub(1);
+            let last_visible_line = (offset.row + height as usize)
+                .saturating_sub(1)
+                .min(last_line);
+            let start = text.line_to_byte(offset.row.min(last_line));
+            let end = text.line_to_byte(last_visible_line.min(last_line) + 1);
 
             start..end
         };
