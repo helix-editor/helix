@@ -1,4 +1,5 @@
 use helix_core::{coords_at_pos, encoding, Position};
+use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
@@ -223,13 +224,28 @@ where
             counts
         });
 
+    let (g_warnings, g_errors) =
+        context
+            .editor
+            .diagnostics
+            .values()
+            .flatten()
+            .fold((0, 0), |mut counts, diag| {
+                match diag.severity {
+                    Some(DiagnosticSeverity::WARNING) => counts.0 += 1,
+                    Some(DiagnosticSeverity::ERROR) | None => counts.1 += 1,
+                    _ => {}
+                }
+                counts
+            });
+
     if warnings > 0 {
         write(
             context,
             "●".to_string(),
             Some(context.editor.theme.get("warning")),
         );
-        write(context, format!(" {} ", warnings), None);
+        write(context, format!(" {}/{} ", warnings, g_warnings), None);
     }
 
     if errors > 0 {
@@ -238,7 +254,7 @@ where
             "●".to_string(),
             Some(context.editor.theme.get("error")),
         );
-        write(context, format!(" {} ", errors), None);
+        write(context, format!(" {}/{} ", errors, g_errors), None);
     }
 }
 
