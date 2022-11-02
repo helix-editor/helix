@@ -1,5 +1,4 @@
 [
-  (method_expression)
   (function_expression)
   (array_literal)
   (dictionary_literal)
