@@ -338,7 +338,7 @@ pub struct Picker<T: Item> {
     show_preview: bool,
 
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
-    key_event_callback_fn: KeyEventCallback<T>,
+    key_event_callback: Option<KeyEventCallback<T>>,
 }
 
 impl<T: Item> Picker<T> {
@@ -367,7 +367,7 @@ impl<T: Item> Picker<T> {
             show_preview: true,
             callback_fn: Box::new(callback_fn),
             completion_height: 0,
-            key_event_callback_fn: Box::new(key_event_callback_fn),
+            key_event_callback: Some(Box::new(key_event_callback_fn)),
         };
 
         // scoring on empty input:
@@ -590,10 +590,11 @@ impl<T: Item + 'static> Component for Picker<T> {
             }
             _ => {
                 // handle any external key_events
-                match self
-                    .selection()
-                    .and_then(|option| (self.key_event_callback_fn)(cx, option, &key_event))
-                {
+                match self.selection().and_then(|option| {
+                    self.key_event_callback
+                        .as_ref()
+                        .and_then(|callback| callback(cx, option, &key_event))
+                }) {
                     Some(PickerAction::UpdateOptions(options)) => self.set_options(options),
                     None => {
                         self.prompt_handle_event(event, cx);
