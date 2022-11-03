@@ -48,7 +48,7 @@ pub struct FilePicker<T: Item> {
 
     /// preview window height
     preview_height: u16,
-    preview_file_path: PathBuf,
+    cursor_position: usize,
     /// Line offset from preview's starting point(first_line) to enable preview scrolling
     preview_scroll_offset: (Direction, usize),
     /// Whether to show the preview panel (default true)
@@ -110,7 +110,7 @@ impl<T: Item> FilePicker<T> {
             read_buffer: Vec::with_capacity(1024),
             file_fn: Box::new(preview_fn),
             preview_height: 0,
-            preview_file_path: PathBuf::default(),
+            cursor_position: 0,
             preview_scroll_offset: (Direction::Forward, 0),
             show_preview: true,
         }
@@ -284,11 +284,15 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         // FilePicker::get_preview() prohibit the use of self until the final use of doc: `&Document`
         let mut preview_scroll_offset = self.preview_scroll_offset;
 
+        // reset if cursor moved
+        let cursor_position = self.picker.cursor;
+        if self.cursor_position != cursor_position {
+            preview_scroll_offset = (Direction::Forward, 0);
+            self.cursor_position = cursor_position;
+        }
+        log::info!("Cursor Position {:?}", self.cursor_position);
+
         if let Some((path, range)) = self.current_file(cx.editor) {
-            if path != self.preview_file_path {
-                preview_scroll_offset = (preview_scroll_offset.0, 0);
-                self.preview_file_path = path.clone();
-            }
             let preview = self.get_preview(&path, cx.editor);
             let doc = match preview.document() {
                 Some(doc) => doc,
