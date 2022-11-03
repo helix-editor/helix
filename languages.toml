@@ -593,7 +593,7 @@ injection-regex = "julia"
 file-types = ["jl"]
 roots = ["Manifest.toml", "Project.toml"]
 comment-token = "#"
-language-server = { command = "julia", args = [
+language-server = { command = "julia", timeout = 60, args = [
     "--startup-file=no",
     "--history-file=no",
     "--quiet",
