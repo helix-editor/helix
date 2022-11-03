@@ -112,14 +112,17 @@ pub fn textobject_word(
     }
 }
 
+// `textobject` and `count` are unused for now, this textobject behaves the same
+// whether it is inside or around.
 pub fn textobject_whitespace(
     slice: RopeSlice,
     range: Range,
-    textobject: TextObject,
+    _textobject: TextObject,
     _count: usize,
 ) -> Range {
     let pos = range.cursor(slice);
 
+    // find the number of consecutive whitespace chars in front of the cursor
     let whitespace_start = pos
         - slice
             .chars_at(slice.len_chars())
