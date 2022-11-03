@@ -5,7 +5,7 @@ inherits = "catppuccin_latte"
 "ui.cursorcolumn.primary" = { bg = "cursorline" }
 
 [palette]
-# catppuccin frapper palette colors
+# catppuccin frappe palette colors
 rosewater = "#f2dbcf"
 flamingo = "#eebebe"
 pink = "#f4b8e4"
