@@ -5,7 +5,6 @@
 "constructor" = "sapphire"
 
 "constant" = "peach"
-"constant.builtin" = "peach"
 "constant.character" = "teal"
 "constant.character.escape" = "pink"
 
@@ -13,7 +12,7 @@
 "string.regexp" = "peach"
 "string.special" = "blue"
 
-"comment" = { fg = "surface2", modifiers = ["italic"] }
+"comment" = { fg = "overlay1", modifiers = ["italic"] }
 
 "variable" = "text"
 "variable.parameter" = { fg = "maroon", modifiers = ["italic"] }
@@ -32,7 +31,7 @@
 
 "function" = "blue"
 "function.builtin" = "peach"
-"function.macro" = "mauve"
+"function.macro" = "teal"
 
 "tag" = "mauve"
 "attribute" = { fg = "teal", modifiers = ["italic"] }
@@ -74,7 +73,7 @@
 "ui.statusline.select" = { fg = "base", bg = "flamingo", modifiers = ["bold"]  }
 
 "ui.bufferline" = { fg = "surface1", bg = "mantle" }
-"ui.bufferline.active" = { fg = "text", bg = "base", modifiers = ["bold", "italic"] }
+"ui.bufferline.active" = { fg = "text", bg = "base", modifiers = ["bold"] }
 "ui.bufferline.background" = { bg = "surface0" }
 
 "ui.popup" = { fg = "text", bg = "surface0" }
@@ -97,16 +96,12 @@
 "ui.cursorline.primary" = { bg = "cursorline" }
 "ui.cursorcolumn.primary" = { bg = "cursorline" }
 
-"ui.highlight" = { bg = "surface1", modifiers = ["bold"] }
+"ui.highlight" = { bg = "surface1" }
 
 "ui.menu" = { fg = "overlay2", bg = "surface0" }
 "ui.menu.selected" = { fg = "text", bg = "surface1", modifiers = ["bold"] }
 
 diagnostic = { modifiers = ["underlined"] }
-"diagnostic.error" = "red"
-"diagnostic.warn" = "yellow"
-"diagnostic.info" = "sky"
-"diagnostic.hint" = "teal"
 
 error = "red"
 warning = "yellow"
