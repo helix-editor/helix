@@ -108,6 +108,7 @@ function or block of code.
 | ---                    | ---                      |
 | `w`                    | Word                     |
 | `W`                    | WORD                     |
+| `s`                    | Whitespace               |
 | `p`                    | Paragraph                |
 | `(`, `[`, `'`, etc.    | Specified surround pairs |
 | `m`                    | The closest surround pair    |
