@@ -236,7 +236,7 @@ impl EditorView {
                 .saturating_sub(1)
                 .min(last_line);
             let start = text.line_to_byte(offset.row.min(last_line));
-            let end = text.line_to_byte(last_visible_line.min(last_line) + 1);
+            let end = text.line_to_byte(last_visible_line + 1);
 
             start..end
         };
