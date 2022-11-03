@@ -5175,6 +5175,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'w' => textobject::textobject_word(text, range, objtype, count, false),
                         'W' => textobject::textobject_word(text, range, objtype, count, true),
                         't' => textobject_treesitter("class", range),
+                        's' => textobject::textobject_whitespace(text, range, objtype, count),
                         'f' => textobject_treesitter("function", range),
                         'a' => textobject_treesitter("parameter", range),
                         'c' => textobject_treesitter("comment", range),
@@ -5205,6 +5206,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     let help_text = [
         ("w", "Word"),
         ("W", "WORD"),
+        ("s", "Whitespace"),
         ("p", "Paragraph"),
         ("t", "Type definition (tree-sitter)"),
         ("f", "Function (tree-sitter)"),

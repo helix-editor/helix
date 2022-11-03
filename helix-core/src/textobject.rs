@@ -112,6 +112,37 @@ pub fn textobject_word(
     }
 }
 
+pub fn textobject_whitespace(
+    slice: RopeSlice,
+    range: Range,
+    textobject: TextObject,
+    _count: usize,
+) -> Range {
+    let pos = range.cursor(slice);
+
+    let whitespace_start = pos - slice
+        .chars_at(slice.len_chars())
+        .reversed()
+        .skip(slice.len_chars() - pos - 1)
+        .take_while(|c| char_is_whitespace(*c) || *c == '\r' || *c == '\n')
+        .count() + 1;
+
+    let whitespace_end = pos + slice
+        .chars_at(pos)
+        .take_while(|c| char_is_whitespace(*c) || *c == '\r' || *c == '\n')
+        .count();
+
+    if whitespace_start == whitespace_end {
+        return Range::new(whitespace_start, whitespace_end);
+    }
+
+    match textobject {
+        TextObject::Inside => Range::new(whitespace_start, whitespace_end),
+        TextObject::Around => Range::new(whitespace_start, whitespace_end),
+        TextObject::Movement => unreachable!(),
+    }
+}
+
 pub fn textobject_paragraph(
     slice: RopeSlice,
     range: Range,
