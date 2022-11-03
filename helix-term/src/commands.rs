@@ -4808,27 +4808,19 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
     apply_transaction(&transaction, doc, view);
 }
 
-/// If the register is '#', then it will return 1. Otherwise it will be 0
-fn get_increase_by_value(cx: &mut Context) -> i64 {
-    match cx.register {
-        Some(value) => match value.eq(&'#') {
-            true => 1,
-            false => 0,
-        },
-        None => 0,
-    }
+enum IncrementDirection {
+    Increase,
+    Decrease,
 }
 
 /// Increment object under cursor by count.
 fn increment(cx: &mut Context) {
-    let increase_by = get_increase_by_value(cx);
-    increment_impl(cx, cx.count() as i64, increase_by);
+    increment_impl(cx, cx.count() as i64, IncrementDirection::Increase);
 }
 
 /// Decrement object under cursor by count.
 fn decrement(cx: &mut Context) {
-    let decrease_by = -get_increase_by_value(cx);
-    increment_impl(cx, -(cx.count() as i64), decrease_by);
+    increment_impl(cx, -(cx.count() as i64), IncrementDirection::Decrease);
 }
 
 /// This function differs from find_next_char_impl in that it stops searching at the newline, but also
@@ -4852,7 +4844,7 @@ fn find_next_char_until_newline<M: CharMatcher>(
 }
 
 /// Decrement object under cursor by `amount`.
-fn increment_impl(cx: &mut Context, amount: i64, increase_by: i64) {
+fn increment_impl(cx: &mut Context, amount: i64, increment_direction: IncrementDirection) {
     // TODO: when incrementing or decrementing a number that gets a new digit or lose one, the
     // selection is updated improperly.
     find_char_impl(
@@ -4869,6 +4861,18 @@ fn increment_impl(cx: &mut Context, amount: i64, increase_by: i64) {
     let text = doc.text().slice(..);
 
     let mut amount = amount;
+
+    let increase_by = match cx.register {
+        Some(value) => match value.eq(&'#') {
+            true => match increment_direction {
+                IncrementDirection::Increase => 1,
+                IncrementDirection::Decrease => -1,
+            },
+            false => 0,
+        },
+        None => 0,
+    };
+
     let changes: Vec<_> = selection
         .ranges()
         .iter()
