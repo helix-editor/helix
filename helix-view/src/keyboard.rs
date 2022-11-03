@@ -1,3 +1,4 @@
+use anyhow::{bail, Error};
 use bitflags::bitflags;
 
 bitflags! {
@@ -124,11 +125,12 @@ impl From<KeyCode> for crossterm::event::KeyCode {
 }
 
 #[cfg(feature = "term")]
-impl From<crossterm::event::KeyCode> for KeyCode {
-    fn from(val: crossterm::event::KeyCode) -> Self {
+impl TryFrom<crossterm::event::KeyCode> for KeyCode {
+    type Error = Error;
+    fn try_from(val: crossterm::event::KeyCode) -> Result<Self, Error> {
         use crossterm::event::KeyCode as CKeyCode;
 
-        match val {
+        Ok(match val {
             CKeyCode::Backspace => KeyCode::Backspace,
             CKeyCode::Enter => KeyCode::Enter,
             CKeyCode::Left => KeyCode::Left,
@@ -155,9 +157,9 @@ impl From<crossterm::event::KeyCode> for KeyCode {
             | CKeyCode::Menu
             | CKeyCode::KeypadBegin
             | CKeyCode::Media(_)
-            | CKeyCode::Modifier(_) => unreachable!(
+            | CKeyCode::Modifier(_) => bail!(
                 "Shouldn't get this key without enabling DISAMBIGUATE_ESCAPE_CODES in crossterm"
             ),
-        }
+        })
     }
 }

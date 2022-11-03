@@ -276,16 +276,17 @@ impl<'de> Deserialize<'de> for KeyEvent {
 }
 
 #[cfg(feature = "term")]
-impl From<crossterm::event::Event> for Event {
-    fn from(event: crossterm::event::Event) -> Self {
-        match event {
-            crossterm::event::Event::Key(key) => Self::Key(key.into()),
+impl TryFrom<crossterm::event::Event> for Event {
+    type Error = anyhow::Error;
+    fn try_from(event: crossterm::event::Event) -> Result<Self, Error> {
+        Ok(match event {
+            crossterm::event::Event::Key(key) => Self::Key(key.try_into()?),
             crossterm::event::Event::Mouse(mouse) => Self::Mouse(mouse.into()),
             crossterm::event::Event::Resize(w, h) => Self::Resize(w, h),
             crossterm::event::Event::FocusGained => Self::FocusGained,
             crossterm::event::Event::FocusLost => Self::FocusLost,
             crossterm::event::Event::Paste(s) => Self::Paste(s),
-        }
+        })
     }
 }
 
@@ -334,25 +335,26 @@ impl From<crossterm::event::MouseButton> for MouseButton {
 }
 
 #[cfg(feature = "term")]
-impl From<crossterm::event::KeyEvent> for KeyEvent {
-    fn from(
+impl TryFrom<crossterm::event::KeyEvent> for KeyEvent {
+    type Error = anyhow::Error;
+    fn try_from(
         crossterm::event::KeyEvent {
             code, modifiers, ..
         }: crossterm::event::KeyEvent,
-    ) -> Self {
+    ) -> Result<Self, Error> {
         if code == crossterm::event::KeyCode::BackTab {
             // special case for BackTab -> Shift-Tab
             let mut modifiers: KeyModifiers = modifiers.into();
             modifiers.insert(KeyModifiers::SHIFT);
-            Self {
+            Ok(Self {
                 code: KeyCode::Tab,
                 modifiers,
-            }
+            })
         } else {
-            Self {
-                code: code.into(),
+            Ok(Self {
+                code: code.try_into()?,
                 modifiers: modifiers.into(),
-            }
+            })
         }
     }
 }

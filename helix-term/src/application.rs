@@ -538,14 +538,22 @@ impl Application {
             jobs: &mut self.jobs,
             scroll: None,
         };
-        // Handle key events
         let should_redraw = match event.unwrap() {
             CrosstermEvent::Resize(width, height) => {
                 self.compositor.resize(width, height);
                 self.compositor
                     .handle_event(&Event::Resize(width, height), &mut cx)
             }
-            event => self.compositor.handle_event(&event.into(), &mut cx),
+            event => match &event.try_into() {
+                Ok(event) => self.compositor.handle_event(event, &mut cx),
+                Err(err) => {
+                    log::warn!(
+                        "Unable to convert crossterm event to helix event. Ignoring. Cause: {}",
+                        err
+                    );
+                    false
+                }
+            },
         };
 
         if should_redraw && !self.editor.should_close() {
