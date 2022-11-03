@@ -136,6 +136,7 @@ though, we climb the syntax tree and then take the previous selection. So
 | `w`                    | Word                     |
 | `W`                    | WORD                     |
 | `p`                    | Paragraph                |
+| `s`                    | Whitespace               |
 | `(`, `[`, `'`, etc     | Specified surround pairs |
 | `m`                    | Closest surround pair    |
 | `f`                    | Function                 |
