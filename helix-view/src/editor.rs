@@ -1223,9 +1223,11 @@ impl Editor {
     pub fn focus(&mut self, view_id: ViewId) {
         let prev_id = std::mem::replace(&mut self.tree.focus, view_id);
 
-        // if leaving the view: mode should reset
+        // if leaving the view: mode should reset and the cursor should be
+        // within view
         if prev_id != view_id {
             self.mode = Mode::Normal;
+            self.ensure_cursor_in_view(view_id);
         }
     }
 
@@ -1234,9 +1236,11 @@ impl Editor {
         self.tree.focus_next();
         let id = self.tree.focus;
 
-        // if leaving the view: mode should reset
+        // if leaving the view: mode should reset and the cursor should be
+        // within view
         if prev_id != id {
             self.mode = Mode::Normal;
+            self.ensure_cursor_in_view(id);
         }
     }
 
