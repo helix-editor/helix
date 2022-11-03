@@ -12,7 +12,7 @@ use crate::{
 
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
-use helix_lsp::Call;
+use helix_lsp::{lsp::DiagnosticSeverity, Call};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -324,6 +324,9 @@ pub enum StatusLineElement {
 
     /// A summary of the number of errors and warnings
     Diagnostics,
+
+    /// A summary of the number of errors and warnings on workspace
+    WorkspaceDiagnostics,
 
     /// The number of selections (cursors)
     Selections,
@@ -1257,6 +1260,21 @@ impl Editor {
 
     pub fn should_close(&self) -> bool {
         self.tree.is_empty()
+    }
+
+    /// Gets the count pair (warnings, error) of warnings, error on workspace.
+    pub fn workspace_diagnostic_count(&self) -> (i32, i32) {
+        self.diagnostics
+            .values()
+            .flatten()
+            .fold((0, 0), |mut counts, diag| {
+                match diag.severity {
+                    Some(DiagnosticSeverity::WARNING) => counts.0 += 1,
+                    Some(DiagnosticSeverity::ERROR) | None => counts.1 += 1,
+                    _ => {}
+                }
+                counts
+            })
     }
 
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {

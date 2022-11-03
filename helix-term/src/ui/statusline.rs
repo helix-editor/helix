@@ -1,5 +1,4 @@
 use helix_core::{coords_at_pos, encoding, Position};
-use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
@@ -142,6 +141,7 @@ where
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
+        helix_view::editor::StatusLineElement::WorkspaceDiagnostics => render_workspace_diagnostics,
         helix_view::editor::StatusLineElement::Selections => render_selections,
         helix_view::editor::StatusLineElement::Position => render_position,
         helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
@@ -210,34 +210,7 @@ fn render_diagnostics<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let (warnings, errors) = context
-        .doc
-        .diagnostics()
-        .iter()
-        .fold((0, 0), |mut counts, diag| {
-            use helix_core::diagnostic::Severity;
-            match diag.severity {
-                Some(Severity::Warning) => counts.0 += 1,
-                Some(Severity::Error) | None => counts.1 += 1,
-                _ => {}
-            }
-            counts
-        });
-
-    let (g_warnings, g_errors) =
-        context
-            .editor
-            .diagnostics
-            .values()
-            .flatten()
-            .fold((0, 0), |mut counts, diag| {
-                match diag.severity {
-                    Some(DiagnosticSeverity::WARNING) => counts.0 += 1,
-                    Some(DiagnosticSeverity::ERROR) | None => counts.1 += 1,
-                    _ => {}
-                }
-                counts
-            });
+    let (warnings, errors) = context.doc.diagnostics_count();
 
     if warnings > 0 {
         write(
@@ -245,7 +218,7 @@ where
             "●".to_string(),
             Some(context.editor.theme.get("warning")),
         );
-        write(context, format!(" {}/{} ", warnings, g_warnings), None);
+        write(context, format!(" {} ", warnings), None);
     }
 
     if errors > 0 {
@@ -254,7 +227,34 @@ where
             "●".to_string(),
             Some(context.editor.theme.get("error")),
         );
-        write(context, format!(" {}/{} ", errors, g_errors), None);
+        write(context, format!(" {} ", errors), None);
+    }
+}
+
+fn render_workspace_diagnostics<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let (warnings, errors) = context.doc.diagnostics_count();
+
+    let (w_warnings, w_errors) = context.editor.workspace_diagnostic_count();
+
+    if warnings > 0 || w_warnings > 0 {
+        write(
+            context,
+            "●".to_string(),
+            Some(context.editor.theme.get("warning")),
+        );
+        write(context, format!(" {}/{} ", warnings, w_warnings), None);
+    }
+
+    if errors > 0 || w_errors > 0 {
+        write(
+            context,
+            "●".to_string(),
+            Some(context.editor.theme.get("error")),
+        );
+        write(context, format!(" {}/{} ", errors, w_errors), None);
     }
 }
 
