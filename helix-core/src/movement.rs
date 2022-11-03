@@ -36,9 +36,9 @@ pub enum JumpTarget {
     Last,
 }
 
-impl Into<Direction> for JumpTarget {
-    fn into(self) -> Direction {
-        match self {
+impl From<JumpTarget> for Direction {
+    fn from(target: JumpTarget) -> Direction {
+        match target {
             JumpTarget::Next => Direction::Forward,
             JumpTarget::Prev => Direction::Backward,
             JumpTarget::First => Direction::Backward,
