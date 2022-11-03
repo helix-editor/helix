@@ -4452,6 +4452,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                     match ch {
                         'w' => textobject::textobject_word(text, range, objtype, count, false),
                         'W' => textobject::textobject_word(text, range, objtype, count, true),
+                        's' => textobject::textobject_whitespace(text, range, objtype, count),
                         'c' => textobject_treesitter("class", range),
                         'f' => textobject_treesitter("function", range),
                         'a' => textobject_treesitter("parameter", range),
@@ -4483,6 +4484,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     let help_text = [
         ("w", "Word"),
         ("W", "WORD"),
+        ("s", "Whitespace"),
         ("p", "Paragraph"),
         ("c", "Class (tree-sitter)"),
         ("f", "Function (tree-sitter)"),
