@@ -6,7 +6,7 @@ inherits = "catppuccin_latte"
 
 [palette]
 # catppuccin frappe palette colors
-rosewater = "#f2dbcf"
+rosewater = "#f2d5cf"
 flamingo = "#eebebe"
 pink = "#f4b8e4"
 mauve = "#ca9ee6"
