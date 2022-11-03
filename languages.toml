@@ -570,7 +570,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "latex"
-source = { git = "https://github.com/latex-lsp/tree-sitter-latex", rev = "b3b2cf27f33e71438ebe46934900b1153901c6f2" }
+source = { git = "https://github.com/latex-lsp/tree-sitter-latex", rev = "8c75e93cd08ccb7ce1ccab22c1fbd6360e3bcea6" }
 
 [[language]]
 name = "lean"
@@ -1371,7 +1371,7 @@ injection-regex = "sql"
 
 [[grammar]]
 name = "sql"
-source = { git = "https://github.com/DerekStride/tree-sitter-sql", rev = "0caa7fa2ee00e0b770493a79d4efacc1fc376cc5" }
+source = { git = "https://github.com/DerekStride/tree-sitter-sql", rev = "2743c7b5e710e6854d4e8c14c302548b436e2a1f" }
 
 [[language]]
 name = "gdscript"
@@ -1518,7 +1518,7 @@ roots = []
 
 [[grammar]]
 name = "sshclientconfig"
-source = { git = "https://github.com/metio/tree-sitter-ssh-client-config", rev = "769d7a01a2e5493b4bb5a51096c6bf4be130b024" }
+source = { git = "https://github.com/metio/tree-sitter-ssh-client-config", rev = "e45c6d5c71657344d4ecaf87dafae7736f776c57" }
 
 [[language]]
 name = "scheme"
@@ -1917,3 +1917,50 @@ roots = []
 [[grammar]]
 name = "xml"
 source = { git = "https://github.com/RenjiSann/tree-sitter-xml", rev = "422528a43630db6dcc1e222d1c5ee3babd559473" }
+
+[[language]]
+name = "wit"
+scope = "source.wit"
+injection-regex = "wit"
+file-types = ["wit"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+"'" = "'"
+"<" = ">"
+
+[[grammar]]
+name = "wit"
+source = { git = "https://github.com/hh9527/tree-sitter-wit", rev = "c917790ab9aec50c5fd664cbfad8dd45110cfff3" }
+
+[[language]]
+name = "env"
+scope = "source.env"
+file-types = [".env", ".env.local", ".env.development", ".env.production"]
+injection-regex = "env"
+comment-token = "#"
+indent = { tab-width = 4, unit = "\t" }
+roots = []
+
+[[grammar]]
+name = "env"
+source = { git = "https://github.com/seshotake/tree-sitter-env", rev = "e6c6bb1e7b51d481cba463fe949f083cf22d81f7" }
+
+[[language]]
+name = "ini"
+scope = "source.ini"
+file-types = ["ini"]
+injection-regex = "ini"
+comment-token = "#"
+indent = { tab-width = 4, unit = "\t" }
+roots = []
+
+[[grammar]]
+name = "ini"
+source = { git = "https://github.com/justinmk/tree-sitter-ini", rev = "4d247fb876b4ae6b347687de4a179511bf67fcbc" }

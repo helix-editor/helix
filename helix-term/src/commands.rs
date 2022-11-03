@@ -1305,6 +1305,7 @@ fn replace(cx: &mut Context) {
             });
 
             apply_transaction(&transaction, doc, view);
+            exit_select_mode(cx);
         }
     })
 }
@@ -3237,6 +3238,7 @@ pub mod insert {
                         (Some(_x), Some(_y), Some(ap))
                             if range.is_single_grapheme(text)
                                 && ap.get(_x).is_some()
+                                && ap.get(_x).unwrap().open == _x
                                 && ap.get(_x).unwrap().close == _y =>
                         // delete both autopaired characters
                         {
@@ -3619,18 +3621,19 @@ fn replace_with_yanked(cx: &mut Context) {
             });
 
             apply_transaction(&transaction, doc, view);
+            exit_select_mode(cx);
         }
     }
 }
 
 fn replace_selections_with_clipboard_impl(
-    editor: &mut Editor,
+    cx: &mut Context,
     clipboard_type: ClipboardType,
-    count: usize,
 ) -> anyhow::Result<()> {
-    let (view, doc) = current!(editor);
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
 
-    match editor.clipboard_provider.get_contents(clipboard_type) {
+    match cx.editor.clipboard_provider.get_contents(clipboard_type) {
         Ok(contents) => {
             let selection = doc.selection(view.id);
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
@@ -3643,18 +3646,20 @@ fn replace_selections_with_clipboard_impl(
 
             apply_transaction(&transaction, doc, view);
             doc.append_changes_to_history(view.id);
-            Ok(())
         }
-        Err(e) => Err(e.context("Couldn't get system clipboard contents")),
+        Err(e) => return Err(e.context("Couldn't get system clipboard contents")),
     }
+
+    exit_select_mode(cx);
+    Ok(())
 }
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
-    let _ = replace_selections_with_clipboard_impl(cx.editor, ClipboardType::Clipboard, cx.count());
+    let _ = replace_selections_with_clipboard_impl(cx, ClipboardType::Clipboard);
 }
 
 fn replace_selections_with_primary_clipboard(cx: &mut Context) {
-    let _ = replace_selections_with_clipboard_impl(cx.editor, ClipboardType::Selection, cx.count());
+    let _ = replace_selections_with_clipboard_impl(cx, ClipboardType::Selection);
 }
 
 fn paste(cx: &mut Context, pos: Paste) {
