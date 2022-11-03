@@ -290,7 +290,6 @@ impl<T: Item + 'static> Component for FilePicker<T> {
             preview_scroll_offset = (Direction::Forward, 0);
             self.cursor_position = cursor_position;
         }
-        log::info!("Cursor Position {:?}", self.cursor_position);
 
         if let Some((path, range)) = self.current_file(cx.editor) {
             let preview = self.get_preview(&path, cx.editor);
