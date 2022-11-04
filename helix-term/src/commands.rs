@@ -1385,9 +1385,6 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     }
     // If cursor moved, reposition viewport and replace primary selection
     // clamp viewport around cursor
-    // view.offset.row = view.offset.row
-    //     .max(cursor.row.saturating_add(scrolloff).saturating_sub(height))
-    //     .min(doc_last_line.saturating_sub(height).min(cursor.row.saturating_sub(scrolloff)));
     view.offset.row = view
         .offset
         .row
