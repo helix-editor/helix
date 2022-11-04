@@ -2219,6 +2219,7 @@ pub(super) fn command_mode(cx: &mut Context) {
                     completer(editor, part)
                         .into_iter()
                         .map(|(range, file)| {
+                            let file = shellwords::escape(file);
                             // offset ranges to input
                             let offset = input.len() - part.len();
                             let range = (range.start + offset)..;

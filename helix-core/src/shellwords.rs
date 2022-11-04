@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 
 /// Auto escape for shellwords usage.
-pub fn escape(input: &str) -> Cow<'_, str> {
+pub fn escape(input: Cow<str>) -> Cow<str> {
     if !input.chars().any(|x| x.is_ascii_whitespace()) {
-        Cow::Borrowed(input)
+        input
     } else if cfg!(unix) {
         Cow::Owned(input.chars().fold(String::new(), |mut buf, c| {
             if c.is_ascii_whitespace() {
@@ -311,15 +311,15 @@ mod test {
     #[test]
     #[cfg(unix)]
     fn test_escaping_unix() {
-        assert_eq!(escape("foobar"), Cow::Borrowed("foobar"));
-        assert_eq!(escape("foo bar"), Cow::Borrowed("foo\\ bar"));
-        assert_eq!(escape("foo\tbar"), Cow::Borrowed("foo\\\tbar"));
+        assert_eq!(escape("foobar".into()), Cow::Borrowed("foobar"));
+        assert_eq!(escape("foo bar".into()), Cow::Borrowed("foo\\ bar"));
+        assert_eq!(escape("foo\tbar".into()), Cow::Borrowed("foo\\\tbar"));
     }
 
     #[test]
     #[cfg(windows)]
     fn test_escaping_windows() {
-        assert_eq!(escape("foobar"), Cow::Borrowed("foobar"));
-        assert_eq!(escape("foo bar"), Cow::Borrowed("\"foo bar\""));
+        assert_eq!(escape("foobar".into()), Cow::Borrowed("foobar"));
+        assert_eq!(escape("foo bar".into()), Cow::Borrowed("\"foo bar\""));
     }
 }
