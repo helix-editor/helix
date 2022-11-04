@@ -2216,12 +2216,15 @@ pub(super) fn command_mode(cx: &mut Context) {
                     ..
                 }) = typed::TYPABLE_COMMAND_MAP.get(&parts[0] as &str)
                 {
+                    let part_len = shellwords::escape(part.clone()).len();
+
                     completer(editor, part)
                         .into_iter()
                         .map(|(range, file)| {
                             let file = shellwords::escape(file);
+
                             // offset ranges to input
-                            let offset = input.len() - part.len();
+                            let offset = input.len() - part_len;
                             let range = (range.start + offset)..;
                             (range, file)
                         })
