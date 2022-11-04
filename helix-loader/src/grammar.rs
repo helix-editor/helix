@@ -67,7 +67,7 @@ pub fn get_language(name: &str) -> Result<Language> {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn get_language(name: &str) -> Result<Language> {
     use libloading::{Library, Symbol};
-    let mut library_path = crate::runtime_dir().join("grammars").join(&name);
+    let mut library_path = crate::runtime_dir().join("grammars").join(name);
     library_path.set_extension(DYLIB_EXTENSION);
 
     let library = unsafe { Library::new(&library_path) }
@@ -429,7 +429,7 @@ fn build_tree_sitter_library(
 
     if cfg!(all(windows, target_env = "msvc")) {
         command
-            .args(&["/nologo", "/LD", "/I"])
+            .args(["/nologo", "/LD", "/I"])
             .arg(header_path)
             .arg("/Od")
             .arg("/utf-8");

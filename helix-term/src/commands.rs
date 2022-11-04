@@ -3933,15 +3933,12 @@ pub fn completion(cx: &mut Context) {
             };
 
             if !prefix.is_empty() {
-                items = items
-                    .into_iter()
-                    .filter(|item| {
-                        item.filter_text
-                            .as_ref()
-                            .unwrap_or(&item.label)
-                            .starts_with(&prefix)
-                    })
-                    .collect();
+                items.retain(|item| {
+                    item.filter_text
+                        .as_ref()
+                        .unwrap_or(&item.label)
+                        .starts_with(&prefix)
+                });
             }
 
             if items.is_empty() {
