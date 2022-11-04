@@ -302,26 +302,38 @@ Displays documentation for item under cursor.
 
 Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
 
-| Key      | Description                                  | Command               |
-| -----    | -----------                                  | -------               |
-| `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`      |
-| `]d`     | Go to next diagnostic (**LSP**)              | `goto_next_diag`      |
-| `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`     |
-| `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`      |
-| `]f`     | Go to next function (**TS**)                 | `goto_next_function`  |
-| `[f`     | Go to previous function (**TS**)             | `goto_prev_function`  |
-| `]c`     | Go to next class (**TS**)                    | `goto_next_class`     |
-| `[c`     | Go to previous class (**TS**)                | `goto_prev_class`     |
-| `]a`     | Go to next argument/parameter (**TS**)       | `goto_next_parameter` |
-| `[a`     | Go to previous argument/parameter (**TS**)   | `goto_prev_parameter` |
-| `]o`     | Go to next comment (**TS**)                  | `goto_next_comment`   |
-| `[o`     | Go to previous comment (**TS**)              | `goto_prev_comment`   |
-| `]t`     | Go to next test (**TS**)                     | `goto_next_test`      |
-| `]t`     | Go to previous test (**TS**)                 | `goto_prev_test`      |
-| `]p`     | Go to next paragraph                         | `goto_next_paragraph` |
-| `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
-| `[Space` | Add newline above                            | `add_newline_above`   |
-| `]Space` | Add newline below                            | `add_newline_below`   |
+| Key      | Description                                  | Command                |
+| -----    | -----------                                  | -------                |
+| `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`       |
+| `]d`     | Go to next diagnostic (**LSP**)              | `goto_next_diag`       |
+| `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`      |
+| `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`       |
+| `[f`     | Go to previous function (**TS**)             | `goto_prev_function`   |
+| `]f`     | Go to next function (**TS**)                 | `goto_next_function`   |
+| `[F`     | Go to first function (**TS**)                | `goto_first_function`  |
+| `]F`     | Go to last function (**TS**)                 | `goto_last_function`   |
+| `[c`     | Go to previous class (**TS**)                | `goto_prev_class`      |
+| `]c`     | Go to next class (**TS**)                    | `goto_next_class`      |
+| `[C`     | Go to first class (**TS**)                   | `goto_first_class`     |
+| `]C`     | Go to last class (**TS**)                    | `goto_last_class`      |
+| `[a`     | Go to previous argument/parameter (**TS**)   | `goto_prev_parameter`  |
+| `]a`     | Go to next argument/parameter (**TS**)       | `goto_next_parameter`  |
+| `[A`     | Go to first argument/parameter (**TS**)      | `goto_first_parameter` |
+| `]A`     | Go to last argument/parameter (**TS**)       | `goto_last_parameter`  |
+| `[o`     | Go to previous comment (**TS**)              | `goto_prev_comment`    |
+| `]o`     | Go to next comment (**TS**)                  | `goto_next_comment`    |
+| `[O`     | Go to first comment (**TS**)                 | `goto_first_comment`   |
+| `]O`     | Go to last comment (**TS**)                  | `goto_last_comment`    |
+| `[t`     | Go to previous test (**TS**)                 | `goto_prev_test`       |
+| `]t`     | Go to next test (**TS**)                     | `goto_next_test`       |
+| `[T`     | Go to first test (**TS**)                    | `goto_first_test`      |
+| `]T`     | Go to last test (**TS**)                     | `goto_last_test`       |
+| `[p`     | Go to previous paragraph                     | `goto_prev_paragraph`  |
+| `]p`     | Go to next paragraph                         | `goto_next_paragraph`  |
+| `[P`     | Go to first paragraph                        | `goto_first_paragraph` |
+| `]P`     | Go to last paragraph                         | `goto_last_paragraph`  |
+| `[Space` | Add newline above                            | `add_newline_above`    |
+| `]Space` | Add newline below                            | `add_newline_below`    |
 
 ## Insert mode
 
