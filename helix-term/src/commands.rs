@@ -1361,53 +1361,53 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     let range = doc.selection(view.id).primary();
     let text = doc.text().slice(..);
 
-    let cursor = visual_coords_at_pos(text, range.cursor(text), doc.tab_width());
+    let mut cursor = visual_coords_at_pos(text, range.cursor(text), doc.tab_width());
+    let old_cursor_row = cursor.row;
     let doc_last_line = doc.text().len_lines().saturating_sub(1);
 
-    let last_line = view.last_line(doc);
-
-    if direction == Backward && view.offset.row == 0
-        || direction == Forward && last_line == doc_last_line
+    if direction == Backward && cursor.row == 0
+        || direction == Forward && cursor.row == doc_last_line
     {
         return;
     }
 
-    let height = view.inner_area().height;
+    let height = view.inner_area().height as usize;
+    let scrolloff = config.scrolloff.min(height / 2);
 
-    let scrolloff = config.scrolloff.min(height as usize / 2);
+    // compute cursor's new position
+    cursor.row = match direction {
+        Forward => cursor.row.saturating_add(offset).min(doc_last_line),
+        Backward => cursor.row.saturating_sub(offset),
+    };
 
-    view.offset.row = match direction {
-        Forward => view.offset.row + offset,
-        Backward => view.offset.row.saturating_sub(offset),
+    if cursor.row == old_cursor_row {
+        return;
     }
-    .min(doc_last_line);
-
-    // recalculate last line
-    let last_line = view.last_line(doc);
-
-    // clamp into viewport
-    let line = cursor
+    // If cursor moved, reposition viewport and replace primary selection
+    // clamp viewport around cursor
+    // view.offset.row = view.offset.row
+    //     .max(cursor.row.saturating_add(scrolloff).saturating_sub(height))
+    //     .min(doc_last_line.saturating_sub(height).min(cursor.row.saturating_sub(scrolloff)));
+    view.offset.row = view
+        .offset
         .row
-        .max(view.offset.row + scrolloff)
-        .min(last_line.saturating_sub(scrolloff));
+        .max(cursor.row.saturating_add(scrolloff).saturating_sub(height))
+        .min(cursor.row.saturating_sub(scrolloff));
 
-    // If cursor needs moving, replace primary selection
-    if line != cursor.row {
-        let head = pos_at_visual_coords(text, Position::new(line, cursor.col), doc.tab_width()); // this func will properly truncate to line end
+    let head = pos_at_visual_coords(text, Position::new(cursor.row, cursor.col), doc.tab_width()); // this func will properly truncate to line end
 
-        let anchor = if cx.editor.mode == Mode::Select {
-            range.anchor
-        } else {
-            head
-        };
+    let anchor = if cx.editor.mode == Mode::Select {
+        range.anchor
+    } else {
+        head
+    };
 
-        // replace primary selection with an empty selection at cursor pos
-        let prim_sel = Range::new(anchor, head);
-        let mut sel = doc.selection(view.id).clone();
-        let idx = sel.primary_index();
-        sel = sel.replace(idx, prim_sel);
-        doc.set_selection(view.id, sel);
-    }
+    // replace primary selection with an empty selection at cursor pos
+    let prim_sel = Range::new(anchor, head);
+    let mut sel = doc.selection(view.id).clone();
+    let idx = sel.primary_index();
+    sel = sel.replace(idx, prim_sel);
+    doc.set_selection(view.id, sel);
 }
 
 fn page_up(cx: &mut Context) {
