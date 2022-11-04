@@ -40,7 +40,7 @@ impl Item for PathBuf {
     type Data = PathBuf;
 
     fn label(&self, root_path: &Self::Data) -> Spans {
-        self.strip_prefix(&root_path)
+        self.strip_prefix(root_path)
             .unwrap_or(self)
             .to_string_lossy()
             .into()
