@@ -134,18 +134,25 @@ impl View {
         self.area.clip_left(self.gutter_offset(doc)).clip_bottom(1) // -1 for statusline
     }
 
+    pub fn inner_height(&self) -> usize {
+        self.area.clip_bottom(1).height.into() // -1 for statusline
+    }
+
     pub fn gutters(&self) -> &[GutterType] {
         &self.gutters
     }
 
     pub fn gutter_offset(&self, doc: &Document) -> u16 {
-        let mut offset = 0;
-        for gutter in self.gutters.iter() {
-            offset += gutter.width(self, doc) as u16
-        }
+        let mut offset = self
+            .gutters
+            .iter()
+            .map(|gutter| gutter.width(self, doc) as u16)
+            .sum();
+
         if offset > 0 {
             offset += 1
         }
+
         offset
     }
 
@@ -213,10 +220,9 @@ impl View {
     /// Calculates the last visible line on screen
     #[inline]
     pub fn last_line(&self, doc: &Document) -> usize {
-        let height = self.inner_area(doc).height;
         std::cmp::min(
             // Saturating subs to make it inclusive zero indexing.
-            (self.offset.row + height as usize).saturating_sub(1),
+            (self.offset.row + self.inner_height()).saturating_sub(1),
             doc.text().len_lines().saturating_sub(1),
         )
     }
