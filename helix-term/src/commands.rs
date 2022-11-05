@@ -8,7 +8,7 @@ use tui::text::Spans;
 pub use typed::*;
 
 use helix_core::{
-    comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes,
+    comment, coords_at_pos, encoding, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
     increment::date_time::DateTimeIncrementor,
     increment::{number::NumberIncrementor, Increment},
@@ -47,13 +47,14 @@ use movement::Movement;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
+    job::Callback,
     keymap::ReverseKeymap,
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 
-use crate::job::{self, Job, Jobs};
-use futures_util::{FutureExt, StreamExt};
-use std::{collections::HashMap, fmt, future::Future};
+use crate::job::{self, Jobs};
+use futures_util::StreamExt;
+use std::{collections::HashMap, fmt, fmt::Write, future::Future};
 use std::{collections::HashSet, num::NonZeroUsize};
 
 use std::{
@@ -107,10 +108,11 @@ impl<'a> Context<'a> {
         let callback = Box::pin(async move {
             let json = call.await?;
             let response = serde_json::from_value(json)?;
-            let call: job::Callback =
-                Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                move |editor: &mut Editor, compositor: &mut Compositor| {
                     callback(editor, compositor, response)
-                });
+                },
+            ));
             Ok(call)
         });
         self.jobs.callback(callback);
@@ -1021,6 +1023,7 @@ fn goto_file_vsplit(cx: &mut Context) {
     goto_file_impl(cx, Action::VerticalSplit);
 }
 
+/// Goto files in selection.
 fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text();
@@ -1030,15 +1033,25 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         .map(|r| text.slice(r.from()..r.to()).to_string())
         .collect();
     let primary = selections.primary();
-    if selections.len() == 1 && primary.to() - primary.from() == 1 {
-        let current_word = movement::move_next_long_word_start(
-            text.slice(..),
-            movement::move_prev_long_word_start(text.slice(..), primary, 1),
-            1,
+    // Checks whether there is only one selection with a width of 1
+    if selections.len() == 1 && primary.len() == 1 {
+        let count = cx.count();
+        let text_slice = text.slice(..);
+        // In this case it selects the WORD under the cursor
+        let current_word = textobject::textobject_word(
+            text_slice,
+            primary,
+            textobject::TextObject::Inside,
+            count,
+            true,
         );
+        // Trims some surrounding chars so that the actual file is opened.
+        let surrounding_chars: &[_] = &['\'', '"', '(', ')'];
         paths.clear();
         paths.push(
-            text.slice(current_word.from()..current_word.to())
+            current_word
+                .fragment(text_slice)
+                .trim_matches(surrounding_chars)
                 .to_string(),
         );
     }
@@ -1291,6 +1304,7 @@ fn replace(cx: &mut Context) {
             });
 
             apply_transaction(&transaction, doc, view);
+            exit_select_mode(cx);
         }
     })
 }
@@ -1347,7 +1361,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     let range = doc.selection(view.id).primary();
     let text = doc.text().slice(..);
 
-    let cursor = coords_at_pos(text, range.cursor(text));
+    let cursor = visual_coords_at_pos(text, range.cursor(text), doc.tab_width());
     let doc_last_line = doc.text().len_lines().saturating_sub(1);
 
     let last_line = view.last_line(doc);
@@ -1379,7 +1393,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
 
     // If cursor needs moving, replace primary selection
     if line != cursor.row {
-        let head = pos_at_coords(text, Position::new(line, cursor.col), true); // this func will properly truncate to line end
+        let head = pos_at_visual_coords(text, Position::new(line, cursor.col), doc.tab_width()); // this func will properly truncate to line end
 
         let anchor = if cx.editor.mode == Mode::Select {
             range.anchor
@@ -1865,10 +1879,15 @@ fn global_search(cx: &mut Context) {
                     .hidden(file_picker_config.hidden)
                     .parents(file_picker_config.parents)
                     .ignore(file_picker_config.ignore)
+                    .follow_links(file_picker_config.follow_symlinks)
                     .git_ignore(file_picker_config.git_ignore)
                     .git_global(file_picker_config.git_global)
                     .git_exclude(file_picker_config.git_exclude)
                     .max_depth(file_picker_config.max_depth)
+                    // We always want to ignore the .git directory, otherwise if
+                    // `ignore` is turned off above, we end up with a lot of noise
+                    // in our picker.
+                    .filter_entry(|entry| entry.file_name() != ".git")
                     .build_parallel()
                     .run(|| {
                         let mut searcher = searcher.clone();
@@ -1920,8 +1939,8 @@ fn global_search(cx: &mut Context) {
     let show_picker = async move {
         let all_matches: Vec<FileResult> =
             UnboundedReceiverStream::new(all_matches_rx).collect().await;
-        let call: job::Callback =
-            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
                 if all_matches.is_empty() {
                     editor.set_status("No matches found");
                     return;
@@ -1957,7 +1976,8 @@ fn global_search(cx: &mut Context) {
                     },
                 );
                 compositor.push(Box::new(overlayed(picker)));
-            });
+            },
+        ));
         Ok(call)
     };
     cx.jobs.callback(show_picker);
@@ -2408,25 +2428,24 @@ impl ui::menu::Item for MappableCommand {
     type Data = ReverseKeymap;
 
     fn label(&self, keymap: &Self::Data) -> Spans {
-        // formats key bindings, multiple bindings are comma separated,
-        // individual key presses are joined with `+`
         let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
-            bindings
-                .iter()
-                .map(|bind| {
-                    bind.iter()
-                        .map(|key| key.to_string())
-                        .collect::<Vec<String>>()
-                        .join("+")
-                })
-                .collect::<Vec<String>>()
-                .join(", ")
+            bindings.iter().fold(String::new(), |mut acc, bind| {
+                if !acc.is_empty() {
+                    acc.push_str(", ");
+                }
+                bind.iter().fold(false, |needs_plus, key| {
+                    write!(&mut acc, "{}{}", if needs_plus { "+" } else { "" }, key)
+                        .expect("Writing to a string can only fail on an Out-Of-Memory error");
+                    true
+                });
+                acc
+            })
         };
 
         match self {
             MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String) {
-                Some(bindings) => format!("{} ({}) [{}]", doc, fmt_binding(bindings), name).into(),
-                None => format!("{} [{}]", doc, name).into(),
+                Some(bindings) => format!("{} ({}) [:{}]", doc, fmt_binding(bindings), name).into(),
+                None => format!("{} [:{}]", doc, name).into(),
             },
             MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
                 Some(bindings) => format!("{} ({}) [{}]", doc, fmt_binding(bindings), name).into(),
@@ -2470,12 +2489,12 @@ pub fn command_palette(cx: &mut Context) {
 
 fn last_picker(cx: &mut Context) {
     // TODO: last picker does not seem to work well with buffer_picker
-    cx.callback = Some(Box::new(|compositor: &mut Compositor, _| {
+    cx.callback = Some(Box::new(|compositor, cx| {
         if let Some(picker) = compositor.last_picker.take() {
             compositor.push(picker);
+        } else {
+            cx.editor.set_error("no last picker")
         }
-        // XXX: figure out how to show error when no last picker lifetime
-        // cx.editor.set_error("no last picker")
     }));
 }
 
@@ -2499,13 +2518,6 @@ fn insert_at_line_end(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-/// Sometimes when applying formatting changes we want to mark the buffer as unmodified, for
-/// example because we just applied the same changes while saving.
-enum Modified {
-    SetUnmodified,
-    LeaveModified,
-}
-
 // Creates an LspCallback that waits for formatting changes to be computed. When they're done,
 // it applies them, but only if the doc hasn't changed.
 //
@@ -2514,34 +2526,44 @@ enum Modified {
 async fn make_format_callback(
     doc_id: DocumentId,
     doc_version: i32,
-    modified: Modified,
+    view_id: ViewId,
     format: impl Future<Output = Result<Transaction, FormatterError>> + Send + 'static,
+    write: Option<(Option<PathBuf>, bool)>,
 ) -> anyhow::Result<job::Callback> {
-    let format = format.await?;
-    let call: job::Callback = Box::new(move |editor, _compositor| {
-        if !editor.documents.contains_key(&doc_id) {
+    let format = format.await;
+
+    let call: job::Callback = Callback::Editor(Box::new(move |editor| {
+        if !editor.documents.contains_key(&doc_id) || !editor.tree.contains(view_id) {
             return;
         }
 
         let scrolloff = editor.config().scrolloff;
         let doc = doc_mut!(editor, &doc_id);
-        let view = view_mut!(editor);
-        if doc.version() == doc_version {
-            apply_transaction(&format, doc, view);
-            doc.append_changes_to_history(view.id);
-            doc.detect_indent_and_line_ending();
-            view.ensure_cursor_in_view(doc, scrolloff);
-            if let Modified::SetUnmodified = modified {
-                doc.reset_modified();
+        let view = view_mut!(editor, view_id);
+
+        if let Ok(format) = format {
+            if doc.version() == doc_version {
+                apply_transaction(&format, doc, view);
+                doc.append_changes_to_history(view.id);
+                doc.detect_indent_and_line_ending();
+                view.ensure_cursor_in_view(doc, scrolloff);
+            } else {
+                log::info!("discarded formatting changes because the document changed");
             }
-        } else {
-            log::info!("discarded formatting changes because the document changed");
         }
-    });
+
+        if let Some((path, force)) = write {
+            let id = doc.id();
+            if let Err(err) = editor.save(id, path, force) {
+                editor.set_error(format!("Error saving: {}", err));
+            }
+        }
+    }));
+
     Ok(call)
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum Open {
     Below,
     Above,
@@ -2880,7 +2902,7 @@ pub mod insert {
 
     /// Exclude the cursor in range.
     fn exclude_cursor(text: RopeSlice, range: Range, cursor: Range) -> Range {
-        if range.to() == cursor.to() {
+        if range.to() == cursor.to() && text.len_chars() != cursor.to() {
             Range::new(
                 range.from(),
                 graphemes::prev_grapheme_boundary(text, cursor.to()),
@@ -3012,7 +3034,7 @@ pub mod insert {
         // TODO: round out to nearest indentation level (for example a line with 3 spaces should
         // indent by one to reach 4 spaces).
 
-        let indent = Tendril::from(doc.indent_unit());
+        let indent = Tendril::from(doc.indent_style.as_str());
         let transaction = Transaction::insert(
             doc.text(),
             &doc.selection(view.id).clone().cursors(doc.text().slice(..)),
@@ -3112,7 +3134,7 @@ pub mod insert {
         let count = cx.count();
         let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
-        let indent_unit = doc.indent_unit();
+        let indent_unit = doc.indent_style.as_str();
         let tab_size = doc.tab_width();
         let auto_pairs = doc.auto_pairs(cx.editor);
 
@@ -3177,6 +3199,7 @@ pub mod insert {
                         (Some(_x), Some(_y), Some(ap))
                             if range.is_single_grapheme(text)
                                 && ap.get(_x).is_some()
+                                && ap.get(_x).unwrap().open == _x
                                 && ap.get(_x).unwrap().close == _y =>
                         // delete both autopaired characters
                         {
@@ -3228,8 +3251,8 @@ pub mod insert {
         let text = doc.text().slice(..);
 
         let selection = doc.selection(view.id).clone().transform(|range| {
-            let cursor = Range::point(range.cursor(text));
-            let next = movement::move_prev_word_start(text, cursor, count);
+            let anchor = movement::move_prev_word_start(text, range, count).from();
+            let next = Range::new(anchor, range.cursor(text));
             exclude_cursor(text, next, range)
         });
         delete_selection_insert_mode(doc, view, &selection);
@@ -3242,10 +3265,11 @@ pub mod insert {
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
 
-        let selection = doc
-            .selection(view.id)
-            .clone()
-            .transform(|range| movement::move_next_word_start(text, range, count));
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            let head = movement::move_next_word_end(text, range, count).to();
+            Range::new(range.cursor(text), head)
+        });
+
         delete_selection_insert_mode(doc, view, &selection);
 
         lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
@@ -3423,7 +3447,12 @@ enum Paste {
 }
 
 fn paste_impl(values: &[String], doc: &mut Document, view: &mut View, action: Paste, count: usize) {
+    if values.is_empty() {
+        return;
+    }
+
     let repeat = std::iter::repeat(
+        // `values` is asserted to have at least one entry above.
         values
             .last()
             .map(|value| Tendril::from(value.repeat(count)))
@@ -3447,6 +3476,8 @@ fn paste_impl(values: &[String], doc: &mut Document, view: &mut View, action: Pa
     let text = doc.text();
     let selection = doc.selection(view.id);
 
+    let mut ranges = SmallVec::with_capacity(selection.len());
+
     let transaction = Transaction::change_by_selection(text, selection, |range| {
         let pos = match (action, linewise) {
             // paste linewise before
@@ -3463,8 +3494,21 @@ fn paste_impl(values: &[String], doc: &mut Document, view: &mut View, action: Pa
             // paste at cursor
             (Paste::Cursor, _) => range.cursor(text.slice(..)),
         };
-        (pos, pos, values.next())
+
+        let value = values.next();
+
+        let value_len = value
+            .as_ref()
+            .map(|content| content.chars().count())
+            .unwrap_or_default();
+
+        ranges.push(Range::new(pos, pos + value_len));
+
+        (pos, pos, value)
     });
+
+    let transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
+
     apply_transaction(&transaction, doc, view);
 }
 
@@ -3558,18 +3602,19 @@ fn replace_with_yanked(cx: &mut Context) {
             });
 
             apply_transaction(&transaction, doc, view);
+            exit_select_mode(cx);
         }
     }
 }
 
 fn replace_selections_with_clipboard_impl(
-    editor: &mut Editor,
+    cx: &mut Context,
     clipboard_type: ClipboardType,
-    count: usize,
 ) -> anyhow::Result<()> {
-    let (view, doc) = current!(editor);
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
 
-    match editor.clipboard_provider.get_contents(clipboard_type) {
+    match cx.editor.clipboard_provider.get_contents(clipboard_type) {
         Ok(contents) => {
             let selection = doc.selection(view.id);
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
@@ -3582,18 +3627,20 @@ fn replace_selections_with_clipboard_impl(
 
             apply_transaction(&transaction, doc, view);
             doc.append_changes_to_history(view.id);
-            Ok(())
         }
-        Err(e) => Err(e.context("Couldn't get system clipboard contents")),
+        Err(e) => return Err(e.context("Couldn't get system clipboard contents")),
     }
+
+    exit_select_mode(cx);
+    Ok(())
 }
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
-    let _ = replace_selections_with_clipboard_impl(cx.editor, ClipboardType::Clipboard, cx.count());
+    let _ = replace_selections_with_clipboard_impl(cx, ClipboardType::Clipboard);
 }
 
 fn replace_selections_with_primary_clipboard(cx: &mut Context) {
-    let _ = replace_selections_with_clipboard_impl(cx.editor, ClipboardType::Selection, cx.count());
+    let _ = replace_selections_with_clipboard_impl(cx, ClipboardType::Selection);
 }
 
 fn paste(cx: &mut Context, pos: Paste) {
@@ -3637,7 +3684,7 @@ fn indent(cx: &mut Context) {
     let lines = get_lines(doc, view.id);
 
     // Indent by one level
-    let indent = Tendril::from(doc.indent_unit().repeat(count));
+    let indent = Tendril::from(doc.indent_style.as_str().repeat(count));
 
     let transaction = Transaction::change(
         doc.text(),
@@ -3906,15 +3953,12 @@ pub fn completion(cx: &mut Context) {
             };
 
             if !prefix.is_empty() {
-                items = items
-                    .into_iter()
-                    .filter(|item| {
-                        item.filter_text
-                            .as_ref()
-                            .unwrap_or(&item.label)
-                            .starts_with(&prefix)
-                    })
-                    .collect();
+                items.retain(|item| {
+                    item.filter_text
+                        .as_ref()
+                        .unwrap_or(&item.label)
+                        .starts_with(&prefix)
+                });
             }
 
             if items.is_empty() {
@@ -4608,7 +4652,7 @@ fn shell_keep_pipe(cx: &mut Context) {
 
             for (i, range) in selection.ranges().iter().enumerate() {
                 let fragment = range.slice(text);
-                let (_output, success) = match shell_impl(shell, input, Some(fragment)) {
+                let (_output, success) = match shell_impl(shell, input, Some(fragment.into())) {
                     Ok(result) => result,
                     Err(err) => {
                         cx.editor.set_error(err.to_string());
@@ -4636,13 +4680,17 @@ fn shell_keep_pipe(cx: &mut Context) {
     );
 }
 
-fn shell_impl(
+fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<(Tendril, bool)> {
+    tokio::task::block_in_place(|| helix_lsp::block_on(shell_impl_async(shell, cmd, input)))
+}
+
+async fn shell_impl_async(
     shell: &[String],
     cmd: &str,
-    input: Option<RopeSlice>,
+    input: Option<Rope>,
 ) -> anyhow::Result<(Tendril, bool)> {
-    use std::io::Write;
-    use std::process::{Command, Stdio};
+    use std::process::Stdio;
+    use tokio::process::Command;
     ensure!(!shell.is_empty(), "No shell set");
 
     let mut process = Command::new(&shell[0]);
@@ -4654,6 +4702,8 @@ fn shell_impl(
 
     if input.is_some() || cfg!(windows) {
         process.stdin(Stdio::piped());
+    } else {
+        process.stdin(Stdio::null());
     }
 
     let mut process = match process.spawn() {
@@ -4663,13 +4713,22 @@ fn shell_impl(
             return Err(e.into());
         }
     };
-    if let Some(input) = input {
-        let mut stdin = process.stdin.take().unwrap();
-        for chunk in input.chunks() {
-            stdin.write_all(chunk.as_bytes())?;
-        }
-    }
-    let output = process.wait_with_output()?;
+    let output = if let Some(mut stdin) = process.stdin.take() {
+        let input_task = tokio::spawn(async move {
+            if let Some(input) = input {
+                helix_view::document::to_writer(&mut stdin, encoding::UTF_8, &input).await?;
+            }
+            Ok::<_, anyhow::Error>(())
+        });
+        let (output, _) = tokio::join! {
+            process.wait_with_output(),
+            input_task,
+        };
+        output?
+    } else {
+        // Process has no stdin, so we just take the output
+        process.wait_with_output().await?
+    };
 
     if !output.status.success() {
         if !output.stderr.is_empty() {
@@ -4703,11 +4762,12 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let selection = doc.selection(view.id);
 
     let mut changes = Vec::with_capacity(selection.len());
+    let mut ranges = SmallVec::with_capacity(selection.len());
     let text = doc.text().slice(..);
 
     for range in selection.ranges() {
         let fragment = range.slice(text);
-        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment)) {
+        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment.into())) {
             Ok(result) => result,
             Err(err) => {
                 cx.editor.set_error(err.to_string());
@@ -4726,11 +4786,13 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
             ShellBehavior::Append => (range.to(), range.to()),
             _ => (range.from(), range.from()),
         };
+        ranges.push(Range::new(to, to + output.chars().count()));
         changes.push((from, to, Some(output)));
     }
 
     if behavior != &ShellBehavior::Ignore {
-        let transaction = Transaction::change(doc.text(), changes.into_iter());
+        let transaction = Transaction::change(doc.text(), changes.into_iter())
+            .with_selection(Selection::new(ranges, selection.primary_index()));
         apply_transaction(&transaction, doc, view);
         doc.append_changes_to_history(view.id);
     }

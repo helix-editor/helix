@@ -1,7 +1,8 @@
 use crate::{
     commands,
     compositor::{Component, Context, Event, EventResult},
-    job, key,
+    job::{self, Callback},
+    key,
     keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
@@ -25,7 +26,8 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{borrow::Cow, path::PathBuf};
+use std::{borrow::Cow, cmp::min, num::NonZeroUsize, path::PathBuf};
+
 use tui::buffer::Buffer as Surface;
 
 use super::lsp::SignatureHelp;
@@ -220,16 +222,16 @@ impl EditorView {
         _theme: &Theme,
     ) -> Box<dyn Iterator<Item = HighlightEvent> + 'doc> {
         let text = doc.text().slice(..);
-        let last_line = std::cmp::min(
-            // Saturating subs to make it inclusive zero indexing.
-            (offset.row + height as usize).saturating_sub(1),
-            doc.text().len_lines().saturating_sub(1),
-        );
 
         let range = {
-            // calculate viewport byte ranges
-            let start = text.line_to_byte(offset.row);
-            let end = text.line_to_byte(last_line + 1);
+            // Calculate viewport byte ranges:
+            // Saturating subs to make it inclusive zero indexing.
+            let last_line = doc.text().len_lines().saturating_sub(1);
+            let last_visible_line = (offset.row + height as usize)
+                .saturating_sub(1)
+                .min(last_line);
+            let start = text.line_to_byte(offset.row.min(last_line));
+            let end = text.line_to_byte(last_visible_line + 1);
 
             start..end
         };
@@ -296,16 +298,7 @@ impl EditorView {
         let mut warning_vec = Vec::new();
         let mut error_vec = Vec::new();
 
-        let diagnostics = doc.diagnostics();
-
-        // Diagnostics must be sorted by range. Otherwise, the merge strategy
-        // below would not be accurate.
-        debug_assert!(diagnostics
-            .windows(2)
-            .all(|window| window[0].range.start <= window[1].range.start
-                && window[0].range.end <= window[1].range.end));
-
-        for diagnostic in diagnostics {
+        for diagnostic in doc.diagnostics() {
             // Separate diagnostics into different Vecs by severity.
             let (vec, scope) = match diagnostic.severity {
                 Some(Severity::Info) => (&mut info_vec, info),
@@ -319,6 +312,11 @@ impl EditorView {
             // merge the two together. Otherwise push a new span.
             match vec.last_mut() {
                 Some((_, range)) if diagnostic.range.start <= range.end => {
+                    // This branch merges overlapping diagnostics, assuming that the current
+                    // diagnostic starts on range.start or later. If this assertion fails,
+                    // we will discard some part of `diagnostic`. This implies that
+                    // `doc.diagnostics()` is not sorted by `diagnostic.range`.
+                    debug_assert!(range.start <= diagnostic.range.start);
                     range.end = diagnostic.range.end.max(range.end)
                 }
                 _ => vec.push((scope, diagnostic.range.start..diagnostic.range.end)),
@@ -448,7 +446,7 @@ impl EditorView {
         let characters = &whitespace.characters;
 
         let mut spans = Vec::new();
-        let mut visual_x = 0u16;
+        let mut visual_x = 0usize;
         let mut line = 0u16;
         let tab_width = doc.tab_width();
         let tab = if whitespace.render.tab() == WhitespaceRenderValue::All {
@@ -486,17 +484,21 @@ impl EditorView {
             }
 
             let starting_indent =
-                (offset.col / tab_width) as u16 + config.indent_guides.skip_levels;
-            // TODO: limit to a max indent level too. It doesn't cause visual artifacts but it would avoid some
-            // extra loops if the code is deeply nested.
+                (offset.col / tab_width) + config.indent_guides.skip_levels as usize;
 
-            for i in starting_indent..(indent_level / tab_width as u16) {
-                surface.set_string(
-                    viewport.x + (i * tab_width as u16) - offset.col as u16,
-                    viewport.y + line,
-                    &indent_guide_char,
-                    indent_guide_style,
-                );
+            // Don't draw indent guides outside of view
+            let end_indent = min(
+                indent_level,
+                // Add tab_width - 1 to round up, since the first visible
+                // indent might be a bit after offset.col
+                offset.col + viewport.width as usize + (tab_width - 1),
+            ) / tab_width;
+
+            for i in starting_indent..end_indent {
+                let x = (viewport.x as usize + (i * tab_width) - offset.col) as u16;
+                let y = viewport.y + line;
+                debug_assert!(surface.in_bounds(x, y));
+                surface.set_string(x, y, &indent_guide_char, indent_guide_style);
             }
         };
 
@@ -538,14 +540,14 @@ impl EditorView {
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
                     for grapheme in RopeGraphemes::new(text) {
-                        let out_of_bounds = visual_x < offset.col as u16
-                            || visual_x >= viewport.width + offset.col as u16;
+                        let out_of_bounds = offset.col > (visual_x as usize)
+                            || (visual_x as usize) >= viewport.width as usize + offset.col;
 
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
                             if !out_of_bounds {
                                 // we still want to render an empty cell with the style
                                 surface.set_string(
-                                    viewport.x + visual_x - offset.col as u16,
+                                    (viewport.x as usize + visual_x - offset.col) as u16,
                                     viewport.y + line,
                                     &newline,
                                     style.patch(whitespace_style),
@@ -593,7 +595,7 @@ impl EditorView {
                             if !out_of_bounds {
                                 // if we're offscreen just keep going until we hit a new line
                                 surface.set_string(
-                                    viewport.x + visual_x - offset.col as u16,
+                                    (viewport.x as usize + visual_x - offset.col) as u16,
                                     viewport.y + line,
                                     display_grapheme,
                                     if is_whitespace {
@@ -626,7 +628,7 @@ impl EditorView {
                                 last_line_indent_level = visual_x;
                             }
 
-                            visual_x = visual_x.saturating_add(width as u16);
+                            visual_x = visual_x.saturating_add(width);
                         }
                     }
                 }
@@ -960,9 +962,10 @@ impl EditorView {
 
                     // TODO: Use an on_mode_change hook to remove signature help
                     cxt.jobs.callback(async {
-                        let call: job::Callback = Box::new(|_editor, compositor| {
-                            compositor.remove(SignatureHelp::ID);
-                        });
+                        let call: job::Callback =
+                            Callback::EditorCompositor(Box::new(|_editor, compositor| {
+                                compositor.remove(SignatureHelp::ID);
+                            }));
                         Ok(call)
                     });
                 }
@@ -1023,37 +1026,40 @@ impl EditorView {
             }
             // special handling for repeat operator
             (key!('.'), _) if self.keymaps.pending().is_empty() => {
-                // first execute whatever put us into insert mode
-                self.last_insert.0.execute(cxt);
-                // then replay the inputs
-                for key in self.last_insert.1.clone() {
-                    match key {
-                        InsertEvent::Key(key) => self.insert_mode(cxt, key),
-                        InsertEvent::CompletionApply(compl) => {
-                            let (view, doc) = current!(cxt.editor);
+                for _ in 0..cxt.editor.count.map_or(1, NonZeroUsize::into) {
+                    // first execute whatever put us into insert mode
+                    self.last_insert.0.execute(cxt);
+                    // then replay the inputs
+                    for key in self.last_insert.1.clone() {
+                        match key {
+                            InsertEvent::Key(key) => self.insert_mode(cxt, key),
+                            InsertEvent::CompletionApply(compl) => {
+                                let (view, doc) = current!(cxt.editor);
 
-                            doc.restore(view);
+                                doc.restore(view);
 
-                            let text = doc.text().slice(..);
-                            let cursor = doc.selection(view.id).primary().cursor(text);
+                                let text = doc.text().slice(..);
+                                let cursor = doc.selection(view.id).primary().cursor(text);
 
-                            let shift_position =
-                                |pos: usize| -> usize { pos + cursor - compl.trigger_offset };
+                                let shift_position =
+                                    |pos: usize| -> usize { pos + cursor - compl.trigger_offset };
 
-                            let tx = Transaction::change(
-                                doc.text(),
-                                compl.changes.iter().cloned().map(|(start, end, t)| {
-                                    (shift_position(start), shift_position(end), t)
-                                }),
-                            );
-                            apply_transaction(&tx, doc, view);
-                        }
-                        InsertEvent::TriggerCompletion => {
-                            let (_, doc) = current!(cxt.editor);
-                            doc.savepoint();
+                                let tx = Transaction::change(
+                                    doc.text(),
+                                    compl.changes.iter().cloned().map(|(start, end, t)| {
+                                        (shift_position(start), shift_position(end), t)
+                                    }),
+                                );
+                                apply_transaction(&tx, doc, view);
+                            }
+                            InsertEvent::TriggerCompletion => {
+                                let (_, doc) = current!(cxt.editor);
+                                doc.savepoint();
+                            }
                         }
                     }
                 }
+                cxt.editor.count = None;
             }
             _ => {
                 // set the count
@@ -1111,10 +1117,15 @@ impl EditorView {
     }
 
     pub fn handle_idle_timeout(&mut self, cx: &mut commands::Context) -> EventResult {
-        if self.completion.is_some()
-            || cx.editor.mode != Mode::Insert
-            || !cx.editor.config().auto_completion
-        {
+        if let Some(completion) = &mut self.completion {
+            return if completion.ensure_item_resolved(cx) {
+                EventResult::Consumed(None)
+            } else {
+                EventResult::Ignored(None)
+            };
+        }
+
+        if cx.editor.mode != Mode::Insert || !cx.editor.config().auto_completion {
             return EventResult::Ignored(None);
         }
 
@@ -1440,7 +1451,15 @@ impl Component for EditorView {
 
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
             Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
-            Event::FocusGained | Event::FocusLost => EventResult::Ignored(None),
+            Event::FocusGained => EventResult::Ignored(None),
+            Event::FocusLost => {
+                if context.editor.config().auto_save {
+                    if let Err(e) = commands::typed::write_all_impl(context, false, false) {
+                        context.editor.set_error(format!("{}", e));
+                    }
+                }
+                EventResult::Consumed(None)
+            }
         }
     }
 

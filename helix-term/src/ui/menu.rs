@@ -40,7 +40,7 @@ impl Item for PathBuf {
     type Data = PathBuf;
 
     fn label(&self, root_path: &Self::Data) -> Spans {
-        self.strip_prefix(&root_path)
+        self.strip_prefix(root_path)
             .unwrap_or(self)
             .to_string_lossy()
             .into()
@@ -77,11 +77,12 @@ impl<T: Item> Menu<T> {
         editor_data: <T as Item>::Data,
         callback_fn: impl Fn(&mut Editor, Option<&T>, MenuEvent) + 'static,
     ) -> Self {
-        let mut menu = Self {
+        let matches = (0..options.len()).map(|i| (i, 0)).collect();
+        Self {
             options,
             editor_data,
             matcher: Box::new(Matcher::default()),
-            matches: Vec::new(),
+            matches,
             cursor: None,
             widths: Vec::new(),
             callback_fn: Box::new(callback_fn),
@@ -89,12 +90,7 @@ impl<T: Item> Menu<T> {
             size: (0, 0),
             viewport: (0, 0),
             recalculate: true,
-        };
-
-        // TODO: scoring on empty input should just use a fastpath
-        menu.score("");
-
-        menu
+        }
     }
 
     pub fn score(&mut self, pattern: &str) {
@@ -112,10 +108,8 @@ impl<T: Item> Menu<T> {
                         .map(|score| (index, score))
                 }),
         );
-        // matches.sort_unstable_by_key(|(_, score)| -score);
-        self.matches.sort_unstable_by_key(|(index, _score)| {
-            self.options[*index].sort_text(&self.editor_data)
-        });
+        // Order of equal elements needs to be preserved as LSP preselected items come in order of high to low priority
+        self.matches.sort_by_key(|(_, score)| -score);
 
         // reset cursor position
         self.cursor = None;
@@ -210,6 +204,14 @@ impl<T: Item> Menu<T> {
             self.matches
                 .get(cursor)
                 .map(|(index, _score)| &self.options[*index])
+        })
+    }
+
+    pub fn selection_mut(&mut self) -> Option<&mut T> {
+        self.cursor.and_then(|cursor| {
+            self.matches
+                .get(cursor)
+                .map(|(index, _score)| &mut self.options[*index])
         })
     }
 
