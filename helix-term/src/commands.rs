@@ -1399,25 +1399,25 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
 }
 
 fn page_up(cx: &mut Context) {
-    let (view, _doc) = current!(cx.editor);
+    let view = view!(cx.editor);
     let offset = view.inner_height();
     scroll(cx, offset, Direction::Backward);
 }
 
 fn page_down(cx: &mut Context) {
-    let (view, _doc) = current!(cx.editor);
+    let view = view!(cx.editor);
     let offset = view.inner_height();
     scroll(cx, offset, Direction::Forward);
 }
 
 fn half_page_up(cx: &mut Context) {
-    let (view, _doc) = current!(cx.editor);
+    let view = view!(cx.editor);
     let offset = view.inner_height() / 2;
     scroll(cx, offset, Direction::Backward);
 }
 
 fn half_page_down(cx: &mut Context) {
-    let (view, _doc) = current!(cx.editor);
+    let view = view!(cx.editor);
     let offset = view.inner_height() / 2;
     scroll(cx, offset, Direction::Forward);
 }
