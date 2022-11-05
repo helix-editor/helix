@@ -128,14 +128,14 @@ pub fn textobject_whitespace(
             .chars_at(slice.len_chars())
             .reversed()
             .skip(slice.len_chars() - pos - 1)
-            .take_while(|c| char_is_whitespace(*c) || *c == '\r' || *c == '\n')
+            .take_while(|c| c.is_whitespace())
             .count()
         + 1;
 
     let whitespace_end = pos
         + slice
             .chars_at(pos)
-            .take_while(|c| char_is_whitespace(*c) || *c == '\r' || *c == '\n')
+            .take_while(|c| c.is_whitespace())
             .count();
 
     Range::new(whitespace_start, whitespace_end)
