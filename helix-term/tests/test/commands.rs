@@ -193,3 +193,25 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_multi_selection_paste() -> anyhow::Result<()> {
+    test((
+        platform_line(indoc! {"\
+            #[|lorem]#
+            #(|ipsum)#
+            #(|dolor)#
+            "})
+        .as_str(),
+        "yp",
+        platform_line(indoc! {"\
+            lorem#[|lorem]#
+            ipsum#(|ipsum)#
+            dolor#(|dolor)#
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    Ok(())
+}
