@@ -168,7 +168,7 @@ impl Application {
         } else if !args.files.is_empty() {
             let first = &args.files[0].0; // we know it's not empty
             if first.is_dir() {
-                std::env::set_current_dir(&first).context("set current dir")?;
+                std::env::set_current_dir(first).context("set current dir")?;
                 editor.new_file(Action::VerticalSplit);
                 let picker = ui::file_picker(".".into(), &config.load().editor);
                 compositor.push(Box::new(overlayed(picker)));
@@ -228,7 +228,7 @@ impl Application {
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
         #[cfg(not(windows))]
-        let signals = Signals::new(&[signal::SIGTSTP, signal::SIGCONT, signal::SIGUSR1])
+        let signals = Signals::new([signal::SIGTSTP, signal::SIGCONT, signal::SIGUSR1])
             .context("build signal handler")?;
 
         let app = Self {

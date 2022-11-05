@@ -57,7 +57,7 @@ impl ui::menu::Item for lsp::Location {
             // allocation, for `to_file_path`, else there will be two (2), with `to_string_lossy`.
             let mut write_path_to_res = || -> Option<()> {
                 let path = self.uri.to_file_path().ok()?;
-                res.push_str(&path.strip_prefix(&cwdir).unwrap_or(&path).to_string_lossy());
+                res.push_str(&path.strip_prefix(cwdir).unwrap_or(&path).to_string_lossy());
                 Some(())
             };
             write_path_to_res();
@@ -634,7 +634,7 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
                 // Create directory if it does not exist
                 if let Some(dir) = path.parent() {
                     if !dir.is_dir() {
-                        fs::create_dir_all(&dir)?;
+                        fs::create_dir_all(dir)?;
                     }
                 }
 
@@ -910,7 +910,7 @@ pub fn goto_reference(cx: &mut Context) {
     );
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum SignatureHelpInvoked {
     Manual,
     Automatic,

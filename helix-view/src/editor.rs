@@ -111,7 +111,7 @@ impl Default for FilePickerConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
@@ -187,9 +187,9 @@ pub struct TerminalConfig {
 
 #[cfg(windows)]
 pub fn get_terminal_provider() -> Option<TerminalConfig> {
-    use crate::clipboard::provider::command::exists;
+    use crate::env::binary_exists;
 
-    if exists("wt") {
+    if binary_exists("wt") {
         return Some(TerminalConfig {
             command: "wt".to_string(),
             args: vec![
@@ -210,16 +210,16 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
 
 #[cfg(not(any(windows, target_os = "wasm32")))]
 pub fn get_terminal_provider() -> Option<TerminalConfig> {
-    use crate::clipboard::provider::command::{env_var_is_set, exists};
+    use crate::env::{binary_exists, env_var_is_set};
 
-    if env_var_is_set("TMUX") && exists("tmux") {
+    if env_var_is_set("TMUX") && binary_exists("tmux") {
         return Some(TerminalConfig {
             command: "tmux".to_string(),
             args: vec!["split-window".to_string()],
         });
     }
 
-    if env_var_is_set("WEZTERM_UNIX_SOCKET") && exists("wezterm") {
+    if env_var_is_set("WEZTERM_UNIX_SOCKET") && binary_exists("wezterm") {
         return Some(TerminalConfig {
             command: "wezterm".to_string(),
             args: vec!["cli".to_string(), "split-pane".to_string()],
@@ -346,7 +346,7 @@ pub enum StatusLineElement {
 
 // Cursor shape is read and used on every rendered frame and so needs
 // to be fast. Therefore we avoid a hashmap and use an enum indexed array.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CursorShapeConfig([CursorKind; 3]);
 
 impl CursorShapeConfig {
@@ -1223,9 +1223,11 @@ impl Editor {
     pub fn focus(&mut self, view_id: ViewId) {
         let prev_id = std::mem::replace(&mut self.tree.focus, view_id);
 
-        // if leaving the view: mode should reset
+        // if leaving the view: mode should reset and the cursor should be
+        // within view
         if prev_id != view_id {
             self.mode = Mode::Normal;
+            self.ensure_cursor_in_view(view_id);
         }
     }
 
@@ -1234,9 +1236,11 @@ impl Editor {
         self.tree.focus_next();
         let id = self.tree.focus;
 
-        // if leaving the view: mode should reset
+        // if leaving the view: mode should reset and the cursor should be
+        // within view
         if prev_id != id {
             self.mode = Mode::Normal;
+            self.ensure_cursor_in_view(id);
         }
     }
 

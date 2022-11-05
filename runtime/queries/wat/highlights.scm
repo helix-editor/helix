@@ -1,4 +1,7 @@
-["module" "func" "param" "result" "type" "memory" "elem" "data" "table" "global"] @keyword
+[
+  "module" "func" "param" "result" "type" "memory" "elem" "data" "table" "global"
+  "if" "then" "else" "block" "loop" "end" "mut"
+] @keyword
 
 ["import" "export"] @keyword.control.import
 

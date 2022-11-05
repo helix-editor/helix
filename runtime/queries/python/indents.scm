@@ -9,6 +9,8 @@
   (while_statement)
   (with_statement)
   (try_statement)
+  (match_statement)
+  (case_clause)
   (import_from_statement)
 
   (parenthesized_expression)
@@ -33,6 +35,8 @@
   (while_statement)
   (with_statement)
   (try_statement)
+  (match_statement)
+  (case_clause)
 
   (function_definition)
   (class_definition)
