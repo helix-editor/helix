@@ -344,6 +344,7 @@ impl EditorView {
         let selection_scope = theme
             .find_scope_index("ui.selection")
             .expect("could not find `ui.selection` scope in the theme!");
+
         let base_cursor_scope = theme
             .find_scope_index("ui.cursor")
             .unwrap_or(selection_scope);
