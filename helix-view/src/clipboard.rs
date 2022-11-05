@@ -128,11 +128,8 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
             paste => "win32yank.exe", "-o", "--lf";
             copy => "win32yank.exe", "-i", "--crlf";
         }
-    } else if binary_exists("termux-clipboard-set") && binary_exists("termux-clipboard-get") {
-        command_provider! {
-            paste => "termux-clipboard-get";
-            copy => "termux-clipboard-set";
-        }
+    } else if binary_exists("termux-clipboard-get") {
+        Box::new(provider::termux::Provider)
     } else if env_var_is_set("TMUX") && binary_exists("tmux") {
         command_provider! {
             paste => "tmux", "save-buffer", "-";
@@ -269,7 +266,11 @@ pub mod provider {
         }
 
         impl Config {
-            fn execute(&self, input: Option<&str>, pipe_output: bool) -> Result<Option<String>> {
+            pub(super) fn execute(
+                &self,
+                input: Option<&str>,
+                pipe_output: bool,
+            ) -> Result<Option<String>> {
                 use std::io::Write;
                 use std::process::{Command, Stdio};
 
@@ -350,6 +351,48 @@ pub mod provider {
                     }
                 };
                 cmd.execute(Some(&value), false).map(|_| ())
+            }
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub mod termux {
+        use super::*;
+        use anyhow::{Context as _, Result};
+
+        const CLIPBOARD_SET_COMMAND: command::Config = command::Config {
+            prg: "termux-clipboard-get",
+            args: &[],
+        };
+
+        #[derive(Debug)]
+        pub struct Provider;
+
+        impl ClipboardProvider for Provider {
+            fn name(&self) -> Cow<str> {
+                Cow::Borrowed("termux-clipboard-get+termcode")
+            }
+
+            fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String> {
+                match clipboard_type {
+                    ClipboardType::Clipboard => Ok(CLIPBOARD_SET_COMMAND
+                        .execute(None, true)?
+                        .context("output is missing")?),
+                    ClipboardType::Selection => Ok(String::new()),
+                }
+            }
+
+            fn set_contents(
+                &mut self,
+                contents: String,
+                clipboard_type: ClipboardType,
+            ) -> Result<()> {
+                #[cfg(feature = "term")]
+                crossterm::execute!(
+                    std::io::stdout(),
+                    osc52::SetClipboardCommand::new(&contents, clipboard_type)
+                )?;
+                Ok(())
             }
         }
     }
