@@ -1972,7 +1972,7 @@ injection-regex = "haxe"
 file-types = ["hx"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "\t" }
-roots = ["hxml", "khafile.js"]
+roots = ["hxml", "haxelib.json", "khafile.js"]
 
 [[grammar]]
 name = "haxe"

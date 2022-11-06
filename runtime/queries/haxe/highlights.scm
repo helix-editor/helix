@@ -1,4 +1,3 @@
-(identifier) @type
 (comment) @comment
 
 ; MetaData
@@ -28,9 +27,10 @@
 [(null) (keyword)] @keyword
 [(type) (literal)] @type
 [(builtin_type)] @type.builtin
-[(integer) (float)] @number
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
 (string) @string
-(bool) @constant
+(bool) @constant.builtin.boolean
 (operator) @operator
 
 ; Interpolation
@@ -39,7 +39,7 @@
 (interpolation
   "${" @punctuation.special
   "}" @punctuation.special
-) @embedded
+)
 
 
 ; Tokens
@@ -62,6 +62,8 @@
 ;   "."
   ","
 ] @punctuation.delimiter
+
+(identifier) @type
 
 ; (variable_declaration name: (identifier) @number)
 ; (variable_declaration (type) @type)
