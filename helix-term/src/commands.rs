@@ -234,6 +234,13 @@ impl MappableCommand {
         switch_case, "Switch (toggle) case",
         switch_to_uppercase, "Switch to uppercase",
         switch_to_lowercase, "Switch to lowercase",
+        switch_to_kebab_case, "Switch to kebab case",
+        switch_to_lower_camel_case, "Switch to lower camel case",
+        switch_to_shouty_kebab_case, "Switch to shouty kebab case",
+        switch_to_shouty_snake_case, "Switch to shouty snake case",
+        switch_to_snake_case, "Switch to snake case",
+        switch_to_title_case, "Switch to title case",
+        switch_to_upper_camel_case, "Switch to upper camel case",
         page_up, "Move page up",
         page_down, "Move page down",
         half_page_up, "Move half page up",
@@ -1351,6 +1358,66 @@ fn switch_to_lowercase(cx: &mut Context) {
     switch_case_impl(cx, |string| {
         string.chunks().map(|chunk| chunk.to_lowercase()).collect()
     });
+}
+
+enum CaseKind {
+    Kebab,
+    LowerCamel,
+    ShoutyKebab,
+    ShoutySnake,
+    Snake,
+    Title,
+    UpperCamel,
+}
+
+fn switch_case_by_kind(cx: &mut Context, kind: CaseKind) {
+    use heck::{
+        ToKebabCase, ToLowerCamelCase, ToShoutyKebabCase, ToShoutySnakeCase, ToSnakeCase,
+        ToTitleCase, ToUpperCamelCase,
+    };
+
+    switch_case_impl(cx, |string| {
+        string
+            .chunks()
+            .map(|chunk| match kind {
+                CaseKind::Kebab => chunk.to_kebab_case(),
+                CaseKind::LowerCamel => chunk.to_lower_camel_case(),
+                CaseKind::ShoutyKebab => chunk.to_shouty_kebab_case(),
+                CaseKind::ShoutySnake => chunk.to_shouty_snake_case(),
+                CaseKind::Snake => chunk.to_snake_case(),
+                CaseKind::Title => chunk.to_title_case(),
+                CaseKind::UpperCamel => chunk.to_upper_camel_case(),
+            })
+            .collect()
+    });
+}
+
+fn switch_to_kebab_case(cx: &mut Context) {
+    switch_case_by_kind(cx, CaseKind::Kebab)
+}
+
+fn switch_to_lower_camel_case(cx: &mut Context) {
+    switch_case_by_kind(cx, CaseKind::LowerCamel)
+}
+
+fn switch_to_shouty_kebab_case(cx: &mut Context) {
+    switch_case_by_kind(cx, CaseKind::ShoutyKebab)
+}
+
+fn switch_to_shouty_snake_case(cx: &mut Context) {
+    switch_case_by_kind(cx, CaseKind::ShoutySnake)
+}
+
+fn switch_to_snake_case(cx: &mut Context) {
+    switch_case_by_kind(cx, CaseKind::Snake)
+}
+
+fn switch_to_title_case(cx: &mut Context) {
+    switch_case_by_kind(cx, CaseKind::Title)
+}
+
+fn switch_to_upper_camel_case(cx: &mut Context) {
+    switch_case_by_kind(cx, CaseKind::UpperCamel)
 }
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
