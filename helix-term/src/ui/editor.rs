@@ -148,6 +148,7 @@ impl EditorView {
             Box::new(highlights)
         };
 
+        Self::render_rulers(editor, doc, view, inner, surface, theme);
         Self::render_text_highlights(
             doc,
             view.offset,
@@ -158,7 +159,6 @@ impl EditorView {
             &editor.config(),
         );
         Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
-        Self::render_rulers(editor, doc, view, inner, surface, theme);
 
         if is_focused {
             Self::render_focused_view_elements(view, doc, inner, theme, surface);
