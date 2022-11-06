@@ -3,6 +3,7 @@ pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
+use helix_vcs::Hunk;
 pub use lsp::*;
 use tui::text::Spans;
 pub use typed::*;
@@ -308,6 +309,10 @@ impl MappableCommand {
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
         goto_prev_diag, "Goto previous diagnostic",
+        goto_next_change, "Goto next change",
+        goto_prev_change, "Goto previous change",
+        goto_first_change, "Goto first change",
+        goto_last_change, "Goto last change",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
         goto_next_buffer, "Goto next buffer",
@@ -2913,6 +2918,93 @@ fn goto_prev_diag(cx: &mut Context) {
     };
 
     goto_pos(editor, pos);
+}
+
+fn goto_first_change(cx: &mut Context) {
+    goto_first_change_impl(cx, false);
+}
+
+fn goto_last_change(cx: &mut Context) {
+    goto_first_change_impl(cx, true);
+}
+
+fn goto_first_change_impl(cx: &mut Context, reverse: bool) {
+    let editor = &mut cx.editor;
+    let (_, doc) = current!(editor);
+    if let Some(handle) = doc.diff_handle() {
+        let hunk = {
+            let hunks = handle.hunks();
+            let idx = if reverse {
+                hunks.len().saturating_sub(1)
+            } else {
+                0
+            };
+            hunks.nth_hunk(idx)
+        };
+        if hunk != Hunk::NONE {
+            let pos = doc.text().line_to_char(hunk.after.start as usize);
+            goto_pos(editor, pos)
+        }
+    }
+}
+
+fn goto_next_change(cx: &mut Context) {
+    goto_next_change_impl(cx, Direction::Forward)
+}
+
+fn goto_prev_change(cx: &mut Context) {
+    goto_next_change_impl(cx, Direction::Backward)
+}
+
+fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
+    let count = cx.count() as u32 - 1;
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+        let doc_text = doc.text().slice(..);
+        let diff_handle = if let Some(diff_handle) = doc.diff_handle() {
+            diff_handle
+        } else {
+            editor.set_status("Diff is not available in current buffer");
+            return;
+        };
+
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            let cursor_line = range.cursor_line(doc_text) as u32;
+
+            let hunks = diff_handle.hunks();
+            let hunk_idx = match direction {
+                Direction::Forward => hunks
+                    .next_hunk(cursor_line)
+                    .map(|idx| (idx + count).min(hunks.len() - 1)),
+                Direction::Backward => hunks
+                    .prev_hunk(cursor_line)
+                    .map(|idx| idx.saturating_sub(count)),
+            };
+            // TODO refactor with let..else once MSRV reaches 1.65
+            let hunk_idx = if let Some(hunk_idx) = hunk_idx {
+                hunk_idx
+            } else {
+                return range;
+            };
+            let hunk = hunks.nth_hunk(hunk_idx);
+
+            let hunk_start = doc_text.line_to_char(hunk.after.start as usize);
+            if editor.mode == Mode::Select {
+                let head = if hunk_start + 1 < range.anchor {
+                    hunk_start
+                } else {
+                    hunk_start + 1
+                };
+                Range::new(range.anchor, head)
+            } else {
+                Range::new(hunk_start, hunk_start)
+            }
+        });
+
+        doc.set_selection(view.id, selection)
+    };
+    motion(cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
 }
 
 pub mod insert {
