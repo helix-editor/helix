@@ -1964,3 +1964,16 @@ roots = []
 [[grammar]]
 name = "ini"
 source = { git = "https://github.com/justinmk/tree-sitter-ini", rev = "4d247fb876b4ae6b347687de4a179511bf67fcbc" }
+
+[[language]]
+name = "janet"
+scope = "source.janet"
+injection-regex = "janet"
+file-types = ["janet"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+roots = []
+
+[[grammar]]
+name = "janet"
+source = { git = "https://github.com/GrayJack/tree-sitter-janet", rev = "1d002c23d4e952ce24a2e472d0f81ab0471ceb1b" }
