@@ -4815,12 +4815,12 @@ enum IncrementDirection {
 
 /// Increment object under cursor by count.
 fn increment(cx: &mut Context) {
-    increment_impl(cx, cx.count() as i64, IncrementDirection::Increase);
+    increment_impl(cx, IncrementDirection::Increase);
 }
 
 /// Decrement object under cursor by count.
 fn decrement(cx: &mut Context) {
-    increment_impl(cx, -(cx.count() as i64), IncrementDirection::Decrease);
+    increment_impl(cx, IncrementDirection::Decrease);
 }
 
 /// This function differs from find_next_char_impl in that it stops searching at the newline, but also
@@ -4844,7 +4844,7 @@ fn find_next_char_until_newline<M: CharMatcher>(
 }
 
 /// Decrement object under cursor by `amount`.
-fn increment_impl(cx: &mut Context, amount: i64, increment_direction: IncrementDirection) {
+fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
     // TODO: when incrementing or decrementing a number that gets a new digit or lose one, the
     // selection is updated improperly.
     find_char_impl(
@@ -4856,11 +4856,15 @@ fn increment_impl(cx: &mut Context, amount: i64, increment_direction: IncrementD
         1,
     );
 
+    let mut amount = match increment_direction {
+        IncrementDirection::Increase =>  cx.count() as i64,
+        IncrementDirection::Decrease =>  -(cx.count() as i64),
+    };
+
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
     let text = doc.text().slice(..);
 
-    let mut amount = amount;
 
     let increase_by = match cx.register {
         Some(value) => match value.eq(&'#') {
