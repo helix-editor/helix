@@ -1131,19 +1131,6 @@ impl Document {
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
     }
 
-    /// Gets the count pair (warnings, error) of warnings, error on document.
-    pub fn diagnostics_count(&self) -> (i32, i32) {
-        self.diagnostics().iter().fold((0, 0), |mut counts, diag| {
-            use helix_core::diagnostic::Severity;
-            match diag.severity {
-                Some(Severity::Warning) => counts.0 += 1,
-                Some(Severity::Error) | None => counts.1 += 1,
-                _ => {}
-            }
-            counts
-        })
-    }
-
     /// Get the document's auto pairs. If the document has a recognized
     /// language config with auto pairs configured, returns that;
     /// otherwise, falls back to the global auto pairs config. If the global

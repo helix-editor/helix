@@ -1,4 +1,5 @@
 use helix_core::{coords_at_pos, encoding, Position};
+use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
@@ -206,11 +207,40 @@ where
     );
 }
 
+/// Gets the count pair (warnings, error) of warnings, error on document.
+fn diagnostics_count(doc: &Document) -> (i32, i32) {
+    doc.diagnostics().iter().fold((0, 0), |mut counts, diag| {
+        use helix_core::diagnostic::Severity;
+        match diag.severity {
+            Some(Severity::Warning) => counts.0 += 1,
+            Some(Severity::Error) | None => counts.1 += 1,
+            _ => {}
+        }
+        counts
+    })
+}
+
+/// Gets the count pair (warnings, error) of warnings, error on workspace.
+fn workspace_diagnostic_count(editor: &Editor) -> (i32, i32) {
+    editor
+        .diagnostics
+        .values()
+        .flatten()
+        .fold((0, 0), |mut counts, diag| {
+            match diag.severity {
+                Some(DiagnosticSeverity::WARNING) => counts.0 += 1,
+                Some(DiagnosticSeverity::ERROR) | None => counts.1 += 1,
+                _ => {}
+            }
+            counts
+        })
+}
+
 fn render_diagnostics<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let (warnings, errors) = context.doc.diagnostics_count();
+    let (warnings, errors) = diagnostics_count(context.doc);
 
     if warnings > 0 {
         write(
@@ -235,9 +265,9 @@ fn render_workspace_diagnostics<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let (warnings, errors) = context.doc.diagnostics_count();
+    let (warnings, errors) = diagnostics_count(context.doc);
 
-    let (w_warnings, w_errors) = context.editor.workspace_diagnostic_count();
+    let (w_warnings, w_errors) = workspace_diagnostic_count(context.editor);
 
     if warnings > 0 || w_warnings > 0 {
         write(
