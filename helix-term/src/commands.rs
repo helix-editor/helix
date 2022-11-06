@@ -3476,6 +3476,7 @@ fn paste_impl(values: &[String], doc: &mut Document, view: &mut View, action: Pa
     let text = doc.text();
     let selection = doc.selection(view.id);
 
+    let mut offset = 0;
     let mut ranges = SmallVec::with_capacity(selection.len());
 
     let transaction = Transaction::change_by_selection(text, selection, |range| {
@@ -3501,8 +3502,11 @@ fn paste_impl(values: &[String], doc: &mut Document, view: &mut View, action: Pa
             .as_ref()
             .map(|content| content.chars().count())
             .unwrap_or_default();
+        let anchor = offset + pos;
 
-        ranges.push(Range::new(pos, pos + value_len));
+        let new_range = Range::new(anchor, anchor + value_len).with_direction(range.direction());
+        ranges.push(new_range);
+        offset += value_len;
 
         (pos, pos, value)
     });
