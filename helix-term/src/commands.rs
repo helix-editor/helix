@@ -4809,10 +4809,9 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
 }
 
 enum IncrementDirection {
-    Increase,
-    Decrease,
+    Increase = 1,
+    Decrease = -1,
 }
-
 /// Increment object under cursor by count.
 fn increment(cx: &mut Context) {
     increment_impl(cx, IncrementDirection::Increase);
@@ -4856,26 +4855,24 @@ fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
         1,
     );
 
-    let mut amount = match increment_direction {
-        IncrementDirection::Increase =>  cx.count() as i64,
-        IncrementDirection::Decrease =>  -(cx.count() as i64),
+    // Increase by 1 if `IncrementDirection` is `Increase` 
+    // Decrease by 1 if `IncrementDirection` is `Decrease` 
+    let sign = match increment_direction {
+        IncrementDirection::Increase => 1,
+        IncrementDirection::Decrease => -1,
+    };
+    let mut amount = sign * cx.count() as i64;
+
+    // If the register is `#` then increase or decrease the `amount` by 1 per element
+    let increase_by = if cx.register == Some('#') {
+        sign
+    } else {
+        0
     };
 
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
     let text = doc.text().slice(..);
-
-
-    let increase_by = match cx.register {
-        Some(value) => match value.eq(&'#') {
-            true => match increment_direction {
-                IncrementDirection::Increase => 1,
-                IncrementDirection::Decrease => -1,
-            },
-            false => 0,
-        },
-        None => 0,
-    };
 
     let changes: Vec<_> = selection
         .ranges()
