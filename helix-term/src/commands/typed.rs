@@ -1152,6 +1152,7 @@ fn hsplit(
     }
 
     let id = view!(cx.editor).doc;
+    let view_id = view!(cx.editor).id;
 
     if args.is_empty() {
         cx.editor.switch(id, Action::HorizontalSplit);
@@ -1160,6 +1161,22 @@ fn hsplit(
             cx.editor
                 .open(&PathBuf::from(arg.as_ref()), Action::HorizontalSplit)?;
         }
+    }
+
+    // check if there are views with height equal to 1
+    // if there are, close the newly created view
+    let mut reached_limit = false;
+    cx.editor.tree.views().for_each(|v| {
+        if v.0.area.height == 1 {
+            reached_limit = true;
+        }
+    });
+    if reached_limit {
+        cx.editor.set_error("Max number of splits reached");
+        cx.editor.close(view!(cx.editor).id);
+
+        // focus the view from which the split was called
+        cx.editor.focus(view_id);
     }
 
     Ok(())
@@ -1188,7 +1205,25 @@ fn hsplit_new(
         return Ok(());
     }
 
+    let view_id = view!(cx.editor).id;
+
     cx.editor.new_file(Action::HorizontalSplit);
+
+    // check if there are views with height equal to 1
+    // if there are, close the newly created view
+    let mut reached_limit = false;
+    cx.editor.tree.views().for_each(|v| {
+        if v.0.area.height == 1 {
+            reached_limit = true;
+        }
+    });
+    if reached_limit {
+        cx.editor.set_error("Max number of splits reached");
+        cx.editor.close(view!(cx.editor).id);
+
+        // focus the view from which the split was called
+        cx.editor.focus(view_id);
+    }
 
     Ok(())
 }
