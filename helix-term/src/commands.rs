@@ -1637,7 +1637,7 @@ fn search_impl(
                 wrapped: false,
             });
         }
-    } else if !all_matches.is_empty() {
+    } else if !all_matches.is_empty() && wrap_around {
         // There are matches but no next match
         // This means that we will wrap around
         let current_position = match direction {
