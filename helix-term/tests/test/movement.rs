@@ -64,7 +64,7 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn surround_by_character() -> anyhow::Result<()> {
     // Only pairs matching the passed character count
     test((
@@ -109,7 +109,7 @@ async fn surround_by_character() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn surround_inside_pair() -> anyhow::Result<()> {
     // Works at first character of buffer
     // TODO: Adjust test when opening pair failure is fixed
@@ -237,7 +237,7 @@ async fn surround_inside_pair() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn surround_around_pair() -> anyhow::Result<()> {
     // Works at first character of buffer
     // TODO: Adjust test when opening pair failure is fixed
