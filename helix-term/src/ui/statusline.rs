@@ -141,6 +141,7 @@ where
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
+        helix_view::editor::StatusLineElement::SearchPosition => render_search_position,
         helix_view::editor::StatusLineElement::Selections => render_selections,
         helix_view::editor::StatusLineElement::Position => render_position,
         helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
@@ -239,6 +240,19 @@ where
             Some(context.editor.theme.get("error")),
         );
         write(context, format!(" {} ", errors), None);
+    }
+}
+
+fn render_search_position<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    if let Some(m) = &context.editor.search_position {
+        write(
+            context,
+            format!(" [{}/{}] ", m.current_position, m.total_positions),
+            None,
+        );
     }
 }
 

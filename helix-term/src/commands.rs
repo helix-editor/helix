@@ -30,7 +30,7 @@ use helix_view::{
     apply_transaction,
     clipboard::ClipboardType,
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::{Action, Motion},
+    editor::{Action, Motion, SearchPosition},
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -1610,12 +1610,44 @@ fn search_impl(
     // it out, we need to add it back to the position of the selection.
     let mut offset = 0;
 
+    // Compare matches without taking text into account
+    // Text is different depending on if its forward or a backward search
+    // So we use start and end to tell them apart
+    let is_match_eq =
+        |m1: &regex::Match, m2: &regex::Match| m1.start() == m2.start() && m1.end() == m2.end();
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
     let mut mat = match direction {
         Direction::Forward => regex.find_at(contents, start),
         Direction::Backward => regex.find_iter(&contents[..start]).last(),
     };
+
+    // Find all matches in the document
+    // Then find the current match position inside all matches
+    // We then render that to the status line by setting editor.search_matches
+    let all_matches: Vec<_> = regex.find_iter(contents).collect();
+    if let Some(ref mat) = mat {
+        let current_position = all_matches
+            .iter()
+            .position(|this_m| is_match_eq(this_m, mat));
+        if let Some(current_position) = current_position {
+            editor.search_position = Some(SearchPosition {
+                current_position: current_position + 1,
+                total_positions: all_matches.len(),
+            });
+        }
+    } else if !all_matches.is_empty() {
+        // There are matches but no next match
+        // This means that we will wrap around
+        let current_position = match direction {
+            Direction::Forward => 1,
+            Direction::Backward => all_matches.len(),
+        };
+        editor.search_position = Some(SearchPosition {
+            current_position,
+            total_positions: all_matches.len(),
+        });
+    }
 
     if mat.is_none() {
         if wrap_around {
