@@ -101,7 +101,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-targets -- -D warnings
+          args: --workspace --all-targets -- -D warnings
 
       - name: Run cargo doc
         uses: actions-rs/cargo@v1

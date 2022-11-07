@@ -17,8 +17,8 @@ pub fn query_check() -> Result<(), DynError> {
         let language_name = &language.language_id;
         let grammar_name = language.grammar.as_ref().unwrap_or(language_name);
         for query_file in query_files {
-            let language = get_language(&grammar_name);
-            let query_text = read_query(&language_name, query_file);
+            let language = get_language(grammar_name);
+            let query_text = read_query(language_name, query_file);
             if let Ok(lang) = language {
                 if !query_text.is_empty() {
                     if let Err(reason) = Query::new(lang, &query_text) {

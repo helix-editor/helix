@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 
 /// Auto escape for shellwords usage.
-pub fn escape(input: &str) -> Cow<'_, str> {
+pub fn escape(input: Cow<str>) -> Cow<str> {
     if !input.chars().any(|x| x.is_ascii_whitespace()) {
-        Cow::Borrowed(input)
+        input
     } else if cfg!(unix) {
         Cow::Owned(input.chars().fold(String::new(), |mut buf, c| {
             if c.is_ascii_whitespace() {
@@ -17,18 +17,18 @@ pub fn escape(input: &str) -> Cow<'_, str> {
     }
 }
 
+enum State {
+    OnWhitespace,
+    Unquoted,
+    UnquotedEscaped,
+    Quoted,
+    QuoteEscaped,
+    Dquoted,
+    DquoteEscaped,
+}
+
 /// Get the vec of escaped / quoted / doublequoted filenames from the input str
 pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
-    enum State {
-        OnWhitespace,
-        Unquoted,
-        UnquotedEscaped,
-        Quoted,
-        QuoteEscaped,
-        Dquoted,
-        DquoteEscaped,
-    }
-
     use State::*;
 
     let mut state = Unquoted;
@@ -140,6 +140,70 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
     args
 }
 
+/// Checks that the input ends with an ascii whitespace character which is
+/// not escaped.
+///
+/// # Examples
+///
+/// ```rust
+/// use helix_core::shellwords::ends_with_whitespace;
+/// assert_eq!(ends_with_whitespace(" "), true);
+/// assert_eq!(ends_with_whitespace(":open "), true);
+/// assert_eq!(ends_with_whitespace(":open foo.txt "), true);
+/// assert_eq!(ends_with_whitespace(":open"), false);
+/// #[cfg(unix)]
+/// assert_eq!(ends_with_whitespace(":open a\\ "), false);
+/// #[cfg(unix)]
+/// assert_eq!(ends_with_whitespace(":open a\\ b.txt"), false);
+/// ```
+pub fn ends_with_whitespace(input: &str) -> bool {
+    use State::*;
+
+    // Fast-lane: the input must end with a whitespace character
+    // regardless of quoting.
+    if !input.ends_with(|c: char| c.is_ascii_whitespace()) {
+        return false;
+    }
+
+    let mut state = Unquoted;
+
+    for c in input.chars() {
+        state = match state {
+            OnWhitespace => match c {
+                '"' => Dquoted,
+                '\'' => Quoted,
+                '\\' if cfg!(unix) => UnquotedEscaped,
+                '\\' => OnWhitespace,
+                c if c.is_ascii_whitespace() => OnWhitespace,
+                _ => Unquoted,
+            },
+            Unquoted => match c {
+                '\\' if cfg!(unix) => UnquotedEscaped,
+                '\\' => Unquoted,
+                c if c.is_ascii_whitespace() => OnWhitespace,
+                _ => Unquoted,
+            },
+            UnquotedEscaped => Unquoted,
+            Quoted => match c {
+                '\\' if cfg!(unix) => QuoteEscaped,
+                '\\' => Quoted,
+                '\'' => OnWhitespace,
+                _ => Quoted,
+            },
+            QuoteEscaped => Quoted,
+            Dquoted => match c {
+                '\\' if cfg!(unix) => DquoteEscaped,
+                '\\' => Dquoted,
+                '"' => OnWhitespace,
+                _ => Dquoted,
+            },
+            DquoteEscaped => Dquoted,
+        }
+    }
+
+    matches!(state, OnWhitespace)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -247,15 +311,15 @@ mod test {
     #[test]
     #[cfg(unix)]
     fn test_escaping_unix() {
-        assert_eq!(escape("foobar"), Cow::Borrowed("foobar"));
-        assert_eq!(escape("foo bar"), Cow::Borrowed("foo\\ bar"));
-        assert_eq!(escape("foo\tbar"), Cow::Borrowed("foo\\\tbar"));
+        assert_eq!(escape("foobar".into()), Cow::Borrowed("foobar"));
+        assert_eq!(escape("foo bar".into()), Cow::Borrowed("foo\\ bar"));
+        assert_eq!(escape("foo\tbar".into()), Cow::Borrowed("foo\\\tbar"));
     }
 
     #[test]
     #[cfg(windows)]
     fn test_escaping_windows() {
-        assert_eq!(escape("foobar"), Cow::Borrowed("foobar"));
-        assert_eq!(escape("foo bar"), Cow::Borrowed("\"foo bar\""));
+        assert_eq!(escape("foobar".into()), Cow::Borrowed("foobar"));
+        assert_eq!(escape("foo bar".into()), Cow::Borrowed("\"foo bar\""));
     }
 }
