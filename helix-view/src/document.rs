@@ -171,7 +171,7 @@ pub struct Document {
     version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
 
     // when document was used for most-recent-used buffer picker
-    pub used_at: std::time::Instant,
+    pub focused_at: std::time::Instant,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -499,7 +499,7 @@ impl Document {
             diff_handle: None,
             config,
             version_control_head: None,
-            used_at: std::time::Instant::now(),
+            focused_at: std::time::Instant::now(),
         }
     }
     pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
@@ -914,7 +914,7 @@ impl Document {
 
     /// Mark document as recent used for MRU sorting
     pub fn mark_as_used(&mut self) {
-        self.used_at = std::time::Instant::now();
+        self.focused_at = std::time::Instant::now();
     }
 
     /// Remove a view's selection and inlay hints from this document.
