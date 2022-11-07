@@ -2238,6 +2238,7 @@ fn ensure_selections_forward(cx: &mut Context) {
 
 fn enter_insert_mode(cx: &mut Context) {
     cx.editor.mode = Mode::Insert;
+    cx.editor.search_position = None;
 }
 
 // inserts at the start of each selection
