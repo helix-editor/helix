@@ -4809,8 +4809,8 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
 }
 
 enum IncrementDirection {
-    Increase = 1,
-    Decrease = -1,
+    Increase,
+    Decrease,
 }
 /// Increment object under cursor by count.
 fn increment(cx: &mut Context) {
