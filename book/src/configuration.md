@@ -102,6 +102,7 @@ The following statusline elements can be configured:
 | `total-line-numbers` | The total line numbers of the opened file |
 | `file-type` | The type of the opened file |
 | `diagnostics` | The number of warnings and/or errors |
+| `searchposition` | The current search position |
 | `selections` | The number of active selections |
 | `position` | The cursor position |
 | `position-percentage` | The cursor position as a percentage of the total number of lines |
