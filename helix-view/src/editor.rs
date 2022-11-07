@@ -174,6 +174,7 @@ pub struct Config {
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
+    pub line_numbers_width: u16,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -610,6 +611,7 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
+            line_numbers_width: 5,
         }
     }
 }
@@ -1034,7 +1036,13 @@ impl Editor {
                     .try_get(self.tree.focus)
                     .filter(|v| id == v.doc) // Different Document
                     .cloned()
-                    .unwrap_or_else(|| View::new(id, self.config().gutters.clone()));
+                    .unwrap_or_else(|| {
+                        View::new(
+                            id,
+                            self.config().gutters.clone(),
+                            self.config().line_numbers_width,
+                        )
+                    });
                 let view_id = self.tree.split(
                     view,
                     match action {
@@ -1177,7 +1185,11 @@ impl Editor {
                 .map(|(&doc_id, _)| doc_id)
                 .next()
                 .unwrap_or_else(|| self.new_document(Document::default()));
-            let view = View::new(doc_id, self.config().gutters.clone());
+            let view = View::new(
+                doc_id,
+                self.config().gutters.clone(),
+                self.config().line_numbers_width,
+            );
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
             doc.ensure_view_init(view_id);

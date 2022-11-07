@@ -116,14 +116,18 @@ impl fmt::Debug for View {
 }
 
 impl View {
-    pub fn new(doc: DocumentId, gutter_types: Vec<crate::editor::GutterType>) -> Self {
+    pub fn new(
+        doc: DocumentId,
+        gutter_types: Vec<crate::editor::GutterType>,
+        line_numbers_width: u16,
+    ) -> Self {
         let mut gutters: Vec<(Gutter, usize)> = vec![];
         let mut gutter_offset = 0;
         use crate::editor::GutterType;
         for gutter_type in &gutter_types {
             let width = match gutter_type {
                 GutterType::Diagnostics => 1,
-                GutterType::LineNumbers => 5,
+                GutterType::LineNumbers => line_numbers_width,
                 GutterType::Spacer => 1,
             };
             gutter_offset += width;
