@@ -1634,6 +1634,7 @@ fn search_impl(
             editor.search_position = Some(SearchPosition {
                 current_position: current_position + 1,
                 total_positions: all_matches.len(),
+                wrapped: false,
             });
         }
     } else if !all_matches.is_empty() {
@@ -1646,6 +1647,7 @@ fn search_impl(
         editor.search_position = Some(SearchPosition {
             current_position,
             total_positions: all_matches.len(),
+            wrapped: true,
         });
     }
 

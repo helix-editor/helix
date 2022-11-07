@@ -762,6 +762,8 @@ pub struct SearchPosition {
     pub current_position: usize,
     /// The total number of matches
     pub total_positions: usize,
+    /// True if we had wrapped
+    pub wrapped: bool,
 }
 
 impl Editor {
