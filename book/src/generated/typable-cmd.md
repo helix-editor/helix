@@ -44,6 +44,7 @@
 | `:show-directory`, `:pwd` | Show the current working directory. |
 | `:encoding` | Set encoding. Based on `https://encoding.spec.whatwg.org`. |
 | `:reload` | Discard changes and reload from the source file. |
+| `:reload-all`, `:ra` | Discard changes and reload all documents from the source file. |
 | `:update` | Write changes only if the file has been modified. |
 | `:lsp-workspace-command` | Open workspace command picker |
 | `:lsp-restart` | Restarts the Language Server that is in use by the current doc |
