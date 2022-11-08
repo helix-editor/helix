@@ -103,7 +103,7 @@ via the `HELIX_RUNTIME` environment variable.
 | -------------------- | ------------------------------------------------ |
 | Windows (Cmd)        | `xcopy /e /i runtime %AppData%\helix\runtime`    |
 | Windows (PowerShell) | `xcopy /e /i runtime $Env:AppData\helix\runtime` |
-| Linux / MacOS        | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
+| Linux / macOS        | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
 
 Starting with Windows Vista you can also create symbolic links on Windows. Note that this requires
 elevated privileges - i.e. PowerShell or Cmd must be run as administrator.
