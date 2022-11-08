@@ -3,6 +3,11 @@
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z_]*$"))
 
+; class
+(class_name_statement (name) @type)
+(class_definition (name) @type)
+
+
 ; Function calls
 
 (attribute_call (identifier) @function)

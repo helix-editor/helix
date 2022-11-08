@@ -8,13 +8,15 @@ use crate::{
 };
 
 use arc_swap::{ArcSwap, Guard};
+use bitflags::bitflags;
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
 use std::{
     borrow::Cow,
     cell::RefCell,
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashMap, VecDeque},
     fmt,
+    mem::replace,
     path::Path,
     str::FromStr,
     sync::Arc,
@@ -59,17 +61,23 @@ pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
 }
 
+impl Default for Configuration {
+    fn default() -> Self {
+        crate::config::default_syntax_loader()
+    }
+}
+
 // largely based on tree-sitter/cli/src/loader.rs
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
     pub language_id: String, // c-sharp, rust
-    pub scope: String,           // source.rust
-    pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
+    pub scope: String,             // source.rust
+    pub file_types: Vec<FileType>, // filename extension or ends_with? <Gemfile, rb, etc>
     #[serde(default)]
     pub shebangs: Vec<String>, // interpreter(s) associated with language
-    pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
+    pub roots: Vec<String>,        // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
     pub max_line_length: Option<usize>,
 
@@ -78,6 +86,9 @@ pub struct LanguageConfiguration {
 
     #[serde(default)]
     pub auto_format: bool,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub formatter: Option<FormatterConfiguration>,
 
     #[serde(default)]
     pub diagnostic_severity: Severity,
@@ -114,6 +125,78 @@ pub struct LanguageConfiguration {
     pub rulers: Option<Vec<u16>>, // if set, override editor's rulers
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum FileType {
+    /// The extension of the file, either the `Path::extension` or the full
+    /// filename if the file does not have an extension.
+    Extension(String),
+    /// The suffix of a file. This is compared to a given file's absolute
+    /// path, so it can be used to detect files based on their directories.
+    Suffix(String),
+}
+
+impl Serialize for FileType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeMap;
+
+        match self {
+            FileType::Extension(extension) => serializer.serialize_str(extension),
+            FileType::Suffix(suffix) => {
+                let mut map = serializer.serialize_map(Some(1))?;
+                map.serialize_entry("suffix", &suffix.replace(std::path::MAIN_SEPARATOR, "/"))?;
+                map.end()
+            }
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for FileType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        struct FileTypeVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for FileTypeVisitor {
+            type Value = FileType;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("string or table")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(FileType::Extension(value.to_string()))
+            }
+
+            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+            where
+                M: serde::de::MapAccess<'de>,
+            {
+                match map.next_entry::<String, String>()? {
+                    Some((key, suffix)) if key == "suffix" => Ok(FileType::Suffix(
+                        suffix.replace('/', &std::path::MAIN_SEPARATOR.to_string()),
+                    )),
+                    Some((key, _value)) => Err(serde::de::Error::custom(format!(
+                        "unknown key in `file-types` list: {}",
+                        key
+                    ))),
+                    None => Err(serde::de::Error::custom(
+                        "expected a `suffix` key in the `file-types` entry",
+                    )),
+                }
+            }
+        }
+
+        deserializer.deserialize_any(FileTypeVisitor)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageServerConfiguration {
@@ -126,7 +209,16 @@ pub struct LanguageServerConfiguration {
     pub language_id: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct FormatterConfiguration {
+    pub command: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub args: Vec<String>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AdvancedCompletion {
     pub name: Option<String>,
@@ -134,14 +226,14 @@ pub struct AdvancedCompletion {
     pub default: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case", untagged)]
 pub enum DebugConfigCompletion {
     Named(String),
     Advanced(AdvancedCompletion),
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum DebugArgumentValue {
     String(String),
@@ -149,7 +241,7 @@ pub enum DebugArgumentValue {
     Boolean(bool),
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DebugTemplate {
     pub name: String,
@@ -158,7 +250,7 @@ pub struct DebugTemplate {
     pub args: HashMap<String, DebugArgumentValue>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DebugAdapterConfig {
     pub name: String,
@@ -174,7 +266,7 @@ pub struct DebugAdapterConfig {
 }
 
 // Different workarounds for adapters' differences
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct DebuggerQuirks {
     #[serde(default)]
     pub absolute_paths: bool,
@@ -188,7 +280,7 @@ pub struct IndentationConfiguration {
 }
 
 /// Configuration for auto pairs
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields, untagged)]
 pub enum AutoPairConfig {
     /// Enables or disables auto pairing. False means disabled. True means to use the default pairs.
@@ -322,7 +414,7 @@ impl TextObjectQuery {
     }
 }
 
-fn read_query(language: &str, filename: &str) -> String {
+pub fn read_query(language: &str, filename: &str) -> String {
     static INHERITS_REGEX: Lazy<Regex> =
         Lazy::new(|| Regex::new(r";+\s*inherits\s*:?\s*([a-z_,()-]+)\s*").unwrap());
 
@@ -341,20 +433,24 @@ fn read_query(language: &str, filename: &str) -> String {
 
 impl LanguageConfiguration {
     fn initialize_highlight(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
-        let language = self.language_id.to_ascii_lowercase();
-
-        let highlights_query = read_query(&language, "highlights.scm");
+        let highlights_query = read_query(&self.language_id, "highlights.scm");
         // always highlight syntax errors
         // highlights_query += "\n(ERROR) @error";
 
-        let injections_query = read_query(&language, "injections.scm");
-        let locals_query = read_query(&language, "locals.scm");
+        let injections_query = read_query(&self.language_id, "injections.scm");
+        let locals_query = read_query(&self.language_id, "locals.scm");
 
         if highlights_query.is_empty() {
             None
         } else {
             let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
-                .map_err(|e| log::info!("{}", e))
+                .map_err(|err| {
+                    log::error!(
+                        "Failed to load tree-sitter parser for language {:?}: {}",
+                        self.language_id,
+                        err
+                    )
+                })
                 .ok()?;
             let config = HighlightConfiguration::new(
                 language,
@@ -362,7 +458,8 @@ impl LanguageConfiguration {
                 &injections_query,
                 &locals_query,
             )
-            .unwrap_or_else(|query_error| panic!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar fetch' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, query_error));
+            .map_err(|err| log::error!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar fetch' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, err))
+            .ok()?;
 
             config.configure(scopes);
             Some(Arc::new(config))
@@ -387,34 +484,39 @@ impl LanguageConfiguration {
 
     pub fn indent_query(&self) -> Option<&Query> {
         self.indent_query
-            .get_or_init(|| {
-                let lang_name = self.language_id.to_ascii_lowercase();
-                let query_text = read_query(&lang_name, "indents.scm");
-                if query_text.is_empty() {
-                    return None;
-                }
-                let lang = self.highlight_config.get()?.as_ref()?.language;
-                Query::new(lang, &query_text).ok()
-            })
+            .get_or_init(|| self.load_query("indents.scm"))
             .as_ref()
     }
 
     pub fn textobject_query(&self) -> Option<&TextObjectQuery> {
         self.textobject_query
-            .get_or_init(|| -> Option<TextObjectQuery> {
-                let lang_name = self.language_id.to_ascii_lowercase();
-                let query_text = read_query(&lang_name, "textobjects.scm");
-                let lang = self.highlight_config.get()?.as_ref()?.language;
-                let query = Query::new(lang, &query_text)
-                    .map_err(|e| log::error!("Failed to parse textobjects.scm queries: {}", e))
-                    .ok()?;
-                Some(TextObjectQuery { query })
+            .get_or_init(|| {
+                self.load_query("textobjects.scm")
+                    .map(|query| TextObjectQuery { query })
             })
             .as_ref()
     }
 
     pub fn scope(&self) -> &str {
         &self.scope
+    }
+
+    fn load_query(&self, kind: &str) -> Option<Query> {
+        let query_text = read_query(&self.language_id, kind);
+        if query_text.is_empty() {
+            return None;
+        }
+        let lang = self.highlight_config.get()?.as_ref()?.language;
+        Query::new(lang, &query_text)
+            .map_err(|e| {
+                log::error!(
+                    "Failed to parse {} queries for {}: {}",
+                    kind,
+                    self.language_id,
+                    e
+                )
+            })
+            .ok()
     }
 }
 
@@ -424,7 +526,8 @@ impl LanguageConfiguration {
 pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
-    language_config_ids_by_file_type: HashMap<String, usize>, // Vec<usize>
+    language_config_ids_by_extension: HashMap<String, usize>, // Vec<usize>
+    language_config_ids_by_suffix: HashMap<String, usize>,
     language_config_ids_by_shebang: HashMap<String, usize>,
 
     scopes: ArcSwap<Vec<String>>,
@@ -434,7 +537,8 @@ impl Loader {
     pub fn new(config: Configuration) -> Self {
         let mut loader = Self {
             language_configs: Vec::new(),
-            language_config_ids_by_file_type: HashMap::new(),
+            language_config_ids_by_extension: HashMap::new(),
+            language_config_ids_by_suffix: HashMap::new(),
             language_config_ids_by_shebang: HashMap::new(),
             scopes: ArcSwap::from_pointee(Vec::new()),
         };
@@ -445,9 +549,14 @@ impl Loader {
 
             for file_type in &config.file_types {
                 // entry().or_insert(Vec::new).push(language_id);
-                loader
-                    .language_config_ids_by_file_type
-                    .insert(file_type.clone(), language_id);
+                match file_type {
+                    FileType::Extension(extension) => loader
+                        .language_config_ids_by_extension
+                        .insert(extension.clone(), language_id),
+                    FileType::Suffix(suffix) => loader
+                        .language_config_ids_by_suffix
+                        .insert(suffix.clone(), language_id),
+                };
             }
             for shebang in &config.shebangs {
                 loader
@@ -467,11 +576,22 @@ impl Loader {
         let configuration_id = path
             .file_name()
             .and_then(|n| n.to_str())
-            .and_then(|file_name| self.language_config_ids_by_file_type.get(file_name))
+            .and_then(|file_name| self.language_config_ids_by_extension.get(file_name))
             .or_else(|| {
                 path.extension()
                     .and_then(|extension| extension.to_str())
-                    .and_then(|extension| self.language_config_ids_by_file_type.get(extension))
+                    .and_then(|extension| self.language_config_ids_by_extension.get(extension))
+            })
+            .or_else(|| {
+                self.language_config_ids_by_suffix
+                    .iter()
+                    .find_map(|(file_type, id)| {
+                        if path.to_str()?.ends_with(file_type) {
+                            Some(id)
+                        } else {
+                            None
+                        }
+                    })
             });
 
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
@@ -582,6 +702,7 @@ impl Syntax {
             tree: None,
             config,
             depth: 0,
+            flags: LayerUpdateFlags::empty(),
             ranges: vec![Range {
                 start_byte: 0,
                 end_byte: usize::MAX,
@@ -644,9 +765,10 @@ impl Syntax {
                 }
             }
 
-            for layer in &mut self.layers.values_mut() {
+            for layer in self.layers.values_mut() {
                 // The root layer always covers the whole range (0..usize::MAX)
                 if layer.depth == 0 {
+                    layer.flags = LayerUpdateFlags::MODIFIED;
                     continue;
                 }
 
@@ -677,6 +799,8 @@ impl Syntax {
                                 edit.new_end_position,
                                 point_sub(range.end_point, edit.old_end_position),
                             );
+
+                            layer.flags |= LayerUpdateFlags::MOVED;
                         }
                         // if the edit starts in the space before and extends into the range
                         else if edit.start_byte < range.start_byte {
@@ -691,11 +815,13 @@ impl Syntax {
                                 edit.new_end_position,
                                 point_sub(range.end_point, edit.old_end_position),
                             );
+                            layer.flags = LayerUpdateFlags::MODIFIED;
                         }
                         // If the edit is an insertion at the start of the tree, shift
                         else if edit.start_byte == range.start_byte && is_pure_insertion {
                             range.start_byte = edit.new_end_byte;
                             range.start_point = edit.new_end_position;
+                            layer.flags |= LayerUpdateFlags::MOVED;
                         } else {
                             range.end_byte = range
                                 .end_byte
@@ -705,6 +831,7 @@ impl Syntax {
                                 edit.new_end_position,
                                 point_sub(range.end_point, edit.old_end_position),
                             );
+                            layer.flags = LayerUpdateFlags::MODIFIED;
                         }
                     }
                 }
@@ -719,27 +846,33 @@ impl Syntax {
 
             let source_slice = source.slice(..);
 
-            let mut touched = HashSet::new();
-
-            // TODO: we should be able to avoid editing & parsing layers with ranges earlier in the document before the edit
-
             while let Some(layer_id) = queue.pop_front() {
-                // Mark the layer as touched
-                touched.insert(layer_id);
-
                 let layer = &mut self.layers[layer_id];
+
+                // Mark the layer as touched
+                layer.flags |= LayerUpdateFlags::TOUCHED;
 
                 // If a tree already exists, notify it of changes.
                 if let Some(tree) = &mut layer.tree {
-                    for edit in edits.iter().rev() {
-                        // Apply the edits in reverse.
-                        // If we applied them in order then edit 1 would disrupt the positioning of edit 2.
-                        tree.edit(edit);
+                    if layer
+                        .flags
+                        .intersects(LayerUpdateFlags::MODIFIED | LayerUpdateFlags::MOVED)
+                    {
+                        for edit in edits.iter().rev() {
+                            // Apply the edits in reverse.
+                            // If we applied them in order then edit 1 would disrupt the positioning of edit 2.
+                            tree.edit(edit);
+                        }
                     }
-                }
 
-                // Re-parse the tree.
-                layer.parse(&mut ts_parser.parser, source)?;
+                    if layer.flags.contains(LayerUpdateFlags::MODIFIED) {
+                        // Re-parse the tree.
+                        layer.parse(&mut ts_parser.parser, source)?;
+                    }
+                } else {
+                    // always parse if this layer has never been parsed before
+                    layer.parse(&mut ts_parser.parser, source)?;
+                }
 
                 // Switch to an immutable borrow.
                 let layer = &self.layers[layer_id];
@@ -752,7 +885,7 @@ impl Syntax {
                 );
                 let mut injections = Vec::new();
                 for mat in matches {
-                    let (language_name, content_node, include_children) = injection_for_match(
+                    let (language_name, content_node, included_children) = injection_for_match(
                         &layer.config,
                         &layer.config.injections_query,
                         &mat,
@@ -769,7 +902,7 @@ impl Syntax {
                     {
                         if let Some(config) = (injection_callback)(&language_name) {
                             let ranges =
-                                intersect_ranges(&layer.ranges, &[content_node], include_children);
+                                intersect_ranges(&layer.ranges, &[content_node], included_children);
 
                             if !ranges.is_empty() {
                                 injections.push((config, ranges));
@@ -781,7 +914,10 @@ impl Syntax {
                 // Process combined injections.
                 if let Some(combined_injections_query) = &layer.config.combined_injections_query {
                     let mut injections_by_pattern_index =
-                        vec![(None, Vec::new(), false); combined_injections_query.pattern_count()];
+                        vec![
+                            (None, Vec::new(), IncludedChildren::default());
+                            combined_injections_query.pattern_count()
+                        ];
                     let matches = cursor.matches(
                         combined_injections_query,
                         layer.tree().root_node(),
@@ -789,7 +925,7 @@ impl Syntax {
                     );
                     for mat in matches {
                         let entry = &mut injections_by_pattern_index[mat.pattern_index];
-                        let (language_name, content_node, include_children) = injection_for_match(
+                        let (language_name, content_node, included_children) = injection_for_match(
                             &layer.config,
                             combined_injections_query,
                             &mat,
@@ -801,16 +937,16 @@ impl Syntax {
                         if let Some(content_node) = content_node {
                             entry.1.push(content_node);
                         }
-                        entry.2 = include_children;
+                        entry.2 = included_children;
                     }
-                    for (lang_name, content_nodes, includes_children) in injections_by_pattern_index
+                    for (lang_name, content_nodes, included_children) in injections_by_pattern_index
                     {
                         if let (Some(lang_name), false) = (lang_name, content_nodes.is_empty()) {
                             if let Some(config) = (injection_callback)(&lang_name) {
                                 let ranges = intersect_ranges(
                                     &layer.ranges,
                                     &content_nodes,
-                                    includes_children,
+                                    included_children,
                                 );
                                 if !ranges.is_empty() {
                                     injections.push((config, ranges));
@@ -840,6 +976,8 @@ impl Syntax {
                             config,
                             depth,
                             ranges,
+                            // set the modified flag to ensure the layer is parsed
+                            flags: LayerUpdateFlags::empty(),
                         })
                     });
 
@@ -853,8 +991,11 @@ impl Syntax {
             // Return the cursor back in the pool.
             ts_parser.cursors.push(cursor);
 
-            // Remove all untouched layers
-            self.layers.retain(|id, _| touched.contains(&id));
+            // Reset all `LayerUpdateFlags` and remove all untouched layers
+            self.layers.retain(|_, layer| {
+                replace(&mut layer.flags, LayerUpdateFlags::empty())
+                    .contains(LayerUpdateFlags::TOUCHED)
+            });
 
             Ok(())
         })
@@ -953,6 +1094,16 @@ impl Syntax {
     // TODO: Folding
 }
 
+bitflags! {
+    /// Flags that track the status of a layer
+    /// in the `Sytaxn::update` function
+    struct LayerUpdateFlags : u32{
+        const MODIFIED = 0b001;
+        const MOVED = 0b010;
+        const TOUCHED = 0b100;
+    }
+}
+
 #[derive(Debug)]
 pub struct LanguageLayer {
     // mode
@@ -960,7 +1111,8 @@ pub struct LanguageLayer {
     pub config: Arc<HighlightConfiguration>,
     pub(crate) tree: Option<Tree>,
     pub ranges: Vec<Range>,
-    pub depth: usize,
+    pub depth: u32,
+    flags: LayerUpdateFlags,
 }
 
 impl LanguageLayer {
@@ -970,7 +1122,9 @@ impl LanguageLayer {
     }
 
     fn parse(&mut self, parser: &mut Parser, source: &Rope) -> Result<(), Error> {
-        parser.set_included_ranges(&self.ranges).unwrap();
+        parser
+            .set_included_ranges(&self.ranges)
+            .map_err(|_| Error::InvalidRanges)?;
 
         parser
             .set_language(self.config.language)
@@ -1120,6 +1274,7 @@ pub struct Highlight(pub usize);
 pub enum Error {
     Cancelled,
     InvalidLanguage,
+    InvalidRanges,
     Unknown,
 }
 
@@ -1173,7 +1328,7 @@ struct HighlightIter<'a> {
     layers: Vec<HighlightIterLayer<'a>>,
     iter_count: usize,
     next_event: Option<HighlightEvent>,
-    last_highlight_range: Option<(usize, usize, usize)>,
+    last_highlight_range: Option<(usize, usize, u32)>,
 }
 
 // Adapter to convert rope chunks to bytes
@@ -1206,7 +1361,7 @@ struct HighlightIterLayer<'a> {
     config: &'a HighlightConfiguration,
     highlight_end_stack: Vec<usize>,
     scope_stack: Vec<LocalScope<'a>>,
-    depth: usize,
+    depth: u32,
     ranges: &'a [Range],
 }
 
@@ -1341,8 +1496,8 @@ impl HighlightConfiguration {
     /// Tree-sitter syntax-highlighting queries specify highlights in the form of dot-separated
     /// highlight names like `punctuation.bracket` and `function.method.builtin`. Consumers of
     /// these queries can choose to recognize highlights with different levels of specificity.
-    /// For example, the string `function.builtin` will match against `function.method.builtin`
-    /// and `function.builtin.constructor`, but will not match `function.method`.
+    /// For example, the string `function.builtin` will match against `function.builtin.constructor`
+    /// but will not match `function.method.builtin` and `function.method`.
     ///
     /// When highlighting, results are returned as `Highlight` values, which contain the index
     /// of the matched highlight this list of highlight names.
@@ -1362,11 +1517,13 @@ impl HighlightConfiguration {
                     let recognized_name = recognized_name;
                     let mut len = 0;
                     let mut matches = true;
-                    for part in recognized_name.split('.') {
-                        len += 1;
-                        if !capture_parts.contains(&part) {
-                            matches = false;
-                            break;
+                    for (i, part) in recognized_name.split('.').enumerate() {
+                        match capture_parts.get(i) {
+                            Some(capture_part) if *capture_part == part => len += 1,
+                            _ => {
+                                matches = false;
+                                break;
+                            }
                         }
                     }
                     if matches && len > best_match_len {
@@ -1408,6 +1565,19 @@ impl<'a> HighlightIterLayer<'a> {
     }
 }
 
+#[derive(Clone)]
+enum IncludedChildren {
+    None,
+    All,
+    Unnamed,
+}
+
+impl Default for IncludedChildren {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
 // Compute the ranges that should be included when parsing an injection.
 // This takes into account three things:
 // * `parent_ranges` - The ranges must all fall within the *current* layer's ranges.
@@ -1420,7 +1590,7 @@ impl<'a> HighlightIterLayer<'a> {
 fn intersect_ranges(
     parent_ranges: &[Range],
     nodes: &[Node],
-    includes_children: bool,
+    included_children: IncludedChildren,
 ) -> Vec<Range> {
     let mut cursor = nodes[0].walk();
     let mut result = Vec::new();
@@ -1444,11 +1614,15 @@ fn intersect_ranges(
 
         for excluded_range in node
             .children(&mut cursor)
-            .filter_map(|child| {
-                if includes_children {
-                    None
-                } else {
-                    Some(child.range())
+            .filter_map(|child| match included_children {
+                IncludedChildren::None => Some(child.range()),
+                IncludedChildren::All => None,
+                IncludedChildren::Unnamed => {
+                    if child.is_named() {
+                        Some(child.range())
+                    } else {
+                        None
+                    }
                 }
             })
             .chain([following_range].iter().cloned())
@@ -1777,7 +1951,7 @@ fn injection_for_match<'a>(
     query: &'a Query,
     query_match: &QueryMatch<'a, 'a>,
     source: RopeSlice<'a>,
-) -> (Option<Cow<'a, str>>, Option<Node<'a>>, bool) {
+) -> (Option<Cow<'a, str>>, Option<Node<'a>>, IncludedChildren) {
     let content_capture_index = config.injection_content_capture_index;
     let language_capture_index = config.injection_language_capture_index;
 
@@ -1793,7 +1967,7 @@ fn injection_for_match<'a>(
         }
     }
 
-    let mut include_children = false;
+    let mut included_children = IncludedChildren::default();
     for prop in query.property_settings(query_match.pattern_index) {
         match prop.key.as_ref() {
             // In addition to specifying the language name via the text of a
@@ -1809,12 +1983,17 @@ fn injection_for_match<'a>(
             // `injection.content` node - only the ranges that belong to the
             // node itself. This can be changed using a `#set!` predicate that
             // sets the `injection.include-children` key.
-            "injection.include-children" => include_children = true,
+            "injection.include-children" => included_children = IncludedChildren::All,
+
+            // Some queries might only exclude named children but include unnamed
+            // children in their `injection.content` node. This can be enabled using
+            // a `#set!` predicate that sets the `injection.include-unnamed-children` key.
+            "injection.include-unnamed-children" => included_children = IncludedChildren::Unnamed,
             _ => {}
         }
     }
 
-    (language_name, content_node, include_children)
+    (language_name, content_node, included_children)
 }
 
 pub struct Merge<I> {
@@ -1951,6 +2130,57 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
     }
 }
 
+pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result {
+    pretty_print_tree_impl(fmt, node, true, None, 0)
+}
+
+fn pretty_print_tree_impl<W: fmt::Write>(
+    fmt: &mut W,
+    node: Node,
+    is_root: bool,
+    field_name: Option<&str>,
+    depth: usize,
+) -> fmt::Result {
+    fn is_visible(node: Node) -> bool {
+        node.is_missing()
+            || (node.is_named() && node.language().node_kind_is_visible(node.kind_id()))
+    }
+
+    if is_visible(node) {
+        let indentation_columns = depth * 2;
+        write!(fmt, "{:indentation_columns$}", "")?;
+
+        if let Some(field_name) = field_name {
+            write!(fmt, "{}: ", field_name)?;
+        }
+
+        write!(fmt, "({}", node.kind())?;
+    } else if is_root {
+        write!(fmt, "(\"{}\")", node.kind())?;
+    }
+
+    for child_idx in 0..node.child_count() {
+        if let Some(child) = node.child(child_idx) {
+            if is_visible(child) {
+                fmt.write_char('\n')?;
+            }
+
+            pretty_print_tree_impl(
+                fmt,
+                child,
+                false,
+                node.field_name_for_child(child_idx as u32),
+                depth + 1,
+            )?;
+        }
+    }
+
+    if is_visible(node) {
+        write!(fmt, ")")?;
+    }
+
+    Ok(())
+}
 #[cfg(test)]
 mod test {
     use super::*;
@@ -1971,7 +2201,7 @@ mod test {
         );
 
         let loader = Loader::new(Configuration { language: vec![] });
-        let language = get_language("Rust").unwrap();
+        let language = get_language("rust").unwrap();
 
         let query = Query::new(language, query_str).unwrap();
         let textobject = TextObjectQuery { query };
@@ -2031,7 +2261,7 @@ mod test {
 
         let loader = Loader::new(Configuration { language: vec![] });
 
-        let language = get_language("Rust").unwrap();
+        let language = get_language("rust").unwrap();
         let config = HighlightConfiguration::new(
             language,
             &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/highlights.scm")
@@ -2120,6 +2350,63 @@ mod test {
                 new_end_position: Point { row: 0, column: 14 }
             }]
         );
+    }
+
+    #[track_caller]
+    fn assert_pretty_print(source: &str, expected: &str, start: usize, end: usize) {
+        let source = Rope::from_str(source);
+
+        let loader = Loader::new(Configuration { language: vec![] });
+        let language = get_language("rust").unwrap();
+
+        let config = HighlightConfiguration::new(language, "", "", "").unwrap();
+        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader));
+
+        let root = syntax
+            .tree()
+            .root_node()
+            .descendant_for_byte_range(start, end)
+            .unwrap();
+
+        let mut output = String::new();
+        pretty_print_tree(&mut output, root).unwrap();
+
+        assert_eq!(expected, output);
+    }
+
+    #[test]
+    fn test_pretty_print() {
+        let source = r#"/// Hello"#;
+        assert_pretty_print(source, "(line_comment)", 0, source.len());
+
+        // A large tree should be indented with fields:
+        let source = r#"fn main() {
+            println!("Hello, World!");
+        }"#;
+        assert_pretty_print(
+            source,
+            concat!(
+                "(function_item\n",
+                "  name: (identifier)\n",
+                "  parameters: (parameters)\n",
+                "  body: (block\n",
+                "    (expression_statement\n",
+                "      (macro_invocation\n",
+                "        macro: (identifier)\n",
+                "        (token_tree\n",
+                "          (string_literal))))))",
+            ),
+            0,
+            source.len(),
+        );
+
+        // Selecting a token should print just that token:
+        let source = r#"fn main() {}"#;
+        assert_pretty_print(source, r#"("fn")"#, 0, 1);
+
+        // Error nodes are printed as errors:
+        let source = r#"}{"#;
+        assert_pretty_print(source, "(ERROR)", 0, source.len());
     }
 
     #[test]

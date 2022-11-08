@@ -1,10 +1,9 @@
 use std::{borrow::Cow, path::PathBuf};
 
 use crate::{
-    compositor::{Callback, Component, Compositor, Context, EventResult},
+    compositor::{Callback, Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
 };
-use crossterm::event::Event;
 use tui::{buffer::Buffer as Surface, text::Spans, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
@@ -41,7 +40,7 @@ impl Item for PathBuf {
     type Data = PathBuf;
 
     fn label(&self, root_path: &Self::Data) -> Spans {
-        self.strip_prefix(&root_path)
+        self.strip_prefix(root_path)
             .unwrap_or(self)
             .to_string_lossy()
             .into()
@@ -78,11 +77,12 @@ impl<T: Item> Menu<T> {
         editor_data: <T as Item>::Data,
         callback_fn: impl Fn(&mut Editor, Option<&T>, MenuEvent) + 'static,
     ) -> Self {
-        let mut menu = Self {
+        let matches = (0..options.len()).map(|i| (i, 0)).collect();
+        Self {
             options,
             editor_data,
             matcher: Box::new(Matcher::default()),
-            matches: Vec::new(),
+            matches,
             cursor: None,
             widths: Vec::new(),
             callback_fn: Box::new(callback_fn),
@@ -90,12 +90,7 @@ impl<T: Item> Menu<T> {
             size: (0, 0),
             viewport: (0, 0),
             recalculate: true,
-        };
-
-        // TODO: scoring on empty input should just use a fastpath
-        menu.score("");
-
-        menu
+        }
     }
 
     pub fn score(&mut self, pattern: &str) {
@@ -106,17 +101,15 @@ impl<T: Item> Menu<T> {
                 .iter()
                 .enumerate()
                 .filter_map(|(index, option)| {
-                    let text: String = option.filter_text(&self.editor_data).into();
+                    let text = option.filter_text(&self.editor_data);
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
                     self.matcher
                         .fuzzy_match(&text, pattern)
                         .map(|score| (index, score))
                 }),
         );
-        // matches.sort_unstable_by_key(|(_, score)| -score);
-        self.matches.sort_unstable_by_key(|(index, _score)| {
-            self.options[*index].sort_text(&self.editor_data)
-        });
+        // Order of equal elements needs to be preserved as LSP preselected items come in order of high to low priority
+        self.matches.sort_by_key(|(_, score)| -score);
 
         // reset cursor position
         self.cursor = None;
@@ -214,6 +207,14 @@ impl<T: Item> Menu<T> {
         })
     }
 
+    pub fn selection_mut(&mut self) -> Option<&mut T> {
+        self.cursor.and_then(|cursor| {
+            self.matches
+                .get(cursor)
+                .map(|(index, _score)| &mut self.options[*index])
+        })
+    }
+
     pub fn is_empty(&self) -> bool {
         self.matches.is_empty()
     }
@@ -226,9 +227,9 @@ impl<T: Item> Menu<T> {
 use super::PromptEvent as MenuEvent;
 
 impl<T: Item + 'static> Component for Menu<T> {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let event = match event {
-            Event::Key(event) => event,
+            Event::Key(event) => *event,
             _ => return EventResult::Ignored(None),
         };
 
@@ -237,7 +238,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             compositor.pop();
         }));
 
-        match event.into() {
+        match event {
             // esc or ctrl-c aborts the completion and closes the menu
             key!(Esc) | ctrl!('c') => {
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Abort);

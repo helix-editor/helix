@@ -1,5 +1,5 @@
 # Author: André Sá <enkodr@outlook.com>
-# Based on the AYU theme colors from https://github.com/dempfi/ayu 
+# Based on the AYU theme colors from https://github.com/dempfi/ayu
 
 # Syntax highlighting
 "type" = { fg = "blue" }
@@ -23,7 +23,7 @@
 "namespace" = { fg = "blue" }
 "markup.heading" = { fg = "orange" }
 "markup.list" = { fg = "yellow" }
-"markup.raw.block" = { bg = "grey", fg = "orange" } 
+"markup.raw.block" = { bg = "gray", fg = "orange" }
 "markup.link.url" = { fg = "blue" }
 "markup.link.text" = { fg = "yellow" }
 "markup.link.label" = { fg = "green" }
@@ -34,20 +34,22 @@
 
 # Interface
 "ui.background"= { bg = "background" }
-"ui.cursor" = { bg = "yellow", fg = "dark_gray" }
+"ui.cursor" = { bg = "green", fg = "dark_gray" }
+"ui.cursor.primary" = { bg = "orange", fg = "dark_gray" }
 "ui.cursor.match" = { fg = "orange" }
 "ui.linenr" = { fg = "dark_gray" }
 "ui.linenr.selected" = { fg = "orange" }
-"ui.statusline" = { bg = "black" }
+"ui.cursorline" = { bg = "black" }
+"ui.statusline" = { fg = "foreground", bg = "black" }
 "ui.popup" = { bg = "black" }
 "ui.window" = { fg = "dark_gray" }
-"ui.help" = { bg = "black" }
+"ui.help" = { fg = "foreground", bg = "black" }
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { bg = "dark_gray", fg = "foreground" }
 "ui.text.info" = { fg = "foreground" }
 "ui.virtual.whitespace" = { fg = "dark_gray" }
 "ui.virtual.ruler" = { bg = "black" }
-"ui.menu" = { bg = "black" }
+"ui.menu" = { fg = "foreground", bg = "black" }
 "ui.menu.selected" = { bg = "orange", fg = "background" }
 "ui.selection" = { bg = "dark_gray" }
 "warning" = { fg = "yellow" }
@@ -58,6 +60,8 @@
 "diagnostic.info"= { fg = "blue", modifiers = ["underlined"] }
 "diagnostic.warning"= { fg = "yellow", modifiers = ["underlined"] }
 "diagnostic.error"= { fg = "red", modifiers = ["underlined"] }
+"ui.bufferline" = { fg = "gray", bg = "black" }
+"ui.bufferline.active" = { fg = "foreground", bg = "background" }
 
 "special" = { fg = "orange" }
 

@@ -1,19 +1,37 @@
 use std::borrow::Cow;
 
+/// Auto escape for shellwords usage.
+pub fn escape(input: Cow<str>) -> Cow<str> {
+    if !input.chars().any(|x| x.is_ascii_whitespace()) {
+        input
+    } else if cfg!(unix) {
+        Cow::Owned(input.chars().fold(String::new(), |mut buf, c| {
+            if c.is_ascii_whitespace() {
+                buf.push('\\');
+            }
+            buf.push(c);
+            buf
+        }))
+    } else {
+        Cow::Owned(format!("\"{}\"", input))
+    }
+}
+
+enum State {
+    OnWhitespace,
+    Unquoted,
+    UnquotedEscaped,
+    Quoted,
+    QuoteEscaped,
+    Dquoted,
+    DquoteEscaped,
+}
+
 /// Get the vec of escaped / quoted / doublequoted filenames from the input str
 pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
-    enum State {
-        Normal,
-        NormalEscaped,
-        Quoted,
-        QuoteEscaped,
-        Dquoted,
-        DquoteEscaped,
-    }
-
     use State::*;
 
-    let mut state = Normal;
+    let mut state = Unquoted;
     let mut args: Vec<Cow<str>> = Vec::new();
     let mut escaped = String::with_capacity(input.len());
 
@@ -22,16 +40,7 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
 
     for (i, c) in input.char_indices() {
         state = match state {
-            Normal => match c {
-                '\\' => {
-                    if cfg!(unix) {
-                        escaped.push_str(&input[start..i]);
-                        start = i + 1;
-                        NormalEscaped
-                    } else {
-                        Normal
-                    }
-                }
+            OnWhitespace => match c {
                 '"' => {
                     end = i;
                     Dquoted
@@ -40,13 +49,38 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
                     end = i;
                     Quoted
                 }
+                '\\' => {
+                    if cfg!(unix) {
+                        escaped.push_str(&input[start..i]);
+                        start = i + 1;
+                        UnquotedEscaped
+                    } else {
+                        OnWhitespace
+                    }
+                }
                 c if c.is_ascii_whitespace() => {
                     end = i;
-                    Normal
+                    OnWhitespace
                 }
-                _ => Normal,
+                _ => Unquoted,
             },
-            NormalEscaped => Normal,
+            Unquoted => match c {
+                '\\' => {
+                    if cfg!(unix) {
+                        escaped.push_str(&input[start..i]);
+                        start = i + 1;
+                        UnquotedEscaped
+                    } else {
+                        Unquoted
+                    }
+                }
+                c if c.is_ascii_whitespace() => {
+                    end = i;
+                    OnWhitespace
+                }
+                _ => Unquoted,
+            },
+            UnquotedEscaped => Unquoted,
             Quoted => match c {
                 '\\' => {
                     if cfg!(unix) {
@@ -59,7 +93,7 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
                 }
                 '\'' => {
                     end = i;
-                    Normal
+                    OnWhitespace
                 }
                 _ => Quoted,
             },
@@ -76,7 +110,7 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
                 }
                 '"' => {
                     end = i;
-                    Normal
+                    OnWhitespace
                 }
                 _ => Dquoted,
             },
@@ -104,6 +138,70 @@ pub fn shellwords(input: &str) -> Vec<Cow<'_, str>> {
         }
     }
     args
+}
+
+/// Checks that the input ends with an ascii whitespace character which is
+/// not escaped.
+///
+/// # Examples
+///
+/// ```rust
+/// use helix_core::shellwords::ends_with_whitespace;
+/// assert_eq!(ends_with_whitespace(" "), true);
+/// assert_eq!(ends_with_whitespace(":open "), true);
+/// assert_eq!(ends_with_whitespace(":open foo.txt "), true);
+/// assert_eq!(ends_with_whitespace(":open"), false);
+/// #[cfg(unix)]
+/// assert_eq!(ends_with_whitespace(":open a\\ "), false);
+/// #[cfg(unix)]
+/// assert_eq!(ends_with_whitespace(":open a\\ b.txt"), false);
+/// ```
+pub fn ends_with_whitespace(input: &str) -> bool {
+    use State::*;
+
+    // Fast-lane: the input must end with a whitespace character
+    // regardless of quoting.
+    if !input.ends_with(|c: char| c.is_ascii_whitespace()) {
+        return false;
+    }
+
+    let mut state = Unquoted;
+
+    for c in input.chars() {
+        state = match state {
+            OnWhitespace => match c {
+                '"' => Dquoted,
+                '\'' => Quoted,
+                '\\' if cfg!(unix) => UnquotedEscaped,
+                '\\' => OnWhitespace,
+                c if c.is_ascii_whitespace() => OnWhitespace,
+                _ => Unquoted,
+            },
+            Unquoted => match c {
+                '\\' if cfg!(unix) => UnquotedEscaped,
+                '\\' => Unquoted,
+                c if c.is_ascii_whitespace() => OnWhitespace,
+                _ => Unquoted,
+            },
+            UnquotedEscaped => Unquoted,
+            Quoted => match c {
+                '\\' if cfg!(unix) => QuoteEscaped,
+                '\\' => Quoted,
+                '\'' => OnWhitespace,
+                _ => Quoted,
+            },
+            QuoteEscaped => Quoted,
+            Dquoted => match c {
+                '\\' if cfg!(unix) => DquoteEscaped,
+                '\\' => Dquoted,
+                '"' => OnWhitespace,
+                _ => Dquoted,
+            },
+            DquoteEscaped => Dquoted,
+        }
+    }
+
+    matches!(state, OnWhitespace)
 }
 
 #[cfg(test)]
@@ -194,5 +292,34 @@ mod test {
             //last ' just changes to quoted but since we dont have anything after it, it should be ignored
         ];
         assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn test_lists() {
+        let input =
+            r#":set statusline.center ["file-type","file-encoding"] '["list", "in", "qoutes"]'"#;
+        let result = shellwords(input);
+        let expected = vec![
+            Cow::from(":set"),
+            Cow::from("statusline.center"),
+            Cow::from(r#"["file-type","file-encoding"]"#),
+            Cow::from(r#"["list", "in", "qoutes"]"#),
+        ];
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_escaping_unix() {
+        assert_eq!(escape("foobar".into()), Cow::Borrowed("foobar"));
+        assert_eq!(escape("foo bar".into()), Cow::Borrowed("foo\\ bar"));
+        assert_eq!(escape("foo\tbar".into()), Cow::Borrowed("foo\\\tbar"));
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_escaping_windows() {
+        assert_eq!(escape("foobar".into()), Cow::Borrowed("foobar"));
+        assert_eq!(escape("foo bar".into()), Cow::Borrowed("\"foo bar\""));
     }
 }

@@ -1,12 +1,14 @@
 [
+  (AsmExpr)
+  (AssignExpr)
   (Block)
   (BlockExpr)
   (ContainerDecl)
-  (SwitchExpr)
-  (AssignExpr)
   (ErrorUnionExpr)
-  (Statement)
   (InitList)
+  (Statement)
+  (SwitchExpr)
+  (TestDecl)
 ] @indent
 
 [

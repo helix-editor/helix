@@ -45,6 +45,8 @@
 "ui.linenr" = { fg = "base0", bg = "base02" }
 # 当前行号栏
 "ui.linenr.selected" = { fg = "blue", modifiers = ["bold"] }
+#cursorline
+"ui.cursorline" = { bg = "base03" }
 
 # 状态栏
 "ui.statusline" = { fg = "base03", bg = "base0" }

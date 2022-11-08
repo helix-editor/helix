@@ -1,13 +1,16 @@
-use crate::compositor::{Component, Context, EventResult};
-use crossterm::event::{Event, KeyCode, KeyEvent};
-use helix_view::editor::CompleteAction;
+use crate::compositor::{Component, Context, Event, EventResult};
+use helix_view::{apply_transaction, editor::CompleteAction};
 use tui::buffer::Buffer as Surface;
 use tui::text::Spans;
 
 use std::borrow::Cow;
 
 use helix_core::{Change, Transaction};
-use helix_view::{graphics::Rect, Document, Editor};
+use helix_view::{
+    graphics::Rect,
+    input::{KeyCode, KeyEvent},
+    Document, Editor,
+};
 
 use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
@@ -63,7 +66,10 @@ impl menu::Item for CompletionItem {
                 Some(lsp::CompletionItemKind::EVENT) => "event",
                 Some(lsp::CompletionItemKind::OPERATOR) => "operator",
                 Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param",
-                Some(kind) => unimplemented!("{:?}", kind),
+                Some(kind) => {
+                    log::error!("Received unknown completion item kind: {:?}", kind);
+                    ""
+                }
                 None => "",
             }),
             // self.detail.as_deref().unwrap_or("")
@@ -89,11 +95,15 @@ impl Completion {
 
     pub fn new(
         editor: &Editor,
-        items: Vec<CompletionItem>,
+        mut items: Vec<CompletionItem>,
         offset_encoding: helix_lsp::OffsetEncoding,
         start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
+        // Sort completion items according to their preselect status (given by the LSP server)
+        items.sort_by_key(|item| !item.preselect.unwrap_or(false));
+
+        // Then create the menu
         let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
             fn item_to_transaction(
                 doc: &Document,
@@ -106,7 +116,8 @@ impl Completion {
                     let edit = match edit {
                         lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
                         lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                            unimplemented!("completion: insert_and_replace {:?}", item)
+                            // TODO: support using "insert" instead of "replace" via user config
+                            lsp::TextEdit::new(item.replace, item.new_text.clone())
                         }
                     };
 
@@ -140,11 +151,11 @@ impl Completion {
             let (view, doc) = current!(editor);
 
             // if more text was entered, remove it
-            doc.restore(view.id);
+            doc.restore(view);
 
             match event {
                 PromptEvent::Abort => {
-                    doc.restore(view.id);
+                    doc.restore(view);
                     editor.last_completion = None;
                 }
                 PromptEvent::Update => {
@@ -161,7 +172,7 @@ impl Completion {
 
                     // initialize a savepoint
                     doc.savepoint();
-                    doc.apply(&transaction, view.id);
+                    apply_transaction(&transaction, doc, view);
 
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
@@ -180,7 +191,7 @@ impl Completion {
                         trigger_offset,
                     );
 
-                    doc.apply(&transaction, view.id);
+                    apply_transaction(&transaction, doc, view);
 
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
@@ -210,7 +221,7 @@ impl Completion {
                                 additional_edits.clone(),
                                 offset_encoding, // TODO: should probably transcode in Client
                             );
-                            doc.apply(&transaction, view.id);
+                            apply_transaction(&transaction, doc, view);
                         }
                     }
                 }
@@ -292,10 +303,31 @@ impl Completion {
     pub fn is_empty(&self) -> bool {
         self.popup.contents().is_empty()
     }
+
+    pub fn ensure_item_resolved(&mut self, cx: &mut commands::Context) -> bool {
+        // > If computing full completion items is expensive, servers can additionally provide a
+        // > handler for the completion item resolve request. ...
+        // > A typical use case is for example: the `textDocument/completion` request doesn't fill
+        // > in the `documentation` property for returned completion items since it is expensive
+        // > to compute. When the item is selected in the user interface then a
+        // > 'completionItem/resolve' request is sent with the selected completion item as a parameter.
+        // > The returned completion item should have the documentation property filled in.
+        // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
+        match self.popup.contents_mut().selection_mut() {
+            Some(item) if item.documentation.is_none() => {
+                let doc = doc!(cx.editor);
+                if let Some(resolved_item) = Self::resolve_completion_item(doc, item.clone()) {
+                    *item = resolved_item;
+                }
+                true
+            }
+            _ => false,
+        }
+    }
 }
 
 impl Component for Completion {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         // let the Editor handle Esc instead
         if let Event::Key(KeyEvent {
             code: KeyCode::Esc, ..
@@ -321,10 +353,7 @@ impl Component for Completion {
             // option.documentation
 
             let (view, doc) = current!(cx.editor);
-            let language = doc
-                .language()
-                .and_then(|scope| scope.strip_prefix("source."))
-                .unwrap_or("");
+            let language = doc.language_name().unwrap_or("");
             let text = doc.text().slice(..);
             let cursor_pos = doc.selection(view.id).primary().cursor(text);
             let coords = helix_core::visual_coords_at_pos(text, cursor_pos, doc.tab_width());

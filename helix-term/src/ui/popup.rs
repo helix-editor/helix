@@ -1,9 +1,8 @@
 use crate::{
     commands::Open,
-    compositor::{Callback, Component, Context, EventResult},
+    compositor::{Callback, Component, Context, Event, EventResult},
     ctrl, key,
 };
-use crossterm::event::Event;
 use tui::buffer::Buffer as Surface;
 
 use helix_core::Position;
@@ -139,9 +138,9 @@ impl<T: Component> Popup<T> {
 }
 
 impl<T: Component> Component for Popup<T> {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let key = match event {
-            Event::Key(event) => event,
+            Event::Key(event) => *event,
             Event::Resize(_, _) => {
                 // TODO: calculate inner area, call component's handle_event with that area
                 return EventResult::Ignored(None);
@@ -149,7 +148,7 @@ impl<T: Component> Component for Popup<T> {
             _ => return EventResult::Ignored(None),
         };
 
-        if key!(Esc) == key.into() && self.ignore_escape_key {
+        if key!(Esc) == key && self.ignore_escape_key {
             return EventResult::Ignored(None);
         }
 
@@ -158,7 +157,7 @@ impl<T: Component> Component for Popup<T> {
             compositor.remove(self.id.as_ref());
         });
 
-        match key.into() {
+        match key {
             // esc or ctrl-c aborts the completion and closes the menu
             key!(Esc) | ctrl!('c') => {
                 let _ = self.contents.handle_event(event, cx);

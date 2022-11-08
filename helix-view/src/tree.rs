@@ -270,10 +270,18 @@ impl Tree {
             })
     }
 
+    /// Get reference to a [View] by index.
+    /// # Panics
+    ///
+    /// Panics if `index` is not in self.nodes, or if the node's content is not [Content::View]. This can be checked with [Self::contains].
     pub fn get(&self, index: ViewId) -> &View {
         self.try_get(index).unwrap()
     }
 
+    /// Try to get reference to a [View] by index. Returns `None` if node content is not a [Content::View]
+    /// # Panics
+    ///
+    /// Panics if `index` is not in self.nodes. This can be checked with [Self::contains]
     pub fn try_get(&self, index: ViewId) -> Option<&View> {
         match &self.nodes[index] {
             Node {
@@ -284,6 +292,10 @@ impl Tree {
         }
     }
 
+    /// Get a mutable reference to a [View] by index.
+    /// # Panics
+    ///
+    /// Panics if `index` is not in self.nodes, or if the node's content is not [Content::View]. This can be checked with [Self::contains].
     pub fn get_mut(&mut self, index: ViewId) -> &mut View {
         match &mut self.nodes[index] {
             Node {
@@ -292,6 +304,11 @@ impl Tree {
             } => view,
             _ => unreachable!(),
         }
+    }
+
+    /// Check if tree contains a [Node] with a given index.
+    pub fn contains(&self, index: ViewId) -> bool {
+        self.nodes.contains_key(index)
     }
 
     pub fn is_empty(&self) -> bool {
@@ -482,7 +499,7 @@ impl Tree {
                     // in a vertical container (and already correct based on previous search)
                     child_id = *container.children.iter().min_by_key(|id| {
                         let x = match &self.nodes[**id].content {
-                            Content::View(view) => view.inner_area().left(),
+                            Content::View(view) => view.area.left(),
                             Content::Container(container) => container.area.left(),
                         };
                         (current_x as i16 - x as i16).abs()
@@ -493,7 +510,7 @@ impl Tree {
                     // in a horizontal container (and already correct based on previous search)
                     child_id = *container.children.iter().min_by_key(|id| {
                         let y = match &self.nodes[**id].content {
-                            Content::View(view) => view.inner_area().top(),
+                            Content::View(view) => view.area.top(),
                             Content::Container(container) => container.area.top(),
                         };
                         (current_y as i16 - y as i16).abs()
@@ -502,12 +519,6 @@ impl Tree {
             }
         }
         Some(child_id)
-    }
-
-    pub fn focus_direction(&mut self, direction: Direction) {
-        if let Some(id) = self.find_split_in_direction(self.focus, direction) {
-            self.focus = id;
-        }
     }
 
     pub fn focus_next(&mut self) {

@@ -100,43 +100,41 @@ mod test {
 
     #[test]
     fn test_find_line_comment() {
-        use crate::State;
-
         // four lines, two space indented, except for line 1 which is blank.
-        let doc = Rope::from("  1\n\n  2\n  3");
-
-        let mut state = State::new(doc);
+        let mut doc = Rope::from("  1\n\n  2\n  3");
         // select whole document
-        state.selection = Selection::single(0, state.doc.len_chars() - 1);
+        let mut selection = Selection::single(0, doc.len_chars() - 1);
 
-        let text = state.doc.slice(..);
+        let text = doc.slice(..);
 
         let res = find_line_comment("//", text, 0..3);
         // (commented = true, to_change = [line 0, line 2], min = col 2, margin = 1)
         assert_eq!(res, (false, vec![0, 2], 2, 1));
 
         // comment
-        let transaction = toggle_line_comments(&state.doc, &state.selection, None);
-        transaction.apply(&mut state.doc);
-        state.selection = state.selection.map(transaction.changes());
+        let transaction = toggle_line_comments(&doc, &selection, None);
+        transaction.apply(&mut doc);
+        selection = selection.map(transaction.changes());
 
-        assert_eq!(state.doc, "  // 1\n\n  // 2\n  // 3");
+        assert_eq!(doc, "  // 1\n\n  // 2\n  // 3");
 
         // uncomment
-        let transaction = toggle_line_comments(&state.doc, &state.selection, None);
-        transaction.apply(&mut state.doc);
-        state.selection = state.selection.map(transaction.changes());
-        assert_eq!(state.doc, "  1\n\n  2\n  3");
+        let transaction = toggle_line_comments(&doc, &selection, None);
+        transaction.apply(&mut doc);
+        selection = selection.map(transaction.changes());
+        assert_eq!(doc, "  1\n\n  2\n  3");
+        assert!(selection.len() == 1); // to ignore the selection unused warning
 
         // 0 margin comments
-        state.doc = Rope::from("  //1\n\n  //2\n  //3");
+        doc = Rope::from("  //1\n\n  //2\n  //3");
         // reset the selection.
-        state.selection = Selection::single(0, state.doc.len_chars() - 1);
+        selection = Selection::single(0, doc.len_chars() - 1);
 
-        let transaction = toggle_line_comments(&state.doc, &state.selection, None);
-        transaction.apply(&mut state.doc);
-        state.selection = state.selection.map(transaction.changes());
-        assert_eq!(state.doc, "  1\n\n  2\n  3");
+        let transaction = toggle_line_comments(&doc, &selection, None);
+        transaction.apply(&mut doc);
+        selection = selection.map(transaction.changes());
+        assert_eq!(doc, "  1\n\n  2\n  3");
+        assert!(selection.len() == 1); // to ignore the selection unused warning
 
         // TODO: account for uncommenting with uneven comment indentation
     }

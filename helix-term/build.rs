@@ -6,7 +6,7 @@ const VERSION: &str = include_str!("../VERSION");
 
 fn main() {
     let git_hash = Command::new("git")
-        .args(&["rev-parse", "HEAD"])
+        .args(["rev-parse", "HEAD"])
         .output()
         .ok()
         .filter(|output| output.status.success())
@@ -19,7 +19,8 @@ fn main() {
 
     if std::env::var("HELIX_DISABLE_AUTO_GRAMMAR_BUILD").is_err() {
         fetch_grammars().expect("Failed to fetch tree-sitter grammars");
-        build_grammars().expect("Failed to compile tree-sitter grammars");
+        build_grammars(Some(std::env::var("TARGET").unwrap()))
+            .expect("Failed to compile tree-sitter grammars");
     }
 
     println!("cargo:rerun-if-changed=../runtime/grammars/");

@@ -33,6 +33,7 @@
 
 "comment" = { fg = "#88846F" }
 "ui.virtual.whitespace" = "#88846F"
+"ui.virtual.ruler" = { bg = "#24241e" }
 
 "string" = { fg = "#e6db74" }
 "constant.character" = { fg = "#e6db74" }
@@ -57,9 +58,9 @@
 "ui.background" = { fg = "text", bg = "background" }
 
 "ui.window" = { bg = "widget" }
-"ui.popup" = { bg = "widget" }
-"ui.help" = { bg = "widget" }
-"ui.menu" = { bg = "widget" }
+"ui.popup" = { fg = "text", bg = "widget" }
+"ui.help" = { fg = "text", bg = "widget" }
+"ui.menu" = { fg = "text", bg = "widget" }
 "ui.menu.selected" = { bg = "#414339" }
 
 "ui.cursor" = { fg = "cursor", modifiers = ["reversed"] }
@@ -72,6 +73,7 @@
 "ui.linenr" = { fg = "#90908a" }
 "ui.linenr.selected" = { fg = "#c2c2bf" }
 
+"ui.cursorline" = { bg = "#24241e" }
 "ui.statusline" = { fg = "active_text", bg = "#414339" }
 "ui.statusline.inactive" = { fg = "active_text", bg = "#75715e" }
 
