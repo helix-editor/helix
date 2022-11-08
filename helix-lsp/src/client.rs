@@ -311,6 +311,7 @@ impl Client {
                                     String::from("additionalTextEdits"),
                                 ],
                             }),
+                            insert_replace_support: Some(true),
                             ..Default::default()
                         }),
                         completion_item_kind: Some(lsp::CompletionItemKindCapability {

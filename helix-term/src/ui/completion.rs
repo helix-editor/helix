@@ -113,7 +113,8 @@ impl Completion {
                     let edit = match edit {
                         lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
                         lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                            unimplemented!("completion: insert_and_replace {:?}", item)
+                            // TODO: support using "insert" instead of "replace" via user config
+                            lsp::TextEdit::new(item.replace, item.new_text.clone())
                         }
                     };
 
