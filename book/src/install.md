@@ -106,7 +106,7 @@ via the `HELIX_RUNTIME` environment variable.
 | Linux / MacOS        | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
 
 Starting with Windows Vista you can also create symbolic links on Windows. Note that this requires
-elevated priviliges - i.e. PowerShell or Cmd must be run as administrator.
+elevated privileges - i.e. PowerShell or Cmd must be run as administrator.
 
 **PowerShell:**
 
