@@ -50,7 +50,7 @@ config directory (for example `~/.config/helix/runtime` on Linux/macOS, or `%App
 | -------------------- | ------------------------------------------------ |
 | Windows (Cmd)        | `xcopy /e /i runtime %AppData%\helix\runtime`    |
 | Windows (PowerShell) | `xcopy /e /i runtime $Env:AppData\helix\runtime` |
-| Linux / MacOS        | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
+| Linux / macOS        | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
 
 Starting with Windows Vista you can also create symbolic links on Windows. Note that this requires
 elevated privileges - i.e. PowerShell or Cmd must be run as administrator.
@@ -109,9 +109,9 @@ sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desk
 
 Please note: there is no icon for Helix yet, so the system default will be used.
 
-## MacOS
+## macOS
 
-Helix can be installed on MacOS through homebrew:
+Helix can be installed on macOS through homebrew:
 
 ```
 brew install helix
