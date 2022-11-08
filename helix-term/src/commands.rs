@@ -1797,22 +1797,28 @@ fn make_search_word_bounded(cx: &mut Context) {
         Some(regex) => regex,
         None => return,
     };
-    let mut new_regex = String::new();
-    let mut modified = false;
-    if !regex.starts_with("\\b") {
+    let start_anchored = regex.starts_with("\\b");
+    let end_anchored = regex.ends_with("\\b");
+
+    if start_anchored && end_anchored {
+        return;
+    }
+
+    let mut new_regex = String::with_capacity(
+        regex.len() + if start_anchored { 0 } else { 2 } + if end_anchored { 0 } else { 2 },
+    );
+
+    if !start_anchored {
         new_regex.push_str("\\b");
-        modified = true;
     }
     new_regex.push_str(regex);
-    if !regex.ends_with("\\b") {
+    if !end_anchored {
         new_regex.push_str("\\b");
-        modified = true;
     }
-    if modified {
-        let msg = format!("register '{}' set to '{}'", '/', &new_regex);
-        cx.editor.registers.get_mut('/').push(new_regex);
-        cx.editor.set_status(msg);
-    }
+
+    let msg = format!("register '{}' set to '{}'", '/', &new_regex);
+    cx.editor.registers.get_mut('/').push(new_regex);
+    cx.editor.set_status(msg);
 }
 
 fn global_search(cx: &mut Context) {
