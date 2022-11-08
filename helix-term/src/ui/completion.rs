@@ -67,7 +67,7 @@ impl menu::Item for CompletionItem {
                 Some(lsp::CompletionItemKind::OPERATOR) => "operator",
                 Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param",
                 Some(kind) => {
-                    log::error!("Received unknown CompletionItemKind({:?})", kind);
+                    log::error!("Received unknown completion item kind: {:?}", kind);
                     ""
                 },
                 None => "",
