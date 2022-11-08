@@ -66,7 +66,10 @@ impl menu::Item for CompletionItem {
                 Some(lsp::CompletionItemKind::EVENT) => "event",
                 Some(lsp::CompletionItemKind::OPERATOR) => "operator",
                 Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param",
-                Some(kind) => unimplemented!("{:?}", kind),
+                Some(kind) => {
+                    log::error!("Received unknown completion item kind: {:?}", kind);
+                    ""
+                }
                 None => "",
             }),
             // self.detail.as_deref().unwrap_or("")
