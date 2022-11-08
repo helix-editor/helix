@@ -109,6 +109,9 @@
 (comment) @comment
 
 ;; Tokens
+(type_argument_list ["<" ">"] @punctuation.bracket)
+(type_parameter_list ["<" ">"] @punctuation.bracket)
+
 [
   ";"
   "."
@@ -159,14 +162,7 @@
   "??="
 ] @operator
 
-[
-  "("
-  ")"
-  "["
-  "]"
-  "{"
-  "}"
-]  @punctuation.bracket
+["(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
 ;; Keywords
 (modifier) @keyword.storage.modifier
@@ -175,36 +171,32 @@
 
 [
   "as"
+  "await"
   "base"
-  "catch"
   "checked"
-  "finally"
+  "from"
+  "get"
+  "in"
+  "init"
   "is"
+  "let"
   "lock"
+  "new"
   "operator"
+  "out"
   "params"
+  "ref"
+  "select"
+  "set"
   "sizeof"
   "stackalloc"
-  "throw"
-  "try"
   "typeof"
   "unchecked"
   "using"
-  "new"
-  "await"
-  "in"
-  "yield"
-  "get"
-  "set"
   "when"
-  "out"
-  "ref"
-  "from"
   "where"
-  "select"
-  "init"
   "with"
-  "let"
+  "yield"
 ] @keyword
 
 [
@@ -225,21 +217,31 @@
 ] @keyword.storage.modifier
 
 [
-  "for"
-  "foreach"
-  "do"
-  "while"
   "break"
   "continue"
+  "goto"
+] @keyword.control
+
+[
+  "catch"
+  "finally"
+  "throw"
+  "try"
+] @keyword.control.exception
+
+[
+  "do"
+  "for"
+  "foreach"
+  "while"
 ] @keyword.control.repeat
 
 [
-  "goto"
-  "if"
-  "else"
-  "switch"
   "case"
   "default"
+  "else"
+  "if"
+  "switch"
 ] @keyword.control.conditional
 
 "return" @keyword.control.return

@@ -41,26 +41,50 @@ cd helix
 cargo install --path helix-term
 ```
 
-This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars.
-If you want to customize your `languages.toml` config,
-tree-sitter grammars may be manually fetched and built with `hx --grammar fetch` and `hx --grammar build`.
+This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars in `./runtime/grammars`.
 
-Helix also needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
+Helix needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
 config directory (for example `~/.config/helix/runtime` on Linux/macOS, or `%AppData%/helix/runtime` on Windows).
 
 | OS                   | Command                                          |
 | -------------------- | ------------------------------------------------ |
-| Windows (cmd.exe)    | `xcopy /e /i runtime %AppData%\helix\runtime`    |
+| Windows (Cmd)        | `xcopy /e /i runtime %AppData%\helix\runtime`    |
 | Windows (PowerShell) | `xcopy /e /i runtime $Env:AppData\helix\runtime` |
-| Linux/macOS          | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
+| Linux / MacOS        | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
 
-This location can be overridden via the `HELIX_RUNTIME` environment variable.
+Starting with Windows Vista you can also create symbolic links on Windows. Note that this requires
+elevated priviliges - i.e. PowerShell or Cmd must be run as administrator.
+
+**PowerShell:**
+
+```powershell
+New-Item -ItemType SymbolicLink -Target "runtime" -Path "$Env:AppData\helix\runtime"
+```
+
+**Cmd:**
+
+```cmd
+cd %appdata%\helix
+mklink /D runtime "<helix-repo>\runtime"
+```
+
+The runtime location can be overridden via the `HELIX_RUNTIME` environment variable.
+
+> NOTE: if `HELIX_RUNTIME` is set prior to calling `cargo install --path helix-term`,
+> tree-sitter grammars will be built in `$HELIX_RUNTIME/grammars`.
+
+If you plan on keeping the repo locally, an alternative to copying/symlinking
+runtime files is to set `HELIX_RUNTIME=/path/to/helix/runtime`
+(`HELIX_RUNTIME=$PWD/runtime` if you're in the helix repo directory).
 
 Packages already solve this for you by wrapping the `hx` binary with a wrapper
 that sets the variable to the install dir.
 
 > NOTE: running via cargo also doesn't require setting explicit `HELIX_RUNTIME` path, it will automatically
 > detect the `runtime` directory in the project root.
+
+If you want to customize your `languages.toml` config,
+tree-sitter grammars may be manually fetched and built with `hx --grammar fetch` and `hx --grammar build`.
 
 In order to use LSP features like auto-complete, you will need to
 [install the appropriate Language Server](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers)

@@ -43,7 +43,6 @@ module = { bg = 'orangeL' }
 special = { fg = 'orangeW' }
 operator = { fg = 'orangeY' }
 attribute = { fg = 'orangeL' }
-attribute = { fg = 'orangeL' }
 namespace = { fg = 'orangeL' }
 'type' = { fg = 'redH' }
 'type.builtin' = { fg = 'orangeL' }

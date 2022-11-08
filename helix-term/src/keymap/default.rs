@@ -209,11 +209,11 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "j" => jumplist_picker,
             "s" => symbol_picker,
             "S" => workspace_symbol_picker,
-            "g" => diagnostics_picker,
-            "G" => workspace_diagnostics_picker,
+            "d" => diagnostics_picker,
+            "D" => workspace_diagnostics_picker,
             "a" => code_action,
             "'" => last_picker,
-            "d" => { "Debug (experimental)" sticky=true
+            "g" => { "Debug (experimental)" sticky=true
                 "l" => dap_launch,
                 "b" => dap_toggle_breakpoint,
                 "c" => dap_continue,

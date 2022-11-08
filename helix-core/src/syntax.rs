@@ -61,17 +61,23 @@ pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
 }
 
+impl Default for Configuration {
+    fn default() -> Self {
+        crate::config::default_syntax_loader()
+    }
+}
+
 // largely based on tree-sitter/cli/src/loader.rs
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
     pub language_id: String, // c-sharp, rust
-    pub scope: String,           // source.rust
-    pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
+    pub scope: String,             // source.rust
+    pub file_types: Vec<FileType>, // filename extension or ends_with? <Gemfile, rb, etc>
     #[serde(default)]
     pub shebangs: Vec<String>, // interpreter(s) associated with language
-    pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
+    pub roots: Vec<String>,        // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
     pub max_line_length: Option<usize>,
 
@@ -119,6 +125,78 @@ pub struct LanguageConfiguration {
     pub rulers: Option<Vec<u16>>, // if set, override editor's rulers
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum FileType {
+    /// The extension of the file, either the `Path::extension` or the full
+    /// filename if the file does not have an extension.
+    Extension(String),
+    /// The suffix of a file. This is compared to a given file's absolute
+    /// path, so it can be used to detect files based on their directories.
+    Suffix(String),
+}
+
+impl Serialize for FileType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeMap;
+
+        match self {
+            FileType::Extension(extension) => serializer.serialize_str(extension),
+            FileType::Suffix(suffix) => {
+                let mut map = serializer.serialize_map(Some(1))?;
+                map.serialize_entry("suffix", &suffix.replace(std::path::MAIN_SEPARATOR, "/"))?;
+                map.end()
+            }
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for FileType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        struct FileTypeVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for FileTypeVisitor {
+            type Value = FileType;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("string or table")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(FileType::Extension(value.to_string()))
+            }
+
+            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+            where
+                M: serde::de::MapAccess<'de>,
+            {
+                match map.next_entry::<String, String>()? {
+                    Some((key, suffix)) if key == "suffix" => Ok(FileType::Suffix(
+                        suffix.replace('/', &std::path::MAIN_SEPARATOR.to_string()),
+                    )),
+                    Some((key, _value)) => Err(serde::de::Error::custom(format!(
+                        "unknown key in `file-types` list: {}",
+                        key
+                    ))),
+                    None => Err(serde::de::Error::custom(
+                        "expected a `suffix` key in the `file-types` entry",
+                    )),
+                }
+            }
+        }
+
+        deserializer.deserialize_any(FileTypeVisitor)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageServerConfiguration {
@@ -140,7 +218,7 @@ pub struct FormatterConfiguration {
     pub args: Vec<String>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AdvancedCompletion {
     pub name: Option<String>,
@@ -148,14 +226,14 @@ pub struct AdvancedCompletion {
     pub default: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case", untagged)]
 pub enum DebugConfigCompletion {
     Named(String),
     Advanced(AdvancedCompletion),
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum DebugArgumentValue {
     String(String),
@@ -163,7 +241,7 @@ pub enum DebugArgumentValue {
     Boolean(bool),
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DebugTemplate {
     pub name: String,
@@ -172,7 +250,7 @@ pub struct DebugTemplate {
     pub args: HashMap<String, DebugArgumentValue>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DebugAdapterConfig {
     pub name: String,
@@ -188,7 +266,7 @@ pub struct DebugAdapterConfig {
 }
 
 // Different workarounds for adapters' differences
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct DebuggerQuirks {
     #[serde(default)]
     pub absolute_paths: bool,
@@ -202,7 +280,7 @@ pub struct IndentationConfiguration {
 }
 
 /// Configuration for auto pairs
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields, untagged)]
 pub enum AutoPairConfig {
     /// Enables or disables auto pairing. False means disabled. True means to use the default pairs.
@@ -355,20 +433,24 @@ pub fn read_query(language: &str, filename: &str) -> String {
 
 impl LanguageConfiguration {
     fn initialize_highlight(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
-        let language = self.language_id.to_ascii_lowercase();
-
-        let highlights_query = read_query(&language, "highlights.scm");
+        let highlights_query = read_query(&self.language_id, "highlights.scm");
         // always highlight syntax errors
         // highlights_query += "\n(ERROR) @error";
 
-        let injections_query = read_query(&language, "injections.scm");
-        let locals_query = read_query(&language, "locals.scm");
+        let injections_query = read_query(&self.language_id, "injections.scm");
+        let locals_query = read_query(&self.language_id, "locals.scm");
 
         if highlights_query.is_empty() {
             None
         } else {
             let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
-                .map_err(|e| log::info!("{}", e))
+                .map_err(|err| {
+                    log::error!(
+                        "Failed to load tree-sitter parser for language {:?}: {}",
+                        self.language_id,
+                        err
+                    )
+                })
                 .ok()?;
             let config = HighlightConfiguration::new(
                 language,
@@ -420,14 +502,20 @@ impl LanguageConfiguration {
     }
 
     fn load_query(&self, kind: &str) -> Option<Query> {
-        let lang_name = self.language_id.to_ascii_lowercase();
-        let query_text = read_query(&lang_name, kind);
+        let query_text = read_query(&self.language_id, kind);
         if query_text.is_empty() {
             return None;
         }
         let lang = self.highlight_config.get()?.as_ref()?.language;
         Query::new(lang, &query_text)
-            .map_err(|e| log::error!("Failed to parse {} queries for {}: {}", kind, lang_name, e))
+            .map_err(|e| {
+                log::error!(
+                    "Failed to parse {} queries for {}: {}",
+                    kind,
+                    self.language_id,
+                    e
+                )
+            })
             .ok()
     }
 }
@@ -438,7 +526,8 @@ impl LanguageConfiguration {
 pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
-    language_config_ids_by_file_type: HashMap<String, usize>, // Vec<usize>
+    language_config_ids_by_extension: HashMap<String, usize>, // Vec<usize>
+    language_config_ids_by_suffix: HashMap<String, usize>,
     language_config_ids_by_shebang: HashMap<String, usize>,
 
     scopes: ArcSwap<Vec<String>>,
@@ -448,7 +537,8 @@ impl Loader {
     pub fn new(config: Configuration) -> Self {
         let mut loader = Self {
             language_configs: Vec::new(),
-            language_config_ids_by_file_type: HashMap::new(),
+            language_config_ids_by_extension: HashMap::new(),
+            language_config_ids_by_suffix: HashMap::new(),
             language_config_ids_by_shebang: HashMap::new(),
             scopes: ArcSwap::from_pointee(Vec::new()),
         };
@@ -459,9 +549,14 @@ impl Loader {
 
             for file_type in &config.file_types {
                 // entry().or_insert(Vec::new).push(language_id);
-                loader
-                    .language_config_ids_by_file_type
-                    .insert(file_type.clone(), language_id);
+                match file_type {
+                    FileType::Extension(extension) => loader
+                        .language_config_ids_by_extension
+                        .insert(extension.clone(), language_id),
+                    FileType::Suffix(suffix) => loader
+                        .language_config_ids_by_suffix
+                        .insert(suffix.clone(), language_id),
+                };
             }
             for shebang in &config.shebangs {
                 loader
@@ -481,11 +576,22 @@ impl Loader {
         let configuration_id = path
             .file_name()
             .and_then(|n| n.to_str())
-            .and_then(|file_name| self.language_config_ids_by_file_type.get(file_name))
+            .and_then(|file_name| self.language_config_ids_by_extension.get(file_name))
             .or_else(|| {
                 path.extension()
                     .and_then(|extension| extension.to_str())
-                    .and_then(|extension| self.language_config_ids_by_file_type.get(extension))
+                    .and_then(|extension| self.language_config_ids_by_extension.get(extension))
+            })
+            .or_else(|| {
+                self.language_config_ids_by_suffix
+                    .iter()
+                    .find_map(|(file_type, id)| {
+                        if path.to_str()?.ends_with(file_type) {
+                            Some(id)
+                        } else {
+                            None
+                        }
+                    })
             });
 
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
@@ -2024,6 +2130,57 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
     }
 }
 
+pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result {
+    pretty_print_tree_impl(fmt, node, true, None, 0)
+}
+
+fn pretty_print_tree_impl<W: fmt::Write>(
+    fmt: &mut W,
+    node: Node,
+    is_root: bool,
+    field_name: Option<&str>,
+    depth: usize,
+) -> fmt::Result {
+    fn is_visible(node: Node) -> bool {
+        node.is_missing()
+            || (node.is_named() && node.language().node_kind_is_visible(node.kind_id()))
+    }
+
+    if is_visible(node) {
+        let indentation_columns = depth * 2;
+        write!(fmt, "{:indentation_columns$}", "")?;
+
+        if let Some(field_name) = field_name {
+            write!(fmt, "{}: ", field_name)?;
+        }
+
+        write!(fmt, "({}", node.kind())?;
+    } else if is_root {
+        write!(fmt, "(\"{}\")", node.kind())?;
+    }
+
+    for child_idx in 0..node.child_count() {
+        if let Some(child) = node.child(child_idx) {
+            if is_visible(child) {
+                fmt.write_char('\n')?;
+            }
+
+            pretty_print_tree_impl(
+                fmt,
+                child,
+                false,
+                node.field_name_for_child(child_idx as u32),
+                depth + 1,
+            )?;
+        }
+    }
+
+    if is_visible(node) {
+        write!(fmt, ")")?;
+    }
+
+    Ok(())
+}
 #[cfg(test)]
 mod test {
     use super::*;
@@ -2044,7 +2201,7 @@ mod test {
         );
 
         let loader = Loader::new(Configuration { language: vec![] });
-        let language = get_language("Rust").unwrap();
+        let language = get_language("rust").unwrap();
 
         let query = Query::new(language, query_str).unwrap();
         let textobject = TextObjectQuery { query };
@@ -2104,7 +2261,7 @@ mod test {
 
         let loader = Loader::new(Configuration { language: vec![] });
 
-        let language = get_language("Rust").unwrap();
+        let language = get_language("rust").unwrap();
         let config = HighlightConfiguration::new(
             language,
             &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/highlights.scm")
@@ -2193,6 +2350,63 @@ mod test {
                 new_end_position: Point { row: 0, column: 14 }
             }]
         );
+    }
+
+    #[track_caller]
+    fn assert_pretty_print(source: &str, expected: &str, start: usize, end: usize) {
+        let source = Rope::from_str(source);
+
+        let loader = Loader::new(Configuration { language: vec![] });
+        let language = get_language("rust").unwrap();
+
+        let config = HighlightConfiguration::new(language, "", "", "").unwrap();
+        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader));
+
+        let root = syntax
+            .tree()
+            .root_node()
+            .descendant_for_byte_range(start, end)
+            .unwrap();
+
+        let mut output = String::new();
+        pretty_print_tree(&mut output, root).unwrap();
+
+        assert_eq!(expected, output);
+    }
+
+    #[test]
+    fn test_pretty_print() {
+        let source = r#"/// Hello"#;
+        assert_pretty_print(source, "(line_comment)", 0, source.len());
+
+        // A large tree should be indented with fields:
+        let source = r#"fn main() {
+            println!("Hello, World!");
+        }"#;
+        assert_pretty_print(
+            source,
+            concat!(
+                "(function_item\n",
+                "  name: (identifier)\n",
+                "  parameters: (parameters)\n",
+                "  body: (block\n",
+                "    (expression_statement\n",
+                "      (macro_invocation\n",
+                "        macro: (identifier)\n",
+                "        (token_tree\n",
+                "          (string_literal))))))",
+            ),
+            0,
+            source.len(),
+        );
+
+        // Selecting a token should print just that token:
+        let source = r#"fn main() {}"#;
+        assert_pretty_print(source, r#"("fn")"#, 0, 1);
+
+        // Error nodes are printed as errors:
+        let source = r#"}{"#;
+        assert_pretty_print(source, "(ERROR)", 0, source.len());
     }
 
     #[test]

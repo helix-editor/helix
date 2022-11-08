@@ -3,14 +3,16 @@ use helix_core::unicode::width::UnicodeWidthStr;
 use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
 
-use helix_view::graphics::{Color, Modifier, Rect, Style};
+use helix_view::graphics::{Color, Modifier, Rect, Style, UnderlineStyle};
 
 /// A buffer cell
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cell {
     pub symbol: String,
     pub fg: Color,
     pub bg: Color,
+    pub underline_color: Color,
+    pub underline_style: UnderlineStyle,
     pub modifier: Modifier,
 }
 
@@ -44,6 +46,13 @@ impl Cell {
         if let Some(c) = style.bg {
             self.bg = c;
         }
+        if let Some(c) = style.underline_color {
+            self.underline_color = c;
+        }
+        if let Some(style) = style.underline_style {
+            self.underline_style = style;
+        }
+
         self.modifier.insert(style.add_modifier);
         self.modifier.remove(style.sub_modifier);
         self
@@ -53,6 +62,8 @@ impl Cell {
         Style::default()
             .fg(self.fg)
             .bg(self.bg)
+            .underline_color(self.underline_color)
+            .underline_style(self.underline_style)
             .add_modifier(self.modifier)
     }
 
@@ -61,6 +72,8 @@ impl Cell {
         self.symbol.push(' ');
         self.fg = Color::Reset;
         self.bg = Color::Reset;
+        self.underline_color = Color::Reset;
+        self.underline_style = UnderlineStyle::Reset;
         self.modifier = Modifier::empty();
     }
 }
@@ -71,6 +84,8 @@ impl Default for Cell {
             symbol: " ".into(),
             fg: Color::Reset,
             bg: Color::Reset,
+            underline_color: Color::Reset,
+            underline_style: UnderlineStyle::Reset,
             modifier: Modifier::empty(),
         }
     }
@@ -87,7 +102,7 @@ impl Default for Cell {
 ///
 /// ```
 /// use helix_tui::buffer::{Buffer, Cell};
-/// use helix_view::graphics::{Rect, Color, Style, Modifier};
+/// use helix_view::graphics::{Rect, Color, UnderlineStyle, Style, Modifier};
 ///
 /// let mut buf = Buffer::empty(Rect{x: 0, y: 0, width: 10, height: 5});
 /// buf[(0, 2)].set_symbol("x");
@@ -97,12 +112,14 @@ impl Default for Cell {
 ///     symbol: String::from("r"),
 ///     fg: Color::Red,
 ///     bg: Color::White,
-///     modifier: Modifier::empty()
+///     underline_color: Color::Reset,
+///     underline_style: UnderlineStyle::Reset,
+///     modifier: Modifier::empty(),
 /// });
 /// buf[(5, 0)].set_char('x');
 /// assert_eq!(buf[(5, 0)].symbol, "x");
 /// ```
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Buffer {
     /// The area represented by this buffer
     pub area: Rect,
@@ -120,7 +137,7 @@ impl Buffer {
 
     /// Returns a Buffer with all cells initialized with the attributes of the given Cell
     pub fn filled(area: Rect, cell: &Cell) -> Buffer {
-        let size = area.area() as usize;
+        let size = area.area();
         let mut content = Vec::with_capacity(size);
         for _ in 0..size {
             content.push(cell.clone());
@@ -222,7 +239,7 @@ impl Buffer {
             y,
             self.area
         );
-        ((y - self.area.y) * self.area.width + (x - self.area.x)) as usize
+        ((y - self.area.y) as usize) * (self.area.width as usize) + ((x - self.area.x) as usize)
     }
 
     /// Returns the index in the Vec<Cell> for the given global (x, y) coordinates,
@@ -261,8 +278,8 @@ impl Buffer {
             self.content.len()
         );
         (
-            self.area.x + i as u16 % self.area.width,
-            self.area.y + i as u16 / self.area.width,
+            (self.area.x as usize + (i % self.area.width as usize)) as u16,
+            (self.area.y as usize + (i / self.area.width as usize)) as u16,
         )
     }
 
@@ -463,7 +480,7 @@ impl Buffer {
     /// Resize the buffer so that the mapped area matches the given area and that the buffer
     /// length is equal to area.width * area.height
     pub fn resize(&mut self, area: Rect) {
-        let length = area.area() as usize;
+        let length = area.area();
         if self.content.len() > length {
             self.content.truncate(length);
         } else {
@@ -570,8 +587,8 @@ impl Buffer {
         let mut to_skip: usize = 0;
         for (i, (current, previous)) in next_buffer.iter().zip(previous_buffer.iter()).enumerate() {
             if (current != previous || invalidated > 0) && to_skip == 0 {
-                let x = i as u16 % width;
-                let y = i as u16 / width;
+                let x = (i % width as usize) as u16;
+                let y = (i / width as usize) as u16;
                 updates.push((x, y, &next_buffer[i]));
             }
 

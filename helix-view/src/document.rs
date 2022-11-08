@@ -83,6 +83,18 @@ impl Serialize for Mode {
     }
 }
 
+/// A snapshot of the text of a document that we want to write out to disk
+#[derive(Debug, Clone)]
+pub struct DocumentSavedEvent {
+    pub revision: usize,
+    pub doc_id: DocumentId,
+    pub path: PathBuf,
+    pub text: Rope,
+}
+
+pub type DocumentSavedEventResult = Result<DocumentSavedEvent, anyhow::Error>;
+pub type DocumentSavedEventFuture = BoxFuture<'static, DocumentSavedEventResult>;
+
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
@@ -492,45 +504,61 @@ impl Document {
         Some(fut.boxed())
     }
 
-    pub fn save(&mut self, force: bool) -> impl Future<Output = Result<(), anyhow::Error>> {
-        self.save_impl::<futures_util::future::Ready<_>>(None, force)
-    }
-
-    pub fn format_and_save(
+    pub fn save<P: Into<PathBuf>>(
         &mut self,
-        formatting: Option<impl Future<Output = Result<Transaction, FormatterError>>>,
+        path: Option<P>,
         force: bool,
-    ) -> impl Future<Output = anyhow::Result<()>> {
-        self.save_impl(formatting, force)
+    ) -> Result<
+        impl Future<Output = Result<DocumentSavedEvent, anyhow::Error>> + 'static + Send,
+        anyhow::Error,
+    > {
+        let path = path.map(|path| path.into());
+        self.save_impl(path, force)
+
+        // futures_util::future::Ready<_>,
     }
 
-    // TODO: do we need some way of ensuring two save operations on the same doc can't run at once?
-    // or is that handled by the OS/async layer
     /// The `Document`'s text is encoded according to its encoding and written to the file located
     /// at its `path()`.
-    ///
-    /// If `formatting` is present, it supplies some changes that we apply to the text before saving.
-    fn save_impl<F: Future<Output = Result<Transaction, FormatterError>>>(
+    fn save_impl(
         &mut self,
-        formatting: Option<F>,
+        path: Option<PathBuf>,
         force: bool,
-    ) -> impl Future<Output = Result<(), anyhow::Error>> {
+    ) -> Result<
+        impl Future<Output = Result<DocumentSavedEvent, anyhow::Error>> + 'static + Send,
+        anyhow::Error,
+    > {
+        log::debug!(
+            "submitting save of doc '{:?}'",
+            self.path().map(|path| path.to_string_lossy())
+        );
+
         // we clone and move text + path into the future so that we asynchronously save the current
         // state without blocking any further edits.
+        let text = self.text().clone();
 
-        let mut text = self.text().clone();
-        let path = self.path.clone().expect("Can't save with no path set!");
-        let identifier = self.identifier();
+        let path = match path {
+            Some(path) => helix_core::path::get_canonicalized_path(&path)?,
+            None => {
+                if self.path.is_none() {
+                    bail!("Can't save with no path set!");
+                }
 
+                self.path.as_ref().unwrap().clone()
+            }
+        };
+
+        let identifier = self.path().map(|_| self.identifier());
         let language_server = self.language_server.clone();
 
         // mark changes up to now as saved
-        self.reset_modified();
+        let current_rev = self.get_current_revision();
+        let doc_id = self.id();
 
         let encoding = self.encoding;
 
         // We encode the file according to the `Document`'s encoding.
-        async move {
+        let future = async move {
             use tokio::fs::File;
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
@@ -543,39 +571,34 @@ impl Document {
                 }
             }
 
-            if let Some(fmt) = formatting {
-                match fmt.await {
-                    Ok(transaction) => {
-                        let success = transaction.changes().apply(&mut text);
-                        if !success {
-                            // This shouldn't happen, because the transaction changes were generated
-                            // from the same text we're saving.
-                            log::error!("failed to apply format changes before saving");
-                        }
-                    }
-                    Err(err) => {
-                        // formatting failed: report error, and save file without modifications
-                        log::error!("{}", err);
-                    }
-                }
-            }
-
-            let mut file = File::create(path).await?;
+            let mut file = File::create(&path).await?;
             to_writer(&mut file, encoding, &text).await?;
+
+            let event = DocumentSavedEvent {
+                revision: current_rev,
+                doc_id,
+                path,
+                text: text.clone(),
+            };
 
             if let Some(language_server) = language_server {
                 if !language_server.is_initialized() {
-                    return Ok(());
+                    return Ok(event);
                 }
-                if let Some(notification) =
-                    language_server.text_document_did_save(identifier, &text)
-                {
-                    notification.await?;
+
+                if let Some(identifier) = identifier {
+                    if let Some(notification) =
+                        language_server.text_document_did_save(identifier, &text)
+                    {
+                        notification.await?;
+                    }
                 }
             }
 
-            Ok(())
-        }
+            Ok(event)
+        };
+
+        Ok(future)
     }
 
     /// Detect the programming language based on the file type.
@@ -834,11 +857,11 @@ impl Document {
         success
     }
 
-    fn undo_redo_impl(&mut self, view_id: ViewId, undo: bool) -> bool {
+    fn undo_redo_impl(&mut self, view: &mut View, undo: bool) -> bool {
         let mut history = self.history.take();
         let txn = if undo { history.undo() } else { history.redo() };
         let success = if let Some(txn) = txn {
-            self.apply_impl(txn, view_id)
+            self.apply_impl(txn, view.id) && view.apply(txn, self)
         } else {
             false
         };
@@ -852,13 +875,13 @@ impl Document {
     }
 
     /// Undo the last modification to the [`Document`]. Returns whether the undo was successful.
-    pub fn undo(&mut self, view_id: ViewId) -> bool {
-        self.undo_redo_impl(view_id, true)
+    pub fn undo(&mut self, view: &mut View) -> bool {
+        self.undo_redo_impl(view, true)
     }
 
     /// Redo the last modification to the [`Document`]. Returns whether the redo was successful.
-    pub fn redo(&mut self, view_id: ViewId) -> bool {
-        self.undo_redo_impl(view_id, false)
+    pub fn redo(&mut self, view: &mut View) -> bool {
+        self.undo_redo_impl(view, false)
     }
 
     pub fn savepoint(&mut self) {
@@ -871,7 +894,7 @@ impl Document {
         }
     }
 
-    fn earlier_later_impl(&mut self, view_id: ViewId, uk: UndoKind, earlier: bool) -> bool {
+    fn earlier_later_impl(&mut self, view: &mut View, uk: UndoKind, earlier: bool) -> bool {
         let txns = if earlier {
             self.history.get_mut().earlier(uk)
         } else {
@@ -879,7 +902,7 @@ impl Document {
         };
         let mut success = false;
         for txn in txns {
-            if self.apply_impl(&txn, view_id) {
+            if self.apply_impl(&txn, view.id) && view.apply(&txn, self) {
                 success = true;
             }
         }
@@ -891,13 +914,13 @@ impl Document {
     }
 
     /// Undo modifications to the [`Document`] according to `uk`.
-    pub fn earlier(&mut self, view_id: ViewId, uk: UndoKind) -> bool {
-        self.earlier_later_impl(view_id, uk, true)
+    pub fn earlier(&mut self, view: &mut View, uk: UndoKind) -> bool {
+        self.earlier_later_impl(view, uk, true)
     }
 
     /// Redo modifications to the [`Document`] according to `uk`.
-    pub fn later(&mut self, view_id: ViewId, uk: UndoKind) -> bool {
-        self.earlier_later_impl(view_id, uk, false)
+    pub fn later(&mut self, view: &mut View, uk: UndoKind) -> bool {
+        self.earlier_later_impl(view, uk, false)
     }
 
     /// Commit pending changes to history
@@ -930,6 +953,12 @@ impl Document {
         let history = self.history.take();
         let current_revision = history.current_revision();
         self.history.set(history);
+        log::debug!(
+            "id {} modified - last saved: {}, current: {}",
+            self.id,
+            self.last_saved_revision,
+            current_revision
+        );
         current_revision != self.last_saved_revision || !self.changes.is_empty()
     }
 
@@ -939,6 +968,30 @@ impl Document {
         let current_revision = history.current_revision();
         self.history.set(history);
         self.last_saved_revision = current_revision;
+    }
+
+    /// Set the document's latest saved revision to the given one.
+    pub fn set_last_saved_revision(&mut self, rev: usize) {
+        log::debug!(
+            "doc {} revision updated {} -> {}",
+            self.id,
+            self.last_saved_revision,
+            rev
+        );
+        self.last_saved_revision = rev;
+    }
+
+    /// Get the document's latest saved revision.
+    pub fn get_last_saved_revision(&mut self) -> usize {
+        self.last_saved_revision
+    }
+
+    /// Get the current revision number
+    pub fn get_current_revision(&mut self) -> usize {
+        let history = self.history.take();
+        let current_revision = history.current_revision();
+        self.history.set(history);
+        current_revision
     }
 
     /// Corresponding language scope name. Usually `source.<lang>`.
@@ -997,14 +1050,6 @@ impl Document {
         self.language_config()
             .and_then(|config| config.indent.as_ref())
             .map_or(4, |config| config.tab_width) // fallback to 4 columns
-    }
-
-    /// Returns a string containing a single level of indentation.
-    ///
-    /// TODO: we might not need this function anymore, since the information
-    /// is conveniently available in `Document::indent_style` now.
-    pub fn indent_unit(&self) -> &'static str {
-        self.indent_style.as_str()
     }
 
     pub fn changes(&self) -> &ChangeSet {
@@ -1309,84 +1354,66 @@ mod test {
         );
     }
 
-    macro_rules! test_decode {
-        ($label:expr, $label_override:expr) => {
-            let encoding = encoding::Encoding::for_label($label_override.as_bytes()).unwrap();
-            let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/encoding");
-            let path = base_path.join(format!("{}_in.txt", $label));
-            let ref_path = base_path.join(format!("{}_in_ref.txt", $label));
-            assert!(path.exists());
-            assert!(ref_path.exists());
-
-            let mut file = std::fs::File::open(path).unwrap();
-            let text = from_reader(&mut file, Some(encoding))
-                .unwrap()
-                .0
-                .to_string();
-            let expectation = std::fs::read_to_string(ref_path).unwrap();
-            assert_eq!(text[..], expectation[..]);
-        };
-    }
-
-    macro_rules! test_encode {
-        ($label:expr, $label_override:expr) => {
-            let encoding = encoding::Encoding::for_label($label_override.as_bytes()).unwrap();
-            let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/encoding");
-            let path = base_path.join(format!("{}_out.txt", $label));
-            let ref_path = base_path.join(format!("{}_out_ref.txt", $label));
-            assert!(path.exists());
-            assert!(ref_path.exists());
-
-            let text = Rope::from_str(&std::fs::read_to_string(path).unwrap());
-            let mut buf: Vec<u8> = Vec::new();
-            helix_lsp::block_on(to_writer(&mut buf, encoding, &text)).unwrap();
-
-            let expectation = std::fs::read(ref_path).unwrap();
-            assert_eq!(buf, expectation);
-        };
-    }
-
-    macro_rules! test_decode_fn {
+    macro_rules! decode {
         ($name:ident, $label:expr, $label_override:expr) => {
             #[test]
             fn $name() {
-                test_decode!($label, $label_override);
+                let encoding = encoding::Encoding::for_label($label_override.as_bytes()).unwrap();
+                let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/encoding");
+                let path = base_path.join(format!("{}_in.txt", $label));
+                let ref_path = base_path.join(format!("{}_in_ref.txt", $label));
+                assert!(path.exists());
+                assert!(ref_path.exists());
+
+                let mut file = std::fs::File::open(path).unwrap();
+                let text = from_reader(&mut file, Some(encoding))
+                    .unwrap()
+                    .0
+                    .to_string();
+                let expectation = std::fs::read_to_string(ref_path).unwrap();
+                assert_eq!(text[..], expectation[..]);
             }
         };
         ($name:ident, $label:expr) => {
-            #[test]
-            fn $name() {
-                test_decode!($label, $label);
-            }
+            decode!($name, $label, $label);
         };
     }
 
-    macro_rules! test_encode_fn {
+    macro_rules! encode {
         ($name:ident, $label:expr, $label_override:expr) => {
             #[test]
             fn $name() {
-                test_encode!($label, $label_override);
+                let encoding = encoding::Encoding::for_label($label_override.as_bytes()).unwrap();
+                let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/encoding");
+                let path = base_path.join(format!("{}_out.txt", $label));
+                let ref_path = base_path.join(format!("{}_out_ref.txt", $label));
+                assert!(path.exists());
+                assert!(ref_path.exists());
+
+                let text = Rope::from_str(&std::fs::read_to_string(path).unwrap());
+                let mut buf: Vec<u8> = Vec::new();
+                helix_lsp::block_on(to_writer(&mut buf, encoding, &text)).unwrap();
+
+                let expectation = std::fs::read(ref_path).unwrap();
+                assert_eq!(buf, expectation);
             }
         };
         ($name:ident, $label:expr) => {
-            #[test]
-            fn $name() {
-                test_encode!($label, $label);
-            }
+            encode!($name, $label, $label);
         };
     }
 
-    test_decode_fn!(test_big5_decode, "big5");
-    test_encode_fn!(test_big5_encode, "big5");
-    test_decode_fn!(test_euc_kr_decode, "euc_kr", "EUC-KR");
-    test_encode_fn!(test_euc_kr_encode, "euc_kr", "EUC-KR");
-    test_decode_fn!(test_gb18030_decode, "gb18030");
-    test_encode_fn!(test_gb18030_encode, "gb18030");
-    test_decode_fn!(test_iso_2022_jp_decode, "iso_2022_jp", "ISO-2022-JP");
-    test_encode_fn!(test_iso_2022_jp_encode, "iso_2022_jp", "ISO-2022-JP");
-    test_decode_fn!(test_jis0208_decode, "jis0208", "EUC-JP");
-    test_encode_fn!(test_jis0208_encode, "jis0208", "EUC-JP");
-    test_decode_fn!(test_jis0212_decode, "jis0212", "EUC-JP");
-    test_decode_fn!(test_shift_jis_decode, "shift_jis");
-    test_encode_fn!(test_shift_jis_encode, "shift_jis");
+    decode!(big5_decode, "big5");
+    encode!(big5_encode, "big5");
+    decode!(euc_kr_decode, "euc_kr", "EUC-KR");
+    encode!(euc_kr_encode, "euc_kr", "EUC-KR");
+    decode!(gb18030_decode, "gb18030");
+    encode!(gb18030_encode, "gb18030");
+    decode!(iso_2022_jp_decode, "iso_2022_jp", "ISO-2022-JP");
+    encode!(iso_2022_jp_encode, "iso_2022_jp", "ISO-2022-JP");
+    decode!(jis0208_decode, "jis0208", "EUC-JP");
+    encode!(jis0208_encode, "jis0208", "EUC-JP");
+    decode!(jis0212_decode, "jis0212", "EUC-JP");
+    decode!(shift_jis_decode, "shift_jis");
+    encode!(shift_jis_encode, "shift_jis");
 }
