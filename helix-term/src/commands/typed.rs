@@ -1165,13 +1165,12 @@ fn hsplit(
 
     // check if there are views with height equal to 1
     // if there are, close the newly created view
-    let mut reached_limit = false;
-    cx.editor.tree.views().for_each(|v| {
-        if v.0.area.height == 1 {
-            reached_limit = true;
-        }
-    });
-    if reached_limit {
+    if cx
+        .editor
+        .tree
+        .views()
+        .any(|(view, _focused)| view.area.height == 1)
+    {
         cx.editor.set_error("Max number of splits reached");
         cx.editor.close(view!(cx.editor).id);
 
@@ -1211,13 +1210,12 @@ fn hsplit_new(
 
     // check if there are views with height equal to 1
     // if there are, close the newly created view
-    let mut reached_limit = false;
-    cx.editor.tree.views().for_each(|v| {
-        if v.0.area.height == 1 {
-            reached_limit = true;
-        }
-    });
-    if reached_limit {
+    if cx
+        .editor
+        .tree
+        .views()
+        .any(|(view, _focused)| view.area.height == 1)
+    {
         cx.editor.set_error("Max number of splits reached");
         cx.editor.close(view!(cx.editor).id);
 
