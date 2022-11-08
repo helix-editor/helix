@@ -704,7 +704,10 @@ mod test {
 
     #[test]
     fn optimized_composition() {
-        let mut state = State::new("".into());
+        let mut state = State {
+            doc: "".into(),
+            selection: Selection::point(0),
+        };
         let t1 = Transaction::insert(&state.doc, &state.selection, Tendril::from("h"));
         t1.apply(&mut state.doc);
         state.selection = state.selection.clone().map(t1.changes());
