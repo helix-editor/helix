@@ -1475,7 +1475,7 @@ impl Editor {
             }
         }
 
-        let view = self.tree.get_mut(view_id);
+        let view = view!(self, view_id);
         let doc = doc_mut!(self, &view.doc);
         doc.mark_as_focused();
     }
