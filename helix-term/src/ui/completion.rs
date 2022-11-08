@@ -69,7 +69,7 @@ impl menu::Item for CompletionItem {
                 Some(kind) => {
                     log::error!("Received unknown completion item kind: {:?}", kind);
                     ""
-                },
+                }
                 None => "",
             }),
             // self.detail.as_deref().unwrap_or("")
