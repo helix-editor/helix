@@ -577,7 +577,7 @@ impl<'a> Iterator for ChangeIterator<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::State;
+    use crate::history::State;
 
     #[test]
     fn composition() {
