@@ -96,6 +96,172 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
     Ok(())
 }
 
+// Line selection movement tests
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_move_selection_single_selection_up() -> anyhow::Result<()> {
+    test((
+        platform_line(indoc! {"
+            aaaaaa
+            bbbbbb
+            cc#[|c]#ccc
+            dddddd
+            "})
+        .as_str(),
+        "<C-up>",
+        platform_line(indoc! {"
+            aaaaaa
+            cc#[|c]#ccc
+            bbbbbb
+            dddddd
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_move_selection_single_selection_down() -> anyhow::Result<()> {
+    test((
+        platform_line(indoc! {"
+            aa#[|a]#aaa
+            bbbbbb
+            cccccc
+            dddddd
+            "})
+        .as_str(),
+        "<C-down>",
+        platform_line(indoc! {"
+            bbbbbb
+            aa#[|a]#aaa
+            cccccc
+            dddddd
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_move_selection_single_selection_top_up() -> anyhow::Result<()> {
+    // if already on top of the file and going up, nothing should change
+    test((
+        platform_line(indoc! {"
+            aa#[|a]#aaa
+            bbbbbb
+            cccccc
+            dddddd"})
+        .as_str(),
+        "<C-up>",
+        platform_line(indoc! {"
+            aa#[|a]#aaa
+            bbbbbb
+            cccccc
+            dddddd"})
+        .as_str(),
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_move_selection_single_selection_bottom_down() -> anyhow::Result<()> {
+    // If going down on the bottom line, nothing should change
+    // Note that platform_line is not used here, because it inserts trailing
+    // linebreak, making it impossible to test
+    test((
+        "aaaaaa\nbbbbbb\ncccccc\ndd#[|d]#ddd",
+        "<C-down><C-down>",
+        "aaaaaa\nbbbbbb\ncccccc\ndd#[|d]#ddd",
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_move_selection_block_up() -> anyhow::Result<()> {
+    test((
+        platform_line(indoc! {"
+            aaaaaa
+            bb#[bbbb
+            ccc|]#ccc
+            dddddd
+            eeeeee
+            "})
+        .as_str(),
+        "<C-up>",
+        platform_line(indoc! {"
+            bb#[bbbb
+            ccc|]#ccc
+            aaaaaa
+            dddddd
+            eeeeee
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_move_selection_block_down() -> anyhow::Result<()> {
+    test((
+        platform_line(indoc! {"
+            #[|aaaaaa
+            bbbbbb
+            ccc]#ccc
+            dddddd
+            eeeeee
+            "})
+        .as_str(),
+        "<C-down>",
+        platform_line(indoc! {"
+            dddddd
+            #[|aaaaaa
+            bbbbbb
+            ccc]#ccc
+            eeeeee
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_move_two_cursors_down() -> anyhow::Result<()> {
+    test((
+        platform_line(indoc! {"
+            aaaaaa
+            bb#[|b]#bbb
+            cccccc
+            d#(dd|)#ddd
+            eeeeee
+            "})
+        .as_str(),
+        "<C-down>",
+        platform_line(indoc! {"
+            aaaaaa
+            cccccc
+            bb#[|b]#bbb
+            eeeeee
+            d#(dd|)#ddd
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    Ok(())
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn test_goto_file_impl() -> anyhow::Result<()> {
     let file = tempfile::NamedTempFile::new()?;
