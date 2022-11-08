@@ -3465,7 +3465,6 @@ fn paste_impl(values: &[String], doc: &mut Document, view: &mut View, action: Pa
         .any(|value| get_line_ending_of_str(value).is_some());
 
     // Only compiled once.
-    #[allow(clippy::trivial_regex)]
     static REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\r\n|\r|\n").unwrap());
     let mut values = values
         .iter()
