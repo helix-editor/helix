@@ -145,6 +145,7 @@ impl ui::menu::Item for PickerDiagnostic {
         Spans::from(vec![
             Span::raw(path),
             Span::styled(&self.diag.message, style),
+            Span::raw(" "),
             Span::styled(code, style),
         ])
     }
