@@ -411,6 +411,8 @@ impl MappableCommand {
         goto_prev_test, "Goto previous test",
         goto_next_paragraph, "Goto next paragraph",
         goto_prev_paragraph, "Goto previous paragraph",
+        goto_next_conflict_marker, "Goto next conflict marker",
+        goto_prev_conflict_marker, "Goto prev conflict marker",
         dap_launch, "Launch debug target",
         dap_toggle_breakpoint, "Toggle breakpoint",
         dap_continue, "Continue program execution",
@@ -982,6 +984,33 @@ fn goto_prev_paragraph(cx: &mut Context) {
 
 fn goto_next_paragraph(cx: &mut Context) {
     goto_para_impl(cx, movement::move_next_paragraph)
+}
+
+fn goto_conflict_marker(cx: &mut Context, movement: Movement, direction: Direction) {
+    let (_, doc) = current!(cx.editor);
+    let contents = doc.text().slice(..).to_string();
+    let re = Regex::new("<<<<<<<|=======|>>>>>>>").unwrap();
+    let config = cx.editor.config();
+    let scrolloff = config.scrolloff;
+    let wrap_around = config.search.wrap_around;
+    search_impl(
+        cx.editor,
+        &contents,
+        &re,
+        movement,
+        direction,
+        scrolloff,
+        wrap_around,
+        false,
+    );
+}
+
+fn goto_next_conflict_marker(cx: &mut Context) {
+    goto_conflict_marker(cx, Movement::Move, Direction::Forward)
+}
+
+fn goto_prev_conflict_marker(cx: &mut Context) {
+    goto_conflict_marker(cx, Movement::Move, Direction::Backward)
 }
 
 fn goto_file_start(cx: &mut Context) {

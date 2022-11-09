@@ -320,6 +320,8 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `]t`     | Go to previous test (**TS**)                 | `goto_prev_test`      |
 | `]p`     | Go to next paragraph                         | `goto_next_paragraph` |
 | `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
+| `]n`     | Go to next source control conflict marker    | `goto_next_conflict_marker` |
+| `[n`     | Go to previous source control conflict marker| `goto_prev_conflict_marker` |
 | `[Space` | Add newline above                            | `add_newline_above`   |
 | `]Space` | Add newline below                            | `add_newline_below`   |
 
