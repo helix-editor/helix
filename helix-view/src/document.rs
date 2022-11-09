@@ -135,6 +135,7 @@ pub struct Document {
     language_server: Option<Arc<helix_lsp::Client>>,
 
     pub search_position: Option<SearchPosition>,
+    pub all_matches: Option<Vec<(usize, usize)>>,
 }
 
 use std::{fmt, mem};
@@ -374,6 +375,7 @@ impl Document {
             modified_since_accessed: false,
             language_server: None,
             search_position: None,
+            all_matches: None,
         }
     }
 
@@ -860,6 +862,7 @@ impl Document {
 
         // Hide the search position from the status line
         self.search_position = None;
+        self.all_matches = None;
 
         success
     }
