@@ -4258,11 +4258,45 @@ fn split(cx: &mut Context, action: Action) {
 }
 
 fn hsplit(cx: &mut Context) {
+    let view_id = view!(cx.editor).id;
+
     split(cx, Action::HorizontalSplit);
+
+    // check if there are views with height equal to 1
+    // if there are, close the newly created view
+    if cx
+        .editor
+        .tree
+        .views()
+        .any(|(view, _focused)| view.area.height == 1)
+    {
+        cx.editor.set_error("Max number of splits reached");
+        cx.editor.close(view!(cx.editor).id);
+
+        // focus the view from which the split was called
+        cx.editor.focus(view_id);
+    }
 }
 
 fn hsplit_new(cx: &mut Context) {
+    let view_id = view!(cx.editor).id;
+
     cx.editor.new_file(Action::HorizontalSplit);
+
+    // check if there are views with height equal to 1
+    // if there are, close the newly created view
+    if cx
+        .editor
+        .tree
+        .views()
+        .any(|(view, _focused)| view.area.height == 1)
+    {
+        cx.editor.set_error("Max number of splits reached");
+        cx.editor.close(view!(cx.editor).id);
+
+        // focus the view from which the split was called
+        cx.editor.focus(view_id);
+    }
 }
 
 fn vsplit(cx: &mut Context) {
