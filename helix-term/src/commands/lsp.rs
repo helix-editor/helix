@@ -603,6 +603,14 @@ pub fn code_action(cx: &mut Context) {
         },
     )
 }
+
+impl ui::menu::Item for lsp::Command {
+    type Data = ();
+    fn label(&self, _data: &Self::Data) -> Spans {
+        self.title.as_str().into()
+    }
+}
+
 pub fn execute_lsp_command(editor: &mut Editor, cmd: lsp::Command) {
     let doc = doc!(editor);
     let language_server = language_server!(editor, doc);
