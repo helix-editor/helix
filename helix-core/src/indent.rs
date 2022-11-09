@@ -511,8 +511,12 @@ fn extend_nodes<'a>(
             *node = deepest_preceding;
             break;
         }
-        // This parent always exists since node is an ancestor of deepest_preceding
-        deepest_preceding = deepest_preceding.parent().unwrap();
+        // If the tree contains a syntax error, `deepest_preceding` may not
+        // have a parent despite being a descendant of `node`.
+        deepest_preceding = match deepest_preceding.parent() {
+            Some(parent) => parent,
+            None => return,
+        }
     }
 }
 
