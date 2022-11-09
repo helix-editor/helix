@@ -461,60 +461,58 @@ fn query_indents(
 /// so that the indent computation starts with the correct syntax node.
 fn extend_nodes<'a>(
     node: &mut Node<'a>,
-    deepest_preceding: Option<Node<'a>>,
+    mut deepest_preceding: Node<'a>,
     extend_captures: &HashMap<usize, Vec<ExtendCapture>>,
     text: RopeSlice,
     line: usize,
     tab_width: usize,
 ) {
-    if let Some(mut deepest_preceding) = deepest_preceding {
-        let mut stop_extend = false;
-        while deepest_preceding != *node {
-            let mut extend_node = false;
-            // This will be set to true if this node is captured, regardless of whether
-            // it actually will be extended (e.g. because the cursor isn't indented
-            // more than the node).
-            let mut node_captured = false;
-            if let Some(captures) = extend_captures.get(&deepest_preceding.id()) {
-                for capture in captures {
-                    match capture {
-                        ExtendCapture::PreventOnce => {
-                            stop_extend = true;
-                        }
-                        ExtendCapture::Extend => {
-                            node_captured = true;
-                            // We extend the node if
-                            // - the cursor is on the same line as the end of the node OR
-                            // - the line that the cursor is on is more indented than the
-                            //   first line of the node
-                            if deepest_preceding.end_position().row == line {
+    let mut stop_extend = false;
+
+    while deepest_preceding != *node {
+        let mut extend_node = false;
+        // This will be set to true if this node is captured, regardless of whether
+        // it actually will be extended (e.g. because the cursor isn't indented
+        // more than the node).
+        let mut node_captured = false;
+        if let Some(captures) = extend_captures.get(&deepest_preceding.id()) {
+            for capture in captures {
+                match capture {
+                    ExtendCapture::PreventOnce => {
+                        stop_extend = true;
+                    }
+                    ExtendCapture::Extend => {
+                        node_captured = true;
+                        // We extend the node if
+                        // - the cursor is on the same line as the end of the node OR
+                        // - the line that the cursor is on is more indented than the
+                        //   first line of the node
+                        if deepest_preceding.end_position().row == line {
+                            extend_node = true;
+                        } else {
+                            let cursor_indent = indent_level_for_line(text.line(line), tab_width);
+                            let node_indent = indent_level_for_line(
+                                text.line(deepest_preceding.start_position().row),
+                                tab_width,
+                            );
+                            if cursor_indent > node_indent {
                                 extend_node = true;
-                            } else {
-                                let cursor_indent =
-                                    indent_level_for_line(text.line(line), tab_width);
-                                let node_indent = indent_level_for_line(
-                                    text.line(deepest_preceding.start_position().row),
-                                    tab_width,
-                                );
-                                if cursor_indent > node_indent {
-                                    extend_node = true;
-                                }
                             }
                         }
                     }
                 }
             }
-            // If we encountered some `StopExtend` capture before, we don't
-            // extend the node even if we otherwise would
-            if node_captured && stop_extend {
-                stop_extend = false;
-            } else if extend_node && !stop_extend {
-                *node = deepest_preceding;
-                break;
-            }
-            // This parent always exists since node is an ancestor of deepest_preceding
-            deepest_preceding = deepest_preceding.parent().unwrap();
         }
+        // If we encountered some `StopExtend` capture before, we don't
+        // extend the node even if we otherwise would
+        if node_captured && stop_extend {
+            stop_extend = false;
+        } else if extend_node && !stop_extend {
+            *node = deepest_preceding;
+            break;
+        }
+        // This parent always exists since node is an ancestor of deepest_preceding
+        deepest_preceding = deepest_preceding.parent().unwrap();
     }
 }
 
@@ -612,14 +610,16 @@ pub fn treesitter_indent_for_pos(
     let extend_captures = query_result.extend_captures;
 
     // Check for extend captures, potentially changing the node that the indent calculation starts with
-    extend_nodes(
-        &mut node,
-        deepest_preceding,
-        &extend_captures,
-        text,
-        line,
-        tab_width,
-    );
+    if let Some(deepest_preceding) = deepest_preceding {
+        extend_nodes(
+            &mut node,
+            deepest_preceding,
+            &extend_captures,
+            text,
+            line,
+            tab_width,
+        );
+    }
     let mut first_in_line = get_first_in_line(node, new_line.then(|| byte_pos));
 
     let mut result = Indentation::default();
