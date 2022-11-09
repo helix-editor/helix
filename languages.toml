@@ -1356,6 +1356,7 @@ file-types = ["heex"]
 roots = ["mix.exs", "mix.lock"]
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "elixir-ls" }
+config = { elixirLS.dialyzerEnabled = false }
 
 [[grammar]]
 name = "heex"
