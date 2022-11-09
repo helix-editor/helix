@@ -1150,7 +1150,6 @@ fn hsplit(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     let id = view!(cx.editor).doc;
     let view_id = view!(cx.editor).id;
 
@@ -1163,20 +1162,7 @@ fn hsplit(
         }
     }
 
-    // check if there are views with height equal to 1
-    // if there are, close the newly created view
-    if cx
-        .editor
-        .tree
-        .views()
-        .any(|(view, _focused)| view.area.height == 1)
-    {
-        cx.editor.set_error("Max number of splits reached");
-        cx.editor.close(view!(cx.editor).id);
-
-        // focus the view from which the split was called
-        cx.editor.focus(view_id);
-    }
+    hsplit_limit_check(view_id, cx.editor);
 
     Ok(())
 }
@@ -1203,27 +1189,29 @@ fn hsplit_new(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     let view_id = view!(cx.editor).id;
 
     cx.editor.new_file(Action::HorizontalSplit);
 
+    hsplit_limit_check(view_id, cx.editor);
+
+    Ok(())
+}
+
+pub fn hsplit_limit_check(view_id: ViewId, editor: &mut Editor) {
     // check if there are views with height equal to 1
     // if there are, close the newly created view
-    if cx
-        .editor
+    if editor
         .tree
         .views()
         .any(|(view, _focused)| view.area.height == 1)
     {
-        cx.editor.set_error("Max number of splits reached");
-        cx.editor.close(view!(cx.editor).id);
+        editor.set_error("Max number of splits reached");
+        editor.close(view!(editor).id);
 
         // focus the view from which the split was called
-        cx.editor.focus(view_id);
+        editor.focus(view_id);
     }
-
-    Ok(())
 }
 
 fn debug_eval(
