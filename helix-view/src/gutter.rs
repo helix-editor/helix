@@ -1,13 +1,47 @@
 use std::fmt::Write;
 
 use crate::{
+    editor::GutterType,
     graphics::{Color, Style, UnderlineStyle},
     Document, Editor, Theme, View,
 };
 
+fn count_digits(n: usize) -> usize {
+    // NOTE: if int_log gets standardized in stdlib, can use checked_log10
+    // (https://github.com/rust-lang/rust/issues/70887#issue)
+    std::iter::successors(Some(n), |&n| (n >= 10).then(|| n / 10)).count()
+}
+
 pub type GutterFn<'doc> = Box<dyn Fn(usize, bool, &mut String) -> Option<Style> + 'doc>;
 pub type Gutter =
     for<'doc> fn(&'doc Editor, &'doc Document, &View, &Theme, bool, usize) -> GutterFn<'doc>;
+
+impl GutterType {
+    pub fn style<'doc>(
+        self,
+        editor: &'doc Editor,
+        doc: &'doc Document,
+        view: &View,
+        theme: &Theme,
+        is_focused: bool,
+    ) -> GutterFn<'doc> {
+        match self {
+            GutterType::Diagnostics => {
+                diagnostics_or_breakpoints(editor, doc, view, theme, is_focused)
+            }
+            GutterType::LineNumbers => line_numbers(editor, doc, view, theme, is_focused),
+            GutterType::Spacer => padding(editor, doc, view, theme, is_focused),
+        }
+    }
+
+    pub fn width(self, _view: &View, doc: &Document) -> usize {
+        match self {
+            GutterType::Diagnostics => 1,
+            GutterType::LineNumbers => line_numbers_width(_view, doc),
+            GutterType::Spacer => 1,
+        }
+    }
+}
 
 pub fn diagnostic<'doc>(
     _editor: &'doc Editor,
@@ -15,7 +49,6 @@ pub fn diagnostic<'doc>(
     _view: &View,
     theme: &Theme,
     _is_focused: bool,
-    _width: usize,
 ) -> GutterFn<'doc> {
     let warning = theme.get("warning");
     let error = theme.get("error");
@@ -56,10 +89,11 @@ pub fn line_numbers<'doc>(
     view: &View,
     theme: &Theme,
     is_focused: bool,
-    width: usize,
 ) -> GutterFn<'doc> {
     let text = doc.text().slice(..);
     let last_line = view.last_line(doc);
+    let width = GutterType::LineNumbers.width(view, doc);
+
     // Whether to draw the line number for the last line of the
     // document or not.  We only draw it if it's not an empty line.
     let draw_last = text.line_to_byte(last_line) < text.len_bytes();
@@ -91,15 +125,27 @@ pub fn line_numbers<'doc>(
             } else {
                 line + 1
             };
+
             let style = if selected && is_focused {
                 linenr_select
             } else {
                 linenr
             };
+
             write!(out, "{:>1$}", display_num, width).unwrap();
             Some(style)
         }
     })
+}
+
+pub fn line_numbers_width(_view: &View, doc: &Document) -> usize {
+    let text = doc.text();
+    let last_line = text.len_lines().saturating_sub(1);
+    let draw_last = text.line_to_byte(last_line) < text.len_bytes();
+    let last_drawn = if draw_last { last_line + 1 } else { last_line };
+
+    // set a lower bound to 2-chars to minimize ambiguous relative line numbers
+    std::cmp::max(count_digits(last_drawn), 2)
 }
 
 pub fn padding<'doc>(
@@ -108,7 +154,6 @@ pub fn padding<'doc>(
     _view: &View,
     _theme: &Theme,
     _is_focused: bool,
-    _width: usize,
 ) -> GutterFn<'doc> {
     Box::new(|_line: usize, _selected: bool, _out: &mut String| None)
 }
@@ -128,7 +173,6 @@ pub fn breakpoints<'doc>(
     _view: &View,
     theme: &Theme,
     _is_focused: bool,
-    _width: usize,
 ) -> GutterFn<'doc> {
     let warning = theme.get("warning");
     let error = theme.get("error");
@@ -181,10 +225,9 @@ pub fn diagnostics_or_breakpoints<'doc>(
     view: &View,
     theme: &Theme,
     is_focused: bool,
-    width: usize,
 ) -> GutterFn<'doc> {
-    let diagnostics = diagnostic(editor, doc, view, theme, is_focused, width);
-    let breakpoints = breakpoints(editor, doc, view, theme, is_focused, width);
+    let diagnostics = diagnostic(editor, doc, view, theme, is_focused);
+    let breakpoints = breakpoints(editor, doc, view, theme, is_focused);
 
     Box::new(move |line, selected, out| {
         breakpoints(line, selected, out).or_else(|| diagnostics(line, selected, out))
