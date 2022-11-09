@@ -4,8 +4,6 @@
 use helix_core::Position;
 use helix_view::graphics::{CursorKind, Rect};
 
-#[cfg(feature = "integration")]
-use tui::backend::TestBackend;
 use tui::buffer::Buffer as Surface;
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;

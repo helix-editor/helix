@@ -58,6 +58,9 @@ const LSP_DEADLINE: Duration = Duration::from_millis(16);
 #[cfg(not(feature = "integration"))]
 use tui::backend::CrosstermBackend;
 
+#[cfg(feature = "integration")]
+use tui::backend::TestBackend;
+
 #[cfg(not(feature = "integration"))]
 type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
 
