@@ -247,7 +247,7 @@ fn render_search_position<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    if let Some(search_position) = &context.editor.search_position {
+    if let Some(search_position) = &context.doc.search_position {
         let wrapped_indicator_else_space = if search_position.wrapped { " W " } else { " " };
         write(
             context,

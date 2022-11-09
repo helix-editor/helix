@@ -29,8 +29,8 @@ use helix_core::{
 use helix_view::{
     apply_transaction,
     clipboard::ClipboardType,
-    document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::{Action, Motion, SearchPosition},
+    document::{FormatterError, Mode, SearchPosition, SCRATCH_BUFFER_NAME},
+    editor::{Action, Motion},
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -1631,7 +1631,7 @@ fn search_impl(
             .iter()
             .position(|this_m| is_match_eq(this_m, mat));
         if let Some(current_position) = current_position {
-            editor.search_position = Some(SearchPosition {
+            doc.search_position = Some(SearchPosition {
                 current_position: current_position + 1,
                 total_positions: all_matches.len(),
                 wrapped: false,
@@ -1644,7 +1644,7 @@ fn search_impl(
             Direction::Forward => 1,
             Direction::Backward => all_matches.len(),
         };
-        editor.search_position = Some(SearchPosition {
+        doc.search_position = Some(SearchPosition {
             current_position,
             total_positions: all_matches.len(),
             wrapped: true,
@@ -2240,7 +2240,6 @@ fn ensure_selections_forward(cx: &mut Context) {
 
 fn enter_insert_mode(cx: &mut Context) {
     cx.editor.mode = Mode::Insert;
-    cx.editor.search_position = None;
 }
 
 // inserts at the start of each selection

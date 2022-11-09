@@ -709,7 +709,6 @@ pub struct Editor {
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
-    pub search_position: Option<SearchPosition>,
 }
 
 #[derive(Debug)]
@@ -756,16 +755,6 @@ pub enum CloseError {
     SaveError(anyhow::Error),
 }
 
-/// The current search position
-pub struct SearchPosition {
-    /// The position of the current match
-    pub current_position: usize,
-    /// The total number of matches
-    pub total_positions: usize,
-    /// True if we had wrapped
-    pub wrapped: bool,
-}
-
 impl Editor {
     pub fn new(
         mut area: Rect,
@@ -780,7 +769,6 @@ impl Editor {
         area.height -= 1;
 
         Self {
-            search_position: None,
             mode: Mode::Normal,
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
