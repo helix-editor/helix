@@ -4681,10 +4681,7 @@ fn paste_impl(
 
     // Precompute the combined tendril value if we will be doing a PasteType::All
     let combined_tendril_value = match paste_type {
-        PasteType::All => Some(values.iter().fold(Tendril::default(), |mut acc, v| {
-            acc = acc + v;
-            acc
-        })),
+        PasteType::All => Some(values.iter().collect::<Tendril>()),
         PasteType::Default => None,
     };
 
