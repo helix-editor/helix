@@ -4624,6 +4624,15 @@ enum Paste {
 
 static LINE_ENDING_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\r\n|\r|\n").unwrap());
 
+/// Enumerates the possible ways to paste
+#[derive(Copy, Clone)]
+enum PasteType {
+    /// Paste one value in the register per selection
+    Default,
+    /// Paste every value in the register for every selection
+    All,
+}
+
 fn paste_impl(
     values: &[String],
     doc: &mut Document,
@@ -4631,6 +4640,7 @@ fn paste_impl(
     action: Paste,
     count: usize,
     mode: Mode,
+    paste_type: PasteType,
 ) {
     if values.is_empty() {
         return;
@@ -4714,7 +4724,15 @@ pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
         Mode::Normal => Paste::Before,
     };
     let (view, doc) = current!(cx.editor);
-    paste_impl(&[contents], doc, view, paste, count, cx.editor.mode);
+    paste_impl(
+        &[contents],
+        doc,
+        view,
+        paste,
+        count,
+        cx.editor.mode,
+        PasteType::Default,
+    );
     exit_select_mode(cx);
 }
 
@@ -4801,14 +4819,14 @@ fn replace_selections_with_primary_clipboard(cx: &mut Context) {
     exit_select_mode(cx);
 }
 
-fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {
+fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize, paste_type: PasteType) {
     let Some(values) = editor.registers.read(register, editor) else {
         return;
     };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
 
     let (view, doc) = current!(editor);
-    paste_impl(&values, doc, view, pos, count, editor.mode);
+    paste_impl(&values, doc, view, pos, count, editor.mode, paste_type);
 }
 
 fn paste_after(cx: &mut Context) {
@@ -4818,6 +4836,7 @@ fn paste_after(cx: &mut Context) {
             .unwrap_or(cx.editor.config().default_yank_register),
         Paste::After,
         cx.count(),
+        PasteType::Default,
     );
     exit_select_mode(cx);
 }
@@ -4829,6 +4848,7 @@ fn paste_before(cx: &mut Context) {
             .unwrap_or(cx.editor.config().default_yank_register),
         Paste::Before,
         cx.count(),
+        PasteType::Default,
     );
     exit_select_mode(cx);
 }
@@ -5693,6 +5713,7 @@ fn insert_register(cx: &mut Context) {
                     .unwrap_or(cx.editor.config().default_yank_register),
                 Paste::Cursor,
                 cx.count(),
+                PasteType::Default,
             );
         }
     })
