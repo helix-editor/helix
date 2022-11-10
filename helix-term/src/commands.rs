@@ -339,6 +339,8 @@ impl MappableCommand {
         replace_with_yanked, "Replace with yanked text",
         replace_selections_with_clipboard, "Replace selections by clipboard content",
         replace_selections_with_primary_clipboard, "Replace selections by primary clipboard",
+        paste_after_all, "Paste all after selection",
+        paste_before_all, "Paste all before selection",
         paste_after, "Paste after selection",
         paste_before, "Paste before selection",
         paste_clipboard_after, "Paste clipboard after selections",
@@ -3482,7 +3484,7 @@ fn paste_impl(
 
     // Only compiled once.
     static REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\r\n|\r|\n").unwrap());
-    let mut values = values
+    let mut values_iter = values
         .iter()
         .map(|value| REGEX.replace_all(value, doc.line_ending.as_str()))
         .map(|value| Tendril::from(value.as_ref().repeat(count)))
@@ -3494,7 +3496,16 @@ fn paste_impl(
     let mut offset = 0;
     let mut ranges = SmallVec::with_capacity(selection.len());
 
-    let transaction = Transaction::change_by_selection(text, selection, |range| {
+    // Precompute the combined tendril value if we will be doing a PasteType::All
+    let combined_tendril_value = match paste_type {
+        PasteType::All => Some(values.iter().fold(Tendril::default(), |mut acc, v| {
+            acc = acc + v;
+            acc
+        })),
+        PasteType::Default => None,
+    };
+
+    let transaction = Transaction::change_by_selection(text, selection, |range: &Range| {
         let pos = match (action, linewise) {
             // paste linewise before
             (Paste::Before, true) => text.line_to_char(text.char_to_line(range.from())),
@@ -3511,17 +3522,38 @@ fn paste_impl(
             (Paste::Cursor, _) => range.cursor(text.slice(..)),
         };
 
-        let value = values.next();
+        let value = match paste_type {
+            PasteType::All => {
+                // Iterate over every value and add its range
+                for value in values {
+                    let value_len = value.chars().count();
+                    let anchor = offset + pos;
 
-        let value_len = value
-            .as_ref()
-            .map(|content| content.chars().count())
-            .unwrap_or_default();
-        let anchor = offset + pos;
+                    let new_range =
+                        Range::new(anchor, anchor + value_len).with_direction(range.direction());
+                    ranges.push(new_range);
+                    offset += value_len;
+                }
 
-        let new_range = Range::new(anchor, anchor + value_len).with_direction(range.direction());
-        ranges.push(new_range);
-        offset += value_len;
+                // Return the precomputed tendril value
+                combined_tendril_value.clone()
+            }
+            PasteType::Default => {
+                let value: Option<Tendril> = values_iter.next();
+
+                let value_len = value
+                    .as_ref()
+                    .map(|content| content.chars().count())
+                    .unwrap_or_default();
+                let anchor = offset + pos;
+
+                let new_range =
+                    Range::new(anchor, anchor + value_len).with_direction(range.direction());
+                ranges.push(new_range);
+                offset += value_len;
+                value
+            }
+        };
 
         (pos, pos, value)
     });
@@ -3671,6 +3703,14 @@ fn paste(cx: &mut Context, pos: Paste, paste_type: PasteType) {
     if let Some(values) = registers.read(reg_name) {
         paste_impl(values, doc, view, pos, count, paste_type);
     }
+}
+
+fn paste_after_all(cx: &mut Context) {
+    paste(cx, Paste::After, PasteType::All)
+}
+
+fn paste_before_all(cx: &mut Context) {
+    paste(cx, Paste::Before, PasteType::All)
 }
 
 fn paste_after(cx: &mut Context) {
