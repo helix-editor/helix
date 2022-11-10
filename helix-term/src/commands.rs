@@ -3446,7 +3446,23 @@ enum Paste {
     Cursor,
 }
 
-fn paste_impl(values: &[String], doc: &mut Document, view: &mut View, action: Paste, count: usize) {
+/// Enumerates the possible ways to paste
+#[derive(Copy, Clone)]
+enum PasteType {
+    /// Paste one value in the register per selection
+    Default,
+    /// Paste every value in the register for every selection
+    All,
+}
+
+fn paste_impl(
+    values: &[String],
+    doc: &mut Document,
+    view: &mut View,
+    action: Paste,
+    count: usize,
+    paste_type: PasteType,
+) {
     if values.is_empty() {
         return;
     }
@@ -3522,7 +3538,7 @@ pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
         Mode::Normal => Paste::Before,
     };
     let (view, doc) = current!(cx.editor);
-    paste_impl(&[contents], doc, view, paste, count);
+    paste_impl(&[contents], doc, view, paste, count, PasteType::Default);
 }
 
 fn paste_clipboard_impl(
@@ -3534,7 +3550,7 @@ fn paste_clipboard_impl(
     let (view, doc) = current!(editor);
     match editor.clipboard_provider.get_contents(clipboard_type) {
         Ok(contents) => {
-            paste_impl(&[contents], doc, view, action, count);
+            paste_impl(&[contents], doc, view, action, count, PasteType::Default);
             Ok(())
         }
         Err(e) => Err(e.context("Couldn't get system clipboard contents")),
@@ -3646,23 +3662,23 @@ fn replace_selections_with_primary_clipboard(cx: &mut Context) {
     let _ = replace_selections_with_clipboard_impl(cx, ClipboardType::Selection);
 }
 
-fn paste(cx: &mut Context, pos: Paste) {
+fn paste(cx: &mut Context, pos: Paste, paste_type: PasteType) {
     let count = cx.count();
     let reg_name = cx.register.unwrap_or('"');
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
 
     if let Some(values) = registers.read(reg_name) {
-        paste_impl(values, doc, view, pos, count);
+        paste_impl(values, doc, view, pos, count, paste_type);
     }
 }
 
 fn paste_after(cx: &mut Context) {
-    paste(cx, Paste::After)
+    paste(cx, Paste::After, PasteType::Default)
 }
 
 fn paste_before(cx: &mut Context) {
-    paste(cx, Paste::Before)
+    paste(cx, Paste::Before, PasteType::Default)
 }
 
 fn get_lines(doc: &Document, view_id: ViewId) -> Vec<usize> {
@@ -4315,7 +4331,7 @@ fn insert_register(cx: &mut Context) {
         if let Some(ch) = event.char() {
             cx.editor.autoinfo = None;
             cx.register = Some(ch);
-            paste(cx, Paste::Cursor);
+            paste(cx, Paste::Cursor, PasteType::Default);
         }
     })
 }
