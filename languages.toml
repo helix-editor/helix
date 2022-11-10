@@ -998,7 +998,7 @@ source = { git = "https://github.com/UserNobody14/tree-sitter-dart", rev = "2d7f
 name = "scala"
 scope = "source.scala"
 roots = ["build.sbt", "pom.xml"]
-file-types = ["scala", "sbt"]
+file-types = ["scala", "sbt", "sc"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "metals" }
