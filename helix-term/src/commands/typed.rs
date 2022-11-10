@@ -1044,39 +1044,40 @@ fn reload_all(
     }
 
     let scrolloff = cx.editor.config().scrolloff;
-    let view_id = {
-        let (view, _) = current_ref!(cx.editor);
-        view.id
-    };
+    let view_id = view!(cx.editor).id;
 
-    let docs_views: Vec<(DocumentId, ViewId)> = cx
+    let docs_views: Vec<(DocumentId, Vec<ViewId>)> = cx
         .editor
         .documents_mut()
         .map(|doc| {
-            let target_view = if doc.selections().contains_key(&view_id) {
-                view_id
-            } else if let Some(view) = doc.selections().keys().next() {
-                *view
-            } else {
+            let mut views: Vec<_> = doc.selections().keys().cloned().collect();
+
+            if views.is_empty() {
                 doc.ensure_view_init(view_id);
-                view_id
+                views = vec![view_id];
             };
 
-            (doc.id(), target_view)
+            (doc.id(), views)
         })
         .collect();
 
-    for (doc_id, view_id) in docs_views {
-        let view = view_mut!(cx.editor, view_id);
+    for (doc_id, view_ids) in docs_views {
         let doc = doc_mut!(cx.editor, &doc_id);
 
-        doc.reload(view).map(|_| {
+        // Every doc is guaranteed to have at least 1 view at this point.
+        let view = view_mut!(cx.editor, view_ids[0]);
+        doc.reload(view)?;
+
+        for view_id in view_ids {
+            let view = view_mut!(cx.editor, view_id);
+
             view.ensure_cursor_in_view(doc, scrolloff);
-        })?;
+        }
     }
 
     Ok(())
 }
+
 /// Update the [`Document`] if it has been modified.
 fn update(
     cx: &mut compositor::Context,
@@ -2096,7 +2097,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
         TypableCommand {
             name: "reload-all",
-            aliases: &["ra"],
+            aliases: &[],
             doc: "Discard changes and reload all documents from the source file.",
             fun: reload_all,
             completer: None,
