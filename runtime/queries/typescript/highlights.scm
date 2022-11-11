@@ -34,7 +34,7 @@
   "implements"
   "keyof"
   "namespace"
-  "abstract"
+  "override"
 ] @keyword
 
 [
