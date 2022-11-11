@@ -4,8 +4,8 @@ mod test {
 
     use std::path::PathBuf;
 
-    use helix_core::{syntax::AutoPairConfig, Position, Selection};
-    use helix_term::{args::Args, config::Config};
+    use helix_core::{syntax::AutoPairConfig, Selection};
+    use helix_term::config::Config;
 
     use indoc::indoc;
 
