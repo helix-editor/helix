@@ -178,14 +178,11 @@ pub fn test_syntax_conf(overrides: Option<String>) -> helix_core::syntax::Config
 /// document, selection, and sequence of key presses, and you just
 /// want to verify the resulting document and selection.
 pub async fn test_with_config<T: Into<TestCase>>(
-    args: Args,
-    mut config: Config,
-    syn_conf: helix_core::syntax::Configuration,
+    app_builder: AppBuilder,
     test_case: T,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
-    config = helix_term::keymap::merge_keys(config);
-    let app = Application::new(args, config, syn_conf)?;
+    let app = app_builder.build()?;
 
     test_key_sequence_with_input_text(
         Some(app),
@@ -206,13 +203,7 @@ pub async fn test_with_config<T: Into<TestCase>>(
 }
 
 pub async fn test<T: Into<TestCase>>(test_case: T) -> anyhow::Result<()> {
-    test_with_config(
-        Args::default(),
-        test_config(),
-        test_syntax_conf(None),
-        test_case,
-    )
-    .await
+    test_with_config(AppBuilder::default(), test_case).await
 }
 
 pub fn temp_file_with_contents<S: AsRef<str>>(
@@ -310,7 +301,7 @@ impl AppBuilder {
     // Remove this attribute once `with_config` is used in a test:
     #[allow(dead_code)]
     pub fn with_config(mut self, config: Config) -> Self {
-        self.config = config;
+        self.config = helix_term::keymap::merge_keys(config);
         self
     }
 

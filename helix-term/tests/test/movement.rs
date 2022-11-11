@@ -413,12 +413,7 @@ async fn cursor_position_append_eof() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::Result<()> {
     test_with_config(
-        Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
-            ..Default::default()
-        },
-        Config::default(),
-        helpers::test_syntax_conf(None),
+        AppBuilder::new().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 #[/|]#// Increments
@@ -443,12 +438,7 @@ async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::
 #[tokio::test(flavor = "multi_thread")]
 async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Result<()> {
     test_with_config(
-        Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
-            ..Default::default()
-        },
-        Config::default(),
-        helpers::test_syntax_conf(None),
+        AppBuilder::new().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -474,12 +464,7 @@ async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Res
 async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> anyhow::Result<()> {
     // Note: the anchor stays put and the head moves back.
     test_with_config(
-        Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
-            ..Default::default()
-        },
-        Config::default(),
-        helpers::test_syntax_conf(None),
+        AppBuilder::new().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -503,12 +488,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
     .await?;
 
     test_with_config(
-        Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
-            ..Default::default()
-        },
-        Config::default(),
-        helpers::test_syntax_conf(None),
+        AppBuilder::new().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
