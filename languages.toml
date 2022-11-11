@@ -399,7 +399,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "typescript"
-source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "3e897ea5925f037cfae2e551f8e6b12eec2a201a", subpath = "typescript" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "6aac031ad88dd6317f02ac0bb27d099a553a7d8c", subpath = "typescript" }
 
 [[language]]
 name = "tsx"
@@ -413,7 +413,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "tsx"
-source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "3e897ea5925f037cfae2e551f8e6b12eec2a201a", subpath = "tsx" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "6aac031ad88dd6317f02ac0bb27d099a553a7d8c", subpath = "tsx" }
 
 [[language]]
 name = "css"
@@ -997,8 +997,8 @@ source = { git = "https://github.com/UserNobody14/tree-sitter-dart", rev = "2d7f
 [[language]]
 name = "scala"
 scope = "source.scala"
-roots = ["build.sbt", "pom.xml"]
-file-types = ["scala", "sbt"]
+roots = ["build.sbt", "build.sc", "build.gradle", "pom.xml", ".scala-build"]
+file-types = ["scala", "sbt", "sc"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "metals" }
@@ -1355,6 +1355,8 @@ injection-regex = "heex"
 file-types = ["heex"]
 roots = ["mix.exs", "mix.lock"]
 indent = { tab-width = 2, unit = "  " }
+language-server = { command = "elixir-ls" }
+config = { elixirLS.dialyzerEnabled = false }
 
 [[grammar]]
 name = "heex"

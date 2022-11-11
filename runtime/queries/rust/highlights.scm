@@ -274,7 +274,11 @@
 (meta_item
   (identifier) @function.macro)
 (attr_item
-  (identifier) @function.macro
+  [
+    (identifier) @function.macro
+    (scoped_identifier
+      name: (identifier) @function.macro)
+  ]
   (token_tree (identifier) @function.macro)?)
 
 (inner_attribute_item) @attribute

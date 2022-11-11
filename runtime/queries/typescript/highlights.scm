@@ -34,6 +34,7 @@
   "implements"
   "keyof"
   "namespace"
+  "override"
 ] @keyword
 
 [
@@ -62,3 +63,15 @@
 
 ((identifier) @type
  (#match? @type "^[A-Z]"))
+
+; Literals
+
+[
+  (template_literal_type)
+] @string
+
+; Tokens
+
+(template_type
+  "${" @punctuation.special
+  "}" @punctuation.special) @embedded

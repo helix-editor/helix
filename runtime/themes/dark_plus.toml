@@ -49,9 +49,9 @@
 "markup.quote" = "dark_green"
 "markup.raw" = "orange"
 
-"diff.plus" = { fg = "pale_green" }
-"diff.delta" = { fg = "gold" }
-"diff.minus" = { fg = "red" }
+"diff.plus" = { fg = "dark_green2" }
+"diff.delta" = { fg = "blue4" }
+"diff.minus" = { fg = "orange_red" }
 
 "ui.background" = { fg = "light_gray", bg = "dark_gray2" }
 
@@ -75,6 +75,8 @@
 "ui.cursorline.primary" = { bg = "dark_gray3" }
 "ui.statusline" = { fg = "white", bg = "blue" }
 "ui.statusline.inactive" = { fg = "white", bg = "blue" }
+"ui.statusline.insert" = { fg = "white", bg = "yellow" }
+"ui.statusline.select" = { fg = "white", bg = "magenta" }
 
 "ui.bufferline" = { fg = "text", bg = "widget" }
 "ui.bufferline.active" = { fg = "white", bg = "blue" }
@@ -102,6 +104,7 @@ gold = "#d7ba7d"
 gold2 = "#cca700"
 pale_green = "#b5cea8"
 dark_green = "#6A9955"
+dark_green2 = "#487e02"
 light_gray = "#d4d4d4"
 light_gray2 = "#c6c6c6"
 light_gray3 = "#eeeeee"
@@ -112,10 +115,12 @@ dark_gray4 = "#404040"
 blue = "#007acc"
 blue2 = "#569CD6"
 blue3 = "#6796E6"
+blue4 = "#1b81a8"
 light_blue = "#75beff"
 dark_blue = "#264f78"
 dark_blue2 = "#094771"
 red = "#ff1212"
+orange_red = "#f14c4c"
 
 type = "#4EC9B0"
 special = "#C586C0"
