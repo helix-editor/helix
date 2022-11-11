@@ -96,6 +96,9 @@ pub struct View {
     pub object_selections: Vec<Selection>,
     /// GutterTypes used to fetch Gutter (constructor) and width for rendering
     gutters: Vec<GutterType>,
+    /// Relevant gutter config settings
+    pub gutter_line_numbers_width_min: usize,
+    pub gutter_line_numbers_width_max: usize,
 }
 
 impl fmt::Debug for View {
@@ -109,7 +112,12 @@ impl fmt::Debug for View {
 }
 
 impl View {
-    pub fn new(doc: DocumentId, gutter_types: Vec<crate::editor::GutterType>) -> Self {
+    pub fn new(
+        doc: DocumentId,
+        gutter_types: Vec<crate::editor::GutterType>,
+        gutter_line_numbers_width_min: usize,
+        gutter_line_numbers_width_max: usize,
+    ) -> Self {
         Self {
             id: ViewId::default(),
             doc,
@@ -120,6 +128,8 @@ impl View {
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
             gutters: gutter_types,
+            gutter_line_numbers_width_min,
+            gutter_line_numbers_width_max,
         }
     }
 
@@ -364,6 +374,8 @@ mod tests {
         let mut view = View::new(
             DocumentId::default(),
             vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            2,
+            5,
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
@@ -473,7 +485,7 @@ mod tests {
     fn test_text_pos_at_screen_coords_graphemes() {
         let mut view = View::new(
             DocumentId::default(),
-            vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            vec![GutterType::Diagnostics, GutterType::LineNumbers, 2, 4],
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");

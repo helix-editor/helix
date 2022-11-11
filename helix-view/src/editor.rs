@@ -130,6 +130,10 @@ pub struct Config {
     pub cursorcolumn: bool,
     /// Gutters. Default ["diagnostics", "line-numbers"]
     pub gutters: Vec<GutterType>,
+    /// Minimum number of characters to display as part of line number gutter. Defaults to 2.
+    pub line_numbers_width_min: usize,
+    /// Maximum number of characters to display as part of line number gutter, or 0 for no maximum. Defaults to 0 (no maximum).
+    pub line_numbers_width_max: usize,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
     /// Automatic insertion of pairs to parentheses, brackets,
@@ -595,6 +599,8 @@ impl Default for Config {
                 GutterType::Spacer,
                 GutterType::LineNumbers,
             ],
+            line_numbers_width_min: 2,
+            line_numbers_width_max: 0, // unlimited
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
@@ -1039,7 +1045,14 @@ impl Editor {
                     .try_get(self.tree.focus)
                     .filter(|v| id == v.doc) // Different Document
                     .cloned()
-                    .unwrap_or_else(|| View::new(id, self.config().gutters.clone()));
+                    .unwrap_or_else(|| {
+                        View::new(
+                            id,
+                            self.config().gutters.clone(),
+                            self.config().line_numbers_width_min,
+                            self.config().line_numbers_width_max,
+                        )
+                    });
                 let view_id = self.tree.split(
                     view,
                     match action {
@@ -1182,7 +1195,12 @@ impl Editor {
                 .map(|(&doc_id, _)| doc_id)
                 .next()
                 .unwrap_or_else(|| self.new_document(Document::default()));
-            let view = View::new(doc_id, self.config().gutters.clone());
+            let view = View::new(
+                doc_id,
+                self.config().gutters.clone(),
+                self.config().line_numbers_width_min,
+                self.config().line_numbers_width_max,
+            );
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
             doc.ensure_view_init(view_id);
