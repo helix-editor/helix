@@ -4863,14 +4863,18 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
     apply_transaction(&transaction, doc, view);
 }
 
+enum IncrementDirection {
+    Increase,
+    Decrease,
+}
 /// Increment object under cursor by count.
 fn increment(cx: &mut Context) {
-    increment_impl(cx, cx.count() as i64);
+    increment_impl(cx, IncrementDirection::Increase);
 }
 
 /// Decrement object under cursor by count.
 fn decrement(cx: &mut Context) {
-    increment_impl(cx, -(cx.count() as i64));
+    increment_impl(cx, IncrementDirection::Decrease);
 }
 
 /// This function differs from find_next_char_impl in that it stops searching at the newline, but also
@@ -4894,7 +4898,7 @@ fn find_next_char_until_newline<M: CharMatcher>(
 }
 
 /// Decrement object under cursor by `amount`.
-fn increment_impl(cx: &mut Context, amount: i64) {
+fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
     // TODO: when incrementing or decrementing a number that gets a new digit or lose one, the
     // selection is updated improperly.
     find_char_impl(
@@ -4905,6 +4909,17 @@ fn increment_impl(cx: &mut Context, amount: i64) {
         char::is_ascii_digit,
         1,
     );
+
+    // Increase by 1 if `IncrementDirection` is `Increase`
+    // Decrease by 1 if `IncrementDirection` is `Decrease`
+    let sign = match increment_direction {
+        IncrementDirection::Increase => 1,
+        IncrementDirection::Decrease => -1,
+    };
+    let mut amount = sign * cx.count() as i64;
+
+    // If the register is `#` then increase or decrease the `amount` by 1 per element
+    let increase_by = if cx.register == Some('#') { sign } else { 0 };
 
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
@@ -4924,6 +4939,8 @@ fn increment_impl(cx: &mut Context, amount: i64) {
                 };
 
             let (range, new_text) = incrementor.increment(amount);
+
+            amount += increase_by;
 
             Some((range.from(), range.to(), Some(new_text)))
         })
