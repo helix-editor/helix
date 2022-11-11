@@ -7,8 +7,10 @@ use crate::{
     Rope, RopeSlice, Tendril,
 };
 
+use ahash::RandomState;
 use arc_swap::{ArcSwap, Guard};
 use bitflags::bitflags;
+use hashbrown::raw::RawTable;
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
 use std::{
@@ -16,7 +18,8 @@ use std::{
     cell::RefCell,
     collections::{HashMap, VecDeque},
     fmt,
-    mem::replace,
+    hash::{BuildHasher, Hash, Hasher},
+    mem::{replace, transmute},
     path::Path,
     str::FromStr,
     sync::Arc,
@@ -706,11 +709,23 @@ thread_local! {
     })
 }
 
-#[derive(Debug)]
 pub struct Syntax {
     layers: HopSlotMap<LayerId, LanguageLayer>,
+    layers_lut: RawTable<LayerId>,
+    layers_lut_hasher: RandomState,
     root: LayerId,
     loader: Arc<Loader>,
+}
+
+impl fmt::Debug for Syntax {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // skip the layer_lut and layer_lut hasher here as they
+        f.debug_struct("Syntax")
+            .field("layers", &self.layers)
+            .field("root", &self.root)
+            .field("loader", &self.loader)
+            .finish()
+    }
 }
 
 fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<str> {
@@ -741,6 +756,8 @@ impl Syntax {
             root,
             layers,
             loader,
+            layers_lut: RawTable::new(),
+            layers_lut_hasher: RandomState::new(),
         };
 
         syntax
@@ -786,7 +803,14 @@ impl Syntax {
                 }
             }
 
-            for layer in self.layers.values_mut() {
+            // Ensure lut is large enough to hold all layers.
+            // The lut should always be empty at this point because it is only
+            // kept to avoid realloctions so rehashing is never requied (hence unreachable).
+            assert_eq!(self.layers_lut.len(), 0);
+            self.layers_lut
+                .reserve(self.layers.len(), |_| unreachable!());
+
+            for (layer_id, layer) in self.layers.iter_mut() {
                 // The root layer always covers the whole range (0..usize::MAX)
                 if layer.depth == 0 {
                     layer.flags = LayerUpdateFlags::MODIFIED;
@@ -855,6 +879,19 @@ impl Syntax {
                             layer.flags = LayerUpdateFlags::MODIFIED;
                         }
                     }
+                }
+
+                let hash = hash_injection_layer(
+                    &self.layers_lut_hasher,
+                    layer.depth,
+                    &layer.config,
+                    &layer.ranges,
+                );
+                // Safety: insert_no_grow is unsafe because it assumes that the table
+                // has enough capacity to hold additional elements.
+                // This is always the case as we reserved enough capacity above.
+                unsafe {
+                    self.layers_lut.insert_no_grow(hash, layer_id);
                 }
             }
         }
@@ -982,14 +1019,18 @@ impl Syntax {
                 // TODO: can't inline this since matches borrows self.layers
                 for (config, ranges) in injections {
                     // Find an existing layer
+
+                    let hash =
+                        hash_injection_layer(&self.layers_lut_hasher, depth, &config, &ranges);
                     let layer = self
-                        .layers
-                        .iter_mut()
-                        .find(|(_, layer)| {
+                        .layers_lut
+                        .get(hash, |&it| {
+                            let layer = &self.layers[it];
                             layer.depth == depth && // TODO: track parent id instead
-                            layer.config.language == config.language && layer.ranges == ranges
+                            layer.config.language == config.language &&
+                            layer.ranges == ranges
                         })
-                        .map(|(id, _layer)| id);
+                        .copied();
 
                     // ...or insert a new one.
                     let layer_id = layer.unwrap_or_else(|| {
@@ -1018,6 +1059,8 @@ impl Syntax {
                 replace(&mut layer.flags, LayerUpdateFlags::empty())
                     .contains(LayerUpdateFlags::TOUCHED)
             });
+
+            self.layers_lut.clear_no_drop();
 
             Ok(())
         })
@@ -1136,6 +1179,25 @@ pub struct LanguageLayer {
     pub ranges: Vec<Range>,
     pub depth: u32,
     flags: LayerUpdateFlags,
+}
+
+fn hash_injection_layer(
+    state: &RandomState,
+    depth: u32,
+    config: &HighlightConfiguration,
+    ranges: &[Range],
+) -> u64 {
+    let mut state = state.build_hasher();
+    depth.hash(&mut state);
+    // The transmute is necessary here because tree_sitter::Language does not derive Hash at the moment.
+    // However it does use #[repr] transpraerent so the transmute here is save
+    // as `Language` (which `Grammar` is an alias for) is just a newtype wrapper around a (thin) pointer.
+    // This is also compatible with the PartialEq implementation of language
+    // as that is just a pointer comparison.
+    let language: *const () = unsafe { transmute(config.language) };
+    language.hash(&mut state);
+    ranges.hash(&mut state);
+    state.finish()
 }
 
 impl LanguageLayer {
