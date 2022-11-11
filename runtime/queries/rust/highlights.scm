@@ -271,9 +271,9 @@
 ; ---
 ; Macros
 ; ---
-(meta_item
+(attribute
   (identifier) @function.macro)
-(attr_item
+(attribute
   [
     (identifier) @function.macro
     (scoped_identifier
