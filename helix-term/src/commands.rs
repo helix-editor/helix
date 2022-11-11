@@ -4855,8 +4855,8 @@ fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
         1,
     );
 
-    // Increase by 1 if `IncrementDirection` is `Increase` 
-    // Decrease by 1 if `IncrementDirection` is `Decrease` 
+    // Increase by 1 if `IncrementDirection` is `Increase`
+    // Decrease by 1 if `IncrementDirection` is `Decrease`
     let sign = match increment_direction {
         IncrementDirection::Increase => 1,
         IncrementDirection::Decrease => -1,
@@ -4864,11 +4864,7 @@ fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
     let mut amount = sign * cx.count() as i64;
 
     // If the register is `#` then increase or decrease the `amount` by 1 per element
-    let increase_by = if cx.register == Some('#') {
-        sign
-    } else {
-        0
-    };
+    let increase_by = if cx.register == Some('#') { sign } else { 0 };
 
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
