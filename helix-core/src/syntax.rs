@@ -122,7 +122,8 @@ pub struct LanguageConfiguration {
     #[serde(default, skip_serializing, deserialize_with = "deserialize_auto_pairs")]
     pub auto_pairs: Option<AutoPairs>,
 
-    pub rulers: Option<Vec<u16>>, // if set, override editor's rulers
+    pub rulers: Option<Vec<u16>>,   // if set, override editor's rulers
+    pub hl_max_size: Option<usize>, // maximum file size in bytes for highlighting
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]

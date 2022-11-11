@@ -681,6 +681,13 @@ impl Document {
         loader: Option<Arc<helix_core::syntax::Loader>>,
     ) {
         if let (Some(language_config), Some(loader)) = (language_config, loader) {
+            if let Some(max_size) = language_config.hl_max_size {
+                if self.text.len_bytes() > max_size {
+                    self.syntax = None;
+                    self.language = Some(language_config);
+                    return;
+                }
+            }
             if let Some(highlight_config) = language_config.highlight_config(&loader.scopes()) {
                 let syntax = Syntax::new(&self.text, highlight_config, loader);
                 self.syntax = Some(syntax);
