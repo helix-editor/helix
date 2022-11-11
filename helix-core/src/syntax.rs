@@ -356,10 +356,10 @@ impl<'a> CapturedNode<'a> {
 
 /// The number of matches a TS cursor can at once to avoid performance problems for medium to large files.
 /// Set with `set_match_limit`.
-/// Using such a limit means that we loose valid captures in, so there is fundamentally a tradeoff here.
+/// Using such a limit means that we lose valid captures in, so there is fundamentally a tradeoff here.
 ///
 ///
-/// Old tree sitter versions used a limit of 32 by default until this limit was removed in version `0.19.5` (must now best set manually).
+/// Old tree sitter versions used a limit of 32 by default until this limit was removed in version `0.19.5` (must now be set manually).
 /// However, this causes performance issues for medium to large files.
 /// In helix, this problem caused treesitter motions to take multiple seconds to complete in medium-sized rust files (3k loc).
 /// Neovim also encountered this problem and reintroduced this limit after it was removed upstream
@@ -371,7 +371,6 @@ impl<'a> CapturedNode<'a> {
 /// Neovim chose this value somewhat arbitrarily (<https://github.com/neovim/neovim/pull/18397>) adjusting it whenever issues occur in practice.
 /// However this value has been in use for a long time and due to the large userbase of neovim it is probably a good choice.
 /// If this limit causes problems for a grammar in the future, it could be increased.
-
 const TREE_SITTER_MATCH_LIMIT: u32 = 64;
 
 impl TextObjectQuery {
