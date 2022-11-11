@@ -42,7 +42,7 @@ name = "mylang"
 scope = "source.mylang"
 injection-regex = "mylang"
 file-types = ["mylang", "myl"]
-comment-token = "#"
+comment-tokens = "#"
 indent = { tab-width = 2, unit = "  " }
 formatter = { command = "mylang-formatter" , args = ["--stdin"] }
 language-servers = [ "mylang-lsp" ]
@@ -61,7 +61,8 @@ These configuration keys are available:
 | `roots`               | A set of marker files to look for when trying to find the workspace root. For example `Cargo.lock`, `yarn.lock` |
 | `auto-format`         | Whether to autoformat this language when saving               |
 | `diagnostic-severity` | Minimal severity of diagnostic for it to be displayed. (Allowed values: `Error`, `Warning`, `Info`, `Hint`) |
-| `comment-token`       | The token to use as a comment-token                           |
+| `comment-tokens`      | The tokens to use as a comment token, either a single token `"//"` or an array `["//", "///", "//!"]` (the first token will be used for commenting). Also configurable as `comment-token` for backwards compatibility|
+| `block-comment-tokens`| The start and end tokens for a multiline comment either an array or single table of `{ start = "/*", end = "*/"}`. The first set of tokens will be used for commenting, any pairs in the array can be uncommented |
 | `indent`              | The indent to use. Has sub keys `unit` (the text inserted into the document when indenting; usually set to N spaces or `"\t"` for tabs) and `tab-width` (the number of spaces rendered for a tab) |
 | `language-servers`    | The Language Servers used for this language. See below for more information in the section [Configuring Language Servers for a language](#configuring-language-servers-for-a-language)   |
 | `grammar`             | The tree-sitter grammar to use (defaults to the value of `name`) |

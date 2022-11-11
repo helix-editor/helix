@@ -276,6 +276,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "k" => hover,
             "r" => rename_symbol,
             "h" => select_references_to_symbol_under_cursor,
+            "c" => toggle_comments,
+            "C" => toggle_block_comments,
+            "A-c" => toggle_line_comments,
             "?" => command_palette,
         },
         "z" => { "View"
