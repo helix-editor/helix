@@ -7,8 +7,11 @@ on:
 
 jobs:
   publish:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     name: Publish Flake
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout sources
       uses: actions/checkout@v3
