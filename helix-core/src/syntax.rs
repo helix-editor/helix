@@ -719,7 +719,7 @@ pub struct Syntax {
 
 impl fmt::Debug for Syntax {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // skip the layer_lut and layer_lut hasher here as they
+        // skip the layer_lut and layer_lut hasher here as they do not implement Debug
         f.debug_struct("Syntax")
             .field("layers", &self.layers)
             .field("root", &self.root)
@@ -806,7 +806,7 @@ impl Syntax {
             // Ensure lut is large enough to hold all layers.
             // The lut should always be empty at this point because it is only
             // kept to avoid realloctions so rehashing is never requied (hence unreachable).
-            assert_eq!(self.layers_lut.len(), 0);
+            assert!(self.layers_lut.is_empty());
             self.layers_lut
                 .reserve(self.layers.len(), |_| unreachable!());
 
@@ -1190,7 +1190,7 @@ fn hash_injection_layer(
     let mut state = state.build_hasher();
     depth.hash(&mut state);
     // The transmute is necessary here because tree_sitter::Language does not derive Hash at the moment.
-    // However it does use #[repr] transpraerent so the transmute here is save
+    // However it does use #[repr] transparent so the transmute here is safe
     // as `Language` (which `Grammar` is an alias for) is just a newtype wrapper around a (thin) pointer.
     // This is also compatible with the PartialEq implementation of language
     // as that is just a pointer comparison.
