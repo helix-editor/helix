@@ -1,8 +1,4 @@
-inherits = "catppuccin_latte"
-
-"ui.linenr" = { fg = "surface1" }
-"ui.cursorline.primary" = { bg = "cursorline" }
-"ui.cursorcolumn.primary" = { bg = "cursorline" }
+inherits = "catppuccin_mocha"
 
 [palette]
 # catppuccin frappe palette colors

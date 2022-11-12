@@ -1,4 +1,4 @@
-inherits = "catppuccin_frappe"
+inherits = "catppuccin_mocha"
 
 [palette]
 rosewater = "#f4dbd6"
