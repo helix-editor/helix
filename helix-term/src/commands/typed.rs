@@ -1177,6 +1177,7 @@ fn vsplit_new(
     if can_do_vsplit(cx.editor) {
         cx.editor.new_file(Action::VerticalSplit);
     }
+
     Ok(())
 }
 
@@ -1188,7 +1189,6 @@ fn hsplit_new(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     cx.editor.new_file(Action::HorizontalSplit);
 
     Ok(())
@@ -1200,7 +1200,7 @@ pub fn can_do_vsplit(editor: &mut Editor) -> bool {
     if editor
         .tree
         .views()
-        .any(|(view, _focused)| view.inner_area().width == 1)
+        .any(|(view, _focused)| view.inner_area().width == 1 && editor.tree.is_child(&view.id))
     {
         editor.set_error("Max number of splits reached");
         false
