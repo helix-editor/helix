@@ -137,6 +137,7 @@ where
         helix_view::editor::StatusLineElement::Mode => render_mode,
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
+        helix_view::editor::StatusLineElement::FileDirty => render_file_dirty,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
@@ -355,14 +356,27 @@ where
             .map(|p| p.to_string_lossy())
             .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
         format!(
-            " {}{} ",
-            path,
-            if context.doc.is_modified() { "[+]" } else { "" }
+            " {} ",
+            path
         )
     };
 
     write(context, title, None);
 }
+
+fn render_file_dirty<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let title = 
+        format!(
+            " {} ",
+            if context.doc.is_modified() { "[+]" } else { "" }
+        );
+
+    write(context, title, None);
+}
+
 
 fn render_separator<F>(context: &mut RenderContext, write: F)
 where
