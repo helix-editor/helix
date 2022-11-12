@@ -225,11 +225,7 @@ impl Tree {
             } => container.children.clone(),
             _ => unimplemented!(),
         };
-        if container_children.contains(child_id) {
-            true
-        } else {
-            false
-        }
+        container_children.contains(child_id)
     }
 
     pub fn remove(&mut self, index: ViewId) {
