@@ -314,7 +314,7 @@ pub enum StatusLineElement {
     FileName,
 
     // The dirty flag for the file
-    FileDirty,
+    FileModificationIndicator,
 
     /// The file encoding
     FileEncoding,
