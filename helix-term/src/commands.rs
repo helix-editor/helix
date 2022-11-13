@@ -437,6 +437,7 @@ impl MappableCommand {
         decrement, "Decrement item under cursor",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
+        save_macro, "Save macro",
         command_palette, "Open command palette",
     );
 }
@@ -5000,7 +5001,28 @@ fn record_macro(cx: &mut Context) {
     }
 }
 
+fn save_macro(cx: &mut Context) {
+    let reg = cx.register.unwrap_or('@');
+
+    match &cx.editor.macro_recording {
+        Some(val) => {
+            if val.0 == reg {
+                cx.editor.set_error(format!(
+                    "Cannot save from register [{}] because currently recording at the same register",
+                reg
+                ));
+                return;
+            }
+        }
+        None => println!("blub"),
+    }
+
+    cx.editor.registers.save(reg, Path::new("foo.macro"));
+}
+
 fn replay_macro(cx: &mut Context) {
+    println!("fun");
+    cx.editor.registers.load();
     let reg = cx.register.unwrap_or('@');
 
     if cx.editor.macro_replaying.contains(&reg) {

@@ -1,6 +1,13 @@
+use serde::Deserialize;
+use serde::Serialize;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::BufReader;
+use std::io::Write;
+use std::path::Path;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Register {
     name: char,
     values: Vec<String>,
@@ -44,7 +51,7 @@ impl Register {
 }
 
 /// Currently just wraps a `HashMap` of `Register`s
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Registers {
     inner: HashMap<char, Register>,
 }
@@ -63,6 +70,38 @@ impl Registers {
     pub fn write(&mut self, name: char, values: Vec<String>) {
         self.inner
             .insert(name, Register::new_with_values(name, values));
+    }
+
+    pub fn load(&mut self) -> std::io::Result<()> {
+        println!("Loading.. ");
+        let mut file = File::open("foo.txt")?;
+        let mut buf_reader = BufReader::new(file);
+        let mut content = String::new();
+
+        buf_reader.read_to_string(&mut content)?;
+
+        let deserialized: HashMap<char, Register> = serde_json::from_str(&content).unwrap();
+        dbg!(self.inner = deserialized);
+
+        eprintln!("loaded");
+        println!("loaded");
+
+        Ok(())
+    }
+
+    pub fn save(&mut self, name: char, file_name: &Path) -> std::io::Result<()> {
+        let macro_definition = self.get(name);
+
+        let content = serde_json::to_string(&macro_definition).unwrap();
+
+        let mut file = File::create(&file_name)?;
+        file.write_all(&content.as_bytes());
+
+        println!("Saved");
+
+        eprintln!("Saved!");
+
+        Ok(())
     }
 
     pub fn read(&self, name: char) -> Option<&[String]> {
