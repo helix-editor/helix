@@ -1762,6 +1762,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
                 regex
                     .find_iter(&contents)
                     .map(|c| (c.start(), c.end()))
+                    .take(99) // cap search to 99 hit
                     .collect(),
             );
 
