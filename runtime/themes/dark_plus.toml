@@ -75,6 +75,8 @@
 "ui.cursorline.primary" = { bg = "dark_gray3" }
 "ui.statusline" = { fg = "white", bg = "blue" }
 "ui.statusline.inactive" = { fg = "white", bg = "blue" }
+"ui.statusline.insert" = { fg = "white", bg = "yellow" }
+"ui.statusline.select" = { fg = "white", bg = "magenta" }
 
 "ui.bufferline" = { fg = "text", bg = "widget" }
 "ui.bufferline.active" = { fg = "white", bg = "blue" }
