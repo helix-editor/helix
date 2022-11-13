@@ -1275,7 +1275,7 @@ pub fn hsplit_limit_check(view_id: ViewId, editor: &mut Editor) {
     if editor
         .tree
         .views()
-        .any(|(view, _focused)| view.area.height == 1)
+        .any(|(view, _focused)| view.area.height == 1 && editor.tree.is_child(&view.id))
     {
         editor.set_error("Max number of splits reached");
         editor.close(view!(editor).id);
