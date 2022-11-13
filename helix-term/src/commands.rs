@@ -70,6 +70,8 @@ use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+const SEARCH_MAX_HIT: usize = 99;
+
 pub struct Context<'a> {
     pub register: Option<char>,
     pub count: Option<NonZeroUsize>,
@@ -1623,7 +1625,7 @@ fn search_impl(
         regex
             .find_iter(contents)
             .map(|c| (c.start(), c.end()))
-            .take(99)
+            .take(SEARCH_MAX_HIT)
             .collect()
     };
 
@@ -1763,7 +1765,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
                 regex
                     .find_iter(&contents)
                     .map(|c| (c.start(), c.end()))
-                    .take(99) // cap search to 99 hit
+                    .take(SEARCH_MAX_HIT)
                     .collect(),
             );
 
