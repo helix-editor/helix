@@ -1623,6 +1623,7 @@ fn search_impl(
         regex
             .find_iter(contents)
             .map(|c| (c.start(), c.end()))
+            .take(99)
             .collect()
     };
 
