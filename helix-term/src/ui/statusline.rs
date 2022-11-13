@@ -265,26 +265,28 @@ fn render_workspace_diagnostics<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let (warnings, errors) = diagnostics_count(context.doc);
-
     let (w_warnings, w_errors) = workspace_diagnostic_count(context.editor);
 
-    if warnings > 0 || w_warnings > 0 {
+    if w_warnings > 0 || w_errors > 0 {
+        write(context, format!(" {} ", "W"), None);
+    }
+
+    if w_warnings > 0 {
         write(
             context,
             "●".to_string(),
             Some(context.editor.theme.get("warning")),
         );
-        write(context, format!(" {}/{} ", warnings, w_warnings), None);
+        write(context, format!(" {} ", w_warnings), None);
     }
 
-    if errors > 0 || w_errors > 0 {
+    if w_errors > 0 {
         write(
             context,
             "●".to_string(),
             Some(context.editor.theme.get("error")),
         );
-        write(context, format!(" {}/{} ", errors, w_errors), None);
+        write(context, format!(" {} ", w_errors), None);
     }
 }
 
