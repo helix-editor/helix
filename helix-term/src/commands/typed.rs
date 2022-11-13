@@ -1268,11 +1268,11 @@ fn hsplit_new(
 pub fn can_do_vsplit(editor: &mut Editor) -> bool {
     // check if there are views with an inner area of 1 (1 character per line gets drawn)
     // if there are, it's not feasible to create any more vertical splits
-    if editor
-        .tree
-        .views()
-        .any(|(view, _focused)| view.inner_area().width == 1 && editor.tree.is_child(&view.id))
-    {
+    let current = view!(editor).doc;
+    if editor.tree.views().any(|(view, _focused)| {
+        view.inner_area(editor.document(current).unwrap()).width == 1
+            && editor.tree.is_child(&view.id)
+    }) {
         editor.set_error("Max number of splits reached");
         false
     } else {
