@@ -100,7 +100,7 @@ pub struct Document {
     text: Rope,
     selections: HashMap<ViewId, Selection>,
 
-    path: Option<PathBuf>,
+    pub path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
 
     pub restore_cursor: bool,

@@ -238,6 +238,35 @@ fn force_buffer_close_all(
     buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
+fn buffer_rename(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    // write to new path
+    write_impl(cx, args.first(), false)?;
+
+    // get current buffer id
+    // let doc = &doc!(&cx.editor);
+    let view = cx.editor.tree.get(cx.editor.tree.focus);
+    let doc = &cx.editor.documents[&view.doc];
+    // let doc = &doc!(&cx.editor);
+    // remove old file
+    let old_path = doc.path.clone().unwrap();
+    std::fs::remove_file(old_path)?;
+
+    // drop old buffer
+    buffer_close_by_ids_impl(cx, &vec![doc.id()], true)?;
+
+    // open new file
+    open(cx, args, event)?;
+
+    Ok(())
+}
+
 fn buffer_next(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1801,6 +1830,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["bca!", "bcloseall!"],
             doc: "Force close all buffers ignoring unsaved changes without quitting.",
             fun: force_buffer_close_all,
+            completer: None,
+        },
+        TypableCommand {
+            name: "buffer-rename",
+            aliases: &["brn", "brename"],
+            doc: "Change the name of the current buffer.",
+            fun: buffer_rename,
             completer: None,
         },
         TypableCommand {
