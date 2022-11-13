@@ -313,7 +313,7 @@ pub enum StatusLineElement {
     /// The file nane/path, including a dirty flag if it's unsaved
     FileName,
 
-    // The dirty flag for the file
+    // The file modification indicator
     FileModificationIndicator,
 
     /// The file encoding
