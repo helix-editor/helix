@@ -1617,7 +1617,7 @@ fn search_impl(
         Direction::Backward => regex.find_iter(&contents[..start]).last(),
     };
 
-    let all_matches = if let Some(matches) = doc.all_matches.clone() {
+    let all_matches = if let Some(matches) = doc.search_info.all_matches.clone() {
         matches
     } else {
         regex
@@ -1631,7 +1631,7 @@ fn search_impl(
             .iter()
             .position(|this_m| this_m.0 == mat.start() && this_m.1 == mat.end());
         if let Some(current_position) = current_position {
-            doc.search_position = Some(SearchPosition {
+            doc.search_info.position = Some(SearchPosition {
                 current_position: current_position + 1,
                 total_positions: all_matches.len(),
                 wrapped: false,
@@ -1644,7 +1644,7 @@ fn search_impl(
             Direction::Forward => 1,
             Direction::Backward => all_matches.len(),
         };
-        doc.search_position = Some(SearchPosition {
+        doc.search_info.position = Some(SearchPosition {
             current_position,
             total_positions: all_matches.len(),
             wrapped: true,
@@ -1758,7 +1758,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
             // Then find the current match position inside all matches
             // We then render that to the status line by setting editor.search_matches
             let doc = doc_mut!(editor);
-            doc.all_matches = Some(
+            doc.search_info.all_matches = Some(
                 regex
                     .find_iter(&contents)
                     .map(|c| (c.start(), c.end()))

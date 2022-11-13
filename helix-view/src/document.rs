@@ -134,8 +134,7 @@ pub struct Document {
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
 
-    pub search_position: Option<SearchPosition>,
-    pub all_matches: Option<Vec<(usize, usize)>>,
+    pub search_info: SearchInfo,
 }
 
 use std::{fmt, mem};
@@ -374,8 +373,7 @@ impl Document {
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_server: None,
-            search_position: None,
-            all_matches: None,
+            search_info: SearchInfo::default(),
         }
     }
 
@@ -861,8 +859,7 @@ impl Document {
         }
 
         // Hide the search position from the status line
-        self.search_position = None;
-        self.all_matches = None;
+        self.search_info.position = None;
 
         success
     }
@@ -1204,6 +1201,11 @@ impl Display for FormatterError {
     }
 }
 
+#[derive(Default)]
+pub struct SearchInfo {
+    pub position: Option<SearchPosition>,
+    pub all_matches: Option<Vec<(usize, usize)>>,
+}
 pub struct SearchPosition {
     /// The position of the current match
     pub current_position: usize,
