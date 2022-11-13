@@ -51,13 +51,14 @@
   .
   (_) @expr-start
   value: (_) @indent
+  alternative: (_)? @indent
   (#not-same-line? @indent @expr-start)
   (#set! "scope" "all")
 )
-(if_let_expression
+(if_expression
   .
   (_) @expr-start
-  value: (_) @indent
+  condition: (_) @indent
   (#not-same-line? @indent @expr-start)
   (#set! "scope" "all")
 )

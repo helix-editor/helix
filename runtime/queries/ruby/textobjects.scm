@@ -1,11 +1,6 @@
-; Class
-(class) @class.around
-
-(class [(constant) (scope_resolution)] !superclass
-  (_)+ @class.inside) 
-
-(class [(constant) (scope_resolution)] (superclass)
-  (_)+ @class.inside) 
+; Class and Modules
+(class
+  body: (_)? @class.inside) @class.around
 
 (singleton_class
   value: (_)
@@ -17,37 +12,32 @@
   (#match? @class_const "Class")
   (#match? @class_method "new")
   (do_block (_)+ @class.inside)) @class.around
-
-; Functions
-(method) @function.around
-
-(method (identifier) (method_parameters)
-  (_)+ @function.inside)
   
-(do_block !parameters
-  (_)+ @function.inside)
-  
-(do_block (block_parameters)
-  (_)+ @function.inside)
-    
-(block (block_parameters)
-  (_)+ @function.inside)
-      
-(block !parameters
-  (_)+ @function.inside)
-      
-(method (identifier) !parameters
-  (_)+  @function.inside)
+(module
+  body: (_)? @class.inside) @class.around
+
+; Functions and Blocks
+(singleton_method
+  body: (_)? @function.inside) @function.around
+
+(method
+  body: (_)? @function.inside) @function.around
+
+(do_block
+  body: (_)? @function.inside) @function.around
+
+(block
+  body: (_)? @function.inside) @function.around
 
 ; Parameters      
 (method_parameters
-  (_) @parameter.inside)
+  (_) @parameter.inside) @parameter.around
         
 (block_parameters 
-  (_) @parameter.inside)
+  (_) @parameter.inside) @parameter.around
         
 (lambda_parameters 
-  (_) @parameter.inside)
+  (_) @parameter.inside) @parameter.around
 
 ; Comments
 (comment) @comment.inside 
