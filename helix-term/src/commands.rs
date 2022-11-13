@@ -438,6 +438,7 @@ impl MappableCommand {
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         save_macro, "Save macro",
+        load_macro, "Load macro",
         command_palette, "Open command palette",
     );
 }
@@ -5020,9 +5021,11 @@ fn save_macro(cx: &mut Context) {
     cx.editor.registers.save(reg, Path::new("foo.macro"));
 }
 
-fn replay_macro(cx: &mut Context) {
-    println!("fun");
+fn load_macro(cx: &mut Context) {
     cx.editor.registers.load();
+}
+
+fn replay_macro(cx: &mut Context) {
     let reg = cx.register.unwrap_or('@');
 
     if cx.editor.macro_replaying.contains(&reg) {

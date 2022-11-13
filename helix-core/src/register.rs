@@ -73,18 +73,15 @@ impl Registers {
     }
 
     pub fn load(&mut self) -> std::io::Result<()> {
-        println!("Loading.. ");
-        let mut file = File::open("foo.txt")?;
+        let mut file = File::open("foo.macro")?;
         let mut buf_reader = BufReader::new(file);
         let mut content = String::new();
 
         buf_reader.read_to_string(&mut content)?;
 
-        let deserialized: HashMap<char, Register> = serde_json::from_str(&content).unwrap();
-        dbg!(self.inner = deserialized);
+        let deserialized: Register = serde_json::from_str(&content).unwrap();
 
-        eprintln!("loaded");
-        println!("loaded");
+        self.inner.insert('@', deserialized);
 
         Ok(())
     }
@@ -96,10 +93,6 @@ impl Registers {
 
         let mut file = File::create(&file_name)?;
         file.write_all(&content.as_bytes());
-
-        println!("Saved");
-
-        eprintln!("Saved!");
 
         Ok(())
     }

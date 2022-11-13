@@ -139,6 +139,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "Q" => record_macro,
         "q" => replay_macro,
+        "ö" => save_macro,
+        "Ö" => load_macro,
 
         ">" => indent,
         "<" => unindent,
