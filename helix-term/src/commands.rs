@@ -70,6 +70,8 @@ use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+const SEARCH_MAX_HIT: usize = 99;
+
 pub struct Context<'a> {
     pub register: Option<char>,
     pub count: Option<NonZeroUsize>,
@@ -1610,11 +1612,6 @@ fn search_impl(
     // it out, we need to add it back to the position of the selection.
     let mut offset = 0;
 
-    // Compare matches without taking text into account
-    // Text is different depending on if its forward or a backward search
-    // So we use start and end to tell them apart
-    let is_match_eq =
-        |m1: &regex::Match, m2: &regex::Match| m1.start() == m2.start() && m1.end() == m2.end();
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
     let mut mat = match direction {
@@ -1622,16 +1619,22 @@ fn search_impl(
         Direction::Backward => regex.find_iter(&contents[..start]).last(),
     };
 
-    // Find all matches in the document
-    // Then find the current match position inside all matches
-    // We then render that to the status line by setting editor.search_matches
-    let all_matches: Vec<_> = regex.find_iter(contents).collect();
+    let all_matches = if let Some(matches) = doc.search_info.all_matches.clone() {
+        matches
+    } else {
+        regex
+            .find_iter(contents)
+            .map(|c| (c.start(), c.end()))
+            .take(SEARCH_MAX_HIT)
+            .collect()
+    };
+
     if let Some(ref mat) = mat {
         let current_position = all_matches
             .iter()
-            .position(|this_m| is_match_eq(this_m, mat));
+            .position(|this_m| this_m.0 == mat.start() && this_m.1 == mat.end());
         if let Some(current_position) = current_position {
-            doc.search_position = Some(SearchPosition {
+            doc.search_info.position = Some(SearchPosition {
                 current_position: current_position + 1,
                 total_positions: all_matches.len(),
                 wrapped: false,
@@ -1644,7 +1647,7 @@ fn search_impl(
             Direction::Forward => 1,
             Direction::Backward => all_matches.len(),
         };
-        doc.search_position = Some(SearchPosition {
+        doc.search_info.position = Some(SearchPosition {
             current_position,
             total_positions: all_matches.len(),
             wrapped: true,
@@ -1753,6 +1756,19 @@ fn searcher(cx: &mut Context, direction: Direction) {
             if !matches!(event, PromptEvent::Update | PromptEvent::Validate) {
                 return;
             }
+
+            // Find all matches in the document
+            // Then find the current match position inside all matches
+            // We then render that to the status line by setting editor.search_matches
+            let doc = doc_mut!(editor);
+            doc.search_info.all_matches = Some(
+                regex
+                    .find_iter(&contents)
+                    .map(|c| (c.start(), c.end()))
+                    .take(SEARCH_MAX_HIT)
+                    .collect(),
+            );
+
             search_impl(
                 editor,
                 &contents,
