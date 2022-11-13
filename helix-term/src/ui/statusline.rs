@@ -66,19 +66,25 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
         append(&mut context.parts.right, text, &base_style, style)
     };
 
+    let statusline = &context.editor.config().statusline;
+    let file_dirty = &helix_view::editor::StatusLineElement::FileDirty;
+
+    let has_dirty_element = statusline.left.contains(file_dirty)
+        || statusline.center.contains(file_dirty)
+        || statusline.right.contains(file_dirty);
+
     let default_file_dirty_element = |element_ids: &Vec<StatusLineElementID>| {
         let mut ret_val = element_ids.to_vec();
         let file_name_index = element_ids.iter().position(|id| id == &helix_view::editor::StatusLineElement::FileName);
-        if file_name_index != None && !element_ids.contains(&helix_view::editor::StatusLineElement::FileDirty) {
-            ret_val.insert(file_name_index.unwrap() + 1, helix_view::editor::StatusLineElement::FileDirty);
+        if !has_dirty_element && file_name_index != None {
+            ret_val.insert(file_name_index.unwrap() + 1, *file_dirty);
         }
         return ret_val;
     };
 
     // Left side of the status line.
 
-    let element_ids = &context.editor.config().statusline.left;
-    element_ids
+    default_file_dirty_element(&statusline.left)
         .iter()
         .map(|element_id| get_render_function(*element_id))
         .for_each(|render| render(context, write_left));
@@ -92,8 +98,7 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Right side of the status line.
 
-    let element_ids = &context.editor.config().statusline.right;
-    element_ids
+    default_file_dirty_element(&statusline.right)
         .iter()
         .map(|element_id| get_render_function(*element_id))
         .for_each(|render| render(context, write_right));
@@ -110,9 +115,7 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Center of the status line.
 
-    let element_ids = &context.editor.config().statusline.center;
-    let new_elems = default_file_dirty_element(element_ids);
-    new_elems
+    default_file_dirty_element(&statusline.center)
         .iter()
         .map(|element_id| get_render_function(*element_id))
         .for_each(|render| render(context, write_center));
