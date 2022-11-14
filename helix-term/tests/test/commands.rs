@@ -67,7 +67,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     const RANGE: RangeInclusive<i32> = 1..=1000;
 
     for i in RANGE {
-        let cmd = format!("%c{}<esc>:w<ret>", i);
+        let cmd = format!("%c{}<esc>:w!<ret>", i);
         command.push_str(&cmd);
     }
 
