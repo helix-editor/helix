@@ -3,8 +3,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::BufReader;
-use std::io::Write;
+use std::io::{self, BufReader, Read, Write};
 use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -72,24 +71,34 @@ impl Registers {
             .insert(name, Register::new_with_values(name, values));
     }
 
-    pub fn load(&mut self) -> std::io::Result<()> {
-        let mut file = File::open("foo.macro")?;
-        let mut buf_reader = BufReader::new(file);
-        let mut content = String::new();
+    pub fn load(&mut self, name: char) -> ! {
+        fn _read_data(name: char) -> Result<Register, serde_json::Error> {
+            let file_name = format!("{}.macro", &name);
+            let mut file = File::open(&file_name)?;
+            let mut buf_reader = BufReader::new(file);
+            let mut content = String::new();
 
-        buf_reader.read_to_string(&mut content)?;
+            buf_reader.read_to_string(&mut content)?;
 
-        let deserialized: Register = serde_json::from_str(&content).unwrap();
+            // let deserialized: Register = serde_json::from_str(&content)?;
 
-        self.inner.insert('@', deserialized);
+            return serde_json::from_str(&content);
+        }
 
-        Ok(())
+        // todo: log results
+        match _read_data(name) {
+            Ok(register) => self.inner.insert(name, register),
+            Err(error) => todo!(),
+        }
     }
 
-    pub fn save(&mut self, name: char, file_name: &Path) -> std::io::Result<()> {
+    pub fn save(&mut self, name: char) -> std::io::Result<()> {
         let macro_definition = self.get(name);
 
         let content = serde_json::to_string(&macro_definition).unwrap();
+
+        let file_name = format!("{}.macro", &name);
+        let file_name = Path::new(&file_name);
 
         let mut file = File::create(&file_name)?;
         file.write_all(&content.as_bytes());
