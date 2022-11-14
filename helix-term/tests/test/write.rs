@@ -119,7 +119,7 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
             (
                 Some(":w<ret>"),
                 Some(&|app| {
-                    if let Some(status) = app.editor.get_status(){
+                    if let Some(status) = app.editor.get_status() {
                         assert_eq!(&Severity::Error, status.1);
                     }
                     let doc = doc!(app.editor);
