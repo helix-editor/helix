@@ -1046,22 +1046,22 @@ fn reload_all(
     let scrolloff = cx.editor.config().scrolloff;
     let view_id = view!(cx.editor).id;
 
-    let docs_views: Vec<(DocumentId, Vec<ViewId>)> = cx
+    let docs_view_ids: Vec<(DocumentId, Vec<ViewId>)> = cx
         .editor
         .documents_mut()
         .map(|doc| {
-            let mut views: Vec<_> = doc.selections().keys().cloned().collect();
+            let mut view_ids: Vec<_> = doc.selections().keys().cloned().collect();
 
-            if views.is_empty() {
+            if view_ids.is_empty() {
                 doc.ensure_view_init(view_id);
-                views = vec![view_id];
+                view_ids.push(view_id);
             };
 
-            (doc.id(), views)
+            (doc.id(), view_ids)
         })
         .collect();
 
-    for (doc_id, view_ids) in docs_views {
+    for (doc_id, view_ids) in docs_view_ids {
         let doc = doc_mut!(cx.editor, &doc_id);
 
         // Every doc is guaranteed to have at least 1 view at this point.
@@ -2098,7 +2098,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "reload-all",
             aliases: &[],
-            doc: "Discard changes and reload all documents from the source file.",
+            doc: "Discard changes and reload all documents from the source files.",
             fun: reload_all,
             completer: None,
         },
