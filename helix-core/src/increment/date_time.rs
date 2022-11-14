@@ -334,11 +334,7 @@ fn add_months(date_time: NaiveDateTime, amount: i64) -> Option<NaiveDateTime> {
 
     let day = cmp::min(date_time.day(), ndays_in_month(year, month));
 
-    if let Some(date) = NaiveDate::from_ymd_opt(year, month, day) {
-        Some(date.and_time(date_time.time()))
-    } else {
-        None
-    }
+    NaiveDate::from_ymd_opt(year, month, day).map(|date| date.and_time(date_time.time()))
 }
 
 fn add_years(date_time: NaiveDateTime, amount: i64) -> Option<NaiveDateTime> {
