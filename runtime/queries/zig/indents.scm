@@ -17,10 +17,10 @@
   ")"
 ] @outdent
 
-(IfExpression
+(IfStatement
   .
   (_) @expr-start
-  condition: (_) @indent
+  (_) @indent
   (#not-same-line? @indent @expr-start)
   (#set! "scope" "all")
 )
