@@ -29,7 +29,7 @@ use helix_core::{
 use helix_view::{
     apply_transaction,
     clipboard::ClipboardType,
-    document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
+    document::{FormatterError, Mode, SearchPosition, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
     info::Info,
     input::KeyEvent,
@@ -69,6 +69,8 @@ use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use tokio_stream::wrappers::UnboundedReceiverStream;
+
+const SEARCH_MAX_HIT: usize = 99;
 
 pub struct Context<'a> {
     pub register: Option<char>,
@@ -1621,6 +1623,41 @@ fn search_impl(
         Direction::Backward => regex.find_iter(&contents[..start]).last(),
     };
 
+    let all_matches = if let Some(matches) = doc.search_info.all_matches.clone() {
+        matches
+    } else {
+        regex
+            .find_iter(contents)
+            .map(|c| (c.start(), c.end()))
+            .take(SEARCH_MAX_HIT)
+            .collect()
+    };
+
+    if let Some(ref mat) = mat {
+        let current_position = all_matches
+            .iter()
+            .position(|this_m| this_m.0 == mat.start() && this_m.1 == mat.end());
+        if let Some(current_position) = current_position {
+            doc.search_info.position = Some(SearchPosition {
+                current_position: current_position + 1,
+                total_positions: all_matches.len(),
+                wrapped: false,
+            });
+        }
+    } else if !all_matches.is_empty() && wrap_around {
+        // There are matches but no next match
+        // This means that we will wrap around
+        let current_position = match direction {
+            Direction::Forward => 1,
+            Direction::Backward => all_matches.len(),
+        };
+        doc.search_info.position = Some(SearchPosition {
+            current_position,
+            total_positions: all_matches.len(),
+            wrapped: true,
+        });
+    }
+
     if mat.is_none() {
         if wrap_around {
             mat = match direction {
@@ -1723,6 +1760,19 @@ fn searcher(cx: &mut Context, direction: Direction) {
             if !matches!(event, PromptEvent::Update | PromptEvent::Validate) {
                 return;
             }
+
+            // Find all matches in the document
+            // Then find the current match position inside all matches
+            // We then render that to the status line by setting editor.search_matches
+            let doc = doc_mut!(editor);
+            doc.search_info.all_matches = Some(
+                regex
+                    .find_iter(&contents)
+                    .map(|c| (c.start(), c.end()))
+                    .take(SEARCH_MAX_HIT)
+                    .collect(),
+            );
+
             search_impl(
                 editor,
                 &contents,

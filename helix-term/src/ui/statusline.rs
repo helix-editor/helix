@@ -141,6 +141,7 @@ where
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
+        helix_view::editor::StatusLineElement::SearchPosition => render_search_position,
         helix_view::editor::StatusLineElement::Selections => render_selections,
         helix_view::editor::StatusLineElement::PrimarySelectionLength => {
             render_primary_selection_length
@@ -242,6 +243,25 @@ where
             Some(context.editor.theme.get("error")),
         );
         write(context, format!(" {} ", errors), None);
+    }
+}
+
+fn render_search_position<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    if let Some(search_position) = &context.doc.search_info.position {
+        let wrapped_indicator_else_space = if search_position.wrapped { " W " } else { " " };
+        write(
+            context,
+            format!(
+                "{}[{}/{}] ",
+                wrapped_indicator_else_space,
+                search_position.current_position,
+                search_position.total_positions
+            ),
+            None,
+        );
     }
 }
 

@@ -276,7 +276,13 @@ impl Default for StatusLineConfig {
         Self {
             left: vec![E::Mode, E::Spinner, E::FileName],
             center: vec![],
-            right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
+            right: vec![
+                E::Diagnostics,
+                E::SearchPosition,
+                E::Selections,
+                E::Position,
+                E::FileEncoding,
+            ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
         }
@@ -324,6 +330,9 @@ pub enum StatusLineElement {
 
     /// A summary of the number of errors and warnings
     Diagnostics,
+
+    /// The search position
+    SearchPosition,
 
     /// The number of selections (cursors)
     Selections,
