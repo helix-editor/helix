@@ -1966,3 +1966,17 @@ roots = []
 [[grammar]]
 name = "ini"
 source = { git = "https://github.com/justinmk/tree-sitter-ini", rev = "4d247fb876b4ae6b347687de4a179511bf67fcbc" }
+
+[[language]]
+name = "haxe"
+scope = "source.haxe"
+injection-regex = "haxe"
+file-types = ["hx"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "\t" }
+roots = ["hxml", "haxelib.json", "khafile.js"]
+
+[[grammar]]
+name = "haxe"
+source = { git = "https://github.com/vantreeseba/tree-sitter-haxe", rev = "52e3d2b9c3955aca886bccc38b496ef99b603a09" }
+
