@@ -147,6 +147,33 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -> Vec<Docum
     document_ids
 }
 
+fn buffer(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate || args.len() < 1 {
+        return Ok(());
+    }
+
+    let name = args.first().unwrap().as_ref();
+    let arg_path = Some(Path::new(name));
+    let doc_id = cx.editor.documents().find_map(|doc| {
+        if doc.path().map(|p| p.as_path()) == arg_path
+            || doc.relative_path().as_deref() == arg_path
+            || doc.display_name() == name
+        {
+            Some(doc.id())
+        } else {
+            None
+        }
+    });
+    if let Some(document_id) = doc_id {
+        cx.editor.switch(document_id, Action::Replace);
+    }
+    Ok(())
+}
+
 fn buffer_close(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1760,6 +1787,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Open a file from disk into the current view.",
             fun: open,
             completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "buffer",
+            aliases: &["b"],
+            doc: "Go to a buffer",
+            fun: buffer,
+            completer: Some(completers::buffer),
         },
         TypableCommand {
             name: "buffer-close",
