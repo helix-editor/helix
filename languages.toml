@@ -1129,6 +1129,7 @@ scope = "source.elm"
 injection-regex = "elm"
 file-types = ["elm"]
 roots = ["elm.json"]
+match-closest-root = true
 auto-format = true
 comment-token = "--"
 language-server = { command = "elm-language-server" }
