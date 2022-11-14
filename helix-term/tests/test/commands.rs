@@ -215,3 +215,71 @@ async fn test_multi_selection_paste() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
+    // pipe
+    test((
+        platform_line(indoc! {"\
+            #[|lorem]#
+            #(|ipsum)#
+            #(|dolor)#
+            "})
+        .as_str(),
+        "|echo foo<ret>",
+        platform_line(indoc! {"\
+            #[|foo
+            ]#
+            #(|foo
+            )#
+            #(|foo
+            )#
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    // insert-output
+    test((
+        platform_line(indoc! {"\
+            #[|lorem]#
+            #(|ipsum)#
+            #(|dolor)#
+            "})
+        .as_str(),
+        "!echo foo<ret>",
+        platform_line(indoc! {"\
+            #[|foo
+            ]#lorem
+            #(|foo
+            )#ipsum
+            #(|foo
+            )#dolor
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    // append-output
+    test((
+        platform_line(indoc! {"\
+            #[|lorem]#
+            #(|ipsum)#
+            #(|dolor)#
+            "})
+        .as_str(),
+        "<A-!>echo foo<ret>",
+        platform_line(indoc! {"\
+            lorem#[|foo
+            ]#
+            ipsum#(|foo
+            )#
+            dolor#(|foo
+            )#
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    Ok(())
+}
