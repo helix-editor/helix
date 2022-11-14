@@ -507,6 +507,7 @@ fn start_client(
         &ls_config.args,
         config.config.clone(),
         &config.roots,
+        config.match_closest_root,
         id,
         ls_config.timeout,
         doc_path,

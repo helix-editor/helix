@@ -78,6 +78,8 @@ pub struct LanguageConfiguration {
     #[serde(default)]
     pub shebangs: Vec<String>, // interpreter(s) associated with language
     pub roots: Vec<String>,        // these indicate project roots <.git, Cargo.toml>
+    #[serde(default)]
+    pub match_closest_root: bool, // match closest root instead of the top-level one
     pub comment_token: Option<String>,
     pub max_line_length: Option<usize>,
 

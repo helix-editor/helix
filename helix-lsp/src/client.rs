@@ -47,6 +47,7 @@ impl Client {
         args: &[String],
         config: Option<Value>,
         root_markers: &[String],
+        match_closest_root: bool,
         id: usize,
         req_timeout: u64,
         doc_path: Option<&std::path::PathBuf>,
@@ -76,6 +77,7 @@ impl Client {
         let root_path = find_root(
             doc_path.and_then(|x| x.parent().and_then(|x| x.to_str())),
             root_markers,
+            match_closest_root,
         );
 
         let root_uri = lsp::Url::from_file_path(root_path.clone()).ok();
