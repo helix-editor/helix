@@ -207,40 +207,23 @@ where
     );
 }
 
-/// Gets the count pair (warnings, error) of warnings, error on document.
-fn diagnostics_count(doc: &Document) -> (i32, i32) {
-    doc.diagnostics().iter().fold((0, 0), |mut counts, diag| {
-        use helix_core::diagnostic::Severity;
-        match diag.severity {
-            Some(Severity::Warning) => counts.0 += 1,
-            Some(Severity::Error) | None => counts.1 += 1,
-            _ => {}
-        }
-        counts
-    })
-}
-
-/// Gets the count pair (warnings, error) of warnings, error on workspace.
-fn workspace_diagnostic_count(editor: &Editor) -> (i32, i32) {
-    editor
-        .diagnostics
-        .values()
-        .flatten()
-        .fold((0, 0), |mut counts, diag| {
-            match diag.severity {
-                Some(DiagnosticSeverity::WARNING) => counts.0 += 1,
-                Some(DiagnosticSeverity::ERROR) | None => counts.1 += 1,
-                _ => {}
-            }
-            counts
-        })
-}
-
 fn render_diagnostics<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let (warnings, errors) = diagnostics_count(context.doc);
+    let (warnings, errors) = context
+        .doc
+        .diagnostics()
+        .iter()
+        .fold((0, 0), |mut counts, diag| {
+            use helix_core::diagnostic::Severity;
+            match diag.severity {
+                Some(Severity::Warning) => counts.0 += 1,
+                Some(Severity::Error) | None => counts.1 += 1,
+                _ => {}
+            }
+            counts
+        });
 
     if warnings > 0 {
         write(
@@ -265,28 +248,41 @@ fn render_workspace_diagnostics<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let (w_warnings, w_errors) = workspace_diagnostic_count(context.editor);
+    let (warnings, errors) =
+        context
+            .editor
+            .diagnostics
+            .values()
+            .flatten()
+            .fold((0, 0), |mut counts, diag| {
+                match diag.severity {
+                    Some(DiagnosticSeverity::WARNING) => counts.0 += 1,
+                    Some(DiagnosticSeverity::ERROR) | None => counts.1 += 1,
+                    _ => {}
+                }
+                counts
+            });
 
-    if w_warnings > 0 || w_errors > 0 {
+    if warnings > 0 || errors > 0 {
         write(context, format!(" {} ", "W"), None);
     }
 
-    if w_warnings > 0 {
+    if warnings > 0 {
         write(
             context,
             "●".to_string(),
             Some(context.editor.theme.get("warning")),
         );
-        write(context, format!(" {} ", w_warnings), None);
+        write(context, format!(" {} ", warnings), None);
     }
 
-    if w_errors > 0 {
+    if errors > 0 {
         write(
             context,
             "●".to_string(),
             Some(context.editor.theme.get("error")),
         );
-        write(context, format!(" {} ", w_errors), None);
+        write(context, format!(" {} ", errors), None);
     }
 }
 
