@@ -15,7 +15,9 @@
 ; Functions
 
 (decorator) @function.builtin
-(functionCall) @function.call
+
+(functionCall) @function
+
 (functionCall
   (functionArgument
     (variableAccess) @variable))
@@ -68,4 +70,4 @@
 (propertyAccess
   (identifier) @identifier)
   
-(ifCondition) @conditional
+(ifCondition) @keyword.control.conditional
