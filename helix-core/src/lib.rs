@@ -41,8 +41,8 @@ pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
 /// Find project root.
 ///
 /// Order of detection is based on `match-closest-root` option:
-/// * If true, search for top-most folder containing either a root marker or a git repository root
-/// * If false, search for closest folder containing a root marker or a git a repository root
+/// * If false (default), search for top-most folder containing either a root marker or a git repository root
+/// * If true, search for closest folder containing a root marker or a git a repository root
 /// * Use current working directory as fallback
 pub fn find_root(
     root: Option<&str>,
