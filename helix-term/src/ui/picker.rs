@@ -150,7 +150,7 @@ impl<T: Item> FilePicker<T> {
                     (size, _) if size > MAX_FILE_SIZE_FOR_PREVIEW => CachedPreview::LargeFile,
                     _ => {
                         // TODO: enable syntax highlighting; blocked by async rendering
-                        Document::open(path, None, None)
+                        Document::open(path, None, None, 0)
                             .map(|doc| CachedPreview::Document(Box::new(doc)))
                             .unwrap_or(CachedPreview::NotFound)
                     }

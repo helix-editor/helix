@@ -174,6 +174,8 @@ pub struct Config {
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
+    /// Maximum file size to trigger syntax highlighting
+    pub syntax_max_file_size: usize,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -615,6 +617,7 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
+            syntax_max_file_size: 157286400,
         }
     }
 }
@@ -1098,8 +1101,12 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::open(&path, None, Some(self.syn_loader.clone()))?;
-
+            let mut doc = Document::open(
+                &path,
+                None,
+                Some(self.syn_loader.clone()),
+                self.config().syntax_max_file_size,
+            )?;
             let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
 
             self.new_document(doc)

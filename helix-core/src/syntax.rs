@@ -122,8 +122,7 @@ pub struct LanguageConfiguration {
     #[serde(default, skip_serializing, deserialize_with = "deserialize_auto_pairs")]
     pub auto_pairs: Option<AutoPairs>,
 
-    pub rulers: Option<Vec<u16>>,   // if set, override editor's rulers
-    pub hl_max_size: Option<usize>, // maximum file size in bytes for highlighting
+    pub rulers: Option<Vec<u16>>, // if set, override editor's rulers
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -551,7 +550,6 @@ pub struct Loader {
     language_config_ids_by_extension: HashMap<String, usize>, // Vec<usize>
     language_config_ids_by_suffix: HashMap<String, usize>,
     language_config_ids_by_shebang: HashMap<String, usize>,
-
     scopes: ArcSwap<Vec<String>>,
 }
 

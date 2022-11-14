@@ -133,6 +133,7 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
+    pub enable_syntax_highlighting: bool,
 }
 
 use std::{fmt, mem};
@@ -371,6 +372,7 @@ impl Document {
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_server: None,
+            enable_syntax_highlighting: true,
         }
     }
 
@@ -381,6 +383,7 @@ impl Document {
         path: &Path,
         encoding: Option<&'static encoding::Encoding>,
         config_loader: Option<Arc<syntax::Loader>>,
+        file_size_limit: usize,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding) = if path.exists() {
@@ -397,6 +400,9 @@ impl Document {
         // set the path and try detecting the language
         doc.set_path(Some(path))?;
         if let Some(loader) = config_loader {
+            if doc.text().len_bytes() > file_size_limit {
+                doc.enable_syntax_highlighting = false;
+            }
             doc.detect_language(loader);
         }
 
@@ -681,16 +687,11 @@ impl Document {
         loader: Option<Arc<helix_core::syntax::Loader>>,
     ) {
         if let (Some(language_config), Some(loader)) = (language_config, loader) {
-            if let Some(max_size) = language_config.hl_max_size {
-                if self.text.len_bytes() > max_size {
-                    self.syntax = None;
-                    self.language = Some(language_config);
-                    return;
+            if self.enable_syntax_highlighting {
+                if let Some(highlight_config) = language_config.highlight_config(&loader.scopes()) {
+                    let syntax = Syntax::new(&self.text, highlight_config, loader);
+                    self.syntax = Some(syntax);
                 }
-            }
-            if let Some(highlight_config) = language_config.highlight_config(&loader.scopes()) {
-                let syntax = Syntax::new(&self.text, highlight_config, loader);
-                self.syntax = Some(syntax);
             }
 
             self.language = Some(language_config);

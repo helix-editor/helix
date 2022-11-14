@@ -176,7 +176,7 @@ impl Application {
                 &config.editor
             })),
         );
-
+        let mut enable_syntax_highlighting = true;
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
         }));
@@ -223,11 +223,19 @@ impl Application {
                         // opened last is focused on.
                         let view_id = editor.tree.focus;
                         let doc = doc_mut!(editor, &doc_id);
+                        enable_syntax_highlighting = doc.enable_syntax_highlighting;
                         let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
                         doc.set_selection(view_id, pos);
                     }
                 }
-                editor.set_status(format!("Loaded {} files.", nr_of_files));
+                if !enable_syntax_highlighting {
+                    editor.set_error(
+                        "Warning: Syntax highlighting is disabled due to exceeding the size limit"
+                            .to_string(),
+                    );
+                } else {
+                    editor.set_status(format!("Loaded {} files.", nr_of_files));
+                }
                 // align the view to center after all files are loaded,
                 // does not affect views without pos since it is at the top
                 let (view, doc) = current!(editor);
