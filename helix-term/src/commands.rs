@@ -660,35 +660,54 @@ fn goto_line_start(cx: &mut Context) {
 }
 
 fn goto_next_buffer(cx: &mut Context) {
-    goto_buffer(cx.editor, Direction::Forward);
+    goto_buffer_by_direction(cx.editor, Direction::Forward)
 }
 
 fn goto_previous_buffer(cx: &mut Context) {
-    goto_buffer(cx.editor, Direction::Backward);
+    goto_buffer_by_direction(cx.editor, Direction::Backward)
 }
 
-fn goto_buffer(editor: &mut Editor, direction: Direction) {
-    let current = view!(editor).doc;
+/// Gets the amount of buffers that are currently open.
+fn get_buffers_len(editor: &mut Editor) -> usize {
+    editor.documents.len()
+}
 
-    let id = match direction {
-        Direction::Forward => {
-            let iter = editor.documents.keys();
-            let mut iter = iter.skip_while(|id| *id != &current);
-            iter.next(); // skip current item
-            iter.next().or_else(|| editor.documents.keys().next())
-        }
-        Direction::Backward => {
-            let iter = editor.documents.keys();
-            let mut iter = iter.rev().skip_while(|id| *id != &current);
-            iter.next(); // skip current item
-            iter.next().or_else(|| editor.documents.keys().rev().next())
-        }
+fn goto_buffer_by_direction(editor: &mut Editor, dir: Direction) {
+    let curr_i = get_focused_buffer_idx(editor);
+    let buffs_len = get_buffers_len(editor);
+
+    let new_i = match dir {
+        Direction::Forward if curr_i < buffs_len - 1 => curr_i + 1,
+        Direction::Forward => 0, // Would be out of bounds, wrap to front.
+        Direction::Backward if curr_i > 0 => curr_i - 1,
+        Direction::Backward => buffs_len - 1, // Would be out of bounds, wrap to back.
+    };
+
+    goto_buffer_by_idx_impl(editor, new_i);
+}
+
+/// Goto a buffer by providing it's index.
+///
+/// Note that the index starts from 0.
+/// Out of bounds indices are ignored / a noop.
+fn goto_buffer_by_idx_impl(editor: &mut Editor, i: usize) {
+    let all_buffs: Vec<&helix_view::DocumentId> = editor.documents.keys().collect();
+
+    if let Some(&&new_buff) = all_buffs.get(i) {
+        editor.switch(new_buff, Action::Replace);
     }
-    .unwrap();
+}
 
-    let id = *id;
+fn get_focused_buffer_idx(editor: &mut Editor) -> usize {
+    let curr_id = view!(editor).doc;
 
-    editor.switch(id, Action::Replace);
+    editor
+        .documents
+        .keys()
+        .enumerate()
+        .find(|(_, d_id)| *d_id == &curr_id)
+        .expect("the current buffer was not in the buffers list")
+        .0
 }
 
 fn extend_to_line_start(cx: &mut Context) {
