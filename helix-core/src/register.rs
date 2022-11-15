@@ -2,7 +2,6 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::prelude::*;
 use std::io::{self, BufReader, Read, Write};
 use std::path::Path;
 
@@ -71,39 +70,62 @@ impl Registers {
             .insert(name, Register::new_with_values(name, values));
     }
 
-    pub fn load(&mut self, name: char) -> ! {
-        fn _read_data(name: char) -> Result<Register, serde_json::Error> {
+    pub fn load(&mut self, name: char) {
+        fn _read_data(name: char) -> Result<String, io::Error> {
             let file_name = format!("{}.macro", &name);
-            let mut file = File::open(&file_name)?;
-            let mut buf_reader = BufReader::new(file);
+            let file = File::open(&file_name)?;
+            let mut reader = BufReader::new(file);
             let mut content = String::new();
 
-            buf_reader.read_to_string(&mut content)?;
+            reader.read_to_string(&mut content)?;
 
-            // let deserialized: Register = serde_json::from_str(&content)?;
-
-            return serde_json::from_str(&content);
+            return Ok(content);
         }
+
+        fn _string_to_register(str: String) -> Result<Register, serde_json::Error> {
+            let deserialized: Register = serde_json::from_str(&str)?;
+
+            return Ok(deserialized);
+        }
+
+        println!("Loading");
 
         // todo: log results
         match _read_data(name) {
-            Ok(register) => self.inner.insert(name, register),
-            Err(error) => todo!(),
-        }
+            Ok(content) => match _string_to_register(content) {
+                Ok(register) => {
+                    println!("INSERTED");
+                    self.inner.insert(name, register)
+                }
+                Err(_error) => None,
+            },
+            Err(_error) => None,
+        };
     }
 
-    pub fn save(&mut self, name: char) -> std::io::Result<()> {
-        let macro_definition = self.get(name);
+    pub fn save(&mut self, name: char) {
+        fn _write(file_name: &Path, content: String) -> Result<(), io::Error> {
+            let mut file = File::create(&file_name)?;
+            file.write_all(&content.as_bytes())
+        }
 
-        let content = serde_json::to_string(&macro_definition).unwrap();
+        fn _serialize(register: &Register) -> Result<String, serde_json::Error> {
+            serde_json::to_string(&register)
+        }
 
         let file_name = format!("{}.macro", &name);
         let file_name = Path::new(&file_name);
 
-        let mut file = File::create(&file_name)?;
-        file.write_all(&content.as_bytes());
-
-        Ok(())
+        match self.get(name) {
+            Some(register) => match _serialize(register) {
+                Ok(content) => match _write(file_name, content) {
+                    Ok(_) => (),
+                    Err(_) => (),
+                },
+                Err(_) => todo!(),
+            },
+            None => (),
+        }
     }
 
     pub fn read(&self, name: char) -> Option<&[String]> {

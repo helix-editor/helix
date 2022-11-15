@@ -5015,14 +5015,20 @@ fn save_macro(cx: &mut Context) {
                 return;
             }
         }
-        None => println!("blub"),
+        None => (),
     }
 
-    cx.editor.registers.save(reg, Path::new("foo.macro"));
+    cx.editor.registers.save(reg);
+
+    cx.editor
+        .set_status(format!("Saved macro in register [{}]", reg));
 }
 
 fn load_macro(cx: &mut Context) {
-    cx.editor.registers.load();
+    let reg = '@';
+    cx.editor.registers.load(reg);
+    cx.editor
+        .set_status(format!("Loaded macro in register [{}]", reg));
 }
 
 fn replay_macro(cx: &mut Context) {
