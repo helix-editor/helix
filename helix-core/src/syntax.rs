@@ -354,6 +354,25 @@ impl<'a> CapturedNode<'a> {
     }
 }
 
+/// The number of matches a TS cursor can at once to avoid performance problems for medium to large files.
+/// Set with `set_match_limit`.
+/// Using such a limit means that we lose valid captures in, so there is fundamentally a tradeoff here.
+///
+///
+/// Old tree sitter versions used a limit of 32 by default until this limit was removed in version `0.19.5` (must now be set manually).
+/// However, this causes performance issues for medium to large files.
+/// In helix, this problem caused treesitter motions to take multiple seconds to complete in medium-sized rust files (3k loc).
+/// Neovim also encountered this problem and reintroduced this limit after it was removed upstream
+/// (see <https://github.com/neovim/neovim/issues/14897> and <https://github.com/neovim/neovim/pull/14915>).
+/// The number used here is fundamentally a tradeoff between breaking some obscure edge cases and performance.
+///
+///
+/// A value of 64 was chosen because neovim uses that value.
+/// Neovim chose this value somewhat arbitrarily (<https://github.com/neovim/neovim/pull/18397>) adjusting it whenever issues occur in practice.
+/// However this value has been in use for a long time and due to the large userbase of neovim it is probably a good choice.
+/// If this limit causes problems for a grammar in the future, it could be increased.
+const TREE_SITTER_MATCH_LIMIT: u32 = 64;
+
 impl TextObjectQuery {
     /// Run the query on the given node and return sub nodes which match given
     /// capture ("function.inside", "class.around", etc).
@@ -393,6 +412,8 @@ impl TextObjectQuery {
         let capture_idx = capture_names
             .iter()
             .find_map(|cap| self.query.capture_index_for_name(cap))?;
+
+        cursor.set_match_limit(TREE_SITTER_MATCH_LIMIT);
 
         let nodes = cursor
             .captures(&self.query, node, RopeProvider(slice))
@@ -843,6 +864,7 @@ impl Syntax {
             let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
             // TODO: might need to set cursor range
             cursor.set_byte_range(0..usize::MAX);
+            cursor.set_match_limit(TREE_SITTER_MATCH_LIMIT);
 
             let source_slice = source.slice(..);
 
@@ -1032,6 +1054,7 @@ impl Syntax {
 
                 // if reusing cursors & no range this resets to whole range
                 cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
+                cursor_ref.set_match_limit(TREE_SITTER_MATCH_LIMIT);
 
                 let mut captures = cursor_ref
                     .captures(
