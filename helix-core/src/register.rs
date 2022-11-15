@@ -88,15 +88,10 @@ impl Registers {
             return Ok(deserialized);
         }
 
-        println!("Loading");
-
         // todo: log results
         match _read_data(name) {
             Ok(content) => match _string_to_register(content) {
-                Ok(register) => {
-                    println!("INSERTED");
-                    self.inner.insert(name, register)
-                }
+                Ok(register) => self.inner.insert(name, register),
                 Err(_error) => None,
             },
             Err(_error) => None,
