@@ -45,7 +45,7 @@
 (int_literal) @constant.numeric.integer
 
 (keyword_argument keyword: (identifier) @variable.parameter)
-(escape_sequence) @string.special
+(escape_sequence) @constant.character.escape
 (bad_escape) @warning
 
 [
