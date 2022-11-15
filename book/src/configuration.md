@@ -103,6 +103,7 @@ The following statusline elements can be configured:
 | `file-type` | The type of the opened file |
 | `diagnostics` | The number of warnings and/or errors |
 | `selections` | The number of active selections |
+| `primary-selection-length` | The number of characters currently in primary selection |
 | `position` | The cursor position |
 | `position-percentage` | The cursor position as a percentage of the total number of lines |
 | `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |
