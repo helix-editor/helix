@@ -46,7 +46,7 @@
 "ui.text" = "foreground"
 "ui.text.focus" = { bg = "dark_gray", fg = "foreground" }
 "ui.text.info" = "foreground"
-"ui.virtual.whitespace" = "dark_gray"
+"ui.virtual.whitespace" = "orange"
 "ui.virtual.ruler" = { bg = "black" }
 "ui.menu" = { fg = "foreground", bg = "black" }
 "ui.menu.selected" = { bg = "gray", fg = "background" }
