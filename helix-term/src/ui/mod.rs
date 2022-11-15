@@ -390,6 +390,45 @@ pub mod completers {
             .collect()
     }
 
+    pub fn lsp_workspace_command(editor: &Editor, input: &str) -> Vec<Completion> {
+        let matcher = Matcher::default();
+
+        let (_, doc) = current_ref!(editor);
+
+        let language_server = match doc.language_server() {
+            Some(language_server) => language_server,
+            None => {
+                return vec![];
+            }
+        };
+
+        let options = match &language_server.capabilities().execute_command_provider {
+            Some(options) => options,
+            None => {
+                return vec![];
+            }
+        };
+
+        let mut matches: Vec<_> = options
+            .commands
+            .iter()
+            .filter_map(|command| {
+                matcher
+                    .fuzzy_match(command, input)
+                    .map(|score| (command, score))
+            })
+            .collect();
+
+        matches.sort_unstable_by(|(command1, score1), (command2, score2)| {
+            (Reverse(*score1), command1).cmp(&(Reverse(*score2), command2))
+        });
+
+        matches
+            .into_iter()
+            .map(|(command, _score)| ((0..), command.clone().into()))
+            .collect()
+    }
+
     pub fn directory(editor: &Editor, input: &str) -> Vec<Completion> {
         filename_impl(editor, input, |entry| {
             let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());

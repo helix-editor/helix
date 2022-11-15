@@ -298,6 +298,9 @@ impl Client {
                         dynamic_registration: Some(false),
                         ..Default::default()
                     }),
+                    execute_command: Some(lsp::DynamicRegistrationClientCapabilities {
+                        dynamic_registration: Some(false),
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {

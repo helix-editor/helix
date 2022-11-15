@@ -227,7 +227,7 @@ impl Completion {
                 }
             };
         });
-        let popup = Popup::new(Self::ID, menu);
+        let popup = Popup::new(Self::ID, menu).with_scrollbar(false);
         let mut completion = Self {
             popup,
             start_offset,

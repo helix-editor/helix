@@ -320,11 +320,6 @@ impl<T: Item + 'static> Component for Menu<T> {
             (a + b - 1) / b
         }
 
-        let scroll_height = std::cmp::min(div_ceil(win_height.pow(2), len), win_height as usize);
-
-        let scroll_line = (win_height - scroll_height) * scroll
-            / std::cmp::max(1, len.saturating_sub(win_height));
-
         let rows = options.iter().map(|option| option.row(&self.editor_data));
         let table = Table::new(rows)
             .style(style)
@@ -357,20 +352,24 @@ impl<T: Item + 'static> Component for Menu<T> {
         let fits = len <= win_height;
 
         let scroll_style = theme.get("ui.menu.scroll");
-        for (i, _) in (scroll..(scroll + win_height).min(len)).enumerate() {
-            let cell = &mut surface[(area.x + area.width - 1, area.y + i as u16)];
+        if !fits {
+            let scroll_height = div_ceil(win_height.pow(2), len).min(win_height);
+            let scroll_line = (win_height - scroll_height) * scroll
+                / std::cmp::max(1, len.saturating_sub(win_height));
 
-            if !fits {
-                // Draw scroll track
+            let mut cell;
+            for i in 0..win_height {
+                cell = &mut surface[(area.right() - 1, area.top() + i as u16)];
+
                 cell.set_symbol("▐"); // right half block
-                cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
-            }
 
-            let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
-
-            if !fits && is_marked {
-                // Draw scroll thumb
-                cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
+                if scroll_line <= i && i < scroll_line + scroll_height {
+                    // Draw scroll thumb
+                    cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
+                } else {
+                    // Draw scroll track
+                    cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
+                }
             }
         }
     }

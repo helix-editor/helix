@@ -1052,6 +1052,77 @@ fn update(
     }
 }
 
+fn lsp_workspace_command(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_, doc) = current!(cx.editor);
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => {
+            cx.editor
+                .set_status("Language server not active for current buffer");
+            return Ok(());
+        }
+    };
+
+    let options = match &language_server.capabilities().execute_command_provider {
+        Some(options) => options,
+        None => {
+            cx.editor
+                .set_status("Workspace commands are not supported for this language server");
+            return Ok(());
+        }
+    };
+    if args.is_empty() {
+        let commands = options
+            .commands
+            .iter()
+            .map(|command| helix_lsp::lsp::Command {
+                title: command.clone(),
+                command: command.clone(),
+                arguments: None,
+            })
+            .collect::<Vec<_>>();
+        let callback = async move {
+            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                move |_editor: &mut Editor, compositor: &mut Compositor| {
+                    let picker = ui::Picker::new(commands, (), |cx, command, _action| {
+                        execute_lsp_command(cx.editor, command.clone());
+                    });
+                    compositor.push(Box::new(overlayed(picker)))
+                },
+            ));
+            Ok(call)
+        };
+        cx.jobs.callback(callback);
+    } else {
+        let command = args.join(" ");
+        if options.commands.iter().any(|c| c == &command) {
+            execute_lsp_command(
+                cx.editor,
+                helix_lsp::lsp::Command {
+                    title: command.clone(),
+                    arguments: None,
+                    command,
+                },
+            );
+        } else {
+            cx.editor.set_status(format!(
+                "`{command}` is not supported for this language server"
+            ));
+            return Ok(());
+        }
+    }
+    Ok(())
+}
+
 fn lsp_restart(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1986,6 +2057,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Write changes only if the file has been modified.",
             fun: update,
             completer: None,
+        },
+        TypableCommand {
+            name: "lsp-workspace-command",
+            aliases: &[],
+            doc: "Open workspace command picker",
+            fun: lsp_workspace_command,
+            completer: Some(completers::lsp_workspace_command),
         },
         TypableCommand {
             name: "lsp-restart",
