@@ -250,6 +250,7 @@ impl MappableCommand {
         extend_search_next, "Add next search match to selection",
         extend_search_prev, "Add previous search match to selection",
         search_selection, "Use current selection as search pattern",
+        make_search_word_bounded, "Modify current search to make it word bounded",
         global_search, "Global search in workspace folder",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
@@ -1807,7 +1808,36 @@ fn search_selection(cx: &mut Context) {
         .join("|");
 
     let msg = format!("register '{}' set to '{}'", '/', &regex);
-    cx.editor.registers.get_mut('/').push(regex);
+    cx.editor.registers.push('/', regex);
+    cx.editor.set_status(msg);
+}
+
+fn make_search_word_bounded(cx: &mut Context) {
+    let regex = match cx.editor.registers.last('/') {
+        Some(regex) => regex,
+        None => return,
+    };
+    let start_anchored = regex.starts_with("\\b");
+    let end_anchored = regex.ends_with("\\b");
+
+    if start_anchored && end_anchored {
+        return;
+    }
+
+    let mut new_regex = String::with_capacity(
+        regex.len() + if start_anchored { 0 } else { 2 } + if end_anchored { 0 } else { 2 },
+    );
+
+    if !start_anchored {
+        new_regex.push_str("\\b");
+    }
+    new_regex.push_str(regex);
+    if !end_anchored {
+        new_regex.push_str("\\b");
+    }
+
+    let msg = format!("register '{}' set to '{}'", '/', &new_regex);
+    cx.editor.registers.push('/', new_regex);
     cx.editor.set_status(msg);
 }
 
@@ -2123,16 +2153,14 @@ enum Operation {
 fn delete_selection_impl(cx: &mut Context, op: Operation) {
     let (view, doc) = current!(cx.editor);
 
-    let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
 
     if cx.register != Some('_') {
         // first yank the selection
+        let text = doc.text().slice(..);
         let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
         let reg_name = cx.register.unwrap_or('"');
-        let registers = &mut cx.editor.registers;
-        let reg = registers.get_mut(reg_name);
-        reg.write(values);
+        cx.editor.registers.write(reg_name, values);
     };
 
     // then delete
@@ -5007,7 +5035,7 @@ fn record_macro(cx: &mut Context) {
                 }
             })
             .collect::<String>();
-        cx.editor.registers.get_mut(reg).write(vec![s]);
+        cx.editor.registers.write(reg, vec![s]);
         cx.editor
             .set_status(format!("Recorded to register [{}]", reg));
     } else {

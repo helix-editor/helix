@@ -1,4 +1,5 @@
 use helix_core::{coords_at_pos, encoding, Position};
+use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
@@ -141,6 +142,7 @@ where
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
+        helix_view::editor::StatusLineElement::WorkspaceDiagnostics => render_workspace_diagnostics,
         helix_view::editor::StatusLineElement::Selections => render_selections,
         helix_view::editor::StatusLineElement::PrimarySelectionLength => {
             render_primary_selection_length
@@ -225,6 +227,48 @@ where
             }
             counts
         });
+
+    if warnings > 0 {
+        write(
+            context,
+            "●".to_string(),
+            Some(context.editor.theme.get("warning")),
+        );
+        write(context, format!(" {} ", warnings), None);
+    }
+
+    if errors > 0 {
+        write(
+            context,
+            "●".to_string(),
+            Some(context.editor.theme.get("error")),
+        );
+        write(context, format!(" {} ", errors), None);
+    }
+}
+
+fn render_workspace_diagnostics<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let (warnings, errors) =
+        context
+            .editor
+            .diagnostics
+            .values()
+            .flatten()
+            .fold((0, 0), |mut counts, diag| {
+                match diag.severity {
+                    Some(DiagnosticSeverity::WARNING) => counts.0 += 1,
+                    Some(DiagnosticSeverity::ERROR) | None => counts.1 += 1,
+                    _ => {}
+                }
+                counts
+            });
+
+    if warnings > 0 || errors > 0 {
+        write(context, format!(" {} ", "W"), None);
+    }
 
     if warnings > 0 {
         write(

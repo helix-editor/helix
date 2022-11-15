@@ -20,11 +20,7 @@ impl Register {
     }
 
     pub fn new_with_values(name: char, values: Vec<String>) -> Self {
-        if name == '_' {
-            Self::new(name)
-        } else {
-            Self { name, values }
-        }
+        Self { name, values }
     }
 
     pub const fn name(&self) -> char {
@@ -36,15 +32,11 @@ impl Register {
     }
 
     pub fn write(&mut self, values: Vec<String>) {
-        if self.name != '_' {
-            self.values = values;
-        }
+        self.values = values;
     }
 
     pub fn push(&mut self, value: String) {
-        if self.name != '_' {
-            self.values.push(value);
-        }
+        self.values.push(value);
     }
 }
 
@@ -59,15 +51,15 @@ impl Registers {
         self.inner.get(&name)
     }
 
-    pub fn get_mut(&mut self, name: char) -> &mut Register {
-        self.inner
-            .entry(name)
-            .or_insert_with(|| Register::new(name))
+    pub fn read(&self, name: char) -> Option<&[String]> {
+        self.get(name).map(|reg| reg.read())
     }
 
     pub fn write(&mut self, name: char, values: Vec<String>) {
-        self.inner
-            .insert(name, Register::new_with_values(name, values));
+        if name != '_' {
+            self.inner
+                .insert(name, Register::new_with_values(name, values));
+        }
     }
 
     pub fn load(&mut self, name: char) -> Result<(), String> {
@@ -125,8 +117,14 @@ impl Registers {
         }
     }
 
-    pub fn read(&self, name: char) -> Option<&[String]> {
-        self.get(name).map(|reg| reg.read())
+    pub fn push(&mut self, name: char, value: String) {
+        if name != '_' {
+            if let Some(r) = self.inner.get_mut(&name) {
+                r.push(value);
+            } else {
+                self.write(name, vec![value]);
+            }
+        }
     }
 
     pub fn first(&self, name: char) -> Option<&String> {
