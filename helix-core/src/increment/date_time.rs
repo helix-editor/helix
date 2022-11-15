@@ -342,11 +342,8 @@ fn add_years(date_time: NaiveDateTime, amount: i64) -> Option<NaiveDateTime> {
     let ndays = ndays_in_month(year, date_time.month());
 
     if date_time.day() > ndays {
-        if let Some(d) = NaiveDate::from_ymd_opt(year, date_time.month(), ndays) {
-            d.succ_opt().map(|date| date.and_time(date_time.time()))
-        } else {
-            None
-        }
+        NaiveDate::from_ymd_opt(year, date_time.month(), ndays)
+            .and_then(|date| date.succ_opt().map(|date| date.and_time(date_time.time())))
     } else {
         date_time.with_year(year)
     }
