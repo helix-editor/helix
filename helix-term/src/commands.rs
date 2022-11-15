@@ -1835,7 +1835,7 @@ fn make_search_word_bounded(cx: &mut Context) {
     }
 
     let msg = format!("register '{}' set to '{}'", '/', &new_regex);
-    cx.editor.registers.get_mut('/').push(new_regex);
+    cx.editor.registers.push('/', new_regex);
     cx.editor.set_status(msg);
 }
 
