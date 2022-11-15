@@ -667,14 +667,14 @@ fn goto_previous_buffer(cx: &mut Context) {
     goto_buffer_by_direction(cx.editor, Direction::Backward)
 }
 
-/// Gets the amount of buffers that are currently open.
-fn get_buffers_len(editor: &mut Editor) -> usize {
-    editor.documents.len()
-}
-
 fn goto_buffer_by_direction(editor: &mut Editor, dir: Direction) {
-    let curr_i = get_focused_buffer_idx(editor);
-    let buffs_len = get_buffers_len(editor);
+    let curr_doc = &view!(editor).doc;
+    let buffs_len = editor.documents.len();
+    let curr_i = editor
+        .documents
+        .keys()
+        .position(|d| d == curr_doc)
+        .expect("current document was not in documents");
 
     let new_i = match dir {
         Direction::Forward if curr_i < buffs_len - 1 => curr_i + 1,
@@ -696,18 +696,6 @@ fn goto_buffer_by_idx_impl(editor: &mut Editor, i: usize) {
     if let Some(&&new_buff) = all_buffs.get(i) {
         editor.switch(new_buff, Action::Replace);
     }
-}
-
-fn get_focused_buffer_idx(editor: &mut Editor) -> usize {
-    let curr_id = view!(editor).doc;
-
-    editor
-        .documents
-        .keys()
-        .enumerate()
-        .find(|(_, d_id)| *d_id == &curr_id)
-        .expect("the current buffer was not in the buffers list")
-        .0
 }
 
 fn extend_to_line_start(cx: &mut Context) {
