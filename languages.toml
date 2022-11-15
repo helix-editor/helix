@@ -1979,4 +1979,4 @@ language-server = { command = "bicep-langserver" }
 
 [[grammar]]
 name = "bicep"
-source = { git = "https://github.com/Sjord/tree-sitter-bicep", rev = "60795d3a1b493e064b263a64cb4f7f758a3394d7" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-bicep", rev = "d8e097fcfa143854861ef737161163a09cc2916b" }
