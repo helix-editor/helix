@@ -66,27 +66,10 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
         append(&mut context.parts.right, text, &base_style, style)
     };
 
-    let statusline = &context.editor.config().statusline;
-    let file_modified = &helix_view::editor::StatusLineElement::FileModificationIndicator;
-
-    let has_modified_element = statusline.left.contains(file_modified)
-        || statusline.center.contains(file_modified)
-        || statusline.right.contains(file_modified);
-
-    let default_file_modified_element = |element_ids: &Vec<StatusLineElementID>| {
-        let mut ret_val = element_ids.to_vec();
-        let file_name_index = element_ids
-            .iter()
-            .position(|id| id == &helix_view::editor::StatusLineElement::FileName);
-        if !has_modified_element && file_name_index != None {
-            ret_val.insert(file_name_index.unwrap() + 1, *file_modified);
-        }
-        return ret_val;
-    };
-
     // Left side of the status line.
 
-    default_file_modified_element(&statusline.left)
+    let element_ids = &context.editor.config().statusline.left;
+    element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
         .for_each(|render| render(context, write_left));
@@ -100,7 +83,8 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Right side of the status line.
 
-    default_file_modified_element(&statusline.right)
+    let element_ids = &context.editor.config().statusline.right;
+    element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
         .for_each(|render| render(context, write_right));
@@ -117,7 +101,8 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Center of the status line.
 
-    default_file_modified_element(&statusline.center)
+    let element_ids = &context.editor.config().statusline.center;
+    element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
         .for_each(|render| render(context, write_center));
@@ -152,7 +137,7 @@ where
         helix_view::editor::StatusLineElement::Mode => render_mode,
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
-        helix_view::editor::StatusLineElement::FileModificationIndicator => render_file_dirty,
+        helix_view::editor::StatusLineElement::FileModificationIndicator => render_file_modified,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
@@ -376,7 +361,7 @@ where
     write(context, title, None);
 }
 
-fn render_file_dirty<F>(context: &mut RenderContext, write: F)
+fn render_file_modified<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {

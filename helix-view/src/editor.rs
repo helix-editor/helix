@@ -274,7 +274,7 @@ impl Default for StatusLineConfig {
         use StatusLineElement as E;
 
         Self {
-            left: vec![E::Mode, E::Spinner, E::FileName],
+            left: vec![E::Mode, E::Spinner, E::FileName, E::FileModificationIndicator],
             center: vec![],
             right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
             separator: String::from("│"),
