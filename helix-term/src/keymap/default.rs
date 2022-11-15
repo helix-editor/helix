@@ -73,6 +73,15 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "C" => copy_selection_on_next_line,
         "A-C" => copy_selection_on_prev_line,
 
+        "C-1" => goto_first_buffer,
+        "C-2" => goto_second_buffer,
+        "C-3" => goto_third_buffer,
+        "C-4" => goto_fourth_buffer,
+        "C-5" => goto_fifth_buffer,
+        "C-6" => goto_sixth_buffer,
+        "C-7" => goto_seventh_buffer,
+        "C-8" => goto_eight_buffer,
+        "C-9" => goto_ninth_buffer,
 
         "s" => select_regex,
         "A-s" => split_selection_on_newline,

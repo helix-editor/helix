@@ -309,6 +309,15 @@ impl MappableCommand {
         goto_prev_diag, "Goto previous diagnostic",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
+        goto_first_buffer, "Goto first buffer",
+        goto_second_buffer, "Goto second buffer",
+        goto_third_buffer, "Goto third buffer",
+        goto_fourth_buffer, "Goto fourth buffer",
+        goto_fifth_buffer, "Goto fifth buffer",
+        goto_sixth_buffer, "Goto sixth buffer",
+        goto_seventh_buffer, "Goto seventh buffer",
+        goto_eight_buffer, "Goto eight buffer",
+        goto_ninth_buffer, "Goto ninth buffer",
         goto_next_buffer, "Goto next buffer",
         goto_previous_buffer, "Goto previous buffer",
         goto_line_end_newline, "Goto newline at line end",
@@ -657,6 +666,42 @@ fn goto_line_start(cx: &mut Context) {
             Movement::Move
         },
     )
+}
+
+fn goto_first_buffer(cx: &mut Context) {
+    goto_buffer_by_idx_impl(cx.editor, 0);
+}
+
+fn goto_second_buffer(cx: &mut Context) {
+    goto_buffer_by_idx_impl(cx.editor, 1);
+}
+
+fn goto_third_buffer(cx: &mut Context) {
+    goto_buffer_by_idx_impl(cx.editor, 2);
+}
+
+fn goto_fourth_buffer(cx: &mut Context) {
+    goto_buffer_by_idx_impl(cx.editor, 3);
+}
+
+fn goto_fifth_buffer(cx: &mut Context) {
+    goto_buffer_by_idx_impl(cx.editor, 4);
+}
+
+fn goto_sixth_buffer(cx: &mut Context) {
+    goto_buffer_by_idx_impl(cx.editor, 5);
+}
+
+fn goto_seventh_buffer(cx: &mut Context) {
+    goto_buffer_by_idx_impl(cx.editor, 6);
+}
+
+fn goto_eight_buffer(cx: &mut Context) {
+    goto_buffer_by_idx_impl(cx.editor, 7);
+}
+
+fn goto_ninth_buffer(cx: &mut Context) {
+    goto_buffer_by_idx_impl(cx.editor, 8);
 }
 
 fn goto_next_buffer(cx: &mut Context) {
