@@ -5018,17 +5018,28 @@ fn save_macro(cx: &mut Context) {
         None => (),
     }
 
-    cx.editor.registers.save(reg);
-
-    cx.editor
-        .set_status(format!("Saved macro in register [{}]", reg));
+    match cx.editor.registers.save(reg) {
+        Ok(_) => cx
+            .editor
+            .set_status(format!("Saved macro in register [{}]", reg)),
+        Err(error) => cx.editor.set_error(format!(
+            "Saving macro in register [{}] failed: {}",
+            reg, error
+        )),
+    }
 }
 
 fn load_macro(cx: &mut Context) {
     let reg = '@';
-    cx.editor.registers.load(reg);
-    cx.editor
-        .set_status(format!("Loaded macro in register [{}]", reg));
+    match cx.editor.registers.load(reg) {
+        Ok(()) => cx
+            .editor
+            .set_status(format!("Loaded macro in register [{}]", reg)),
+        Err(error) => cx.editor.set_error(format!(
+            "Loading macro in register [{}] failed: {}",
+            reg, error
+        )),
+    }
 }
 
 fn replay_macro(cx: &mut Context) {

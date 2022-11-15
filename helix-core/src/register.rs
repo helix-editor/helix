@@ -70,7 +70,7 @@ impl Registers {
             .insert(name, Register::new_with_values(name, values));
     }
 
-    pub fn load(&mut self, name: char) {
+    pub fn load(&mut self, name: char) -> Result<(), String> {
         fn _read_data(name: char) -> Result<String, io::Error> {
             let file_name = format!("{}.macro", &name);
             let file = File::open(&file_name)?;
@@ -88,17 +88,19 @@ impl Registers {
             return Ok(deserialized);
         }
 
-        // todo: log results
         match _read_data(name) {
             Ok(content) => match _string_to_register(content) {
-                Ok(register) => self.inner.insert(name, register),
-                Err(_error) => None,
+                Ok(register) => match self.inner.insert(name, register) {
+                    Some(_) => Ok(()),
+                    None => Err(format!("Could not insert loaded register.")),
+                },
+                Err(error) => Err(format!("Insertion failed: {}", error)),
             },
-            Err(_error) => None,
-        };
+            Err(error) => Err(format!("Deserialization failed: {}", error)),
+        }
     }
 
-    pub fn save(&mut self, name: char) {
+    pub fn save(&mut self, name: char) -> Result<(), String> {
         fn _write(file_name: &Path, content: String) -> Result<(), io::Error> {
             let mut file = File::create(&file_name)?;
             file.write_all(&content.as_bytes())
@@ -114,12 +116,12 @@ impl Registers {
         match self.get(name) {
             Some(register) => match _serialize(register) {
                 Ok(content) => match _write(file_name, content) {
-                    Ok(_) => (),
-                    Err(_) => (),
+                    Ok(()) => Ok(()),
+                    Err(error) => Err(format!("Error on write: {}", error)),
                 },
-                Err(_) => todo!(),
+                Err(error) => Err(format!("Serialization failed: {}", error)),
             },
-            None => (),
+            None => Err(String::from("Register not found.")),
         }
     }
 
