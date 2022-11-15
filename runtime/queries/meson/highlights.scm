@@ -59,4 +59,4 @@
     (fstring_literal)
 ] @string
 
-(identifier) @variable.other
+(identifier) @variable
