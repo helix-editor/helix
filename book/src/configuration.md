@@ -102,6 +102,7 @@ The following statusline elements can be configured:
 | `total-line-numbers` | The total line numbers of the opened file |
 | `file-type` | The type of the opened file |
 | `diagnostics` | The number of warnings and/or errors |
+| `workspace-diagnostics` | The number of warnings and/or errors on workspace |
 | `selections` | The number of active selections |
 | `primary-selection-length` | The number of characters currently in primary selection |
 | `position` | The cursor position |

@@ -325,6 +325,9 @@ pub enum StatusLineElement {
     /// A summary of the number of errors and warnings
     Diagnostics,
 
+    /// A summary of the number of errors and warnings on file and workspace
+    WorkspaceDiagnostics,
+
     /// The number of selections (cursors)
     Selections,
 
