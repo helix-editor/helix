@@ -119,7 +119,9 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
             (
                 Some(":w<ret>"),
                 Some(&|app| {
-                    assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
+                    if let Some(status) = app.editor.get_status() {
+                        assert_eq!(&Severity::Error, status.1);
+                    } 
 
                     let doc = doc!(app.editor);
                     assert!(doc.is_modified());
@@ -260,10 +262,9 @@ async fn test_write_fail_new_path() -> anyhow::Result<()> {
                 None,
                 Some(&|app| {
                     let doc = doc!(app.editor);
-                    assert_ne!(
-                        Some(&Severity::Error),
-                        app.editor.get_status().map(|status| status.1)
-                    );
+                    if let Some(status) = app.editor.get_status() {
+                        assert_ne!(Some(&Severity::Error), status.1);
+                    }
                     assert_eq!(None, doc.path());
                 }),
             ),
@@ -271,10 +272,9 @@ async fn test_write_fail_new_path() -> anyhow::Result<()> {
                 Some(&format!(":w {}<ret>", file.path().to_string_lossy())),
                 Some(&|app| {
                     let doc = doc!(app.editor);
-                    assert_eq!(
-                        Some(&Severity::Error),
-                        app.editor.get_status().map(|status| status.1)
-                    );
+                    if let Some(status) = app.editor.get_status() {
+                        assert_eq!(&Severity::Error, status.1);
+                    } 
                     assert_eq!(None, doc.path());
                 }),
             ),
