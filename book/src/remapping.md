@@ -42,8 +42,8 @@ g = { a = "code_action" } # Maps `ga` to show possible code actions
 "A-x" = "@x<A-d>" # Maps Alt-x to a macro selecting the whole line and deleting it without yanking it
 
 # You can create labeled sub-menus and provide friendly labels for typeable commands
-[keys.normal.space.f] # Registering multiple mappings under a single entry creates a sub-menu (accesed by 'space', 'f' in this case)
-label = "File" # The menu is called file and within  it:
+[keys.normal.space.f] # Registering multiple mappings under a single entry creates a sub-menu (accessed by 'space', 'f' in this case)
+label = "File" # The menu is called file and within it:
 f = "file_picker" # 'f' opens the file picker
 s = { label = "Save", command = ":write" } # 's' saves the current file
 c = { label = "Edit Config", command = ":open ~/.config/helix/config.toml" } # 'c' opens the helix config file
