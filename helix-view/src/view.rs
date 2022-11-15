@@ -430,7 +430,7 @@ mod tests {
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
-        let doc = Document::from(rope, None);
+        let doc = Document::from(rope, None, None);
 
         assert_eq!(view.text_pos_at_screen_coords(&doc, 40, 2, 4), None);
 
@@ -476,7 +476,7 @@ mod tests {
         let mut view = View::new(DocumentId::default(), vec![GutterType::Diagnostics]);
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
-        let doc = Document::from(rope, None);
+        let doc = Document::from(rope, None, None);
         assert_eq!(
             view.text_pos_at_screen_coords(&doc, 41, 40 + OFFSET_WITHOUT_LINE_NUMBERS + 1, 4),
             Some(4)
@@ -488,7 +488,7 @@ mod tests {
         let mut view = View::new(DocumentId::default(), vec![]);
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
-        let doc = Document::from(rope, None);
+        let doc = Document::from(rope, None, None);
         assert_eq!(view.text_pos_at_screen_coords(&doc, 41, 40 + 1, 4), Some(4));
     }
 
@@ -500,7 +500,7 @@ mod tests {
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
-        let doc = Document::from(rope, None);
+        let doc = Document::from(rope, None, None);
 
         assert_eq!(
             view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET, 4),
@@ -540,7 +540,7 @@ mod tests {
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");
-        let doc = Document::from(rope, None);
+        let doc = Document::from(rope, None, None);
 
         assert_eq!(
             view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET, 4),
