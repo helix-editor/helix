@@ -2337,7 +2337,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "commands",
             aliases: &["cmds"],
-            doc: "Run commands",
+            doc: "Run commands together, use && to sepearte them",
             fun: cmds,
             completer: Some(completers::filename),
         },
