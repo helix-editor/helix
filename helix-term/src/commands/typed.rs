@@ -1838,7 +1838,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "buffer-goto",
             aliases: &["b"],
-            doc: "Goto the buffer <i>.",
+            doc: "Goto the buffer number <n>.",
             fun: goto_buffer_by_index,
             completer: Some(completers::buffer_index),
         },
