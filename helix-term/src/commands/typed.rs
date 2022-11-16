@@ -269,7 +269,7 @@ fn buffer_previous(
 /// Goto a buffer by providing <i> (index) as the argument.
 ///
 /// Note that the index starts from 1.
-fn goto_buffer_by_idx(
+fn goto_buffer_by_index(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     event: PromptEvent,
@@ -278,16 +278,16 @@ fn goto_buffer_by_idx(
         return Ok(());
     }
 
-    let i_str = args
+    let index_str = args
         .first()
         .ok_or_else(|| anyhow!("requires an argument for <i>"))?
         .as_ref();
-    let i = i_str
+    let index = index_str
         .parse::<usize>()
-        .map_err(|_| anyhow!("'{}' is not a valid index", i_str))?;
+        .map_err(|_| anyhow!("'{}' is not a valid index", index_str))?;
 
     // Convert to zero based index
-    goto_buffer_by_idx_impl(cx.editor, i - 1);
+    goto_buffer_by_index_impl(cx.editor, index - 1);
 
     Ok(())
 }
@@ -1835,7 +1835,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             name: "buffer-goto",
             aliases: &["b"],
             doc: "Goto the buffer <i>.",
-            fun: goto_buffer_by_idx,
+            fun: goto_buffer_by_index,
             completer: None,
         },
         TypableCommand {

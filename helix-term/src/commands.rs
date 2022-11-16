@@ -669,39 +669,39 @@ fn goto_line_start(cx: &mut Context) {
 }
 
 fn goto_first_buffer(cx: &mut Context) {
-    goto_buffer_by_idx_impl(cx.editor, 0);
+    goto_buffer_by_index_impl(cx.editor, 0);
 }
 
 fn goto_second_buffer(cx: &mut Context) {
-    goto_buffer_by_idx_impl(cx.editor, 1);
+    goto_buffer_by_index_impl(cx.editor, 1);
 }
 
 fn goto_third_buffer(cx: &mut Context) {
-    goto_buffer_by_idx_impl(cx.editor, 2);
+    goto_buffer_by_index_impl(cx.editor, 2);
 }
 
 fn goto_fourth_buffer(cx: &mut Context) {
-    goto_buffer_by_idx_impl(cx.editor, 3);
+    goto_buffer_by_index_impl(cx.editor, 3);
 }
 
 fn goto_fifth_buffer(cx: &mut Context) {
-    goto_buffer_by_idx_impl(cx.editor, 4);
+    goto_buffer_by_index_impl(cx.editor, 4);
 }
 
 fn goto_sixth_buffer(cx: &mut Context) {
-    goto_buffer_by_idx_impl(cx.editor, 5);
+    goto_buffer_by_index_impl(cx.editor, 5);
 }
 
 fn goto_seventh_buffer(cx: &mut Context) {
-    goto_buffer_by_idx_impl(cx.editor, 6);
+    goto_buffer_by_index_impl(cx.editor, 6);
 }
 
 fn goto_eight_buffer(cx: &mut Context) {
-    goto_buffer_by_idx_impl(cx.editor, 7);
+    goto_buffer_by_index_impl(cx.editor, 7);
 }
 
 fn goto_ninth_buffer(cx: &mut Context) {
-    goto_buffer_by_idx_impl(cx.editor, 8);
+    goto_buffer_by_index_impl(cx.editor, 8);
 }
 
 fn goto_next_buffer(cx: &mut Context) {
@@ -712,23 +712,23 @@ fn goto_previous_buffer(cx: &mut Context) {
     goto_buffer_by_direction(cx.editor, Direction::Backward)
 }
 
-fn goto_buffer_by_direction(editor: &mut Editor, dir: Direction) {
-    let curr_doc = &view!(editor).doc;
-    let buffs_len = editor.documents.len();
-    let curr_i = editor
+fn goto_buffer_by_direction(editor: &mut Editor, direction: Direction) {
+    let doc_id = &view!(editor).doc;
+    let buffers_len = editor.documents.len();
+    let current_index = editor
         .documents
         .keys()
-        .position(|d| d == curr_doc)
+        .position(|d| d == doc_id)
         .expect("current document was not in documents");
 
-    let new_i = match dir {
-        Direction::Forward if curr_i < buffs_len - 1 => curr_i + 1,
+    let new_index = match direction {
+        Direction::Forward if current_index < buffers_len - 1 => current_index + 1,
         Direction::Forward => 0, // Would be out of bounds, wrap to front.
-        Direction::Backward if curr_i > 0 => curr_i - 1,
-        Direction::Backward => buffs_len - 1, // Would be out of bounds, wrap to back.
+        Direction::Backward if current_index > 0 => current_index - 1,
+        Direction::Backward => buffers_len - 1, // Would be out of bounds, wrap to back.
     };
 
-    goto_buffer_by_idx_impl(editor, new_i);
+    goto_buffer_by_index_impl(editor, new_index);
 }
 
 /// Goto a buffer by providing it's index.
