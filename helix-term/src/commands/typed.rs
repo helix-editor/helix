@@ -1794,14 +1794,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["bc", "bclose"],
             doc: "Close the current buffer.",
             fun: buffer_close,
-            completer: Some(completers::buffer),
+            completer: Some(completers::buffer_name),
         },
         TypableCommand {
             name: "buffer-close!",
             aliases: &["bc!", "bclose!"],
             doc: "Close the current buffer forcefully, ignoring unsaved changes.",
             fun: force_buffer_close,
-            completer: Some(completers::buffer),
+            completer: Some(completers::buffer_name),
         },
         TypableCommand {
             name: "buffer-close-others",
@@ -1836,7 +1836,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["b"],
             doc: "Goto the buffer <i>.",
             fun: goto_buffer_by_index,
-            completer: None,
+            completer: Some(completers::buffer_index),
         },
         TypableCommand {
             name: "buffer-next",

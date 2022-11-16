@@ -251,7 +251,7 @@ pub mod completers {
         Vec::new()
     }
 
-    pub fn buffer(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn buffer_name(editor: &Editor, input: &str) -> Vec<Completion> {
         let mut names: Vec<_> = editor
             .documents
             .iter()
@@ -277,6 +277,30 @@ pub mod completers {
         names = matches.into_iter().map(|(name, _)| ((0..), name)).collect();
 
         names
+    }
+
+    /// Completes the buffer indices.
+    ///
+    /// Note that the indices start from 1 instead of 0.
+    pub fn buffer_index(editor: &Editor, input: &str) -> Vec<Completion> {
+        let indices = (0..editor.documents.len()).map(|index| Cow::from((index + 1).to_string()));
+
+        let matcher = Matcher::default();
+
+        let mut matches: Vec<_> = indices
+            .filter_map(|index| {
+                matcher
+                    .fuzzy_match(&index, input)
+                    .map(|score| (index, score))
+            })
+            .collect();
+
+        matches.sort_unstable_by_key(|(_, score)| Reverse(*score));
+
+        matches
+            .into_iter()
+            .map(|(index, _)| ((0..), index))
+            .collect()
     }
 
     pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
