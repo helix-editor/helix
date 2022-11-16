@@ -4529,7 +4529,6 @@ fn surround_add(cx: &mut Context) {
         };
         let (view, doc) = current!(cx.editor);
         let selection = doc.selection(view.id);
-        let index = selection.primary_index();
         let (open, close) = surround::get_pair(ch);
 
         let mut changes = Vec::with_capacity(selection.len() * 2);
@@ -4551,11 +4550,9 @@ fn surround_add(cx: &mut Context) {
             });
         }
 
-        let transaction = Transaction::change(doc.text(), changes.into_iter());
+        let transaction = Transaction::change(doc.text(), changes.into_iter())
+            .with_selection(Selection::new(ranges, selection.primary_index()));
         apply_transaction(&transaction, doc, view);
-
-        // Extend the selections to include the surrounding character
-        doc.set_selection(view.id, Selection::new(ranges, index));
     })
 }
 
