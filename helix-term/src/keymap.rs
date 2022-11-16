@@ -217,6 +217,12 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
 
         match command {
             None => Ok(KeyTrie::Node(KeyTrieNode::new(label, mapping, order))),
+            Some(_command) if !order.is_empty() => {
+                Err(serde::de::Error::custom("ambiguous mapping: 'command' is only valid with 'label', but I found other keys"))
+            }
+            Some(MappableCommand::Static { .. }) if !label.is_empty() => {
+                Err(serde::de::Error::custom("custom labels are only available for typable commands (the ones starting with ':')"))
+            }
             Some(MappableCommand::Typable { name, args, .. }) if !label.is_empty() => {
                 Ok(KeyTrie::Leaf(MappableCommand::Typable {
                     name,
