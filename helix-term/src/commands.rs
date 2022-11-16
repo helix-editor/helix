@@ -172,6 +172,11 @@ impl MappableCommand {
                         jobs: cx.jobs,
                         scroll: None,
                     };
+
+                    // We update any changes to history before calling the command
+                    let (view, doc) = current!(cx.editor);
+                    doc.append_changes_to_history(view.id);
+
                     if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
                         cx.editor.set_error(format!("{}", e));
                     }
