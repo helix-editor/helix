@@ -735,11 +735,9 @@ fn goto_buffer_by_direction(editor: &mut Editor, direction: Direction) {
 ///
 /// Note that the index starts from 0.
 /// Out of bounds indices are ignored / a noop.
-fn goto_buffer_by_idx_impl(editor: &mut Editor, i: usize) {
-    let all_buffs: Vec<&helix_view::DocumentId> = editor.documents.keys().collect();
-
-    if let Some(&&new_buff) = all_buffs.get(i) {
-        editor.switch(new_buff, Action::Replace);
+fn goto_buffer_by_index_impl(editor: &mut Editor, i: usize) {
+    if let Some(doc_id) = editor.documents.keys().nth(i).copied() {
+        editor.switch(doc_id, Action::Replace);
     }
 }
 
