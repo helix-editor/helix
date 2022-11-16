@@ -46,12 +46,7 @@
 "label" = "yellow"
 
 "markup.heading.marker" = { fg = "gray06" }
-"markup.heading.1" = { fg = "bright_blue", modifiers = ["bold"] }
-"markup.heading.2" = { fg = "bright_blue", modifiers = ["bold"] }
-"markup.heading.3" = { fg = "bright_blue", modifiers = ["bold"] }
-"markup.heading.4" = { fg = "bright_blue", modifiers = ["bold"] }
-"markup.heading.5" = { fg = "bright_blue", modifiers = ["bold"] }
-"markup.heading.6" = { fg = "bright_blue", modifiers = ["bold"] }
+"markup.heading" = { fg = "bright_blue", modifiers = ["bold"] }
 "markup.list" = "gray06"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
