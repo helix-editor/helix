@@ -152,7 +152,7 @@ fn buffer(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate || args.len() < 1 {
+    if event != PromptEvent::Validate || args.is_empty() {
         return Ok(());
     }
 
@@ -162,6 +162,7 @@ fn buffer(
         if doc.path().map(|p| p.as_path()) == arg_path
             || doc.relative_path().as_deref() == arg_path
             || doc.display_name() == name
+            || format!("{}", doc.id()) == name
         {
             Some(doc.id())
         } else {
