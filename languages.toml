@@ -1510,7 +1510,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "meson"
-source = { git = "https://github.com/bearcove/tree-sitter-meson", rev = "feea83be9225842490066522ced2d13eb9cce0bd" }
+source = { git = "https://github.com/staysail/tree-sitter-meson", rev = "32a83e8f200c347232fa795636cfe60dde22957a" }
 
 [[language]]
 name = "sshclientconfig"
