@@ -4530,7 +4530,8 @@ fn surround_add(cx: &mut Context) {
         let (view, doc) = current!(cx.editor);
         let selection = doc.selection(view.id);
         let (open, close) = surround::get_pair(ch);
-        let surround_len = open.len_utf8() + close.len_utf8();
+        // The number of chars in get_pair
+        let surround_len = 2;
 
         let mut changes = Vec::with_capacity(selection.len() * 2);
         let mut ranges = SmallVec::with_capacity(selection.len());
