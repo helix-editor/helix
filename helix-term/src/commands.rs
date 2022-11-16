@@ -4530,9 +4530,11 @@ fn surround_add(cx: &mut Context) {
         let (view, doc) = current!(cx.editor);
         let selection = doc.selection(view.id);
         let (open, close) = surround::get_pair(ch);
+        let surround_len = open.len_utf8() + close.len_utf8();
 
         let mut changes = Vec::with_capacity(selection.len() * 2);
         let mut ranges = SmallVec::with_capacity(selection.len());
+        let mut offs = 0;
 
         for range in selection.iter() {
             let mut o = Tendril::new();
@@ -4543,11 +4545,13 @@ fn surround_add(cx: &mut Context) {
             changes.push((range.to(), range.to(), Some(c)));
 
             // Add 2 characters to the range to select them
-            ranges.push(if range.anchor < range.head {
-                Range::new(range.anchor, range.head + 2)
-            } else {
-                Range::new(range.anchor + 2, range.head)
-            });
+            ranges.push(
+                Range::new(offs + range.from(), offs + range.to() + surround_len)
+                    .with_direction(range.direction()),
+            );
+
+            // Add 2 characters to the offset for the next ranges
+            offs += surround_len;
         }
 
         let transaction = Transaction::change(doc.text(), changes.into_iter())
