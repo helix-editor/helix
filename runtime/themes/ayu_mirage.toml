@@ -46,11 +46,11 @@
 "ui.text" = "foreground"
 "ui.text.focus" = { bg = "dark_gray", fg = "foreground" }
 "ui.text.info" = "foreground"
-"ui.virtual.whitespace" = "orange"
+"ui.virtual.whitespace" = "dark_gray"
 "ui.virtual.ruler" = { bg = "black" }
 "ui.menu" = { fg = "foreground", bg = "black" }
 "ui.menu.selected" = { bg = "gray", fg = "background" }
-"ui.selection" = { bg = "dark_gray" }
+"ui.selection" = { bg = "#274364" }
 "warning" = "yellow"
 "error" = { fg = "red", modifiers = ["bold"] }
 "info" = { fg = "blue", modifiers = ["bold"] }
