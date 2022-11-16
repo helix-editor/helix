@@ -286,8 +286,12 @@ fn goto_buffer_by_index(
         .parse::<usize>()
         .map_err(|_| anyhow!("'{}' is not a valid index", index_str))?;
 
+    if index < 1 {
+        bail!("indices bellow 1 not supported");
+    }
+
     // Convert to zero based index
-    goto_buffer_by_index_impl(cx.editor, index - 1);
+    goto_buffer_by_index_impl(cx.editor, index - 1)?;
 
     Ok(())
 }

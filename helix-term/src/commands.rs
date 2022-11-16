@@ -728,17 +728,28 @@ fn goto_buffer_by_direction(editor: &mut Editor, direction: Direction) {
         Direction::Backward => buffers_len - 1, // Would be out of bounds, wrap to back.
     };
 
-    goto_buffer_by_index_impl(editor, new_index);
+    // Safety: The above logic ensures that the new index is always in bounds.
+    goto_buffer_by_index_impl(editor, new_index).unwrap();
 }
 
 /// Goto a buffer by providing it's index.
 ///
 /// Note that the index starts from 0.
-/// Out of bounds indices are ignored / a noop.
-fn goto_buffer_by_index_impl(editor: &mut Editor, i: usize) {
-    if let Some(doc_id) = editor.documents.keys().nth(i).copied() {
-        editor.switch(doc_id, Action::Replace);
-    }
+///
+/// # Errors
+///
+/// Returns an error if the index could not be found - is out of bounds.
+fn goto_buffer_by_index_impl(editor: &mut Editor, index: usize) -> anyhow::Result<()> {
+    let doc_id = editor
+        .documents
+        .keys()
+        .nth(index)
+        .copied()
+        .ok_or_else(|| anyhow!("no buffer '{}' in editor", index + 1))?;
+
+    editor.switch(doc_id, Action::Replace);
+
+    Ok(())
 }
 
 fn extend_to_line_start(cx: &mut Context) {
