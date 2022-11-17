@@ -167,16 +167,12 @@ impl MappableCommand {
             Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
+                    commit_undo_checkpoint(cx);
                     let mut cx = compositor::Context {
                         editor: cx.editor,
                         jobs: cx.jobs,
                         scroll: None,
                     };
-
-                    // We update any changes to history before calling the command
-                    let (view, doc) = current!(cx.editor);
-                    doc.append_changes_to_history(view.id);
-
                     if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
                         cx.editor.set_error(format!("{}", e));
                     }
