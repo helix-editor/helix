@@ -66,7 +66,10 @@ impl menu::Item for CompletionItem {
                 Some(lsp::CompletionItemKind::EVENT) => "event",
                 Some(lsp::CompletionItemKind::OPERATOR) => "operator",
                 Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param",
-                Some(kind) => unimplemented!("{:?}", kind),
+                Some(kind) => {
+                    log::error!("Received unknown completion item kind: {:?}", kind);
+                    ""
+                }
                 None => "",
             }),
             // self.detail.as_deref().unwrap_or("")
@@ -113,7 +116,8 @@ impl Completion {
                     let edit = match edit {
                         lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
                         lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                            unimplemented!("completion: insert_and_replace {:?}", item)
+                            // TODO: support using "insert" instead of "replace" via user config
+                            lsp::TextEdit::new(item.replace, item.new_text.clone())
                         }
                     };
 
@@ -223,7 +227,7 @@ impl Completion {
                 }
             };
         });
-        let popup = Popup::new(Self::ID, menu);
+        let popup = Popup::new(Self::ID, menu).with_scrollbar(false);
         let mut completion = Self {
             popup,
             start_offset,

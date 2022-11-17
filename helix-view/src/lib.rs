@@ -55,7 +55,7 @@ pub fn align_view(doc: &Document, view: &mut View, align: Align) {
         .cursor(doc.text().slice(..));
     let line = doc.text().char_to_line(pos);
 
-    let last_line_height = view.inner_area().height.saturating_sub(1) as usize;
+    let last_line_height = view.inner_height().saturating_sub(1);
 
     let relative = match align {
         Align::Center => last_line_height / 2,

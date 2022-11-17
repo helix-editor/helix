@@ -6,7 +6,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use helix_view::graphics::{Color, Modifier, Rect, Style, UnderlineStyle};
 
 /// A buffer cell
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cell {
     pub symbol: String,
     pub fg: Color,
@@ -119,7 +119,7 @@ impl Default for Cell {
 /// buf[(5, 0)].set_char('x');
 /// assert_eq!(buf[(5, 0)].symbol, "x");
 /// ```
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Buffer {
     /// The area represented by this buffer
     pub area: Rect,

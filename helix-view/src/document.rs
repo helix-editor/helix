@@ -16,11 +16,11 @@ use std::sync::Arc;
 
 use helix_core::{
     encoding,
-    history::{History, UndoKind},
+    history::{History, State, UndoKind},
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
     syntax::{self, LanguageConfiguration},
-    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, State, Syntax, Transaction,
+    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, Syntax, Transaction,
     DEFAULT_LINE_ENDING,
 };
 

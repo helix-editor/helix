@@ -1,6 +1,5 @@
 use crate::compositor::{Component, Compositor, Context, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
-use helix_core::shellwords;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
 use std::{borrow::Cow, ops::RangeFrom};
@@ -32,7 +31,7 @@ pub struct Prompt {
     next_char_handler: Option<PromptCharHandler>,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum PromptEvent {
     /// The prompt input has been updated.
     Update,
@@ -295,23 +294,22 @@ impl Prompt {
         direction: CompletionDirection,
     ) {
         (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
-        let register = cx.editor.registers.get_mut(register).read();
+        let values = match cx.editor.registers.read(register) {
+            Some(values) if !values.is_empty() => values,
+            _ => return,
+        };
 
-        if register.is_empty() {
-            return;
-        }
-
-        let end = register.len().saturating_sub(1);
+        let end = values.len().saturating_sub(1);
 
         let index = match direction {
             CompletionDirection::Forward => self.history_pos.map_or(0, |i| i + 1),
             CompletionDirection::Backward => {
-                self.history_pos.unwrap_or(register.len()).saturating_sub(1)
+                self.history_pos.unwrap_or(values.len()).saturating_sub(1)
             }
         }
         .min(end);
 
-        self.line = register[index].clone();
+        self.line = values[index].clone();
 
         self.history_pos = Some(index);
 
@@ -336,10 +334,7 @@ impl Prompt {
 
         let (range, item) = &self.completion[index];
 
-        // since we are using shellwords to parse arguments, make sure
-        // that whitespace in files is properly escaped.
-        let item = shellwords::escape(item);
-        self.line.replace_range(range.clone(), &item);
+        self.line.replace_range(range.clone(), item);
 
         self.move_end();
     }
@@ -408,7 +403,7 @@ impl Prompt {
                 surface.set_stringn(
                     area.x + col * (1 + col_width),
                     area.y + row,
-                    &completion,
+                    completion,
                     col_width.saturating_sub(1) as usize,
                     color,
                 );
@@ -552,10 +547,7 @@ impl Component for Prompt {
                         if last_item != self.line {
                             // store in history
                             if let Some(register) = self.history_register {
-                                cx.editor
-                                    .registers
-                                    .get_mut(register)
-                                    .push(self.line.clone());
+                                cx.editor.registers.push(register, self.line.clone());
                             };
                         }
 
