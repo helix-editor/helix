@@ -137,7 +137,7 @@ where
         helix_view::editor::StatusLineElement::Mode => render_mode,
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
-        helix_view::editor::StatusLineElement::FileModificationIndicator => render_file_modified,
+        helix_view::editor::StatusLineElement::FileModificationIndicator => render_file_modification_indicator,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
@@ -361,11 +361,11 @@ where
     write(context, title, None);
 }
 
-fn render_file_modified<F>(context: &mut RenderContext, write: F)
+fn render_file_modification_indicator<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let title = format!(" {} ", if context.doc.is_modified() { "[+]" } else { "" });
+    let title = format!("{}", if context.doc.is_modified() { "[+]" } else { "   " });
 
     write(context, title, None);
 }
