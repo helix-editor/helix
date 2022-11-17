@@ -455,7 +455,8 @@ _________________________________________________________________
  the select command.
 
  Note: To search backwards, type ? (Shift-/).
- Note: Unlike Vim, ? doesn't change the search direction.
+ Note: Unlike Vim, n and N don't change the search direction when
+       used with ?.
        N always goes backwards and n always goes forwards.
 
 
