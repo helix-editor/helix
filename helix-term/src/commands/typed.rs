@@ -2253,7 +2253,10 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
             .collect()
     });
 
+#[allow(clippy::unnecessary_unwrap)]
 pub(super) fn command_mode(cx: &mut Context) {
+    use shellwords::Shellwords;
+
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
@@ -2261,10 +2264,10 @@ pub(super) fn command_mode(cx: &mut Context) {
             static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
                 Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);
 
-            let parts = shellwords::shellwords(input);
-            let ends_with_whitespace = shellwords::ends_with_whitespace(input);
+            let shellwords = Shellwords::from(input);
+            let words = shellwords.words();
 
-            if parts.is_empty() || (parts.len() == 1 && !ends_with_whitespace) {
+            if words.is_empty() || (words.len() == 1 && !shellwords.ends_with_whitespace()) {
                 // If the command has not been finished yet, complete commands.
                 let mut matches: Vec<_> = typed::TYPABLE_COMMAND_LIST
                     .iter()
@@ -2283,19 +2286,20 @@ pub(super) fn command_mode(cx: &mut Context) {
             } else {
                 // Otherwise, use the command's completer and the last shellword
                 // as completion input.
-                let part = if parts.len() == 1 {
-                    &Cow::Borrowed("")
+                let (part, part_len) = if words.len() == 1 || shellwords.ends_with_whitespace() {
+                    (&Cow::Borrowed(""), 0)
                 } else {
-                    parts.last().unwrap()
+                    (
+                        words.last().unwrap(),
+                        shellwords.parts().last().unwrap().len(),
+                    )
                 };
 
                 if let Some(typed::TypableCommand {
                     completer: Some(completer),
                     ..
-                }) = typed::TYPABLE_COMMAND_MAP.get(&parts[0] as &str)
+                }) = typed::TYPABLE_COMMAND_MAP.get(&words[0] as &str)
                 {
-                    let part_len = shellwords::escape(part.clone()).len();
-
                     completer(editor, part)
                         .into_iter()
                         .map(|(range, file)| {
@@ -2328,7 +2332,8 @@ pub(super) fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                let args = shellwords::shellwords(input);
+                let shellwords = Shellwords::from(input);
+                let args = shellwords.words();
 
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));
