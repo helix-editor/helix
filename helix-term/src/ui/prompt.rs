@@ -299,40 +299,34 @@ impl Prompt {
             return;
         }
 
-        let end = register.len().saturating_sub(1);
-
-        let mut index = match direction {
-            CompletionDirection::Forward => self.history_pos.map_or(0, |i| i + 1),
-            CompletionDirection::Backward => {
-                self.history_pos.unwrap_or(register.len()).saturating_sub(1)
-            }
-        }
-        .min(end);
         let query = match &self.mode {
             PromptMode::HistorySelecting(q) => q,
             _ => "",
         };
-        if !query.is_empty() {
-            loop {
-                if register[index].contains(query) {
-                    break;
-                }
-                if index == end || index == 0 {
-                    // can't find a match, revert to current position
-                    index = self.history_pos.unwrap_or(end);
-                    break;
-                }
-                index = match direction {
-                    CompletionDirection::Forward => index + 1,
-                    CompletionDirection::Backward => index.saturating_sub(1),
-                }
-                .min(end);
+        let end = register.len().saturating_sub(1);
+        let mut index = match direction {
+            CompletionDirection::Forward => self.history_pos.unwrap_or(0),
+            CompletionDirection::Backward => self.history_pos.unwrap_or(register.len()),
+        }
+        .min(end);
+        loop {
+            index = match direction {
+                CompletionDirection::Forward => index + 1,
+                CompletionDirection::Backward => index.saturating_sub(1),
+            }
+            .min(end);
+            if register[index].contains(query) && self.line != register[index] {
+                self.line = register[index].clone();
+                self.history_pos = Some(index);
+                break;
+            }
+            if index == end || index == 0 {
+                // can't find a match, revert to end
+                self.line = query.to_string();
+                self.history_pos = Some(end);
+                break;
             }
         }
-
-        self.line = register[index].clone();
-
-        self.history_pos = Some(index);
 
         self.move_end();
         (self.callback_fn)(cx, &self.line, PromptEvent::Update);
