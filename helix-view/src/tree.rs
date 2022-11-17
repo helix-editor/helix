@@ -219,7 +219,7 @@ impl Tree {
 
         if self.focus == index {
             // focus on something else
-            self.focus_next();
+            self.focus = self.next();
         }
 
         stack.push(index);
@@ -521,7 +521,7 @@ impl Tree {
         Some(child_id)
     }
 
-    pub fn focus_next(&mut self) {
+    pub fn next(&self) -> ViewId {
         // This function is very dumb, but that's because we don't store any parent links.
         // (we'd be able to go parent.next_sibling() recursively until we find something)
         // For now that's okay though, since it's unlikely you'll be able to open a large enough
@@ -532,11 +532,11 @@ impl Tree {
             .skip_while(|&(id, _view)| id != self.focus)
             .skip(1); // Skip focused value
         if let Some((id, _)) = views.next() {
-            self.focus = id;
+            id
         } else {
             // extremely crude, take the first item again
             let (key, _) = self.traverse().next().unwrap();
-            self.focus = key;
+            key
         }
     }
 

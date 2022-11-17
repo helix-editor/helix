@@ -1243,16 +1243,7 @@ impl Editor {
     }
 
     pub fn focus_next(&mut self) {
-        let prev_id = self.tree.focus;
-        self.tree.focus_next();
-        let id = self.tree.focus;
-
-        // if leaving the view: mode should reset and the cursor should be
-        // within view
-        if prev_id != id {
-            self.mode = Mode::Normal;
-            self.ensure_cursor_in_view(id);
-        }
+        self.focus(self.tree.next());
     }
 
     pub fn focus_direction(&mut self, direction: tree::Direction) {
