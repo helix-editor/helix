@@ -685,12 +685,12 @@ _________________________________________________________________
 =================================================================
 
  * Type f / F to extend selection up to & including a character.
-   * Type t / T to extend selection until a character.
+ * Type t / T to extend selection until a character.
 
  * Type r to replace selected characters.
 
  * Type . to repeat the last insertion.
-   * Type Alt-. to repeat the last f / t selection.
+ * Type Alt-. to repeat the last f / t selection.
 
 
 
@@ -801,7 +801,7 @@ lines.
  * Type < and > to indent / outdent lines.
 
  * Type Ctrl-a to increment the selected number.
-   * Type Ctrl-x to decrement the selected number.
+ * Type Ctrl-x to decrement the selected number.
 
 
 
