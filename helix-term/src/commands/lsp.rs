@@ -1,7 +1,10 @@
 use futures_util::FutureExt;
 use helix_lsp::{
     block_on,
-    lsp::{self, CodeAction, CodeActionOrCommand, DiagnosticSeverity, NumberOrString},
+    lsp::{
+        self, CodeAction, CodeActionOrCommand, DiagnosticSeverity, DocumentSymbolResponse,
+        NumberOrString,
+    },
     util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
@@ -310,25 +313,46 @@ fn diag_picker(
     .truncate_start(false)
 }
 
-pub fn symbol_picker(cx: &mut Context) {
-    fn nested_to_flat(
-        list: &mut Vec<lsp::SymbolInformation>,
-        file: &lsp::TextDocumentIdentifier,
-        symbol: lsp::DocumentSymbol,
-    ) {
-        #[allow(deprecated)]
-        list.push(lsp::SymbolInformation {
-            name: symbol.name,
-            kind: symbol.kind,
-            tags: symbol.tags,
-            deprecated: symbol.deprecated,
-            location: lsp::Location::new(file.uri.clone(), symbol.selection_range),
-            container_name: None,
-        });
-        for child in symbol.children.into_iter().flatten() {
-            nested_to_flat(list, file, child);
+fn nested_to_flat(
+    list: &mut Vec<lsp::SymbolInformation>,
+    file: &lsp::TextDocumentIdentifier,
+    symbol: lsp::DocumentSymbol,
+) {
+    #[allow(deprecated)]
+    list.push(lsp::SymbolInformation {
+        name: symbol.name,
+        kind: symbol.kind,
+        tags: symbol.tags,
+        deprecated: symbol.deprecated,
+        location: lsp::Location::new(file.uri.clone(), symbol.selection_range),
+        container_name: None,
+    });
+    for child in symbol.children.into_iter().flatten() {
+        nested_to_flat(list, file, child);
+    }
+}
+
+// Lsp has two ways to represent symbols (flat/nested).
+// This function converts the nested variant to flat.
+pub fn nested_to_flat_symbols(
+    symbols: DocumentSymbolResponse,
+    // list: &mut Vec<lsp::SymbolInformation>,
+    file: &lsp::TextDocumentIdentifier,
+    // symbol: lsp::DocumentSymbol,
+) -> Vec<lsp::SymbolInformation> {
+    match symbols {
+        DocumentSymbolResponse::Flat(symbols) => symbols,
+        DocumentSymbolResponse::Nested(symbols) => {
+            let mut flat_symbols = Vec::new();
+            for symbol in symbols {
+                nested_to_flat(&mut flat_symbols, file, symbol);
+            }
+            flat_symbols
         }
     }
+}
+
+pub fn symbol_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
 
     let language_server = language_server!(cx.editor, doc);
@@ -348,8 +372,8 @@ pub fn symbol_picker(cx: &mut Context) {
         future,
         move |editor, compositor, response: Option<lsp::DocumentSymbolResponse>| {
             if let Some(symbols) = response {
-                // lsp has two ways to represent symbols (flat/nested)
-                // convert the nested variant to flat, so that we have a homogeneous list
+                // Convert the nested variant to flat, so that we have a homogeneous list
+                // let symbols = nested_to_flat_symbols(symbols, &doc.identifier());
                 let symbols = match symbols {
                     lsp::DocumentSymbolResponse::Flat(symbols) => symbols,
                     lsp::DocumentSymbolResponse::Nested(symbols) => {

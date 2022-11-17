@@ -3,6 +3,10 @@ pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
+use helix_lsp::{
+    lsp::{DocumentSymbolResponse, SymbolInformation},
+    util::{lsp_pos_to_pos, lsp_range_to_range},
+};
 use helix_vcs::Hunk;
 pub use lsp::*;
 use tui::text::Spans;
@@ -314,6 +318,10 @@ impl MappableCommand {
         goto_prev_change, "Goto previous change",
         goto_first_change, "Goto first change",
         goto_last_change, "Goto last change",
+        goto_first_symbol, "Goto first symbol",
+        goto_last_symbol, "Goto last symbol",
+        goto_next_symbol, "Goto next symbol",
+        goto_prev_symbol, "Goto prev symbol",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
         goto_next_buffer, "Goto next buffer",
@@ -2960,6 +2968,119 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
     };
     motion(cx.editor);
     cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+/// Gets all the lsp symbols for the current document.
+fn get_doc_lsp_symbols(doc: &Document) -> Option<Vec<SymbolInformation>> {
+    // let doc = doc!(cx.editor);
+    let language_server = doc.language_server()?;
+    let symbols_json = tokio::task::block_in_place(|| {
+        helix_lsp::block_on(language_server.document_symbols(doc.identifier()))
+    })
+    .unwrap_or_default();
+
+    let symbols: DocumentSymbolResponse = serde_json::from_value(symbols_json).ok()?;
+
+    Some(nested_to_flat_symbols(symbols, &doc.identifier()))
+}
+
+/// Moves to the given symbol.
+fn goto_lsp_symbol(cx: &mut Context, symbol: Option<&SymbolInformation>) {
+    let (view, doc) = current!(cx.editor);
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+    let offset_encoding = language_server.offset_encoding();
+    if let Some(symbol) = symbol {
+        if let Some(range) = lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
+        {
+            // TODO chgne this to goto_pos instead of selection
+            doc.set_selection(view.id, Selection::single(range.head, range.anchor));
+            align_view(doc, view, Align::Center);
+        }
+    }
+}
+
+fn goto_first_symbol(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    let symbols = match get_doc_lsp_symbols(doc) {
+        Some(symbols) => symbols,
+        None => return,
+    };
+
+    goto_lsp_symbol(cx, symbols.first());
+}
+
+fn goto_last_symbol(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    let symbols = match get_doc_lsp_symbols(doc) {
+        Some(symbols) => symbols,
+        None => return,
+    };
+
+    goto_lsp_symbol(cx, symbols.last());
+}
+
+fn goto_next_symbol(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let symbols = match get_doc_lsp_symbols(doc) {
+        Some(symbols) => symbols,
+        None => return,
+    };
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+    let offset_encoding = language_server.offset_encoding();
+    let cursor_pos = doc
+        .selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..));
+
+    let next_symbol = symbols
+        .iter()
+        .find(|symbol| {
+            match lsp_pos_to_pos(doc.text(), symbol.location.range.start, offset_encoding) {
+                Some(pos) => pos > cursor_pos,
+                None => false,
+            }
+        })
+        .or_else(|| symbols.first());
+
+    goto_lsp_symbol(cx, next_symbol);
+}
+
+fn goto_prev_symbol(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let symbols = match get_doc_lsp_symbols(doc) {
+        Some(symbols) => symbols,
+        None => return,
+    };
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+    let offset_encoding = language_server.offset_encoding();
+    let cursor_pos = doc
+        .selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..));
+
+    let prev_symbol = symbols
+        .iter()
+        .rev()
+        .find(|symbol| {
+            match lsp_pos_to_pos(doc.text(), symbol.location.range.start, offset_encoding) {
+                Some(pos) => pos < cursor_pos,
+                None => false,
+            }
+        })
+        .or_else(|| symbols.last());
+
+    goto_lsp_symbol(cx, prev_symbol);
 }
 
 pub mod insert {
