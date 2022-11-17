@@ -46,7 +46,7 @@ impl Client {
         cmd: &str,
         args: &[String],
         config: Option<Value>,
-        server_envs: &[(String, String)],
+        server_environment: impl IntoIterator<Item = (String, String)> + Clone,
         root_markers: &[String],
         id: usize,
         req_timeout: u64,
@@ -55,13 +55,8 @@ impl Client {
         // Resolve path to the binary
         let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
 
-        let server_envs: Vec<(String, String)> = server_envs
-            .iter()
-            .map(|(s1, s2)| (s1.clone(), s2.clone()))
-            .collect();
-
         let process = Command::new(cmd)
-            .envs(server_envs)
+            .envs(server_environment)
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
