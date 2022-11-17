@@ -52,7 +52,8 @@ sudo xbps-install helix
 
 ## Windows
 
-Helix can be installed using [Scoop](https://scoop.sh/) or [Chocolatey](https://chocolatey.org/).
+Helix can be installed using [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
+or [MSYS2](https://msys2.org/).
 
 **Scoop:**
 
@@ -66,6 +67,23 @@ scoop install helix
 choco install helix
 ```
 
+**MSYS2:**
+
+```
+pacman -S mingw-w64-i686-helix
+```
+
+or
+
+```
+pacman -S mingw-w64-x86_64-helix
+```
+
+or
+
+```
+pacman -S mingw-w64-ucrt-x86_64-helix
+```
 
 ## Build from source
 
@@ -85,10 +103,10 @@ via the `HELIX_RUNTIME` environment variable.
 | -------------------- | ------------------------------------------------ |
 | Windows (Cmd)        | `xcopy /e /i runtime %AppData%\helix\runtime`    |
 | Windows (PowerShell) | `xcopy /e /i runtime $Env:AppData\helix\runtime` |
-| Linux / MacOS        | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
+| Linux / macOS        | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
 
 Starting with Windows Vista you can also create symbolic links on Windows. Note that this requires
-elevated priviliges - i.e. PowerShell or Cmd must be run as administrator.
+elevated privileges - i.e. PowerShell or Cmd must be run as administrator.
 
 **PowerShell:**
 

@@ -218,7 +218,7 @@ pub struct FormatterConfiguration {
     pub args: Vec<String>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AdvancedCompletion {
     pub name: Option<String>,
@@ -226,14 +226,14 @@ pub struct AdvancedCompletion {
     pub default: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case", untagged)]
 pub enum DebugConfigCompletion {
     Named(String),
     Advanced(AdvancedCompletion),
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum DebugArgumentValue {
     String(String),
@@ -241,7 +241,7 @@ pub enum DebugArgumentValue {
     Boolean(bool),
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DebugTemplate {
     pub name: String,
@@ -250,7 +250,7 @@ pub struct DebugTemplate {
     pub args: HashMap<String, DebugArgumentValue>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DebugAdapterConfig {
     pub name: String,
@@ -266,7 +266,7 @@ pub struct DebugAdapterConfig {
 }
 
 // Different workarounds for adapters' differences
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct DebuggerQuirks {
     #[serde(default)]
     pub absolute_paths: bool,
@@ -280,7 +280,7 @@ pub struct IndentationConfiguration {
 }
 
 /// Configuration for auto pairs
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields, untagged)]
 pub enum AutoPairConfig {
     /// Enables or disables auto pairing. False means disabled. True means to use the default pairs.
@@ -354,6 +354,25 @@ impl<'a> CapturedNode<'a> {
     }
 }
 
+/// The number of matches a TS cursor can at once to avoid performance problems for medium to large files.
+/// Set with `set_match_limit`.
+/// Using such a limit means that we lose valid captures in, so there is fundamentally a tradeoff here.
+///
+///
+/// Old tree sitter versions used a limit of 32 by default until this limit was removed in version `0.19.5` (must now be set manually).
+/// However, this causes performance issues for medium to large files.
+/// In helix, this problem caused treesitter motions to take multiple seconds to complete in medium-sized rust files (3k loc).
+/// Neovim also encountered this problem and reintroduced this limit after it was removed upstream
+/// (see <https://github.com/neovim/neovim/issues/14897> and <https://github.com/neovim/neovim/pull/14915>).
+/// The number used here is fundamentally a tradeoff between breaking some obscure edge cases and performance.
+///
+///
+/// A value of 64 was chosen because neovim uses that value.
+/// Neovim chose this value somewhat arbitrarily (<https://github.com/neovim/neovim/pull/18397>) adjusting it whenever issues occur in practice.
+/// However this value has been in use for a long time and due to the large userbase of neovim it is probably a good choice.
+/// If this limit causes problems for a grammar in the future, it could be increased.
+const TREE_SITTER_MATCH_LIMIT: u32 = 64;
+
 impl TextObjectQuery {
     /// Run the query on the given node and return sub nodes which match given
     /// capture ("function.inside", "class.around", etc).
@@ -393,6 +412,8 @@ impl TextObjectQuery {
         let capture_idx = capture_names
             .iter()
             .find_map(|cap| self.query.capture_index_for_name(cap))?;
+
+        cursor.set_match_limit(TREE_SITTER_MATCH_LIMIT);
 
         let nodes = cursor
             .captures(&self.query, node, RopeProvider(slice))
@@ -843,6 +864,7 @@ impl Syntax {
             let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
             // TODO: might need to set cursor range
             cursor.set_byte_range(0..usize::MAX);
+            cursor.set_match_limit(TREE_SITTER_MATCH_LIMIT);
 
             let source_slice = source.slice(..);
 
@@ -1032,6 +1054,7 @@ impl Syntax {
 
                 // if reusing cursors & no range this resets to whole range
                 cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
+                cursor_ref.set_match_limit(TREE_SITTER_MATCH_LIMIT);
 
                 let mut captures = cursor_ref
                     .captures(
@@ -1260,7 +1283,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{iter, mem, ops, str, usize};
 use tree_sitter::{
     Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError,
-    QueryMatch, Range, TextProvider, Tree,
+    QueryMatch, Range, TextProvider, Tree, TreeCursor,
 };
 
 const CANCELLATION_CHECK_INTERVAL: usize = 100;
@@ -2130,57 +2153,68 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
     }
 }
 
+fn node_is_visible(node: &Node) -> bool {
+    node.is_missing() || (node.is_named() && node.language().node_kind_is_visible(node.kind_id()))
+}
+
 pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result {
-    pretty_print_tree_impl(fmt, node, true, None, 0)
+    if node.child_count() == 0 {
+        if node_is_visible(&node) {
+            write!(fmt, "({})", node.kind())
+        } else {
+            write!(fmt, "\"{}\"", node.kind())
+        }
+    } else {
+        pretty_print_tree_impl(fmt, &mut node.walk(), 0)
+    }
 }
 
 fn pretty_print_tree_impl<W: fmt::Write>(
     fmt: &mut W,
-    node: Node,
-    is_root: bool,
-    field_name: Option<&str>,
+    cursor: &mut TreeCursor,
     depth: usize,
 ) -> fmt::Result {
-    fn is_visible(node: Node) -> bool {
-        node.is_missing()
-            || (node.is_named() && node.language().node_kind_is_visible(node.kind_id()))
-    }
+    let node = cursor.node();
+    let visible = node_is_visible(&node);
 
-    if is_visible(node) {
+    if visible {
         let indentation_columns = depth * 2;
         write!(fmt, "{:indentation_columns$}", "")?;
 
-        if let Some(field_name) = field_name {
+        if let Some(field_name) = cursor.field_name() {
             write!(fmt, "{}: ", field_name)?;
         }
 
         write!(fmt, "({}", node.kind())?;
-    } else if is_root {
-        write!(fmt, "(\"{}\")", node.kind())?;
     }
 
-    for child_idx in 0..node.child_count() {
-        if let Some(child) = node.child(child_idx) {
-            if is_visible(child) {
+    // Handle children.
+    if cursor.goto_first_child() {
+        loop {
+            if node_is_visible(&cursor.node()) {
                 fmt.write_char('\n')?;
             }
 
-            pretty_print_tree_impl(
-                fmt,
-                child,
-                false,
-                node.field_name_for_child(child_idx as u32),
-                depth + 1,
-            )?;
+            pretty_print_tree_impl(fmt, cursor, depth + 1)?;
+
+            if !cursor.goto_next_sibling() {
+                break;
+            }
         }
+
+        let moved = cursor.goto_parent();
+        // The parent of the first child must exist, and must be `node`.
+        debug_assert!(moved);
+        debug_assert!(cursor.node() == node);
     }
 
-    if is_visible(node) {
-        write!(fmt, ")")?;
+    if visible {
+        fmt.write_char(')')?;
     }
 
     Ok(())
 }
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -2353,11 +2387,17 @@ mod test {
     }
 
     #[track_caller]
-    fn assert_pretty_print(source: &str, expected: &str, start: usize, end: usize) {
+    fn assert_pretty_print(
+        language_name: &str,
+        source: &str,
+        expected: &str,
+        start: usize,
+        end: usize,
+    ) {
         let source = Rope::from_str(source);
 
         let loader = Loader::new(Configuration { language: vec![] });
-        let language = get_language("rust").unwrap();
+        let language = get_language(language_name).unwrap();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
         let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader));
@@ -2377,13 +2417,14 @@ mod test {
     #[test]
     fn test_pretty_print() {
         let source = r#"/// Hello"#;
-        assert_pretty_print(source, "(line_comment)", 0, source.len());
+        assert_pretty_print("rust", source, "(line_comment)", 0, source.len());
 
         // A large tree should be indented with fields:
         let source = r#"fn main() {
             println!("Hello, World!");
         }"#;
         assert_pretty_print(
+            "rust",
             source,
             concat!(
                 "(function_item\n",
@@ -2402,11 +2443,34 @@ mod test {
 
         // Selecting a token should print just that token:
         let source = r#"fn main() {}"#;
-        assert_pretty_print(source, r#"("fn")"#, 0, 1);
+        assert_pretty_print("rust", source, r#""fn""#, 0, 1);
 
         // Error nodes are printed as errors:
         let source = r#"}{"#;
-        assert_pretty_print(source, "(ERROR)", 0, source.len());
+        assert_pretty_print("rust", source, "(ERROR)", 0, source.len());
+
+        // Fields broken under unnamed nodes are determined correctly.
+        // In the following source, `object` belongs to the `singleton_method`
+        // rule but `name` and `body` belong to an unnamed helper `_method_rest`.
+        // This can cause a bug with a pretty-printing implementation that
+        // uses `Node::field_name_for_child` to determine field names but is
+        // fixed when using `TreeCursor::field_name`.
+        let source = "def self.method_name
+          true
+        end";
+        assert_pretty_print(
+            "ruby",
+            source,
+            concat!(
+                "(singleton_method\n",
+                "  object: (self)\n",
+                "  name: (identifier)\n",
+                "  body: (body_statement\n",
+                "    (true)))"
+            ),
+            0,
+            source.len(),
+        );
     }
 
     #[test]

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 // https://www.jsonrpc.org/specification#error_object
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ErrorCode {
     ParseError,
     InvalidRequest,
@@ -68,7 +68,7 @@ impl Serialize for ErrorCode {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Error {
     pub code: ErrorCode,
     pub message: String,
@@ -100,7 +100,7 @@ impl std::error::Error for Error {}
 // https://www.jsonrpc.org/specification#request_object
 
 /// Request ID
-#[derive(Debug, PartialEq, Clone, Hash, Eq, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Id {
     Null,
@@ -109,7 +109,7 @@ pub enum Id {
 }
 
 /// Protocol Version
-#[derive(Debug, PartialEq, Clone, Copy, Hash, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Version {
     V2,
 }
@@ -153,7 +153,7 @@ impl<'de> Deserialize<'de> for Version {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Params {
     None,
@@ -182,7 +182,7 @@ impl From<Params> for Value {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct MethodCall {
     pub jsonrpc: Option<Version>,
@@ -192,7 +192,7 @@ pub struct MethodCall {
     pub id: Id,
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Notification {
     pub jsonrpc: Option<Version>,
@@ -201,7 +201,7 @@ pub struct Notification {
     pub params: Params,
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum Call {
@@ -235,7 +235,7 @@ impl From<Notification> for Call {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum Request {
@@ -245,7 +245,7 @@ pub enum Request {
 
 // https://www.jsonrpc.org/specification#response_object
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Success {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub jsonrpc: Option<Version>,
@@ -253,7 +253,7 @@ pub struct Success {
     pub id: Id,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 pub struct Failure {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub jsonrpc: Option<Version>,
@@ -264,7 +264,7 @@ pub struct Failure {
 // Note that failure comes first because we're not using
 // #[serde(deny_unknown_field)]: we want a request that contains
 // both `result` and `error` to be a `Failure`.
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Output {
     Failure(Failure),
@@ -280,7 +280,7 @@ impl From<Output> for Result<Value, Error> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Response {
     Single(Output),

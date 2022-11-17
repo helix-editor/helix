@@ -298,6 +298,9 @@ impl Client {
                         dynamic_registration: Some(false),
                         ..Default::default()
                     }),
+                    execute_command: Some(lsp::DynamicRegistrationClientCapabilities {
+                        dynamic_registration: Some(false),
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
@@ -311,6 +314,7 @@ impl Client {
                                     String::from("additionalTextEdits"),
                                 ],
                             }),
+                            insert_replace_support: Some(true),
                             ..Default::default()
                         }),
                         completion_item_kind: Some(lsp::CompletionItemKindCapability {

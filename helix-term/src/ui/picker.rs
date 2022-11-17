@@ -11,9 +11,8 @@ use tui::{
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use tui::widgets::Widget;
 
-use std::time::Instant;
+use std::{cmp::Ordering, time::Instant};
 use std::{
-    cmp::Reverse,
     collections::HashMap,
     io::Read,
     path::{Path, PathBuf},
@@ -309,13 +308,34 @@ impl<T: Item + 'static> Component for FilePicker<T> {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
+struct PickerMatch {
+    index: usize,
+    score: i64,
+    len: usize,
+}
+
+impl PartialOrd for PickerMatch {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for PickerMatch {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.score
+            .cmp(&other.score)
+            .reverse()
+            .then_with(|| self.len.cmp(&other.len))
+    }
+}
+
 pub struct Picker<T: Item> {
     options: Vec<T>,
     editor_data: T::Data,
     // filter: String,
     matcher: Box<Matcher>,
-    /// (index, score)
-    matches: Vec<(usize, i64)>,
+    matches: Vec<PickerMatch>,
 
     /// Current height of the completions box
     completion_height: u16,
@@ -361,13 +381,16 @@ impl<T: Item> Picker<T> {
 
         // scoring on empty input:
         // TODO: just reuse score()
-        picker.matches.extend(
-            picker
-                .options
-                .iter()
-                .enumerate()
-                .map(|(index, _option)| (index, 0)),
-        );
+        picker
+            .matches
+            .extend(picker.options.iter().enumerate().map(|(index, option)| {
+                let text = option.filter_text(&picker.editor_data);
+                PickerMatch {
+                    index,
+                    score: 0,
+                    len: text.chars().count(),
+                }
+            }));
 
         picker
     }
@@ -384,32 +407,34 @@ impl<T: Item> Picker<T> {
         if pattern.is_empty() {
             // Fast path for no pattern.
             self.matches.clear();
-            self.matches.extend(
-                self.options
-                    .iter()
-                    .enumerate()
-                    .map(|(index, _option)| (index, 0)),
-            );
+            self.matches
+                .extend(self.options.iter().enumerate().map(|(index, option)| {
+                    let text = option.filter_text(&self.editor_data);
+                    PickerMatch {
+                        index,
+                        score: 0,
+                        len: text.chars().count(),
+                    }
+                }));
         } else if pattern.starts_with(&self.previous_pattern) {
             let query = FuzzyQuery::new(pattern);
             // optimization: if the pattern is a more specific version of the previous one
             // then we can score the filtered set.
-            self.matches.retain_mut(|(index, score)| {
-                let option = &self.options[*index];
+            self.matches.retain_mut(|pmatch| {
+                let option = &self.options[pmatch.index];
                 let text = option.sort_text(&self.editor_data);
 
                 match query.fuzzy_match(&text, &self.matcher) {
                     Some(s) => {
                         // Update the score
-                        *score = s;
+                        pmatch.score = s;
                         true
                     }
                     None => false,
                 }
             });
 
-            self.matches
-                .sort_unstable_by_key(|(_, score)| Reverse(*score));
+            self.matches.sort_unstable();
         } else {
             let query = FuzzyQuery::new(pattern);
             self.matches.clear();
@@ -422,11 +447,14 @@ impl<T: Item> Picker<T> {
 
                         query
                             .fuzzy_match(&text, &self.matcher)
-                            .map(|score| (index, score))
+                            .map(|score| PickerMatch {
+                                index,
+                                score,
+                                len: text.chars().count(),
+                            })
                     }),
             );
-            self.matches
-                .sort_unstable_by_key(|(_, score)| Reverse(*score));
+            self.matches.sort_unstable();
         }
 
         log::debug!("picker score {:?}", Instant::now().duration_since(now));
@@ -478,7 +506,7 @@ impl<T: Item> Picker<T> {
     pub fn selection(&self) -> Option<&T> {
         self.matches
             .get(self.cursor)
-            .map(|(index, _score)| &self.options[*index])
+            .map(|pmatch| &self.options[pmatch.index])
     }
 
     pub fn toggle_preview(&mut self) {
@@ -625,7 +653,7 @@ impl<T: Item + 'static> Component for Picker<T> {
             .matches
             .iter()
             .skip(offset)
-            .map(|(index, _score)| (*index, self.options.get(*index).unwrap()));
+            .map(|pmatch| (pmatch.index, self.options.get(pmatch.index).unwrap()));
 
         for (i, (_index, option)) in files.take(rows as usize).enumerate() {
             let is_active = i == (self.cursor - offset);

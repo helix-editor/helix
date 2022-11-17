@@ -596,8 +596,8 @@ _________________________________________________________________
 =                        CHAPTER 5 RECAP                        =
 =================================================================
 
- * Type C to copy the current selection to below and Alt-C for
-   above.
+ * Type C to duplicate the cursor to the next suitable line
+   and Alt-C for previous suitable line.
 
  * Type s to select all instances of a regex pattern inside
    the current selection.

@@ -79,7 +79,7 @@ impl EditorView {
         surface: &mut Surface,
         is_focused: bool,
     ) {
-        let inner = view.inner_area();
+        let inner = view.inner_area(doc);
         let area = view.area;
         let theme = &editor.theme;
 
@@ -227,16 +227,16 @@ impl EditorView {
         _theme: &Theme,
     ) -> Box<dyn Iterator<Item = HighlightEvent> + 'doc> {
         let text = doc.text().slice(..);
-        let last_line = std::cmp::min(
-            // Saturating subs to make it inclusive zero indexing.
-            (offset.row + height as usize).saturating_sub(1),
-            doc.text().len_lines().saturating_sub(1),
-        );
 
         let range = {
-            // calculate viewport byte ranges
-            let start = text.line_to_byte(offset.row);
-            let end = text.line_to_byte(last_line + 1);
+            // Calculate viewport byte ranges:
+            // Saturating subs to make it inclusive zero indexing.
+            let last_line = doc.text().len_lines().saturating_sub(1);
+            let last_visible_line = (offset.row + height as usize)
+                .saturating_sub(1)
+                .min(last_line);
+            let start = text.line_to_byte(offset.row.min(last_line));
+            let end = text.line_to_byte(last_visible_line + 1);
 
             start..end
         };
@@ -736,9 +736,10 @@ impl EditorView {
         // avoid lots of small allocations by reusing a text buffer for each line
         let mut text = String::with_capacity(8);
 
-        for (constructor, width) in view.gutters() {
-            let gutter = constructor(editor, doc, view, theme, is_focused, *width);
-            text.reserve(*width); // ensure there's enough space for the gutter
+        for gutter_type in view.gutters() {
+            let gutter = gutter_type.style(editor, doc, view, theme, is_focused);
+            let width = gutter_type.width(view, doc);
+            text.reserve(width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
                 let selected = cursors.contains(&line);
                 let x = viewport.x + offset;
@@ -751,13 +752,13 @@ impl EditorView {
                 };
 
                 if let Some(style) = gutter(line, selected, &mut text) {
-                    surface.set_stringn(x, y, &text, *width, gutter_style.patch(style));
+                    surface.set_stringn(x, y, &text, width, gutter_style.patch(style));
                 } else {
                     surface.set_style(
                         Rect {
                             x,
                             y,
-                            width: *width as u16,
+                            width: width as u16,
                             height: 1,
                         },
                         gutter_style,
@@ -766,7 +767,7 @@ impl EditorView {
                 text.clear();
             }
 
-            offset += *width as u16;
+            offset += width as u16;
         }
     }
 
@@ -882,7 +883,7 @@ impl EditorView {
             .or_else(|| theme.try_get_exact("ui.cursorcolumn"))
             .unwrap_or_else(|| theme.get("ui.cursorline.secondary"));
 
-        let inner_area = view.inner_area();
+        let inner_area = view.inner_area(doc);
         let offset = view.offset.col;
 
         let selection = doc.selection(view.id);

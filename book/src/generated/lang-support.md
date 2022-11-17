@@ -5,6 +5,7 @@
 | bash | ✓ |  |  | `bash-language-server` |
 | bass | ✓ |  |  | `bass` |
 | beancount | ✓ |  |  |  |
+| bicep | ✓ |  |  | `bicep-langserver` |
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | `OmniSharp` |
 | cairo | ✓ |  |  |  |
@@ -27,6 +28,7 @@
 | elixir | ✓ | ✓ |  | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
 | elvish | ✓ |  |  | `elvish` |
+| env | ✓ |  |  |  |
 | erb | ✓ |  |  |  |
 | erlang | ✓ | ✓ |  | `erlang_ls` |
 | esdl | ✓ |  |  |  |
@@ -49,10 +51,11 @@
 | hare | ✓ |  |  |  |
 | haskell | ✓ |  |  | `haskell-language-server-wrapper` |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
-| heex | ✓ | ✓ |  |  |
+| heex | ✓ | ✓ |  | `elixir-ls` |
 | html | ✓ |  |  | `vscode-html-language-server` |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
+| ini | ✓ |  |  |  |
 | java | ✓ |  |  | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | jsdoc | ✓ |  |  |  |
@@ -126,6 +129,8 @@
 | wast | ✓ |  |  |  |
 | wat | ✓ |  |  |  |
 | wgsl | ✓ |  |  | `wgsl_analyzer` |
+| wit | ✓ |  | ✓ |  |
 | xit | ✓ |  |  |  |
+| xml | ✓ |  | ✓ |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |
 | zig | ✓ | ✓ | ✓ | `zls` |

@@ -37,7 +37,7 @@ pub struct Prompt {
     mode: PromptMode,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum PromptEvent {
     /// The prompt input has been updated.
     Update,
@@ -293,9 +293,12 @@ impl Prompt {
         direction: CompletionDirection,
     ) {
         (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
-        let register = cx.editor.registers.get_mut(register).read();
+        let values = match cx.editor.registers.read(register) {
+            Some(values) if !values.is_empty() => values,
+            _ => return,
+        };
 
-        if register.is_empty() {
+        if values.is_empty() {
             return;
         }
 
@@ -303,10 +306,10 @@ impl Prompt {
             PromptMode::HistorySelecting(q) => q,
             _ => "",
         };
-        let end = register.len().saturating_sub(1);
+        let end = values.len().saturating_sub(1);
         let mut index = match direction {
             CompletionDirection::Forward => self.history_pos.unwrap_or(0),
-            CompletionDirection::Backward => self.history_pos.unwrap_or(register.len()),
+            CompletionDirection::Backward => self.history_pos.unwrap_or(values.len()),
         }
         .min(end);
         loop {
@@ -315,8 +318,8 @@ impl Prompt {
                 CompletionDirection::Backward => index.saturating_sub(1),
             }
             .min(end);
-            if register[index].contains(query) && self.line != register[index] {
-                self.line = register[index].clone();
+            if values[index].contains(query) && self.line != values[index] {
+                self.line = values[index].clone();
                 self.history_pos = Some(index);
                 break;
             }
@@ -418,7 +421,7 @@ impl Prompt {
                 surface.set_stringn(
                     area.x + col * (1 + col_width),
                     area.y + row,
-                    &completion,
+                    completion,
                     col_width.saturating_sub(1) as usize,
                     color,
                 );
@@ -565,10 +568,7 @@ impl Component for Prompt {
                         if last_item != self.line {
                             // store in history
                             if let Some(register) = self.history_register {
-                                cx.editor
-                                    .registers
-                                    .get_mut(register)
-                                    .push(self.line.clone());
+                                cx.editor.registers.push(register, self.line.clone());
                             };
                         }
 

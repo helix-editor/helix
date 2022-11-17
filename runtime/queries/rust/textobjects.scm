@@ -42,7 +42,7 @@
 
 (; #[test]
  (attribute_item
-   (meta_item
+   (attribute
      (identifier) @_test_attribute))
  ; allow other attributes like #[should_panic] and comments
  [
