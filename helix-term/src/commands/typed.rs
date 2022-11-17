@@ -65,6 +65,18 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(!args.is_empty(), "wrong argument count");
     for arg in args {
         let (path, pos) = args::parse_file(arg);
+        let path = helix_core::path::get_canonicalized_path(path.as_path()).unwrap_or(path);
+        if path.is_dir() {
+            cx.jobs.callback(async {
+                let call: job::Callback =
+                    Callback::EditorCompositor(Box::new(|editor, compositor| {
+                        let picker = ui::file_picker(path, &editor.config());
+                        compositor.push(Box::new(overlayed(picker)));
+                    }));
+                Ok(call)
+            });
+            break;
+        }
         let _ = cx.editor.open(&path, Action::Replace)?;
         let (view, doc) = current!(cx.editor);
         let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
