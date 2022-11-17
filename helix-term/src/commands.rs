@@ -54,7 +54,7 @@ use crate::{
 
 use crate::job::{self, Jobs};
 use futures_util::StreamExt;
-use std::{collections::HashMap, fmt, fmt::Write, future::Future};
+use std::{collections::HashMap, fmt, future::Future};
 use std::{collections::HashSet, num::NonZeroUsize};
 
 use std::{
@@ -2447,13 +2447,11 @@ impl ui::menu::Item for MappableCommand {
         let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
             bindings.iter().fold(String::new(), |mut acc, bind| {
                 if !acc.is_empty() {
-                    acc.push_str(", ");
+                    acc.push(' ');
                 }
-                bind.iter().fold(false, |needs_plus, key| {
-                    write!(&mut acc, "{}{}", if needs_plus { "+" } else { "" }, key)
-                        .expect("Writing to a string can only fail on an Out-Of-Memory error");
-                    true
-                });
+                for key in bind {
+                    acc.push_str(&key.key_sequence_format());
+                }
                 acc
             })
         };
