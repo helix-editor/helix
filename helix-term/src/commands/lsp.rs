@@ -336,9 +336,7 @@ fn nested_to_flat(
 // This function converts the nested variant to flat.
 pub fn nested_to_flat_symbols(
     symbols: DocumentSymbolResponse,
-    // list: &mut Vec<lsp::SymbolInformation>,
     file: &lsp::TextDocumentIdentifier,
-    // symbol: lsp::DocumentSymbol,
 ) -> Vec<lsp::SymbolInformation> {
     match symbols {
         DocumentSymbolResponse::Flat(symbols) => symbols,
@@ -373,7 +371,6 @@ pub fn symbol_picker(cx: &mut Context) {
         move |editor, compositor, response: Option<lsp::DocumentSymbolResponse>| {
             if let Some(symbols) = response {
                 // Convert the nested variant to flat, so that we have a homogeneous list
-                // let symbols = nested_to_flat_symbols(symbols, &doc.identifier());
                 let symbols = match symbols {
                     lsp::DocumentSymbolResponse::Flat(symbols) => symbols,
                     lsp::DocumentSymbolResponse::Nested(symbols) => {
