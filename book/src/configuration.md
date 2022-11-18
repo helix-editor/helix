@@ -28,7 +28,7 @@ hidden = false
 You may also specify a file to use for configuration with the `-c` or
 `--config` CLI argument: `hx -c path/to/custom-config.toml`. 
 
-Finally, you can have a `config.toml` local to a project by it under a `.helix` directory in your repository.
+Finally, you can have a `config.toml` local to a project by putting it under a `.helix` directory in your repository.
 Its settings will be merged with the configuration directory `config.toml` and the built-in configuration,
 if you have enabled the feature under `[editor.security]` in your global configuration.
 
@@ -240,4 +240,4 @@ Features that the paranoid among us may choose to disable.
 
 | Key                    | Description                                                                             | Default |
 | ---                    | ---                                                                                     | ---     |
-| `load-local-config`    | Load `config.yaml` from `$PWD/.helix` that will merge with your global configuration.   | `true` |
+| `load-local-config`    | Load `config.toml` from `$PWD/.helix` that will merge with your global configuration.   | `true` |
