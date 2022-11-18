@@ -84,9 +84,7 @@
 "ui.selection.primary" = { bg = "gray03" }
 
 "ui.cursor" = { bg = "gray04" }
-"ui.cursor.insert" = { bg = "gray04" }
 "ui.cursor.match" = { fg = "yellow", modifiers = ["bold", "underlined"] }
-"ui.cursor.select" = { bg = "gray04" }
 "ui.cursorline.primary" = { bg = "gray01" }
 
 "ui.highlight" = { bg = "gray02" }
