@@ -34,7 +34,7 @@
 
 # Interface
 "ui.background"= { bg = "background" }
-"ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursor" = { fg = "dark_gray", bg = "orange" }
 "ui.cursor.match" = "orange"
 "ui.linenr" = "dark_gray"
 "ui.linenr.selected" = "gray"
@@ -50,7 +50,7 @@
 "ui.virtual.ruler" = { bg = "black" }
 "ui.menu" = { fg = "foreground", bg = "black" }
 "ui.menu.selected" = { bg = "gray", fg = "background" }
-"ui.selection" = { bg = "#d3e2f5" }
+"ui.selection" = { bg = "dark_gray" }
 "warning" = "yellow"
 "error" = { fg = "red", modifiers = ["bold"] }
 "info" = { fg = "blue", modifiers = ["bold"] }
