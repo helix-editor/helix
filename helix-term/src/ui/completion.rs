@@ -257,7 +257,7 @@ impl Completion {
         let future = language_server.resolve_completion_item(completion_item);
         let response = helix_lsp::block_on(future);
         match response {
-            Ok(completion_item) => Some(completion_item),
+            Ok(value) => serde_json::from_value(value).ok(),
             Err(err) => {
                 log::error!("execute LSP command: {}", err);
                 None
@@ -304,6 +304,12 @@ impl Completion {
         self.popup.contents().is_empty()
     }
 
+    fn replace_item(&mut self, old_item: lsp::CompletionItem, new_item: lsp::CompletionItem) {
+        self.popup.contents_mut().replace_option(old_item, new_item);
+    }
+
+    /// Asynchronously requests that the currently selection completion item is
+    /// resolved through LSP `completionItem/resolve`.
     pub fn ensure_item_resolved(&mut self, cx: &mut commands::Context) -> bool {
         // > If computing full completion items is expensive, servers can additionally provide a
         // > handler for the completion item resolve request. ...
@@ -313,16 +319,38 @@ impl Completion {
         // > 'completionItem/resolve' request is sent with the selected completion item as a parameter.
         // > The returned completion item should have the documentation property filled in.
         // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
-        match self.popup.contents_mut().selection_mut() {
-            Some(item) if item.documentation.is_none() => {
-                let doc = doc!(cx.editor);
-                if let Some(resolved_item) = Self::resolve_completion_item(doc, item.clone()) {
-                    *item = resolved_item;
+        let current_item = match self.popup.contents().selection() {
+            Some(item) if item.documentation.is_none() => item.clone(),
+            _ => return false,
+        };
+
+        let language_server = match doc!(cx.editor).language_server() {
+            Some(language_server) => language_server,
+            None => return false,
+        };
+
+        // This method should not block the compositor so we handle the response asynchronously.
+        let future = language_server.resolve_completion_item(current_item.clone());
+
+        cx.callback(
+            future,
+            move |_editor, compositor, response: Option<lsp::CompletionItem>| {
+                let resolved_item = match response {
+                    Some(item) => item,
+                    None => return,
+                };
+
+                if let Some(completion) = &mut compositor
+                    .find::<crate::ui::EditorView>()
+                    .unwrap()
+                    .completion
+                {
+                    completion.replace_item(current_item, resolved_item);
                 }
-                true
-            }
-            _ => false,
-        }
+            },
+        );
+
+        true
     }
 }
 

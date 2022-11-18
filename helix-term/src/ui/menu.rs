@@ -224,6 +224,17 @@ impl<T: Item> Menu<T> {
     }
 }
 
+impl<T: Item + PartialEq> Menu<T> {
+    pub fn replace_option(&mut self, old_option: T, new_option: T) {
+        for option in &mut self.options {
+            if old_option == *option {
+                *option = new_option;
+                break;
+            }
+        }
+    }
+}
+
 use super::PromptEvent as MenuEvent;
 
 impl<T: Item + 'static> Component for Menu<T> {
