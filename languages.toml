@@ -495,7 +495,7 @@ file-types = ["nix"]
 shebangs = []
 roots = []
 comment-token = "#"
-language-server = { command = "rnix-lsp" }
+language-server = { command = "nil" }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
