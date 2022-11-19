@@ -1,101 +1,116 @@
 # Author: Kristoffer Flottorp <kr.fl@outlook.com>
 # A take on the JetBrains Fleet theme sprinkled with some creative freedom
 
-"type" = { fg = "yellow" } # .builtin
-"constructor" = { fg = "yellow" }
-"constant" = { fg = "cyan" }
+"type" = "light_blue"
+"type.builtin" = "orange"
+"constructor" = "yellow"
+"constant" = "cyan"
 # "constant.builtin" = {} # .boolean
-"constant.builtin.boolean" = { fg = "cyan" } # .boolean
-# "constant.character" = {} #.escape
-"constant.numeric" = { fg = "yellow" } # .integer / .float
-"string" = { fg = "pink" } # .regexp
-# "string.special" = {} #.path / .url / .symbol
-"string.special" = { modifiers = ["underlined"] } #.path / .url / .symbol
-"comment" = { fg = "dark_gray" } # .line
+"constant.builtin.boolean" = "yellow"
+"constant.character" = "yellow"
+"constant.characted.escape" = "light"
+"constant.numeric" = "yellow"
+"string" = "pink"
+"string.regexp" = "light"
+"string.special" = { fg = "yellow", modifiers = ["underlined"] } #.path / .url / .symbol
+"comment" = "light_gray" # .line
 # "comment.block" = {} # .documentation
-"variable" = { fg = "light" } # .builtin / .parameter
+"variable" = "light" # .builtin
+"variable.parameter" = "light"
 # "variable.other" = {} # .member
-"variable.other.member" = { fg = "purple" }
-"label" = { fg = "yellow" }
-# "punctuation" = {} # .delimiter / .bracket
-"keyword" = { fg = "cyan" } # .operator / .directive / .function
-# "keyword.control" = { fg = "orange" } # .conditional / .repeat / .import / .return / .exception
-"operator" = { fg = "light" }
-"function" = { fg = "blue" } # .builtin / .method / .macro / .special
-"function.macro" = { fg = "green" }
-"function.special" = { fg = "green" }
-"tag" = { fg = "green"}
-"special" = { fg = "green" }
-"namespace" = { fg = "light" }
-"markup" = { fg = "purple" } # .bold / .italic / .quote
-"markup.heading" = { fg = "light" } # .marker / .1 / .2 / .3 / .4 / .5 / .6
-"markup.heading.1" = { fg = "yellow" }
-"markup.heading.2" = { fg = "green" }
-"markup.heading.3" = { fg = "pink" }
-"markup.heading.4" = { fg = "purple" }
-"markup.heading.5" = { fg = "cyan" }
-"markup.heading.6" = { fg = "blue" }
-"markup.list" = { fg = "cyan" } # .unnumbered / .numbered
-"markup.link" = { fg = "green" } # .url / .label / .text
-"markup.raw" = { fg = "pink" } # .inline / .block
-# "diff" = {} # .plus / .minus
-"diff.plus" = { fg = "cyan" }
-"diff.minus" = { fg = "yellow" }
-"diff.delta" = { fg = "purple" } # .moved
+"variable.other.member" = "yellow"
+"label" = "yellow"
+"punctuation" = "light" # .delimiter / .bracket
+"keyword" = "cyan" # .operator / .directive / .function
+"keyword.control" = "yellow" # .conditional / .repeat / .import / .return / .exception
+"operator" = "light"
+"function" = "yellow"
+"function.macro" = "green"
+"function.builtin" = "green"
+"function.special" = "green"
+"function.method" = "light"
+"tag" = "green"
+"special" = "green"
+"namespace" = "light"
 
 # used in theming
 # "markup.normal" = {} # .completion / .hover
-# "markup.heading" = {} # .completion / .hover
 # "markup.raw.inline" = {} # .completion / .hover
+"markup" = "purple" # .quote
+"markup.bold" = { fg = "purple", modifiers = ["bold"] }
+"markup.italic" = { fg = "purple", modifiers = ["italic"] }
+"markup.heading" = "light" # .marker
+"markup.heading.1" = "yellow"
+"markup.heading.2" = "green"
+"markup.heading.3" = "pink"
+"markup.heading.4" = "purple"
+"markup.heading.5" = "cyan"
+"markup.heading.6" = "light_blue"
+"markup.list" = "cyan" # .unnumbered / .numbered
+"markup.link" = "green"
+"markup.link.url" = "pink"
+"markup.link.text" = "cyan"
+"markup.link.label" = "yellow"
+"markup.raw" = "pink" # .inline
+"markup.raw.block" = "orange"
+
+"diff.plus" = "cyan"
+"diff.minus" = "yellow"
+"diff.delta" = "purple"
 
 # ui specific
-"ui.background" = { bg = "darkest" } # .separator
+"ui.background" = { bg = "#0d0d0d" } # .separator
 "ui.cursor" = { bg = "dark_gray", modifiers = ["reversed"] } # .insert / .select / .match / .primary
 "ui.cursor.match" = { fg = "light", bg = "blue_accent" } # .insert / .select / .match / .primary
 "ui.cursorline" = { bg = "darker" }
-"ui.linenr" = { fg = "dark_gray" } # .selected
+"ui.linenr" = "dark_gray"
 "ui.linenr.selected" = { fg = "light_gray", bg = "darker" }
 "ui.statusline" = { fg = "light", bg = "darker" } # .inactive / .normal / .insert / .select
-"ui.statusline.inactive" = { fg = "dark", bg = "darker" } # .inactive / .normal / .insert / .select
-"ui.statusline.normal" = { fg = "lightest", bg = "darker"} # .inactive / .normal / .insert / .select
-"ui.statusline.insert" = { fg = "lightest", bg = "blue_accent" } # .inactive / .normal / .insert / .select
-"ui.statusline.select" = { fg = "lightest", bg = "orange_accent" } # .inactive / .normal / .insert / .select
-"ui.popup" = { fg = "light", bg = "dark" } # .info
+"ui.statusline.inactive" = { fg = "dark", bg = "darker" }
+"ui.statusline.normal" = { fg = "lightest", bg = "darker"}
+"ui.statusline.insert" = { fg = "lightest", bg = "blue_accent" }
+"ui.statusline.select" = { fg = "lightest", bg = "orange_accent" }
+"ui.popup" = { fg = "light", bg = "darkest" } # .info
 "ui.window" = { fg = "dark", bg = "darkest" }
-"ui.help" = { fg = "light", bg = "dark" }
-"ui.text" = { fg = "light" } # .focus / .info
-"ui.virtual" = { fg = "dark" } # .ruler / .whitespace
+"ui.help" = { fg = "light", bg = "darkest" }
+"ui.text" = "light" # .focus / .info
+"ui.virtual" = "dark" # .whitespace
 "ui.virtual.ruler" = { bg = "darker"}
-"ui.menu" = { fg = "light", bg = "dark" } # .selected
+"ui.menu" = { fg = "light", bg = "darker" } # .selected
 "ui.menu.selected" = { fg = "lightest", bg = "blue_accent" } # .selected
 "ui.selection" = { bg = "darker" } # .primary
 "ui.selection.primary" = { bg = "select" } # .primary
-"hint" = { fg = "blue_accent"}
-"info" = { fg = "yellow_accent" }
-"warning" = { fg = "orange_accent" }
-"error" = { fg = "diff_red_accent" }
-"diagnostic". underline = { style = "curl"  } 
+"hint" = "blue"
+"info" = "yellow_accent"
+"warning" = "orange_accent"
+"error" = "red"
+"diagnostic" = { modifiers = [] }
+"diagnostic.hint" = { underline = { color = "light", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
 
 [palette]
-darkest = "#0F0F0F"
-darker = "#222222"
-dark = "#383838"
-select = "#102F5B"
+darkest = "#1e1e1e"
+darker = "#262626"
+dark = "#898989"
+select = "#102f5b"
 
-light = "#F0F0F0"
-lightest = "#FFFFFF"
+light = "#d6d6dd"
+lightest = "#ffffff"
 
-dark_gray = "#5B5B5B"
-light_gray = "#757575"
-purple = "#AC9CF9"
-blue = "#52A7F6" #"#94C1FA"
-pink = "#D898D8"
-green = "#AFCB85"
-cyan = "#78D0BD"
-orange = "#ECA775"
-yellow = "#E5C995"
+dark_gray = "#535353"
+light_gray = "#6d6d6d"
+purple = "#a390f0"
+light_blue = "#7dbeff"
+blue = "#52a7f6"
+pink = "#d898d8"
+green = "#afcb85"
+cyan = "#78d0bd"
+orange = "#efb080"
+yellow = "#e5c995"
+red = "#f44747"
 
-purple_accent = "#6363EE"
 blue_accent = "#2197F3"
 pink_accent = "#E44C7A"
 green_accent = "#00AF99"
@@ -104,11 +119,3 @@ yellow_accent = "#DEA407"
 
 # variables intended for future updates
 checkmark = "#44B254"
-
-diff_blue_accent = "#0079FF"
-diff_blue_bg = "#072037"
-diff_blue_fg = "#0079FF"
-
-diff_red_accent = "#EE113C"
-diff_red_bg = "#390B14"
-diff_red_fg = "#EC123B"
