@@ -167,7 +167,10 @@ impl MappableCommand {
             Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
-                    commit_undo_checkpoint(cx);
+                    // #4719 - Fix for checkpoint issues when calling commands in INSERT mode
+                    if cx.editor.mode == Mode::Insert {
+                        commit_undo_checkpoint(cx);
+                    }
                     let mut cx = compositor::Context {
                         editor: cx.editor,
                         jobs: cx.jobs,
