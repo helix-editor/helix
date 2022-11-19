@@ -1,4 +1,3 @@
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 use helix_core::Rope;
@@ -11,7 +10,7 @@ impl DiffHandle {
         DiffHandle::new_with_handle(
             Rope::from_str(diff_base),
             Rope::from_str(doc),
-            Arc::new(AtomicBool::new(false)),
+            Arc::default(),
         )
     }
     async fn into_diff(self, handle: JoinHandle<()>) -> Vec<Hunk> {
@@ -114,7 +113,7 @@ async fn add_use() {
 #[tokio::test]
 async fn update_document() {
     let (differ, handle) = DiffHandle::new_test("foo\nbar\ntest\nfoo", "foo\nbar\ntest\nfoo");
-    differ.update_document(Rope::from_str("foo\ntest\nfoo bar"));
+    differ.update_document(Rope::from_str("foo\ntest\nfoo bar"), false);
     let line_diffs = differ.into_diff(handle).await;
     assert_eq!(
         &line_diffs,

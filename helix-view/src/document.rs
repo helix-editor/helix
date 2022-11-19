@@ -4,6 +4,7 @@ use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::Range;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
+
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::borrow::Cow;
@@ -13,7 +14,6 @@ use std::fmt::Display;
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 use helix_core::{
@@ -26,6 +26,7 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
+use crate::editor::RedrawHandle;
 use crate::{apply_transaction, DocumentId, Editor, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -633,7 +634,7 @@ impl Document {
         &mut self,
         view: &mut View,
         provider_registry: &DiffProviderRegistry,
-        redraw_handle: Arc<AtomicBool>,
+        redraw_handle: RedrawHandle,
     ) -> Result<(), Error> {
         let encoding = &self.encoding;
         let path = self
@@ -801,6 +802,10 @@ impl Document {
 
         if !transaction.changes().is_empty() {
             self.version += 1;
+            // start computing the diff in parallel
+            if let Some(diff_handle) = &self.diff_handle {
+                diff_handle.update_document(self.text.clone(), false);
+            }
 
             // generate revert to savepoint
             if self.savepoint.is_some() {
@@ -841,10 +846,6 @@ impl Document {
                 if let Some(notify) = notify {
                     tokio::spawn(notify);
                 }
-            }
-            if let Some(diff_handle) = self.diff_handle.as_ref() {
-                // TODO patchup hunks synchronously to avoid visual artifcats
-                diff_handle.update_document(self.text.clone());
             }
         }
         success
@@ -1062,7 +1063,7 @@ impl Document {
     }
 
     /// Intialize/updates the differ for this document with a new base.
-    pub fn set_diff_base(&mut self, diff_base: Vec<u8>, redraw_handle: Arc<AtomicBool>) {
+    pub fn set_diff_base(&mut self, diff_base: Vec<u8>, redraw_handle: RedrawHandle) {
         if let Ok((diff_base, _)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
             if let Some(differ) = &self.diff_handle {
                 differ.update_diff_base(diff_base);

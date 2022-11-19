@@ -23,11 +23,14 @@ use std::{
     num::NonZeroUsize,
     path::{Path, PathBuf},
     pin::Pin,
-    sync::{atomic::AtomicBool, Arc},
+    sync::Arc,
 };
 
 use tokio::{
-    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    sync::{
+        mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+        Notify, RwLock,
+    },
     time::{sleep, Duration, Instant, Sleep},
 };
 
@@ -150,6 +153,14 @@ pub struct Config {
         deserialize_with = "deserialize_duration_millis"
     )]
     pub idle_timeout: Duration,
+    /// Time in milliseconds since last keypress before a redraws trigger.
+    /// Used for redrawing asynchronsouly computed UI compoenents, set to 0 for instant.
+    /// Defaults to 100ms.
+    #[serde(
+        serialize_with = "serialize_duration_millis",
+        deserialize_with = "deserialize_duration_millis"
+    )]
+    pub redraw_timeout: Duration,
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
@@ -627,6 +638,7 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
+            redraw_timeout: Duration::from_millis(200),
         }
     }
 }
@@ -718,8 +730,14 @@ pub struct Editor {
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
-    pub redraw_handle: Arc<AtomicBool>,
+    /// Allows asynchronous tasks to control the rendering
+    /// The `Notify` allows asynchronous tasks to request the editor to perform a redraw
+    /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be aquired
+    pub redraw_handle: Arc<(Notify, RwLock<()>)>,
+    pub needs_redraw: bool,
 }
+
+pub type RedrawHandle = Arc<(Notify, RwLock<()>)>;
 
 #[derive(Debug)]
 pub enum EditorEvent {
@@ -812,7 +830,8 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
-            redraw_handle: Arc::new(AtomicBool::new(false)),
+            redraw_handle: Arc::default(),
+            needs_redraw: false,
         }
     }
 
@@ -845,6 +864,11 @@ impl Editor {
         self.idle_timer
             .as_mut()
             .reset(Instant::now() + config.idle_timeout);
+    }
+
+    fn redraw_deadline(&self) -> Instant {
+        let config = self.config();
+        Instant::now() + config.redraw_timeout
     }
 
     pub fn clear_status(&mut self) {
@@ -1370,6 +1394,16 @@ impl Editor {
                 }
                 Some(event) = self.debugger_events.next() => {
                     return EditorEvent::DebuggerEvent(event)
+                }
+
+                _ = self.redraw_handle.0.notified() => {
+                    if  !self.needs_redraw{
+                        self.needs_redraw = true;
+                        let timeout = self.redraw_deadline();
+                        if timeout < self.idle_timer.deadline(){
+                            self.idle_timer.as_mut().reset(timeout)
+                        }
+                    }
                 }
 
                 _ = &mut self.idle_timer  => {
