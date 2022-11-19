@@ -1,3 +1,9 @@
 [alias]
 xtask = "run --package xtask --"
 integration-test = "test --features integration --profile integration --workspace --test integration"
+
+[build]
+# By default, on musl linux, statically linked binaries are produced.
+# But such binaries do not support loading libraries using `dlopen()` ("libloading" crate),
+# which is required for loading treesitter grammars.
+rustflags = ["-C", "target-feature=-crt-static"]
