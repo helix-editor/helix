@@ -1076,7 +1076,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-regex", rev = "e1cf
 name = "git-config"
 scope = "source.gitconfig"
 roots = []
-file-types = [".gitmodules", ".gitconfig", { suffix = ".git/config" }, { suffix = ".config/git/config" }]
+file-types = [".gitmodules", ".gitconfig"]
 injection-regex = "git-config"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
@@ -1515,7 +1515,7 @@ source = { git = "https://github.com/staysail/tree-sitter-meson", rev = "32a83e8
 [[language]]
 name = "sshclientconfig"
 scope = "source.sshclientconfig"
-file-types = [{ suffix = ".ssh/config" }, { suffix = "/etc/ssh/ssh_config" }]
+file-types = [".sshclientconfig"]
 roots = []
 
 [[grammar]]
