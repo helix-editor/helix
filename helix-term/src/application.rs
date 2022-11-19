@@ -871,6 +871,32 @@ impl Application {
                     Notification::ProgressMessage(_params) => {
                         // do nothing
                     }
+                    Notification::Exit => {
+                        self.editor.set_status("Language server exited");
+
+                        // Clear any diagnostics for documents with this server open.
+                        let urls: Vec<_> = self
+                            .editor
+                            .documents_mut()
+                            .filter_map(|doc| {
+                                if doc.language_server().map(|server| server.id())
+                                    == Some(server_id)
+                                {
+                                    doc.set_diagnostics(Vec::new());
+                                    doc.url()
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+
+                        for url in urls {
+                            self.editor.diagnostics.remove(&url);
+                        }
+
+                        // Remove the language server from the registry.
+                        self.editor.language_servers.remove_by_id(server_id);
+                    }
                 }
             }
             Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
