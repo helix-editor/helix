@@ -69,7 +69,9 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Left side of the status line.
 
-    let element_ids = &context.editor.config().statusline.left;
+    let config = context.editor.config();
+
+    let element_ids = &config.statusline.left;
     element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
@@ -84,7 +86,7 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Right side of the status line.
 
-    let element_ids = &context.editor.config().statusline.right;
+    let element_ids = &config.statusline.right;
     element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
@@ -102,7 +104,7 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Center of the status line.
 
-    let element_ids = &context.editor.config().statusline.center;
+    let element_ids = &config.statusline.center;
     element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
@@ -160,7 +162,8 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let visible = context.focused;
-    let modenames = &context.editor.config().statusline.mode;
+    let config = context.editor.config();
+    let modenames = &config.statusline.mode;
     write(
         context,
         format!(
@@ -176,7 +179,7 @@ where
                 "   "
             }
         ),
-        if visible && context.editor.config().color_modes {
+        if visible && config.color_modes {
             match context.editor.mode() {
                 Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
                 Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
