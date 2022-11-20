@@ -5,7 +5,7 @@
   (do_block)
   (else_block)
   (rescue_block)
-  "->"
+  (stab_clause)
 ] @indent
 
 [
