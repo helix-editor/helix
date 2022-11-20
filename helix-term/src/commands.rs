@@ -1852,51 +1852,63 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     doc.set_selection(view.id, sel);
 }
 
+// The `margin` in the next eight commands allows you to "undo" the view change
+// even if you have scrolloff set: (half_)page_down and then (half_)page_up should
+// keep the cursor in the same place. The `+ 1` accounts for the current line.
+
 fn page_up(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height();
+    let margin = cx.editor.config().scrolloff * 2 + 1;
+    let offset = view.inner_height().saturating_sub(margin);
     scroll(cx, offset, Direction::Backward, false);
 }
 
 fn page_down(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height();
+    let margin = cx.editor.config().scrolloff * 2 + 1;
+    let offset = view.inner_height().saturating_sub(margin);
     scroll(cx, offset, Direction::Forward, false);
 }
 
 fn half_page_up(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height() / 2;
+    let margin = cx.editor.config().scrolloff * 2 + 1;
+    let offset = view.inner_height().saturating_sub(margin) / 2;
     scroll(cx, offset, Direction::Backward, false);
 }
 
 fn half_page_down(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height() / 2;
+    let margin = cx.editor.config().scrolloff * 2 + 1;
+    let offset = view.inner_height().saturating_sub(margin) / 2;
     scroll(cx, offset, Direction::Forward, false);
 }
 
 fn page_cursor_up(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height();
+    let margin = cx.editor.config().scrolloff * 2 + 1;
+    let offset = view.inner_height().saturating_sub(margin);
     scroll(cx, offset, Direction::Backward, true);
 }
 
 fn page_cursor_down(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height();
+    let margin = cx.editor.config().scrolloff * 2 + 1;
+    let offset = view.inner_height().saturating_sub(margin);
     scroll(cx, offset, Direction::Forward, true);
 }
 
 fn page_cursor_half_up(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height() / 2;
+    let margin = cx.editor.config().scrolloff * 2 + 1;
+    let offset = view.inner_height().saturating_sub(margin) / 2;
     scroll(cx, offset, Direction::Backward, true);
 }
 
 fn page_cursor_half_down(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height() / 2;
+    let margin = cx.editor.config().scrolloff * 2 + 1;
+    let offset = view.inner_height().saturating_sub(margin) / 2;
     scroll(cx, offset, Direction::Forward, true);
 }
 
