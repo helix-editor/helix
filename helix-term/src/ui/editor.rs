@@ -82,6 +82,7 @@ impl EditorView {
         let inner = view.inner_area(doc);
         let area = view.area;
         let theme = &editor.theme;
+        let config = editor.config();
 
         // DAP: Highlight current stack frame position
         let stack_frame = editor.debugger.as_ref().and_then(|debugger| {
@@ -117,10 +118,10 @@ impl EditorView {
             }
         }
 
-        if is_focused && editor.config().cursorline {
+        if is_focused && config.cursorline {
             Self::highlight_cursorline(doc, view, surface, theme);
         }
-        if is_focused && editor.config().cursorcolumn {
+        if is_focused && config.cursorcolumn {
             Self::highlight_cursorcolumn(doc, view, surface, theme);
         }
 
@@ -141,22 +142,14 @@ impl EditorView {
                     doc,
                     view,
                     theme,
-                    &editor.config().cursor_shape,
+                    &config.cursor_shape,
                 ),
             ))
         } else {
             Box::new(highlights)
         };
 
-        Self::render_text_highlights(
-            doc,
-            view.offset,
-            inner,
-            surface,
-            theme,
-            highlights,
-            &editor.config(),
-        );
+        Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights, &config);
         Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
@@ -176,7 +169,7 @@ impl EditorView {
             }
         }
 
-        self.render_diagnostics(doc, view, inner, surface, theme);
+        Self::render_diagnostics(doc, view, inner, surface, theme);
 
         let statusline_area = view
             .area
@@ -772,7 +765,6 @@ impl EditorView {
     }
 
     pub fn render_diagnostics(
-        &self,
         doc: &Document,
         view: &View,
         viewport: Rect,
