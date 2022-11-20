@@ -108,7 +108,7 @@ async fn test_move_selection_single_selection_up() -> anyhow::Result<()> {
             dddddd
             "})
         .as_str(),
-        "<C-up>",
+        "<C-k>",
         platform_line(indoc! {"
             aaaaaa
             cc#[|c]#ccc
@@ -132,7 +132,7 @@ async fn test_move_selection_single_selection_down() -> anyhow::Result<()> {
             dddddd
             "})
         .as_str(),
-        "<C-down>",
+        "<C-j>",
         platform_line(indoc! {"
             bbbbbb
             aa#[|a]#aaa
@@ -156,7 +156,7 @@ async fn test_move_selection_single_selection_top_up() -> anyhow::Result<()> {
             cccccc
             dddddd"})
         .as_str(),
-        "<C-up>",
+        "<C-k>",
         platform_line(indoc! {"
             aa#[|a]#aaa
             bbbbbb
@@ -176,7 +176,7 @@ async fn test_move_selection_single_selection_bottom_down() -> anyhow::Result<()
     // linebreak, making it impossible to test
     test((
         "aaaaaa\nbbbbbb\ncccccc\ndd#[|d]#ddd",
-        "<C-down><C-down>",
+        "<C-j><C-j>",
         "aaaaaa\nbbbbbb\ncccccc\ndd#[|d]#ddd",
     ))
     .await?;
@@ -195,7 +195,7 @@ async fn test_move_selection_block_up() -> anyhow::Result<()> {
             eeeeee
             "})
         .as_str(),
-        "<C-up>",
+        "<C-k>",
         platform_line(indoc! {"
             bb#[bbbb
             ccc|]#ccc
@@ -221,7 +221,7 @@ async fn test_move_selection_block_down() -> anyhow::Result<()> {
             eeeeee
             "})
         .as_str(),
-        "<C-down>",
+        "<C-j>",
         platform_line(indoc! {"
             dddddd
             #[|aaaaaa
@@ -247,7 +247,7 @@ async fn test_move_two_cursors_down() -> anyhow::Result<()> {
             eeeeee
             "})
         .as_str(),
-        "<C-down>",
+        "<C-j>",
         platform_line(indoc! {"
             aaaaaa
             cccccc
