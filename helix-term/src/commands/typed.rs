@@ -1034,6 +1034,50 @@ fn reload(
     })
 }
 
+fn reload_all(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let scrolloff = cx.editor.config().scrolloff;
+    let view_id = view!(cx.editor).id;
+
+    let docs_view_ids: Vec<(DocumentId, Vec<ViewId>)> = cx
+        .editor
+        .documents_mut()
+        .map(|doc| {
+            let mut view_ids: Vec<_> = doc.selections().keys().cloned().collect();
+
+            if view_ids.is_empty() {
+                doc.ensure_view_init(view_id);
+                view_ids.push(view_id);
+            };
+
+            (doc.id(), view_ids)
+        })
+        .collect();
+
+    for (doc_id, view_ids) in docs_view_ids {
+        let doc = doc_mut!(cx.editor, &doc_id);
+
+        // Every doc is guaranteed to have at least 1 view at this point.
+        let view = view_mut!(cx.editor, view_ids[0]);
+        doc.reload(view)?;
+
+        for view_id in view_ids {
+            let view = view_mut!(cx.editor, view_id);
+
+            view.ensure_cursor_in_view(doc, scrolloff);
+        }
+    }
+
+    Ok(())
+}
+
 /// Update the [`Document`] if it has been modified.
 fn update(
     cx: &mut compositor::Context,
@@ -2049,6 +2093,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Discard changes and reload from the source file.",
             fun: reload,
+            completer: None,
+        },
+        TypableCommand {
+            name: "reload-all",
+            aliases: &[],
+            doc: "Discard changes and reload all documents from the source files.",
+            fun: reload_all,
             completer: None,
         },
         TypableCommand {
