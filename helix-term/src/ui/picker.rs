@@ -1,4 +1,5 @@
 use crate::{
+    alt,
     compositor::{Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
     ui::{self, fuzzy_match::FuzzyQuery, EditorView},
@@ -134,7 +135,7 @@ impl<T: Item> FilePicker<T> {
 
     fn current_file(&self, editor: &Editor) -> Option<FileLocation> {
         self.picker
-            .selection()
+            .current_match()
             .and_then(|current| (self.file_fn)(editor, current))
             .and_then(|(path_or_id, line)| path_or_id.get_canonicalized().ok().zip(Some(line)))
     }
@@ -369,6 +370,7 @@ pub struct Picker<T: Item> {
     // filter: String,
     matcher: Box<Matcher>,
     matches: Vec<PickerMatch>,
+    selections: std::collections::HashSet<usize>,
 
     /// Current height of the completions box
     completion_height: u16,
@@ -403,6 +405,7 @@ impl<T: Item> Picker<T> {
             editor_data,
             matcher: Box::new(Matcher::default()),
             matches: Vec::new(),
+            selections: std::collections::HashSet::new(),
             cursor: 0,
             prompt,
             previous_pattern: String::new(),
@@ -536,14 +539,47 @@ impl<T: Item> Picker<T> {
         self.cursor = self.matches.len().saturating_sub(1);
     }
 
-    pub fn selection(&self) -> Option<&T> {
+    pub fn selections(&self) -> Vec<&T> {
+        if self.selections.is_empty() {
+            self.current_match().into_iter().collect()
+        } else {
+            self.selections
+                .iter()
+                .map(|&index| &self.options[index])
+                .collect()
+        }
+    }
+    pub fn current_match(&self) -> Option<&T> {
         self.matches
             .get(self.cursor)
             .map(|pmatch| &self.options[pmatch.index])
     }
+    pub fn trigger_on_selections(&self, cx: &mut Context, action: Action) {
+        for option in self.selections() {
+            (self.callback_fn)(cx, option, action);
+        }
+    }
 
     pub fn toggle_preview(&mut self) {
         self.show_preview = !self.show_preview;
+    }
+
+    pub fn toggle_selection(&mut self) {
+        if let Some(pmatch) = self.matches.get(self.cursor) {
+            if !self.selections.remove(&pmatch.index) {
+                self.selections.insert(pmatch.index);
+            }
+        }
+    }
+
+    pub fn select_all_matches(&mut self) {
+        for pmatch in self.matches.iter() {
+            self.selections.insert(pmatch.index);
+        }
+    }
+
+    pub fn unselect_all_matches(&mut self) {
+        self.selections.clear();
     }
 
     fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
@@ -605,25 +641,28 @@ impl<T: Item + 'static> Component for Picker<T> {
                 return close_fn;
             }
             key!(Enter) => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx, option, Action::Replace);
-                }
+                self.trigger_on_selections(cx, Action::Replace);
                 return close_fn;
             }
             ctrl!('s') => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx, option, Action::HorizontalSplit);
-                }
+                self.trigger_on_selections(cx, Action::HorizontalSplit);
                 return close_fn;
             }
             ctrl!('v') => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx, option, Action::VerticalSplit);
-                }
+                self.trigger_on_selections(cx, Action::VerticalSplit);
                 return close_fn;
             }
             ctrl!('t') => {
                 self.toggle_preview();
+            }
+            ctrl!(' ') => {
+                self.toggle_selection();
+            }
+            alt!('a') => {
+                self.select_all_matches();
+            }
+            alt!('d') => {
+                self.unselect_all_matches();
             }
             _ => {
                 self.prompt_handle_event(event, cx);
@@ -690,11 +729,23 @@ impl<T: Item + 'static> Component for Picker<T> {
 
         for (i, (_index, option)) in files.take(rows as usize).enumerate() {
             let is_active = i == (self.cursor - offset);
+            let is_selected = self.selections.contains(&(i + offset));
             if is_active {
                 surface.set_string(
                     inner.x.saturating_sub(3),
                     inner.y + i as u16,
-                    " > ",
+                    if is_selected { "*> " } else { " > " },
+                    selected,
+                );
+                surface.set_style(
+                    Rect::new(inner.x, inner.y + i as u16, inner.width, 1),
+                    selected,
+                );
+            } else if is_selected {
+                surface.set_string(
+                    inner.x.saturating_sub(3),
+                    inner.y + i as u16,
+                    "*  ",
                     selected,
                 );
                 surface.set_style(
