@@ -54,6 +54,9 @@
 "warning" = "base09"
 "error" = "base08"
 
+"ui.bufferline" = { fg = "base04", bg = "base00" }
+"ui.bufferline.active" = { fg = "base06", bg = "base01" }
+
 [palette]
 base00 = "#181818" # Default Background
 base01 = "#282828" # Lighter Background (Used for status bars, line number and folding marks)

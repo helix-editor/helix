@@ -34,7 +34,7 @@ pub struct Client {
     pub(crate) capabilities: OnceCell<lsp::ServerCapabilities>,
     offset_encoding: OffsetEncoding,
     config: Option<Value>,
-    root_path: Option<std::path::PathBuf>,
+    root_path: std::path::PathBuf,
     root_uri: Option<lsp::Url>,
     workspace_folders: Vec<lsp::WorkspaceFolder>,
     req_timeout: u64,
@@ -49,6 +49,7 @@ impl Client {
         root_markers: &[String],
         id: usize,
         req_timeout: u64,
+        doc_path: Option<&std::path::PathBuf>,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
         // Resolve path to the binary
         let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
@@ -72,11 +73,12 @@ impl Client {
         let (server_rx, server_tx, initialize_notify) =
             Transport::start(reader, writer, stderr, id);
 
-        let root_path = find_root(None, root_markers);
+        let root_path = find_root(
+            doc_path.and_then(|x| x.parent().and_then(|x| x.to_str())),
+            root_markers,
+        );
 
-        let root_uri = root_path
-            .clone()
-            .and_then(|root| lsp::Url::from_file_path(root).ok());
+        let root_uri = lsp::Url::from_file_path(root_path.clone()).ok();
 
         // TODO: support multiple workspace folders
         let workspace_folders = root_uri
@@ -281,10 +283,7 @@ impl Client {
             workspace_folders: Some(self.workspace_folders.clone()),
             // root_path is obsolete, but some clients like pyright still use it so we specify both.
             // clients will prefer _uri if possible
-            root_path: self
-                .root_path
-                .clone()
-                .and_then(|path| path.to_str().map(|path| path.to_owned())),
+            root_path: self.root_path.to_str().map(|path| path.to_owned()),
             root_uri: self.root_uri.clone(),
             initialization_options: self.config.clone(),
             capabilities: lsp::ClientCapabilities {
@@ -299,6 +298,9 @@ impl Client {
                         dynamic_registration: Some(false),
                         ..Default::default()
                     }),
+                    execute_command: Some(lsp::DynamicRegistrationClientCapabilities {
+                        dynamic_registration: Some(false),
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
@@ -312,6 +314,7 @@ impl Client {
                                     String::from("additionalTextEdits"),
                                 ],
                             }),
+                            insert_replace_support: Some(true),
                             ..Default::default()
                         }),
                         completion_item_kind: Some(lsp::CompletionItemKindCapability {
@@ -647,12 +650,11 @@ impl Client {
         self.call::<lsp::request::Completion>(params)
     }
 
-    pub async fn resolve_completion_item(
+    pub fn resolve_completion_item(
         &self,
         completion_item: lsp::CompletionItem,
-    ) -> Result<lsp::CompletionItem> {
-        self.request::<lsp::request::ResolveCompletionItem>(completion_item)
-            .await
+    ) -> impl Future<Output = Result<Value>> {
+        self.call::<lsp::request::ResolveCompletionItem>(completion_item)
     }
 
     pub fn text_document_signature_help(

@@ -1,7 +1,8 @@
 ;;; Highlighting for lua
 
 ;;; Builtins
-(self) @variable.builtin
+((identifier) @variable.builtin
+ (#eq? @variable.builtin "self"))
 
 ;; Keywords
 
@@ -12,20 +13,20 @@
   "end"
 ] @keyword.control.conditional)
 
+(elseif_statement
 [
-  "else"
   "elseif"
   "then"
-] @keyword.control.conditional
+  "end"
+] @keyword.control.conditional)
+
+(else_statement
+[
+  "else"
+  "end"
+] @keyword.control.conditional)
 
 (for_statement
-[
-  "for"
-  "do"
-  "end"
-] @keyword.control.repeat)
-
-(for_in_statement
 [
   "for"
   "do"
@@ -51,13 +52,26 @@
   "end"
 ] @keyword)
 
+"return" @keyword.control.return
+
 [
  "in"
  "local"
  (break_statement)
  "goto"
- "return"
 ] @keyword
+
+(function_declaration
+[
+  "function"
+  "end"
+] @keyword.function)
+
+(function_definition
+[
+  "function"
+  "end"
+] @keyword.function)
 
 ;; Operators
 
@@ -65,7 +79,7 @@
  "not"
  "and"
  "or"
-] @operator
+] @keyword.operator
 
 [
 "="
@@ -95,6 +109,7 @@
 ["," "." ":" ";"] @punctuation.delimiter
 
 ;; Brackets
+
 [
  "("
  ")"
@@ -110,7 +125,8 @@
 (true)
 ] @constant.builtin.boolean
 (nil) @constant.builtin
-(spread) @constant ;; "..."
+(vararg_expression) @constant
+
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z_0-9]*$"))
 
@@ -119,45 +135,32 @@
   (identifier) @variable.parameter)
 
 ; ;; Functions
-(function [(function_name) (identifier)] @function)
-(function ["function" "end"] @keyword.function)
+(function_declaration name: (identifier) @function)
+(function_call name: (identifier) @function.call)
 
-(function
-  (function_name
-   (function_name_field
-    (property_identifier) @function .)))
+(function_declaration name: (dot_index_expression field: (identifier) @function))
+(function_call name: (dot_index_expression field: (identifier) @function.call))
 
-(local_function (identifier) @function)
-(local_function ["function" "end"] @keyword.function)
+; TODO: incorrectly highlights variable N in `N, nop = 42, function() end`
+(assignment_statement
+    (variable_list
+      name: (identifier) @function)
+    (expression_list
+      value: (function_definition)))
 
-(variable_declaration
- (variable_declarator (identifier) @function) (function_definition))
-(local_variable_declaration
- (variable_declarator (identifier) @function) (function_definition))
-
-(function_definition ["function" "end"] @keyword.function)
-
-(function_call
-  [
-   ((identifier) @variable (method) @function.method)
-   ((_) (method) @function.method)
-   (identifier) @function
-   (field_expression (property_identifier) @function)
-  ]
-  . (arguments))
+(method_index_expression method: (identifier) @function.method)
 
 ;; Nodes
-(table ["{" "}"] @constructor)
 (comment) @comment
 (string) @string
 (number) @constant.numeric.integer
 (label_statement) @label
 ; A bit of a tricky one, this will only match field names
 (field . (identifier) @variable.other.member (_))
-(shebang) @comment
+(hash_bang_line) @comment
 
 ;; Property
-(property_identifier) @variable.other.member
+(dot_index_expression field: (identifier) @variable.other.member)
 
 ;; Variable
 (identifier) @variable

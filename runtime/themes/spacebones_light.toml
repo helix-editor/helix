@@ -51,6 +51,7 @@
 "ui.background" = { bg = "bg0" }
 "ui.linenr" = { fg = "bg3" }
 "ui.linenr.selected" = { fg = "theme_yellow" }
+"ui.cursorline" = { bg = "bg2" }
 "ui.statusline" = { fg = "fg1", bg = "bg2" }
 "ui.statusline.inactive" = { fg = "fg4", bg = "bg1" }
 "ui.statusline.normal" = { fg = "bg1", bg = "theme_cyan" }

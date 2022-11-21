@@ -1,7 +1,7 @@
 use crate::{
     compositor::{Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
-    ui::{self, EditorView},
+    ui::{self, fuzzy_match::FuzzyQuery, EditorView},
 };
 use tui::{
     buffer::Buffer as Surface,
@@ -9,23 +9,17 @@ use tui::{
 };
 
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
-use fuzzy_matcher::FuzzyMatcher;
 use tui::widgets::Widget;
 
-use std::time::Instant;
-use std::{
-    cmp::Reverse,
-    collections::HashMap,
-    io::Read,
-    path::{Path, PathBuf},
-};
+use std::{cmp::Ordering, time::Instant};
+use std::{collections::HashMap, io::Read, path::PathBuf};
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::{movement::Direction, Position};
 use helix_view::{
     editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
-    Document, Editor,
+    Document, DocumentId, Editor,
 };
 
 use super::menu::Item;
@@ -34,8 +28,36 @@ pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
+#[derive(PartialEq, Eq, Hash)]
+pub enum PathOrId {
+    Id(DocumentId),
+    Path(PathBuf),
+}
+
+impl PathOrId {
+    fn get_canonicalized(self) -> std::io::Result<Self> {
+        use PathOrId::*;
+        Ok(match self {
+            Path(path) => Path(helix_core::path::get_canonicalized_path(&path)?),
+            Id(id) => Id(id),
+        })
+    }
+}
+
+impl From<PathBuf> for PathOrId {
+    fn from(v: PathBuf) -> Self {
+        Self::Path(v)
+    }
+}
+
+impl From<DocumentId> for PathOrId {
+    fn from(v: DocumentId) -> Self {
+        Self::Id(v)
+    }
+}
+
 /// File path and range of lines (used to align and highlight lines)
-pub type FileLocation = (PathBuf, Option<(usize, usize)>);
+pub type FileLocation = (PathOrId, Option<(usize, usize)>);
 
 pub struct FilePicker<T: Item> {
     picker: Picker<T>,
@@ -114,52 +136,82 @@ impl<T: Item> FilePicker<T> {
         self.picker
             .selection()
             .and_then(|current| (self.file_fn)(editor, current))
-            .and_then(|(path, line)| {
-                helix_core::path::get_canonicalized_path(&path)
-                    .ok()
-                    .zip(Some(line))
-            })
+            .and_then(|(path_or_id, line)| path_or_id.get_canonicalized().ok().zip(Some(line)))
     }
 
     /// Get (cached) preview for a given path. If a document corresponding
     /// to the path is already open in the editor, it is used instead.
     fn get_preview<'picker, 'editor>(
         &'picker mut self,
-        path: &Path,
+        path_or_id: PathOrId,
         editor: &'editor Editor,
     ) -> Preview<'picker, 'editor> {
-        if let Some(doc) = editor.document_by_path(path) {
-            return Preview::EditorDocument(doc);
-        }
+        match path_or_id {
+            PathOrId::Path(path) => {
+                let path = &path;
+                if let Some(doc) = editor.document_by_path(path) {
+                    return Preview::EditorDocument(doc);
+                }
 
-        if self.preview_cache.contains_key(path) {
-            return Preview::Cached(&self.preview_cache[path]);
-        }
+                if self.preview_cache.contains_key(path) {
+                    return Preview::Cached(&self.preview_cache[path]);
+                }
 
-        let data = std::fs::File::open(path).and_then(|file| {
-            let metadata = file.metadata()?;
-            // Read up to 1kb to detect the content type
-            let n = file.take(1024).read_to_end(&mut self.read_buffer)?;
-            let content_type = content_inspector::inspect(&self.read_buffer[..n]);
-            self.read_buffer.clear();
-            Ok((metadata, content_type))
-        });
-        let preview = data
-            .map(
-                |(metadata, content_type)| match (metadata.len(), content_type) {
-                    (_, content_inspector::ContentType::BINARY) => CachedPreview::Binary,
-                    (size, _) if size > MAX_FILE_SIZE_FOR_PREVIEW => CachedPreview::LargeFile,
-                    _ => {
-                        // TODO: enable syntax highlighting; blocked by async rendering
-                        Document::open(path, None, None)
-                            .map(|doc| CachedPreview::Document(Box::new(doc)))
-                            .unwrap_or(CachedPreview::NotFound)
-                    }
+                let data = std::fs::File::open(path).and_then(|file| {
+                    let metadata = file.metadata()?;
+                    // Read up to 1kb to detect the content type
+                    let n = file.take(1024).read_to_end(&mut self.read_buffer)?;
+                    let content_type = content_inspector::inspect(&self.read_buffer[..n]);
+                    self.read_buffer.clear();
+                    Ok((metadata, content_type))
+                });
+                let preview = data
+                    .map(
+                        |(metadata, content_type)| match (metadata.len(), content_type) {
+                            (_, content_inspector::ContentType::BINARY) => CachedPreview::Binary,
+                            (size, _) if size > MAX_FILE_SIZE_FOR_PREVIEW => {
+                                CachedPreview::LargeFile
+                            }
+                            _ => {
+                                // TODO: enable syntax highlighting; blocked by async rendering
+                                Document::open(path, None, None)
+                                    .map(|doc| CachedPreview::Document(Box::new(doc)))
+                                    .unwrap_or(CachedPreview::NotFound)
+                            }
+                        },
+                    )
+                    .unwrap_or(CachedPreview::NotFound);
+                self.preview_cache.insert(path.to_owned(), preview);
+                Preview::Cached(&self.preview_cache[path])
+            }
+            PathOrId::Id(id) => {
+                let doc = editor.documents.get(&id).unwrap();
+                Preview::EditorDocument(doc)
+            }
+        }
+    }
+
+    fn handle_idle_timeout(&mut self, cx: &mut Context) -> EventResult {
+        // Try to find a document in the cache
+        let doc = self
+            .current_file(cx.editor)
+            .and_then(|(path, _range)| match path {
+                PathOrId::Id(doc_id) => Some(doc_mut!(cx.editor, &doc_id)),
+                PathOrId::Path(path) => match self.preview_cache.get_mut(&path) {
+                    Some(CachedPreview::Document(doc)) => Some(doc),
+                    _ => None,
                 },
-            )
-            .unwrap_or(CachedPreview::NotFound);
-        self.preview_cache.insert(path.to_owned(), preview);
-        Preview::Cached(&self.preview_cache[path])
+            });
+
+        // Then attempt to highlight it if it has no language set
+        if let Some(doc) = doc {
+            if doc.language_config().is_none() {
+                let loader = cx.editor.syn_loader.clone();
+                doc.detect_language(loader);
+            }
+        }
+
+        EventResult::Consumed(None)
     }
 }
 
@@ -205,7 +257,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         block.render(preview_area, surface);
 
         if let Some((path, range)) = self.current_file(cx.editor) {
-            let preview = self.get_preview(&path, cx.editor);
+            let preview = self.get_preview(path, cx.editor);
             let doc = match preview.document() {
                 Some(doc) => doc,
                 None => {
@@ -228,8 +280,14 @@ impl<T: Item + 'static> Component for FilePicker<T> {
 
             let offset = Position::new(first_line, 0);
 
-            let highlights =
+            let mut highlights =
                 EditorView::doc_syntax_highlights(doc, offset, area.height, &cx.editor.theme);
+            for spans in EditorView::doc_diagnostics_highlights(doc, &cx.editor.theme) {
+                if spans.is_empty() {
+                    continue;
+                }
+                highlights = Box::new(helix_core::syntax::merge(highlights, spans));
+            }
             EditorView::render_text_highlights(
                 doc,
                 offset,
@@ -260,7 +318,10 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         }
     }
 
-    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
+        if let Event::IdleTimeout = event {
+            return self.handle_idle_timeout(ctx);
+        }
         // TODO: keybinds for scrolling preview
         self.picker.handle_event(event, ctx)
     }
@@ -280,15 +341,34 @@ impl<T: Item + 'static> Component for FilePicker<T> {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
+struct PickerMatch {
+    index: usize,
+    score: i64,
+    len: usize,
+}
+
+impl PartialOrd for PickerMatch {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for PickerMatch {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.score
+            .cmp(&other.score)
+            .reverse()
+            .then_with(|| self.len.cmp(&other.len))
+    }
+}
+
 pub struct Picker<T: Item> {
     options: Vec<T>,
     editor_data: T::Data,
     // filter: String,
     matcher: Box<Matcher>,
-    /// (index, score)
-    matches: Vec<(usize, i64)>,
-    /// Filter over original options.
-    filters: Vec<usize>, // could be optimized into bit but not worth it now
+    matches: Vec<PickerMatch>,
 
     /// Current height of the completions box
     completion_height: u16,
@@ -323,7 +403,6 @@ impl<T: Item> Picker<T> {
             editor_data,
             matcher: Box::new(Matcher::default()),
             matches: Vec::new(),
-            filters: Vec::new(),
             cursor: 0,
             prompt,
             previous_pattern: String::new(),
@@ -335,13 +414,16 @@ impl<T: Item> Picker<T> {
 
         // scoring on empty input:
         // TODO: just reuse score()
-        picker.matches.extend(
-            picker
-                .options
-                .iter()
-                .enumerate()
-                .map(|(index, _option)| (index, 0)),
-        );
+        picker
+            .matches
+            .extend(picker.options.iter().enumerate().map(|(index, option)| {
+                let text = option.filter_text(&picker.editor_data);
+                PickerMatch {
+                    index,
+                    score: 0,
+                    len: text.chars().count(),
+                }
+            }));
 
         picker
     }
@@ -358,59 +440,54 @@ impl<T: Item> Picker<T> {
         if pattern.is_empty() {
             // Fast path for no pattern.
             self.matches.clear();
-            self.matches.extend(
-                self.options
-                    .iter()
-                    .enumerate()
-                    .map(|(index, _option)| (index, 0)),
-            );
+            self.matches
+                .extend(self.options.iter().enumerate().map(|(index, option)| {
+                    let text = option.filter_text(&self.editor_data);
+                    PickerMatch {
+                        index,
+                        score: 0,
+                        len: text.chars().count(),
+                    }
+                }));
         } else if pattern.starts_with(&self.previous_pattern) {
-            // TODO: remove when retain_mut is in stable rust
-            #[allow(unused_imports, deprecated)]
-            use retain_mut::RetainMut;
-
+            let query = FuzzyQuery::new(pattern);
             // optimization: if the pattern is a more specific version of the previous one
             // then we can score the filtered set.
-            #[allow(unstable_name_collisions)]
-            self.matches.retain_mut(|(index, score)| {
-                let option = &self.options[*index];
+            self.matches.retain_mut(|pmatch| {
+                let option = &self.options[pmatch.index];
                 let text = option.sort_text(&self.editor_data);
 
-                match self.matcher.fuzzy_match(&text, pattern) {
+                match query.fuzzy_match(&text, &self.matcher) {
                     Some(s) => {
                         // Update the score
-                        *score = s;
+                        pmatch.score = s;
                         true
                     }
                     None => false,
                 }
             });
 
-            self.matches
-                .sort_unstable_by_key(|(_, score)| Reverse(*score));
+            self.matches.sort_unstable();
         } else {
+            let query = FuzzyQuery::new(pattern);
             self.matches.clear();
             self.matches.extend(
                 self.options
                     .iter()
                     .enumerate()
                     .filter_map(|(index, option)| {
-                        // filter options first before matching
-                        if !self.filters.is_empty() {
-                            // TODO: this filters functionality seems inefficient,
-                            // instead store and operate on filters if any
-                            self.filters.binary_search(&index).ok()?;
-                        }
-
                         let text = option.filter_text(&self.editor_data);
 
-                        self.matcher
-                            .fuzzy_match(&text, pattern)
-                            .map(|score| (index, score))
+                        query
+                            .fuzzy_match(&text, &self.matcher)
+                            .map(|score| PickerMatch {
+                                index,
+                                score,
+                                len: text.chars().count(),
+                            })
                     }),
             );
-            self.matches
-                .sort_unstable_by_key(|(_, score)| Reverse(*score));
+            self.matches.sort_unstable();
         }
 
         log::debug!("picker score {:?}", Instant::now().duration_since(now));
@@ -462,19 +539,19 @@ impl<T: Item> Picker<T> {
     pub fn selection(&self) -> Option<&T> {
         self.matches
             .get(self.cursor)
-            .map(|(index, _score)| &self.options[*index])
-    }
-
-    pub fn save_filter(&mut self, cx: &Context) {
-        self.filters.clear();
-        self.filters
-            .extend(self.matches.iter().map(|(index, _)| *index));
-        self.filters.sort_unstable(); // used for binary search later
-        self.prompt.clear(cx);
+            .map(|pmatch| &self.options[pmatch.index])
     }
 
     pub fn toggle_preview(&mut self) {
         self.show_preview = !self.show_preview;
+    }
+
+    fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+        if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
+            // TODO: recalculate only if pattern changed
+            self.score();
+        }
+        EventResult::Consumed(None)
     }
 }
 
@@ -489,9 +566,10 @@ impl<T: Item + 'static> Component for Picker<T> {
         Some(viewport)
     }
 
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let key_event = match event {
-            Event::Key(event) => event,
+            Event::Key(event) => *event,
+            Event::Paste(..) => return self.prompt_handle_event(event, cx),
             Event::Resize(..) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored(None),
         };
@@ -500,6 +578,9 @@ impl<T: Item + 'static> Component for Picker<T> {
             // remove the layer
             compositor.last_picker = compositor.pop();
         })));
+
+        // So that idle timeout retriggers
+        cx.editor.reset_idle_timer();
 
         match key_event {
             shift!(Tab) | key!(Up) | ctrl!('p') => {
@@ -541,17 +622,11 @@ impl<T: Item + 'static> Component for Picker<T> {
                 }
                 return close_fn;
             }
-            ctrl!(' ') => {
-                self.save_filter(cx);
-            }
             ctrl!('t') => {
                 self.toggle_preview();
             }
             _ => {
-                if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
-                    // TODO: recalculate only if pattern changed
-                    self.score();
-                }
+                self.prompt_handle_event(event, cx);
             }
         }
 
@@ -611,7 +686,7 @@ impl<T: Item + 'static> Component for Picker<T> {
             .matches
             .iter()
             .skip(offset)
-            .map(|(index, _score)| (*index, self.options.get(*index).unwrap()));
+            .map(|pmatch| (pmatch.index, self.options.get(pmatch.index).unwrap()));
 
         for (i, (_index, option)) in files.take(rows as usize).enumerate() {
             let is_active = i == (self.cursor - offset);
@@ -629,9 +704,8 @@ impl<T: Item + 'static> Component for Picker<T> {
             }
 
             let spans = option.label(&self.editor_data);
-            let (_score, highlights) = self
-                .matcher
-                .fuzzy_indices(&String::from(&spans), self.prompt.line())
+            let (_score, highlights) = FuzzyQuery::new(self.prompt.line())
+                .fuzzy_indicies(&String::from(&spans), &self.matcher)
                 .unwrap_or_default();
 
             spans.0.into_iter().fold(inner, |pos, span| {

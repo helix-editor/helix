@@ -1,0 +1,3 @@
+; inherits: html
+
+["---"] @punctuation.delimiter

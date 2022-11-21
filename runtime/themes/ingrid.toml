@@ -44,19 +44,22 @@
 
 "ui.background" = { bg = "#FFFCFD" }
 "ui.linenr" = { fg = "#bbbbbb" }
-"ui.linenr.selected" = { fg = "#F3EAE9" }  # TODO
+"ui.linenr.selected" = { fg = "#ED5466", modifiers = ["bold"] }
+"ui.cursorline" = { bg = "#F3EAE9" }
 "ui.statusline" = { fg = "#250E07", bg = "#F3EAE9" }
 "ui.statusline.inactive" = { fg = "#7b91b3", bg = "#F3EAE9" }
-"ui.popup" = { bg = "#F3EAE9" }
+"ui.popup" = { fg = "#7B91b3", bg = "#F3E8E9" }
 "ui.window" = { bg = "#D8B8B3" }
 "ui.help" = { bg = "#D8B8B3", fg = "#250E07" }
 
 "ui.text" = { fg = "#7B91B3" }
 "ui.text.focus" = { fg = "#250E07", modifiers= ["bold"] }
 "ui.virtual.whitespace" = "#A6B6CE"
+"ui.virtual.ruler" = { bg = "#F3EAE9" }
 
-"ui.selection" = { bg = "#540099" }
-# "ui.cursor.match"  # TODO might want to override this because dimmed is not widely supported
+"ui.selection" = { bg = "#F3EAE9" }
+"ui.cursor.primary" = { bg = "#ED5466", fg = "#FFFCFD", modifiers = ["bold"] }
+"ui.cursor.match" = { bg = "#F3EAE9", fg = "#ED5466", modifiers = ["bold"] }
 "ui.menu" = { fg = "#7B91B3", bg = "#F3EAE9" }
 "ui.menu.selected" = { fg = "#D74E50", bg = "#F3EAE9" }
 
