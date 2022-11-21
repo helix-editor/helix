@@ -85,7 +85,7 @@ fn thread_picker(
                         frame.line.saturating_sub(1),
                         frame.end_line.unwrap_or(frame.line).saturating_sub(1),
                     ));
-                    Some((path, pos))
+                    Some((path.into(), pos))
                 },
             );
             compositor.push(Box::new(picker));
@@ -706,7 +706,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
                 .and_then(|source| source.path.clone())
                 .map(|path| {
                     (
-                        path,
+                        path.into(),
                         Some((
                             frame.line.saturating_sub(1),
                             frame.end_line.unwrap_or(frame.line).saturating_sub(1),
