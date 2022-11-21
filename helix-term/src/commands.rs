@@ -65,7 +65,7 @@ use std::{
 use once_cell::sync::Lazy;
 use serde::de::{self, Deserialize, Deserializer};
 
-use grep_regex::RegexMatcherBuilder;
+use grep_regex::{RegexMatcher, RegexMatcherBuilder};
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -357,6 +357,8 @@ impl MappableCommand {
         keep_primary_selection, "Keep primary selection",
         remove_primary_selection, "Remove primary selection",
         completion, "Invoke completion popup",
+        completion_word, "Invoke completion popup for current word",
+        completion_line, "Invoke completion popup for current line",
         hover, "Show docs for item under cursor",
         toggle_comments, "Comment/uncomment selections",
         rotate_selections_forward, "Rotate selections forward",
@@ -1874,7 +1876,8 @@ fn global_search(cx: &mut Context) {
         }
     }
 
-    let (all_matches_sx, all_matches_rx) = tokio::sync::mpsc::unbounded_channel::<FileResult>();
+    let (all_matches_sx, all_matches_rx) =
+        tokio::sync::mpsc::unbounded_channel::<(PathBuf, String, usize)>();
     let config = cx.editor.config();
     let smart_case = config.search.smart_case;
     let file_picker_config = config.file_picker.clone();
@@ -1902,64 +1905,15 @@ fn global_search(cx: &mut Context) {
                 .case_smart(smart_case)
                 .build(regex.as_str())
             {
-                let searcher = SearcherBuilder::new()
-                    .binary_detection(BinaryDetection::quit(b'\x00'))
-                    .build();
-
                 let search_root = std::env::current_dir()
                     .expect("Global search error: Failed to get current dir");
-                WalkBuilder::new(search_root)
-                    .hidden(file_picker_config.hidden)
-                    .parents(file_picker_config.parents)
-                    .ignore(file_picker_config.ignore)
-                    .follow_links(file_picker_config.follow_symlinks)
-                    .git_ignore(file_picker_config.git_ignore)
-                    .git_global(file_picker_config.git_global)
-                    .git_exclude(file_picker_config.git_exclude)
-                    .max_depth(file_picker_config.max_depth)
-                    // We always want to ignore the .git directory, otherwise if
-                    // `ignore` is turned off above, we end up with a lot of noise
-                    // in our picker.
-                    .filter_entry(|entry| entry.file_name() != ".git")
-                    .build_parallel()
-                    .run(|| {
-                        let mut searcher = searcher.clone();
-                        let matcher = matcher.clone();
-                        let all_matches_sx = all_matches_sx.clone();
-                        Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
-                            let entry = match entry {
-                                Ok(entry) => entry,
-                                Err(_) => return WalkState::Continue,
-                            };
-
-                            match entry.file_type() {
-                                Some(entry) if entry.is_file() => {}
-                                // skip everything else
-                                _ => return WalkState::Continue,
-                            };
-
-                            let result = searcher.search_path(
-                                &matcher,
-                                entry.path(),
-                                sinks::UTF8(|line_num, _| {
-                                    all_matches_sx
-                                        .send(FileResult::new(entry.path(), line_num as usize - 1))
-                                        .unwrap();
-
-                                    Ok(true)
-                                }),
-                            );
-
-                            if let Err(err) = result {
-                                log::error!(
-                                    "Global search error: {}, {}",
-                                    entry.path().display(),
-                                    err
-                                );
-                            }
-                            WalkState::Continue
-                        })
-                    });
+                global_search_collect(
+                    &search_root,
+                    &file_picker_config,
+                    matcher,
+                    all_matches_sx.clone(),
+                    None,
+                );
             } else {
                 // Otherwise do nothing
                 // log::warn!("Global Search Invalid Pattern")
@@ -1970,8 +1924,10 @@ fn global_search(cx: &mut Context) {
     let current_path = doc_mut!(cx.editor).path().cloned();
 
     let show_picker = async move {
-        let all_matches: Vec<FileResult> =
-            UnboundedReceiverStream::new(all_matches_rx).collect().await;
+        let all_matches: Vec<FileResult> = UnboundedReceiverStream::new(all_matches_rx)
+            .map(|(path, _, line_num)| FileResult::new(&path, line_num as usize - 1))
+            .collect()
+            .await;
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
                 if all_matches.is_empty() {
@@ -3936,7 +3892,7 @@ pub fn completion(cx: &mut Context) {
 
     let language_server = match doc.language_server() {
         Some(language_server) => language_server,
-        None => return,
+        None => return completion_word_impl(cx, false),
     };
 
     let offset_encoding = language_server.offset_encoding();
@@ -3992,6 +3948,226 @@ pub fn completion(cx: &mut Context) {
             );
         },
     );
+}
+fn completion_word(cx: &mut Context) {
+    completion_word_impl(cx, true)
+}
+fn completion_word_impl(cx: &mut Context, search_root: bool) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let cursor = doc.selection(view.id).primary().cursor(text);
+    use helix_core::chars;
+    let mut iter = text.chars_at(cursor);
+    iter.reverse();
+    let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
+    let start_offset = cursor.saturating_sub(offset);
+    let prefix = regex::escape(&text.slice(start_offset..cursor).to_string());
+
+    completion_grep(
+        cx,
+        format!(r"\b{}\w+", prefix,),
+        start_offset,
+        search_root,
+        false,
+    );
+}
+
+fn completion_line(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let cursor = doc.selection(view.id).primary().cursor(text);
+    let line_start = text.line_to_byte(text.byte_to_line(cursor));
+    use helix_core::chars;
+    let iter = text.chars_at(line_start);
+    let offset = iter.take_while(|ch| chars::char_is_whitespace(*ch)).count();
+    let start_offset = line_start + offset;
+    let prefix = regex::escape(&text.slice(start_offset..cursor).to_string());
+
+    completion_grep(cx, format!(r"^\s*{}.+", prefix), start_offset, true, true);
+}
+fn completion_grep(
+    cx: &mut Context,
+    query: String,
+    start_offset: usize,
+    search_root: bool,
+    match_whold_line: bool,
+) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let current_content = text.to_string();
+    let cursor = doc.selection(view.id).primary().cursor(text);
+    let trigger_offset = cursor;
+    let config = cx.editor.config().file_picker.clone();
+
+    let callback = Box::pin(async move {
+        let matches = grep_impl(
+            &query,
+            current_content,
+            if search_root { Some(config) } else { None },
+            match_whold_line,
+        )
+        .await?;
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                if editor.mode != Mode::Insert {
+                    // we're not in insert mode anymore
+                    return;
+                }
+
+                let items: Vec<_> = matches
+                    .into_iter()
+                    .map(|i| helix_lsp::lsp::CompletionItem::new_simple(i, "".into()))
+                    .collect();
+                if items.is_empty() {
+                    // editor.set_error("No completion available");
+                    return;
+                }
+                let size = compositor.size();
+                let ui = compositor.find::<ui::EditorView>().unwrap();
+                ui.set_completion(
+                    editor,
+                    items,
+                    helix_lsp::OffsetEncoding::Utf8,
+                    start_offset,
+                    trigger_offset,
+                    size,
+                );
+            },
+        ));
+        Ok(call)
+    });
+    cx.jobs.callback(callback);
+}
+
+async fn grep_impl(
+    query: &str,
+    current_content: String,
+    config: Option<helix_view::editor::FilePickerConfig>,
+    match_whold_line: bool,
+) -> anyhow::Result<HashSet<String>> {
+    let max_match_count = 20;
+    let mut matches = HashSet::with_capacity(max_match_count);
+    let mut searcher = SearcherBuilder::new().build();
+
+    let regex = Regex::new(query)?;
+    let matcher = RegexMatcher::new(query)?;
+    searcher.search_slice(
+        &matcher,
+        current_content.as_bytes(),
+        sinks::UTF8(|_lnum, line| {
+            if match_whold_line {
+                matches.insert(line.trim_start().trim_end_matches('\n').to_string());
+            } else {
+                for mat in regex.find_iter(line) {
+                    matches.insert(line[mat.start()..mat.end()].to_string());
+                }
+            }
+            if matches.len() == max_match_count {
+                Ok(false)
+            } else {
+                Ok(true)
+            }
+        }),
+    )?;
+    if matches.len() < max_match_count && config.is_some() {
+        let root = find_root(None, &[]);
+        let (all_matches_sx, all_matches_rx) =
+            tokio::sync::mpsc::unbounded_channel::<(PathBuf, String, usize)>();
+        global_search_collect(
+            &root,
+            &config.unwrap(),
+            matcher.clone(),
+            all_matches_sx,
+            Some(max_match_count - matches.len()),
+        );
+        let all_matches: Vec<_> = UnboundedReceiverStream::new(all_matches_rx).collect().await;
+        for (_, line, _) in all_matches {
+            if match_whold_line {
+                matches.insert(line.trim_start().trim_end_matches('\n').to_string());
+            } else {
+                for mat in regex.find_iter(&line) {
+                    matches.insert(line[mat.start()..mat.end()].to_string());
+                }
+            }
+        }
+    }
+    Ok(matches)
+}
+fn global_search_collect(
+    path: &Path,
+    file_picker_config: &helix_view::editor::FilePickerConfig,
+    matcher: RegexMatcher,
+    match_collector: tokio::sync::mpsc::UnboundedSender<(PathBuf, String, usize)>,
+    max_item_count: Option<usize>,
+) {
+    let searcher = SearcherBuilder::new()
+        .binary_detection(BinaryDetection::quit(b'\x00'))
+        .build();
+    use std::sync::Arc;
+    let count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    WalkBuilder::new(path)
+        .hidden(file_picker_config.hidden)
+        .parents(file_picker_config.parents)
+        .ignore(file_picker_config.ignore)
+        .follow_links(file_picker_config.follow_symlinks)
+        .git_ignore(file_picker_config.git_ignore)
+        .git_global(file_picker_config.git_global)
+        .git_exclude(file_picker_config.git_exclude)
+        .max_depth(file_picker_config.max_depth)
+        // We always want to ignore the .git directory, otherwise if
+        // `ignore` is turned off above, we end up with a lot of noise
+        // in our picker.
+        .filter_entry(|entry| entry.file_name() != ".git")
+        .build_parallel()
+        .run(|| {
+            let mut searcher = searcher.clone();
+            let matcher = matcher.clone();
+            let all_matches_sx = match_collector.clone();
+            let count = Arc::clone(&count);
+            let mut abort = false;
+            Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
+                let entry = match entry {
+                    Ok(entry) => entry,
+                    Err(_) => return WalkState::Continue,
+                };
+
+                match entry.file_type() {
+                    Some(entry) if entry.is_file() => {}
+                    // skip everything else
+                    _ => return WalkState::Continue,
+                };
+
+                let result = searcher.search_path(
+                    &matcher,
+                    entry.path(),
+                    sinks::UTF8(|line_num, line| {
+                        if all_matches_sx
+                            .send((
+                                entry.path().to_owned(),
+                                line.to_string(),
+                                line_num as usize - 1,
+                            ))
+                            .is_err()
+                            || (max_item_count.is_some()
+                                && count.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+                                    >= max_item_count.unwrap() - 1)
+                        {
+                            abort = true;
+                        }
+                        Ok(!abort)
+                    }),
+                );
+
+                if let Err(err) = result {
+                    log::error!("Global search error: {}, {}", entry.path().display(), err);
+                }
+                if abort {
+                    WalkState::Quit
+                } else {
+                    WalkState::Continue
+                }
+            })
+        });
 }
 
 // comments
