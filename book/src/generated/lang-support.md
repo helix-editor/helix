@@ -25,7 +25,7 @@
 | edoc | ✓ |  |  |  |
 | eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |
-| elixir | ✓ | ✓ |  | `elixir-ls` |
+| elixir | ✓ | ✓ | ✓ | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
 | elvish | ✓ |  |  | `elvish` |
 | env | ✓ |  |  |  |
