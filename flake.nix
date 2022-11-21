@@ -150,6 +150,7 @@
                 ["languages.toml" "theme.toml" "base16_theme.toml"]
               }
             '';
+            checkPhase = ":";
 
             meta.mainProgram = "hx";
           };
@@ -166,7 +167,7 @@
             packages
             // {
               helix-unwrapped = packages.helix.passthru.unwrapped;
-              helix-unwrapped-debug = packages.helix-debug.passthru.unwrapped;
+              helix-unwrapped-dev = packages.helix-dev.passthru.unwrapped;
             }
         )
         outputs.packages;
