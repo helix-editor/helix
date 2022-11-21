@@ -1,16 +1,18 @@
 use crate::{
+    align_view,
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode},
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
     theme::{self, Theme},
     tree::{self, Tree},
-    Document, DocumentId, View, ViewId,
+    Align, Document, DocumentId, View, ViewId,
 };
 
-use futures_util::future;
 use futures_util::stream::select_all::SelectAll;
+use futures_util::{future, StreamExt};
+use helix_lsp::Call;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -28,7 +30,7 @@ use tokio::{
     time::{sleep, Duration, Instant, Sleep},
 };
 
-use anyhow::{bail, Error};
+use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
@@ -65,7 +67,7 @@ where
     )
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
     /// IgnoreOptions
@@ -109,7 +111,7 @@ impl Default for FilePickerConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
@@ -124,6 +126,8 @@ pub struct Config {
     pub line_number: LineNumber,
     /// Highlight the lines cursors are currently on. Defaults to false.
     pub cursorline: bool,
+    /// Highlight the columns cursors are currently on. Defaults to false.
+    pub cursorcolumn: bool,
     /// Gutters. Default ["diagnostics", "line-numbers"]
     pub gutters: Vec<GutterType>,
     /// Middle click paste support. Defaults to true.
@@ -136,6 +140,8 @@ pub struct Config {
     pub auto_completion: bool,
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
+    /// Automatic save on focus lost. Defaults to false.
+    pub auto_save: bool,
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(
@@ -157,17 +163,73 @@ pub struct Config {
     #[serde(default)]
     pub search: SearchConfig,
     pub lsp: LspConfig,
+    pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Default to `[]`, meaning no rulers.
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
+    /// Persistently display open buffers along the top
+    pub bufferline: BufferLine,
     /// Vertical indent width guides.
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct TerminalConfig {
+    pub command: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub args: Vec<String>,
+}
+
+#[cfg(windows)]
+pub fn get_terminal_provider() -> Option<TerminalConfig> {
+    use crate::env::binary_exists;
+
+    if binary_exists("wt") {
+        return Some(TerminalConfig {
+            command: "wt".to_string(),
+            args: vec![
+                "new-tab".to_string(),
+                "--title".to_string(),
+                "DEBUG".to_string(),
+                "cmd".to_string(),
+                "/C".to_string(),
+            ],
+        });
+    }
+
+    return Some(TerminalConfig {
+        command: "conhost".to_string(),
+        args: vec!["cmd".to_string(), "/C".to_string()],
+    });
+}
+
+#[cfg(not(any(windows, target_os = "wasm32")))]
+pub fn get_terminal_provider() -> Option<TerminalConfig> {
+    use crate::env::{binary_exists, env_var_is_set};
+
+    if env_var_is_set("TMUX") && binary_exists("tmux") {
+        return Some(TerminalConfig {
+            command: "tmux".to_string(),
+            args: vec!["split-window".to_string()],
+        });
+    }
+
+    if env_var_is_set("WEZTERM_UNIX_SOCKET") && binary_exists("wezterm") {
+        return Some(TerminalConfig {
+            command: "wezterm".to_string(),
+            args: vec!["cli".to_string(), "split-pane".to_string()],
+        });
+    }
+
+    None
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
     /// Display LSP progress messages below statusline
@@ -188,7 +250,7 @@ impl Default for LspConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct SearchConfig {
     /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
@@ -197,13 +259,14 @@ pub struct SearchConfig {
     pub wrap_around: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct StatusLineConfig {
     pub left: Vec<StatusLineElement>,
     pub center: Vec<StatusLineElement>,
     pub right: Vec<StatusLineElement>,
     pub separator: String,
+    pub mode: ModeConfig,
 }
 
 impl Default for StatusLineConfig {
@@ -215,6 +278,25 @@ impl Default for StatusLineConfig {
             center: vec![],
             right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
             separator: String::from("│"),
+            mode: ModeConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct ModeConfig {
+    pub normal: String,
+    pub insert: String,
+    pub select: String,
+}
+
+impl Default for ModeConfig {
+    fn default() -> Self {
+        Self {
+            normal: String::from("NOR"),
+            insert: String::from("INS"),
+            select: String::from("SEL"),
         }
     }
 }
@@ -243,8 +325,14 @@ pub enum StatusLineElement {
     /// A summary of the number of errors and warnings
     Diagnostics,
 
+    /// A summary of the number of errors and warnings on file and workspace
+    WorkspaceDiagnostics,
+
     /// The number of selections (cursors)
     Selections,
+
+    /// The number of characters currently in primary selection
+    PrimarySelectionLength,
 
     /// The cursor position
     Position,
@@ -255,13 +343,16 @@ pub enum StatusLineElement {
     /// The cursor position as a percent of the total file
     PositionPercentage,
 
+    /// The total line numbers of the current file
+    TotalLineNumbers,
+
     /// A single space
     Spacer,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
 // to be fast. Therefore we avoid a hashmap and use an enum indexed array.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CursorShapeConfig([CursorKind; 3]);
 
 impl CursorShapeConfig {
@@ -313,6 +404,24 @@ impl Default for CursorShapeConfig {
     }
 }
 
+/// bufferline render modes
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BufferLine {
+    /// Don't render bufferline
+    Never,
+    /// Always render
+    Always,
+    /// Only if multiple buffers are open
+    Multiple,
+}
+
+impl Default for BufferLine {
+    fn default() -> Self {
+        BufferLine::Never
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LineNumber {
@@ -353,13 +462,14 @@ impl std::str::FromStr for GutterType {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "diagnostics" => Ok(Self::Diagnostics),
+            "spacer" => Ok(Self::Spacer),
             "line-numbers" => Ok(Self::LineNumbers),
             _ => anyhow::bail!("Gutter type can only be `diagnostics` or `line-numbers`."),
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WhitespaceConfig {
     pub render: WhitespaceRender,
@@ -438,6 +548,7 @@ pub struct WhitespaceCharacters {
     pub space: char,
     pub nbsp: char,
     pub tab: char,
+    pub tabpad: char,
     pub newline: char,
 }
 
@@ -448,20 +559,23 @@ impl Default for WhitespaceCharacters {
             nbsp: '⍽',    // U+237D
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
+            tabpad: ' ',
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, rename_all = "kebab-case")]
 pub struct IndentGuidesConfig {
     pub render: bool,
     pub character: char,
+    pub skip_levels: u8,
 }
 
 impl Default for IndentGuidesConfig {
     fn default() -> Self {
         Self {
+            skip_levels: 0,
             render: false,
             character: '│',
         }
@@ -481,11 +595,17 @@ impl Default for Config {
             },
             line_number: LineNumber::Absolute,
             cursorline: false,
-            gutters: vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            cursorcolumn: false,
+            gutters: vec![
+                GutterType::Diagnostics,
+                GutterType::Spacer,
+                GutterType::LineNumbers,
+            ],
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             auto_format: true,
+            auto_save: false,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
@@ -495,8 +615,10 @@ impl Default for Config {
             true_color: false,
             search: SearchConfig::default(),
             lsp: LspConfig::default(),
+            terminal: get_terminal_provider(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
+            bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
         }
@@ -537,10 +659,21 @@ pub struct Breakpoint {
     pub log_message: Option<String>,
 }
 
+use futures_util::stream::{Flatten, Once};
+
 pub struct Editor {
+    /// Current editing mode.
+    pub mode: Mode,
     pub tree: Tree,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
+
+    // We Flatten<> to resolve the inner DocumentSavedEventFuture. For that we need a stream of streams, hence the Once<>.
+    // https://stackoverflow.com/a/66875668
+    pub saves: HashMap<DocumentId, UnboundedSender<Once<DocumentSavedEventFuture>>>,
+    pub save_queue: SelectAll<Flatten<UnboundedReceiverStream<Once<DocumentSavedEventFuture>>>>,
+    pub write_count: usize,
+
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: Option<char>,
     pub registers: Registers,
@@ -563,7 +696,7 @@ pub struct Editor {
     /// The currently applied editor theme. While previewing a theme, the previewed theme
     /// is set here.
     pub theme: Theme,
-
+    pub last_line_number: Option<usize>,
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
@@ -572,13 +705,21 @@ pub struct Editor {
 
     pub idle_timer: Pin<Box<Sleep>>,
     pub last_motion: Option<Motion>,
-    pub pseudo_pending: Option<String>,
 
     pub last_completion: Option<CompleteAction>,
 
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
+}
+
+#[derive(Debug)]
+pub enum EditorEvent {
+    DocumentSaved(DocumentSavedEventResult),
+    ConfigEvent(ConfigEvent),
+    LanguageServerMessage((usize, Call)),
+    DebuggerEvent(dap::Payload),
+    IdleTimer,
 }
 
 #[derive(Debug, Clone)]
@@ -606,6 +747,16 @@ pub enum Action {
     VerticalSplit,
 }
 
+/// Error thrown on failed document closed
+pub enum CloseError {
+    /// Document doesn't exist
+    DoesNotExist,
+    /// Buffer is modified
+    BufferModified(String),
+    /// Document failed to save
+    SaveError(anyhow::Error),
+}
+
 impl Editor {
     pub fn new(
         mut area: Rect,
@@ -620,9 +771,13 @@ impl Editor {
         area.height -= 1;
 
         Self {
+            mode: Mode::Normal,
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
+            saves: HashMap::new(),
+            save_queue: SelectAll::new(),
+            write_count: 0,
             count: None,
             selected_register: None,
             macro_recording: None,
@@ -636,6 +791,7 @@ impl Editor {
             syn_loader,
             theme_loader,
             last_theme: None,
+            last_line_number: None,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
@@ -643,12 +799,16 @@ impl Editor {
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
             last_motion: None,
             last_completion: None,
-            pseudo_pending: None,
             config,
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
         }
+    }
+
+    /// Current editing mode for the [`Editor`].
+    pub fn mode(&self) -> Mode {
+        self.mode
     }
 
     pub fn config(&self) -> DynGuard<Config> {
@@ -683,12 +843,16 @@ impl Editor {
 
     #[inline]
     pub fn set_status<T: Into<Cow<'static, str>>>(&mut self, status: T) {
-        self.status_msg = Some((status.into(), Severity::Info));
+        let status = status.into();
+        log::debug!("editor status: {}", status);
+        self.status_msg = Some((status, Severity::Info));
     }
 
     #[inline]
     pub fn set_error<T: Into<Cow<'static, str>>>(&mut self, error: T) {
-        self.status_msg = Some((error.into(), Severity::Error));
+        let error = error.into();
+        log::error!("editor error: {}", error);
+        self.status_msg = Some((error, Severity::Error));
     }
 
     #[inline]
@@ -758,7 +922,7 @@ impl Editor {
 
         // try to find a language server based on the language name
         let language_server = doc.language.as_ref().and_then(|language| {
-            ls.get(language)
+            ls.get(language, doc.path())
                 .map_err(|e| {
                     log::error!(
                         "Failed to initialize the LSP for `{}` {{ {} }}",
@@ -767,6 +931,7 @@ impl Editor {
                     )
                 })
                 .ok()
+                .flatten()
         });
         if let Some(language_server) = language_server {
             // only spawn a new lang server if the servers aren't the same
@@ -804,16 +969,10 @@ impl Editor {
         view.doc = doc_id;
         view.offset = Position::default();
 
-        let doc = self.documents.get_mut(&doc_id).unwrap();
+        let doc = doc_mut!(self, &doc_id);
         doc.ensure_view_init(view.id);
 
-        // TODO: reuse align_view
-        let pos = doc
-            .selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..));
-        let line = doc.text().char_to_line(pos);
-        view.offset.row = line.saturating_sub(view.inner_area().height as usize / 2);
+        align_view(doc, view, Align::Center);
     }
 
     pub fn switch(&mut self, id: DocumentId, action: Action) {
@@ -875,7 +1034,7 @@ impl Editor {
             }
             Action::Load => {
                 let view_id = view!(self).id;
-                let doc = self.documents.get_mut(&id).unwrap();
+                let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
                 return;
             }
@@ -896,7 +1055,7 @@ impl Editor {
                     },
                 );
                 // initialize selection for view
-                let doc = self.documents.get_mut(&id).unwrap();
+                let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
             }
         }
@@ -912,6 +1071,13 @@ impl Editor {
             DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
         doc.id = id;
         self.documents.insert(id, doc);
+
+        let (save_sender, save_receiver) = tokio::sync::mpsc::unbounded_channel();
+        self.saves.insert(id, save_sender);
+
+        let stream = UnboundedReceiverStream::new(save_receiver).flatten();
+        self.save_queue.push(stream);
+
         id
     }
 
@@ -950,29 +1116,27 @@ impl Editor {
     }
 
     pub fn close(&mut self, id: ViewId) {
-        let view = self.tree.get(self.tree.focus);
+        let (_view, doc) = current!(self);
         // remove selection
-        self.documents.get_mut(&view.doc).unwrap().remove_view(id);
+        doc.remove_view(id);
         self.tree.remove(id);
         self._refresh();
     }
 
-    pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> anyhow::Result<()> {
-        let doc = match self.documents.get(&doc_id) {
+    pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> Result<(), CloseError> {
+        let doc = match self.documents.get_mut(&doc_id) {
             Some(doc) => doc,
-            None => bail!("document does not exist"),
+            None => return Err(CloseError::DoesNotExist),
         };
-
         if !force && doc.is_modified() {
-            bail!(
-                "buffer {:?} is modified",
-                doc.relative_path()
-                    .map(|path| path.to_string_lossy().to_string())
-                    .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
-            );
+            return Err(CloseError::BufferModified(doc.display_name().into_owned()));
         }
 
+        // This will also disallow any follow-up writes
+        self.saves.remove(&doc_id);
+
         if let Some(language_server) = doc.language_server() {
+            // TODO: track error
             tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
 
@@ -1026,11 +1190,37 @@ impl Editor {
                 .unwrap_or_else(|| self.new_document(Document::default()));
             let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
-            let doc = self.documents.get_mut(&doc_id).unwrap();
+            let doc = doc_mut!(self, &doc_id);
             doc.ensure_view_init(view_id);
         }
 
         self._refresh();
+
+        Ok(())
+    }
+
+    pub fn save<P: Into<PathBuf>>(
+        &mut self,
+        doc_id: DocumentId,
+        path: Option<P>,
+        force: bool,
+    ) -> anyhow::Result<()> {
+        // convert a channel of futures to pipe into main queue one by one
+        // via stream.then() ? then push into main future
+
+        let path = path.map(|path| path.into());
+        let doc = doc_mut!(self, &doc_id);
+        let future = doc.save(path, force)?;
+
+        use futures_util::stream;
+
+        self.saves
+            .get(&doc_id)
+            .ok_or_else(|| anyhow::format_err!("saves are closed for this document!"))?
+            .send(stream::once(Box::pin(future)))
+            .map_err(|err| anyhow!("failed to send save event: {}", err))?;
+
+        self.write_count += 1;
 
         Ok(())
     }
@@ -1041,40 +1231,30 @@ impl Editor {
         };
     }
 
+    pub fn focus(&mut self, view_id: ViewId) {
+        let prev_id = std::mem::replace(&mut self.tree.focus, view_id);
+
+        // if leaving the view: mode should reset and the cursor should be
+        // within view
+        if prev_id != view_id {
+            self.mode = Mode::Normal;
+            self.ensure_cursor_in_view(view_id);
+        }
+    }
+
     pub fn focus_next(&mut self) {
-        self.tree.focus_next();
+        self.focus(self.tree.next());
     }
 
-    pub fn focus_right(&mut self) {
-        self.tree.focus_direction(tree::Direction::Right);
+    pub fn focus_direction(&mut self, direction: tree::Direction) {
+        let current_view = self.tree.focus;
+        if let Some(id) = self.tree.find_split_in_direction(current_view, direction) {
+            self.focus(id)
+        }
     }
 
-    pub fn focus_left(&mut self) {
-        self.tree.focus_direction(tree::Direction::Left);
-    }
-
-    pub fn focus_up(&mut self) {
-        self.tree.focus_direction(tree::Direction::Up);
-    }
-
-    pub fn focus_down(&mut self) {
-        self.tree.focus_direction(tree::Direction::Down);
-    }
-
-    pub fn swap_right(&mut self) {
-        self.tree.swap_split_in_direction(tree::Direction::Right);
-    }
-
-    pub fn swap_left(&mut self) {
-        self.tree.swap_split_in_direction(tree::Direction::Left);
-    }
-
-    pub fn swap_up(&mut self) {
-        self.tree.swap_split_in_direction(tree::Direction::Up);
-    }
-
-    pub fn swap_down(&mut self) {
-        self.tree.swap_split_in_direction(tree::Direction::Down);
+    pub fn swap_split_in_direction(&mut self, direction: tree::Direction) {
+        self.tree.swap_split_in_direction(direction);
     }
 
     pub fn transpose_view(&mut self) {
@@ -1130,24 +1310,24 @@ impl Editor {
             .primary()
             .cursor(doc.text().slice(..));
         if let Some(mut pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
-            let inner = view.inner_area();
+            let inner = view.inner_area(doc);
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            let cursorkind = config.cursor_shape.from_mode(doc.mode());
+            let cursorkind = config.cursor_shape.from_mode(self.mode);
             (Some(pos), cursorkind)
         } else {
             (None, CursorKind::default())
         }
     }
 
-    /// Closes language servers with timeout. The default timeout is 500 ms, use
+    /// Closes language servers with timeout. The default timeout is 10000 ms, use
     /// `timeout` parameter to override this.
     pub async fn close_language_servers(
         &self,
         timeout: Option<u64>,
     ) -> Result<(), tokio::time::error::Elapsed> {
         tokio::time::timeout(
-            Duration::from_millis(timeout.unwrap_or(500)),
+            Duration::from_millis(timeout.unwrap_or(3000)),
             future::join_all(
                 self.language_servers
                     .iter_clients()
@@ -1156,5 +1336,49 @@ impl Editor {
         )
         .await
         .map(|_| ())
+    }
+
+    pub async fn wait_event(&mut self) -> EditorEvent {
+        tokio::select! {
+            biased;
+
+            Some(event) = self.save_queue.next() => {
+                self.write_count -= 1;
+                EditorEvent::DocumentSaved(event)
+            }
+            Some(config_event) = self.config_events.1.recv() => {
+                EditorEvent::ConfigEvent(config_event)
+            }
+            Some(message) = self.language_servers.incoming.next() => {
+                EditorEvent::LanguageServerMessage(message)
+            }
+            Some(event) = self.debugger_events.next() => {
+                EditorEvent::DebuggerEvent(event)
+            }
+            _ = &mut self.idle_timer => {
+                EditorEvent::IdleTimer
+            }
+        }
+    }
+
+    pub async fn flush_writes(&mut self) -> anyhow::Result<()> {
+        while self.write_count > 0 {
+            if let Some(save_event) = self.save_queue.next().await {
+                self.write_count -= 1;
+
+                let save_event = match save_event {
+                    Ok(event) => event,
+                    Err(err) => {
+                        self.set_error(err.to_string());
+                        bail!(err);
+                    }
+                };
+
+                let doc = doc_mut!(self, &save_event.doc_id);
+                doc.set_last_saved_revision(save_event.revision);
+            }
+        }
+
+        Ok(())
     }
 }

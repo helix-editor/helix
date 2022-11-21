@@ -22,7 +22,7 @@ pub struct Request {
     pub arguments: Option<Value>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 pub struct Response {
     // seq is omitted as unused and is not sent by some implementations
     pub request_seq: u64,

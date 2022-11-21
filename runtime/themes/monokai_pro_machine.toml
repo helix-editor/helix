@@ -7,6 +7,7 @@
 "ui.menu" = { fg = "base8", bg = "base3" }
 "ui.menu.selected" = { fg = "base2", bg = "yellow" }
 "ui.virtual.whitespace" = "base5"
+"ui.virtual.ruler" = { bg = "base1" }
 
 "info" = "base8"
 "hint" = "base8"
@@ -16,14 +17,15 @@
 "ui.statusline.inactive" = { fg = "base8", bg = "base8x0c" }
 
 # status bars, panels, modals, autocompletion
-"ui.statusline" = { bg = "base4" }
+"ui.statusline" = { fg = "base8", bg = "base4" }
 "ui.popup" = { bg = "base3" }
 "ui.window" = { bg = "base3" }
-"ui.help" = { bg = "base3" }
+"ui.help" = { fg = "base8", bg = "base3" }
 
 # active line, highlighting
 "ui.selection" = { bg = "base4" }
 "ui.cursor.match" = { bg = "base4" }
+"ui.cursorline" = { bg = "base1" }
 
 # comments, nord3 based lighter color
 "comment" = { fg = "base5", modifiers = ["italic"] }

@@ -3,9 +3,11 @@
 "ui.background" = {bg="nord6"}
 "ui.text" = "nord0"
 "ui.selection" = {bg="nord7", fg="nord6"}
+"ui.cursorline" = {bg="nord4"}
 "ui.statusline" = {bg="nord4", fg="nord0"}
-"ui.statusline.inactive" = {bg="nord8"}
+"ui.statusline.inactive" = {bg="nord5", fg="nord0"}
 "ui.virtual" = "nord8"
+"ui.virtual.ruler" = {bg="nord4"}
 "ui.cursor.match" = {bg="nord8"}
 "ui.cursor" = {bg="nord10", fg="nord6"}
 "ui.cursorline.primary" = {bg="nord5"}
@@ -16,6 +18,7 @@
 "ui.popup" = {bg="nord4"}
 "ui.popup.info" = {bg="nord4",fg="nord0"}
 "ui.help" = {bg="nord4",fg="nord0"}
+"ui.window" = {bg="nord4"}
 
 
 "ui.statusline.normal" = { fg = "nord0", bg = "nord8" }

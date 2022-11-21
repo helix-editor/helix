@@ -29,6 +29,12 @@
   (#eq? @punctuation.delimiter "&"))
 
 ["[" "]" "{" "}"] @punctuation.bracket ; "(" ")" has no syntactical meaning in LaTeX
+(math_delimiter
+  left_command: _ @punctuation.delimiter
+  left_delimiter: _ @punctuation.delimiter
+  right_command: _ @punctuation.delimiter
+  right_delimiter: _ @punctuation.delimiter
+)
 
 ;; General environments
 (begin

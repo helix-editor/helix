@@ -29,7 +29,7 @@ language with the path `runtime/queries/<name>/`. The tree-sitter
 gives more info on how to write queries.
 
 > NOTE: When evaluating queries, the first matching query takes
-precedence, which is different from other editors like neovim where
+precedence, which is different from other editors like Neovim where
 the last matching query supersedes the ones before it. See
 [this issue][neovim-query-precedence] for an example.
 

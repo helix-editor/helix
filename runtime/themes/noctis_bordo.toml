@@ -24,6 +24,7 @@
 
 "ui.background" = { bg = "base00" }
 "ui.virtual" = "base03"
+"ui.virtual.ruler" = { bg = "base01" }
 "ui.menu" = { fg = "base05", bg = "base01" }
 "ui.menu.selected" = { fg = "base0B", bg = "base01" }
 "ui.popup" = { bg = "base01" }
@@ -31,6 +32,7 @@
 "ui.linenr" = { fg = "#715b63", bg = "base01" }
 "ui.linenr.selected" = { fg = "base02", bg = "base01", modifiers = ["bold"] }
 "ui.selection" = { fg = "base05", bg = "base02" }
+"ui.cursorline" = { bg = "base01" }
 "ui.statusline" = { fg = "base02", bg = "base01" }
 "ui.cursor" = { fg = "base04", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "base05", modifiers = ["reversed"] }

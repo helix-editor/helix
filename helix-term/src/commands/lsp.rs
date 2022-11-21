@@ -1,6 +1,6 @@
 use helix_lsp::{
     block_on,
-    lsp::{self, DiagnosticSeverity, NumberOrString},
+    lsp::{self, CodeAction, CodeActionOrCommand, DiagnosticSeverity, NumberOrString},
     util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
@@ -9,7 +9,7 @@ use tui::text::{Span, Spans};
 use super::{align_view, push_jump, Align, Context, Editor, Open};
 
 use helix_core::{path, Selection};
-use helix_view::{editor::Action, theme::Style};
+use helix_view::{apply_transaction, document::Mode, editor::Action, theme::Style};
 
 use crate::{
     compositor::{self, Compositor},
@@ -18,7 +18,9 @@ use crate::{
     },
 };
 
-use std::{borrow::Cow, collections::BTreeMap, path::PathBuf, sync::Arc};
+use std::{
+    borrow::Cow, cmp::Ordering, collections::BTreeMap, fmt::Write, path::PathBuf, sync::Arc,
+};
 
 /// Gets the language server that is attached to a document, and
 /// if it's not active displays a status message. Using this macro
@@ -43,23 +45,32 @@ impl ui::menu::Item for lsp::Location {
     type Data = PathBuf;
 
     fn label(&self, cwdir: &Self::Data) -> Spans {
-        let file: Cow<'_, str> = (self.uri.scheme() == "file")
-            .then(|| {
-                self.uri
-                    .to_file_path()
-                    .map(|path| {
-                        // strip root prefix
-                        path.strip_prefix(&cwdir)
-                            .map(|path| path.to_path_buf())
-                            .unwrap_or(path)
-                    })
-                    .map(|path| Cow::from(path.to_string_lossy().into_owned()))
-                    .ok()
-            })
-            .flatten()
-            .unwrap_or_else(|| self.uri.as_str().into());
-        let line = self.range.start.line;
-        format!("{}:{}", file, line).into()
+        // The preallocation here will overallocate a few characters since it will account for the
+        // URL's scheme, which is not used most of the time since that scheme will be "file://".
+        // Those extra chars will be used to avoid allocating when writing the line number (in the
+        // common case where it has 5 digits or less, which should be enough for a cast majority
+        // of usages).
+        let mut res = String::with_capacity(self.uri.as_str().len());
+
+        if self.uri.scheme() == "file" {
+            // With the preallocation above and UTF-8 paths already, this closure will do one (1)
+            // allocation, for `to_file_path`, else there will be two (2), with `to_string_lossy`.
+            let mut write_path_to_res = || -> Option<()> {
+                let path = self.uri.to_file_path().ok()?;
+                res.push_str(&path.strip_prefix(cwdir).unwrap_or(&path).to_string_lossy());
+                Some(())
+            };
+            write_path_to_res();
+        } else {
+            // Never allocates since we declared the string with this capacity already.
+            res.push_str(self.uri.as_str());
+        }
+
+        // Most commonly, this will not allocate, especially on Unix systems where the root prefix
+        // is a simple `/` and not `C:\` (with whatever drive letter)
+        write!(&mut res, ":{}", self.range.start.line)
+            .expect("Will only failed if allocating fail");
+        res.into()
     }
 }
 
@@ -73,10 +84,8 @@ impl ui::menu::Item for lsp::SymbolInformation {
         } else {
             match self.location.uri.to_file_path() {
                 Ok(path) => {
-                    let relative_path = helix_core::path::get_relative_path(path.as_path())
-                        .to_string_lossy()
-                        .into_owned();
-                    format!("{} ({})", &self.name, relative_path).into()
+                    let get_relative_path = path::get_relative_path(path.as_path());
+                    format!("{} ({})", &self.name, get_relative_path.to_string_lossy()).into()
                 }
                 Err(_) => format!("{} ({})", &self.name, &self.location.uri).into(),
             }
@@ -115,24 +124,21 @@ impl ui::menu::Item for PickerDiagnostic {
         // remove background as it is distracting in the picker list
         style.bg = None;
 
-        let code = self
+        let code: Cow<'_, str> = self
             .diag
             .code
             .as_ref()
             .map(|c| match c {
-                NumberOrString::Number(n) => n.to_string(),
-                NumberOrString::String(s) => s.to_string(),
+                NumberOrString::Number(n) => n.to_string().into(),
+                NumberOrString::String(s) => s.as_str().into(),
             })
-            .map(|code| format!(" ({})", code))
             .unwrap_or_default();
 
         let path = match format {
             DiagnosticsFormat::HideSourcePath => String::new(),
             DiagnosticsFormat::ShowSourcePath => {
-                let path = path::get_truncated_path(self.url.path())
-                    .to_string_lossy()
-                    .into_owned();
-                format!("{}: ", path)
+                let path = path::get_truncated_path(self.url.path());
+                format!("{}: ", path.to_string_lossy())
             }
         };
 
@@ -211,7 +217,6 @@ fn sym_picker(
                     Ok(path) => path,
                     Err(_) => {
                         let err = format!("unable to convert URI to filepath: {}", uri);
-                        log::error!("{}", err);
                         cx.editor.set_error(err);
                         return;
                     }
@@ -421,6 +426,63 @@ impl ui::menu::Item for lsp::CodeActionOrCommand {
     }
 }
 
+/// Determines the category of the `CodeAction` using the `CodeAction::kind` field.
+/// Returns a number that represent these categories.
+/// Categories with a lower number should be displayed first.
+///
+///
+/// While the `kind` field is defined as open ended in the LSP spec (any value may be used)
+/// in practice a closed set of common values (mostly suggested in the LSP spec) are used.
+/// VSCode displays each of these categories seperatly (seperated by a heading in the codeactions picker)
+/// to make them easier to navigate. Helix does not display these  headings to the user.
+/// However it does sort code actions by their categories to achieve the same order as the VScode picker,
+/// just without the headings.
+///
+/// The order used here is modeled after the [vscode sourcecode](https://github.com/microsoft/vscode/blob/eaec601dd69aeb4abb63b9601a6f44308c8d8c6e/src/vs/editor/contrib/codeAction/browser/codeActionWidget.ts>)
+fn action_category(action: &CodeActionOrCommand) -> u32 {
+    if let CodeActionOrCommand::CodeAction(CodeAction {
+        kind: Some(kind), ..
+    }) = action
+    {
+        let mut components = kind.as_str().split('.');
+        match components.next() {
+            Some("quickfix") => 0,
+            Some("refactor") => match components.next() {
+                Some("extract") => 1,
+                Some("inline") => 2,
+                Some("rewrite") => 3,
+                Some("move") => 4,
+                Some("surround") => 5,
+                _ => 7,
+            },
+            Some("source") => 6,
+            _ => 7,
+        }
+    } else {
+        7
+    }
+}
+
+fn action_prefered(action: &CodeActionOrCommand) -> bool {
+    matches!(
+        action,
+        CodeActionOrCommand::CodeAction(CodeAction {
+            is_preferred: Some(true),
+            ..
+        })
+    )
+}
+
+fn action_fixes_diagnostics(action: &CodeActionOrCommand) -> bool {
+    matches!(
+        action,
+        CodeActionOrCommand::CodeAction(CodeAction {
+            diagnostics: Some(diagnostics),
+            ..
+        }) if !diagnostics.is_empty()
+    )
+}
+
 pub fn code_action(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
@@ -452,14 +514,59 @@ pub fn code_action(cx: &mut Context) {
     cx.callback(
         future,
         move |editor, compositor, response: Option<lsp::CodeActionResponse>| {
-            let actions = match response {
+            let mut actions = match response {
                 Some(a) => a,
                 None => return,
             };
+
+            // remove disabled code actions
+            actions.retain(|action| {
+                matches!(
+                    action,
+                    CodeActionOrCommand::Command(_)
+                        | CodeActionOrCommand::CodeAction(CodeAction { disabled: None, .. })
+                )
+            });
+
             if actions.is_empty() {
                 editor.set_status("No code actions available");
                 return;
             }
+
+            // Sort codeactions into a useful order. This behaviour is only partially described in the LSP spec.
+            // Many details are modeled after vscode because langauge servers are usually tested against it.
+            // VScode sorts the codeaction two times:
+            //
+            // First the codeactions that fix some diagnostics are moved to the front.
+            // If both codeactions fix some diagnostics (or both fix none) the codeaction
+            // that is marked with `is_preffered` is shown first. The codeactions are then shown in seperate
+            // submenus that only contain a certain category (see `action_category`) of actions.
+            //
+            // Below this done in in a single sorting step
+            actions.sort_by(|action1, action2| {
+                // sort actions by category
+                let order = action_category(action1).cmp(&action_category(action2));
+                if order != Ordering::Equal {
+                    return order;
+                }
+                // within the categories sort by relevancy.
+                // Modeled after the `codeActionsComparator` function in vscode:
+                // https://github.com/microsoft/vscode/blob/eaec601dd69aeb4abb63b9601a6f44308c8d8c6e/src/vs/editor/contrib/codeAction/browser/codeAction.ts
+
+                // if one code action fixes a diagnostic but the other one doesn't show it first
+                let order = action_fixes_diagnostics(action1)
+                    .cmp(&action_fixes_diagnostics(action2))
+                    .reverse();
+                if order != Ordering::Equal {
+                    return order;
+                }
+
+                // if one of the codeactions is marked as prefered show it first
+                // otherwise keep the original LSP sorting
+                action_prefered(action1)
+                    .cmp(&action_prefered(action2))
+                    .reverse()
+            });
 
             let mut picker = ui::Menu::new(actions, (), move |editor, code_action, event| {
                 if event != PromptEvent::Validate {
@@ -491,12 +598,19 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup =
-                Popup::new("code-action", picker).margin(helix_view::graphics::Margin::all(1));
+            let popup = Popup::new("code-action", picker).with_scrollbar(false);
             compositor.replace_or_push("code-action", popup);
         },
     )
 }
+
+impl ui::menu::Item for lsp::Command {
+    type Data = ();
+    fn label(&self, _data: &Self::Data) -> Spans {
+        self.title.as_str().into()
+    }
+}
+
 pub fn execute_lsp_command(editor: &mut Editor, cmd: lsp::Command) {
     let doc = doc!(editor);
     let language_server = language_server!(editor, doc);
@@ -528,7 +642,7 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
                 // Create directory if it does not exist
                 if let Some(dir) = path.parent() {
                     if !dir.is_dir() {
-                        fs::create_dir_all(&dir)?;
+                        fs::create_dir_all(dir)?;
                     }
                 }
 
@@ -597,9 +711,7 @@ pub fn apply_workspace_edit(
             }
         };
 
-        let doc = editor
-            .document_mut(doc_id)
-            .expect("Document for document_changes not found");
+        let doc = doc_mut!(editor, &doc_id);
 
         // Need to determine a view for apply/append_changes_to_history
         let selections = doc.selections();
@@ -620,7 +732,7 @@ pub fn apply_workspace_edit(
             text_edits,
             offset_encoding,
         );
-        doc.apply(&transaction, view_id);
+        apply_transaction(&transaction, doc, view_mut!(editor, view_id));
         doc.append_changes_to_history(view_id);
     };
 
@@ -806,7 +918,7 @@ pub fn goto_reference(cx: &mut Context) {
     );
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum SignatureHelpInvoked {
     Manual,
     Automatic,
@@ -853,6 +965,14 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
                 return;
             }
 
+            // If the signature help invocation is automatic, don't show it outside of Insert Mode:
+            // it very probably means the server was a little slow to respond and the user has
+            // already moved on to something else, making a signature help popup will just be an
+            // annoyance, see https://github.com/helix-editor/helix/issues/3112
+            if !was_manually_invoked && editor.mode != Mode::Insert {
+                return;
+            }
+
             let response = match response {
                 // According to the spec the response should be None if there
                 // are no signatures, but some servers don't follow this.
@@ -863,10 +983,7 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
                 }
             };
             let doc = doc!(editor);
-            let language = doc
-                .language()
-                .and_then(|scope| scope.strip_prefix("source."))
-                .unwrap_or("");
+            let language = doc.language_name().unwrap_or("");
 
             let signature = match response
                 .signatures

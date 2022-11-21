@@ -41,6 +41,7 @@
 "ui.text.focus" = { fg = "cyan" }
 "ui.window" = { fg = "foreground" }
 "ui.virtual.whitespace" = { fg = "comment" }
+"ui.virtual.ruler" = { bg = "background_dark"}
 
 "error" = { fg = "red" }
 "warning" = { fg = "cyan" }

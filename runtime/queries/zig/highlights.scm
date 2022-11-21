@@ -1,20 +1,11 @@
 [
   (container_doc_comment)
   (doc_comment)
+] @comment.documentation
+
+[
   (line_comment)
-] @comment
-
-[
-  variable: (IDENTIFIER)
-  variable_type_function: (IDENTIFIER)
-] @variable
-
-parameter: (IDENTIFIER) @variable.parameter
-
-[
-  field_member: (IDENTIFIER)
-  field_access: (IDENTIFIER)
-] @variable.other.member
+] @comment.line
 
 ;; assume TitleCase is a type
 (
@@ -25,6 +16,7 @@ parameter: (IDENTIFIER) @variable.parameter
   ] @type
   (#match? @type "^[A-Z]([a-z]+[A-Za-z0-9]*)*$")
 )
+
 ;; assume camelCase is a function
 (
   [
@@ -44,29 +36,33 @@ parameter: (IDENTIFIER) @variable.parameter
   (#match? @constant "^[A-Z][A-Z_0-9]+$")
 )
 
-[
-  function_call: (IDENTIFIER)
-  function: (IDENTIFIER)
-] @function
-
-exception: "!" @function.macro
-
+;; _
 (
   (IDENTIFIER) @variable.builtin
   (#eq? @variable.builtin "_")
 )
 
+;; C Pointers [*c]T
 (PtrTypeStart "c" @variable.builtin)
 
-(
-  (ContainerDeclType
-    [
-      (ErrorUnionExpr)
-      "enum"
-    ]
-  )
-  (ContainerField (IDENTIFIER) @constant)
-)
+[
+  variable: (IDENTIFIER)
+  variable_type_function: (IDENTIFIER)
+] @variable
+
+parameter: (IDENTIFIER) @variable.parameter
+
+[
+  field_member: (IDENTIFIER)
+  field_access: (IDENTIFIER)
+] @variable.other.member
+
+[
+  function_call: (IDENTIFIER)
+  function: (IDENTIFIER)
+] @function
+
+exception: "!" @keyword.control.exception
 
 field_constant: (IDENTIFIER) @constant
 
@@ -89,8 +85,6 @@ field_constant: (IDENTIFIER) @constant
 (FormatSequence) @string.special
 
 [
-  "allowzero"
-  "volatile"
   "anytype"
   "anyframe"
   (BuildinTypeExpr)
@@ -125,44 +119,53 @@ field_constant: (IDENTIFIER) @constant
   "or"
   "and"
   "orelse"
-] @operator
+] @keyword.operator
 
 [
   "struct"
   "enum"
   "union"
-  "error"
   "packed"
   "opaque"
-] @keyword
+  "export"
+  "extern"
+  "linksection"
+] @keyword.storage.type
+
+[
+  "const"
+  "var"
+  "threadlocal"
+  "allowzero"
+  "volatile"
+  "align"
+] @keyword.storage.modifier
 
 [
   "try"
   "error"
   "catch"
-] @function.macro
+] @keyword.control.exception
 
-; VarDecl
 [
-  "threadlocal"
   "fn"
 ] @keyword.function
 
 [
-  "const"
-  "var"
   "test"
+] @keyword
+
+[
   "pub"
   "usingnamespace"
-] @keyword
+] @keyword.control.import
 
 [
   "return"
   "break"
   "continue"
-] @keyword.control
+] @keyword.control.return
 
-; Macro
 [
   "defer"
   "errdefer"
@@ -171,11 +174,8 @@ field_constant: (IDENTIFIER) @constant
   "await"
   "suspend"
   "resume"
-  "export"
-  "extern"
 ] @function.macro
 
-; PrecProc
 [
   "comptime"
   "inline"
@@ -184,11 +184,6 @@ field_constant: (IDENTIFIER) @constant
   "callconv"
   "noalias"
 ] @keyword.directive
-
-[
-  "linksection"
-  "align"
-] @function.builtin
 
 [
   (CompareOp)
@@ -230,5 +225,4 @@ field_constant: (IDENTIFIER) @constant
   (PtrIndexPayload "|")
 ] @punctuation.bracket
 
-; Error
-(ERROR) @keyword
+(ERROR) @keyword.control.exception

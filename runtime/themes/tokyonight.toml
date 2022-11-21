@@ -41,6 +41,9 @@
 "ui.selection.primary" = { bg = "background_highlight" }
 "ui.statusline" = { fg = "foreground", bg = "background_menu" }
 "ui.statusline.inactive" = { fg = "foreground_gutter", bg = "background_menu" }
+"ui.statusline.normal" = { fg = "black", bg = "blue" }
+"ui.statusline.insert" = { fg = "black", bg = "green" }
+"ui.statusline.select" = { fg = "black", bg = "magenta" }
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { fg = "cyan" }
 "ui.virtual.ruler" = { bg = "foreground_gutter" }

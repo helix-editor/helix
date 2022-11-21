@@ -198,26 +198,26 @@ pub fn textobject_paragraph(
     Range::new(anchor, head)
 }
 
-pub fn textobject_surround(
+pub fn textobject_pair_surround(
     slice: RopeSlice,
     range: Range,
     textobject: TextObject,
     ch: char,
     count: usize,
 ) -> Range {
-    textobject_surround_impl(slice, range, textobject, Some(ch), count)
+    textobject_pair_surround_impl(slice, range, textobject, Some(ch), count)
 }
 
-pub fn textobject_surround_closest(
+pub fn textobject_pair_surround_closest(
     slice: RopeSlice,
     range: Range,
     textobject: TextObject,
     count: usize,
 ) -> Range {
-    textobject_surround_impl(slice, range, textobject, None, count)
+    textobject_pair_surround_impl(slice, range, textobject, None, count)
 }
 
-fn textobject_surround_impl(
+fn textobject_pair_surround_impl(
     slice: RopeSlice,
     range: Range,
     textobject: TextObject,
@@ -562,7 +562,7 @@ mod test {
             let slice = doc.slice(..);
             for &case in scenario {
                 let (pos, objtype, expected_range, ch, count) = case;
-                let result = textobject_surround(slice, Range::point(pos), objtype, ch, count);
+                let result = textobject_pair_surround(slice, Range::point(pos), objtype, ch, count);
                 assert_eq!(
                     result,
                     expected_range.into(),

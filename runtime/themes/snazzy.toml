@@ -33,12 +33,14 @@
 "ui.popup" = { fg = "foreground", bg = "background_dark" }
 "ui.selection" = { bg = "secondary_highlight" }
 "ui.selection.primary" = { bg = "primary_highlight" }
+"ui.cursorline" = { bg = "background_dark" }
 "ui.statusline" = { fg = "foreground", bg = "background_dark" }
 "ui.statusline.inactive" = { fg = "comment", bg = "background_dark" }
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { fg = "cyan" }
 "ui.window" = { fg = "foreground" }
 "ui.virtual.whitespace" = { fg = "comment" }
+"ui.virtual.ruler" = { bg = "background_dark" }
 
 "error" = { fg = "red" }
 "warning" = { fg = "cyan" }

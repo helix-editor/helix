@@ -1,5 +1,28 @@
-((triple_string) @injection.content
- (#set! injection.language "markdown"))
+(
+  (source_file
+    (string_literal) @injection.content
+    .
+    [
+      (module_definition)
+      (function_definition)
+      (macro_definition)
+      (primitive_definition)
+      (abstract_definition)
+      (struct_definition)
+      (assignment_expression)
+      (const_statement)
+    ])
+  (#set! injection.language "markdown"))
 
-((comment) @injection.content
- (#set! injection.language "comment"))
+(
+  [
+    (line_comment) 
+    (block_comment)
+  ] @injection.content
+  (#set! injection.language "comment"))
+
+(
+  (prefixed_string_literal
+    prefix: (identifier) @function.macro) @injection.content
+  (#eq? @function.macro "re")
+  (#set! injection.language "regex"))

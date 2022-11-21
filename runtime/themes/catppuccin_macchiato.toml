@@ -70,6 +70,9 @@
 "ui.statusline.insert" = { fg = "surface0", bg = "green", modifiers = ["bold"]  }
 "ui.statusline.select" = { fg = "surface0", bg = "flamingo", modifiers = ["bold"]  }
 
+"ui.bufferline.active" = { fg = "text", bg = "base", modifiers = ["bold"] }
+"ui.bufferline" = { fg = "overlay1", bg = "mantle" }
+
 "ui.popup" = { fg = "text", bg = "surface0" }
 "ui.window" = { fg = "crust" }
 "ui.help" = { fg = "overlay2", bg = "surface0" }

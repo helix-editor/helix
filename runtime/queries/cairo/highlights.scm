@@ -36,7 +36,6 @@
 [
   "if"
   "else"
-  "end"
   "assert"
   "with"
   "with_attr"
@@ -54,7 +53,6 @@
   "const"
   "local"
   "struct"
-  "member"
   "alloc_locals"
   "tempvar"
 ] @keyword
