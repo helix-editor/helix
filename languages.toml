@@ -1980,3 +1980,16 @@ language-server = { command = "bicep-langserver" }
 [[grammar]]
 name = "bicep"
 source = { git = "https://github.com/the-mikedavis/tree-sitter-bicep", rev = "d8e097fcfa143854861ef737161163a09cc2916b" }
+
+[[language]]
+name = "qml"
+scope = "source.qml"
+file-types = ["qml"]
+roots = []
+language-server = { command = "qmlls" }
+indent = { tab-width = 4, unit = "    " }
+grammar = "qmljs"
+
+[[grammar]]
+name = "qmljs"
+source = { git = "https://github.com/yuja/tree-sitter-qmljs", rev = "0b2b25bcaa7d4925d5f0dda16f6a99c588a437f1" }
