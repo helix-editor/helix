@@ -156,7 +156,7 @@ fn location_to_file_location(location: &lsp::Location) -> FileLocation {
         location.range.start.line as usize,
         location.range.end.line as usize,
     ));
-    (path, line)
+    (path.into(), line)
 }
 
 // TODO: share with symbol picker(symbol.location)
