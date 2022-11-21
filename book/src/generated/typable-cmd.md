@@ -71,3 +71,4 @@
 | `:append-output` | Run shell command, appending output after each selection. |
 | `:pipe` | Pipe each selection to the shell command. |
 | `:run-shell-command`, `:sh` | Run a shell command |
+| `:commands`, `:cmds` | Run commands together, use && to sepearte them |

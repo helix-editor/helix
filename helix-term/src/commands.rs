@@ -165,16 +165,17 @@ impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
             Self::Typable { name, args, doc: _ } => {
-                let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
-                if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
-                    let mut cx = compositor::Context {
-                        editor: cx.editor,
-                        jobs: cx.jobs,
-                        scroll: None,
-                    };
-                    if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
-                        cx.editor.set_error(format!("{}", e));
-                    }
+                let mut cx = compositor::Context {
+                    editor: cx.editor,
+                    jobs: cx.jobs,
+                    scroll: None,
+                };
+                if let Err(e) = typed::process_cmd(
+                    &mut cx,
+                    &format!("{} {}", name, args.join(" ")),
+                    PromptEvent::Validate,
+                ) {
+                    cx.editor.set_error(format!("{}", e));
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),

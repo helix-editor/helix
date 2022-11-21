@@ -1739,6 +1739,67 @@ fn run_shell_command(
     Ok(())
 }
 
+fn cmds(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let mut start;
+    let mut end = 0;
+    loop {
+        start = if end == 0 { 0 } else { end + 1 };
+        end = start + 1;
+        while end < args.len() {
+            if args[end] == "&&" {
+                break;
+            }
+            end += 1;
+        }
+
+        if start >= end || start >= args.len() {
+            break;
+        }
+        process_cmd(cx, &args[start..end].join(" "), event)?;
+    }
+    Ok(())
+}
+
+pub fn process_cmd(
+    cx: &mut compositor::Context,
+    input: &str,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    let input = expand_args(cx.editor, input);
+    let parts = input.split_whitespace().collect::<Vec<&str>>();
+    if parts.is_empty() {
+        return Ok(());
+    }
+
+    // If command is numeric, interpret as line number and go there.
+    if parts.len() == 1 && parts[0].parse::<usize>().ok().is_some() {
+        if let Err(e) = typed::goto_line_number(cx, &[Cow::from(parts[0])], event) {
+            cx.editor.set_error(format!("{}", e));
+            return Err(e);
+        }
+        return Ok(());
+    }
+
+    // Handle typable commands
+    if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
+        let shellwords = shellwords::Shellwords::from(input.as_ref());
+        let args = shellwords.words();
+
+        if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
+            cx.editor.set_error(format!("{}", e));
+            return Err(e);
+        }
+    } else if event == PromptEvent::Validate {
+        cx.editor
+            .set_error(format!("no such command: '{}'", parts[0]));
+    }
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2240,6 +2301,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             fun: run_shell_command,
             completer: Some(completers::directory),
         },
+        TypableCommand {
+            name: "commands",
+            aliases: &["cmds"],
+            doc: "Run commands together, use && to sepearte them",
+            fun: cmds,
+            completer: Some(completers::filename),
+        },
     ];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
@@ -2317,31 +2385,7 @@ pub(super) fn command_mode(cx: &mut Context) {
             }
         }, // completion
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            let parts = input.split_whitespace().collect::<Vec<&str>>();
-            if parts.is_empty() {
-                return;
-            }
-
-            // If command is numeric, interpret as line number and go there.
-            if parts.len() == 1 && parts[0].parse::<usize>().ok().is_some() {
-                if let Err(e) = typed::goto_line_number(cx, &[Cow::from(parts[0])], event) {
-                    cx.editor.set_error(format!("{}", e));
-                }
-                return;
-            }
-
-            // Handle typable commands
-            if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                let shellwords = Shellwords::from(input);
-                let args = shellwords.words();
-
-                if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
-                    cx.editor.set_error(format!("{}", e));
-                }
-            } else if event == PromptEvent::Validate {
-                cx.editor
-                    .set_error(format!("no such command: '{}'", parts[0]));
-            }
+            let _ = process_cmd(cx, input, event);
         },
     );
     prompt.doc_fn = Box::new(|input: &str| {
@@ -2362,4 +2406,59 @@ pub(super) fn command_mode(cx: &mut Context) {
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
     cx.push_layer(Box::new(prompt));
+}
+
+fn expand_args<'a>(editor: &mut Editor, args: &'a str) -> Cow<'a, str> {
+    let reg = Regex::new(r"%(\w+)\s*\{(.*)").unwrap();
+    reg.replace(args, |caps: &regex::Captures| {
+        let remaining = &caps[2];
+        let end = find_first_open_right_braces(remaining);
+        let exp = expand_args(editor, &remaining[..end]);
+        let next = expand_args(editor, remaining.get(end + 1..).unwrap_or(""));
+        let (_view, doc) = current_ref!(editor);
+        format!(
+            "{} {}",
+            match &caps[1] {
+                "val" => match exp.trim() {
+                    "filename" => doc.path().and_then(|p| p.to_str()).unwrap_or("").to_owned(),
+                    "dirname" => doc
+                        .path()
+                        .and_then(|p| p.parent())
+                        .and_then(|p| p.to_str())
+                        .unwrap_or("")
+                        .to_owned(),
+                    _ => "".into(),
+                },
+                "sh" => {
+                    let shell = &editor.config().shell;
+                    if let Ok((output, _)) = shell_impl(shell, &exp, None) {
+                        output.trim().into()
+                    } else {
+                        "".into()
+                    }
+                }
+                _ => "".into(),
+            },
+            next
+        )
+    })
+}
+
+fn find_first_open_right_braces(str: &str) -> usize {
+    let mut left_count = 1;
+    for (i, &b) in str.as_bytes().iter().enumerate() {
+        match char::from_u32(b as u32) {
+            Some('}') => {
+                left_count -= 1;
+                if left_count == 0 {
+                    return i;
+                }
+            }
+            Some('{') => {
+                left_count += 1;
+            }
+            _ => {}
+        }
+    }
+    str.len()
 }
