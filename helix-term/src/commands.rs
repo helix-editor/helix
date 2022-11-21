@@ -340,6 +340,8 @@ impl MappableCommand {
         replace_with_yanked, "Replace with yanked text",
         replace_selections_with_clipboard, "Replace selections by clipboard content",
         replace_selections_with_primary_clipboard, "Replace selections by primary clipboard",
+        paste_after_all, "Paste all after selection",
+        paste_before_all, "Paste all before selection",
         paste_after, "Paste after selection",
         paste_before, "Paste before selection",
         paste_clipboard_after, "Paste clipboard after selections",
@@ -3467,7 +3469,23 @@ enum Paste {
     Cursor,
 }
 
-fn paste_impl(values: &[String], doc: &mut Document, view: &mut View, action: Paste, count: usize) {
+/// Enumerates the possible ways to paste
+#[derive(Copy, Clone)]
+enum PasteType {
+    /// Paste one value in the register per selection
+    Default,
+    /// Paste every value in the register for every selection
+    All,
+}
+
+fn paste_impl(
+    values: &[String],
+    doc: &mut Document,
+    view: &mut View,
+    action: Paste,
+    count: usize,
+    paste_type: PasteType,
+) {
     if values.is_empty() {
         return;
     }
@@ -3487,7 +3505,7 @@ fn paste_impl(values: &[String], doc: &mut Document, view: &mut View, action: Pa
 
     // Only compiled once.
     static REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\r\n|\r|\n").unwrap());
-    let mut values = values
+    let mut values_iter = values
         .iter()
         .map(|value| REGEX.replace_all(value, doc.line_ending.as_str()))
         .map(|value| Tendril::from(value.as_ref().repeat(count)))
@@ -3499,7 +3517,13 @@ fn paste_impl(values: &[String], doc: &mut Document, view: &mut View, action: Pa
     let mut offset = 0;
     let mut ranges = SmallVec::with_capacity(selection.len());
 
-    let transaction = Transaction::change_by_selection(text, selection, |range| {
+    // Precompute the combined tendril value if we will be doing a PasteType::All
+    let combined_tendril_value = match paste_type {
+        PasteType::All => Some(values.iter().collect::<Tendril>()),
+        PasteType::Default => None,
+    };
+
+    let transaction = Transaction::change_by_selection(text, selection, |range: &Range| {
         let pos = match (action, linewise) {
             // paste linewise before
             (Paste::Before, true) => text.line_to_char(text.char_to_line(range.from())),
@@ -3516,17 +3540,38 @@ fn paste_impl(values: &[String], doc: &mut Document, view: &mut View, action: Pa
             (Paste::Cursor, _) => range.cursor(text.slice(..)),
         };
 
-        let value = values.next();
+        let value = match paste_type {
+            PasteType::All => {
+                // Iterate over every value and add its range
+                for value in values {
+                    let value_len = value.chars().count();
+                    let anchor = offset + pos;
 
-        let value_len = value
-            .as_ref()
-            .map(|content| content.chars().count())
-            .unwrap_or_default();
-        let anchor = offset + pos;
+                    let new_range =
+                        Range::new(anchor, anchor + value_len).with_direction(range.direction());
+                    ranges.push(new_range);
+                    offset += value_len;
+                }
 
-        let new_range = Range::new(anchor, anchor + value_len).with_direction(range.direction());
-        ranges.push(new_range);
-        offset += value_len;
+                // Return the precomputed tendril value
+                combined_tendril_value.clone()
+            }
+            PasteType::Default => {
+                let value: Option<Tendril> = values_iter.next();
+
+                let value_len = value
+                    .as_ref()
+                    .map(|content| content.chars().count())
+                    .unwrap_or_default();
+                let anchor = offset + pos;
+
+                let new_range =
+                    Range::new(anchor, anchor + value_len).with_direction(range.direction());
+                ranges.push(new_range);
+                offset += value_len;
+                value
+            }
+        };
 
         (pos, pos, value)
     });
@@ -3543,7 +3588,7 @@ pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
         Mode::Normal => Paste::Before,
     };
     let (view, doc) = current!(cx.editor);
-    paste_impl(&[contents], doc, view, paste, count);
+    paste_impl(&[contents], doc, view, paste, count, PasteType::Default);
 }
 
 fn paste_clipboard_impl(
@@ -3555,7 +3600,7 @@ fn paste_clipboard_impl(
     let (view, doc) = current!(editor);
     match editor.clipboard_provider.get_contents(clipboard_type) {
         Ok(contents) => {
-            paste_impl(&[contents], doc, view, action, count);
+            paste_impl(&[contents], doc, view, action, count, PasteType::Default);
             Ok(())
         }
         Err(e) => Err(e.context("Couldn't get system clipboard contents")),
@@ -3667,23 +3712,31 @@ fn replace_selections_with_primary_clipboard(cx: &mut Context) {
     let _ = replace_selections_with_clipboard_impl(cx, ClipboardType::Selection);
 }
 
-fn paste(cx: &mut Context, pos: Paste) {
+fn paste(cx: &mut Context, pos: Paste, paste_type: PasteType) {
     let count = cx.count();
     let reg_name = cx.register.unwrap_or('"');
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
 
     if let Some(values) = registers.read(reg_name) {
-        paste_impl(values, doc, view, pos, count);
+        paste_impl(values, doc, view, pos, count, paste_type);
     }
 }
 
+fn paste_after_all(cx: &mut Context) {
+    paste(cx, Paste::After, PasteType::All)
+}
+
+fn paste_before_all(cx: &mut Context) {
+    paste(cx, Paste::Before, PasteType::All)
+}
+
 fn paste_after(cx: &mut Context) {
-    paste(cx, Paste::After)
+    paste(cx, Paste::After, PasteType::Default)
 }
 
 fn paste_before(cx: &mut Context) {
-    paste(cx, Paste::Before)
+    paste(cx, Paste::Before, PasteType::Default)
 }
 
 fn get_lines(doc: &Document, view_id: ViewId) -> Vec<usize> {
@@ -4326,7 +4379,7 @@ fn insert_register(cx: &mut Context) {
         if let Some(ch) = event.char() {
             cx.editor.autoinfo = None;
             cx.register = Some(ch);
-            paste(cx, Paste::Cursor);
+            paste(cx, Paste::Cursor, PasteType::Default);
         }
     })
 }
