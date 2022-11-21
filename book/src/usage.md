@@ -53,7 +53,7 @@ Multiple characters are currently not supported, but planned.
 
 ## Syntax-tree Motions
 
-`A-p`, `A-o`, `A-i`, and `A-n` (or `Alt` and arrow keys) move the primary
+`Alt-p`, `Alt-o`, `Alt-i`, and `Alt-n` (or `Alt` and arrow keys) move the primary
 selection according to the selection's place in the syntax tree. Let's walk
 through an example to get familiar with them. Many languages have a syntax like
 so for function calls:
@@ -100,13 +100,13 @@ in the tree above.
 func([arg1], arg2, arg3)
 ```
 
-Using `A-n` would select the next sibling in the syntax tree: `arg2`.
+Using `Alt-n` would select the next sibling in the syntax tree: `arg2`.
 
 ```
 func(arg1, [arg2], arg3)
 ```
 
-While `A-o` would expand the selection to the parent node. In the tree above we
+While `Alt-o` would expand the selection to the parent node. In the tree above we
 can see that we would select the `arguments` node.
 
 ```
@@ -114,10 +114,10 @@ func[(arg1, arg2, arg3)]
 ```
 
 There is also some nuanced behavior that prevents you from getting stuck on a
-node with no sibling. If we have a selection on `arg1`, `A-p` would bring us
+node with no sibling. If we have a selection on `arg1`, `Alt-p` would bring us
 to the previous child node. Since `arg1` doesn't have a sibling to its left,
-though, we climb the syntax tree and then take the previous selection. So `A-p`
-will move the selection over to the "func" `identifier`.
+though, we climb the syntax tree and then take the previous selection. So
+`Alt-p` will move the selection over to the "func" `identifier`.
 
 ```
 [func](arg1, arg2, arg3)

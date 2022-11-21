@@ -58,7 +58,7 @@
 "ui.selection" = { bg = "bg4" }
 "ui.linenr" = "grey"
 "ui.linenr.selected" = "fg"
-"ui.cursorline.primary" = { bg = "bg2" }
+"ui.cursorline.primary" = { bg = "bg1" }
 "ui.statusline" = { fg = "fg", bg = "bg3" }
 "ui.statusline.inactive" = { fg = "grey", bg = "bg1" }
 "ui.popup" = { fg = "grey", bg = "bg2" }
@@ -86,7 +86,7 @@ bg0 = "#2c2e34"
 bg1 = "#33353f"
 bg2 = "#363944"
 bg3 = "#3b3e48"
-bg4 = "#414550"
+bg4 = "#545862"
 bg_red = "#ff6077"
 diff_red = "#55393d"
 bg_green = "#a7df78"

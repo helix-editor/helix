@@ -13,10 +13,10 @@ The default theme.toml can be found [here](https://github.com/helix-editor/helix
 Each line in the theme file is specified as below:
 
 ```toml
-key = { fg = "#ffffff", bg = "#000000", modifiers = ["bold", "italic"] }
+key = { fg = "#ffffff", bg = "#000000", underline = { color = "#ff0000", style = "curl"}, modifiers = ["bold", "italic"] }
 ```
 
-where `key` represents what you want to style, `fg` specifies the foreground color, `bg` the background color, and `modifiers` is a list of style modifiers. `bg` and `modifiers` can be omitted to defer to the defaults.
+where `key` represents what you want to style, `fg` specifies the foreground color, `bg` the background color, `underline` the underline `style`/`color`, and `modifiers` is a list of style modifiers. `bg`, `underline` and `modifiers` can be omitted to defer to the defaults.
 
 To specify only the foreground color:
 
@@ -77,17 +77,50 @@ The following values may be used as modifiers.
 
 Less common modifiers might not be supported by your terminal emulator.
 
+| Modifier             |
+| ---                  |
+| `bold`               |
+| `dim`                |
+| `italic`             |
+| `underlined`         |
+| `slow_blink`         |
+| `rapid_blink`        |
+| `reversed`           |
+| `hidden`             |
+| `crossed_out`        |
+
+> Note: The `underlined` modifier is deprecated and only available for backwards compatibility.
+> Its behavior is equivalent to setting `underline.style="line"`.
+
+### Underline Style
+
+One of the following values may be used as a value for `underline.style`. 
+
+Some styles might not be supported by your terminal emulator.
+
 | Modifier       |
 | ---            |
-| `bold`         |
-| `dim`          |
-| `italic`       |
-| `underlined`   |
-| `slow_blink`   |
-| `rapid_blink`  |
-| `reversed`     |
-| `hidden`       |
-| `crossed_out`  |
+| `line`         |
+| `curl`         |
+| `dashed`       |
+| `dot`          |
+| `double_line`  |
+
+
+### Inheritance
+
+Extend upon other themes by setting the `inherits` property to an existing theme.
+
+```toml
+inherits = "boo_berry"
+
+# Override the theming for "keyword"s:
+"keyword" = { fg = "gold" }
+
+# Override colors in the palette:
+[palette]
+berry = "#2A2A4D"
+```
 
 ### Scopes
 
@@ -210,49 +243,53 @@ These scopes are used for theming the editor interface.
       - `hover` - for hover popup ui
 
 
-| Key                       | Notes                                          |
-| ---                       | ---                                            |
-| `ui.background`           |                                                |
-| `ui.background.separator` | Picker separator below input line              |
-| `ui.cursor`               |                                                |
-| `ui.cursor.insert`        |                                                |
-| `ui.cursor.select`        |                                                |
-| `ui.cursor.match`         | Matching bracket etc.                          |
-| `ui.cursor.primary`       | Cursor with primary selection                  |
-| `ui.linenr`               | Line numbers                                   |
-| `ui.linenr.selected`      | Line number for the line the cursor is on      |
-| `ui.statusline`           | Statusline                                     |
-| `ui.statusline.inactive`  | Statusline (unfocused document)                |
-| `ui.statusline.normal`    | Statusline mode during normal mode ([only if `editor.color-modes` is enabled][editor-section]) |
-| `ui.statusline.insert`    | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
-| `ui.statusline.select`    | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
-| `ui.statusline.separator` | Separator character in statusline              |
-| `ui.popup`                | Documentation popups (e.g space-k)             |
-| `ui.popup.info`           | Prompt for multiple key options                |
-| `ui.window`               | Border lines separating splits                 |
-| `ui.help`                 | Description box for commands                   |
-| `ui.text`                 | Command prompts, popup text, etc.              |
-| `ui.text.focus`           |                                                |
-| `ui.text.info`            | The key: command text in `ui.popup.info` boxes |
-| `ui.virtual.ruler`        | Ruler columns (see the [`editor.rulers` config][editor-section])|
-| `ui.virtual.whitespace`   | Visible white-space characters                 |
-| `ui.virtual.indent-guide` | Vertical indent width guides                   |
-| `ui.menu`                 | Code and command completion menus              |
-| `ui.menu.selected`        | Selected autocomplete item                     |
-| `ui.menu.scroll`          | `fg` sets thumb color, `bg` sets track color of scrollbar |
-| `ui.selection`            | For selections in the editing area             |
-| `ui.selection.primary`    |                                                |
-| `ui.cursorline.primary`   | The line of the primary cursor                 |
-| `ui.cursorline.secondary` | The lines of any other cursors                 |
-| `warning`                 | Diagnostics warning (gutter)                   |
-| `error`                   | Diagnostics error (gutter)                     |
-| `info`                    | Diagnostics info (gutter)                      |
-| `hint`                    | Diagnostics hint (gutter)                      |
-| `diagnostic`              | Diagnostics fallback style (editing area)      |
-| `diagnostic.hint`         | Diagnostics hint (editing area)                |
-| `diagnostic.info`         | Diagnostics info (editing area)                |
-| `diagnostic.warning`      | Diagnostics warning (editing area)             |
-| `diagnostic.error`        | Diagnostics error (editing area)               |
+| Key                         | Notes                                                                                          |
+| ---                         | ---                                                                                            |
+| `ui.background`             |                                                                                                |
+| `ui.background.separator`   | Picker separator below input line                                                              |
+| `ui.cursor`                 |                                                                                                |
+| `ui.cursor.insert`          |                                                                                                |
+| `ui.cursor.select`          |                                                                                                |
+| `ui.cursor.match`           | Matching bracket etc.                                                                          |
+| `ui.cursor.primary`         | Cursor with primary selection                                                                  |
+| `ui.gutter`                 | Gutter                                                                                         |
+| `ui.gutter.selected`        | Gutter for the line the cursor is on                                                           |
+| `ui.linenr`                 | Line numbers                                                                                   |
+| `ui.linenr.selected`        | Line number for the line the cursor is on                                                      |
+| `ui.statusline`             | Statusline                                                                                     |
+| `ui.statusline.inactive`    | Statusline (unfocused document)                                                                |
+| `ui.statusline.normal`      | Statusline mode during normal mode ([only if `editor.color-modes` is enabled][editor-section]) |
+| `ui.statusline.insert`      | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
+| `ui.statusline.select`      | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
+| `ui.statusline.separator`   | Separator character in statusline                                                              |
+| `ui.popup`                  | Documentation popups (e.g Space + k)                                                             |
+| `ui.popup.info`             | Prompt for multiple key options                                                                |
+| `ui.window`                 | Border lines separating splits                                                                 |
+| `ui.help`                   | Description box for commands                                                                   |
+| `ui.text`                   | Command prompts, popup text, etc.                                                              |
+| `ui.text.focus`             |                                                                                                |
+| `ui.text.info`              | The key: command text in `ui.popup.info` boxes                                                 |
+| `ui.virtual.ruler`          | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
+| `ui.virtual.whitespace`     | Visible whitespace characters                                                                 |
+| `ui.virtual.indent-guide`   | Vertical indent width guides                                                                   |
+| `ui.menu`                   | Code and command completion menus                                                              |
+| `ui.menu.selected`          | Selected autocomplete item                                                                     |
+| `ui.menu.scroll`            | `fg` sets thumb color, `bg` sets track color of scrollbar                                      |
+| `ui.selection`              | For selections in the editing area                                                             |
+| `ui.selection.primary`      |                                                                                                |
+| `ui.cursorline.primary`     | The line of the primary cursor ([if cursorline is enabled][editor-section])                    |
+| `ui.cursorline.secondary`   | The lines of any other cursors ([if cursorline is enabled][editor-section])                    |
+| `ui.cursorcolumn.primary`   | The column of the primary cursor ([if cursorcolumn is enabled][editor-section])                |
+| `ui.cursorcolumn.secondary` | The columns of any other cursors ([if cursorcolumn is enabled][editor-section])                |
+| `warning`                   | Diagnostics warning (gutter)                                                                   |
+| `error`                     | Diagnostics error (gutter)                                                                     |
+| `info`                      | Diagnostics info (gutter)                                                                      |
+| `hint`                      | Diagnostics hint (gutter)                                                                      |
+| `diagnostic`                | Diagnostics fallback style (editing area)                                                      |
+| `diagnostic.hint`           | Diagnostics hint (editing area)                                                                |
+| `diagnostic.info`           | Diagnostics info (editing area)                                                                |
+| `diagnostic.warning`        | Diagnostics warning (editing area)                                                             |
+| `diagnostic.error`          | Diagnostics error (editing area)                                                               |
 
 You can check compliance to spec with
 

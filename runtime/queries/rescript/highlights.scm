@@ -10,19 +10,22 @@
 [
   (type_identifier)
   (unit_type)
-  "list"
 ] @type
+
+(list ["list{" "}"] @type)
+(list_pattern ["list{" "}"] @type)
 
 [
   (variant_identifier)
   (polyvar_identifier)
-] @constant
+] @constructor
 
-(property_identifier) @variable.other.member
+(record_type_field (property_identifier) @type)
+(object_type (field (property_identifier) @type))
+(record_field (property_identifier) @variable.other.member)
+(object (field (property_identifier) @variable.other.member))
+(member_expression (property_identifier) @variable.other.member)
 (module_identifier) @namespace
-
-(jsx_identifier) @tag
-(jsx_attribute (property_identifier) @variable.parameter)
 
 ; Parameters
 ;----------------
@@ -42,8 +45,8 @@
   "${" @punctuation.bracket
   "}" @punctuation.bracket) @embedded
 
-(character) @constant.character
-(escape_sequence) @constant.character.escape
+(character) @string.special
+(escape_sequence) @string.special
 
 ; Other literals
 ;---------------
@@ -60,11 +63,13 @@
 ; Functions
 ;----------
 
+; parameter(s) in parens
 [
- (formal_parameters (value_identifier))
+ (parameter (value_identifier))
  (labeled_parameter (value_identifier))
 ] @variable.parameter
 
+; single parameter with no parens
 (function parameter: (value_identifier) @variable.parameter)
 
 ; Meta
@@ -74,7 +79,7 @@
  "@"
  "@@"
  (decorator_identifier)
-] @label
+] @keyword.directive
 
 (extension_identifier) @keyword
 ("%") @keyword
@@ -82,13 +87,13 @@
 ; Misc
 ;-----
 
-(subscript_expression index: (string) @variable.other.member)
+; (subscript_expression index: (string) @attribute)
 (polyvar_type_pattern "#" @constant)
 
 [
   ("include")
   ("open")
-] @keyword
+] @keyword.control.import
 
 [
   "as"
@@ -96,25 +101,43 @@
   "external"
   "let"
   "module"
-  "mutable"
   "private"
   "rec"
   "type"
   "and"
-] @keyword
+  "assert"
+  "async"
+  "await"
+  "with"
+  "unpack"
+] @keyword.storage.type
+
+"mutable" @keyword.storage.modifier
 
 [
   "if"
   "else"
   "switch"
-] @keyword
+  "when"
+] @keyword.control.conditional
 
 [
   "exception"
   "try"
   "catch"
-  "raise"
-] @keyword
+] @keyword.control.exception
+
+(call_expression
+  function: (value_identifier) @keyword.control.exception
+  (#eq? @keyword.control.exception "raise"))
+
+[
+  "for"
+  "in"
+  "to"
+  "downto"
+  "while"
+] @keyword.control.conditional
 
 [
   "."
@@ -129,17 +152,15 @@
   "-"
   "-."
   "*"
+  "**"
   "*."
-  "/"
   "/."
-  "<"
   "<="
   "=="
   "==="
   "!"
   "!="
   "!=="
-  ">"
   ">="
   "&&"
   "||"
@@ -150,6 +171,10 @@
   ":>"
   (uncurry)
 ] @operator
+
+; Explicitly enclose these operators with binary_expression
+; to avoid confusion with JSX tag delimiters
+(binary_expression ["<" ">" "/"] @operator)
 
 [
   "("
@@ -172,7 +197,24 @@
   "~"
   "?"
   "=>"
+  ".."
   "..."
-] @punctuation
+] @punctuation.special
 
 (ternary_expression ["?" ":"] @operator)
+
+; JSX
+;----------
+(jsx_identifier) @tag
+(jsx_element
+  open_tag: (jsx_opening_element ["<" ">"] @punctuation.special))
+(jsx_element
+  close_tag: (jsx_closing_element ["<" "/" ">"] @punctuation.special))
+(jsx_self_closing_element ["/" ">" "<"] @punctuation.special)
+(jsx_fragment [">" "<" "/"] @punctuation.special)
+(jsx_attribute (property_identifier) @attribute)
+
+; Error
+;----------
+
+(ERROR) @keyword.control.exception

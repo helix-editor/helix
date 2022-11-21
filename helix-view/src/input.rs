@@ -14,6 +14,7 @@ pub enum Event {
     Mouse(MouseEvent),
     Paste(String),
     Resize(u16, u16),
+    IdleTimeout,
 }
 
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]

@@ -21,7 +21,6 @@ pub mod register;
 pub mod search;
 pub mod selection;
 pub mod shellwords;
-mod state;
 pub mod surround;
 pub mod syntax;
 pub mod test;
@@ -103,7 +102,6 @@ pub use smallvec::{smallvec, SmallVec};
 pub use syntax::Syntax;
 
 pub use diagnostic::Diagnostic;
-pub use state::State;
 
 pub use line_ending::{LineEnding, DEFAULT_LINE_ENDING};
 pub use transaction::{Assoc, Change, ChangeSet, Operation, Transaction};
