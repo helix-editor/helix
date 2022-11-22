@@ -34,10 +34,7 @@ jobs:
       - uses: Swatinem/rust-cache@v1
 
       - name: Fetch tree-sitter grammars
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --package=helix-loader --bin=hx-loader
+        run: cargo run --package=helix-loader --bin=hx-loader
 
       - name: Bundle grammars
         run: tar cJf grammars.tar.xz -C runtime/grammars/sources .
