@@ -3,29 +3,35 @@ use helix_core::{
     pos_at_visual_coords, visual_coords_at_pos, Position, RopeSlice, Selection, Transaction,
 };
 
-use std::fmt;
+use std::{collections::VecDeque, fmt};
+
+const JUMP_LIST_CAPACITY: usize = 30;
 
 type Jump = (DocumentId, Selection);
 
 #[derive(Debug, Clone)]
 pub struct JumpList {
-    jumps: Vec<Jump>,
+    jumps: VecDeque<Jump>,
     current: usize,
 }
 
 impl JumpList {
     pub fn new(initial: Jump) -> Self {
-        Self {
-            jumps: vec![initial],
-            current: 0,
-        }
+        let mut jumps = VecDeque::with_capacity(JUMP_LIST_CAPACITY);
+        jumps.push_back(initial);
+        Self { jumps, current: 0 }
     }
 
     pub fn push(&mut self, jump: Jump) {
         self.jumps.truncate(self.current);
         // don't push duplicates
-        if self.jumps.last() != Some(&jump) {
-            self.jumps.push(jump);
+        if self.jumps.back() != Some(&jump) {
+            // If the jumplist is full, drop the oldest item.
+            while self.jumps.len() >= JUMP_LIST_CAPACITY {
+                self.jumps.pop_front();
+            }
+
+            self.jumps.push_back(jump);
             self.current = self.jumps.len();
         }
     }
@@ -57,8 +63,8 @@ impl JumpList {
         self.jumps.retain(|(other_id, _)| other_id != doc_id);
     }
 
-    pub fn get(&self) -> &[Jump] {
-        &self.jumps
+    pub fn iter(&self) -> impl Iterator<Item = &Jump> {
+        self.jumps.iter()
     }
 
     /// Applies a [`Transaction`] of changes to the jumplist.
