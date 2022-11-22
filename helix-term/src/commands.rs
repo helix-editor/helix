@@ -4803,15 +4803,24 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let mut ranges = SmallVec::with_capacity(selection.len());
     let text = doc.text().slice(..);
 
+    let mut shell_output: Option<Tendril> = None;
     let mut offset = 0isize;
-
     for range in selection.ranges() {
-        let fragment = range.slice(text);
-        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment.into())) {
-            Ok(result) => result,
-            Err(err) => {
-                cx.editor.set_error(err.to_string());
-                return;
+        let (output, success) = if let Some(output) = shell_output.as_ref() {
+            (output.clone(), true)
+        } else {
+            let fragment = range.slice(text);
+            match shell_impl(shell, cmd, pipe.then(|| fragment.into())) {
+                Ok(result) => {
+                    if !pipe {
+                        shell_output = Some(result.0.clone());
+                    }
+                    result
+                }
+                Err(err) => {
+                    cx.editor.set_error(err.to_string());
+                    return;
+                }
             }
         };
 
