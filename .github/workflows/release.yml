@@ -218,16 +218,6 @@ jobs:
 
       - uses: actions/download-artifact@v3
 
-      - name: Calculate tag name
-        run: |
-          name=dev
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            name=${GITHUB_REF:10}
-          fi
-          echo ::set-output name=val::$name
-          echo TAG=$name >> $GITHUB_ENV
-        id: tagname
-
       - name: Build archive
         shell: bash
         run: |
@@ -247,7 +237,7 @@ jobs:
               if [[ $platform =~ "windows" ]]; then
                   exe=".exe"
               fi
-              pkgname=helix-$TAG-$platform
+              pkgname=helix-$GITHUB_REF_NAME-$platform
               mkdir $pkgname
               cp $source/LICENSE $source/README.md $pkgname
               mkdir $pkgname/contrib
@@ -267,7 +257,7 @@ jobs:
               fi
           done
 
-          tar cJf dist/helix-$TAG-source.tar.xz -C $source .
+          tar cJf dist/helix-$GITHUB_REF_NAME-source.tar.xz -C $source .
           mv dist $source/
 
       - name: Upload binaries to release
@@ -277,7 +267,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: dist/*
           file_glob: true
-          tag: ${{ steps.tagname.outputs.val }}
+          tag: ${{ github.ref_name }}
           overwrite: true
       
       - name: Upload binaries as artifact
