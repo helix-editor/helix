@@ -2060,7 +2060,7 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
         );
 
         // extend to previous/next line if current line is selected
-        let (anchor, head) = if range.from() == start && range.to() == end {
+        let (anchor, head) = if range.from() == start && range.to() == end && range.line_mode {
             match extend {
                 Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count))),
                 Extend::Below => (
@@ -2078,7 +2078,7 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
             }
         };
 
-        Range::new(anchor, head)
+        Range::new(anchor, head).with_line_mode(true)
     });
 
     doc.set_selection(view.id, selection);
@@ -2096,7 +2096,9 @@ fn extend_to_line_bounds(cx: &mut Context) {
             let start = text.line_to_char(start_line);
             let end = text.line_to_char((end_line + 1).min(text.len_lines()));
 
-            Range::new(start, end).with_direction(range.direction())
+            Range::new(start, end)
+                .with_direction(range.direction())
+                .with_line_mode(true)
         }),
     );
 }
