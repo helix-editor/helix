@@ -42,6 +42,7 @@ pub struct Client {
 
 impl Client {
     #[allow(clippy::type_complexity)]
+    #[allow(clippy::too_many_arguments)]
     pub fn start(
         cmd: &str,
         args: &[String],
