@@ -31,7 +31,7 @@ jobs:
           profile: minimal
           override: true
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Fetch tree-sitter grammars
         run: cargo run --package=helix-loader --bin=hx-loader
