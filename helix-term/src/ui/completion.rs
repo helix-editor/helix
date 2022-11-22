@@ -245,21 +245,13 @@ impl Completion {
         completion_item: lsp::CompletionItem,
     ) -> Option<CompletionItem> {
         let language_server = doc.language_server()?;
-        let completion_resolve_provider = language_server
-            .capabilities()
-            .completion_provider
-            .as_ref()?
-            .resolve_provider;
-        if completion_resolve_provider != Some(true) {
-            return None;
-        }
 
-        let future = language_server.resolve_completion_item(completion_item);
+        let future = language_server.resolve_completion_item(completion_item)?;
         let response = helix_lsp::block_on(future);
         match response {
             Ok(value) => serde_json::from_value(value).ok(),
             Err(err) => {
-                log::error!("execute LSP command: {}", err);
+                log::error!("Failed to resolve completion item: {}", err);
                 None
             }
         }
@@ -330,7 +322,10 @@ impl Completion {
         };
 
         // This method should not block the compositor so we handle the response asynchronously.
-        let future = language_server.resolve_completion_item(current_item.clone());
+        let future = match language_server.resolve_completion_item(current_item.clone()) {
+            Some(future) => future,
+            None => return false,
+        };
 
         cx.callback(
             future,
