@@ -251,6 +251,16 @@ impl Transport {
                     };
                 }
                 Err(Error::StreamClosed) => {
+                    // Close any outstanding requests.
+                    for (id, tx) in transport.pending_requests.lock().await.drain() {
+                        match tx.send(Err(Error::StreamClosed)).await {
+                            Ok(_) => (),
+                            Err(_) => {
+                                error!("Could not close request on a closed channel (id={:?})", id)
+                            }
+                        }
+                    }
+
                     // Hack: inject a terminated notification so we trigger code that needs to happen after exit
                     use lsp_types::notification::Notification as _;
                     let notification =
