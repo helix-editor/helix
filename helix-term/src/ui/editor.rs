@@ -1424,7 +1424,7 @@ impl Component for EditorView {
                     // If the current document has been changed, apply the changes to all views.
                     // This ensures that selections in jumplists follow changes.
                     if doc.id() == original_doc_id
-                        && doc.get_current_revision() > original_doc_revision
+                        && doc.get_current_revision() != original_doc_revision
                     {
                         if let Some(transaction) =
                             doc.history.get_mut().changes_since(original_doc_revision)
