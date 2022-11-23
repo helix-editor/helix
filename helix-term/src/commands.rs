@@ -4142,11 +4142,7 @@ fn global_search_collect(
                     entry.path(),
                     sinks::UTF8(|line_num, line| {
                         if all_matches_sx
-                            .send((
-                                entry.path().to_owned(),
-                                line.to_string(),
-                                line_num as usize - 1,
-                            ))
+                            .send((entry.path().to_owned(), line.to_string(), line_num as usize))
                             .is_err()
                             || (max_item_count.is_some()
                                 && count.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
