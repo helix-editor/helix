@@ -1794,15 +1794,13 @@ fn trim(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     let mode = args.get(0).unwrap_or(&Cow::Borrowed("all"));
     let (view, doc) = current!(cx.editor);
 
-    let selections = doc.selection(view.id)
-
+    let selection = doc.selection(view.id);
     if mode == "all" || mode == "spaces" {
-        
-        let mut pos = 0;
-        let transaction = Transaction::change(
-            doc.text(),
-            doc.text().lines().filter_map(|line| {
-                // The index of the last non-whitespace character in the line.
+        let mut changes = Vec::new();
+        for range in selection {
+            let doc = range.slice(doc.text().slice(..));
+            let mut pos = range.from();
+            changes.extend(doc.lines().filter_map(|line| {
                 let start = pos
                     + movement::backwards_skip_while(
                         line,
@@ -1810,33 +1808,38 @@ fn trim(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
                         |x| x.is_whitespace(),
                     )
                     .unwrap_or(0);
-
-                // The index of the last character in the line, excluding the line ending.
                 let end = pos + line_ending::rope_end_without_line_ending(&line);
                 pos += line.len_chars();
                 (start != end).then(|| (start, end, None))
-            }),
-        );
+            }));
+        }
+        let transaction = Transaction::change(doc.text(), changes.into_iter());
         doc.apply(&transaction, view.id);
     }
 
     if mode == "all" || mode == "lines" {
-        let mut lines = doc.text().lines_at(doc.text().len_lines()).reversed();
-        let mut pos = doc.text().len_chars();
+        let mut changes = Vec::new();
+        let selection = doc.selection(view.id);
+        for range in selection {
+            let doc = range.slice(doc.text().slice(..));
+            let mut lines = doc.lines_at(doc.len_lines()).reversed();
+            let mut pos = range.to();
 
-        // The last non-empty line char index.
-        let start = lines
-            .find_map(|line| {
-                if line_ending::rope_end_without_line_ending(&line) != 0 {
-                    Some(pos)
-                } else {
-                    pos -= line.len_chars();
-                    None
-                }
-            })
-            .unwrap_or(0);
-        let end = doc.text().len_chars();
-        let transaction = Transaction::change(doc.text(), [(start, end, None)].into_iter());
+            // The last non-empty line char index.
+            let start = lines
+                .find_map(|line| {
+                    if line_ending::rope_end_without_line_ending(&line) != 0 {
+                        Some(pos)
+                    } else {
+                        pos -= line.len_chars();
+                        None
+                    }
+                })
+                .unwrap_or(0);
+            let end = range.to();
+            changes.push((start, end, None));
+        }
+        let transaction = Transaction::change(doc.text(), changes.into_iter());
         doc.apply(&transaction, view.id);
     }
 
