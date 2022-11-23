@@ -54,7 +54,7 @@ pub struct History {
 }
 
 /// A single point in history. See [History] for more information.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Revision {
     parent: usize,
     last_child: Option<NonZeroUsize>,
@@ -126,15 +126,13 @@ impl History {
             return None;
         }
 
-        let mut transaction = self.revisions[revision].transaction.clone();
-
         // The bounds are checked in the if condition above:
-        // `revision + 1` is known to be `<= self.current`.
-        for revision in &self.revisions[revision + 1..self.current] {
-            transaction = transaction.compose(revision.transaction.clone());
-        }
-
-        Some(transaction)
+        // `revision` is known to be `< self.current`.
+        self.revisions[revision..self.current]
+            .iter()
+            .map(|revision| &revision.transaction)
+            .cloned()
+            .reduce(|acc, transaction| acc.compose(transaction))
     }
 
     /// Undo the last edit.
