@@ -4783,7 +4783,6 @@ async fn shell_impl_async(
             log::error!("Shell error: {}", err);
             bail!("Shell error: {}", err);
         }
-        bail!("Shell command failed");
     } else if !output.stderr.is_empty() {
         log::debug!(
             "Command printed to stderr: {}",
@@ -4815,7 +4814,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let mut shell_output: Option<Tendril> = None;
     let mut offset = 0isize;
     for range in selection.ranges() {
-        let (output, success) = if let Some(output) = shell_output.as_ref() {
+        let (output, _) = if let Some(output) = shell_output.as_ref() {
             (output.clone(), true)
         } else {
             let fragment = range.slice(text);
@@ -4832,11 +4831,6 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
                 }
             }
         };
-
-        if !success {
-            cx.editor.set_error("Command failed");
-            return;
-        }
 
         let output_len = output.chars().count();
 
