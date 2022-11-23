@@ -119,6 +119,24 @@ impl History {
         self.current == 0
     }
 
+    /// Returns the changes since the given revision composed into a transaction.
+    /// Returns None if there are no changes between the current and given revisions.
+    pub fn changes_since(&self, revision: usize) -> Option<Transaction> {
+        if self.at_root() || self.current >= revision {
+            return None;
+        }
+
+        let mut transaction = self.revisions[revision].transaction.clone();
+
+        // The bounds are checked in the if condition above:
+        // `revision + 1` is known to be `<= self.current`.
+        for revision in &self.revisions[revision + 1..self.current] {
+            transaction = transaction.compose(revision.transaction.clone());
+        }
+
+        Some(transaction)
+    }
+
     /// Undo the last edit.
     pub fn undo(&mut self) -> Option<&Transaction> {
         if self.at_root() {
