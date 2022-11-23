@@ -93,6 +93,7 @@
 | protobuf | ✓ |  | ✓ |  |
 | purescript | ✓ |  |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | `pylsp` |
+| qml | ✓ |  | ✓ | `qmlls` |
 | r | ✓ |  |  | `R` |
 | racket |  |  |  | `racket` |
 | regex | ✓ |  |  |  |
