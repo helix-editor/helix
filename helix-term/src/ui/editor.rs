@@ -1337,7 +1337,9 @@ impl Component for EditorView {
                 cx.editor.status_msg = None;
 
                 let mode = cx.editor.mode();
-                let (view, _) = current!(cx.editor);
+                let (view, doc) = current!(cx.editor);
+                let original_doc_id = doc.id();
+                let original_doc_revision = doc.get_current_revision();
                 let focus = view.id;
 
                 if let Some(on_next_key) = self.on_next_key.take() {
@@ -1413,13 +1415,31 @@ impl Component for EditorView {
                     let view = view_mut!(cx.editor, focus);
                     let doc = doc_mut!(cx.editor, &view.doc);
 
-                    view.ensure_cursor_in_view(doc, config.scrolloff);
-
                     // Store a history state if not in insert mode. This also takes care of
                     // committing changes when leaving insert mode.
                     if mode != Mode::Insert {
                         doc.append_changes_to_history(view.id);
                     }
+
+                    // If the current document has been changed, apply the changes to all views.
+                    // This ensures that selections in jumplists follow changes.
+                    if doc.id() == original_doc_id
+                        && doc.get_current_revision() > original_doc_revision
+                    {
+                        if let Some(transaction) =
+                            doc.history.get_mut().changes_since(original_doc_revision)
+                        {
+                            let doc = doc!(cx.editor, &original_doc_id);
+                            for (view, _focused) in cx.editor.tree.views_mut() {
+                                view.apply(&transaction, doc);
+                            }
+                        }
+                    }
+
+                    let view = view_mut!(cx.editor, focus);
+                    let doc = doc_mut!(cx.editor, &view.doc);
+
+                    view.ensure_cursor_in_view(doc, config.scrolloff);
                 }
 
                 EventResult::Consumed(callback)

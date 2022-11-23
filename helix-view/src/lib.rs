@@ -71,12 +71,10 @@ pub fn align_view(doc: &Document, view: &mut View, align: Align) {
 pub fn apply_transaction(
     transaction: &helix_core::Transaction,
     doc: &mut Document,
-    view: &mut View,
+    view: &View,
 ) -> bool {
-    // This is a short function but it's easy to call `Document::apply`
-    // without calling `View::apply` or in the wrong order. The transaction
-    // must be applied to the document before the view.
-    doc.apply(transaction, view.id) && view.apply(transaction, doc)
+    // TODO remove this helper function. Just call Document::apply everywhere directly.
+    doc.apply(transaction, view.id)
 }
 
 pub use document::Document;

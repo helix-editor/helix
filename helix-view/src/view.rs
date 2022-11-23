@@ -351,6 +351,7 @@ impl View {
     /// which applies a transaction to the [`Document`] and view together.
     pub fn apply(&mut self, transaction: &Transaction, doc: &Document) -> bool {
         self.jumps.apply(transaction, doc);
+        // TODO: remove the boolean return. This is unused.
         true
     }
 }

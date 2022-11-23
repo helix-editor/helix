@@ -54,7 +54,7 @@ pub struct History {
 }
 
 /// A single point in history. See [History] for more information.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Revision {
     parent: usize,
     last_child: Option<NonZeroUsize>,
@@ -117,6 +117,22 @@ impl History {
     #[inline]
     pub const fn at_root(&self) -> bool {
         self.current == 0
+    }
+
+    /// Returns the changes since the given revision composed into a transaction.
+    /// Returns None if there are no changes between the current and given revisions.
+    pub fn changes_since(&self, revision: usize) -> Option<Transaction> {
+        if self.at_root() || self.current >= revision {
+            return None;
+        }
+
+        // The bounds are checked in the if condition above:
+        // `revision` is known to be `< self.current`.
+        self.revisions[revision..self.current]
+            .iter()
+            .map(|revision| &revision.transaction)
+            .cloned()
+            .reduce(|acc, transaction| acc.compose(transaction))
     }
 
     /// Undo the last edit.
