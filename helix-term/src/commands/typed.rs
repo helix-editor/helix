@@ -1783,6 +1783,54 @@ fn run_shell_command(
     Ok(())
 }
 
+fn show_keymap(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let mode = match args.first().map_or("", |a| a) {
+        "normal" | "n" => Some(Mode::Normal),
+        "insert" | "i" => Some(Mode::Insert),
+        "select" | "s" => Some(Mode::Select),
+        _ => None,
+    };
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let keymaps = compositor.find::<ui::EditorView>().unwrap().keymaps.map();
+                let mut output = Vec::with_capacity(6);
+                for (_, keymap) in keymaps
+                    .iter()
+                    .filter(|(m, _)| mode.is_none() || mode.as_ref() == Some(*m))
+                {
+                    if let Some(info) = keymap.root().node().map(|node| node.infobox()) {
+                        output.push(format!("{}\n", info.title));
+                        output.push(info.text);
+                    }
+                }
+                let contents = ui::Markdown::new(
+                    format!("```Keys\n{}\n```", output.join("\n")),
+                    editor.syn_loader.clone(),
+                );
+                let popup = Popup::new("keys", contents).position(Some(helix_core::Position::new(
+                    editor.cursor().0.unwrap_or_default().row,
+                    2,
+                )));
+                compositor.replace_or_push("keys", popup);
+            },
+        ));
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2290,6 +2338,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run a shell command",
             fun: run_shell_command,
             completer: Some(completers::directory),
+        },
+        TypableCommand {
+            name: "keymaps",
+            aliases: &["keys"],
+            doc: "Show keymaps for mode",
+            fun: show_keymap,
+            completer: Some(completers::none),
         },
     ];
 
