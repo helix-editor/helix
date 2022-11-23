@@ -306,5 +306,8 @@ async fn test_undo_redo() -> anyhow::Result<()> {
     // * <C-i>       Jump forward to line 1.
     test(("#[|]#", "[<space><C-s>kduU<C-o><C-i>", "#[|]#")).await?;
 
+    // In this case we 'redo' manually to ensure that the transactions are composing correctly.
+    test(("#[|]#", "[<space>u[<space>u", "#[|]#")).await?;
+
     Ok(())
 }
