@@ -286,6 +286,15 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_undo_redo() -> anyhow::Result<()> {
+    // A jumplist selection is created at a point which is undone.
+    //
+    // * 2[<space>   Add two newlines at line start. We're now on line 3.
+    // * <C-s>       Save the selection on line 3 in the jumplist.
+    // * u           Undo the two newlines. We're now on line 1.
+    // * <C-o><C-i>  Jump forward an back again in the jumplist. This would panic
+    //               if the jumplist were not being updated correctly.
+    test(("#[|]#", "2[<space><C-s>u<C-o><C-i>", "#[|]#")).await?;
+
     // A jumplist selection is passed through an edit and then an undo and then a redo.
     //
     // * [<space>    Add a newline at line start. We're now on line 2.
