@@ -1360,7 +1360,7 @@ config = { elixirLS.dialyzerEnabled = false }
 
 [[grammar]]
 name = "heex"
-source = { git = "https://github.com/phoenixframework/tree-sitter-heex", rev = "881f1c805f51485a26ecd7865d15c9ef8d606a78" }
+source = { git = "https://github.com/phoenixframework/tree-sitter-heex", rev = "2e1348c3cf2c9323e87c2744796cf3f3868aa82a" }
 
 [[language]]
 name = "sql"
