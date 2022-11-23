@@ -117,6 +117,34 @@ Helix can be installed on macOS through homebrew:
 brew install helix
 ```
 
+## Linux
+
+### AppImage
+
+Install Helix using [AppImage](https://appimage.org/).
+(For now, it is only available for x86-64 bit architecture.)
+
+Download Helix AppImage form [Releases](https://github.com/helix-editor/helix/releases) page.
+Note : Version may change in future so run command accordingly.
+
+```sh
+chmod u+x helix-22.08.1-x86_64.AppImage
+./helix-22.08.1-x86_64.AppImage
+```
+
+If the `./helix-22.08.1-x86_64.AppImage` command fails
+
+```sh
+./helix-22.08.1-x86_64.AppImage --appimage-extract
+./squashfs-root/AppRun --version
+
+# Make available globally
+sudo mkdir -p /squashfs-root/helix
+sudo mv squashfs-root/* /squashfs-root/helix/
+sudo ln -s /squashfs-root/helix/AppRun /usr/bin/hx
+hx
+```
+
 # Contributing
 
 Contributing guidelines can be found [here](./docs/CONTRIBUTING.md).
