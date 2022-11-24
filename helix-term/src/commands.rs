@@ -4582,6 +4582,7 @@ fn surround_add(cx: &mut Context) {
         let transaction = Transaction::change(doc.text(), changes.into_iter())
             .with_selection(Selection::new(ranges, selection.primary_index()));
         apply_transaction(&transaction, doc, view);
+        exit_select_mode(cx);
     })
 }
 
@@ -4621,6 +4622,7 @@ fn surround_replace(cx: &mut Context) {
                 }),
             );
             apply_transaction(&transaction, doc, view);
+            exit_select_mode(cx);
         });
     })
 }
@@ -4648,6 +4650,7 @@ fn surround_delete(cx: &mut Context) {
         let transaction =
             Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
         apply_transaction(&transaction, doc, view);
+        exit_select_mode(cx);
     })
 }
 
