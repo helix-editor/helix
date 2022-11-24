@@ -358,21 +358,19 @@ impl View {
 mod tests {
     use super::*;
     use helix_core::Rope;
-    const OFFSET: u16 = 4; // 1 diagnostic + 2 linenr (< 100 lines) + 1 gutter
-    const OFFSET_WITHOUT_LINE_NUMBERS: u16 = 2; // 1 diagnostic + 1 gutter
-                                                // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
+
+    // 1 diagnostic + 1 spacer + 3 linenr (< 1000 lines) + 1 gutter
+    const DEFAULT_GUTTER_OFFSET: u16 = 6;
+
+    // 1 diagnostics + 1 spacer + 1 gutter
+    const DEFAULT_GUTTER_OFFSET_WITHOUT_LINE_NUMBERS: u16 = 3;
+
     use crate::document::Document;
     use crate::editor::{GutterConfig, GutterLineNumbersConfig, GutterType};
 
     #[test]
     fn test_text_pos_at_screen_coords() {
-        let mut view = View::new(
-            DocumentId::default(),
-            GutterConfig {
-                layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
-                line_numbers: GutterLineNumbersConfig { width: 3 },
-            },
-        );
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let doc = Document::from(rope, None);
@@ -392,24 +390,24 @@ mod tests {
         assert_eq!(view.text_pos_at_screen_coords(&doc, 78, 41, 4), None);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 3, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 3, 4),
             Some(3)
         );
 
         assert_eq!(view.text_pos_at_screen_coords(&doc, 40, 80, 4), Some(3));
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 41, 40 + OFFSET + 1, 4),
+            view.text_pos_at_screen_coords(&doc, 41, 40 + DEFAULT_GUTTER_OFFSET + 1, 4),
             Some(4)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 41, 40 + OFFSET + 4, 4),
+            view.text_pos_at_screen_coords(&doc, 41, 40 + DEFAULT_GUTTER_OFFSET + 4, 4),
             Some(5)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 41, 40 + OFFSET + 7, 4),
+            view.text_pos_at_screen_coords(&doc, 41, 40 + DEFAULT_GUTTER_OFFSET + 7, 4),
             Some(8)
         );
 
@@ -418,19 +416,36 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_without_line_numbers_gutter() {
-        let mut view = View::new(DocumentId::default(), vec![GutterType::Diagnostics]);
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig {
+                layout: vec![GutterType::Diagnostics],
+                line_numbers: GutterLineNumbersConfig::default(),
+            },
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let doc = Document::from(rope, None);
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 41, 40 + OFFSET_WITHOUT_LINE_NUMBERS + 1, 4),
+            view.text_pos_at_screen_coords(
+                &doc,
+                41,
+                40 + DEFAULT_GUTTER_OFFSET_WITHOUT_LINE_NUMBERS + 1,
+                4
+            ),
             Some(4)
         );
     }
 
     #[test]
     fn test_text_pos_at_screen_coords_without_any_gutters() {
-        let mut view = View::new(DocumentId::default(), vec![]);
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig {
+                layout: vec![],
+                line_numbers: GutterLineNumbersConfig::default(),
+            },
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let doc = Document::from(rope, None);
@@ -439,76 +454,70 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_cjk() {
-        let mut view = View::new(
-            DocumentId::default(),
-            vec![GutterType::Diagnostics, GutterType::LineNumbers],
-        );
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
         let doc = Document::from(rope, None);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET, 4),
             Some(0)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 4, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 4, 4),
             Some(4)
         );
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 5, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 5, 4),
             Some(4)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 6, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 6, 4),
             Some(5)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 7, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 7, 4),
             Some(5)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 8, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 8, 4),
             Some(6)
         );
     }
 
     #[test]
     fn test_text_pos_at_screen_coords_graphemes() {
-        let mut view = View::new(
-            DocumentId::default(),
-            vec![GutterType::Diagnostics, GutterType::LineNumbers, 2, 4],
-        );
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");
         let doc = Document::from(rope, None);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET, 4),
             Some(0)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 1, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 1, 4),
             Some(1)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 2, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 2, 4),
             Some(3)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 3, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 3, 4),
             Some(5)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 4, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 4, 4),
             Some(7)
         );
     }
