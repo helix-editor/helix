@@ -14,19 +14,14 @@ use toml::{map::Map, Value};
 use crate::graphics::UnderlineStyle;
 pub use crate::graphics::{Color, Modifier, Style};
 
-pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
-    //    let raw_theme: Value = toml::from_slice(include_bytes!("../../theme.toml"))
-    //        .expect("Failed to parse default theme");
-    //    Theme::from(raw_theme)
-
-    toml::from_slice(include_bytes!("../../theme.toml")).expect("Failed to parse default theme")
+pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
+    name: "default".into(),
+    ..toml::from_slice(include_bytes!("../../theme.toml")).expect("Failed to parse default theme")
 });
-pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
-    //    let raw_theme: Value = toml::from_slice(include_bytes!("../../base16_theme.toml"))
-    //        .expect("Failed to parse base 16 default theme");
-    //    Theme::from(raw_theme)
 
-    toml::from_slice(include_bytes!("../../base16_theme.toml"))
+pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
+    name: "base16_theme".into(),
+    ..toml::from_slice(include_bytes!("../../base16_theme.toml"))
         .expect("Failed to parse base 16 default theme")
 });
 
@@ -53,7 +48,12 @@ impl Loader {
             return Ok(self.base16_default());
         }
 
-        self.load_theme(name, name, false).map(Theme::from)
+        let theme = self.load_theme(name, name, false).map(Theme::from)?;
+
+        Ok(Theme {
+            name: name.into(),
+            ..theme
+        })
     }
 
     // load the theme and its parent recursively and merge them
@@ -180,8 +180,10 @@ impl Loader {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Theme {
+    name: String,
+
     // UI styles are stored in a HashMap
     styles: HashMap<String, Style>,
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
@@ -200,6 +202,7 @@ impl From<Value> for Theme {
             styles,
             scopes,
             highlights,
+            ..Default::default()
         }
     }
 }
@@ -217,6 +220,7 @@ impl<'de> Deserialize<'de> for Theme {
             styles,
             scopes,
             highlights,
+            ..Default::default()
         })
     }
 }
@@ -264,6 +268,10 @@ impl Theme {
     #[inline]
     pub fn highlight(&self, index: usize) -> Style {
         self.highlights[index]
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn get(&self, scope: &str) -> Style {

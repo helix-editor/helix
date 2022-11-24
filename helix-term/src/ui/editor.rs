@@ -25,7 +25,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{borrow::Cow, cmp::min, path::PathBuf};
+use std::{borrow::Cow, cmp::min, num::NonZeroUsize, path::PathBuf};
 
 use tui::buffer::Buffer as Surface;
 
@@ -79,9 +79,10 @@ impl EditorView {
         surface: &mut Surface,
         is_focused: bool,
     ) {
-        let inner = view.inner_area();
+        let inner = view.inner_area(doc);
         let area = view.area;
         let theme = &editor.theme;
+        let config = editor.config();
 
         // DAP: Highlight current stack frame position
         let stack_frame = editor.debugger.as_ref().and_then(|debugger| {
@@ -117,10 +118,10 @@ impl EditorView {
             }
         }
 
-        if is_focused && editor.config().cursorline {
+        if is_focused && config.cursorline {
             Self::highlight_cursorline(doc, view, surface, theme);
         }
-        if is_focused && editor.config().cursorcolumn {
+        if is_focused && config.cursorcolumn {
             Self::highlight_cursorcolumn(doc, view, surface, theme);
         }
 
@@ -141,22 +142,14 @@ impl EditorView {
                     doc,
                     view,
                     theme,
-                    &editor.config().cursor_shape,
+                    &config.cursor_shape,
                 ),
             ))
         } else {
             Box::new(highlights)
         };
 
-        Self::render_text_highlights(
-            doc,
-            view.offset,
-            inner,
-            surface,
-            theme,
-            highlights,
-            &editor.config(),
-        );
+        Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights, &config);
         Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
@@ -176,7 +169,7 @@ impl EditorView {
             }
         }
 
-        self.render_diagnostics(doc, view, inner, surface, theme);
+        Self::render_diagnostics(doc, view, inner, surface, theme);
 
         let statusline_area = view
             .area
@@ -227,16 +220,16 @@ impl EditorView {
         _theme: &Theme,
     ) -> Box<dyn Iterator<Item = HighlightEvent> + 'doc> {
         let text = doc.text().slice(..);
-        let last_line = std::cmp::min(
-            // Saturating subs to make it inclusive zero indexing.
-            (offset.row + height as usize).saturating_sub(1),
-            doc.text().len_lines().saturating_sub(1),
-        );
 
         let range = {
-            // calculate viewport byte ranges
-            let start = text.line_to_byte(offset.row);
-            let end = text.line_to_byte(last_line + 1);
+            // Calculate viewport byte ranges:
+            // Saturating subs to make it inclusive zero indexing.
+            let last_line = doc.text().len_lines().saturating_sub(1);
+            let last_visible_line = (offset.row + height as usize)
+                .saturating_sub(1)
+                .min(last_line);
+            let start = text.line_to_byte(offset.row.min(last_line));
+            let end = text.line_to_byte(last_visible_line + 1);
 
             start..end
         };
@@ -736,9 +729,10 @@ impl EditorView {
         // avoid lots of small allocations by reusing a text buffer for each line
         let mut text = String::with_capacity(8);
 
-        for (constructor, width) in view.gutters() {
-            let gutter = constructor(editor, doc, view, theme, is_focused, *width);
-            text.reserve(*width); // ensure there's enough space for the gutter
+        for gutter_type in view.gutters() {
+            let gutter = gutter_type.style(editor, doc, view, theme, is_focused);
+            let width = gutter_type.width(view, doc);
+            text.reserve(width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
                 let selected = cursors.contains(&line);
                 let x = viewport.x + offset;
@@ -751,13 +745,13 @@ impl EditorView {
                 };
 
                 if let Some(style) = gutter(line, selected, &mut text) {
-                    surface.set_stringn(x, y, &text, *width, gutter_style.patch(style));
+                    surface.set_stringn(x, y, &text, width, gutter_style.patch(style));
                 } else {
                     surface.set_style(
                         Rect {
                             x,
                             y,
-                            width: *width as u16,
+                            width: width as u16,
                             height: 1,
                         },
                         gutter_style,
@@ -766,12 +760,11 @@ impl EditorView {
                 text.clear();
             }
 
-            offset += *width as u16;
+            offset += width as u16;
         }
     }
 
     pub fn render_diagnostics(
-        &self,
         doc: &Document,
         view: &View,
         viewport: Rect,
@@ -882,7 +875,7 @@ impl EditorView {
             .or_else(|| theme.try_get_exact("ui.cursorcolumn"))
             .unwrap_or_else(|| theme.get("ui.cursorline.secondary"));
 
-        let inner_area = view.inner_area();
+        let inner_area = view.inner_area(doc);
         let offset = view.offset.col;
 
         let selection = doc.selection(view.id);
@@ -1009,37 +1002,40 @@ impl EditorView {
             }
             // special handling for repeat operator
             (key!('.'), _) if self.keymaps.pending().is_empty() => {
-                // first execute whatever put us into insert mode
-                self.last_insert.0.execute(cxt);
-                // then replay the inputs
-                for key in self.last_insert.1.clone() {
-                    match key {
-                        InsertEvent::Key(key) => self.insert_mode(cxt, key),
-                        InsertEvent::CompletionApply(compl) => {
-                            let (view, doc) = current!(cxt.editor);
+                for _ in 0..cxt.editor.count.map_or(1, NonZeroUsize::into) {
+                    // first execute whatever put us into insert mode
+                    self.last_insert.0.execute(cxt);
+                    // then replay the inputs
+                    for key in self.last_insert.1.clone() {
+                        match key {
+                            InsertEvent::Key(key) => self.insert_mode(cxt, key),
+                            InsertEvent::CompletionApply(compl) => {
+                                let (view, doc) = current!(cxt.editor);
 
-                            doc.restore(view);
+                                doc.restore(view);
 
-                            let text = doc.text().slice(..);
-                            let cursor = doc.selection(view.id).primary().cursor(text);
+                                let text = doc.text().slice(..);
+                                let cursor = doc.selection(view.id).primary().cursor(text);
 
-                            let shift_position =
-                                |pos: usize| -> usize { pos + cursor - compl.trigger_offset };
+                                let shift_position =
+                                    |pos: usize| -> usize { pos + cursor - compl.trigger_offset };
 
-                            let tx = Transaction::change(
-                                doc.text(),
-                                compl.changes.iter().cloned().map(|(start, end, t)| {
-                                    (shift_position(start), shift_position(end), t)
-                                }),
-                            );
-                            apply_transaction(&tx, doc, view);
-                        }
-                        InsertEvent::TriggerCompletion => {
-                            let (_, doc) = current!(cxt.editor);
-                            doc.savepoint();
+                                let tx = Transaction::change(
+                                    doc.text(),
+                                    compl.changes.iter().cloned().map(|(start, end, t)| {
+                                        (shift_position(start), shift_position(end), t)
+                                    }),
+                                );
+                                apply_transaction(&tx, doc, view);
+                            }
+                            InsertEvent::TriggerCompletion => {
+                                let (_, doc) = current!(cxt.editor);
+                                doc.savepoint();
+                            }
                         }
                     }
                 }
+                cxt.editor.count = None;
             }
             _ => {
                 // set the count
@@ -1341,7 +1337,9 @@ impl Component for EditorView {
                 cx.editor.status_msg = None;
 
                 let mode = cx.editor.mode();
-                let (view, _) = current!(cx.editor);
+                let (view, doc) = current!(cx.editor);
+                let original_doc_id = doc.id();
+                let original_doc_revision = doc.get_current_revision();
                 let focus = view.id;
 
                 if let Some(on_next_key) = self.on_next_key.take() {
@@ -1417,13 +1415,31 @@ impl Component for EditorView {
                     let view = view_mut!(cx.editor, focus);
                     let doc = doc_mut!(cx.editor, &view.doc);
 
-                    view.ensure_cursor_in_view(doc, config.scrolloff);
-
                     // Store a history state if not in insert mode. This also takes care of
                     // committing changes when leaving insert mode.
                     if mode != Mode::Insert {
                         doc.append_changes_to_history(view.id);
                     }
+
+                    // If the current document has been changed, apply the changes to all views.
+                    // This ensures that selections in jumplists follow changes.
+                    if doc.id() == original_doc_id
+                        && doc.get_current_revision() != original_doc_revision
+                    {
+                        if let Some(transaction) =
+                            doc.history.get_mut().changes_since(original_doc_revision)
+                        {
+                            let doc = doc!(cx.editor, &original_doc_id);
+                            for (view, _focused) in cx.editor.tree.views_mut() {
+                                view.apply(&transaction, doc);
+                            }
+                        }
+                    }
+
+                    let view = view_mut!(cx.editor, focus);
+                    let doc = doc_mut!(cx.editor, &view.doc);
+
+                    view.ensure_cursor_in_view(doc, config.scrolloff);
                 }
 
                 EventResult::Consumed(callback)

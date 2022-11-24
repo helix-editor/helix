@@ -282,6 +282,8 @@ impl MethodCall {
 pub enum Notification {
     // we inject this notification to signal the LSP is ready
     Initialized,
+    // and this notification to signal that the LSP exited
+    Exit,
     PublishDiagnostics(lsp::PublishDiagnosticsParams),
     ShowMessage(lsp::ShowMessageParams),
     LogMessage(lsp::LogMessageParams),
@@ -294,6 +296,7 @@ impl Notification {
 
         let notification = match method {
             lsp::notification::Initialized::METHOD => Self::Initialized,
+            lsp::notification::Exit::METHOD => Self::Exit,
             lsp::notification::PublishDiagnostics::METHOD => {
                 let params: lsp::PublishDiagnosticsParams = params.parse()?;
                 Self::PublishDiagnostics(params)
@@ -348,6 +351,10 @@ impl Registry {
             .values()
             .find(|(client_id, _)| client_id == &id)
             .map(|(_, client)| client.as_ref())
+    }
+
+    pub fn remove_by_id(&mut self, id: usize) {
+        self.inner.retain(|_, (client_id, _)| client_id != &id)
     }
 
     pub fn restart(

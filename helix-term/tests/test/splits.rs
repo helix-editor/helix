@@ -127,3 +127,29 @@ async fn test_split_write_quit_same_file() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_changes_in_splits_apply_to_all_views() -> anyhow::Result<()> {
+    // See <https://github.com/helix-editor/helix/issues/4732>.
+    // Transactions must be applied to any view that has the changed document open.
+    // This sequence would panic since the jumplist entry would be modified in one
+    // window but not the other. Attempting to update the changelist in the other
+    // window would cause a panic since it would point outside of the document.
+
+    // The key sequence here:
+    // * <C-w>v       Create a vertical split of the current buffer.
+    //                Both views look at the same doc.
+    // * [<space>     Add a line ending to the beginning of the document.
+    //                The cursor is now at line 2 in window 2.
+    // * <C-s>        Save that selection to the jumplist in window 2.
+    // * <C-w>w       Switch to window 1.
+    // * kd           Delete line 1 in window 1.
+    // * <C-w>q       Close window 1, focusing window 2.
+    // * d            Delete line 1 in window 2.
+    //
+    // This panicked in the past because the jumplist entry on line 2 of window 2
+    // was not updated and after the `kd` step, pointed outside of the document.
+    test(("#[|]#", "<C-w>v[<space><C-s><C-w>wkd<C-w>qd", "#[|]#")).await?;
+
+    Ok(())
+}

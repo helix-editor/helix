@@ -219,7 +219,7 @@ impl Tree {
 
         if self.focus == index {
             // focus on something else
-            self.focus_next();
+            self.focus = self.prev();
         }
 
         stack.push(index);
@@ -499,7 +499,7 @@ impl Tree {
                     // in a vertical container (and already correct based on previous search)
                     child_id = *container.children.iter().min_by_key(|id| {
                         let x = match &self.nodes[**id].content {
-                            Content::View(view) => view.inner_area().left(),
+                            Content::View(view) => view.area.left(),
                             Content::Container(container) => container.area.left(),
                         };
                         (current_x as i16 - x as i16).abs()
@@ -510,7 +510,7 @@ impl Tree {
                     // in a horizontal container (and already correct based on previous search)
                     child_id = *container.children.iter().min_by_key(|id| {
                         let y = match &self.nodes[**id].content {
-                            Content::View(view) => view.inner_area().top(),
+                            Content::View(view) => view.area.top(),
                             Content::Container(container) => container.area.top(),
                         };
                         (current_y as i16 - y as i16).abs()
@@ -521,7 +521,27 @@ impl Tree {
         Some(child_id)
     }
 
-    pub fn focus_next(&mut self) {
+    pub fn prev(&self) -> ViewId {
+        // This function is very dumb, but that's because we don't store any parent links.
+        // (we'd be able to go parent.prev_sibling() recursively until we find something)
+        // For now that's okay though, since it's unlikely you'll be able to open a large enough
+        // number of splits to notice.
+
+        let mut views = self
+            .traverse()
+            .rev()
+            .skip_while(|&(id, _view)| id != self.focus)
+            .skip(1); // Skip focused value
+        if let Some((id, _)) = views.next() {
+            id
+        } else {
+            // extremely crude, take the last item
+            let (key, _) = self.traverse().rev().next().unwrap();
+            key
+        }
+    }
+
+    pub fn next(&self) -> ViewId {
         // This function is very dumb, but that's because we don't store any parent links.
         // (we'd be able to go parent.next_sibling() recursively until we find something)
         // For now that's okay though, since it's unlikely you'll be able to open a large enough
@@ -532,11 +552,11 @@ impl Tree {
             .skip_while(|&(id, _view)| id != self.focus)
             .skip(1); // Skip focused value
         if let Some((id, _)) = views.next() {
-            self.focus = id;
+            id
         } else {
             // extremely crude, take the first item again
             let (key, _) = self.traverse().next().unwrap();
-            self.focus = key;
+            key
         }
     }
 
@@ -655,6 +675,23 @@ impl<'a> Iterator for Traverse<'a> {
                 Content::View(view) => return Some((key, view)),
                 Content::Container(container) => {
                     self.stack.extend(container.children.iter().rev());
+                }
+            }
+        }
+    }
+}
+
+impl<'a> DoubleEndedIterator for Traverse<'a> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        loop {
+            let key = self.stack.pop()?;
+
+            let node = &self.tree.nodes[key];
+
+            match &node.content {
+                Content::View(view) => return Some((key, view)),
+                Content::Container(container) => {
+                    self.stack.extend(container.children.iter());
                 }
             }
         }

@@ -1,8 +1,14 @@
-use crate::{Assoc, ChangeSet, Range, Rope, State, Transaction};
+use crate::{Assoc, ChangeSet, Range, Rope, Selection, Transaction};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
+
+#[derive(Debug, Clone)]
+pub struct State {
+    pub doc: Rope,
+    pub selection: Selection,
+}
 
 /// Stores the history of changes to a buffer.
 ///
@@ -48,7 +54,7 @@ pub struct History {
 }
 
 /// A single point in history. See [History] for more information.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Revision {
     parent: usize,
     last_child: Option<NonZeroUsize>,
@@ -111,6 +117,37 @@ impl History {
     #[inline]
     pub const fn at_root(&self) -> bool {
         self.current == 0
+    }
+
+    /// Returns the changes since the given revision composed into a transaction.
+    /// Returns None if there are no changes between the current and given revisions.
+    pub fn changes_since(&self, revision: usize) -> Option<Transaction> {
+        use std::cmp::Ordering::*;
+
+        match revision.cmp(&self.current) {
+            Equal => None,
+            Less => {
+                let mut child = self.revisions[revision].last_child?.get();
+                let mut transaction = self.revisions[child].transaction.clone();
+                while child != self.current {
+                    child = self.revisions[child].last_child?.get();
+                    transaction = transaction.compose(self.revisions[child].transaction.clone());
+                }
+                Some(transaction)
+            }
+            Greater => {
+                let mut inversion = self.revisions[revision].inversion.clone();
+                let mut parent = self.revisions[revision].parent;
+                while parent != self.current {
+                    parent = self.revisions[parent].parent;
+                    if parent == 0 {
+                        return None;
+                    }
+                    inversion = inversion.compose(self.revisions[parent].inversion.clone());
+                }
+                Some(inversion)
+            }
+        }
     }
 
     /// Undo the last edit.
@@ -282,7 +319,7 @@ impl History {
 }
 
 /// Whether to undo by a number of edits or a duration of time.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum UndoKind {
     Steps(usize),
     TimePeriod(std::time::Duration),
@@ -366,12 +403,16 @@ impl std::str::FromStr for UndoKind {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::Selection;
 
     #[test]
     fn test_undo_redo() {
         let mut history = History::default();
         let doc = Rope::from("hello");
-        let mut state = State::new(doc);
+        let mut state = State {
+            doc,
+            selection: Selection::point(0),
+        };
 
         let transaction1 =
             Transaction::change(&state.doc, vec![(5, 5, Some(" world!".into()))].into_iter());
@@ -420,7 +461,10 @@ mod test {
     fn test_earlier_later() {
         let mut history = History::default();
         let doc = Rope::from("a\n");
-        let mut state = State::new(doc);
+        let mut state = State {
+            doc,
+            selection: Selection::point(0),
+        };
 
         fn undo(history: &mut History, state: &mut State) {
             if let Some(transaction) = history.undo() {

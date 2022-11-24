@@ -6,7 +6,7 @@ const VERSION: &str = include_str!("../VERSION");
 
 fn main() {
     let git_hash = Command::new("git")
-        .args(&["rev-parse", "HEAD"])
+        .args(["rev-parse", "HEAD"])
         .output()
         .ok()
         .filter(|output| output.status.success())

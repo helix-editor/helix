@@ -481,7 +481,7 @@ fn earlier(
     let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
 
     let (view, doc) = current!(cx.editor);
-    let success = doc.earlier(view, uk);
+    let success = doc.earlier(view.id, uk);
     if !success {
         cx.editor.set_status("Already at oldest change");
     }
@@ -500,7 +500,7 @@ fn later(
 
     let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
     let (view, doc) = current!(cx.editor);
-    let success = doc.later(view, uk);
+    let success = doc.later(view.id, uk);
     if !success {
         cx.editor.set_status("Already at newest change");
     }
@@ -772,16 +772,21 @@ fn theme(
             };
         }
         PromptEvent::Validate => {
-            let theme_name = args.first().with_context(|| "Theme name not provided")?;
-            let theme = cx
-                .editor
-                .theme_loader
-                .load(theme_name)
-                .with_context(|| "Theme does not exist")?;
-            if !(true_color || theme.is_16_color()) {
-                bail!("Unsupported theme: theme requires true color support");
+            if let Some(theme_name) = args.first() {
+                let theme = cx
+                    .editor
+                    .theme_loader
+                    .load(theme_name)
+                    .with_context(|| "Theme does not exist")?;
+                if !(true_color || theme.is_16_color()) {
+                    bail!("Unsupported theme: theme requires true color support");
+                }
+                cx.editor.set_theme(theme);
+            } else {
+                let name = cx.editor.theme.name().to_string();
+
+                cx.editor.set_status(name);
             }
-            cx.editor.set_theme(theme);
         }
     };
 
@@ -1027,6 +1032,139 @@ fn reload(
     doc.reload(view).map(|_| {
         view.ensure_cursor_in_view(doc, scrolloff);
     })
+}
+
+fn reload_all(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let scrolloff = cx.editor.config().scrolloff;
+    let view_id = view!(cx.editor).id;
+
+    let docs_view_ids: Vec<(DocumentId, Vec<ViewId>)> = cx
+        .editor
+        .documents_mut()
+        .map(|doc| {
+            let mut view_ids: Vec<_> = doc.selections().keys().cloned().collect();
+
+            if view_ids.is_empty() {
+                doc.ensure_view_init(view_id);
+                view_ids.push(view_id);
+            };
+
+            (doc.id(), view_ids)
+        })
+        .collect();
+
+    for (doc_id, view_ids) in docs_view_ids {
+        let doc = doc_mut!(cx.editor, &doc_id);
+
+        // Every doc is guaranteed to have at least 1 view at this point.
+        let view = view_mut!(cx.editor, view_ids[0]);
+        doc.reload(view)?;
+
+        for view_id in view_ids {
+            let view = view_mut!(cx.editor, view_id);
+
+            view.ensure_cursor_in_view(doc, scrolloff);
+        }
+    }
+
+    Ok(())
+}
+
+/// Update the [`Document`] if it has been modified.
+fn update(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_view, doc) = current!(cx.editor);
+    if doc.is_modified() {
+        write(cx, args, event)
+    } else {
+        Ok(())
+    }
+}
+
+fn lsp_workspace_command(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_, doc) = current!(cx.editor);
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => {
+            cx.editor
+                .set_status("Language server not active for current buffer");
+            return Ok(());
+        }
+    };
+
+    let options = match &language_server.capabilities().execute_command_provider {
+        Some(options) => options,
+        None => {
+            cx.editor
+                .set_status("Workspace commands are not supported for this language server");
+            return Ok(());
+        }
+    };
+    if args.is_empty() {
+        let commands = options
+            .commands
+            .iter()
+            .map(|command| helix_lsp::lsp::Command {
+                title: command.clone(),
+                command: command.clone(),
+                arguments: None,
+            })
+            .collect::<Vec<_>>();
+        let callback = async move {
+            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                move |_editor: &mut Editor, compositor: &mut Compositor| {
+                    let picker = ui::Picker::new(commands, (), |cx, command, _action| {
+                        execute_lsp_command(cx.editor, command.clone());
+                    });
+                    compositor.push(Box::new(overlayed(picker)))
+                },
+            ));
+            Ok(call)
+        };
+        cx.jobs.callback(callback);
+    } else {
+        let command = args.join(" ");
+        if options.commands.iter().any(|c| c == &command) {
+            execute_lsp_command(
+                cx.editor,
+                helix_lsp::lsp::Command {
+                    title: command.clone(),
+                    arguments: None,
+                    command,
+                },
+            );
+        } else {
+            cx.editor.set_status(format!(
+                "`{command}` is not supported for this language server"
+            ));
+            return Ok(());
+        }
+    }
+    Ok(())
 }
 
 fn lsp_restart(
@@ -1848,7 +1986,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "theme",
             aliases: &[],
-            doc: "Change the editor theme.",
+            doc: "Change the editor theme (show current theme if no name specified).",
             fun: theme,
             completer: Some(completers::theme),
         },
@@ -1956,6 +2094,27 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Discard changes and reload from the source file.",
             fun: reload,
             completer: None,
+        },
+        TypableCommand {
+            name: "reload-all",
+            aliases: &[],
+            doc: "Discard changes and reload all documents from the source files.",
+            fun: reload_all,
+            completer: None,
+        },
+        TypableCommand {
+            name: "update",
+            aliases: &[],
+            doc: "Write changes only if the file has been modified.",
+            fun: update,
+            completer: None,
+        },
+        TypableCommand {
+            name: "lsp-workspace-command",
+            aliases: &[],
+            doc: "Open workspace command picker",
+            fun: lsp_workspace_command,
+            completer: Some(completers::lsp_workspace_command),
         },
         TypableCommand {
             name: "lsp-restart",
@@ -2145,7 +2304,10 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
             .collect()
     });
 
+#[allow(clippy::unnecessary_unwrap)]
 pub(super) fn command_mode(cx: &mut Context) {
+    use shellwords::Shellwords;
+
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
@@ -2153,12 +2315,11 @@ pub(super) fn command_mode(cx: &mut Context) {
             static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
                 Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);
 
-            // we use .this over split_whitespace() because we care about empty segments
-            let parts = input.split(' ').collect::<Vec<&str>>();
+            let shellwords = Shellwords::from(input);
+            let words = shellwords.words();
 
-            // simple heuristic: if there's no just one part, complete command name.
-            // if there's a space, per command completion kicks in.
-            if parts.len() <= 1 {
+            if words.is_empty() || (words.len() == 1 && !shellwords.ends_with_whitespace()) {
+                // If the command has not been finished yet, complete commands.
                 let mut matches: Vec<_> = typed::TYPABLE_COMMAND_LIST
                     .iter()
                     .filter_map(|command| {
@@ -2174,18 +2335,29 @@ pub(super) fn command_mode(cx: &mut Context) {
                     .map(|(name, _)| (0.., name.into()))
                     .collect()
             } else {
-                let part = parts.last().unwrap();
+                // Otherwise, use the command's completer and the last shellword
+                // as completion input.
+                let (part, part_len) = if words.len() == 1 || shellwords.ends_with_whitespace() {
+                    (&Cow::Borrowed(""), 0)
+                } else {
+                    (
+                        words.last().unwrap(),
+                        shellwords.parts().last().unwrap().len(),
+                    )
+                };
 
                 if let Some(typed::TypableCommand {
                     completer: Some(completer),
                     ..
-                }) = typed::TYPABLE_COMMAND_MAP.get(parts[0])
+                }) = typed::TYPABLE_COMMAND_MAP.get(&words[0] as &str)
                 {
                     completer(editor, part)
                         .into_iter()
                         .map(|(range, file)| {
+                            let file = shellwords::escape(file);
+
                             // offset ranges to input
-                            let offset = input.len() - part.len();
+                            let offset = input.len() - part_len;
                             let range = (range.start + offset)..;
                             (range, file)
                         })
@@ -2211,7 +2383,8 @@ pub(super) fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                let args = shellwords::shellwords(input);
+                let shellwords = Shellwords::from(input);
+                let args = shellwords.words();
 
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));
