@@ -1,4 +1,8 @@
-use crate::{editor::GutterType, graphics::Rect, Document, DocumentId, ViewId};
+use crate::{
+    editor::{GutterConfig, GutterType},
+    graphics::Rect,
+    Document, DocumentId, ViewId,
+};
 use helix_core::{
     pos_at_visual_coords, visual_coords_at_pos, Position, RopeSlice, Selection, Transaction,
 };
@@ -94,11 +98,8 @@ pub struct View {
     pub last_modified_docs: [Option<DocumentId>; 2],
     /// used to store previous selections of tree-sitter objects
     pub object_selections: Vec<Selection>,
-    /// GutterTypes used to fetch Gutter (constructor) and width for rendering
-    gutters: Vec<GutterType>,
-    /// Relevant gutter config settings
-    pub gutter_line_numbers_width_min: usize,
-    pub gutter_line_numbers_width_max: usize,
+    /// config, primarily used for
+    pub gutters: GutterConfig,
 }
 
 impl fmt::Debug for View {
@@ -112,12 +113,7 @@ impl fmt::Debug for View {
 }
 
 impl View {
-    pub fn new(
-        doc: DocumentId,
-        gutter_types: Vec<crate::editor::GutterType>,
-        gutter_line_numbers_width_min: usize,
-        gutter_line_numbers_width_max: usize,
-    ) -> Self {
+    pub fn new(doc: DocumentId, gutters: GutterConfig) -> Self {
         Self {
             id: ViewId::default(),
             doc,
@@ -127,9 +123,7 @@ impl View {
             docs_access_history: Vec::new(),
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
-            gutters: gutter_types,
-            gutter_line_numbers_width_min,
-            gutter_line_numbers_width_max,
+            gutters,
         }
     }
 
@@ -149,12 +143,13 @@ impl View {
     }
 
     pub fn gutters(&self) -> &[GutterType] {
-        &self.gutters
+        &self.gutters.layout
     }
 
     pub fn gutter_offset(&self, doc: &Document) -> u16 {
         let mut offset = self
             .gutters
+            .layout
             .iter()
             .map(|gutter| gutter.width(self, doc) as u16)
             .sum();
@@ -367,15 +362,16 @@ mod tests {
     const OFFSET_WITHOUT_LINE_NUMBERS: u16 = 2; // 1 diagnostic + 1 gutter
                                                 // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
     use crate::document::Document;
-    use crate::editor::GutterType;
+    use crate::editor::{GutterConfig, GutterLineNumbersConfig, GutterType};
 
     #[test]
     fn test_text_pos_at_screen_coords() {
         let mut view = View::new(
             DocumentId::default(),
-            vec![GutterType::Diagnostics, GutterType::LineNumbers],
-            2,
-            5,
+            GutterConfig {
+                layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
+                line_numbers: GutterLineNumbersConfig { width: 3 },
+            },
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");

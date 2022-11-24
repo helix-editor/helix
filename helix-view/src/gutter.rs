@@ -1,4 +1,4 @@
-use std::cmp::{max, min};
+use std::cmp::max;
 use std::fmt::Write;
 
 use crate::{
@@ -91,8 +91,6 @@ pub fn line_numbers<'doc>(
     theme: &Theme,
     is_focused: bool,
 ) -> GutterFn<'doc> {
-    const ELLIPSIS: &str = "\u{2026}";
-
     let text = doc.text().slice(..);
 
     let last_line = text.len_lines().saturating_sub(1);
@@ -105,8 +103,7 @@ pub fn line_numbers<'doc>(
 
     // characters used to display last line, and settings for min/max
     let n_last_line = count_digits(last_drawn_line);
-    let n_min = editor.config().line_numbers_width_min;
-    let n_max = editor.config().line_numbers_width_max;
+    let n_min = editor.config().gutters.line_numbers.width;
 
     let linenr = theme.get("ui.linenr");
     let linenr_select = theme.get("ui.linenr.selected");
@@ -120,7 +117,7 @@ pub fn line_numbers<'doc>(
 
     Box::new(move |line: usize, selected: bool, out: &mut String| {
         if line == last_line_in_view && !draw_last {
-            let width = clamp_line_numbers_width(n_last_line, n_min, n_max);
+            let width = max(n_last_line, n_min);
             write!(out, "{:>1$}", '~', width).unwrap();
             Some(linenr)
         } else {
@@ -143,30 +140,11 @@ pub fn line_numbers<'doc>(
                 linenr
             };
 
-            let n_display = count_digits(display_num);
-            if n_max > 0 && n_display > n_max {
-                let display_num_trunc = display_num % (10 as usize).pow(n_max as u32);
-                write!(out, "{}{1:0>2$}", ELLIPSIS, display_num_trunc, n_max - 1).unwrap();
-            } else {
-                let width = clamp_line_numbers_width(n_last_line, n_min, n_max);
-                write!(out, "{:>1$}", display_num, width).unwrap();
-            }
-
+            let width = max(n_last_line, n_min);
+            write!(out, "{:>1$}", display_num, width).unwrap();
             Some(style)
         }
     })
-}
-
-/// Clamp a line number width between a lower and upper bound
-///
-/// However, an upper bound of `0` is treated as having no maximum
-#[inline(always)]
-fn clamp_line_numbers_width(x: usize, lb: usize, ub: usize) -> usize {
-    if ub == 0 {
-        min(max(x, lb), ub)
-    } else {
-        max(x, lb)
-    }
 }
 
 /// The width of a "line-numbers" gutter
@@ -180,15 +158,8 @@ pub fn line_numbers_width(view: &View, doc: &Document) -> usize {
     let draw_last = text.line_to_byte(last_line) < text.len_bytes();
     let last_drawn = if draw_last { last_line + 1 } else { last_line };
     let digits = count_digits(last_drawn);
-
-    let n_min = view.gutter_line_numbers_width_min;
-    let n_max = view.gutter_line_numbers_width_max;
-
-    if n_max > 0 {
-        min(max(digits, n_min), n_max)
-    } else {
-        max(digits, n_min)
-    }
+    let n_min = view.gutters.line_numbers.width;
+    max(digits, n_min)
 }
 
 pub fn padding<'doc>(
