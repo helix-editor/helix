@@ -65,7 +65,7 @@
 
 (integer_value) @constant.numeric.integer
 (float_value) @constant.numeric.float
-(unit) @type
+(unit) @constant.numeric
 
 [
  ")"
