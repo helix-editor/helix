@@ -3085,40 +3085,59 @@ pub mod insert {
             let curr = contents.get_char(pos).unwrap_or(' ');
 
             let current_line = text.char_to_line(pos);
-            let indent = indent::indent_for_newline(
-                doc.language_config(),
-                doc.syntax(),
-                &doc.indent_style,
-                doc.tab_width(),
-                text,
-                current_line,
-                pos,
-                current_line,
-            );
-            let mut text = String::new();
-            // If we are between pairs (such as brackets), we want to
-            // insert an additional line which is indented one level
-            // more and place the cursor there
-            let on_auto_pair = doc
-                .auto_pairs(cx.editor)
-                .and_then(|pairs| pairs.get(prev))
-                .and_then(|pair| if pair.close == curr { Some(pair) } else { None })
-                .is_some();
+            let line_is_only_whitespace = text
+                .line(current_line)
+                .chars()
+                .all(|char| char.is_ascii_whitespace());
 
-            let local_offs = if on_auto_pair {
-                let inner_indent = indent.clone() + doc.indent_style.as_str();
-                text.reserve_exact(2 + indent.len() + inner_indent.len());
-                text.push_str(doc.line_ending.as_str());
-                text.push_str(&inner_indent);
-                let local_offs = text.chars().count();
-                text.push_str(doc.line_ending.as_str());
-                text.push_str(&indent);
-                local_offs
+            let mut new_text = String::new();
+
+            // If the current line is all whitespace, insert a line ending at the beginning of
+            // the current line. This makes the current line empty and the new line contain the
+            // indentation of the old line.
+            let (from, to, local_offs) = if line_is_only_whitespace {
+                let line_start = text.line_to_char(current_line);
+                new_text.push_str(doc.line_ending.as_str());
+
+                (line_start, line_start, new_text.chars().count())
             } else {
-                text.reserve_exact(1 + indent.len());
-                text.push_str(doc.line_ending.as_str());
-                text.push_str(&indent);
-                text.chars().count()
+                let indent = indent::indent_for_newline(
+                    doc.language_config(),
+                    doc.syntax(),
+                    &doc.indent_style,
+                    doc.tab_width(),
+                    text,
+                    current_line,
+                    pos,
+                    current_line,
+                );
+
+                // If we are between pairs (such as brackets), we want to
+                // insert an additional line which is indented one level
+                // more and place the cursor there
+                let on_auto_pair = doc
+                    .auto_pairs(cx.editor)
+                    .and_then(|pairs| pairs.get(prev))
+                    .and_then(|pair| if pair.close == curr { Some(pair) } else { None })
+                    .is_some();
+
+                let local_offs = if on_auto_pair {
+                    let inner_indent = indent.clone() + doc.indent_style.as_str();
+                    new_text.reserve_exact(2 + indent.len() + inner_indent.len());
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&inner_indent);
+                    let local_offs = new_text.chars().count();
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&indent);
+                    local_offs
+                } else {
+                    new_text.reserve_exact(1 + indent.len());
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&indent);
+                    new_text.chars().count()
+                };
+
+                (pos, pos, local_offs)
             };
 
             let new_range = if doc.restore_cursor {
@@ -3139,9 +3158,9 @@ pub mod insert {
             // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
             // can be used with cx.mode to do replace or extend on most changes
             ranges.push(new_range);
-            global_offs += text.chars().count();
+            global_offs += new_text.chars().count();
 
-            (pos, pos, Some(text.into()))
+            (from, to, Some(new_text.into()))
         });
 
         transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
