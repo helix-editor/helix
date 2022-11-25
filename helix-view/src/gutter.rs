@@ -247,3 +247,80 @@ pub fn diagnostics_or_breakpoints<'doc>(
         breakpoints(line, selected, out).or_else(|| diagnostics(line, selected, out))
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::document::Document;
+    use crate::editor::{GutterConfig, GutterLineNumbersConfig};
+    use crate::graphics::Rect;
+    use crate::DocumentId;
+    use helix_core::Rope;
+
+    #[test]
+    fn test_default_gutter_widths() {
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        view.area = Rect::new(40, 40, 40, 40);
+
+        let rope = Rope::from_str("abc\n\tdef");
+        let doc = Document::from(rope, None);
+
+        assert_eq!(view.gutters.layout.len(), 3);
+        assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
+        assert_eq!(view.gutters.layout[1].width(&view, &doc), 2);
+        assert_eq!(view.gutters.layout[2].width(&view, &doc), 3);
+    }
+
+    #[test]
+    fn test_configured_gutter_widths() {
+        let gutters = GutterConfig {
+            layout: vec![GutterType::Diagnostics],
+            ..Default::default()
+        };
+
+        let mut view = View::new(DocumentId::default(), gutters);
+        view.area = Rect::new(40, 40, 40, 40);
+
+        let rope = Rope::from_str("abc\n\tdef");
+        let doc = Document::from(rope, None);
+
+        assert_eq!(view.gutters.layout.len(), 1);
+        assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
+
+        let gutters = GutterConfig {
+            layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            line_numbers: GutterLineNumbersConfig { width: 10 },
+        };
+
+        let mut view = View::new(DocumentId::default(), gutters);
+        view.area = Rect::new(40, 40, 40, 40);
+
+        let rope = Rope::from_str("abc\n\tdef");
+        let doc = Document::from(rope, None);
+
+        assert_eq!(view.gutters.layout.len(), 2);
+        assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
+        assert_eq!(view.gutters.layout[1].width(&view, &doc), 10);
+    }
+
+    #[test]
+    fn test_line_numbers_gutter_width_resizes() {
+        let gutters = GutterConfig {
+            layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            line_numbers: GutterLineNumbersConfig { width: 1 },
+        };
+
+        let mut view = View::new(DocumentId::default(), gutters);
+        view.area = Rect::new(40, 40, 40, 40);
+
+        let rope = Rope::from_str("a\nb");
+        let doc_short = Document::from(rope, None);
+
+        let rope = Rope::from_str("a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np");
+        let doc_long = Document::from(rope, None);
+
+        assert_eq!(view.gutters.layout.len(), 2);
+        assert_eq!(view.gutters.layout[1].width(&view, &doc_short), 1);
+        assert_eq!(view.gutters.layout[1].width(&view, &doc_long), 2);
+    }
+}
