@@ -1049,20 +1049,28 @@ fn reload_all(
     let docs_view_ids: Vec<(DocumentId, Vec<ViewId>)> = cx
         .editor
         .documents_mut()
-        .map(|doc| {
-            let mut view_ids: Vec<_> = doc.selections().keys().cloned().collect();
-
-            if view_ids.is_empty() {
-                doc.ensure_view_init(view_id);
-                view_ids.push(view_id);
-            };
-
-            (doc.id(), view_ids)
-        })
+        .map(|doc| (doc.id(), doc.selections().keys().cloned().collect()))
         .collect();
 
     for (doc_id, view_ids) in docs_view_ids {
+        // Not using filter map here means we need to clone the id again since
+        // contains cant be called with a reference.
+        #[allow(clippy::unnecessary_filter_map)]
+        let mut view_ids: Vec<ViewId> = view_ids
+            .into_iter()
+            // TODO: This check can be removed once
+            // https://github.com/helix-editor/helix/pull/4888 is merged.
+            .filter_map(|id| match cx.editor.tree.contains(id) {
+                true => Some(id),
+                false => None,
+            })
+            .collect();
+
         let doc = doc_mut!(cx.editor, &doc_id);
+        if view_ids.is_empty() {
+            doc.ensure_view_init(view_id);
+            view_ids.push(view_id);
+        };
 
         // Every doc is guaranteed to have at least 1 view at this point.
         let view = view_mut!(cx.editor, view_ids[0]);
