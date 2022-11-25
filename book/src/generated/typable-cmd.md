@@ -72,4 +72,4 @@
 | `:append-output` | Run shell command, appending output after each selection. |
 | `:pipe` | Pipe each selection to the shell command. |
 | `:run-shell-command`, `:sh` | Run a shell command |
-| `:keymaps`, `:keys` | Show keymaps for mode |
+| `:show-keymaps`, `:keys` | Show keymaps for mode |
