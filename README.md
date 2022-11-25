@@ -123,7 +123,7 @@ brew install helix
 
 Install Helix using [AppImage](https://appimage.org/).
 
-Download Helix AppImage form [Releases](https://github.com/helix-editor/helix/releases) page.
+Download Helix AppImage from the [Releases](https://github.com/helix-editor/helix/releases) page.
 Note : Version may change in future so run command accordingly.
 
 ```sh
