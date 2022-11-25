@@ -1813,7 +1813,7 @@ fn show_keymap(
                     }
                 }
                 let contents = ui::Markdown::new(
-                    format!("```Keys\n{}\n```", output.join("\n")),
+                    format!("```\nKeys\n{}\n```", output.join("\n")),
                     editor.syn_loader.clone(),
                 );
                 let popup = Popup::new("keys", contents).position(Some(helix_core::Position::new(
@@ -2340,7 +2340,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: Some(completers::directory),
         },
         TypableCommand {
-            name: "keymaps",
+            name: "show-keymaps",
             aliases: &["keys"],
             doc: "Show keymaps for mode",
             fun: show_keymap,
