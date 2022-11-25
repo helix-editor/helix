@@ -1,6 +1,12 @@
 (comment) @comment
 
 [
+ (tag_name)
+ (nesting_selector)
+ (universal_selector)
+] @tag
+
+[
  "~"
  ">"
  "+"
@@ -22,24 +28,16 @@
  "or"
 ] @keyword.operator
 
-((universal_selector) "*") @tag
-
-[
- (tag_name)
- (nesting_selector)
- (universal_selector)
-] @tag
-
 ((property_name) @variable
  (#match? @variable "^--"))
 ((plain_value) @variable
  (#match? @variable "^--"))
 
 (attribute_name) @attribute
-(class_name) @type
+(class_name) @label
 (feature_name) @variable.other.member
 (function_name) @function
-(id_name) @attribute
+(id_name) @label
 (namespace_name) @namespace
 (property_name) @variable.other.member
 
