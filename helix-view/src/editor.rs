@@ -134,11 +134,10 @@ impl<'de> Deserialize<'de> for GutterConfig {
         }
 
         match GutterConfigFormat::deserialize(deserializer)? {
-            GutterConfigFormat::Simple(layout) => {
-                let mut config = GutterConfig::default();
-                config.layout = layout;
-                Ok(config)
-            }
+            GutterConfigFormat::Simple(layout) => Ok(GutterConfig {
+                layout,
+                ..Default::default()
+            }),
             GutterConfigFormat::Detailed(config) => Ok(convert(config)),
         }
     }
