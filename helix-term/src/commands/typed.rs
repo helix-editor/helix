@@ -1070,8 +1070,9 @@ fn reload_all(
 
         for view_id in view_ids {
             let view = view_mut!(cx.editor, view_id);
-
-            view.ensure_cursor_in_view(doc, scrolloff);
+            if view.doc.eq(&doc_id) {
+                view.ensure_cursor_in_view(doc, scrolloff);
+            }
         }
     }
 
