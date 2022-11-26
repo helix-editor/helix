@@ -1,6 +1,7 @@
 use crate::{editor::GutterType, graphics::Rect, Document, DocumentId, ViewId};
 use helix_core::{
-    pos_at_visual_coords, visual_coords_at_pos, Position, RopeSlice, Selection, Transaction,
+    pos_at_visual_coords, visual_col_position, visual_coords_at_pos, Position, RopeSlice,
+    Selection, Transaction,
 };
 
 use std::{collections::VecDeque, fmt};
@@ -242,19 +243,17 @@ impl View {
         text: RopeSlice,
         pos: usize,
     ) -> Option<Position> {
-        let line = text.char_to_line(pos);
+        let row = text.char_to_line(pos);
 
-        if line < self.offset.row || line > self.last_line(doc) {
+        if row < self.offset.row || row > self.last_line(doc) {
             // Line is not visible on screen
             return None;
         }
 
-        let tab_width = doc.tab_width();
-        // TODO: visual_coords_at_pos also does char_to_line which we ignore, can we reuse the call?
-        let Position { col, .. } = visual_coords_at_pos(text, pos, tab_width);
+        let col = visual_col_position(text, pos, row, doc.tab_width());
 
         // It is possible for underflow to occur if the buffer length is larger than the terminal width.
-        let row = line.saturating_sub(self.offset.row);
+        let row = row.saturating_sub(self.offset.row);
         let col = col.saturating_sub(self.offset.col);
 
         Some(Position::new(row, col))

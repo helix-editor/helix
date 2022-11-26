@@ -54,18 +54,15 @@ impl From<Position> for tree_sitter::Point {
         Self::new(pos.row, pos.col)
     }
 }
+
 /// Convert a character index to (line, column) coordinates.
 ///
 /// column in `char` count which can be used for row:column display in
 /// status line. See [`visual_coords_at_pos`] for a visual one.
 pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
-    let line = text.char_to_line(pos);
-
-    let line_start = text.line_to_char(line);
-    let pos = ensure_grapheme_boundary_prev(text, pos);
-    let col = RopeGraphemes::new(text.slice(line_start..pos)).count();
-
-    Position::new(line, col)
+    let row = text.char_to_line(pos);
+    let col = rope_graphemes(text, pos, row).count();
+    Position::new(row, col)
 }
 
 /// Convert a character index to (line, column) coordinates visually.
@@ -74,14 +71,17 @@ pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
 /// not in the document in the future.
 /// See [`coords_at_pos`] for an "objective" one.
 pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Position {
-    let line = text.char_to_line(pos);
+    let row = text.char_to_line(pos);
+    let col = visual_col_position(text, pos, row, tab_width);
+    Position { row, col }
+}
 
-    let line_start = text.line_to_char(line);
-    let pos = ensure_grapheme_boundary_prev(text, pos);
-
+/// Returns a column position of a character index in a row.
+///
+/// Accounts for tab (\t) and double-width characters (CJK).
+pub fn visual_col_position(text: RopeSlice, pos: usize, row: usize, tab_width: usize) -> usize {
     let mut col = 0;
-
-    for grapheme in RopeGraphemes::new(text.slice(line_start..pos)) {
+    for grapheme in rope_graphemes(text, pos, row) {
         if grapheme == "\t" {
             col += tab_width - (col % tab_width);
         } else {
@@ -89,8 +89,7 @@ pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Po
             col += grapheme_width(&grapheme);
         }
     }
-
-    Position::new(line, col)
+    col
 }
 
 /// Convert (line, column) coordinates to a character index.
@@ -167,6 +166,12 @@ pub fn pos_at_visual_coords(text: RopeSlice, coords: Position, tab_width: usize)
     }
 
     line_start + col_char_offset
+}
+
+fn rope_graphemes(text: RopeSlice, pos: usize, row: usize) -> RopeGraphemes {
+    let row_start = text.line_to_char(row);
+    let pos = ensure_grapheme_boundary_prev(text, pos);
+    RopeGraphemes::new(text.slice(row_start..pos))
 }
 
 #[cfg(test)]
