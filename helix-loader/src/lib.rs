@@ -4,6 +4,8 @@ pub mod grammar;
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 use std::path::PathBuf;
 
+pub const VERSION_AND_GIT_HASH: &str = env!("VERSION_AND_GIT_HASH");
+
 pub static RUNTIME_DIR: once_cell::sync::Lazy<PathBuf> = once_cell::sync::Lazy::new(runtime_dir);
 
 static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();

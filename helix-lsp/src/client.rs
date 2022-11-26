@@ -5,6 +5,7 @@ use crate::{
 };
 
 use helix_core::{find_root, ChangeSet, Rope};
+use helix_loader::{self, VERSION_AND_GIT_HASH};
 use lsp_types as lsp;
 use serde::Deserialize;
 use serde_json::Value;
@@ -376,7 +377,10 @@ impl Client {
                 ..Default::default()
             },
             trace: None,
-            client_info: None,
+            client_info: Some(lsp::ClientInfo {
+                name: String::from("helix"),
+                version: Some(String::from(VERSION_AND_GIT_HASH)),
+            }),
             locale: None, // TODO
         };
 
