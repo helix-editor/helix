@@ -193,8 +193,9 @@ We use a similar set of scopes as
 - `operator` - `||`, `+=`, `>`
 
 - `function`
-  - `builtin`
-  - `method`
+  - `declaration` - Declaration of a function (e.g. `fn foo() { }` in Rust)
+  - `builtin` - Built-in functions (e.q. `println!` in Rust)
+  - `method` - Methods
   - `macro`
   - `special` (preprocessor in C)
 

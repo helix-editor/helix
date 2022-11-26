@@ -109,13 +109,13 @@
 (char_literal) @constant.character
 
 (call_expression
-  function: (identifier) @function)
+  function: (identifier) @function.declaration)
 (call_expression
   function: (field_expression
-    field: (field_identifier) @function))
+    field: (field_identifier) @function.declaration))
 (call_expression (argument_list (identifier) @variable))
 (function_declarator
-  declarator: [(identifier) (field_identifier)] @function)
+  declarator: [(identifier) (field_identifier)] @function.declaration)
 (parameter_declaration
   declarator: (identifier) @variable.parameter)
 (parameter_declaration
