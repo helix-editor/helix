@@ -2427,7 +2427,6 @@ fn jumplist_picker(cx: &mut Context) {
             .views()
             .flat_map(|(view, _)| {
                 view.jumps
-                    .get()
                     .iter()
                     .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
             })
@@ -3086,40 +3085,59 @@ pub mod insert {
             let curr = contents.get_char(pos).unwrap_or(' ');
 
             let current_line = text.char_to_line(pos);
-            let indent = indent::indent_for_newline(
-                doc.language_config(),
-                doc.syntax(),
-                &doc.indent_style,
-                doc.tab_width(),
-                text,
-                current_line,
-                pos,
-                current_line,
-            );
-            let mut text = String::new();
-            // If we are between pairs (such as brackets), we want to
-            // insert an additional line which is indented one level
-            // more and place the cursor there
-            let on_auto_pair = doc
-                .auto_pairs(cx.editor)
-                .and_then(|pairs| pairs.get(prev))
-                .and_then(|pair| if pair.close == curr { Some(pair) } else { None })
-                .is_some();
+            let line_is_only_whitespace = text
+                .line(current_line)
+                .chars()
+                .all(|char| char.is_ascii_whitespace());
 
-            let local_offs = if on_auto_pair {
-                let inner_indent = indent.clone() + doc.indent_style.as_str();
-                text.reserve_exact(2 + indent.len() + inner_indent.len());
-                text.push_str(doc.line_ending.as_str());
-                text.push_str(&inner_indent);
-                let local_offs = text.chars().count();
-                text.push_str(doc.line_ending.as_str());
-                text.push_str(&indent);
-                local_offs
+            let mut new_text = String::new();
+
+            // If the current line is all whitespace, insert a line ending at the beginning of
+            // the current line. This makes the current line empty and the new line contain the
+            // indentation of the old line.
+            let (from, to, local_offs) = if line_is_only_whitespace {
+                let line_start = text.line_to_char(current_line);
+                new_text.push_str(doc.line_ending.as_str());
+
+                (line_start, line_start, new_text.chars().count())
             } else {
-                text.reserve_exact(1 + indent.len());
-                text.push_str(doc.line_ending.as_str());
-                text.push_str(&indent);
-                text.chars().count()
+                let indent = indent::indent_for_newline(
+                    doc.language_config(),
+                    doc.syntax(),
+                    &doc.indent_style,
+                    doc.tab_width(),
+                    text,
+                    current_line,
+                    pos,
+                    current_line,
+                );
+
+                // If we are between pairs (such as brackets), we want to
+                // insert an additional line which is indented one level
+                // more and place the cursor there
+                let on_auto_pair = doc
+                    .auto_pairs(cx.editor)
+                    .and_then(|pairs| pairs.get(prev))
+                    .and_then(|pair| if pair.close == curr { Some(pair) } else { None })
+                    .is_some();
+
+                let local_offs = if on_auto_pair {
+                    let inner_indent = indent.clone() + doc.indent_style.as_str();
+                    new_text.reserve_exact(2 + indent.len() + inner_indent.len());
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&inner_indent);
+                    let local_offs = new_text.chars().count();
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&indent);
+                    local_offs
+                } else {
+                    new_text.reserve_exact(1 + indent.len());
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&indent);
+                    new_text.chars().count()
+                };
+
+                (pos, pos, local_offs)
             };
 
             let new_range = if doc.restore_cursor {
@@ -3140,9 +3158,9 @@ pub mod insert {
             // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
             // can be used with cx.mode to do replace or extend on most changes
             ranges.push(new_range);
-            global_offs += text.chars().count();
+            global_offs += new_text.chars().count();
 
-            (pos, pos, Some(text.into()))
+            (from, to, Some(new_text.into()))
         });
 
         transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
@@ -3303,7 +3321,7 @@ fn undo(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     for _ in 0..count {
-        if !doc.undo(view) {
+        if !doc.undo(view.id) {
             cx.editor.set_status("Already at oldest change");
             break;
         }
@@ -3314,7 +3332,7 @@ fn redo(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     for _ in 0..count {
-        if !doc.redo(view) {
+        if !doc.redo(view.id) {
             cx.editor.set_status("Already at newest change");
             break;
         }
@@ -3326,7 +3344,7 @@ fn earlier(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     for _ in 0..count {
         // rather than doing in batch we do this so get error halfway
-        if !doc.earlier(view, UndoKind::Steps(1)) {
+        if !doc.earlier(view.id, UndoKind::Steps(1)) {
             cx.editor.set_status("Already at oldest change");
             break;
         }
@@ -3338,7 +3356,7 @@ fn later(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     for _ in 0..count {
         // rather than doing in batch we do this so get error halfway
-        if !doc.later(view, UndoKind::Steps(1)) {
+        if !doc.later(view.id, UndoKind::Steps(1)) {
             cx.editor.set_status("Already at newest change");
             break;
         }
@@ -3802,15 +3820,21 @@ fn format_selections(cx: &mut Context) {
 
     let range = ranges[0];
 
-    let edits = tokio::task::block_in_place(|| {
-        helix_lsp::block_on(language_server.text_document_range_formatting(
-            doc.identifier(),
-            range,
-            lsp::FormattingOptions::default(),
-            None,
-        ))
-    })
-    .unwrap_or_default();
+    let request = match language_server.text_document_range_formatting(
+        doc.identifier(),
+        range,
+        lsp::FormattingOptions::default(),
+        None,
+    ) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support range formatting");
+            return;
+        }
+    };
+
+    let edits = tokio::task::block_in_place(|| helix_lsp::block_on(request)).unwrap_or_default();
 
     let transaction = helix_lsp::util::generate_transaction_from_edits(
         doc.text(),
@@ -3954,7 +3978,10 @@ pub fn completion(cx: &mut Context) {
 
     let pos = pos_to_lsp_pos(doc.text(), cursor, offset_encoding);
 
-    let future = language_server.completion(doc.identifier(), pos, None);
+    let future = match language_server.completion(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => return,
+    };
 
     let trigger_offset = cursor;
 
@@ -4574,6 +4601,7 @@ fn surround_add(cx: &mut Context) {
         let transaction = Transaction::change(doc.text(), changes.into_iter())
             .with_selection(Selection::new(ranges, selection.primary_index()));
         apply_transaction(&transaction, doc, view);
+        exit_select_mode(cx);
     })
 }
 
@@ -4613,6 +4641,7 @@ fn surround_replace(cx: &mut Context) {
                 }),
             );
             apply_transaction(&transaction, doc, view);
+            exit_select_mode(cx);
         });
     })
 }
@@ -4640,6 +4669,7 @@ fn surround_delete(cx: &mut Context) {
         let transaction =
             Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
         apply_transaction(&transaction, doc, view);
+        exit_select_mode(cx);
     })
 }
 
@@ -4804,15 +4834,24 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let mut ranges = SmallVec::with_capacity(selection.len());
     let text = doc.text().slice(..);
 
+    let mut shell_output: Option<Tendril> = None;
     let mut offset = 0isize;
-
     for range in selection.ranges() {
-        let fragment = range.slice(text);
-        let (output, success) = match shell_impl(shell, cmd, pipe.then(|| fragment.into())) {
-            Ok(result) => result,
-            Err(err) => {
-                cx.editor.set_error(err.to_string());
-                return;
+        let (output, success) = if let Some(output) = shell_output.as_ref() {
+            (output.clone(), true)
+        } else {
+            let fragment = range.slice(text);
+            match shell_impl(shell, cmd, pipe.then(|| fragment.into())) {
+                Ok(result) => {
+                    if !pipe {
+                        shell_output = Some(result.0.clone());
+                    }
+                    result
+                }
+                Err(err) => {
+                    cx.editor.set_error(err.to_string());
+                    return;
+                }
             }
         };
 

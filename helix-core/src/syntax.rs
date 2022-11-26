@@ -7,8 +7,10 @@ use crate::{
     Rope, RopeSlice, Tendril,
 };
 
+use ahash::RandomState;
 use arc_swap::{ArcSwap, Guard};
 use bitflags::bitflags;
+use hashbrown::raw::RawTable;
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
 use std::{
@@ -16,7 +18,8 @@ use std::{
     cell::RefCell,
     collections::{HashMap, VecDeque},
     fmt,
-    mem::replace,
+    hash::{Hash, Hasher},
+    mem::{replace, transmute},
     path::Path,
     str::FromStr,
     sync::Arc,
@@ -770,30 +773,38 @@ impl Syntax {
         // Convert the changeset into tree sitter edits.
         let edits = generate_edits(old_source, changeset);
 
+        // This table allows inverse indexing of `layers`.
+        // That is by hashing a `Layer` you can find
+        // the `LayerId` of an existing equivalent `Layer` in `layers`.
+        //
+        // It is used to determine if a new layer exists for an injection
+        // or if an existing layer needs to be updated.
+        let mut layers_table = RawTable::with_capacity(self.layers.len());
+        let layers_hasher = RandomState::new();
         // Use the edits to update all layers markers
-        if !edits.is_empty() {
-            fn point_add(a: Point, b: Point) -> Point {
-                if b.row > 0 {
-                    Point::new(a.row.saturating_add(b.row), b.column)
-                } else {
-                    Point::new(0, a.column.saturating_add(b.column))
-                }
+        fn point_add(a: Point, b: Point) -> Point {
+            if b.row > 0 {
+                Point::new(a.row.saturating_add(b.row), b.column)
+            } else {
+                Point::new(0, a.column.saturating_add(b.column))
             }
-            fn point_sub(a: Point, b: Point) -> Point {
-                if a.row > b.row {
-                    Point::new(a.row.saturating_sub(b.row), a.column)
-                } else {
-                    Point::new(0, a.column.saturating_sub(b.column))
-                }
+        }
+        fn point_sub(a: Point, b: Point) -> Point {
+            if a.row > b.row {
+                Point::new(a.row.saturating_sub(b.row), a.column)
+            } else {
+                Point::new(0, a.column.saturating_sub(b.column))
+            }
+        }
+
+        for (layer_id, layer) in self.layers.iter_mut() {
+            // The root layer always covers the whole range (0..usize::MAX)
+            if layer.depth == 0 {
+                layer.flags = LayerUpdateFlags::MODIFIED;
+                continue;
             }
 
-            for layer in self.layers.values_mut() {
-                // The root layer always covers the whole range (0..usize::MAX)
-                if layer.depth == 0 {
-                    layer.flags = LayerUpdateFlags::MODIFIED;
-                    continue;
-                }
-
+            if !edits.is_empty() {
                 for range in &mut layer.ranges {
                     // Roughly based on https://github.com/tree-sitter/tree-sitter/blob/ddeaa0c7f534268b35b4f6cb39b52df082754413/lib/src/subtree.c#L691-L720
                     for edit in edits.iter().rev() {
@@ -858,6 +869,12 @@ impl Syntax {
                     }
                 }
             }
+
+            let hash = layers_hasher.hash_one(layer);
+            // Safety: insert_no_grow is unsafe because it assumes that the table
+            // has enough capacity to hold additional elements.
+            // This is always the case as we reserved enough capacity above.
+            unsafe { layers_table.insert_no_grow(hash, layer_id) };
         }
 
         PARSER.with(|ts_parser| {
@@ -982,27 +999,23 @@ impl Syntax {
                 let depth = layer.depth + 1;
                 // TODO: can't inline this since matches borrows self.layers
                 for (config, ranges) in injections {
-                    // Find an existing layer
-                    let layer = self
-                        .layers
-                        .iter_mut()
-                        .find(|(_, layer)| {
-                            layer.depth == depth && // TODO: track parent id instead
-                            layer.config.language == config.language && layer.ranges == ranges
+                    let new_layer = LanguageLayer {
+                        tree: None,
+                        config,
+                        depth,
+                        ranges,
+                        flags: LayerUpdateFlags::empty(),
+                    };
+
+                    // Find an identical existing layer
+                    let layer = layers_table
+                        .get(layers_hasher.hash_one(&new_layer), |&it| {
+                            self.layers[it] == new_layer
                         })
-                        .map(|(id, _layer)| id);
+                        .copied();
 
                     // ...or insert a new one.
-                    let layer_id = layer.unwrap_or_else(|| {
-                        self.layers.insert(LanguageLayer {
-                            tree: None,
-                            config,
-                            depth,
-                            ranges,
-                            // set the modified flag to ensure the layer is parsed
-                            flags: LayerUpdateFlags::empty(),
-                        })
-                    });
+                    let layer_id = layer.unwrap_or_else(|| self.layers.insert(new_layer));
 
                     queue.push_back(layer_id);
                 }
@@ -1137,6 +1150,34 @@ pub struct LanguageLayer {
     pub ranges: Vec<Range>,
     pub depth: u32,
     flags: LayerUpdateFlags,
+}
+
+/// This PartialEq implementation only checks if that
+/// two layers are theoretically identical (meaning they highlight the same text range with the same language).
+/// It does not check whether the layers have the same internal treesitter
+/// state.
+impl PartialEq for LanguageLayer {
+    fn eq(&self, other: &Self) -> bool {
+        self.depth == other.depth
+            && self.config.language == other.config.language
+            && self.ranges == other.ranges
+    }
+}
+
+/// Hash implementation belongs to PartialEq implementation above.
+/// See its documentation for details.
+impl Hash for LanguageLayer {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.depth.hash(state);
+        // The transmute is necessary here because tree_sitter::Language does not derive Hash at the moment.
+        // However it does use #[repr] transparent so the transmute here is safe
+        // as `Language` (which `Grammar` is an alias for) is just a newtype wrapper around a (thin) pointer.
+        // This is also compatible with the PartialEq implementation of language
+        // as that is just a pointer comparison.
+        let language: *const () = unsafe { transmute(self.config.language) };
+        language.hash(state);
+        self.ranges.hash(state);
+    }
 }
 
 impl LanguageLayer {
