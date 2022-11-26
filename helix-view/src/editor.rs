@@ -1116,9 +1116,10 @@ impl Editor {
     }
 
     pub fn close(&mut self, id: ViewId) {
-        let (_view, doc) = current!(self);
-        // remove selection
-        doc.remove_view(id);
+        // Remove selections for the closed view on all documents.
+        for doc in self.documents_mut() {
+            doc.remove_view(id);
+        }
         self.tree.remove(id);
         self._refresh();
     }
