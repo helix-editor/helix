@@ -861,7 +861,7 @@ impl Document {
         let mut history = self.history.take();
         let txn = if undo { history.undo() } else { history.redo() };
         let success = if let Some(txn) = txn {
-            self.apply_impl(txn, view.id) && view.apply(txn, self)
+            self.apply_impl(txn, view.id)
         } else {
             false
         };
@@ -902,7 +902,7 @@ impl Document {
         };
         let mut success = false;
         for txn in txns {
-            if self.apply_impl(&txn, view.id) && view.apply(&txn, self) {
+            if self.apply_impl(&txn, view.id) {
                 success = true;
             }
         }
