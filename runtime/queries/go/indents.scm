@@ -16,6 +16,7 @@
   (block)
   (type_switch_statement)
   (expression_switch_statement)
+  (var_declaration)
 ] @indent
 
 [
