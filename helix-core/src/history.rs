@@ -122,32 +122,16 @@ impl History {
     /// Returns the changes since the given revision composed into a transaction.
     /// Returns None if there are no changes between the current and given revisions.
     pub fn changes_since(&self, revision: usize) -> Option<Transaction> {
-        use std::cmp::Ordering::*;
+        let lca = self.lowest_common_ancestor(revision, self.current);
+        let up = self.path_up(revision, lca);
+        let down = self.path_up(self.current, lca);
+        let up_txns = up
+            .iter()
+            .rev()
+            .map(|&n| self.revisions[n].inversion.clone());
+        let down_txns = down.iter().map(|&n| self.revisions[n].transaction.clone());
 
-        match revision.cmp(&self.current) {
-            Equal => None,
-            Less => {
-                let mut child = self.revisions[revision].last_child?.get();
-                let mut transaction = self.revisions[child].transaction.clone();
-                while child != self.current {
-                    child = self.revisions[child].last_child?.get();
-                    transaction = transaction.compose(self.revisions[child].transaction.clone());
-                }
-                Some(transaction)
-            }
-            Greater => {
-                let mut inversion = self.revisions[revision].inversion.clone();
-                let mut parent = self.revisions[revision].parent;
-                while parent != self.current {
-                    parent = self.revisions[parent].parent;
-                    if parent == 0 {
-                        return None;
-                    }
-                    inversion = inversion.compose(self.revisions[parent].inversion.clone());
-                }
-                Some(inversion)
-            }
-        }
+        up_txns.chain(down_txns).reduce(|acc, tx| tx.compose(acc))
     }
 
     /// Undo the last edit.
