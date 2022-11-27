@@ -191,7 +191,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
                 "C-s" | "s" => hsplit_new,
                 "C-v" | "v" => vsplit_new,
             },
-            "i" => goto_window_idx,
+            "i" => goto_window_by_index,
         },
 
         // move under <space>c
@@ -255,7 +255,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
                     "C-s" | "s" => hsplit_new,
                     "C-v" | "v" => vsplit_new,
                 },
-                "i" => goto_window_idx,
+                "i" => goto_window_by_index,
             },
             "y" => yank_joined_to_clipboard,
             "Y" => yank_main_selection_to_clipboard,

@@ -380,7 +380,7 @@ impl MappableCommand {
         swap_view_down, "Swap with split below",
         transpose_view, "Transpose splits",
         rotate_view, "Goto next window",
-        goto_window_idx, "Goto window with index 0",
+        goto_window_by_index, "Goto window with index",
         hsplit, "Horizontal bottom split",
         hsplit_new, "Horizontal bottom split scratch buffer",
         vsplit, "Vertical right split",
@@ -4288,7 +4288,7 @@ fn transpose_view(cx: &mut Context) {
     cx.editor.transpose_view()
 }
 
-fn goto_window_idx(cx: &mut Context) {
+fn goto_window_by_index(cx: &mut Context) {
     cx.editor.show_window_ids = true;
 
     cx.on_next_key(move |cx, event| {
