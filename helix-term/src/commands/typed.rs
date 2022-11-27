@@ -268,13 +268,13 @@ fn write_impl(
     cx: &mut compositor::Context,
     path: Option<&Cow<str>>,
     force: bool,
+    auto_format: bool,
 ) -> anyhow::Result<()> {
-    let editor_auto_fmt = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
     let path = path.map(AsRef::as_ref);
 
-    let fmt = if editor_auto_fmt {
+    let fmt = if auto_format {
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
@@ -307,7 +307,19 @@ fn write(
         return Ok(());
     }
 
-    write_impl(cx, args.first(), false)
+    write_impl(cx, args.first(), false, cx.editor.config().auto_format)
+}
+
+fn write_without_auto_format(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_impl(cx, args.first(), false, false)
 }
 
 fn force_write(
@@ -319,7 +331,19 @@ fn force_write(
         return Ok(());
     }
 
-    write_impl(cx, args.first(), true)
+    write_impl(cx, args.first(), true, cx.editor.config().auto_format)
+}
+
+fn force_write_without_auto_format(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_impl(cx, args.first(), true, false)
 }
 
 fn new_file(
@@ -517,7 +541,7 @@ fn write_quit(
         return Ok(());
     }
 
-    write_impl(cx, args.first(), false)?;
+    write_impl(cx, args.first(), false, cx.editor.config().auto_format)?;
     cx.block_try_flush_writes()?;
     quit(cx, &[], event)
 }
@@ -531,7 +555,7 @@ fn force_write_quit(
         return Ok(());
     }
 
-    write_impl(cx, args.first(), true)?;
+    write_impl(cx, args.first(), true, cx.editor.config().auto_format)?;
     cx.block_try_flush_writes()?;
     force_quit(cx, &[], event)
 }
@@ -1870,10 +1894,24 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: Some(completers::filename),
         },
         TypableCommand {
+            name: "write-without-auto-format",
+            aliases: &[],
+            doc: "Similar to :write but without auto format",
+            fun: write_without_auto_format,
+            completer: Some(completers::filename),
+        },
+        TypableCommand {
             name: "write!",
             aliases: &["w!"],
             doc: "Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write some/path.txt)",
             fun: force_write,
+            completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "write-without-auto-format!",
+            aliases: &[],
+            doc: "Similar to :write! but without auto format",
+            fun: force_write_without_auto_format,
             completer: Some(completers::filename),
         },
         TypableCommand {
