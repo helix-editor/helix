@@ -760,8 +760,9 @@ pub fn apply_workspace_edit(
             text_edits,
             offset_encoding,
         );
-        apply_transaction(&transaction, doc, view_mut!(editor, view_id));
-        doc.append_changes_to_history(view_id);
+        let view = view_mut!(editor, view_id);
+        apply_transaction(&transaction, doc, view);
+        doc.append_changes_to_history(view);
     };
 
     if let Some(ref changes) = workspace_edit.changes {

@@ -2564,7 +2564,7 @@ async fn make_format_callback(
         if let Ok(format) = format {
             if doc.version() == doc_version {
                 apply_transaction(&format, doc, view);
-                doc.append_changes_to_history(view.id);
+                doc.append_changes_to_history(view);
                 doc.detect_indent_and_line_ending();
                 view.ensure_cursor_in_view(doc, scrolloff);
             } else {
@@ -3365,7 +3365,7 @@ fn later(cx: &mut Context) {
 
 fn commit_undo_checkpoint(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    doc.append_changes_to_history(view.id);
+    doc.append_changes_to_history(view);
 }
 
 // Yank / Paste
@@ -3677,7 +3677,7 @@ fn replace_selections_with_clipboard_impl(
             });
 
             apply_transaction(&transaction, doc, view);
-            doc.append_changes_to_history(view.id);
+            doc.append_changes_to_history(view);
         }
         Err(e) => return Err(e.context("Couldn't get system clipboard contents")),
     }
@@ -4884,7 +4884,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
         let transaction = Transaction::change(doc.text(), changes.into_iter())
             .with_selection(Selection::new(ranges, selection.primary_index()));
         apply_transaction(&transaction, doc, view);
-        doc.append_changes_to_history(view.id);
+        doc.append_changes_to_history(view);
     }
 
     // after replace cursor may be out of bounds, do this to

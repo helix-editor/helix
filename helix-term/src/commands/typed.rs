@@ -464,7 +464,7 @@ fn set_line_ending(
         }),
     );
     apply_transaction(&transaction, doc, view);
-    doc.append_changes_to_history(view.id);
+    doc.append_changes_to_history(view);
 
     Ok(())
 }
@@ -909,7 +909,7 @@ fn replace_selections_with_clipboard_impl(
             });
 
             apply_transaction(&transaction, doc, view);
-            doc.append_changes_to_history(view.id);
+            doc.append_changes_to_history(view);
             Ok(())
         }
         Err(e) => Err(e.context("Couldn't get system clipboard contents")),
@@ -1573,7 +1573,7 @@ fn sort_impl(
     );
 
     apply_transaction(&transaction, doc, view);
-    doc.append_changes_to_history(view.id);
+    doc.append_changes_to_history(view);
 
     Ok(())
 }
@@ -1617,7 +1617,7 @@ fn reflow(
     });
 
     apply_transaction(&transaction, doc, view);
-    doc.append_changes_to_history(view.id);
+    doc.append_changes_to_history(view);
     view.ensure_cursor_in_view(doc, scrolloff);
 
     Ok(())
