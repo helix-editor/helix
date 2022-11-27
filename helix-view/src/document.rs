@@ -870,6 +870,8 @@ impl Document {
         if success {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
+            // Sync with changes with the jumplist selections.
+            view.sync_changes(self);
         }
         success
     }
@@ -909,6 +911,8 @@ impl Document {
         if success {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
+            // Sync with changes with the jumplist selections.
+            view.sync_changes(self);
         }
         success
     }
