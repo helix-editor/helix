@@ -641,7 +641,7 @@ impl Document {
         // of the encoding.
         let transaction = helix_core::diff::compare_ropes(self.text(), &rope);
         apply_transaction(&transaction, self, view);
-        self.append_changes_to_history(view.id);
+        self.append_changes_to_history(view);
         self.reset_modified();
 
         self.detect_indent_and_line_ending();
@@ -928,7 +928,7 @@ impl Document {
     }
 
     /// Commit pending changes to history
-    pub fn append_changes_to_history(&mut self, view_id: ViewId) {
+    pub fn append_changes_to_history(&mut self, view: &mut View) {
         if self.changes.is_empty() {
             return;
         }
@@ -938,7 +938,7 @@ impl Document {
         // Instead of doing this messy merge we could always commit, and based on transaction
         // annotations either add a new layer or compose into the previous one.
         let transaction =
-            Transaction::from(changes).with_selection(self.selection(view_id).clone());
+            Transaction::from(changes).with_selection(self.selection(view.id).clone());
 
         // HAXX: we need to reconstruct the state as it was before the changes..
         let old_state = self.old_state.take().expect("no old_state available");
@@ -946,6 +946,9 @@ impl Document {
         let mut history = self.history.take();
         history.commit_revision(&transaction, &old_state);
         self.history.set(history);
+
+        // Update jumplist entries in the view.
+        view.apply(&transaction, self);
     }
 
     pub fn id(&self) -> DocumentId {
