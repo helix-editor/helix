@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use helix_core::Rope;
 use tokio::task::JoinHandle;
 
@@ -10,7 +8,7 @@ impl DiffHandle {
         DiffHandle::new_with_handle(
             Rope::from_str(diff_base),
             Rope::from_str(doc),
-            Arc::default(),
+            Default::default(),
         )
     }
     async fn into_diff(self, handle: JoinHandle<()>) -> Vec<Hunk> {

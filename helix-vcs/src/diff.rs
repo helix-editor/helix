@@ -5,34 +5,33 @@ use helix_core::Rope;
 use imara_diff::Algorithm;
 use parking_lot::{Mutex, MutexGuard};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use tokio::sync::{Notify, RwLock};
+use tokio::sync::{Notify, OwnedRwLockReadGuard, RwLock};
 use tokio::task::JoinHandle;
+use tokio::time::Instant;
 
 use crate::diff::worker::DiffWorker;
 
 mod line_cache;
 mod worker;
 
-type RedrawHandle = Arc<(Notify, RwLock<()>)>;
+type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
 
-// The order of enum variants is used by the PartialOrd
-// derive macro, DO NOT REORDER
-#[derive(PartialEq, PartialOrd)]
-enum RenderStrategy {
-    Async,
-    SyncWithTimeout,
-    Sync,
+/// A rendering lock passed to the differ the prevents redraws from occurring
+struct RenderLock {
+    pub lock: OwnedRwLockReadGuard<()>,
+    pub timeout: Option<Instant>,
 }
 
 struct Event {
     text: Rope,
     is_base: bool,
-    render_strategy: RenderStrategy,
+    render_lock: Option<RenderLock>,
 }
 
 #[derive(Clone, Debug)]
 pub struct DiffHandle {
     channel: UnboundedSender<Event>,
+    render_lock: Arc<RwLock<()>>,
     hunks: Arc<Mutex<Vec<Hunk>>>,
     inverted: bool,
 }
@@ -53,14 +52,15 @@ impl DiffHandle {
             channel: receiver,
             hunks: hunks.clone(),
             new_hunks: Vec::default(),
-            redraw_handle,
-            difff_finished_notify: Arc::default(),
+            redraw_notify: redraw_handle.0,
+            diff_finished_notify: Arc::default(),
         };
         let handle = tokio::spawn(worker.run(diff_base, doc));
         let differ = DiffHandle {
             channel: sender,
             hunks,
             inverted: false,
+            render_lock: redraw_handle.1,
         };
         (differ, handle)
     }
@@ -76,36 +76,48 @@ impl DiffHandle {
         }
     }
 
+    /// Updates the document associated with this redraw handle
+    /// This function is only intended to be called from within the rendering loop
+    /// if called from elsewhere it may fail to acquire the render lock and panic
     pub fn update_document(&self, doc: Rope, block: bool) -> bool {
-        let mode = if block {
-            RenderStrategy::Sync
+        // unwrap is ok here because the rendering lock is
+        // only exclusively locked during redraw.
+        // This function is only intended to be called
+        // from the core rendering loop where no redraw can happen in parallel
+        let lock = self.render_lock.clone().try_read_owned().unwrap();
+        let timeout = if block {
+            None
         } else {
-            RenderStrategy::SyncWithTimeout
+            Some(Instant::now() + tokio::time::Duration::from_millis(SYNC_DIFF_TIMEOUT))
         };
-        self.update_document_impl(doc, self.inverted, mode)
+        self.update_document_impl(doc, self.inverted, Some(RenderLock { lock, timeout }))
     }
 
     pub fn update_diff_base(&self, diff_base: Rope) -> bool {
-        self.update_document_impl(diff_base, !self.inverted, RenderStrategy::Async)
+        self.update_document_impl(diff_base, !self.inverted, None)
     }
 
-    fn update_document_impl(&self, text: Rope, is_base: bool, mode: RenderStrategy) -> bool {
+    fn update_document_impl(
+        &self,
+        text: Rope,
+        is_base: bool,
+        render_lock: Option<RenderLock>,
+    ) -> bool {
         let event = Event {
             text,
             is_base,
-            render_strategy: mode,
+            render_lock,
         };
         self.channel.send(event).is_ok()
     }
 }
 
-// TODO configuration
 /// synchronous debounce value should be low
 /// so we can update synchronously most of the time
 const DIFF_DEBOUNCE_TIME_SYNC: u64 = 1;
 /// maximum time that rendering should be blocked until the diff finishes
-const SYNC_DIFF_TIMEOUT: u64 = 50;
-const DIFF_DEBOUNCE_TIME_ASYNC: u64 = 100;
+const SYNC_DIFF_TIMEOUT: u64 = 12;
+const DIFF_DEBOUNCE_TIME_ASYNC: u64 = 96;
 const ALGORITHM: Algorithm = Algorithm::Histogram;
 const MAX_DIFF_LINES: usize = 64 * u16::MAX as usize;
 // cap average line length to 128 for files with MAX_DIFF_LINES
@@ -128,15 +140,15 @@ pub struct Hunk {
 
 impl Hunk {
     /// Can be used instead of `Option::None` for better performance
-    /// because lines larger than `i32::MAX` are not supported by imara-diff anways.
-    /// Has some nice properties where it usually is not necessary to check for `None` seperatly:
-    /// Empty ranges fail contains checks and also fails smaller than checks.
+    /// because lines larger then `i32::MAX` are not supported by `imara-diff` anyways.
+    /// Has some nice properties where it usually is not necessary to check for `None` separately:
+    /// Empty ranges fail contains checks and also fails smaller then checks.
     pub const NONE: Hunk = Hunk {
         before: u32::MAX..u32::MAX,
         after: u32::MAX..u32::MAX,
     };
 
-    /// Inverts a change so that `before` becomes `after` and `after` becomes `before`
+    /// Inverts a change so that `before`
     pub fn invert(&self) -> Hunk {
         Hunk {
             before: self.after.clone(),

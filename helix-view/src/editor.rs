@@ -154,7 +154,7 @@ pub struct Config {
     )]
     pub idle_timeout: Duration,
     /// Time in milliseconds since last keypress before a redraws trigger.
-    /// Used for redrawing asynchronsouly computed UI components, set to 0 for instant.
+    /// Used for redrawing asynchronously computed UI components, set to 0 for instant.
     /// Defaults to 100ms.
     #[serde(
         serialize_with = "serialize_duration_millis",
@@ -733,11 +733,11 @@ pub struct Editor {
     /// Allows asynchronous tasks to control the rendering
     /// The `Notify` allows asynchronous tasks to request the editor to perform a redraw
     /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be aquired
-    pub redraw_handle: Arc<(Notify, RwLock<()>)>,
+    pub redraw_handle: RedrawHandle,
     pub needs_redraw: bool,
 }
 
-pub type RedrawHandle = Arc<(Notify, RwLock<()>)>;
+pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
 
 #[derive(Debug)]
 pub enum EditorEvent {
@@ -830,7 +830,7 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
-            redraw_handle: Arc::default(),
+            redraw_handle: Default::default(),
             needs_redraw: false,
         }
     }

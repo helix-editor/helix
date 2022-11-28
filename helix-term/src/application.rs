@@ -284,7 +284,7 @@ impl Application {
             scroll: None,
         };
 
-        // Aquire mutable access to the redraw_handle lock
+        // Acquire mutable access to the redraw_handle lock
         // to ensure that there are no tasks running that want to block rendering
         drop(cx.editor.redraw_handle.1.write().await);
         cx.editor.needs_redraw = false;

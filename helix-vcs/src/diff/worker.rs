@@ -6,12 +6,11 @@ use helix_core::{Rope, RopeSlice};
 use imara_diff::intern::InternedInput;
 use parking_lot::Mutex;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tokio::sync::{Notify, RwLockReadGuard};
-use tokio::time::{timeout, timeout_at, Duration, Instant};
+use tokio::sync::Notify;
+use tokio::time::{timeout, timeout_at, Duration};
 
 use crate::diff::{
-    Event, RedrawHandle, RenderStrategy, ALGORITHM, DIFF_DEBOUNCE_TIME_ASYNC,
-    DIFF_DEBOUNCE_TIME_SYNC, SYNC_DIFF_TIMEOUT,
+    Event, RenderLock, ALGORITHM, DIFF_DEBOUNCE_TIME_ASYNC, DIFF_DEBOUNCE_TIME_SYNC,
 };
 
 use super::line_cache::InternedRopeLines;
@@ -24,19 +23,19 @@ pub(super) struct DiffWorker {
     pub channel: UnboundedReceiver<Event>,
     pub hunks: Arc<Mutex<Vec<Hunk>>>,
     pub new_hunks: Vec<Hunk>,
-    pub redraw_handle: RedrawHandle,
-    pub difff_finished_notify: Arc<Notify>,
+    pub redraw_notify: Arc<Notify>,
+    pub diff_finished_notify: Arc<Notify>,
 }
 
 impl DiffWorker {
     async fn accumulate_events(&mut self, event: Event) -> (Option<Rope>, Option<Rope>) {
-        let mut accumulator = EventAccumulator::new(&self.redraw_handle);
+        let mut accumulator = EventAccumulator::new();
         accumulator.handle_event(event).await;
         accumulator
             .accumulate_debounced_events(
                 &mut self.channel,
-                self.redraw_handle.clone(),
-                self.difff_finished_notify.clone(),
+                self.redraw_notify.clone(),
+                self.diff_finished_notify.clone(),
             )
             .await;
         (accumulator.doc, accumulator.diff_base)
@@ -80,7 +79,7 @@ impl DiffWorker {
     /// To improve performance this function tries to reuse the allocation of the old diff previously stored in `self.line_diffs`
     fn apply_hunks(&mut self) {
         swap(&mut *self.hunks.lock(), &mut self.new_hunks);
-        self.difff_finished_notify.notify_waiters();
+        self.diff_finished_notify.notify_waiters();
         self.new_hunks.clear();
     }
 
@@ -91,24 +90,18 @@ impl DiffWorker {
     }
 }
 
-struct EventAccumulator<'a> {
+struct EventAccumulator {
     diff_base: Option<Rope>,
     doc: Option<Rope>,
-    render_stratagey: RenderStrategy,
-    redraw_handle: &'a RedrawHandle,
-    render_lock: Option<RwLockReadGuard<'a, ()>>,
-    timeout: Instant,
+    render_lock: Option<RenderLock>,
 }
 
-impl<'a> EventAccumulator<'a> {
-    fn new(redraw_handle: &'a RedrawHandle) -> EventAccumulator<'a> {
+impl<'a> EventAccumulator {
+    fn new() -> EventAccumulator {
         EventAccumulator {
             diff_base: None,
             doc: None,
-            render_stratagey: RenderStrategy::Async,
             render_lock: None,
-            redraw_handle,
-            timeout: Instant::now(),
         }
     }
 
@@ -122,25 +115,33 @@ impl<'a> EventAccumulator<'a> {
         *dst = Some(event.text);
 
         // always prefer the most synchronous requested render mode
-        if event.render_strategy > self.render_stratagey {
-            if self.render_lock.is_none() {
-                self.timeout = Instant::now() + Duration::from_millis(SYNC_DIFF_TIMEOUT);
-                self.render_lock = Some(self.redraw_handle.1.read().await);
+        if let Some(render_lock) = event.render_lock {
+            match &mut self.render_lock {
+                Some(RenderLock { timeout, .. }) => {
+                    // A timeout of `None` means that the render should
+                    // always wait for the diff to complete (so no timeout)
+                    // remove the existing timeout, otherwise keep the previous timeout
+                    // because it will be shorter then the current timeout
+                    if render_lock.timeout.is_none() {
+                        timeout.take();
+                    }
+                }
+                None => self.render_lock = Some(render_lock),
             }
-            self.render_stratagey = event.render_strategy
         }
     }
 
     async fn accumulate_debounced_events(
         &mut self,
         channel: &mut UnboundedReceiver<Event>,
-        redraw_handle: RedrawHandle,
+        redraw_notify: Arc<Notify>,
         diff_finished_notify: Arc<Notify>,
     ) {
         let async_debounce = Duration::from_millis(DIFF_DEBOUNCE_TIME_ASYNC);
         let sync_debounce = Duration::from_millis(DIFF_DEBOUNCE_TIME_SYNC);
         loop {
-            let debounce = if self.render_stratagey == RenderStrategy::Async {
+            // if we are not blocking rendering use a much longer timeout
+            let debounce = if self.render_lock.is_none() {
                 async_debounce
             } else {
                 sync_debounce
@@ -154,24 +155,30 @@ impl<'a> EventAccumulator<'a> {
         }
 
         // setup task to trigger the rendering
-        // with the chosen render stragey
-        match self.render_stratagey {
-            RenderStrategy::Async => {
+        match self.render_lock.take() {
+            // diff is performed outside of the rendering loop
+            // request a redraw after the diff is done
+            None => {
                 tokio::spawn(async move {
                     diff_finished_notify.notified().await;
-                    redraw_handle.0.notify_one();
+                    redraw_notify.notify_one();
                 });
             }
-            RenderStrategy::SyncWithTimeout => {
-                let timeout = self.timeout;
+            // diff is performed inside the rendering loop
+            // block redraw until the diff is done or the timeout is expired
+            Some(RenderLock {
+                lock,
+                timeout: Some(timeout),
+            }) => {
                 tokio::spawn(async move {
                     let res = {
                         // Acquire a lock on the redraw handle.
                         // The lock will block the rendering from occurring while held.
                         // The rendering waits for the diff if it doesn't time out
-                        let _render_guard = redraw_handle.1.read();
                         timeout_at(timeout, diff_finished_notify.notified()).await
                     };
+                    // we either reached the timeout or the diff is finished, release the render lock
+                    drop(lock);
                     if res.is_ok() {
                         // Diff finished in time we are done.
                         return;
@@ -180,15 +187,19 @@ impl<'a> EventAccumulator<'a> {
                     // and wait until the diff occurs to trigger an async redraw
                     log::warn!("Diff computation timed out, update of diffs might appear delayed");
                     diff_finished_notify.notified().await;
-                    redraw_handle.0.notify_one();
+                    redraw_notify.notify_one();
                 });
             }
-            RenderStrategy::Sync => {
+            // a blocking diff is performed inside the rendering loop
+            // block redraw until the diff is done
+            Some(RenderLock {
+                lock,
+                timeout: None,
+            }) => {
                 tokio::spawn(async move {
-                    // Aquire a lock on the redraw handle.
-                    // The lock will block the rendering from occuring while held.
-                    let _render_guard = redraw_handle.1.read();
-                    diff_finished_notify.notified().await
+                    diff_finished_notify.notified().await;
+                    // diff is done release the lock
+                    drop(lock)
                 });
             }
         };
