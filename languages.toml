@@ -880,6 +880,7 @@ file-types = ["rkt"]
 shebangs = ["racket"]
 comment-token = ";"
 language-server = { command = "racket", args = ["-l", "racket-langserver"] }
+grammar = "scheme"
 
 [[language]]
 name = "comment"
@@ -1526,7 +1527,7 @@ source = { git = "https://github.com/metio/tree-sitter-ssh-client-config", rev =
 name = "scheme"
 scope = "source.scheme"
 injection-regex = "scheme"
-file-types = ["ss", "rkt"] # "scm",
+file-types = ["ss"] # "scm",
 roots = []
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
