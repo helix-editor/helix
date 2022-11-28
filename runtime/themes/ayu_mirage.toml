@@ -10,7 +10,6 @@
 "string.regexp" = "orange"
 "string.special" = "yellow"
 "comment" = { fg = "gray", modifiers = ["italic"] }
-"comment.block.documentation" = { fg = "blue", modifiers = ["italic"] }
 "variable" = "foreground"
 "label" = "orange"
 "punctuation" = "foreground"
