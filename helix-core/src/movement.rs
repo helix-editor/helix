@@ -131,7 +131,7 @@ pub fn move_vertically_anchored(
     // cases we take advantage that anchored movement sets the horizontal column
     // to the largest possible integer.
     let newline_move_mode = pos == line_end_char_index(&slice, line)
-        && (horiz == !0 || !rope_is_line_ending(slice.line(line)));
+        && (horiz == u32::MAX || !rope_is_line_ending(slice.line(line)));
 
     // Compute the new position.
     let new_row = match dir {
@@ -153,7 +153,7 @@ pub fn move_vertically_anchored(
 
         // when in newline_move_mode we set the horizontal column to the largest
         // possible integer to be able to disambiugate movements across empty lines.
-        (new_pos, !0)
+        (new_pos, u32::MAX)
 
     // otherwise move up and down like normal but ensure to never place the
     // cursor on the newline character.
