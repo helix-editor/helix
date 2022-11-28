@@ -1241,10 +1241,13 @@ impl Editor {
         // within view
         if prev_id != view_id {
             self.mode = Mode::Normal;
-            let view = view_mut!(self, view_id);
-            let doc = doc_mut!(self, &view.doc);
-            view.sync_changes(doc);
             self.ensure_cursor_in_view(view_id);
+
+            // Update jumplist selections with new document changes.
+            for (view, _focused) in self.tree.views_mut() {
+                let doc = doc_mut!(self, &view.doc);
+                view.sync_changes(doc);
+            }
         }
     }
 
