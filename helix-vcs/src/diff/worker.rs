@@ -121,7 +121,7 @@ impl<'a> EventAccumulator<'a> {
 
         *dst = Some(event.text);
 
-        // always prefer the most synchronus requested render mode
+        // always prefer the most synchronous requested render mode
         if event.render_strategy > self.render_stratagey {
             if self.render_lock.is_none() {
                 self.timeout = Instant::now() + Duration::from_millis(SYNC_DIFF_TIMEOUT);
@@ -154,7 +154,7 @@ impl<'a> EventAccumulator<'a> {
         }
 
         // setup task to trigger the rendering
-        // with the choosen render stragey
+        // with the chosen render stragey
         match self.render_stratagey {
             RenderStrategy::Async => {
                 tokio::spawn(async move {
@@ -166,8 +166,8 @@ impl<'a> EventAccumulator<'a> {
                 let timeout = self.timeout;
                 tokio::spawn(async move {
                     let res = {
-                        // Aquire a lock on the redraw handle.
-                        // The lock will block the rendering from occuring while held.
+                        // Acquire a lock on the redraw handle.
+                        // The lock will block the rendering from occurring while held.
                         // The rendering waits for the diff if it doesn't time out
                         let _render_guard = redraw_handle.1.read();
                         timeout_at(timeout, diff_finished_notify.notified()).await

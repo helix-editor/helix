@@ -55,8 +55,8 @@ impl InternedRopeLines {
         }
     }
 
-    /// Updates the `doc` without reintering the `diff_base`, this funciton
-    /// is therefore significantly faster then `update_diff_base` when only the document changes.
+    /// Updates the `doc` without reinterning the `diff_base`, this function
+    /// is therefore significantly faster than `update_diff_base` when only the document changes.
     pub fn update_doc(&mut self, doc: Rope) {
         // Safety: we clear any tokens that were added after
         // the interning of `self.diff_base` finished so
@@ -75,7 +75,7 @@ impl InternedRopeLines {
     }
 
     fn update_diff_base_impl(&mut self) {
-        // Safety: This transmute is save because it only transmutes a lifetime, which has no effect.
+        // Safety: This transmute is safe because it only transmutes a lifetime, which has no effect.
         // The backing storage for the RopeSlices referred to by the lifetime is stored in `self.diff_base`.
         // Therefore as long as `self.diff_base` is not dropped/replaced this memory remains valid.
         // `self.diff_base` is only changed in `self.update_diff_base`, which clears the interner.

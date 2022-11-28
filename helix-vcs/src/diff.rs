@@ -100,8 +100,8 @@ impl DiffHandle {
 }
 
 // TODO configuration
-/// synchronus debounce value should be low
-/// so we can update synchrously most of the time
+/// synchronous debounce value should be low
+/// so we can update synchronously most of the time
 const DIFF_DEBOUNCE_TIME_SYNC: u64 = 1;
 /// maximum time that rendering should be blocked until the diff finishes
 const SYNC_DIFF_TIMEOUT: u64 = 50;
@@ -111,7 +111,7 @@ const MAX_DIFF_LINES: usize = 64 * u16::MAX as usize;
 // cap average line length to 128 for files with MAX_DIFF_LINES
 const MAX_DIFF_BYTES: usize = MAX_DIFF_LINES * 128;
 
-/// A single change in a file potentially sppaning multiple lines
+/// A single change in a file potentially spanning multiple lines
 /// Hunks produced by the differs are always ordered by their position
 /// in the file and non-overlapping.
 /// Specifically for any two hunks `x` and `y` the following properties hold:
@@ -128,15 +128,15 @@ pub struct Hunk {
 
 impl Hunk {
     /// Can be used instead of `Option::None` for better performance
-    /// because lines larger then `i32::MAX` are not supported by imara-diff anways.
+    /// because lines larger than `i32::MAX` are not supported by imara-diff anways.
     /// Has some nice properties where it usually is not necessary to check for `None` seperatly:
-    /// Empty ranges fail contains checks and also faills smaller then checks.
+    /// Empty ranges fail contains checks and also fails smaller than checks.
     pub const NONE: Hunk = Hunk {
         before: u32::MAX..u32::MAX,
         after: u32::MAX..u32::MAX,
     };
 
-    /// Inverts a change so that `before`
+    /// Inverts a change so that `before` becomes `after` and `after` becomes `before`
     pub fn invert(&self) -> Hunk {
         Hunk {
             before: self.after.clone(),

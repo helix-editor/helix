@@ -154,7 +154,7 @@ pub struct Config {
     )]
     pub idle_timeout: Duration,
     /// Time in milliseconds since last keypress before a redraws trigger.
-    /// Used for redrawing asynchronsouly computed UI compoenents, set to 0 for instant.
+    /// Used for redrawing asynchronsouly computed UI components, set to 0 for instant.
     /// Defaults to 100ms.
     #[serde(
         serialize_with = "serialize_duration_millis",

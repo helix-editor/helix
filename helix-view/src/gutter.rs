@@ -101,10 +101,10 @@ pub fn diff<'doc>(
         let mut hunk = hunks.nth_hunk(hunk_i);
         Box::new(move |line: usize, _selected: bool, out: &mut String| {
             // truncating the line is fine here because we don't compute diffs
-            // for files with more lines then i32::MAX anyways
+            // for files with more lines than i32::MAX anyways
             // we need to special case removals here
             // these technically do not have a range of lines to highlight (`hunk.after.start == hunk.after.end`).
-            // However we still want to display these hunks correctly we must not yet scipe to the next hunk here
+            // However we still want to display these hunks correctly we must not yet skip to the next hunk here
             while hunk.after.end < line as u32
                 || !hunk.is_pure_removal() && line as u32 == hunk.after.end
             {
