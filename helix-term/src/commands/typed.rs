@@ -1739,14 +1739,14 @@ fn pipe_to(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    _pipe(cx, args, event, &ShellBehavior::Ignore)
+    pipe_impl(cx, args, event, &ShellBehavior::Ignore)
 }
 
 fn pipe(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
-    _pipe(cx, args, event, &ShellBehavior::Replace)
+    pipe_impl(cx, args, event, &ShellBehavior::Replace)
 }
 
-fn _pipe(
+fn pipe_impl(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     event: PromptEvent,
