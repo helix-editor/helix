@@ -959,7 +959,8 @@ impl Editor {
     fn _refresh(&mut self) {
         let config = self.config();
         for (view, _) in self.tree.views_mut() {
-            let doc = &self.documents[&view.doc];
+            let doc = doc_mut!(self, &view.doc);
+            view.sync_changes(doc);
             view.ensure_cursor_in_view(doc, config.scrolloff)
         }
     }
@@ -971,6 +972,7 @@ impl Editor {
 
         let doc = doc_mut!(self, &doc_id);
         doc.ensure_view_init(view.id);
+        view.sync_changes(doc);
 
         align_view(doc, view, Align::Center);
     }
@@ -1240,6 +1242,12 @@ impl Editor {
         if prev_id != view_id {
             self.mode = Mode::Normal;
             self.ensure_cursor_in_view(view_id);
+
+            // Update jumplist selections with new document changes.
+            for (view, _focused) in self.tree.views_mut() {
+                let doc = doc_mut!(self, &view.doc);
+                view.sync_changes(doc);
+            }
         }
     }
 

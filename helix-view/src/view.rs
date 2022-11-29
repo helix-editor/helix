@@ -3,7 +3,10 @@ use helix_core::{
     pos_at_visual_coords, visual_coords_at_pos, Position, RopeSlice, Selection, Transaction,
 };
 
-use std::{collections::VecDeque, fmt};
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt,
+};
 
 const JUMP_LIST_CAPACITY: usize = 30;
 
@@ -102,6 +105,11 @@ pub struct View {
     pub object_selections: Vec<Selection>,
     /// GutterTypes used to fetch Gutter (constructor) and width for rendering
     gutters: Vec<GutterType>,
+    /// A mapping between documents and the last history revision the view was updated at.
+    /// Changes between documents and views are synced lazily when switching windows. This
+    /// mapping keeps track of the last applied history revision so that only new changes
+    /// are applied.
+    doc_revisions: HashMap<DocumentId, usize>,
 }
 
 impl fmt::Debug for View {
@@ -126,6 +134,7 @@ impl View {
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
             gutters: gutter_types,
+            doc_revisions: HashMap::new(),
         }
     }
 
@@ -349,10 +358,33 @@ impl View {
     /// Applies a [`Transaction`] to the view.
     /// Instead of calling this function directly, use [crate::apply_transaction]
     /// which applies a transaction to the [`Document`] and view together.
-    pub fn apply(&mut self, transaction: &Transaction, doc: &Document) -> bool {
+    pub fn apply(&mut self, transaction: &Transaction, doc: &mut Document) {
         self.jumps.apply(transaction, doc);
-        // TODO: remove the boolean return. This is unused.
-        true
+        self.doc_revisions
+            .insert(doc.id(), doc.get_current_revision());
+    }
+
+    pub fn sync_changes(&mut self, doc: &mut Document) {
+        let latest_revision = doc.get_current_revision();
+        let current_revision = *self
+            .doc_revisions
+            .entry(doc.id())
+            .or_insert(latest_revision);
+
+        if current_revision == latest_revision {
+            return;
+        }
+
+        log::debug!(
+            "Syncing view {:?} between {} and {}",
+            self.id,
+            current_revision,
+            latest_revision
+        );
+
+        if let Some(transaction) = doc.history.get_mut().changes_since(current_revision) {
+            self.apply(&transaction, doc);
+        }
     }
 }
 
