@@ -18,6 +18,9 @@
 # status bars, panels, modals, autocompletion
 "ui.statusline" = { fg = "base8", bg = "base4" }
 "ui.statusline.inactive" = { fg = "base8", bg = "base8x0c" }
+"ui.statusline.normal" = { fg = "base4", bg = "blue" }
+"ui.statusline.insert" = { fg = "base4", bg = "green" }
+"ui.statusline.select" = { fg = "base4", bg = "purple" }
 "ui.popup" = { bg = "base3" }
 "ui.window" = { bg = "base3" }
 "ui.help" = { fg = "base8", bg = "base3" }

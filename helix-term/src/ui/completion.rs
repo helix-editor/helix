@@ -1,5 +1,5 @@
 use crate::compositor::{Component, Context, Event, EventResult};
-use helix_view::editor::CompleteAction;
+use helix_view::{apply_transaction, editor::CompleteAction};
 use tui::buffer::Buffer as Surface;
 use tui::text::Spans;
 
@@ -66,7 +66,10 @@ impl menu::Item for CompletionItem {
                 Some(lsp::CompletionItemKind::EVENT) => "event",
                 Some(lsp::CompletionItemKind::OPERATOR) => "operator",
                 Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param",
-                Some(kind) => unimplemented!("{:?}", kind),
+                Some(kind) => {
+                    log::error!("Received unknown completion item kind: {:?}", kind);
+                    ""
+                }
                 None => "",
             }),
             // self.detail.as_deref().unwrap_or("")
@@ -92,11 +95,15 @@ impl Completion {
 
     pub fn new(
         editor: &Editor,
-        items: Vec<CompletionItem>,
+        mut items: Vec<CompletionItem>,
         offset_encoding: helix_lsp::OffsetEncoding,
         start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
+        // Sort completion items according to their preselect status (given by the LSP server)
+        items.sort_by_key(|item| !item.preselect.unwrap_or(false));
+
+        // Then create the menu
         let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
             fn item_to_transaction(
                 doc: &Document,
@@ -109,7 +116,8 @@ impl Completion {
                     let edit = match edit {
                         lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
                         lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                            unimplemented!("completion: insert_and_replace {:?}", item)
+                            // TODO: support using "insert" instead of "replace" via user config
+                            lsp::TextEdit::new(item.replace, item.new_text.clone())
                         }
                     };
 
@@ -143,11 +151,11 @@ impl Completion {
             let (view, doc) = current!(editor);
 
             // if more text was entered, remove it
-            doc.restore(view.id);
+            doc.restore(view);
 
             match event {
                 PromptEvent::Abort => {
-                    doc.restore(view.id);
+                    doc.restore(view);
                     editor.last_completion = None;
                 }
                 PromptEvent::Update => {
@@ -164,7 +172,7 @@ impl Completion {
 
                     // initialize a savepoint
                     doc.savepoint();
-                    doc.apply(&transaction, view.id);
+                    apply_transaction(&transaction, doc, view);
 
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
@@ -183,7 +191,7 @@ impl Completion {
                         trigger_offset,
                     );
 
-                    doc.apply(&transaction, view.id);
+                    apply_transaction(&transaction, doc, view);
 
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
@@ -213,13 +221,13 @@ impl Completion {
                                 additional_edits.clone(),
                                 offset_encoding, // TODO: should probably transcode in Client
                             );
-                            doc.apply(&transaction, view.id);
+                            apply_transaction(&transaction, doc, view);
                         }
                     }
                 }
             };
         });
-        let popup = Popup::new(Self::ID, menu);
+        let popup = Popup::new(Self::ID, menu).with_scrollbar(false);
         let mut completion = Self {
             popup,
             start_offset,
@@ -237,21 +245,13 @@ impl Completion {
         completion_item: lsp::CompletionItem,
     ) -> Option<CompletionItem> {
         let language_server = doc.language_server()?;
-        let completion_resolve_provider = language_server
-            .capabilities()
-            .completion_provider
-            .as_ref()?
-            .resolve_provider;
-        if completion_resolve_provider != Some(true) {
-            return None;
-        }
 
-        let future = language_server.resolve_completion_item(completion_item);
+        let future = language_server.resolve_completion_item(completion_item)?;
         let response = helix_lsp::block_on(future);
         match response {
-            Ok(completion_item) => Some(completion_item),
+            Ok(value) => serde_json::from_value(value).ok(),
             Err(err) => {
-                log::error!("execute LSP command: {}", err);
+                log::error!("Failed to resolve completion item: {}", err);
                 None
             }
         }
@@ -294,6 +294,58 @@ impl Completion {
 
     pub fn is_empty(&self) -> bool {
         self.popup.contents().is_empty()
+    }
+
+    fn replace_item(&mut self, old_item: lsp::CompletionItem, new_item: lsp::CompletionItem) {
+        self.popup.contents_mut().replace_option(old_item, new_item);
+    }
+
+    /// Asynchronously requests that the currently selection completion item is
+    /// resolved through LSP `completionItem/resolve`.
+    pub fn ensure_item_resolved(&mut self, cx: &mut commands::Context) -> bool {
+        // > If computing full completion items is expensive, servers can additionally provide a
+        // > handler for the completion item resolve request. ...
+        // > A typical use case is for example: the `textDocument/completion` request doesn't fill
+        // > in the `documentation` property for returned completion items since it is expensive
+        // > to compute. When the item is selected in the user interface then a
+        // > 'completionItem/resolve' request is sent with the selected completion item as a parameter.
+        // > The returned completion item should have the documentation property filled in.
+        // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
+        let current_item = match self.popup.contents().selection() {
+            Some(item) if item.documentation.is_none() => item.clone(),
+            _ => return false,
+        };
+
+        let language_server = match doc!(cx.editor).language_server() {
+            Some(language_server) => language_server,
+            None => return false,
+        };
+
+        // This method should not block the compositor so we handle the response asynchronously.
+        let future = match language_server.resolve_completion_item(current_item.clone()) {
+            Some(future) => future,
+            None => return false,
+        };
+
+        cx.callback(
+            future,
+            move |_editor, compositor, response: Option<lsp::CompletionItem>| {
+                let resolved_item = match response {
+                    Some(item) => item,
+                    None => return,
+                };
+
+                if let Some(completion) = &mut compositor
+                    .find::<crate::ui::EditorView>()
+                    .unwrap()
+                    .completion
+                {
+                    completion.replace_item(current_item, resolved_item);
+                }
+            },
+        );
+
+        true
     }
 }
 

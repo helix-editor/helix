@@ -67,8 +67,7 @@ pub fn get_language(name: &str) -> Result<Language> {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn get_language(name: &str) -> Result<Language> {
     use libloading::{Library, Symbol};
-    let name = name.to_ascii_lowercase();
-    let mut library_path = crate::runtime_dir().join("grammars").join(&name);
+    let mut library_path = crate::runtime_dir().join("grammars").join(name);
     library_path.set_extension(DYLIB_EXTENSION);
 
     let library = unsafe { Library::new(&library_path) }
@@ -139,7 +138,7 @@ pub fn fetch_grammars() -> Result<()> {
         let len = errors.len();
         println!("{} grammars failed to fetch", len);
         for (i, error) in errors.into_iter().enumerate() {
-            println!("\tFailure {}/{}: {}", i, len, error);
+            println!("\tFailure {}/{}: {}", i + 1, len, error);
         }
     }
 
@@ -430,7 +429,7 @@ fn build_tree_sitter_library(
 
     if cfg!(all(windows, target_env = "msvc")) {
         command
-            .args(&["/nologo", "/LD", "/I"])
+            .args(["/nologo", "/LD", "/I"])
             .arg(header_path)
             .arg("/Od")
             .arg("/utf-8");

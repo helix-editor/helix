@@ -1,11 +1,10 @@
 # Author : RayGervais<raygervais@hotmail.ca>
 
-"ui.linenr.selected" = { fg = "nord4" }
+"ui.linenr.selected" = "nord4"
 "ui.cursorline.primary" = { bg = "nord1" }
-"ui.text.focus" = { fg = "nord8", modifiers= ["bold"] }
-"ui.menu" = { fg = "nord6", bg = "#232d38" }
+"ui.text.focus" = { fg = "nord8", modifiers = ["bold"] }
+"ui.menu" = { fg = "nord6", bg = "nord1" }
 "ui.menu.selected" = { fg = "nord8", bg = "nord2" }
-"ui.virtual.whitespace" = "gray"
 "ui.virtual.ruler" = { bg = "nord1" }
 
 "info" = "nord8"
@@ -14,33 +13,33 @@
 # Polar Night
 # nord0 - background color
 "ui.background" = { bg = "nord0" }
-"ui.statusline.inactive" = { fg = "nord8", bg = "nord1" }
 
+"ui.statusline.inactive" = { fg = "nord8", bg = "nord1" }
 "ui.statusline.normal" = { fg = "nord0", bg = "nord8" }
 "ui.statusline.insert" = { fg = "nord0", bg = "nord13" }
 "ui.statusline.select" = { fg = "nord0", bg = "nord15" }
 
 # nord1 - status bars, panels, modals, autocompletion
-"ui.statusline" = { fg = "nord4", bg = "#4c566a" }
-"ui.popup" = { bg = "#232d38" }
-"ui.window" = { bg = "#232d38" }
-"ui.help" = { bg = "#232d38", fg = "nord4" }
+"ui.statusline" = { fg = "nord4", bg = "nord1" }
+"ui.popup" = { bg = "nord1" }
+"ui.window" = { bg = "nord1" }
+"ui.help" = { bg = "nord1", fg = "nord4" }
 
 # nord2 - active line, highlighting
 "ui.selection" = { bg = "nord2" }
 "ui.cursor.match" = { bg = "nord2" }
 
-# nord3 - comments, nord3 based lighter color
-# relative: https://github.com/arcticicestudio/nord/issues/94
-"comment" = { fg = "gray", modifiers = ["italic"] }
-"ui.linenr" = { fg = "gray" }
+# nord3 - comments, invisible/non-printable characters
+"comment" = { fg = "nord3_bright", modifiers = ["italic"] }
+"ui.linenr" = "nord3_bright"
+"ui.virtual.whitespace" = "nord3_bright"
 
 # Snow Storm
 # nord4 - cursor, variables, constants, attributes, fields
 "ui.cursor.primary" = { fg = "nord4", modifiers = ["reversed"] }
 "attribute" = "nord4"
-"variable"  = "nord4"
-"constant"  = "nord4"
+"variable" = "nord4"
+"constant" = "nord4"
 "variable.builtin" = "nord4"
 "constant.builtin" = "nord4"
 "namespace" = "nord4"
@@ -48,28 +47,28 @@
 # nord5 - subtle UI text
 
 # nord6 - base text, punctuation
-"ui.text" = { fg = "nord6" }
+"ui.text" = "nord6"
 "punctuation" = "nord6"
 
 # Frost
 # nord7 - classes, types, primitives
 "type" = "nord7"
-"type.builtin" = { fg = "nord7"}
+"type.builtin" = "nord7"
 "label" = "nord7"
 
 # nord8 - declaration, methods, routines
 "constructor" = "nord8"
 "function" = "nord8"
-"function.macro" = { fg = "nord8" }
-"function.builtin" = { fg = "nord8" }
+"function.macro" = "nord8"
+"function.builtin" = "nord8"
 
 # nord9 - operator, tags, units, punctuations
 "punctuation.delimiter" = "nord9"
-"operator" = { fg = "nord9" }
+"operator" = "nord9"
 "variable.other.member" = "nord9"
 
 # nord10 - keywords, special
-"keyword" = { fg = "nord10" }
+"keyword" = "nord10"
 "keyword.directive" = "nord10"
 "variable.parameter" = "nord10"
 
@@ -83,7 +82,7 @@
 
 # nord13 - warnings, escape characters, regex
 "warning" = "nord13"
-"constant.character.escape" = { fg = "nord13" }
+"constant.character.escape" = "nord13"
 
 # nord14 - strings
 "string" = "nord14"
@@ -91,15 +90,13 @@
 # nord15 - integer, floating point
 "constant.numeric" = "nord15"
 
-# TODO markup
-"markup.heading" = "blue"
-"markup.list" = "red"
-"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
-"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
-"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
-"markup.link.text" = "red"
-"markup.quote" = "cyan"
-"markup.raw" = "green"
+# markup
+"markup.heading" = "nord8"
+"markup.list" = "nord9"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.link.text" = "nord8"
+"markup.raw" = "nord7"
 
 # vcs
 "diff.plus" = "nord14"
@@ -110,6 +107,9 @@
 nord0 = "#2e3440"
 nord1 = "#3b4252"
 nord2 = "#434c5e"
+# we use a brighter nord3 based on discussion here:
+# https://github.com/arcticicestudio/nord/issues/94
+nord3_bright = "#616e88"
 nord4 = "#d8dee9"
 nord6 = "#eceff4"
 nord7 = "#8fbcbb"
@@ -121,4 +121,3 @@ nord12 = "#d08770"
 nord13 = "#ebcb8b"
 nord14 = "#a3be8c"
 nord15 = "#b48ead"
-gray = "#616e88"

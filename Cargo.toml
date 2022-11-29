@@ -14,9 +14,6 @@ default-members = [
   "helix-term"
 ]
 
-[profile.dev]
-split-debuginfo = "unpacked"
-
 [profile.release]
 lto = "thin"
 # debug = true

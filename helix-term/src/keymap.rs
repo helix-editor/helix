@@ -144,12 +144,68 @@ impl DerefMut for KeyTrieNode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(untagged)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum KeyTrie {
     Leaf(MappableCommand),
     Sequence(Vec<MappableCommand>),
     Node(KeyTrieNode),
+}
+
+impl<'de> Deserialize<'de> for KeyTrie {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(KeyTrieVisitor)
+    }
+}
+
+struct KeyTrieVisitor;
+
+impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
+    type Value = KeyTrie;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(formatter, "a command, list of commands, or sub-keymap")
+    }
+
+    fn visit_str<E>(self, command: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        command
+            .parse::<MappableCommand>()
+            .map(KeyTrie::Leaf)
+            .map_err(E::custom)
+    }
+
+    fn visit_seq<S>(self, mut seq: S) -> Result<Self::Value, S::Error>
+    where
+        S: serde::de::SeqAccess<'de>,
+    {
+        let mut commands = Vec::new();
+        while let Some(command) = seq.next_element::<&str>()? {
+            commands.push(
+                command
+                    .parse::<MappableCommand>()
+                    .map_err(serde::de::Error::custom)?,
+            )
+        }
+        Ok(KeyTrie::Sequence(commands))
+    }
+
+    fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+    where
+        M: serde::de::MapAccess<'de>,
+    {
+        let mut mapping = HashMap::new();
+        let mut order = Vec::new();
+        while let Some((key, value)) = map.next_entry::<KeyEvent, KeyTrie>()? {
+            mapping.insert(key, value);
+            order.push(key);
+        }
+        Ok(KeyTrie::Node(KeyTrieNode::new("", mapping, order)))
+    }
 }
 
 impl KeyTrie {

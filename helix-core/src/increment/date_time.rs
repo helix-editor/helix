@@ -74,12 +74,12 @@ impl DateTimeIncrementor {
                 (true, false) => {
                     let date = NaiveDate::parse_from_str(date_time, format.fmt).ok()?;
 
-                    date.and_hms(0, 0, 0)
+                    date.and_hms_opt(0, 0, 0).unwrap()
                 }
                 (false, true) => {
                     let time = NaiveTime::parse_from_str(date_time, format.fmt).ok()?;
 
-                    NaiveDate::from_ymd(0, 1, 1).and_time(time)
+                    NaiveDate::from_ymd_opt(0, 1, 1).unwrap().and_time(time)
                 }
                 (false, false) => return None,
             };
@@ -312,10 +312,10 @@ fn ndays_in_month(year: i32, month: u32) -> u32 {
     } else {
         (year, month + 1)
     };
-    let d = NaiveDate::from_ymd(y, m, 1);
+    let d = NaiveDate::from_ymd_opt(y, m, 1).unwrap();
 
     // ...is preceded by the last day of the original month.
-    d.pred().day()
+    d.pred_opt().unwrap().day()
 }
 
 fn add_months(date_time: NaiveDateTime, amount: i64) -> Option<NaiveDateTime> {
@@ -334,7 +334,7 @@ fn add_months(date_time: NaiveDateTime, amount: i64) -> Option<NaiveDateTime> {
 
     let day = cmp::min(date_time.day(), ndays_in_month(year, month));
 
-    Some(NaiveDate::from_ymd(year, month, day).and_time(date_time.time()))
+    NaiveDate::from_ymd_opt(year, month, day).map(|date| date.and_time(date_time.time()))
 }
 
 fn add_years(date_time: NaiveDateTime, amount: i64) -> Option<NaiveDateTime> {
@@ -342,8 +342,8 @@ fn add_years(date_time: NaiveDateTime, amount: i64) -> Option<NaiveDateTime> {
     let ndays = ndays_in_month(year, date_time.month());
 
     if date_time.day() > ndays {
-        let d = NaiveDate::from_ymd(year, date_time.month(), ndays);
-        Some(d.succ().and_time(date_time.time()))
+        NaiveDate::from_ymd_opt(year, date_time.month(), ndays)
+            .and_then(|date| date.succ_opt().map(|date| date.and_time(date_time.time())))
     } else {
         date_time.with_year(year)
     }

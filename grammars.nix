@@ -2,7 +2,7 @@
   stdenv,
   lib,
   runCommandLocal,
-  runCommandNoCC,
+  runCommand,
   yj,
   includeGrammarIf ? _: true,
   ...
@@ -115,7 +115,7 @@
     builtins.map (grammar: "ln -s ${grammar.artifact}/${grammar.name}.so $out/${grammar.name}.so")
     builtGrammars;
 in
-  runCommandNoCC "consolidated-helix-grammars" {} ''
+  runCommand "consolidated-helix-grammars" {} ''
     mkdir -p $out
     ${builtins.concatStringsSep "\n" grammarLinks}
   ''
