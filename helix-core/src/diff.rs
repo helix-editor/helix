@@ -142,7 +142,6 @@ struct RopeLines<'a>(RopeSlice<'a>);
 
 impl<'a> imara_diff::intern::TokenSource for RopeLines<'a> {
     type Token = RopeSlice<'a>;
-    // TODO: improve performance of lines iterator (https://github.com/cessen/ropey/issues/25)
     type Tokenizer = ropey::iter::Lines<'a>;
 
     fn tokenize(&self) -> Self::Tokenizer {
