@@ -441,6 +441,37 @@ pub fn goto_treesitter_object(
     (0..count).fold(range, |range, _| get_range(range).unwrap_or(range))
 }
 
+pub fn get_treesitter_objects(
+    slice: RopeSlice,
+    object_name: &str,
+    slice_tree: Node,
+    lang_config: &LanguageConfiguration,
+) -> Vec<Range> {
+    let mut cursor = QueryCursor::new();
+    lang_config
+        .textobject_query()
+        .and_then(|query| {
+            query.capture_nodes(
+                &format!("{}.{}", object_name, TextObject::Around),
+                slice_tree,
+                slice,
+                &mut cursor,
+            )
+        })
+        .map_or_else(Vec::new, |objects| {
+            let mut ranges: Vec<_> = objects
+                .map(|o| {
+                    Range::new(
+                        slice.byte_to_char(o.start_byte()),
+                        slice.byte_to_char(o.end_byte()),
+                    )
+                })
+                .collect();
+            ranges.dedup();
+            ranges
+        })
+}
+
 #[cfg(test)]
 mod test {
     use ropey::Rope;
