@@ -352,7 +352,7 @@ experience.
 | `Alt-d`, `Alt-Delete`                       | Delete next word            | `delete_word_forward`    |
 | `Ctrl-u`                                    | Delete to start of line     | `kill_to_line_start`     |
 | `Ctrl-k`                                    | Delete to end of line       | `kill_to_line_end`       |
-| `Ctrl-h`, `Backspace`                       | Delete previous char        | `delete_char_backward`   |
+| `Ctrl-h`, `Backspace`, `Shift-Backspace`    | Delete previous char        | `delete_char_backward`   |
 | `Ctrl-d`, `Delete`                          | Delete next char            | `delete_char_forward`    |
 | `Ctrl-j`, `Enter`                           | Insert new line             | `insert_newline`         |
 
@@ -433,7 +433,7 @@ Keys to use within prompt, Remapping currently not supported.
 | `Alt-d`, `Alt-Delete`, `Ctrl-Delete`        | Delete next word                                                        |
 | `Ctrl-u`                                    | Delete to start of line                                                 |
 | `Ctrl-k`                                    | Delete to end of line                                                   |
-| `Backspace`, `Ctrl-h`                       | Delete previous char                                                    |
+| `Backspace`, `Ctrl-h`, `Shift-Backspace`    | Delete previous char                                                    |
 | `Delete`, `Ctrl-d`                          | Delete next char                                                        |
 | `Ctrl-s`                                    | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
 | `Ctrl-p`, `Up`                              | Select previous history                                                 |
