@@ -153,14 +153,6 @@ pub struct Config {
         deserialize_with = "deserialize_duration_millis"
     )]
     pub idle_timeout: Duration,
-    /// Time in milliseconds since last keypress before a redraws trigger.
-    /// Used for redrawing asynchronously computed UI components, set to 0 for instant.
-    /// Defaults to 100ms.
-    #[serde(
-        serialize_with = "serialize_duration_millis",
-        deserialize_with = "deserialize_duration_millis"
-    )]
-    pub redraw_timeout: Duration,
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
@@ -638,7 +630,6 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
-            redraw_timeout: Duration::from_millis(200),
         }
     }
 }
@@ -864,11 +855,6 @@ impl Editor {
         self.idle_timer
             .as_mut()
             .reset(Instant::now() + config.idle_timeout);
-    }
-
-    fn redraw_deadline(&self) -> Instant {
-        let config = self.config();
-        Instant::now() + config.redraw_timeout
     }
 
     pub fn clear_status(&mut self) {
@@ -1399,7 +1385,7 @@ impl Editor {
                 _ = self.redraw_handle.0.notified() => {
                     if  !self.needs_redraw{
                         self.needs_redraw = true;
-                        let timeout = self.redraw_deadline();
+                        let timeout = Instant::now() + Duration::from_millis(96);
                         if timeout < self.idle_timer.deadline(){
                             self.idle_timer.as_mut().reset(timeout)
                         }
