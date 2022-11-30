@@ -845,6 +845,7 @@ impl Editor {
     pub fn set_status<T: Into<Cow<'static, str>>>(&mut self, status: T) {
         let status = status.into();
         log::debug!("editor status: {}", status);
+        self.registers.write('>', vec![format!("{}", status)]);
         self.status_msg = Some((status, Severity::Info));
     }
 
@@ -852,6 +853,7 @@ impl Editor {
     pub fn set_error<T: Into<Cow<'static, str>>>(&mut self, error: T) {
         let error = error.into();
         log::error!("editor error: {}", error);
+        self.registers.write('>', vec![format!("{}", error)]);
         self.status_msg = Some((error, Severity::Error));
     }
 
