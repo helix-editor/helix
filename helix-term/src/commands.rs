@@ -4608,6 +4608,27 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                     )
                 };
 
+                if ch == 'g' && doc.diff_handle().is_none() {
+                    editor.set_status("Diff is not available in current buffer");
+                    return;
+                }
+
+                let textobject_change = |range: Range| -> Range {
+                    let diff_handle = doc.diff_handle().unwrap();
+                    let hunks = diff_handle.hunks();
+                    let line = range.cursor_line(text);
+                    let hunk_idx = if let Some(hunk_idx) = hunks.hunk_at(line as u32, false) {
+                        hunk_idx
+                    } else {
+                        return range;
+                    };
+                    let hunk = hunks.nth_hunk(hunk_idx).after;
+
+                    let start = text.line_to_char(hunk.start as usize);
+                    let end = text.line_to_char(hunk.end as usize);
+                    Range::new(start, end).with_direction(range.direction())
+                };
+
                 let selection = doc.selection(view.id).clone().transform(|range| {
                     match ch {
                         'w' => textobject::textobject_word(text, range, objtype, count, false),
@@ -4621,6 +4642,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'm' => textobject::textobject_pair_surround_closest(
                             text, range, objtype, count,
                         ),
+                        'g' => textobject_change(range),
                         // TODO: cancel new ranges if inconsistent surround matches across lines
                         ch if !ch.is_ascii_alphanumeric() => {
                             textobject::textobject_pair_surround(text, range, objtype, ch, count)

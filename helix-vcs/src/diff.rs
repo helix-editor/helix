@@ -246,4 +246,34 @@ impl FileHunks<'_> {
             Err(pos) | Ok(pos) => Some(pos as u32 - 1),
         }
     }
+
+    pub fn hunk_at(&self, line: u32, include_removal: bool) -> Option<u32> {
+        let hunk_range = if self.inverted {
+            |hunk: &Hunk| hunk.before.clone()
+        } else {
+            |hunk: &Hunk| hunk.after.clone()
+        };
+
+        let res = self
+            .hunks
+            .binary_search_by_key(&line, |hunk| hunk_range(hunk).start);
+
+        match res {
+            // Search found a hunk that starts exactly at this line, return it
+            Ok(pos) => Some(pos as u32),
+
+            // No hunk starts exactly at this line, so the search returns
+            // the position where a hunk starting at this line should be inserted.
+            // The previous hunk contains this hunk if it exists and doesn't end before this line
+            Err(0) => None,
+            Err(pos) => {
+                let hunk = hunk_range(&self.hunks[pos - 1]);
+                if hunk.end > line || include_removal && hunk.start == line && hunk.is_empty() {
+                    Some(pos as u32 - 1)
+                } else {
+                    None
+                }
+            }
+        }
+    }
 }
