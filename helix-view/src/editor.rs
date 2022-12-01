@@ -67,7 +67,22 @@ where
     )
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+// Accept either a simple array of strings as gutter defaults or
+// a [editor.gutters] block
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum GutterConfigOption {
+    Simple(Vec<GutterType>),
+    Detailed(GutterConfig),
+}
+
+impl Default for GutterConfigOption {
+    fn default() -> Self {
+        Self::Detailed(GutterConfig::default())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct GutterConfig {
     /// Gutter Layout
@@ -89,56 +104,14 @@ impl Default for GutterConfig {
     }
 }
 
-impl<'de> Deserialize<'de> for GutterConfig {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        // Accept either a simple array of strings as gutter defaults or
-        // a [editor.gutters] block
-        #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-        #[serde(untagged)]
-        enum GutterConfigFormat {
-            Simple(Vec<GutterType>),
-            Detailed(GutterConfigStub),
-        }
-
-        // Create a mirror of a GutterConfig to let serde derive our
-        // deserialization for us.
-        // This is a hack!! Please show me a better way!!
-        #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-        #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-        struct GutterConfigStub {
-            layout: Vec<GutterType>,
-            line_numbers: GutterLineNumbersConfig,
-        }
-
-        impl Default for GutterConfigStub {
-            fn default() -> Self {
-                Self {
-                    layout: vec![
-                        GutterType::Diagnostics,
-                        GutterType::Spacer,
-                        GutterType::LineNumbers,
-                    ],
-                    line_numbers: GutterLineNumbersConfig::default(),
-                }
-            }
-        }
-
-        fn convert(x: GutterConfigStub) -> GutterConfig {
-            GutterConfig {
-                layout: x.layout,
-                line_numbers: x.line_numbers,
-            }
-        }
-
-        match GutterConfigFormat::deserialize(deserializer)? {
-            GutterConfigFormat::Simple(layout) => Ok(GutterConfig {
-                layout,
+impl From<GutterConfigOption> for GutterConfig {
+    fn from(item: GutterConfigOption) -> Self {
+        match item {
+            GutterConfigOption::Simple(x) => GutterConfig {
+                layout: x,
                 ..Default::default()
-            }),
-            GutterConfigFormat::Detailed(config) => Ok(convert(config)),
+            },
+            GutterConfigOption::Detailed(x) => x,
         }
     }
 }
@@ -217,8 +190,8 @@ pub struct Config {
     pub cursorline: bool,
     /// Highlight the columns cursors are currently on. Defaults to false.
     pub cursorcolumn: bool,
-    /// Gutters. Default {include: ["diagnostics", "line-numbers"]}
-    pub gutters: GutterConfig,
+    /// Gutters. Default { layout: ["diagnostics", "spacer", "line-numbers"] }
+    pub gutters: GutterConfigOption,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
     /// Automatic insertion of pairs to parentheses, brackets,
@@ -679,7 +652,7 @@ impl Default for Config {
             line_number: LineNumber::Absolute,
             cursorline: false,
             cursorcolumn: false,
-            gutters: GutterConfig::default(),
+            gutters: GutterConfigOption::default(),
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
@@ -1041,7 +1014,7 @@ impl Editor {
         for (view, _) in self.tree.views_mut() {
             let doc = &self.documents[&view.doc];
             view.ensure_cursor_in_view(doc, config.scrolloff);
-            view.gutters = config.gutters.clone();
+            view.gutters = config.gutters.clone().into();
         }
     }
 
@@ -1126,7 +1099,7 @@ impl Editor {
                     .try_get(self.tree.focus)
                     .filter(|v| id == v.doc) // Different Document
                     .cloned()
-                    .unwrap_or_else(|| View::new(id, self.config().gutters.clone()));
+                    .unwrap_or_else(|| View::new(id, self.config().gutters.clone().into()));
                 let view_id = self.tree.split(
                     view,
                     match action {
@@ -1269,7 +1242,7 @@ impl Editor {
                 .map(|(&doc_id, _)| doc_id)
                 .next()
                 .unwrap_or_else(|| self.new_document(Document::default()));
-            let view = View::new(doc_id, self.config().gutters.clone());
+            let view = View::new(doc_id, self.config().gutters.clone().into());
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
             doc.ensure_view_init(view_id);

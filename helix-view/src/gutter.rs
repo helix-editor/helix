@@ -103,7 +103,7 @@ pub fn line_numbers<'doc>(
 
     // characters used to display last line, and settings for min/max
     let n_last_line = count_digits(last_drawn_line);
-    let n_min = editor.config().gutters.line_numbers.width;
+    let n_min = view.gutters.line_numbers.width;
 
     let linenr = theme.get("ui.linenr");
     let linenr_select = theme.get("ui.linenr.selected");
