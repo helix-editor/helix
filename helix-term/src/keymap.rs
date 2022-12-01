@@ -390,18 +390,18 @@ impl Keymaps {
 
         self.state.push(key);
         match trie.search(&self.state[1..]) {
-            Some(&KeyTrie::Node(ref map)) => {
+            Some(KeyTrie::Node(map)) => {
                 if map.is_sticky {
                     self.state.clear();
                     self.sticky = Some(map.clone());
                 }
                 KeymapResult::Pending(map.clone())
             }
-            Some(&KeyTrie::Leaf(ref cmd)) => {
+            Some(KeyTrie::Leaf(cmd)) => {
                 self.state.clear();
                 KeymapResult::Matched(cmd.clone())
             }
-            Some(&KeyTrie::Sequence(ref cmds)) => {
+            Some(KeyTrie::Sequence(cmds)) => {
                 self.state.clear();
                 KeymapResult::MatchedSequence(cmds.clone())
             }
