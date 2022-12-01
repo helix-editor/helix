@@ -730,7 +730,7 @@ impl EditorView {
         let mut text = String::with_capacity(8);
 
         for gutter_type in view.gutters() {
-            let gutter = gutter_type.style(editor, doc, view, theme, is_focused);
+            let mut gutter = gutter_type.style(editor, doc, view, theme, is_focused);
             let width = gutter_type.width(view, doc);
             text.reserve(width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {

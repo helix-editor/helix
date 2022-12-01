@@ -158,17 +158,10 @@ impl View {
     }
 
     pub fn gutter_offset(&self, doc: &Document) -> u16 {
-        let mut offset = self
-            .gutters
+        self.gutters
             .iter()
             .map(|gutter| gutter.width(self, doc) as u16)
-            .sum();
-
-        if offset > 0 {
-            offset += 1
-        }
-
-        offset
+            .sum()
     }
 
     //
@@ -392,8 +385,8 @@ impl View {
 mod tests {
     use super::*;
     use helix_core::Rope;
-    const OFFSET: u16 = 4; // 1 diagnostic + 2 linenr (< 100 lines) + 1 gutter
-    const OFFSET_WITHOUT_LINE_NUMBERS: u16 = 2; // 1 diagnostic + 1 gutter
+    const OFFSET: u16 = 3; // 1 diagnostic + 2 linenr (< 100 lines)
+    const OFFSET_WITHOUT_LINE_NUMBERS: u16 = 1; // 1 diagnostic
                                                 // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
     use crate::document::Document;
     use crate::editor::GutterType;
