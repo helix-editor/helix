@@ -2345,7 +2345,9 @@ fn buffer_picker(cx: &mut Context) {
 
     let picker = FilePicker::new(
         cx.editor
-            .documents.values().map(|doc| new_meta(doc))
+            .documents
+            .values()
+            .map(|doc| new_meta(doc))
             .collect(),
         (),
         |cx, meta, action| {

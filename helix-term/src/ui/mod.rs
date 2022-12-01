@@ -253,7 +253,9 @@ pub mod completers {
 
     pub fn buffer(editor: &Editor, input: &str) -> Vec<Completion> {
         let mut names: Vec<_> = editor
-            .documents.values().map(|doc| {
+            .documents
+            .values()
+            .map(|doc| {
                 let name = doc
                     .relative_path()
                     .map(|p| p.display().to_string())
