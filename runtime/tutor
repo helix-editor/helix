@@ -671,8 +671,8 @@ _________________________________________________________________
     for instance.
 
  --> This is some text for you to repeat things. You can repeat
-     insertions like changing words, or repeat selections like
-     f / t.
+ --> insertions like changing words, or repeat selections like
+ --> f / t.
 
 
 
@@ -852,9 +852,9 @@ lines.
  5. Move to the line below and put your cursor on '>' again.
  6. Type q to repeat the macro.
 
- --> ... sentence doesn't have it's first and last ... .
- --> ... sentence doesn't have it's first and last ... .
-     This sentence doesn't have it's first and last word.
+ --> ... sentence doesn't have its first and last ... .
+ --> ... sentence doesn't have its first and last ... .
+     This sentence doesn't have its first and last word.
 
 =================================================================
 =                        CHAPTER 8 RECAP                        =
