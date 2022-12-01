@@ -516,8 +516,8 @@ impl EditorView {
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
                     for grapheme in RopeGraphemes::new(text) {
-                        let out_of_bounds = offset.col > (visual_x as usize)
-                            || (visual_x as usize) >= viewport.width as usize + offset.col;
+                        let out_of_bounds = offset.col > visual_x
+                            || visual_x >= viewport.width as usize + offset.col;
 
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
                             if !out_of_bounds {
@@ -547,7 +547,7 @@ impl EditorView {
                             let (display_grapheme, width) = if grapheme == "\t" {
                                 is_whitespace = true;
                                 // make sure we display tab as appropriate amount of spaces
-                                let visual_tab_width = tab_width - (visual_x as usize % tab_width);
+                                let visual_tab_width = tab_width - (visual_x % tab_width);
                                 let grapheme_tab_width =
                                     helix_core::str_utils::char_to_byte_idx(&tab, visual_tab_width);
 
@@ -566,7 +566,7 @@ impl EditorView {
                                 (grapheme.as_ref(), width)
                             };
 
-                            let cut_off_start = offset.col.saturating_sub(visual_x as usize);
+                            let cut_off_start = offset.col.saturating_sub(visual_x);
 
                             if !out_of_bounds {
                                 // if we're offscreen just keep going until we hit a new line
@@ -583,7 +583,7 @@ impl EditorView {
                             } else if cut_off_start != 0 && cut_off_start < width {
                                 // partially on screen
                                 let rect = Rect::new(
-                                    viewport.x as u16,
+                                    viewport.x,
                                     viewport.y + line,
                                     (width - cut_off_start) as u16,
                                     1,
