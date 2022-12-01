@@ -198,7 +198,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         // z family for save/restore/combine from/to sels from register
 
-        "tab" => jump_forward, // tab == <C-i>
+        "tab" | "C-i" => jump_forward, // tab == <C-i> on Linux, <C-i> is for Windows
         "C-o" => jump_backward,
         "C-s" => save_selection,
 
