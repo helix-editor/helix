@@ -1068,6 +1068,10 @@ fn reload_all(
 
         // Every doc is guaranteed to have at least 1 view at this point.
         let view = view_mut!(cx.editor, view_ids[0]);
+
+        // Ensure that the view is synced with the document's history.
+        view.sync_changes(doc);
+
         let redraw_handle = cx.editor.redraw_handle.clone();
         doc.reload(view, &cx.editor.diff_providers, redraw_handle)?;
 
