@@ -151,5 +151,15 @@ async fn test_changes_in_splits_apply_to_all_views() -> anyhow::Result<()> {
     // was not updated and after the `kd` step, pointed outside of the document.
     test(("#[|]#", "<C-w>v[<space><C-s><C-w>wkd<C-w>qd", "#[|]#")).await?;
 
+    // Transactions are applied to the views for windows lazily when they are focused.
+    // This case panics if the transactions and inversions are not applied in the
+    // correct order as we switch between windows.
+    test((
+        "#[|]#",
+        "[<space>[<space>[<space><C-w>vuuu<C-w>wUUU<C-w>quuu",
+        "#[|]#",
+    ))
+    .await?;
+
     Ok(())
 }

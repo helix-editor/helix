@@ -274,15 +274,26 @@ impl Application {
     }
 
     #[cfg(feature = "integration")]
-    fn render(&mut self) {}
+    async fn render(&mut self) {}
 
     #[cfg(not(feature = "integration"))]
-    fn render(&mut self) {
+    async fn render(&mut self) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,
         };
+
+        // Acquire mutable access to the redraw_handle lock
+        // to ensure that there are no tasks running that want to block rendering
+        drop(cx.editor.redraw_handle.1.write().await);
+        cx.editor.needs_redraw = false;
+        {
+            // exhaust any leftover redraw notifications
+            let notify = cx.editor.redraw_handle.0.notified();
+            tokio::pin!(notify);
+            notify.enable();
+        }
 
         let area = self
             .terminal
@@ -304,7 +315,7 @@ impl Application {
     where
         S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
     {
-        self.render();
+        self.render().await;
         self.last_render = Instant::now();
 
         loop {
@@ -329,18 +340,18 @@ impl Application {
                 biased;
 
                 Some(event) = input_stream.next() => {
-                    self.handle_terminal_events(event);
+                    self.handle_terminal_events(event).await;
                 }
                 Some(signal) = self.signals.next() => {
                     self.handle_signals(signal).await;
                 }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
-                    self.render();
+                    self.render().await;
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
-                    self.render();
+                    self.render().await;
                 }
                 event = self.editor.wait_event() => {
                     let _idle_handled = self.handle_editor_event(event).await;
@@ -445,25 +456,25 @@ impl Application {
                 self.compositor.resize(area);
                 self.terminal.clear().expect("couldn't clear terminal");
 
-                self.render();
+                self.render().await;
             }
             signal::SIGUSR1 => {
                 self.refresh_config();
-                self.render();
+                self.render().await;
             }
             _ => unreachable!(),
         }
     }
 
-    pub fn handle_idle_timeout(&mut self) {
+    pub async fn handle_idle_timeout(&mut self) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,
         };
         let should_render = self.compositor.handle_event(&Event::IdleTimeout, &mut cx);
-        if should_render {
-            self.render();
+        if should_render || self.editor.needs_redraw {
+            self.render().await;
         }
     }
 
@@ -536,11 +547,11 @@ impl Application {
         match event {
             EditorEvent::DocumentSaved(event) => {
                 self.handle_document_write(event);
-                self.render();
+                self.render().await;
             }
             EditorEvent::ConfigEvent(event) => {
                 self.handle_config_events(event);
-                self.render();
+                self.render().await;
             }
             EditorEvent::LanguageServerMessage((id, call)) => {
                 self.handle_language_server_message(call, id).await;
@@ -548,19 +559,19 @@ impl Application {
                 let last = self.editor.language_servers.incoming.is_empty();
 
                 if last || self.last_render.elapsed() > LSP_DEADLINE {
-                    self.render();
+                    self.render().await;
                     self.last_render = Instant::now();
                 }
             }
             EditorEvent::DebuggerEvent(payload) => {
                 let needs_render = self.editor.handle_debugger_message(payload).await;
                 if needs_render {
-                    self.render();
+                    self.render().await;
                 }
             }
             EditorEvent::IdleTimer => {
                 self.editor.clear_idle_timer();
-                self.handle_idle_timeout();
+                self.handle_idle_timeout().await;
 
                 #[cfg(feature = "integration")]
                 {
@@ -572,7 +583,10 @@ impl Application {
         false
     }
 
-    pub fn handle_terminal_events(&mut self, event: Result<CrosstermEvent, crossterm::ErrorKind>) {
+    pub async fn handle_terminal_events(
+        &mut self,
+        event: Result<CrosstermEvent, crossterm::ErrorKind>,
+    ) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -596,7 +610,7 @@ impl Application {
         };
 
         if should_redraw && !self.editor.should_close() {
-            self.render();
+            self.render().await;
         }
     }
 
@@ -758,7 +772,8 @@ impl Application {
                                         severity,
                                         code,
                                         tags,
-                                        source: diagnostic.source.clone()
+                                        source: diagnostic.source.clone(),
+                                        data: diagnostic.data.clone(),
                                     })
                                 })
                                 .collect();

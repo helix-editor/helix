@@ -2404,8 +2404,8 @@ fn buffer_picker(cx: &mut Context) {
     let picker = FilePicker::new(
         cx.editor
             .documents
-            .iter()
-            .map(|(_, doc)| new_meta(doc))
+            .values()
+            .map(|doc| new_meta(doc))
             .collect(),
         (),
         |cx, meta, action| {
@@ -2622,7 +2622,7 @@ async fn make_format_callback(
         if let Ok(format) = format {
             if doc.version() == doc_version {
                 apply_transaction(&format, doc, view);
-                doc.append_changes_to_history(view.id);
+                doc.append_changes_to_history(view);
                 doc.detect_indent_and_line_ending();
                 view.ensure_cursor_in_view(doc, scrolloff);
             } else {
@@ -3447,7 +3447,7 @@ fn undo(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     for _ in 0..count {
-        if !doc.undo(view.id) {
+        if !doc.undo(view) {
             cx.editor.set_status("Already at oldest change");
             break;
         }
@@ -3458,7 +3458,7 @@ fn redo(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     for _ in 0..count {
-        if !doc.redo(view.id) {
+        if !doc.redo(view) {
             cx.editor.set_status("Already at newest change");
             break;
         }
@@ -3470,7 +3470,7 @@ fn earlier(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     for _ in 0..count {
         // rather than doing in batch we do this so get error halfway
-        if !doc.earlier(view.id, UndoKind::Steps(1)) {
+        if !doc.earlier(view, UndoKind::Steps(1)) {
             cx.editor.set_status("Already at oldest change");
             break;
         }
@@ -3482,7 +3482,7 @@ fn later(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     for _ in 0..count {
         // rather than doing in batch we do this so get error halfway
-        if !doc.later(view.id, UndoKind::Steps(1)) {
+        if !doc.later(view, UndoKind::Steps(1)) {
             cx.editor.set_status("Already at newest change");
             break;
         }
@@ -3491,7 +3491,7 @@ fn later(cx: &mut Context) {
 
 fn commit_undo_checkpoint(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    doc.append_changes_to_history(view.id);
+    doc.append_changes_to_history(view);
 }
 
 // Yank / Paste
@@ -3803,7 +3803,7 @@ fn replace_selections_with_clipboard_impl(
             });
 
             apply_transaction(&transaction, doc, view);
-            doc.append_changes_to_history(view.id);
+            doc.append_changes_to_history(view);
         }
         Err(e) => return Err(e.context("Couldn't get system clipboard contents")),
     }
@@ -5067,7 +5067,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
         let transaction = Transaction::change(doc.text(), changes.into_iter())
             .with_selection(Selection::new(ranges, selection.primary_index()));
         apply_transaction(&transaction, doc, view);
-        doc.append_changes_to_history(view.id);
+        doc.append_changes_to_history(view);
     }
 
     // after replace cursor may be out of bounds, do this to

@@ -56,7 +56,7 @@ impl ChangeSet {
     }
 
     // Changeset builder operations: delete/insert/retain
-    fn delete(&mut self, n: usize) {
+    pub(crate) fn delete(&mut self, n: usize) {
         use Operation::*;
         if n == 0 {
             return;
@@ -71,7 +71,7 @@ impl ChangeSet {
         }
     }
 
-    fn insert(&mut self, fragment: Tendril) {
+    pub(crate) fn insert(&mut self, fragment: Tendril) {
         use Operation::*;
 
         if fragment.is_empty() {
@@ -93,7 +93,7 @@ impl ChangeSet {
         self.changes.push(new_last);
     }
 
-    fn retain(&mut self, n: usize) {
+    pub(crate) fn retain(&mut self, n: usize) {
         use Operation::*;
         if n == 0 {
             return;

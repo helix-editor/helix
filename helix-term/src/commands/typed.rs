@@ -464,7 +464,7 @@ fn set_line_ending(
         }),
     );
     apply_transaction(&transaction, doc, view);
-    doc.append_changes_to_history(view.id);
+    doc.append_changes_to_history(view);
 
     Ok(())
 }
@@ -481,7 +481,7 @@ fn earlier(
     let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
 
     let (view, doc) = current!(cx.editor);
-    let success = doc.earlier(view.id, uk);
+    let success = doc.earlier(view, uk);
     if !success {
         cx.editor.set_status("Already at oldest change");
     }
@@ -500,7 +500,7 @@ fn later(
 
     let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
     let (view, doc) = current!(cx.editor);
-    let success = doc.later(view.id, uk);
+    let success = doc.later(view, uk);
     if !success {
         cx.editor.set_status("Already at newest change");
     }
@@ -911,7 +911,7 @@ fn replace_selections_with_clipboard_impl(
             });
 
             apply_transaction(&transaction, doc, view);
-            doc.append_changes_to_history(view.id);
+            doc.append_changes_to_history(view);
             Ok(())
         }
         Err(e) => Err(e.context("Couldn't get system clipboard contents")),
@@ -1030,10 +1030,12 @@ fn reload(
     }
 
     let scrolloff = cx.editor.config().scrolloff;
+    let redraw_handle = cx.editor.redraw_handle.clone();
     let (view, doc) = current!(cx.editor);
-    doc.reload(view).map(|_| {
-        view.ensure_cursor_in_view(doc, scrolloff);
-    })
+    doc.reload(view, &cx.editor.diff_providers, redraw_handle)
+        .map(|_| {
+            view.ensure_cursor_in_view(doc, scrolloff);
+        })
 }
 
 fn reload_all(
@@ -1068,12 +1070,18 @@ fn reload_all(
 
         // Every doc is guaranteed to have at least 1 view at this point.
         let view = view_mut!(cx.editor, view_ids[0]);
-        doc.reload(view)?;
+
+        // Ensure that the view is synced with the document's history.
+        view.sync_changes(doc);
+
+        let redraw_handle = cx.editor.redraw_handle.clone();
+        doc.reload(view, &cx.editor.diff_providers, redraw_handle)?;
 
         for view_id in view_ids {
             let view = view_mut!(cx.editor, view_id);
-
-            view.ensure_cursor_in_view(doc, scrolloff);
+            if view.doc.eq(&doc_id) {
+                view.ensure_cursor_in_view(doc, scrolloff);
+            }
         }
     }
 
@@ -1574,7 +1582,7 @@ fn sort_impl(
     );
 
     apply_transaction(&transaction, doc, view);
-    doc.append_changes_to_history(view.id);
+    doc.append_changes_to_history(view);
 
     Ok(())
 }
@@ -1618,7 +1626,7 @@ fn reflow(
     });
 
     apply_transaction(&transaction, doc, view);
-    doc.append_changes_to_history(view.id);
+    doc.append_changes_to_history(view);
     view.ensure_cursor_in_view(doc, scrolloff);
 
     Ok(())
