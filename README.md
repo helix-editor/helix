@@ -1,5 +1,7 @@
 # Helix
 
+<img src="./logo.svg" height="" alt="Logo"/>
+
 [![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
 
 ![Screenshot](./screenshot.png)
@@ -126,3 +128,7 @@ Contributing guidelines can be found [here](./docs/CONTRIBUTING.md).
 Your question might already be answered on the [FAQ](https://github.com/helix-editor/helix/wiki/FAQ).
 
 Discuss the project on the community [Matrix Space](https://matrix.to/#/#helix-community:matrix.org) (make sure to join `#helix-editor:matrix.org` if you're on a client that doesn't support Matrix Spaces yet).
+
+# Credits
+
+Thanks to [@JakeHL](https://github.com/JakeHL) for designing the logo!
