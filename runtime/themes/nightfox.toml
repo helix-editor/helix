@@ -140,10 +140,10 @@
 # Diff ==============================
 # Version control changes.
 
-"diff.plus" = "green-dim" # Additions.
-"diff.minus" = "red-dim" # Deletions.
-"diff.delta" = "blue-dim" # Modifications.
-"diff.delta.moved" = "cyan-dim" # Renamed or moved files.
+"diff.plus" = "green" # Additions.
+"diff.minus" = "red" # Deletions.
+"diff.delta" = "blue" # Modifications.
+"diff.delta.moved" = "cyan" # Renamed or moved files.
 
 # color palette
 [palette]
