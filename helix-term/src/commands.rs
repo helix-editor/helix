@@ -2989,15 +2989,22 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
             let hunk = hunks.nth_hunk(hunk_idx);
 
             let hunk_start = doc_text.line_to_char(hunk.after.start as usize);
+            let hunk_end = if hunk.after.is_empty() {
+                hunk_start + 1
+            } else {
+                doc_text.line_to_char(hunk.after.end as usize) - 1
+            };
+            let new_range = Range::new(hunk_start, hunk_end);
             if editor.mode == Mode::Select {
-                let head = if hunk_start + 1 < range.anchor {
-                    hunk_start
+                let head = if new_range.head < range.anchor {
+                    new_range.anchor
                 } else {
-                    hunk_start + 1
+                    new_range.head
                 };
+
                 Range::new(range.anchor, head)
             } else {
-                Range::new(hunk_start, hunk_start)
+                new_range.with_direction(direction)
             }
         });
 
