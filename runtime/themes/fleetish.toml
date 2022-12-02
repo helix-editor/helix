@@ -54,9 +54,9 @@
 "markup.raw" = "pink" # .inline
 "markup.raw.block" = "orange"
 
-"diff.plus" = "cyan"
-"diff.minus" = "yellow"
-"diff.delta" = "purple"
+"diff.plus" = "green"
+"diff.minus" = "red"
+"diff.delta" = "blue"
 
 # ui specific
 "ui.background" = { bg = "#0d0d0d" } # .separator
