@@ -2992,7 +2992,7 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
             let hunk_end = if hunk.after.is_empty() {
                 hunk_start + 1
             } else {
-                doc_text.line_to_char(hunk.after.end as usize) - 1
+                doc_text.line_to_char(hunk.after.end as usize)
             };
             let new_range = Range::new(hunk_start, hunk_end);
             if editor.mode == Mode::Select {
