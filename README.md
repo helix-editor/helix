@@ -1,6 +1,6 @@
-# Helix
+<img src="./logo.svg" height="128" alt="Logo"/>
 
-<img src="./logo.svg" height="" alt="Logo"/>
+# Helix
 
 [![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
 
