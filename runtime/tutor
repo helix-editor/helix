@@ -671,8 +671,8 @@ _________________________________________________________________
     for instance.
 
  --> This is some text for you to repeat things. You can repeat
- --> insertions like changing words, or repeat selections like
- --> f / t.
+     insertions like changing words, or repeat selections like
+     f / t.
 
 
 
@@ -845,16 +845,16 @@ lines.
  Type q to repeat the macro from register @ (the default).
 
  1. Move the cursor to the first line marked '-->' below.
-    Ensure your cursor is on the '>' of the arrow.
+    Ensure your cursor is on the > of the arrow.
  2. Type Q to start recording.
  3. Edit the line to look like the bottom one.
  4. Exit insert and Type Q again to stop recording.
- 5. Move to the line below and put your cursor on '>' again.
+ 5. Move to the line below and put your cursor on the > again.
  6. Type q to repeat the macro.
 
- --> ... sentence doesn't have its first and last ... .
- --> ... sentence doesn't have its first and last ... .
-     This sentence doesn't have its first and last word.
+ --> ... sentence doesn't have it's first and last ... .
+ --> ... sentence doesn't have it's first and last ... .
+     This sentence doesn't have it's first and last word.
 
 =================================================================
 =                        CHAPTER 8 RECAP                        =
