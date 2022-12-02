@@ -301,7 +301,7 @@ args = { mode = "local", processId = "{0}" }
 
 [[grammar]]
 name = "go"
-source = { git = "https://github.com/tree-sitter/tree-sitter-go", rev = "0fa917a7022d1cd2e9b779a6a8fc5dc7fad69c75" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-go", rev = "05900faa3cdb5d2d8c8bd5e77ee698487e0a8611" }
 
 [[language]]
 name = "gomod"

@@ -5,7 +5,7 @@
   (type_spec)
   (func_literal)
   (literal_value)
-  (element)
+  (literal_element)
   (keyed_element)
   (expression_case)
   (default_case)
