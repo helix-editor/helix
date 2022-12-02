@@ -218,14 +218,13 @@ impl Tree {
         let focus = self.focus;
         let parent = self.nodes[focus].parent;
 
-        let container_children: Vec<ViewId> = match &self.nodes[parent] {
+        match &self.nodes[parent] {
             Node {
                 content: Content::Container(container),
                 ..
-            } => container.children.clone(),
-            _ => unimplemented!(),
-        };
-        container_children.contains(child_id)
+            } => container.children.contains(child_id),
+            _ => unreachable!(),
+        }
     }
 
     pub fn remove(&mut self, index: ViewId) {
