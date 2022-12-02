@@ -1420,6 +1420,7 @@ impl Editor {
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
             doc.ensure_view_init(view_id);
+            doc.mark_as_focused();
         }
 
         self._refresh();
