@@ -1,8 +1,12 @@
 <div align="center">
 
-<img src="./logo.svg" height="128" alt="Logo"/>
-
-# Helix
+<h1>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="logo_dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="logo_light.svg">
+  <img alt="Helix" height="128" src="logo_light.svg">
+</picture>
+</h1>
 
 [![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
 [![GitHub Release](https://img.shields.io/github/v/release/helix-editor/helix)](https://github.com/helix-editor/helix/releases/latest)
