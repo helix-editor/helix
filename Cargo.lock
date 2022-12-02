@@ -557,7 +557,7 @@ checksum = "18d4ce09c0a6c71c044700e5932877667f427f007b77e6c39ab49aebc4719e25"
 dependencies = [
  "bstr 1.0.1",
  "btoi",
- "git-date",
+ "git-date 0.2.0",
  "itoa",
  "nom",
  "quick-error",
@@ -669,12 +669,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "git-date"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e33db9f4462b565a33507aee113f3383bf16b988d2c573f07691e34302b7aa0a"
+dependencies = [
+ "bstr 1.0.1",
+ "itoa",
+ "thiserror",
+ "time",
+]
+
+[[package]]
 name = "git-diff"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a88666a0ae4365b55a0cbf2efde68d2a4cff0747894ad229403bd60b0b2abc5"
 dependencies = [
- "git-hash",
+ "git-hash 0.9.11",
  "git-object",
  "imara-diff",
  "thiserror",
@@ -687,7 +699,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "881e4136d5599cfdb79d8ef60d650823d1a563589fa493d8e4961e64d78a79f2"
 dependencies = [
  "bstr 1.0.1",
- "git-hash",
+ "git-hash 0.9.11",
  "git-path",
  "git-ref",
  "git-sec",
@@ -702,7 +714,7 @@ checksum = "4be88ae837674c71b30c6517c6f5f1335f8135bb8a9ffef20000d211933bed08"
 dependencies = [
  "crc32fast",
  "flate2",
- "git-hash",
+ "git-hash 0.9.11",
  "libc",
  "once_cell",
  "prodash",
@@ -732,6 +744,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "git-hash"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1532d82bf830532f8d545c5b7b568e311e3593f16cf7ee9dd0ce03c74b12b99d"
+dependencies = [
+ "hex",
+ "thiserror",
+]
+
+[[package]]
 name = "git-index"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -743,7 +765,7 @@ dependencies = [
  "filetime",
  "git-bitmap",
  "git-features",
- "git-hash",
+ "git-hash 0.9.11",
  "git-lock",
  "git-object",
  "git-traverse",
@@ -785,7 +807,7 @@ dependencies = [
  "btoi",
  "git-actor",
  "git-features",
- "git-hash",
+ "git-hash 0.9.11",
  "git-validate",
  "hex",
  "itoa",
@@ -802,7 +824,7 @@ checksum = "aaaea7031ac7d8dfee232a16d7114395d118226214fb03fe4e15d1f4d62a88a6"
 dependencies = [
  "arc-swap",
  "git-features",
- "git-hash",
+ "git-hash 0.9.11",
  "git-object",
  "git-pack",
  "git-path",
@@ -824,7 +846,7 @@ dependencies = [
  "git-chunk",
  "git-diff",
  "git-features",
- "git-hash",
+ "git-hash 0.9.11",
  "git-object",
  "git-path",
  "git-tempfile",
@@ -878,7 +900,7 @@ checksum = "638c9e454bacb2965a43f05b4a383c8f66dc64f3a770bd0324b221c2a20e121d"
 dependencies = [
  "git-actor",
  "git-features",
- "git-hash",
+ "git-hash 0.9.11",
  "git-lock",
  "git-object",
  "git-path",
@@ -896,7 +918,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9497af773538ae8cfda053ff7dd0a9e6c28d333ba653040f54b8b4ee32f14187"
 dependencies = [
  "bstr 1.0.1",
- "git-hash",
+ "git-hash 0.9.11",
  "git-revision",
  "git-validate",
  "smallvec",
@@ -915,12 +937,12 @@ dependencies = [
  "git-attributes",
  "git-config",
  "git-credentials",
- "git-date",
+ "git-date 0.2.0",
  "git-diff",
  "git-discover",
  "git-features",
  "git-glob",
- "git-hash",
+ "git-hash 0.9.11",
  "git-index",
  "git-lock",
  "git-mailmap",
@@ -953,8 +975,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1efd31c63c3745b5dba5ec7109eec41a9c717f4e1e797fe0ef93098f33f31b25"
 dependencies = [
  "bstr 1.0.1",
- "git-date",
- "git-hash",
+ "git-date 0.2.0",
+ "git-hash 0.9.11",
  "git-object",
  "hash_hasher",
  "thiserror",
@@ -993,7 +1015,7 @@ version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d0c4dd773c69f294f43ace8373d48eb770129791f104c6857fa8cac0505af89"
 dependencies = [
- "git-hash",
+ "git-hash 0.9.11",
  "git-object",
  "hash_hasher",
  "thiserror",
@@ -1033,7 +1055,7 @@ dependencies = [
  "git-attributes",
  "git-features",
  "git-glob",
- "git-hash",
+ "git-hash 0.9.11",
  "git-index",
  "git-object",
  "git-path",
@@ -1253,6 +1275,8 @@ dependencies = [
 name = "helix-vcs"
 version = "0.6.0"
 dependencies = [
+ "git-date 0.3.0",
+ "git-hash 0.10.1",
  "git-repository",
  "helix-core",
  "imara-diff",

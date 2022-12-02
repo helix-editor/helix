@@ -11,19 +11,25 @@ mod git;
 mod diff;
 
 pub use diff::{DiffHandle, Hunk};
+pub use git_repository::objs::Commit;
 
+// TODO: rename to VCSProvider
 pub trait DiffProvider {
     /// Returns the data that a diff should be computed against
     /// if this provider is used.
     /// The data is returned as raw byte without any decoding or encoding performed
     /// to ensure all file encodings are handled correctly.
     fn get_diff_base(&self, file: &Path) -> Option<Vec<u8>>;
+    fn get_log(&self, file: &Path) -> Option<Vec<Commit>>;
 }
 
 #[doc(hidden)]
 pub struct Dummy;
 impl DiffProvider for Dummy {
     fn get_diff_base(&self, _file: &Path) -> Option<Vec<u8>> {
+        None
+    }
+    fn get_log(&self, _file: &Path) -> Option<Vec<Commit>> {
         None
     }
 }
@@ -37,6 +43,11 @@ impl DiffProviderRegistry {
         self.providers
             .iter()
             .find_map(|provider| provider.get_diff_base(file))
+    }
+    pub fn get_log(&self, file: &Path) -> Option<Vec<Commit>> {
+        self.providers
+            .iter()
+            .find_map(|provider| provider.get_log(file))
     }
 }
 

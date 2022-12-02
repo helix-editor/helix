@@ -1791,6 +1791,58 @@ fn run_shell_command(
     Ok(())
 }
 
+fn git_log(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let doc = doc!(cx.editor);
+
+    let path = doc.path();
+    if path.is_none() {
+        return Ok(());
+    }
+
+    if let Some(history) = cx.editor.diff_providers.get_log(path.unwrap()) {
+        let callback = async move {
+            let first = history.first().unwrap().clone();
+            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                move |editor: &mut Editor, compositor: &mut Compositor| {
+                    let picker = CommitPicker::new(history, first, |editor, meta| {
+                        log::debug!("rendering commit: {:?}", meta);
+                        // TODO: handle time offset
+                        let commit_time: DateTime<Utc> = DateTime::from_utc(
+                            NaiveDateTime::from_timestamp_opt(
+                                meta.author.time.seconds_since_unix_epoch as i64,
+                                0,
+                            )
+                            .unwrap(),
+                            Utc,
+                        );
+                        format!(
+                            "{} {}, {}\n\n{}",
+                            meta.tree.to_hex_with_len(7),
+                            meta.author.name,
+                            commit_time,
+                            meta.message.to_string()
+                        )
+                    });
+                    compositor.push(Box::new(overlayed(picker)));
+                },
+            ));
+            Ok(call)
+        };
+
+        cx.jobs.callback(callback);
+    }
+
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2299,6 +2351,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             fun: run_shell_command,
             completer: Some(completers::directory),
         },
+    TypableCommand {
+        name: "git-log",
+        aliases: &[],
+        doc: "Open git log",
+        fun: git_log,
+        completer: None,
+    }
     ];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =

@@ -2,7 +2,9 @@ pub(crate) mod dap;
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
+use chrono::{DateTime, NaiveDateTime, Utc};
 pub use dap::*;
+use helix_vcs::DiffProviderRegistry;
 pub use lsp::*;
 use tui::text::Spans;
 pub use typed::*;
@@ -49,7 +51,7 @@ use crate::{
     compositor::{self, Component, Compositor},
     job::Callback,
     keymap::ReverseKeymap,
-    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
+    ui::{self, overlay::overlayed, CommitPicker, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 
 use crate::job::{self, Jobs};

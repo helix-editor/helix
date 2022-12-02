@@ -4,6 +4,7 @@ use crate::{
     compositor::{Callback, Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
 };
+use helix_vcs::Commit;
 use tui::{buffer::Buffer as Surface, text::Spans, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
@@ -32,6 +33,19 @@ pub trait Item {
 
     fn row(&self, data: &Self::Data) -> Row {
         Row::new(vec![Cell::from(self.label(data))])
+    }
+}
+
+impl Item for Commit {
+    type Data = Commit;
+
+    fn label(&self, _root_path: &Self::Data) -> Spans {
+        format!(
+            "{} {}",
+            self.tree.to_hex_with_len(7),
+            self.message.to_string().lines().next().unwrap()
+        )
+        .into()
     }
 }
 

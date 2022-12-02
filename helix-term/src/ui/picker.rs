@@ -15,7 +15,7 @@ use std::{cmp::Ordering, time::Instant};
 use std::{collections::HashMap, io::Read, path::PathBuf};
 
 use crate::ui::{Prompt, PromptEvent};
-use helix_core::{movement::Direction, Position};
+use helix_core::{movement::Direction, Position, Rope};
 use helix_view::{
     editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
@@ -67,6 +67,110 @@ pub struct FilePicker<T: Item> {
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
+}
+
+// TODO: extract into generic picker that accepts arbitrary component for preview
+// this could allow us to enter the preview and for example browse the files changed by the commit.
+// Could be also used for help for commands in command pellete.
+pub struct CommitPicker<T: Item> {
+    picker: Picker<T>,
+    commit_fn: Box<dyn Fn(&Editor, &T) -> String>,
+}
+
+impl<T: Item> CommitPicker<T> {
+    pub fn new(
+        options: Vec<T>,
+        editor_data: T::Data,
+        preview_fn: impl Fn(&Editor, &T) -> String + 'static,
+    ) -> Self {
+        let picker = Picker::new(options, editor_data, |_, _, _| {});
+        Self {
+            picker,
+            commit_fn: Box::new(preview_fn),
+        }
+    }
+}
+
+impl<T: Item + 'static> Component for CommitPicker<T> {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        // +---------+ +---------+
+        // |prompt   | |preview  |
+        // +---------+ |         |
+        // |picker   | |         |
+        // |         | |         |
+        // +---------+ +---------+
+
+        let render_preview = self.picker.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+        // -- Render the frame:
+        // clear area
+        let background = cx.editor.theme.get("ui.background");
+        surface.clear_with(area, background);
+
+        let picker_width = if render_preview {
+            area.width / 2
+        } else {
+            area.width
+        };
+
+        let picker_area = area.with_width(picker_width);
+        self.picker.render(picker_area, surface, cx);
+
+        if !render_preview {
+            return;
+        }
+
+        // create document from commit to get syntax highlighting out of the box
+        // and make the usage easier
+        let preview = (self.commit_fn)(cx.editor, self.picker.selection().unwrap());
+        let mut doc = Document::from(Rope::from_str(preview.as_str()), None);
+        doc.set_language_by_language_id("git-commit", cx.editor.syn_loader.clone())
+            .expect("failed to set language");
+        log::debug!("doc for git log: {:?}", doc);
+
+        let preview_area = area.clip_left(picker_width);
+
+        // don't like this but the lifetime sucks
+        let block = Block::default().borders(Borders::ALL);
+
+        // calculate the inner area inside the box
+        let inner = block.inner(preview_area);
+        // 1 column gap on either side
+        let margin = Margin::horizontal(1);
+        let inner = inner.inner(&margin);
+        block.render(preview_area, surface);
+
+        let offset = Position::new(0, 0);
+        let highlights =
+            EditorView::doc_syntax_highlights(&doc, offset, area.height, &cx.editor.theme);
+        EditorView::render_text_highlights(
+            &doc,
+            offset,
+            inner,
+            surface,
+            &cx.editor.theme,
+            highlights,
+            &cx.editor.config(),
+        );
+    }
+
+    fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
+        // TODO: keybinds for scrolling preview
+        self.picker.handle_event(event, ctx)
+    }
+
+    fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
+        self.picker.cursor(area, ctx)
+    }
+
+    fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
+        let picker_width = if width > MIN_AREA_WIDTH_FOR_PREVIEW {
+            width / 2
+        } else {
+            width
+        };
+        self.picker.required_size((picker_width, height))?;
+        Some((width, height))
+    }
 }
 
 pub enum CachedPreview {

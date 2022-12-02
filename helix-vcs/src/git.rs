@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use git::objs::tree::EntryMode;
+use git::objs::{Commit as CommitObj, CommitRef};
 use git::sec::trust::DefaultForLevel;
 use git::{Commit, ObjectId, Repository, ThreadSafeRepository};
 use git_repository as git;
@@ -62,6 +63,31 @@ impl DiffProvider for Git {
 
         let file_object = repo.find_object(file_oid).ok()?;
         Some(file_object.detach().data)
+    }
+
+    // TODO: return object ID and provide get_object method?
+    fn get_log(&self, file: &Path) -> Option<Vec<CommitObj>> {
+        debug_assert!(!file.exists() || file.is_file());
+        debug_assert!(file.is_absolute());
+
+        // TODO cache repository lookup
+        let repo = Git::open_repo(file.parent()?, None)?.to_thread_local();
+        let head = repo.head_commit().ok()?;
+        Some(
+            head.ancestors()
+                // TODO: expensive, set cache on the repo and cache the repository
+                .all()
+                .unwrap()
+                .map(|p| {
+                    CommitObj::from(
+                        CommitRef::from_bytes(
+                            &repo.find_object(p.unwrap()).unwrap().detach().data as &[u8],
+                        )
+                        .unwrap(),
+                    )
+                })
+                .collect::<Vec<CommitObj>>(),
+        )
     }
 }
 
