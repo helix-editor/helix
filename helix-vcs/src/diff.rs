@@ -233,10 +233,10 @@ impl FileHunks<'_> {
 
         match res {
             // Search found a hunk that ends exactly at this line (so it does not include the current line).
-            // We can usually just return that hunk, howver a specical special case for empty hunk is necessary
+            // We can usually just return that hunk, however a special case for empty hunk is necessary
             // which represents a pure removal.
             // Removals are technically empty but are still shown as single line hunks
-            // and as such we must jump to the previus hunk (if it exists) if we are already inside the removal
+            // and as such we must jump to the previous hunk (if it exists) if we are already inside the removal
             Ok(pos) if !hunk_range(&self.hunks[pos]).is_empty() => Some(pos as u32),
 
             // No hunk ends exactly at this line, so the search returns
