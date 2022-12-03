@@ -7,6 +7,7 @@ use super::*;
 use helix_view::{
     apply_transaction,
     editor::{Action, CloseError, ConfigEvent},
+    graphics::{Color, Style},
 };
 use ui::completers::{self, Completer};
 
@@ -29,13 +30,15 @@ fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
 
     ensure!(args.is_empty(), ":quit takes no arguments");
 
-    // last view and we have unsaved changes
+    let close = |editor: &mut Editor| {
+        editor.close(view!(editor).id);
+    };
+    // handle unsaved changes if this is the last view
     if cx.editor.tree.views().count() == 1 {
-        buffers_remaining_impl(cx.editor)?
+        unsaved_changes_impl(cx, close);
+    } else {
+        close(cx.editor);
     }
-
-    cx.block_try_flush_writes()?;
-    cx.editor.close(view!(cx.editor).id);
 
     Ok(())
 }
@@ -539,26 +542,81 @@ fn force_write_quit(
 /// Results in an error if there are modified buffers remaining and sets editor
 /// error, otherwise returns `Ok(())`. If the current document is unmodified,
 /// and there are modified documents, switches focus to one of them.
-pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> {
-    let (modified_ids, modified_names): (Vec<_>, Vec<_>) = editor
+pub(super) fn unsaved_changes_impl(
+    cx: &mut compositor::Context,
+    close: impl FnOnce(&mut Editor) + Send + Sync + 'static,
+) {
+    match cx.block_try_flush_writes() {
+        Ok(_) => {}
+        Err(e) => {
+            cx.editor.set_error(format!("{}", e));
+            return;
+        }
+    }
+
+    let modified: Vec<_> = cx
+        .editor
         .documents()
         .filter(|doc| doc.is_modified())
         .map(|doc| (doc.id(), doc.display_name()))
-        .unzip();
-    if let Some(first) = modified_ids.first() {
-        let current = doc!(editor);
-        // If the current document is unmodified, and there are modified
-        // documents, switch focus to the first modified doc.
-        if !modified_ids.contains(&current.id()) {
-            editor.switch(*first, Action::Replace);
-        }
-        bail!(
-            "{} unsaved buffer(s) remaining: {:?}",
-            modified_names.len(),
-            modified_names
-        );
+        .collect();
+
+    if let Some((modified_id, modified_name)) = modified.first() {
+        cx.editor.switch(*modified_id, Action::Replace);
+        let modified_id = *modified_id;
+        let modified_name = modified_name.clone();
+        let callback = async move {
+            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                move |_editor: &mut Editor, compositor: &mut Compositor| {
+                    fn handle_choice(
+                        cx: &mut compositor::Context,
+                        choice: &ui::dialog::Choice,
+                        modified_id: &DocumentId,
+                    ) -> anyhow::Result<bool> {
+                        match choice.name.as_str() {
+                            "Yes" => {
+                                write_impl(cx, None, false)?;
+                                buffer_close_by_ids_impl(cx, &[*modified_id], false)?;
+                                Ok(true)
+                            }
+                            "No" => {
+                                buffer_close_by_ids_impl(cx, &[*modified_id], true)?;
+                                Ok(true)
+                            }
+                            "All" => {
+                                write_all_impl(cx, true, false)?;
+                                Ok(true)
+                            }
+                            "Cancel" => Ok(false),
+                            _ => unreachable!(),
+                        }
+                    }
+
+                    let dialog = ui::Dialog::new(
+                        ui::Text::from(tui::text::Text::styled(
+                            format!("Save changes to {}?", modified_name),
+                            Style::default().fg(Color::Red),
+                        )),
+                        vec!["Yes".into(), "No".into(), "All".into(), "Cancel".into()],
+                        move |cx, choice| match handle_choice(cx, choice, &modified_id) {
+                            Ok(true) => {
+                                unsaved_changes_impl(cx, close);
+                            }
+                            Ok(false) => {}
+                            Err(e) => cx.editor.set_error(format!("{}", e)),
+                        },
+                    )
+                    .unwrap();
+                    compositor.push(Box::new(overlayed(dialog)));
+                },
+            ));
+            Ok(call)
+        };
+        cx.jobs
+            .add(Job::with_callback(callback).wait_before_exiting());
+    } else {
+        close(cx.editor);
     }
-    Ok(())
 }
 
 pub fn write_all_impl(
@@ -674,15 +732,18 @@ fn force_write_all_quit(
 }
 
 fn quit_all_impl(cx: &mut compositor::Context, force: bool) -> anyhow::Result<()> {
-    cx.block_try_flush_writes()?;
-    if !force {
-        buffers_remaining_impl(cx.editor)?;
-    }
-
-    // close all views
-    let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
-    for view_id in views {
-        cx.editor.close(view_id);
+    let close = |editor: &mut Editor| {
+        // close all views
+        let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
+        for view_id in views {
+            editor.close(view_id);
+        }
+    };
+    if force {
+        cx.block_try_flush_writes()?;
+        close(cx.editor);
+    } else {
+        unsaved_changes_impl(cx, close);
     }
 
     Ok(())

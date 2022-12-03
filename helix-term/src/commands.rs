@@ -123,6 +123,14 @@ impl<'a> Context<'a> {
     pub fn count(&self) -> usize {
         self.count.map_or(1, |v| v.get())
     }
+
+    pub fn compositor_context(&mut self) -> compositor::Context {
+        compositor::Context {
+            editor: self.editor,
+            jobs: self.jobs,
+            scroll: None,
+        }
+    }
 }
 
 use helix_view::{align_view, Align};
@@ -167,11 +175,7 @@ impl MappableCommand {
             Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
-                    let mut cx = compositor::Context {
-                        editor: cx.editor,
-                        jobs: cx.jobs,
-                        scroll: None,
-                    };
+                    let mut cx = cx.compositor_context();
                     if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
                         cx.editor.set_error(format!("{}", e));
                     }
@@ -4321,15 +4325,15 @@ fn vsplit_new(cx: &mut Context) {
 }
 
 fn wclose(cx: &mut Context) {
+    let close = |editor: &mut Editor| {
+        // close current split
+        editor.close(view!(editor).id);
+    };
     if cx.editor.tree.views().count() == 1 {
-        if let Err(err) = typed::buffers_remaining_impl(cx.editor) {
-            cx.editor.set_error(err.to_string());
-            return;
-        }
+        typed::unsaved_changes_impl(&mut cx.compositor_context(), close);
+    } else {
+        close(cx.editor);
     }
-    let view_id = view!(cx.editor).id;
-    // close current split
-    cx.editor.close(view_id);
 }
 
 fn wonly(cx: &mut Context) {
