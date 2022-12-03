@@ -19,13 +19,9 @@ impl Default for RopeWrite {
     }
 }
 
-impl Write for RopeWrite {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.0.append(std::str::from_utf8(buf).unwrap());
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
+impl std::fmt::Write for RopeWrite {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        self.0.append(s);
         Ok(())
     }
 }
@@ -43,7 +39,7 @@ pub fn from_reader<R, B>(
 ) -> Result<(B, &'static encoding::Encoding), Error>
 where
     R: std::io::Read + ?Sized,
-    B: std::io::Write,
+    B: std::fmt::Write,
 {
     // These two buffers are 8192 bytes in size each and are used as
     // intermediaries during the decoding process. Text read into `buf`
@@ -117,7 +113,7 @@ where
                 }
                 encoding::CoderResult::OutputFull => {
                     debug_assert!(slice.len() > total_read);
-                    let _ = builder.write(buf_str[..total_written].as_bytes())?;
+                    builder.write_str(&buf_str[..total_written])?;
                     total_written = 0;
                 }
             }
@@ -126,7 +122,7 @@ where
         // flushed and the loop terminates.
         if is_empty {
             debug_assert_eq!(reader.read(&mut buf)?, 0);
-            let _ = builder.write(buf_str[..total_written].as_bytes())?;
+            builder.write_str(&buf_str[..total_written])?;
             break;
         }
 
@@ -162,10 +158,7 @@ where
     // determined by filtering the iterator to remove all empty chunks and then
     // appending an empty chunk to it. This is valuable for detecting when all
     // chunks in the `Rope` have been iterated over in the subsequent loop.
-    let iter = text
-        .into_iter()
-        .filter(|c| !c.is_empty())
-        .chain(std::iter::once(""));
+    let iter = text.into_iter().filter(|c| !c.is_empty());
     let mut buf = [0u8; BUF_SIZE];
     let mut encoder = encoding.new_encoder();
     let mut total_written = 0usize;
@@ -200,14 +193,10 @@ where
                 }
             }
         }
-
-        // Once the end of the iterator is reached, the output buffer is
-        // flushed and the outer loop terminates.
-        if is_empty {
-            writer.write_all(&buf[..total_written]).await?;
-            writer.flush().await?;
-            break;
-        }
     }
+    // Once the end of the iterator is reached, the output buffer is
+    // flushed and the outer loop terminates.
+    writer.write_all(&buf[..total_written]).await?;
+    writer.flush().await?;
     Ok(())
 }
