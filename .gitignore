@@ -1,3 +1,4 @@
+**/.DS_Store # macOS
 target
 .direnv
 helix-term/rustfmt.toml
