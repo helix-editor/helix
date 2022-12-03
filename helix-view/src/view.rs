@@ -7,29 +7,38 @@ use helix_core::{
     pos_at_visual_coords, visual_coords_at_pos, Position, RopeSlice, Selection, Transaction,
 };
 
-use std::fmt;
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt,
+};
+
+const JUMP_LIST_CAPACITY: usize = 30;
 
 type Jump = (DocumentId, Selection);
 
 #[derive(Debug, Clone)]
 pub struct JumpList {
-    jumps: Vec<Jump>,
+    jumps: VecDeque<Jump>,
     current: usize,
 }
 
 impl JumpList {
     pub fn new(initial: Jump) -> Self {
-        Self {
-            jumps: vec![initial],
-            current: 0,
-        }
+        let mut jumps = VecDeque::with_capacity(JUMP_LIST_CAPACITY);
+        jumps.push_back(initial);
+        Self { jumps, current: 0 }
     }
 
     pub fn push(&mut self, jump: Jump) {
         self.jumps.truncate(self.current);
         // don't push duplicates
-        if self.jumps.last() != Some(&jump) {
-            self.jumps.push(jump);
+        if self.jumps.back() != Some(&jump) {
+            // If the jumplist is full, drop the oldest item.
+            while self.jumps.len() >= JUMP_LIST_CAPACITY {
+                self.jumps.pop_front();
+            }
+
+            self.jumps.push_back(jump);
             self.current = self.jumps.len();
         }
     }
@@ -61,8 +70,8 @@ impl JumpList {
         self.jumps.retain(|(other_id, _)| other_id != doc_id);
     }
 
-    pub fn get(&self) -> &[Jump] {
-        &self.jumps
+    pub fn iter(&self) -> impl Iterator<Item = &Jump> {
+        self.jumps.iter()
     }
 
     /// Applies a [`Transaction`] of changes to the jumplist.
@@ -98,8 +107,13 @@ pub struct View {
     pub last_modified_docs: [Option<DocumentId>; 2],
     /// used to store previous selections of tree-sitter objects
     pub object_selections: Vec<Selection>,
-    /// config, primarily used for
+    /// all gutter-related configuration settings, used primarily for gutter rendering
     pub gutters: GutterConfig,
+    /// A mapping between documents and the last history revision the view was updated at.
+    /// Changes between documents and views are synced lazily when switching windows. This
+    /// mapping keeps track of the last applied history revision so that only new changes
+    /// are applied.
+    doc_revisions: HashMap<DocumentId, usize>,
 }
 
 impl fmt::Debug for View {
@@ -124,6 +138,7 @@ impl View {
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
             gutters,
+            doc_revisions: HashMap::new(),
         }
     }
 
@@ -147,18 +162,11 @@ impl View {
     }
 
     pub fn gutter_offset(&self, doc: &Document) -> u16 {
-        let mut offset = self
-            .gutters
+        self.gutters
             .layout
             .iter()
             .map(|gutter| gutter.width(self, doc) as u16)
-            .sum();
-
-        if offset > 0 {
-            offset += 1
-        }
-
-        offset
+            .sum()
     }
 
     //
@@ -348,9 +356,33 @@ impl View {
     /// Applies a [`Transaction`] to the view.
     /// Instead of calling this function directly, use [crate::apply_transaction]
     /// which applies a transaction to the [`Document`] and view together.
-    pub fn apply(&mut self, transaction: &Transaction, doc: &Document) -> bool {
+    pub fn apply(&mut self, transaction: &Transaction, doc: &mut Document) {
         self.jumps.apply(transaction, doc);
-        true
+        self.doc_revisions
+            .insert(doc.id(), doc.get_current_revision());
+    }
+
+    pub fn sync_changes(&mut self, doc: &mut Document) {
+        let latest_revision = doc.get_current_revision();
+        let current_revision = *self
+            .doc_revisions
+            .entry(doc.id())
+            .or_insert(latest_revision);
+
+        if current_revision == latest_revision {
+            return;
+        }
+
+        log::debug!(
+            "Syncing view {:?} between {} and {}",
+            self.id,
+            current_revision,
+            latest_revision
+        );
+
+        if let Some(transaction) = doc.history.get_mut().changes_since(current_revision) {
+            self.apply(&transaction, doc);
+        }
     }
 }
 
@@ -359,11 +391,11 @@ mod tests {
     use super::*;
     use helix_core::Rope;
 
-    // 1 diagnostic + 1 spacer + 3 linenr (< 1000 lines) + 1 gutter
-    const DEFAULT_GUTTER_OFFSET: u16 = 6;
+    // 1 diagnostic + 1 spacer + 3 linenr (< 1000 lines) + 1 spacer + 1 diff + 1 gutter
+    const DEFAULT_GUTTER_OFFSET: u16 = 8;
 
     // 1 diagnostics + 1 spacer + 1 gutter
-    const DEFAULT_GUTTER_OFFSET_WITHOUT_LINE_NUMBERS: u16 = 3;
+    const DEFAULT_GUTTER_OFFSET_ONLY_DIAGNOSTICS: u16 = 3;
 
     use crate::document::Document;
     use crate::editor::{GutterConfig, GutterLineNumbersConfig, GutterType};
@@ -430,7 +462,7 @@ mod tests {
             view.text_pos_at_screen_coords(
                 &doc,
                 41,
-                40 + DEFAULT_GUTTER_OFFSET_WITHOUT_LINE_NUMBERS + 1,
+                40 + DEFAULT_GUTTER_OFFSET_ONLY_DIAGNOSTICS + 1,
                 4
             ),
             Some(4)

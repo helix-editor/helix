@@ -7,8 +7,10 @@ use crate::{
     Rope, RopeSlice, Tendril,
 };
 
+use ahash::RandomState;
 use arc_swap::{ArcSwap, Guard};
 use bitflags::bitflags;
+use hashbrown::raw::RawTable;
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
 use std::{
@@ -16,7 +18,8 @@ use std::{
     cell::RefCell,
     collections::{HashMap, VecDeque},
     fmt,
-    mem::replace,
+    hash::{Hash, Hasher},
+    mem::{replace, transmute},
     path::Path,
     str::FromStr,
     sync::Arc,
@@ -354,6 +357,26 @@ impl<'a> CapturedNode<'a> {
     }
 }
 
+/// The maximum number of in-progress matches a TS cursor can consider at once.
+/// This is set to a constant in order to avoid performance problems for medium to large files. Set with `set_match_limit`.
+/// Using such a limit means that we lose valid captures, so there is fundamentally a tradeoff here.
+///
+///
+/// Old tree sitter versions used a limit of 32 by default until this limit was removed in version `0.19.5` (must now be set manually).
+/// However, this causes performance issues for medium to large files.
+/// In helix, this problem caused treesitter motions to take multiple seconds to complete in medium-sized rust files (3k loc).
+///
+///
+/// Neovim also encountered this problem and reintroduced this limit after it was removed upstream
+/// (see <https://github.com/neovim/neovim/issues/14897> and <https://github.com/neovim/neovim/pull/14915>).
+/// The number used here is fundamentally a tradeoff between breaking some obscure edge cases and performance.
+///
+///
+/// Neovim chose 64 for this value somewhat arbitrarily (<https://github.com/neovim/neovim/pull/18397>).
+/// 64 is too low for some languages though. In particular, it breaks some highlighting for record fields in Erlang record definitions.
+/// This number can be increased if new syntax highlight breakages are found, as long as the performance penalty is not too high.
+const TREE_SITTER_MATCH_LIMIT: u32 = 256;
+
 impl TextObjectQuery {
     /// Run the query on the given node and return sub nodes which match given
     /// capture ("function.inside", "class.around", etc).
@@ -393,6 +416,8 @@ impl TextObjectQuery {
         let capture_idx = capture_names
             .iter()
             .find_map(|cap| self.query.capture_index_for_name(cap))?;
+
+        cursor.set_match_limit(TREE_SITTER_MATCH_LIMIT);
 
         let nodes = cursor
             .captures(&self.query, node, RopeProvider(slice))
@@ -748,30 +773,38 @@ impl Syntax {
         // Convert the changeset into tree sitter edits.
         let edits = generate_edits(old_source, changeset);
 
+        // This table allows inverse indexing of `layers`.
+        // That is by hashing a `Layer` you can find
+        // the `LayerId` of an existing equivalent `Layer` in `layers`.
+        //
+        // It is used to determine if a new layer exists for an injection
+        // or if an existing layer needs to be updated.
+        let mut layers_table = RawTable::with_capacity(self.layers.len());
+        let layers_hasher = RandomState::new();
         // Use the edits to update all layers markers
-        if !edits.is_empty() {
-            fn point_add(a: Point, b: Point) -> Point {
-                if b.row > 0 {
-                    Point::new(a.row.saturating_add(b.row), b.column)
-                } else {
-                    Point::new(0, a.column.saturating_add(b.column))
-                }
+        fn point_add(a: Point, b: Point) -> Point {
+            if b.row > 0 {
+                Point::new(a.row.saturating_add(b.row), b.column)
+            } else {
+                Point::new(0, a.column.saturating_add(b.column))
             }
-            fn point_sub(a: Point, b: Point) -> Point {
-                if a.row > b.row {
-                    Point::new(a.row.saturating_sub(b.row), a.column)
-                } else {
-                    Point::new(0, a.column.saturating_sub(b.column))
-                }
+        }
+        fn point_sub(a: Point, b: Point) -> Point {
+            if a.row > b.row {
+                Point::new(a.row.saturating_sub(b.row), a.column)
+            } else {
+                Point::new(0, a.column.saturating_sub(b.column))
+            }
+        }
+
+        for (layer_id, layer) in self.layers.iter_mut() {
+            // The root layer always covers the whole range (0..usize::MAX)
+            if layer.depth == 0 {
+                layer.flags = LayerUpdateFlags::MODIFIED;
+                continue;
             }
 
-            for layer in self.layers.values_mut() {
-                // The root layer always covers the whole range (0..usize::MAX)
-                if layer.depth == 0 {
-                    layer.flags = LayerUpdateFlags::MODIFIED;
-                    continue;
-                }
-
+            if !edits.is_empty() {
                 for range in &mut layer.ranges {
                     // Roughly based on https://github.com/tree-sitter/tree-sitter/blob/ddeaa0c7f534268b35b4f6cb39b52df082754413/lib/src/subtree.c#L691-L720
                     for edit in edits.iter().rev() {
@@ -836,6 +869,12 @@ impl Syntax {
                     }
                 }
             }
+
+            let hash = layers_hasher.hash_one(layer);
+            // Safety: insert_no_grow is unsafe because it assumes that the table
+            // has enough capacity to hold additional elements.
+            // This is always the case as we reserved enough capacity above.
+            unsafe { layers_table.insert_no_grow(hash, layer_id) };
         }
 
         PARSER.with(|ts_parser| {
@@ -843,6 +882,7 @@ impl Syntax {
             let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
             // TODO: might need to set cursor range
             cursor.set_byte_range(0..usize::MAX);
+            cursor.set_match_limit(TREE_SITTER_MATCH_LIMIT);
 
             let source_slice = source.slice(..);
 
@@ -959,27 +999,23 @@ impl Syntax {
                 let depth = layer.depth + 1;
                 // TODO: can't inline this since matches borrows self.layers
                 for (config, ranges) in injections {
-                    // Find an existing layer
-                    let layer = self
-                        .layers
-                        .iter_mut()
-                        .find(|(_, layer)| {
-                            layer.depth == depth && // TODO: track parent id instead
-                            layer.config.language == config.language && layer.ranges == ranges
+                    let new_layer = LanguageLayer {
+                        tree: None,
+                        config,
+                        depth,
+                        ranges,
+                        flags: LayerUpdateFlags::empty(),
+                    };
+
+                    // Find an identical existing layer
+                    let layer = layers_table
+                        .get(layers_hasher.hash_one(&new_layer), |&it| {
+                            self.layers[it] == new_layer
                         })
-                        .map(|(id, _layer)| id);
+                        .copied();
 
                     // ...or insert a new one.
-                    let layer_id = layer.unwrap_or_else(|| {
-                        self.layers.insert(LanguageLayer {
-                            tree: None,
-                            config,
-                            depth,
-                            ranges,
-                            // set the modified flag to ensure the layer is parsed
-                            flags: LayerUpdateFlags::empty(),
-                        })
-                    });
+                    let layer_id = layer.unwrap_or_else(|| self.layers.insert(new_layer));
 
                     queue.push_back(layer_id);
                 }
@@ -1032,6 +1068,7 @@ impl Syntax {
 
                 // if reusing cursors & no range this resets to whole range
                 cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
+                cursor_ref.set_match_limit(TREE_SITTER_MATCH_LIMIT);
 
                 let mut captures = cursor_ref
                     .captures(
@@ -1113,6 +1150,34 @@ pub struct LanguageLayer {
     pub ranges: Vec<Range>,
     pub depth: u32,
     flags: LayerUpdateFlags,
+}
+
+/// This PartialEq implementation only checks if that
+/// two layers are theoretically identical (meaning they highlight the same text range with the same language).
+/// It does not check whether the layers have the same internal treesitter
+/// state.
+impl PartialEq for LanguageLayer {
+    fn eq(&self, other: &Self) -> bool {
+        self.depth == other.depth
+            && self.config.language == other.config.language
+            && self.ranges == other.ranges
+    }
+}
+
+/// Hash implementation belongs to PartialEq implementation above.
+/// See its documentation for details.
+impl Hash for LanguageLayer {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.depth.hash(state);
+        // The transmute is necessary here because tree_sitter::Language does not derive Hash at the moment.
+        // However it does use #[repr] transparent so the transmute here is safe
+        // as `Language` (which `Grammar` is an alias for) is just a newtype wrapper around a (thin) pointer.
+        // This is also compatible with the PartialEq implementation of language
+        // as that is just a pointer comparison.
+        let language: *const () = unsafe { transmute(self.config.language) };
+        language.hash(state);
+        self.ranges.hash(state);
+    }
 }
 
 impl LanguageLayer {
@@ -1260,7 +1325,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{iter, mem, ops, str, usize};
 use tree_sitter::{
     Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError,
-    QueryMatch, Range, TextProvider, Tree,
+    QueryMatch, Range, TextProvider, Tree, TreeCursor,
 };
 
 const CANCELLATION_CHECK_INTERVAL: usize = 100;
@@ -2130,57 +2195,68 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
     }
 }
 
+fn node_is_visible(node: &Node) -> bool {
+    node.is_missing() || (node.is_named() && node.language().node_kind_is_visible(node.kind_id()))
+}
+
 pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result {
-    pretty_print_tree_impl(fmt, node, true, None, 0)
+    if node.child_count() == 0 {
+        if node_is_visible(&node) {
+            write!(fmt, "({})", node.kind())
+        } else {
+            write!(fmt, "\"{}\"", node.kind())
+        }
+    } else {
+        pretty_print_tree_impl(fmt, &mut node.walk(), 0)
+    }
 }
 
 fn pretty_print_tree_impl<W: fmt::Write>(
     fmt: &mut W,
-    node: Node,
-    is_root: bool,
-    field_name: Option<&str>,
+    cursor: &mut TreeCursor,
     depth: usize,
 ) -> fmt::Result {
-    fn is_visible(node: Node) -> bool {
-        node.is_missing()
-            || (node.is_named() && node.language().node_kind_is_visible(node.kind_id()))
-    }
+    let node = cursor.node();
+    let visible = node_is_visible(&node);
 
-    if is_visible(node) {
+    if visible {
         let indentation_columns = depth * 2;
         write!(fmt, "{:indentation_columns$}", "")?;
 
-        if let Some(field_name) = field_name {
+        if let Some(field_name) = cursor.field_name() {
             write!(fmt, "{}: ", field_name)?;
         }
 
         write!(fmt, "({}", node.kind())?;
-    } else if is_root {
-        write!(fmt, "(\"{}\")", node.kind())?;
     }
 
-    for child_idx in 0..node.child_count() {
-        if let Some(child) = node.child(child_idx) {
-            if is_visible(child) {
+    // Handle children.
+    if cursor.goto_first_child() {
+        loop {
+            if node_is_visible(&cursor.node()) {
                 fmt.write_char('\n')?;
             }
 
-            pretty_print_tree_impl(
-                fmt,
-                child,
-                false,
-                node.field_name_for_child(child_idx as u32),
-                depth + 1,
-            )?;
+            pretty_print_tree_impl(fmt, cursor, depth + 1)?;
+
+            if !cursor.goto_next_sibling() {
+                break;
+            }
         }
+
+        let moved = cursor.goto_parent();
+        // The parent of the first child must exist, and must be `node`.
+        debug_assert!(moved);
+        debug_assert!(cursor.node() == node);
     }
 
-    if is_visible(node) {
-        write!(fmt, ")")?;
+    if visible {
+        fmt.write_char(')')?;
     }
 
     Ok(())
 }
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -2353,11 +2429,17 @@ mod test {
     }
 
     #[track_caller]
-    fn assert_pretty_print(source: &str, expected: &str, start: usize, end: usize) {
+    fn assert_pretty_print(
+        language_name: &str,
+        source: &str,
+        expected: &str,
+        start: usize,
+        end: usize,
+    ) {
         let source = Rope::from_str(source);
 
         let loader = Loader::new(Configuration { language: vec![] });
-        let language = get_language("rust").unwrap();
+        let language = get_language(language_name).unwrap();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
         let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader));
@@ -2377,13 +2459,14 @@ mod test {
     #[test]
     fn test_pretty_print() {
         let source = r#"/// Hello"#;
-        assert_pretty_print(source, "(line_comment)", 0, source.len());
+        assert_pretty_print("rust", source, "(line_comment)", 0, source.len());
 
         // A large tree should be indented with fields:
         let source = r#"fn main() {
             println!("Hello, World!");
         }"#;
         assert_pretty_print(
+            "rust",
             source,
             concat!(
                 "(function_item\n",
@@ -2402,11 +2485,34 @@ mod test {
 
         // Selecting a token should print just that token:
         let source = r#"fn main() {}"#;
-        assert_pretty_print(source, r#"("fn")"#, 0, 1);
+        assert_pretty_print("rust", source, r#""fn""#, 0, 1);
 
         // Error nodes are printed as errors:
         let source = r#"}{"#;
-        assert_pretty_print(source, "(ERROR)", 0, source.len());
+        assert_pretty_print("rust", source, "(ERROR)", 0, source.len());
+
+        // Fields broken under unnamed nodes are determined correctly.
+        // In the following source, `object` belongs to the `singleton_method`
+        // rule but `name` and `body` belong to an unnamed helper `_method_rest`.
+        // This can cause a bug with a pretty-printing implementation that
+        // uses `Node::field_name_for_child` to determine field names but is
+        // fixed when using `TreeCursor::field_name`.
+        let source = "def self.method_name
+          true
+        end";
+        assert_pretty_print(
+            "ruby",
+            source,
+            concat!(
+                "(singleton_method\n",
+                "  object: (self)\n",
+                "  name: (identifier)\n",
+                "  body: (body_statement\n",
+                "    (true)))"
+            ),
+            0,
+            source.len(),
+        );
     }
 
     #[test]

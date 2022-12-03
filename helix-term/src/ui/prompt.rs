@@ -294,23 +294,22 @@ impl Prompt {
         direction: CompletionDirection,
     ) {
         (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
-        let register = cx.editor.registers.get_mut(register).read();
+        let values = match cx.editor.registers.read(register) {
+            Some(values) if !values.is_empty() => values,
+            _ => return,
+        };
 
-        if register.is_empty() {
-            return;
-        }
-
-        let end = register.len().saturating_sub(1);
+        let end = values.len().saturating_sub(1);
 
         let index = match direction {
             CompletionDirection::Forward => self.history_pos.map_or(0, |i| i + 1),
             CompletionDirection::Backward => {
-                self.history_pos.unwrap_or(register.len()).saturating_sub(1)
+                self.history_pos.unwrap_or(values.len()).saturating_sub(1)
             }
         }
         .min(end);
 
-        self.line = register[index].clone();
+        self.line = values[index].clone();
 
         self.history_pos = Some(index);
 
@@ -548,10 +547,7 @@ impl Component for Prompt {
                         if last_item != self.line {
                             // store in history
                             if let Some(register) = self.history_register {
-                                cx.editor
-                                    .registers
-                                    .get_mut(register)
-                                    .push(self.line.clone());
+                                cx.editor.registers.push(register, self.line.clone());
                             };
                         }
 

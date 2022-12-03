@@ -102,16 +102,17 @@ pub mod util {
             None
         };
 
-        // TODO: add support for Diagnostic.data
-        lsp::Diagnostic::new(
-            range_to_lsp_range(doc, range, offset_encoding),
+        lsp::Diagnostic {
+            range: range_to_lsp_range(doc, range, offset_encoding),
             severity,
             code,
-            diag.source.clone(),
-            diag.message.to_owned(),
-            None,
+            source: diag.source.clone(),
+            message: diag.message.to_owned(),
+            related_information: None,
             tags,
-        )
+            data: diag.data.to_owned(),
+            ..Default::default()
+        }
     }
 
     /// Converts [`lsp::Position`] to a position in the document.
@@ -282,6 +283,8 @@ impl MethodCall {
 pub enum Notification {
     // we inject this notification to signal the LSP is ready
     Initialized,
+    // and this notification to signal that the LSP exited
+    Exit,
     PublishDiagnostics(lsp::PublishDiagnosticsParams),
     ShowMessage(lsp::ShowMessageParams),
     LogMessage(lsp::LogMessageParams),
@@ -294,6 +297,7 @@ impl Notification {
 
         let notification = match method {
             lsp::notification::Initialized::METHOD => Self::Initialized,
+            lsp::notification::Exit::METHOD => Self::Exit,
             lsp::notification::PublishDiagnostics::METHOD => {
                 let params: lsp::PublishDiagnosticsParams = params.parse()?;
                 Self::PublishDiagnostics(params)
@@ -348,6 +352,10 @@ impl Registry {
             .values()
             .find(|(client_id, _)| client_id == &id)
             .map(|(_, client)| client.as_ref())
+    }
+
+    pub fn remove_by_id(&mut self, id: usize) {
+        self.inner.retain(|_, (client_id, _)| client_id != &id)
     }
 
     pub fn restart(

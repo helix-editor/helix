@@ -230,7 +230,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
                 cx.editor.set_error(err);
             }
         },
-        |_editor, path| Some((path.clone(), None)),
+        |_editor, path| Some((path.clone().into(), None)),
     )
 }
 
@@ -254,8 +254,8 @@ pub mod completers {
     pub fn buffer(editor: &Editor, input: &str) -> Vec<Completion> {
         let mut names: Vec<_> = editor
             .documents
-            .iter()
-            .map(|(_id, doc)| {
+            .values()
+            .map(|doc| {
                 let name = doc
                     .relative_path()
                     .map(|p| p.display().to_string())

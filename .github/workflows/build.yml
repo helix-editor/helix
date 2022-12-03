@@ -28,12 +28,10 @@ jobs:
           profile: minimal
           override: true
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Run cargo check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
+        run: cargo check
 
   test:
     name: Test Suite
@@ -51,7 +49,7 @@ jobs:
           profile: minimal
           override: true
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Cache test tree-sitter grammar
         uses: actions/cache@v3
@@ -61,15 +59,10 @@ jobs:
           restore-keys: ${{ runner.os }}-stable-v${{ env.CACHE_VERSION }}-tree-sitter-grammars-
 
       - name: Run cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --workspace
+        run: cargo test --workspace
 
       - name: Run cargo integration-test
-        uses: actions-rs/cargo@v1
-        with:
-          command: integration-test
+        run: cargo integration-test
 
     strategy:
       matrix:
@@ -89,25 +82,16 @@ jobs:
           override: true
           components: rustfmt, clippy
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all --check
 
       - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Run cargo doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --no-deps --workspace --document-private-items
+        run: cargo doc --no-deps --workspace --document-private-items
         env:
           RUSTDOCFLAGS: -D warnings
 
@@ -124,13 +108,10 @@ jobs:
           profile: minimal
           override: true
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Generate docs
-        uses: actions-rs/cargo@v1
-        with:
-          command: xtask
-          args: docgen
+        run: cargo xtask docgen
 
       - name: Check uncommitted documentation changes
         run: |
@@ -152,10 +133,7 @@ jobs:
           profile: minimal
           override: true
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Generate docs
-        uses: actions-rs/cargo@v1
-        with:
-          command: xtask
-          args: query-check
+        run: cargo xtask query-check

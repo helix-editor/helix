@@ -156,7 +156,7 @@ fn location_to_file_location(location: &lsp::Location) -> FileLocation {
         location.range.start.line as usize,
         location.range.end.line as usize,
     ));
-    (path, line)
+    (path.into(), line)
 }
 
 // TODO: share with symbol picker(symbol.location)
@@ -333,7 +333,14 @@ pub fn symbol_picker(cx: &mut Context) {
     let current_url = doc.url();
     let offset_encoding = language_server.offset_encoding();
 
-    let future = language_server.document_symbols(doc.identifier());
+    let future = match language_server.document_symbols(doc.identifier()) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support document symbols");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -365,7 +372,14 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     let current_url = doc.url();
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
-    let future = language_server.workspace_symbols("".to_string());
+    let future = match language_server.workspace_symbols("".to_string()) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support workspace symbols");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -493,7 +507,7 @@ pub fn code_action(cx: &mut Context) {
 
     let range = range_to_lsp_range(doc.text(), selection_range, offset_encoding);
 
-    let future = language_server.code_actions(
+    let future = match language_server.code_actions(
         doc.identifier(),
         range,
         // Filter and convert overlapping diagnostics
@@ -509,7 +523,14 @@ pub fn code_action(cx: &mut Context) {
                 .collect(),
             only: None,
         },
-    );
+    ) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support code actions");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -598,7 +619,7 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup = Popup::new("code-action", picker);
+            let popup = Popup::new("code-action", picker).with_scrollbar(false);
             compositor.replace_or_push("code-action", popup);
         },
     )
@@ -617,9 +638,16 @@ pub fn execute_lsp_command(editor: &mut Editor, cmd: lsp::Command) {
 
     // the command is executed on the server and communicated back
     // to the client asynchronously using workspace edits
-    let command_future = language_server.command(cmd);
+    let future = match language_server.command(cmd) {
+        Some(future) => future,
+        None => {
+            editor.set_error("Language server does not support executing commands");
+            return;
+        }
+    };
+
     tokio::spawn(async move {
-        let res = command_future.await;
+        let res = future.await;
 
         if let Err(e) = res {
             log::error!("execute LSP command: {}", e);
@@ -678,7 +706,7 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
             if ignore_if_exists && to.exists() {
                 Ok(())
             } else {
-                fs::rename(&from, &to)
+                fs::rename(from, &to)
             }
         }
     }
@@ -732,8 +760,9 @@ pub fn apply_workspace_edit(
             text_edits,
             offset_encoding,
         );
-        apply_transaction(&transaction, doc, view_mut!(editor, view_id));
-        doc.append_changes_to_history(view_id);
+        let view = view_mut!(editor, view_id);
+        apply_transaction(&transaction, doc, view);
+        doc.append_changes_to_history(view);
     };
 
     if let Some(ref changes) = workspace_edit.changes {
@@ -853,7 +882,14 @@ pub fn goto_definition(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.goto_definition(doc.identifier(), pos, None);
+    let future = match language_server.goto_definition(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-definition");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -871,7 +907,14 @@ pub fn goto_type_definition(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.goto_type_definition(doc.identifier(), pos, None);
+    let future = match language_server.goto_type_definition(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-type-definition");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -889,7 +932,14 @@ pub fn goto_implementation(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.goto_implementation(doc.identifier(), pos, None);
+    let future = match language_server.goto_implementation(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-implementation");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -907,7 +957,14 @@ pub fn goto_reference(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.goto_reference(doc.identifier(), pos, None);
+    let future = match language_server.goto_reference(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-reference");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -950,7 +1007,13 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
 
     let future = match language_server.text_document_signature_help(doc.identifier(), pos, None) {
         Some(f) => f,
-        None => return,
+        None => {
+            if was_manually_invoked {
+                cx.editor
+                    .set_error("Language server does not support signature-help");
+            }
+            return;
+        }
     };
 
     cx.callback(
@@ -1051,7 +1114,14 @@ pub fn hover(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.text_document_hover(doc.identifier(), pos, None);
+    let future = match language_server.text_document_hover(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support hover");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -1121,8 +1191,16 @@ pub fn rename_symbol(cx: &mut Context) {
 
             let pos = doc.position(view.id, offset_encoding);
 
-            let task = language_server.rename_symbol(doc.identifier(), pos, input.to_string());
-            match block_on(task) {
+            let future =
+                match language_server.rename_symbol(doc.identifier(), pos, input.to_string()) {
+                    Some(future) => future,
+                    None => {
+                        cx.editor
+                            .set_error("Language server does not support symbol renaming");
+                        return;
+                    }
+                };
+            match block_on(future) {
                 Ok(edits) => apply_workspace_edit(cx.editor, offset_encoding, &edits),
                 Err(err) => cx.editor.set_error(err.to_string()),
             }
@@ -1137,7 +1215,15 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.text_document_document_highlight(doc.identifier(), pos, None);
+    let future = match language_server.text_document_document_highlight(doc.identifier(), pos, None)
+    {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support document highlight");
+            return;
+        }
+    };
 
     cx.callback(
         future,
