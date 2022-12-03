@@ -5,6 +5,7 @@
 # Contributors:
 # @matoous
 
+"attribute" = "green"
 "type" = "light_blue"
 "type.builtin" = "orange"
 "constructor" = "yellow"
@@ -36,7 +37,7 @@
 "function.special" = "green"
 "function.method" = "light"
 #"function.declaration.method" = { fg = "lightest", modifiers = ["bold"] } #depends on #4892
-"tag" = "green"
+"tag" = "light_blue"
 "special" = "green"
 "namespace" = "light"
 
@@ -46,7 +47,9 @@
 "markup.bold" = { fg = "lightest", modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
 "markup.heading" = { fg = "cyan", modifiers = ["bold"] } # .marker / .1 / .2 / .3 / .4 / .5 / .6
-"markup.list" = "cyan" # .unnumbered / .numbered
+"markup.list" = "pink" # .unnumbered / .numbered
+"markup.list.numbered" = "cyan"
+"markup.list.unnumbered" = "cyan"
 # "markup.link" = "green"
 "markup.link.url" = { fg = "pink", modifiers = ['italic', 'underlined'] }
 "markup.link.text" = "cyan"
