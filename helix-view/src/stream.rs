@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use anyhow::Error;
 use helix_core::{encoding, Rope, RopeBuilder};
 
