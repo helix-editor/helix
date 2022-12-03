@@ -7,6 +7,7 @@ pub mod editor;
 pub mod env;
 pub mod graphics;
 pub mod gutter;
+pub mod stream;
 pub mod handlers {
     pub mod dap;
     pub mod lsp;
