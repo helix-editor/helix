@@ -27,26 +27,26 @@ command = "lldb-vscode"
 [[language.debugger.templates]]
 name = "binary"
 request = "launch"
-completion = [ { name = "binary", completion = "filename" } ]
+completion = [{ name = "binary", completion = "filename" }]
 args = { program = "{0}" }
 
 [[language.debugger.templates]]
 name = "binary (terminal)"
 request = "launch"
-completion = [ { name = "binary", completion = "filename" } ]
+completion = [{ name = "binary", completion = "filename" }]
 args = { program = "{0}", runInTerminal = true }
 
 [[language.debugger.templates]]
 name = "attach"
 request = "attach"
-completion = [ "pid" ]
+completion = ["pid"]
 args = { pid = "{0}" }
 
 [[language.debugger.templates]]
 name = "gdbserver attach"
 request = "attach"
-completion = [ { name = "lldb connect url", default = "connect://localhost:3333" }, { name = "file", completion = "filename" }, "pid" ]
-args = { attachCommands = [ "platform select remote-gdb-server", "platform connect {0}", "file {1}", "attach {2}" ] }
+completion = [{ name = "lldb connect url", default = "connect://localhost:3333" }, { name = "file", completion = "filename" }, "pid"]
+args = { attachCommands = ["platform select remote-gdb-server", "platform connect {0}", "file {1}", "attach {2}"] }
 
 [[grammar]]
 name = "rust"
@@ -92,7 +92,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "protobuf"
-source = { git = "https://github.com/yusdacra/tree-sitter-protobuf", rev = "19c211a01434d9f03efff99f85e19f967591b175"}
+source = { git = "https://github.com/yusdacra/tree-sitter-protobuf", rev = "19c211a01434d9f03efff99f85e19f967591b175" }
 
 [[language]]
 name = "elixir"
@@ -108,7 +108,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "elixir"
-source = { git = "https://github.com/elixir-lang/tree-sitter-elixir", rev = "b20eaa75565243c50be5e35e253d8beb58f45d56"  }
+source = { git = "https://github.com/elixir-lang/tree-sitter-elixir", rev = "b20eaa75565243c50be5e35e253d8beb58f45d56" }
 
 [[language]]
 name = "fish"
@@ -168,20 +168,20 @@ command = "lldb-vscode"
 [[language.debugger.templates]]
 name = "binary"
 request = "launch"
-completion = [ { name = "binary", completion = "filename" } ]
+completion = [{ name = "binary", completion = "filename" }]
 args = { console = "internalConsole", program = "{0}" }
 
 [[language.debugger.templates]]
 name = "attach"
 request = "attach"
-completion = [ "pid" ]
+completion = ["pid"]
 args = { console = "internalConsole", pid = "{0}" }
 
 [[language.debugger.templates]]
 name = "gdbserver attach"
 request = "attach"
-completion = [ { name = "lldb connect url", default = "connect://localhost:3333" }, { name = "file", completion = "filename" }, "pid" ]
-args = { console = "internalConsole", attachCommands = [ "platform select remote-gdb-server", "platform connect {0}", "file {1}", "attach {2}" ] }
+completion = [{ name = "lldb connect url", default = "connect://localhost:3333" }, { name = "file", completion = "filename" }, "pid"]
+args = { console = "internalConsole", attachCommands = ["platform select remote-gdb-server", "platform connect {0}", "file {1}", "attach {2}"] }
 
 [[grammar]]
 name = "c"
@@ -205,20 +205,20 @@ command = "lldb-vscode"
 [[language.debugger.templates]]
 name = "binary"
 request = "launch"
-completion = [ { name = "binary", completion = "filename" } ]
+completion = [{ name = "binary", completion = "filename" }]
 args = { console = "internalConsole", program = "{0}" }
 
 [[language.debugger.templates]]
 name = "attach"
 request = "attach"
-completion = [ "pid" ]
+completion = ["pid"]
 args = { console = "internalConsole", pid = "{0}" }
 
 [[language.debugger.templates]]
 name = "gdbserver attach"
 request = "attach"
-completion = [ { name = "lldb connect url", default = "connect://localhost:3333" }, { name = "file", completion = "filename" }, "pid" ]
-args = { console = "internalConsole", attachCommands = [ "platform select remote-gdb-server", "platform connect {0}", "file {1}", "attach {2}" ] }
+completion = [{ name = "lldb connect url", default = "connect://localhost:3333" }, { name = "file", completion = "filename" }, "pid"]
+args = { console = "internalConsole", attachCommands = ["platform select remote-gdb-server", "platform connect {0}", "file {1}", "attach {2}"] }
 
 [[grammar]]
 name = "cpp"
@@ -232,25 +232,25 @@ file-types = ["cs"]
 roots = ["sln", "csproj"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "\t" }
-language-server = { command = "OmniSharp", args = [ "--languageserver" ] }
+language-server = { command = "OmniSharp", args = ["--languageserver"] }
 
 [language.debugger]
 name = "netcoredbg"
 transport = "tcp"
 command = "netcoredbg"
-args = [ "--interpreter=vscode" ]
+args = ["--interpreter=vscode"]
 port-arg = "--server={}"
 
 [[language.debugger.templates]]
 name = "launch"
 request = "launch"
-completion = [ { name = "path to dll", completion = "filename" } ]
+completion = [{ name = "path to dll", completion = "filename" }]
 args = { type = "coreclr", console = "internalConsole", internalConsoleOptions = "openOnSessionStart", program = "{0}" }
 
 [[language.debugger.templates]]
 name = "attach"
 request = "attach"
-completion = [ "pid" ]
+completion = ["pid"]
 args = { processId = "{0}" }
 
 [[grammar]]
@@ -279,25 +279,25 @@ port-arg = "-l 127.0.0.1:{}"
 [[language.debugger.templates]]
 name = "source"
 request = "launch"
-completion = [ { name = "entrypoint", completion = "filename", default = "." } ]
+completion = [{ name = "entrypoint", completion = "filename", default = "." }]
 args = { mode = "debug", program = "{0}" }
 
 [[language.debugger.templates]]
 name = "binary"
 request = "launch"
-completion = [ { name = "binary", completion = "filename" } ]
+completion = [{ name = "binary", completion = "filename" }]
 args = { mode = "exec", program = "{0}" }
 
 [[language.debugger.templates]]
 name = "test"
 request = "launch"
-completion = [ { name = "tests", completion = "directory", default = "." } ]
+completion = [{ name = "tests", completion = "directory", default = "." }]
 args = { mode = "test", program = "{0}" }
 
 [[language.debugger.templates]]
 name = "attach"
 request = "attach"
-completion = [ "pid" ]
+completion = ["pid"]
 args = { mode = "local", processId = "{0}" }
 
 [[grammar]]
@@ -369,7 +369,7 @@ quirks = { absolute-paths = true }
 [[language.debugger.templates]]
 name = "source"
 request = "launch"
-completion = [ { name = "main", completion = "filename", default = "index.js" } ]
+completion = [{ name = "main", completion = "filename", default = "index.js" }]
 args = { program = "{0}" }
 
 [[grammar]]
@@ -395,7 +395,7 @@ file-types = ["ts"]
 shebangs = []
 roots = []
 # TODO: highlights-params
-language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "typescript"}
+language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "typescript" }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -582,9 +582,9 @@ name = "lean"
 scope = "source.lean"
 injection-regex = "lean"
 file-types = ["lean"]
-roots = [ "lakefile.lean" ]
+roots = ["lakefile.lean"]
 comment-token = "--"
-language-server = { command = "lean", args = [ "--server" ] }
+language-server = { command = "lean", args = ["--server"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -598,13 +598,7 @@ injection-regex = "julia"
 file-types = ["jl"]
 roots = ["Manifest.toml", "Project.toml"]
 comment-token = "#"
-language-server = { command = "julia", timeout = 60, args = [
-    "--startup-file=no",
-    "--history-file=no",
-    "--quiet",
-    "-e",
-    "using LanguageServer; runserver()",
-    ] }
+language-server = { command = "julia", timeout = 60, args = ["--startup-file=no", "--history-file=no", "--quiet", "-e", "using LanguageServer; runserver()"] }
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
@@ -770,7 +764,7 @@ auto-format = true
 comment-token = "//"
 language-server = { command = "zls" }
 indent = { tab-width = 4, unit = "    " }
-formatter = { command = "zig" , args = ["fmt", "--stdin"] }
+formatter = { command = "zig", args = ["fmt", "--stdin"] }
 
 [language.debugger]
 name = "lldb-vscode"
@@ -780,20 +774,20 @@ command = "lldb-vscode"
 [[language.debugger.templates]]
 name = "binary"
 request = "launch"
-completion = [ { name = "binary", completion = "filename" } ]
+completion = [{ name = "binary", completion = "filename" }]
 args = { console = "internalConsole", program = "{0}" }
 
 [[language.debugger.templates]]
 name = "attach"
 request = "attach"
-completion = [ "pid" ]
+completion = ["pid"]
 args = { console = "internalConsole", pid = "{0}" }
 
 [[language.debugger.templates]]
 name = "gdbserver attach"
 request = "attach"
-completion = [ { name = "lldb connect url", default = "connect://localhost:3333" }, { name = "file", completion = "filename" }, "pid" ]
-args = { console = "internalConsole", attachCommands = [ "platform select remote-gdb-server", "platform connect {0}", "file {1}", "attach {2}" ] }
+completion = [{ name = "lldb connect url", default = "connect://localhost:3333" }, { name = "file", completion = "filename" }, "pid"]
+args = { console = "internalConsole", attachCommands = ["platform select remote-gdb-server", "platform connect {0}", "file {1}", "attach {2}"] }
 
 [[grammar]]
 name = "zig"
@@ -806,10 +800,7 @@ roots = []
 file-types = ["pl", "prolog"]
 shebangs = ["swipl"]
 comment-token = "%"
-language-server = { command = "swipl", args = [
-    "-g", "use_module(library(lsp_server))",
-    "-g", "lsp_server:main",
-    "-t", "halt", "--", "stdio"] }
+language-server = { command = "swipl", args = ["-g", "use_module(library(lsp_server))", "-g", "lsp_server:main", "-t", "halt", "--", "stdio"] }
 
 [[language]]
 name = "tsq"
@@ -854,7 +845,7 @@ source = { git = "https://github.com/alemuller/tree-sitter-make", rev = "a4b9187
 [[language]]
 name = "glsl"
 scope = "source.glsl"
-file-types = ["glsl", "vert", "tesc", "tese", "geom", "frag", "comp" ]
+file-types = ["glsl", "vert", "tesc", "tese", "geom", "frag", "comp"]
 roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
@@ -967,7 +958,7 @@ scope = "source.md"
 injection-regex = "md|markdown"
 file-types = ["md", "markdown"]
 roots = [".marksman.toml"]
-language-server = { command = "marksman", args=["server"] }
+language-server = { command = "marksman", args = ["server"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -1311,7 +1302,7 @@ name = "swift"
 scope = "source.swift"
 injection-regex = "swift"
 file-types = ["swift"]
-roots = [ "Package.swift" ]
+roots = ["Package.swift"]
 comment-token = "//"
 auto-format = true
 language-server = { command = "sourcekit-lsp" }
@@ -1400,7 +1391,7 @@ source = { git = "https://github.com/PrestonKnopp/tree-sitter-gdscript", rev = "
 name = "godot-resource"
 scope = "source.tscn"
 injection-regex = "godot"
-file-types = ["tscn","tres"]
+file-types = ["tscn", "tres"]
 shebangs = []
 roots = ["project.godot"]
 auto-format = false
@@ -1678,7 +1669,7 @@ injection-regex = "fortran"
 file-types = ["f", "for", "f90", "f95", "f03"]
 roots = ["fpm.toml"]
 comment-token = "!"
-indent = { tab-width = 4, unit = "    "}
+indent = { tab-width = 4, unit = "    " }
 language-server = { command = "fortls", args = ["--lowercase_intrinsics"] }
 
 [[grammar]]
@@ -1776,7 +1767,7 @@ indent = { tab-width = 2, unit = "  " }
 roots = ["edgedb.toml"]
 
 [[grammar]]
-name ="esdl"
+name = "esdl"
 source = { git = "https://github.com/greym0uth/tree-sitter-esdl", rev = "b840c8a8028127e0a7c6e6c45141adade2bd75cf" }
 
 [[language]]
@@ -1812,7 +1803,7 @@ file-types = ["libsonnet", "jsonnet"]
 roots = ["jsonnetfile.json"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
-language-server = { command = "jsonnet-language-server", args= ["-t", "--lint"] }
+language-server = { command = "jsonnet-language-server", args = ["-t", "--lint"] }
 
 [[grammar]]
 name = "jsonnet"
@@ -1869,17 +1860,17 @@ source = { git = "https://github.com/wasm-lsp/tree-sitter-wasm", rev = "2ca28a9f
 [[language]]
 name = "d"
 scope = "source.d"
-file-types = [ "d", "dd" ]
+file-types = ["d", "dd"]
 roots = []
 comment-token = "//"
 injection-regex = "d"
-indent = { tab-width = 4, unit = "    "}
+indent = { tab-width = 4, unit = "    " }
 language-server = { command = "serve-d" }
 formatter = { command = "dfmt" }
 
 [[grammar]]
 name = "d"
-source = { git = "https://github.com/gdamore/tree-sitter-d", rev="601c4a1e8310fb2f3c43fa8a923d0d27497f3c04" }
+source = { git = "https://github.com/gdamore/tree-sitter-d", rev = "601c4a1e8310fb2f3c43fa8a923d0d27497f3c04" }
 
 [[language]]
 name = "vhs"
@@ -1980,7 +1971,7 @@ file-types = ["bicep"]
 roots = []
 auto-format = true
 comment-token = "//"
-indent = { tab-width = 2, unit = " "}
+indent = { tab-width = 2, unit = " " }
 language-server = { command = "bicep-langserver" }
 
 [[grammar]]
