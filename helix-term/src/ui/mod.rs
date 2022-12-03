@@ -1,4 +1,5 @@
 mod completion;
+mod document;
 pub(crate) mod editor;
 mod fuzzy_match;
 mod info;

@@ -6,6 +6,7 @@ pub mod comment;
 pub mod config;
 pub mod diagnostic;
 pub mod diff;
+pub mod doc_cursor;
 pub mod graphemes;
 pub mod history;
 pub mod increment;

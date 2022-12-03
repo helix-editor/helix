@@ -5,7 +5,103 @@ use ropey::{iter::Chunks, str_utils::byte_to_char_idx, RopeSlice};
 use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
 use unicode_width::UnicodeWidthStr;
 
+use std::borrow::Cow;
 use std::fmt;
+
+#[derive(Debug)]
+/// A preprossed Grapheme that is ready for rendering
+pub enum Grapheme<'a> {
+    Space,
+    Newline,
+    Nbsp,
+    Tab { width: u16 },
+    Other { raw: Cow<'a, str>, width: u16 },
+}
+
+impl<'a> Grapheme<'a> {
+    pub fn new(raw: Cow<'a, str>, visual_x: usize, tab_width: u16) -> Grapheme<'a> {
+        match &*raw {
+            "\t" => {
+                let width = tab_width - (visual_x % tab_width as usize) as u16;
+                Grapheme::Tab { width }
+            }
+            " " => Grapheme::Space,
+            "\u{00A0}" => Grapheme::Nbsp,
+            _ => Grapheme::Other {
+                width: grapheme_width(&*raw) as u16,
+                raw,
+            },
+        }
+    }
+
+    pub fn change_position(&mut self, visual_x: usize, tab_width: u16) {
+        if let Grapheme::Tab { width } = self {
+            *width = tab_width - (visual_x % tab_width as usize) as u16
+        }
+    }
+
+    /// Returns the approximate visual width of this grapheme,
+    /// This serves as a lower bound for the width for use during soft wrapping.
+    /// The actual displayed witdth might be position dependent and larger (primarly tabs)
+    pub fn width(&self) -> u16 {
+        match *self {
+            Grapheme::Other { width, .. } | Grapheme::Tab { width } => width,
+            _ => 1,
+        }
+    }
+
+    pub fn is_whitespace(&self) -> bool {
+        !matches!(&self, Grapheme::Other { .. })
+    }
+
+    pub fn is_breaking_space(&self) -> bool {
+        !matches!(&self, Grapheme::Other { .. } | Grapheme::Nbsp)
+    }
+}
+
+#[derive(Debug)]
+/// A preprossed Grapheme that is ready for rendering
+/// with attachted styling data
+pub struct StyledGrapheme<'a, S> {
+    pub grapheme: Grapheme<'a>,
+    pub style: S,
+}
+
+impl<'a, S: Default> StyledGrapheme<'a, S> {
+    pub fn placeholder() -> Self {
+        StyledGrapheme {
+            grapheme: Grapheme::Space,
+            style: S::default(),
+        }
+    }
+
+    pub fn new(
+        raw: Cow<'a, str>,
+        style: S,
+        visual_x: usize,
+        tab_width: u16,
+    ) -> StyledGrapheme<'a, S> {
+        StyledGrapheme {
+            grapheme: Grapheme::new(raw, visual_x, tab_width),
+            style,
+        }
+    }
+
+    pub fn is_whitespace(&self) -> bool {
+        self.grapheme.is_whitespace()
+    }
+
+    pub fn is_breaking_space(&self) -> bool {
+        self.grapheme.is_breaking_space()
+    }
+
+    /// Returns the approximate visual width of this grapheme,
+    /// This serves as a lower bound for the width for use during soft wrapping.
+    /// The actual displayed witdth might be position dependent and larger (primarly tabs)
+    pub fn width(&self) -> u16 {
+        self.grapheme.width()
+    }
+}
 
 #[must_use]
 pub fn grapheme_width(g: &str) -> usize {
@@ -299,6 +395,18 @@ impl<'a> RopeGraphemes<'a> {
             cur_chunk_start: 0,
             cursor: GraphemeCursor::new(0, slice.len_bytes(), true),
         }
+    }
+
+    /// Advances to `byte_pos` if it is at a grapheme boundrary
+    /// otherwise advances to the next grapheme boundrary after byte
+    pub fn advance_to(&mut self, byte_pos: usize) {
+        while byte_pos > self.byte_pos() {
+            self.next();
+        }
+    }
+
+    pub fn byte_pos(&self) -> usize {
+        self.cursor.cur_cursor()
     }
 }
 

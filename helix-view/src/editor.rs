@@ -178,6 +178,44 @@ pub struct Config {
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
+    pub soft_wrap: SoftWrap,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct SoftWrap {
+    /// Soft wrap lines that exceed viewport width. Default to off
+    pub enable: bool,
+    /// Maximum space that softwrapping may leave free at the end of the line when perfomring softwrapping
+    /// This space is used to wrap text at word boundries. If that is not possible within this limit
+    /// the word is simply split at the end of the line.
+    ///
+    /// This is automatically hardlimited to a quarter of the viewport to ensure correct display on small views.
+    ///
+    /// Default to 5
+    pub max_wrap: usize,
+    /// Maximum number of indentation that can be carried over from the previous line when softwrapping.
+    /// If a line is indenten further then this limit it is rendered at the start of the viewport instead.
+    ///
+    /// This is automatically hardlimited to a quarter of the viewport to ensure correct display on small views.
+    ///
+    /// Default to 40
+    pub max_indent_retain: usize,
+    /// Extra spaces inserted before rendeirng softwrapped lines.
+    ///
+    /// Default to 2
+    pub wrap_indent: usize,
+}
+
+impl Default for SoftWrap {
+    fn default() -> Self {
+        SoftWrap {
+            enable: true,
+            max_wrap: 5,
+            max_indent_retain: 80,
+            wrap_indent: 2,
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -630,6 +668,7 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
+            soft_wrap: SoftWrap::default(),
         }
     }
 }

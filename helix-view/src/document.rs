@@ -2,6 +2,7 @@ use anyhow::{anyhow, bail, Context, Error};
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
+use helix_core::doc_cursor::CursorConfig;
 use helix_core::Range;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
@@ -26,7 +27,7 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
-use crate::editor::RedrawHandle;
+use crate::editor::{self, RedrawHandle};
 use crate::{apply_transaction, DocumentId, Editor, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -1193,6 +1194,21 @@ impl Document {
         match &self.language {
             Some(lang) => lang.as_ref().auto_pairs.as_ref().or(global_config),
             None => global_config,
+        }
+    }
+
+    pub fn cursor_config(&self, viewport_width: u16, config: &editor::Config) -> CursorConfig {
+        CursorConfig {
+            tab_width: self.tab_width() as u16,
+            max_wrap: config.soft_wrap.max_wrap.min(viewport_width as usize / 4),
+            max_indent_retain: config
+                .soft_wrap
+                .max_indent_retain
+                .min(viewport_width as usize / 4),
+            wrap_indent: config.soft_wrap.wrap_indent,
+            // TODO temporary workaround to ensure EOL spaces added at line ends don't get cut off
+            // Instead they should properly aswell but that is pretty hard to implement
+            viewport_width: viewport_width.saturating_sub(1),
         }
     }
 }

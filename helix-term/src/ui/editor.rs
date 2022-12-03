@@ -4,17 +4,21 @@ use crate::{
     job::{self, Callback},
     key,
     keymap::{KeymapResult, Keymaps},
-    ui::{Completion, ProgressSpinners},
+    ui::{
+        document::{DocumentRender, TextRender, TextRenderConfig},
+        Completion, ProgressSpinners,
+    },
 };
 
 use helix_core::{
+    doc_cursor::DocumentCursor,
     graphemes::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
     },
     movement::Direction,
     syntax::{self, HighlightEvent},
     unicode::width::UnicodeWidthStr,
-    visual_coords_at_pos, LineEnding, Position, Range, Selection, Transaction,
+    visual_coords_at_pos, Position, Range, Selection, Transaction,
 };
 use helix_view::{
     apply_transaction,
@@ -25,7 +29,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{borrow::Cow, cmp::min, num::NonZeroUsize, path::PathBuf};
+use std::{num::NonZeroUsize, path::PathBuf};
 
 use tui::buffer::Buffer as Surface;
 
@@ -149,8 +153,25 @@ impl EditorView {
             Box::new(highlights)
         };
 
-        Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights, &config);
-        Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
+        let line_starts = Self::render_text_highlights(
+            doc,
+            view.offset,
+            inner,
+            surface,
+            theme,
+            highlights,
+            &config,
+        );
+        Self::render_gutter(
+            editor,
+            doc,
+            view,
+            view.area,
+            surface,
+            theme,
+            is_focused,
+            line_starts.iter().copied(),
+        );
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
         if is_focused {
@@ -411,205 +432,43 @@ impl EditorView {
         theme: &Theme,
         highlights: H,
         config: &helix_view::editor::Config,
-    ) {
-        let whitespace = &config.whitespace;
-        use helix_view::editor::WhitespaceRenderValue;
+    ) -> Vec<(u16, usize)> {
+        let render_config = TextRenderConfig::new(doc, config, theme, &offset);
+        let mut text_render = TextRender::new(surface, &render_config, offset.col, viewport);
+        let text = doc.text();
 
-        // It's slightly more efficient to produce a full RopeSlice from the Rope, then slice that a bunch
-        // of times than it is to always call Rope::slice/get_slice (it will internally always hit RSEnum::Light).
-        let text = doc.text().slice(..);
+        if config.soft_wrap.enable {
+            debug_assert_eq!(offset.col, 0);
+        }
 
-        let characters = &whitespace.characters;
-
-        let mut spans = Vec::new();
-        let mut visual_x = 0usize;
-        let mut line = 0u16;
-        let tab_width = doc.tab_width();
-        let tab = if whitespace.render.tab() == WhitespaceRenderValue::All {
-            std::iter::once(characters.tab)
-                .chain(std::iter::repeat(characters.tabpad).take(tab_width - 1))
-                .collect()
-        } else {
-            " ".repeat(tab_width)
-        };
-        let space = characters.space.to_string();
-        let nbsp = characters.nbsp.to_string();
-        let newline = if whitespace.render.newline() == WhitespaceRenderValue::All {
-            characters.newline.to_string()
-        } else {
-            " ".to_string()
-        };
-        let indent_guide_char = config.indent_guides.character.to_string();
-
-        let text_style = theme.get("ui.text");
-        let whitespace_style = theme.get("ui.virtual.whitespace");
-
-        let mut is_in_indent_area = true;
-        let mut last_line_indent_level = 0;
-
-        // use whitespace style as fallback for indent-guide
-        let indent_guide_style = text_style.patch(
-            theme
-                .try_get("ui.virtual.indent-guide")
-                .unwrap_or_else(|| theme.get("ui.virtual.whitespace")),
+        // TODO differentiate between view pos and doc pos
+        let doc_pos = text.line_to_char(offset.row);
+        let text = doc.text().slice(doc_pos..);
+        // TODO add annotation like inline virtual text
+        let mut annotation_source = ();
+        let cursor = DocumentCursor::new(
+            text,
+            doc.cursor_config(viewport.width, config),
+            doc_pos,
+            offset.row,
+            &mut annotation_source,
         );
 
-        let draw_indent_guides = |indent_level, line, surface: &mut Surface| {
-            if !config.indent_guides.render {
-                return;
+        let mut render =
+            DocumentRender::new(config, theme, text, cursor, highlights, &mut text_render);
+        let mut last_doc_line = usize::MAX;
+        let mut line_starts = Vec::new();
+        while !render.is_finished() {
+            if render.cursor.doc_line() != last_doc_line {
+                last_doc_line = render.cursor.doc_line();
+                line_starts.push((
+                    render.cursor.visual_pos().row as u16,
+                    render.cursor.doc_line(),
+                ))
             }
-
-            let starting_indent =
-                (offset.col / tab_width) + config.indent_guides.skip_levels as usize;
-
-            // Don't draw indent guides outside of view
-            let end_indent = min(
-                indent_level,
-                // Add tab_width - 1 to round up, since the first visible
-                // indent might be a bit after offset.col
-                offset.col + viewport.width as usize + (tab_width - 1),
-            ) / tab_width;
-
-            for i in starting_indent..end_indent {
-                let x = (viewport.x as usize + (i * tab_width) - offset.col) as u16;
-                let y = viewport.y + line;
-                debug_assert!(surface.in_bounds(x, y));
-                surface.set_string(x, y, &indent_guide_char, indent_guide_style);
-            }
-        };
-
-        'outer: for event in highlights {
-            match event {
-                HighlightEvent::HighlightStart(span) => {
-                    spans.push(span);
-                }
-                HighlightEvent::HighlightEnd => {
-                    spans.pop();
-                }
-                HighlightEvent::Source { start, end } => {
-                    let is_trailing_cursor = text.len_chars() < end;
-
-                    // `unwrap_or_else` part is for off-the-end indices of
-                    // the rope, to allow cursor highlighting at the end
-                    // of the rope.
-                    let text = text.get_slice(start..end).unwrap_or_else(|| " ".into());
-                    let style = spans
-                        .iter()
-                        .fold(text_style, |acc, span| acc.patch(theme.highlight(span.0)));
-
-                    let space = if whitespace.render.space() == WhitespaceRenderValue::All
-                        && !is_trailing_cursor
-                    {
-                        &space
-                    } else {
-                        " "
-                    };
-
-                    let nbsp = if whitespace.render.nbsp() == WhitespaceRenderValue::All
-                        && text.len_chars() < end
-                    {
-                        &nbsp
-                    } else {
-                        " "
-                    };
-
-                    use helix_core::graphemes::{grapheme_width, RopeGraphemes};
-
-                    for grapheme in RopeGraphemes::new(text) {
-                        let out_of_bounds = offset.col > visual_x
-                            || visual_x >= viewport.width as usize + offset.col;
-
-                        if LineEnding::from_rope_slice(&grapheme).is_some() {
-                            if !out_of_bounds {
-                                // we still want to render an empty cell with the style
-                                surface.set_string(
-                                    (viewport.x as usize + visual_x - offset.col) as u16,
-                                    viewport.y + line,
-                                    &newline,
-                                    style.patch(whitespace_style),
-                                );
-                            }
-
-                            draw_indent_guides(last_line_indent_level, line, surface);
-
-                            visual_x = 0;
-                            line += 1;
-                            is_in_indent_area = true;
-
-                            // TODO: with proper iter this shouldn't be necessary
-                            if line >= viewport.height {
-                                break 'outer;
-                            }
-                        } else {
-                            let grapheme = Cow::from(grapheme);
-                            let is_whitespace;
-
-                            let (display_grapheme, width) = if grapheme == "\t" {
-                                is_whitespace = true;
-                                // make sure we display tab as appropriate amount of spaces
-                                let visual_tab_width = tab_width - (visual_x % tab_width);
-                                let grapheme_tab_width =
-                                    helix_core::str_utils::char_to_byte_idx(&tab, visual_tab_width);
-
-                                (&tab[..grapheme_tab_width], visual_tab_width)
-                            } else if grapheme == " " {
-                                is_whitespace = true;
-                                (space, 1)
-                            } else if grapheme == "\u{00A0}" {
-                                is_whitespace = true;
-                                (nbsp, 1)
-                            } else {
-                                is_whitespace = false;
-                                // Cow will prevent allocations if span contained in a single slice
-                                // which should really be the majority case
-                                let width = grapheme_width(&grapheme);
-                                (grapheme.as_ref(), width)
-                            };
-
-                            let cut_off_start = offset.col.saturating_sub(visual_x);
-
-                            if !out_of_bounds {
-                                // if we're offscreen just keep going until we hit a new line
-                                surface.set_string(
-                                    (viewport.x as usize + visual_x - offset.col) as u16,
-                                    viewport.y + line,
-                                    display_grapheme,
-                                    if is_whitespace {
-                                        style.patch(whitespace_style)
-                                    } else {
-                                        style
-                                    },
-                                );
-                            } else if cut_off_start != 0 && cut_off_start < width {
-                                // partially on screen
-                                let rect = Rect::new(
-                                    viewport.x,
-                                    viewport.y + line,
-                                    (width - cut_off_start) as u16,
-                                    1,
-                                );
-                                surface.set_style(
-                                    rect,
-                                    if is_whitespace {
-                                        style.patch(whitespace_style)
-                                    } else {
-                                        style
-                                    },
-                                );
-                            }
-
-                            if is_in_indent_area && !(grapheme == " " || grapheme == "\t") {
-                                draw_indent_guides(visual_x, line, surface);
-                                is_in_indent_area = false;
-                                last_line_indent_level = visual_x;
-                            }
-
-                            visual_x = visual_x.saturating_add(width);
-                        }
-                    }
-                }
-            }
+            render.render_line::<true>(&mut text_render);
         }
+        line_starts
     }
 
     /// Render brace match, etc (meant for the focused view only)
@@ -700,6 +559,7 @@ impl EditorView {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn render_gutter(
         editor: &Editor,
         doc: &Document,
@@ -708,9 +568,9 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
+        line_starts: impl Iterator<Item = (u16, usize)> + Clone,
     ) {
         let text = doc.text().slice(..);
-        let last_line = view.last_line(doc);
 
         // it's used inside an iterator so the collect isn't needless:
         // https://github.com/rust-lang/rust-clippy/issues/6164
@@ -733,10 +593,10 @@ impl EditorView {
             let mut gutter = gutter_type.style(editor, doc, view, theme, is_focused);
             let width = gutter_type.width(view, doc);
             text.reserve(width); // ensure there's enough space for the gutter
-            for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
+            for (i, line) in line_starts.clone() {
                 let selected = cursors.contains(&line);
                 let x = viewport.x + offset;
-                let y = viewport.y + i as u16;
+                let y = viewport.y + i;
 
                 let gutter_style = if selected {
                     gutter_selected_style
