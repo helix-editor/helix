@@ -706,7 +706,7 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
             if ignore_if_exists && to.exists() {
                 Ok(())
             } else {
-                fs::rename(&from, &to)
+                fs::rename(from, &to)
             }
         }
     }

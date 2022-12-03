@@ -102,16 +102,17 @@ pub mod util {
             None
         };
 
-        // TODO: add support for Diagnostic.data
-        lsp::Diagnostic::new(
-            range_to_lsp_range(doc, range, offset_encoding),
+        lsp::Diagnostic {
+            range: range_to_lsp_range(doc, range, offset_encoding),
             severity,
             code,
-            diag.source.clone(),
-            diag.message.to_owned(),
-            None,
+            source: diag.source.clone(),
+            message: diag.message.to_owned(),
+            related_information: None,
             tags,
-        )
+            data: diag.data.to_owned(),
+            ..Default::default()
+        }
     }
 
     /// Converts [`lsp::Position`] to a position in the document.

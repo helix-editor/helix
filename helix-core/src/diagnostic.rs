@@ -45,4 +45,5 @@ pub struct Diagnostic {
     pub code: Option<NumberOrString>,
     pub tags: Vec<DiagnosticTag>,
     pub source: Option<String>,
+    pub data: Option<serde_json::Value>,
 }

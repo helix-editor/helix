@@ -10,7 +10,6 @@
 "string.regexp" = "orange"
 "string.special" = "yellow"
 "comment" = { fg = "gray", modifiers = ["italic"] }
-"comment.block.documentation" = { fg = "blue", modifiers = ["italic"] }
 "variable" = "foreground"
 "label" = "orange"
 "punctuation" = "foreground"
@@ -34,7 +33,7 @@
 
 # Interface
 "ui.background"= { bg = "background" }
-"ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursor" = { fg = "dark_gray", bg = "orange" }
 "ui.cursor.match" = "orange"
 "ui.linenr" = "dark_gray"
 "ui.linenr.selected" = "gray"

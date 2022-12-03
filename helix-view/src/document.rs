@@ -3,6 +3,8 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::Range;
+use helix_vcs::{DiffHandle, DiffProviderRegistry};
+
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::borrow::Cow;
@@ -24,6 +26,7 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
+use crate::editor::RedrawHandle;
 use crate::{apply_transaction, DocumentId, Editor, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -133,6 +136,8 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
+
+    diff_handle: Option<DiffHandle>,
 }
 
 use std::{fmt, mem};
@@ -371,6 +376,7 @@ impl Document {
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_server: None,
+            diff_handle: None,
         }
     }
 
@@ -624,16 +630,20 @@ impl Document {
     }
 
     /// Reload the document from its path.
-    pub fn reload(&mut self, view: &mut View) -> Result<(), Error> {
+    pub fn reload(
+        &mut self,
+        view: &mut View,
+        provider_registry: &DiffProviderRegistry,
+        redraw_handle: RedrawHandle,
+    ) -> Result<(), Error> {
         let encoding = &self.encoding;
-        let path = self.path().filter(|path| path.exists());
+        let path = self
+            .path()
+            .filter(|path| path.exists())
+            .ok_or_else(|| anyhow!("can't find file to reload from"))?
+            .to_owned();
 
-        // If there is no path or the path no longer exists.
-        if path.is_none() {
-            bail!("can't find file to reload from");
-        }
-
-        let mut file = std::fs::File::open(path.unwrap())?;
+        let mut file = std::fs::File::open(&path)?;
         let (rope, ..) = from_reader(&mut file, Some(encoding))?;
 
         // Calculate the difference between the buffer and source text, and apply it.
@@ -645,6 +655,11 @@ impl Document {
         self.reset_modified();
 
         self.detect_indent_and_line_ending();
+
+        match provider_registry.get_diff_base(&path) {
+            Some(diff_base) => self.set_diff_base(diff_base, redraw_handle),
+            None => self.diff_handle = None,
+        }
 
         Ok(())
     }
@@ -787,6 +802,10 @@ impl Document {
 
         if !transaction.changes().is_empty() {
             self.version += 1;
+            // start computing the diff in parallel
+            if let Some(diff_handle) = &self.diff_handle {
+                diff_handle.update_document(self.text.clone(), false);
+            }
 
             // generate revert to savepoint
             if self.savepoint.is_some() {
@@ -1044,6 +1063,23 @@ impl Document {
     pub fn language_server(&self) -> Option<&helix_lsp::Client> {
         let server = self.language_server.as_deref()?;
         server.is_initialized().then(|| server)
+    }
+
+    pub fn diff_handle(&self) -> Option<&DiffHandle> {
+        self.diff_handle.as_ref()
+    }
+
+    /// Intialize/updates the differ for this document with a new base.
+    pub fn set_diff_base(&mut self, diff_base: Vec<u8>, redraw_handle: RedrawHandle) {
+        if let Ok((diff_base, _)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
+            if let Some(differ) = &self.diff_handle {
+                differ.update_diff_base(diff_base);
+                return;
+            }
+            self.diff_handle = Some(DiffHandle::new(diff_base, self.text.clone(), redraw_handle))
+        } else {
+            self.diff_handle = None;
+        }
     }
 
     #[inline]

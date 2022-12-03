@@ -83,7 +83,7 @@ pub fn find_root(root: Option<&str>, root_markers: &[String]) -> std::path::Path
     top_marker.map_or(current_dir, |a| a.to_path_buf())
 }
 
-pub use ropey::{str_utils, Rope, RopeBuilder, RopeSlice};
+pub use ropey::{self, str_utils, Rope, RopeBuilder, RopeSlice};
 
 // pub use tendril::StrTendril as Tendril;
 pub use smartstring::SmartString;
