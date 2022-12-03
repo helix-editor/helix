@@ -432,10 +432,15 @@ where
 {
     let sep = &context.editor.config().statusline.separator;
 
+    let style_key = match context.focused {
+        true => "ui.statusline.separator",
+        false => "ui.statusline.inactive",
+    };
+
     write(
         context,
         sep.to_string(),
-        Some(context.editor.theme.get("ui.statusline.separator")),
+        Some(context.editor.theme.get(style_key)),
     );
 }
 
