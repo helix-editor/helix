@@ -6,11 +6,16 @@ use helix_core::{encoding, Rope, RopeBuilder};
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
 
-#[derive(Default)]
 pub struct RopeWrite(RopeBuilder);
 impl RopeWrite {
     pub fn finish(self) -> Rope {
         self.0.finish()
+    }
+}
+
+impl Default for RopeWrite {
+    fn default() -> Self {
+        Self(RopeBuilder::new())
     }
 }
 
