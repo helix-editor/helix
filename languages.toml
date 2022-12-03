@@ -60,6 +60,7 @@ file-types = ["toml"]
 roots = []
 comment-token = "#"
 language-server = { command = "taplo", args = ["lsp", "stdio"] }
+auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
