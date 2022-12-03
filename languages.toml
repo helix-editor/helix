@@ -422,6 +422,8 @@ injection-regex = "css"
 file-types = ["css", "scss"]
 roots = []
 language-server = { command = "vscode-css-language-server", args = ["--stdio"] }
+auto-format = true
+config = { "provideFormatter" = true }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -435,6 +437,8 @@ injection-regex = "scss"
 file-types = ["scss"]
 roots = []
 language-server = { command = "vscode-css-language-server", args = ["--stdio"] }
+auto-format = true
+config = { "provideFormatter" = true }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
