@@ -1114,9 +1114,9 @@ impl Editor {
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
-        let (rope, encoding) =
-            crate::stream::from_reader::<_, helix_core::RopeBuilder>(&mut stdin(), None)?;
-        Ok(self.new_file_from_document(action, Document::from(rope, Some(encoding))))
+        let (builder, encoding) =
+            crate::stream::from_reader(&mut stdin(), crate::stream::RopeWrite::default(), None)?;
+        Ok(self.new_file_from_document(action, Document::from(builder.finish(), Some(encoding))))
     }
 
     // ??? possible use for integration tests

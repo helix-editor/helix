@@ -1,46 +1,27 @@
+use std::io::Write;
+
 use anyhow::Error;
-use helix_core::{encoding, ropey::iter::Chunks, Rope, RopeBuilder};
+use helix_core::{encoding, Rope, RopeBuilder};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
 
-pub trait TextBuilder {
-    type Output;
-
-    fn new() -> Self;
-    fn append(&mut self, chunk: &str);
-    fn finish(self) -> Self::Output;
-}
-
-pub trait ChunksIterator {
-    type IntoIter<'a>: Iterator<Item = &'a str>
-    where
-        Self: 'a;
-
-    fn chunks<'a>(&'a self) -> Self::IntoIter<'a>;
-}
-
-impl TextBuilder for RopeBuilder {
-    type Output = Rope;
-
-    fn new() -> Self {
-        RopeBuilder::new()
-    }
-
-    fn append(&mut self, chunk: &str) {
-        RopeBuilder::append(self, chunk);
-    }
-
-    fn finish(self) -> Self::Output {
-        RopeBuilder::finish(self)
+#[derive(Default)]
+pub struct RopeWrite(RopeBuilder);
+impl RopeWrite {
+    pub fn finish(self) -> Rope {
+        self.0.finish()
     }
 }
 
-impl ChunksIterator for Rope {
-    type IntoIter<'a> = Chunks<'a>;
+impl Write for RopeWrite {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0.append(std::str::from_utf8(buf).unwrap());
+        Ok(buf.len())
+    }
 
-    fn chunks<'a>(&'a self) -> Self::IntoIter<'a> {
-        Rope::chunks(self)
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
     }
 }
 
@@ -50,13 +31,14 @@ impl ChunksIterator for Rope {
 /// Decodes a stream of bytes into UTF-8, returning a `Rope` and the
 /// encoding it was decoded as. The optional `encoding` parameter can
 /// be used to override encoding auto-detection.
-pub fn from_reader<R, T>(
+pub fn from_reader<R, B>(
     reader: &mut R,
+    mut builder: B,
     encoding: Option<&'static encoding::Encoding>,
-) -> Result<(T::Output, &'static encoding::Encoding), Error>
+) -> Result<(B, &'static encoding::Encoding), Error>
 where
     R: std::io::Read + ?Sized,
-    T: TextBuilder,
+    B: std::io::Write,
 {
     // These two buffers are 8192 bytes in size each and are used as
     // intermediaries during the decoding process. Text read into `buf`
@@ -65,7 +47,6 @@ where
     // contents are appended to `builder`.
     let mut buf = [0u8; BUF_SIZE];
     let mut buf_out = [0u8; BUF_SIZE];
-    let mut builder = T::new();
 
     // By default, the encoding of the text is auto-detected via the
     // `chardetng` crate which requires sample data from the reader.
@@ -131,7 +112,7 @@ where
                 }
                 encoding::CoderResult::OutputFull => {
                     debug_assert!(slice.len() > total_read);
-                    builder.append(&buf_str[..total_written]);
+                    let _ = builder.write(buf_str[..total_written].as_bytes())?;
                     total_written = 0;
                 }
             }
@@ -140,7 +121,7 @@ where
         // flushed and the loop terminates.
         if is_empty {
             debug_assert_eq!(reader.read(&mut buf)?, 0);
-            builder.append(&buf_str[..total_written]);
+            let _ = builder.write(buf_str[..total_written].as_bytes())?;
             break;
         }
 
@@ -152,8 +133,7 @@ where
         slice = &buf[..read];
         is_empty = read == 0;
     }
-    let rope = builder.finish();
-    Ok((rope, encoding))
+    Ok((builder, encoding))
 }
 
 // The documentation and implementation of this function should be up-to-date with
@@ -165,11 +145,11 @@ where
 pub async fn to_writer<'a, W, T>(
     writer: &'a mut W,
     encoding: &'static encoding::Encoding,
-    text: &T,
+    text: T,
 ) -> Result<(), Error>
 where
     W: tokio::io::AsyncWriteExt + Unpin + ?Sized,
-    T: ChunksIterator,
+    T: IntoIterator<Item = &'a str>,
 {
     // Text inside a `Rope` is stored as non-contiguous blocks of data called
     // chunks. The absolute size of each chunk is unknown, thus it is impossible
@@ -178,7 +158,7 @@ where
     // appending an empty chunk to it. This is valuable for detecting when all
     // chunks in the `Rope` have been iterated over in the subsequent loop.
     let iter = text
-        .chunks()
+        .into_iter()
         .filter(|c| !c.is_empty())
         .chain(std::iter::once(""));
     let mut buf = [0u8; BUF_SIZE];

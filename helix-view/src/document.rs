@@ -22,12 +22,11 @@ use helix_core::{
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
     syntax::{self, LanguageConfiguration},
-    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, Syntax, Transaction,
-    DEFAULT_LINE_ENDING,
+    ChangeSet, Diagnostic, LineEnding, Rope, Selection, Syntax, Transaction, DEFAULT_LINE_ENDING,
 };
 
 use crate::editor::RedrawHandle;
-use crate::stream::{from_reader, to_writer};
+use crate::stream::{from_reader, to_writer, RopeWrite};
 use crate::{apply_transaction, DocumentId, Editor, View, ViewId};
 
 const DEFAULT_INDENT: IndentStyle = IndentStyle::Tabs;
@@ -215,7 +214,9 @@ impl Document {
         let (rope, encoding) = if path.exists() {
             let mut file =
                 std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
-            from_reader::<_, RopeBuilder>(&mut file, encoding)?
+            let (builder, encoding) =
+                from_reader(&mut file, crate::stream::RopeWrite::default(), encoding)?;
+            (builder.finish(), encoding)
         } else {
             let encoding = encoding.unwrap_or(encoding::UTF_8);
             (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding)
@@ -272,7 +273,7 @@ impl Document {
                     })?;
                 {
                     let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
-                    to_writer(&mut stdin, encoding::UTF_8, &text)
+                    to_writer(&mut stdin, encoding::UTF_8, text.chunks())
                         .await
                         .map_err(|_| FormatterError::BrokenStdin)?;
                 }
@@ -401,7 +402,7 @@ impl Document {
             }
 
             let mut file = File::create(&path).await?;
-            to_writer(&mut file, encoding, &text).await?;
+            to_writer(&mut file, encoding, text.chunks()).await?;
 
             let event = DocumentSavedEvent {
                 revision: current_rev,
@@ -467,7 +468,9 @@ impl Document {
             .to_owned();
 
         let mut file = std::fs::File::open(&path)?;
-        let (rope, ..) = from_reader::<_, RopeBuilder>(&mut file, Some(encoding))?;
+        let rope = from_reader(&mut file, RopeWrite::default(), Some(encoding))?
+            .0
+            .finish();
 
         // Calculate the difference between the buffer and source text, and apply it.
         // This is not considered a modification of the contents of the file regardless
@@ -894,8 +897,12 @@ impl Document {
 
     /// Intialize/updates the differ for this document with a new base.
     pub fn set_diff_base(&mut self, diff_base: Vec<u8>, redraw_handle: RedrawHandle) {
-        if let Ok((diff_base, _)) =
-            from_reader::<_, RopeBuilder>(&mut diff_base.as_slice(), Some(self.encoding))
+        if let Ok(diff_base) = from_reader(
+            &mut diff_base.as_slice(),
+            RopeWrite::default(),
+            Some(self.encoding),
+        )
+        .map(|(builder, _)| builder.finish())
         {
             if let Some(differ) = &self.diff_handle {
                 differ.update_diff_base(diff_base);
@@ -1234,9 +1241,10 @@ mod test {
                 assert!(ref_path.exists());
 
                 let mut file = std::fs::File::open(path).unwrap();
-                let text = from_reader::<_, RopeBuilder>(&mut file, Some(encoding))
+                let text = from_reader(&mut file, RopeWrite::default(), Some(encoding))
                     .unwrap()
                     .0
+                    .finish()
                     .to_string();
                 let expectation = std::fs::read_to_string(ref_path).unwrap();
                 assert_eq!(text[..], expectation[..]);
@@ -1260,7 +1268,7 @@ mod test {
 
                 let text = Rope::from_str(&std::fs::read_to_string(path).unwrap());
                 let mut buf: Vec<u8> = Vec::new();
-                helix_lsp::block_on(to_writer(&mut buf, encoding, &text)).unwrap();
+                helix_lsp::block_on(to_writer(&mut buf, encoding, text.chunks())).unwrap();
 
                 let expectation = std::fs::read(ref_path).unwrap();
                 assert_eq!(buf, expectation);
