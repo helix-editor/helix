@@ -23,8 +23,8 @@
 "ui.bufferline" = { fg = "indent", bg = "acme_bar_bg" }
 "ui.bufferline.active" = { fg = "black", bg = "acme_bg" }
 "diff.plus" = {fg = "green"}
-"diff.delta" = {fg = "red"}
-"diff.minus" = {fg = "acme_bar_bg"}
+"diff.delta" = {fg = "acme_bar_bg"}
+"diff.minus" = {fg = "red"}
 
 [palette]
 white = "#ffffff"
