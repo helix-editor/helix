@@ -4166,11 +4166,13 @@ pub fn completion(cx: &mut Context) {
     let start_offset = cursor.saturating_sub(offset);
     let prefix = text.slice(start_offset..cursor).to_string();
 
-    let words_future = cx
-        .editor
-        .worker
-        .completion(prefix)
-        .map(CompletionResult::Worker);
+    let worker = cx.editor.worker.clone();
+    let words_future = async move {
+        worker
+            .completion(prefix)
+            .map(CompletionResult::Worker)
+            .await
+    };
 
     cx.completion_with_words(
         future::join(future, words_future),

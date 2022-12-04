@@ -631,7 +631,7 @@ impl Document {
             }
 
             if let Some(worker) = worker {
-                worker.extract_words(doc_id, text.to_string())
+                worker.extract_words(doc_id, text.to_string());
             }
 
             Ok(event)

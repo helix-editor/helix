@@ -1,10 +1,12 @@
 use once_cell::sync::Lazy;
 use std::collections::{HashMap, HashSet};
-use std::future::Future;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use tokio;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+// use tokio::runtime::Handle;
+use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio::task::{self, JoinHandle};
 use tokio::time::timeout;
@@ -21,8 +23,9 @@ const TIMEOUT: Duration = Duration::from_millis(300);
 static WORDS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\w{2,}").unwrap());
 
 pub struct Worker {
-    tx: UnboundedSender<WorkerRequest>,
+    tx: mpsc::Sender<WorkerRequest>,
     handle: JoinHandle<()>,
+    is_stopped: Arc<AtomicBool>,
 }
 
 impl Default for Worker {
@@ -32,7 +35,7 @@ impl Default for Worker {
 }
 
 struct WorkerState {
-    rx: UnboundedReceiver<WorkerRequest>,
+    rx: mpsc::Receiver<WorkerRequest>,
 
     // TODO limit hashmap?
     // words extracted on load/save document
@@ -41,10 +44,11 @@ struct WorkerState {
     // words extracted on document changes assiciated to concrete lines
     // on load/save document cleared
     doc_lines_words: HashMap<DocumentId, HashMap<usize, HashSet<String>>>,
+
+    is_stopped: Arc<AtomicBool>,
 }
 
 pub enum WorkerRequest {
-    Stop,
     ExtractDocWords {
         doc_id: DocumentId,
         text: String,
@@ -62,7 +66,6 @@ pub enum WorkerRequest {
 impl std::fmt::Debug for WorkerRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            WorkerRequest::Stop => f.write_str("Exit"),
             WorkerRequest::ExtractDocWords { doc_id, text } => f
                 .debug_struct("ExtractDocWords")
                 .field("doc_id", doc_id)
@@ -83,14 +86,20 @@ impl std::fmt::Debug for WorkerRequest {
 
 impl Worker {
     pub fn new() -> Self {
-        let (command_tx, command_rx) = unbounded_channel::<WorkerRequest>();
+        // channel buffer len allow to limit back-pressure
+        let (command_tx, command_rx) = mpsc::channel::<WorkerRequest>(10);
 
+        let is_stopped = Arc::new(AtomicBool::new(false));
+        let is_stopped_clone = is_stopped.clone();
+
+        // Start worker on separate thread
         let handle = task::spawn_blocking(|| {
             log::debug!("Worker. Start");
             let mut state = WorkerState {
                 rx: command_rx,
                 doc_words: HashMap::new(),
                 doc_lines_words: HashMap::new(),
+                is_stopped: is_stopped_clone,
             };
 
             state.process_commands();
@@ -99,20 +108,28 @@ impl Worker {
         Worker {
             tx: command_tx,
             handle,
+            is_stopped,
         }
     }
 
     fn send(&self, cmd: WorkerRequest) {
-        if let Err(e) = self.tx.send(cmd) {
-            if !self.handle.is_finished() {
-                log::error!("On send command to worker: {}", e);
-            }
+        if self.is_stopped.load(Ordering::SeqCst) {
+            return;
         }
+        log::debug!("Worker command: {:?}", cmd);
+        match self.tx.try_send(cmd) {
+            Err(mpsc::error::TrySendError::Closed(_)) => {
+                log::debug!("Worker commands channel is closed");
+            }
+            Err(mpsc::error::TrySendError::Full(_)) => {
+                log::trace!("Worker commands channel is full");
+            }
+            _ => {}
+        };
     }
 
-    pub fn finish(&self) {
-        self.send(WorkerRequest::Stop);
-        self.handle.abort();
+    pub fn stop(&self) {
+        self.is_stopped.store(true, Ordering::SeqCst);
     }
 
     pub fn extract_words(&self, doc_id: DocumentId, text: String) {
@@ -123,25 +140,35 @@ impl Worker {
         self.send(WorkerRequest::ExtractDocLineWords { doc_id, lines });
     }
 
-    pub fn completion(&self, prefix: String) -> impl Future<Output = Option<Vec<String>>> {
+    pub async fn completion(&self, prefix: String) -> Option<Vec<String>> {
+        if self.is_stopped.load(Ordering::SeqCst) {
+            return None;
+        }
+
         // TODO pool of oneshot channels
         let (tx, rx) = oneshot::channel::<Option<Vec<String>>>();
 
-        self.send(WorkerRequest::Completion { prefix, tx });
+        log::trace!("Worker command: completion {}", prefix,);
+        if let Err(e) = self
+            .tx
+            .send_timeout(WorkerRequest::Completion { prefix, tx }, TIMEOUT)
+            .await
+        {
+            log::error!("On send command to worker: {}", e);
+            return None;
+        }
 
-        async move {
-            match timeout(TIMEOUT, rx).await {
-                Ok(r) => match r {
-                    Ok(items) => items,
-                    Err(e) => {
-                        log::error!("On wait worker result: {}", e);
-                        None
-                    }
-                },
+        match timeout(TIMEOUT, rx).await {
+            Ok(r) => match r {
+                Ok(items) => items,
                 Err(e) => {
-                    log::error!("On wait worker result timeout: {}", e);
+                    log::error!("On wait worker result: {}", e);
                     None
                 }
+            },
+            Err(e) => {
+                log::error!("On wait worker result timeout: {}", e);
+                None
             }
         }
     }
@@ -149,7 +176,7 @@ impl Worker {
 
 impl Drop for Worker {
     fn drop(&mut self) {
-        self.finish();
+        self.stop();
         self.handle.abort();
     }
 }
@@ -157,15 +184,16 @@ impl Drop for Worker {
 impl WorkerState {
     fn process_commands(&mut self) {
         loop {
+            if self.is_stopped.load(Ordering::SeqCst) {
+                log::debug!("Worker Stop");
+                return;
+            }
+
             if let Some(command) = self.rx.blocking_recv() {
                 let now = std::time::Instant::now();
                 let cmd_debug = format!("{:?}", command);
 
                 match command {
-                    WorkerRequest::Stop => {
-                        log::debug!("Worker Stop");
-                        return;
-                    }
                     WorkerRequest::ExtractDocWords { doc_id, text } => {
                         self.process_text(doc_id, text);
                     }
@@ -299,19 +327,19 @@ mod test {
             let worker = Worker::new();
 
             // buffer with text
-            worker.extract_words(doc_id, "Hello".to_string());
+            let _ = worker.extract_words(doc_id, "Hello".to_string());
 
             let items = worker.completion("H".to_string()).await;
             assert_eq!(items, Some(vec!["Hello".to_string()]));
 
             // add text to the same line
-            worker.extract_line_words(doc_id, vec![(0, Some("Hello world".to_string()))]);
+            let _ = worker.extract_line_words(doc_id, vec![(0, Some("Hello world".to_string()))]);
 
             let items = worker.completion("w".to_string()).await;
             assert_eq!(items, Some(vec!["world".to_string()]));
 
             // reload buffer with text
-            worker.extract_words(doc_id, "Hello".to_string());
+            let _ = worker.extract_words(doc_id, "Hello".to_string());
 
             let items = worker.completion("w".to_string()).await;
             assert_eq!(items, None);
