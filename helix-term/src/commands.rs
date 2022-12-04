@@ -3424,8 +3424,7 @@ fn yank_joined_impl(cx: &mut Context, separator: &str) -> anyhow::Result<()> {
 
 fn yank_joined(cx: &mut Context) {
     let line_ending = doc!(cx.editor).line_ending;
-    let _ =
-        yank_joined_impl(cx, line_ending.as_str());
+    let _ = yank_joined_impl(cx, line_ending.as_str());
     exit_select_mode(cx);
 }
 
