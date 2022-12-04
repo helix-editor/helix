@@ -1,0 +1,298 @@
+;; Created by Justin Rhoades
+
+;; Eww running the bar config
+(defvar eww "~/.config/eww/bin -c $HOME/.config/eww")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;							Widget Components							 ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; revealer-on-hover ;;
+(defwidget revealer-on-hover [var varname ?class ?duration ?transition]
+  (box :class "${class} revealer-on-hover"
+       :orientation "h"
+       :space-evenly false
+    (eventbox :class "eventbox"
+              :onhover "${eww} update ${varname}=true"
+              :onhoverlost "${eww} update ${varname}=false"
+      (box :space-evenly false
+        (revealer :reveal var
+                  :transition {transition ?: "sliderright"}
+                  :duration {duration ?: "500ms"}
+          (children :nth 0))
+        (children :nth 1)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;							Widget Section's							 ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Launcher Widgets ;;
+(defwidget launcher []
+  (box :orientation "h"
+       :space-evenly "false"
+       :spacing -15
+  (button :class "launcher_icon"
+          :onclick "scripts/popup launcher" "")))
+
+
+;; Workspaces ;;
+(defwidget workspaces []
+  (box :class "workspaces"
+       :orientation "h"
+       :space-evenly true
+       :halign "start"
+       :spacing 10
+    (literal :content {wm-tags})))
+(deflisten wm-tags "leftwm-state -w 0 -t ~/.config/leftwm/template.liquid")
+
+
+;; Focus Window ;;
+;; TODO: Update the deflisten to a script for cleaner results ;;
+;; TODO: Create the scss class ;;
+(defwidget window_focus []
+  (box :class "focus-window"
+       :orientation "h"
+       :space-evenly true
+       :halign "center"
+    {window_title != "" ? "${window_title}" : "Arch-Linux"}))
+(deflisten window_title "leftwm-state -w 1 -s '{{window_title}}'")
+
+;; Battery Widget ;;
+(defwidget bat []
+  (box :orientation "h"
+       :space-evenly "false"
+    (label :class "bat"
+           :halign "end"
+           :text battery
+           :tooltip "Battery ${battery-cappacity}%")))
+(defpoll battery			:interval "1s"	"scripts/battery icon")
+(defpoll battery-cappacity	:interval "1s"	"scripts/battery percent")
+
+
+;; Wifi ;;
+(defwidget wifi []
+  (box :orientation "h"
+       :tooltip wifi-name
+    (button :onclick "scripts/popup wifi"
+            :class "wifi-icon"
+      wifi-icon)))
+(defpoll wifi-icon :interval "1s" "scripts/wifi icon")
+(defpoll wifi-name :interval "1s" "scripts/wifi name")
+
+
+;; TODO: Build Brightness widget ;;
+
+
+;; Volume Widget ;;
+(defwidget volume []
+  (box :space-evenly false
+       :class "hover-module"
+    (revealer-on-hover :var volum
+                       :varname "volum"
+                       :icon "" ; BUG: We need to pass icon so that the children widget can find it
+                       :transition "slideleft"
+      (volume-change)
+      (button :onclick "pavucontrol &" :class "volume-icon" ""))))
+
+
+;; Volume Change ;;
+(defwidget volume-change []
+  (scale :class "volbar"
+         :value current-volume
+         :tooltip "Volume: ${current-volume}%"
+         :max 101
+         :min 0
+         :onchange "scripts/changevol {}"))
+
+(defpoll current-volume :interval "1s" "scripts/getvol")
+(defvar volum false)
+
+;; Calendar/Time ;;
+(defwidget date []
+  (box :orientation "h"
+       :class "date"
+       :halign "end"
+    (button :onclick "scripts/popup calendar"
+            :class "time" time)))
+
+(defwidget cal []
+  (box :class "cal-box"
+       :orientation "h"
+    (box :class "cal-inner-box"
+      (calendar :class "cal"
+                :day calendar_day
+                :month calendar_month
+                :year calendar_year))))
+
+(defpoll calendar_day :interval "10h" "date '+%d'")
+(defpoll calendar_month :interval "10h" "scripts/calendar")
+(defpoll calendar_year :interval "10h" "date '+%Y'")
+(defpoll time :interval "10s" "date '+%H:%M %b %d, %Y'")
+
+;; Power Widget ;;
+(defwidget power []
+  (box :space-evenly false
+       :class "hover-module"
+    (revealer-on-hover :var pwr
+                       :varname "pwr"
+                       :icon "" ; BUG: We need to pass icon so that the children widget can find it
+                       :transition "slideleft"
+      (powermenu)
+      (box  :class "powermenu-button" {pwr ? "" : ""}))))
+
+;; Powermenu ;;
+(defwidget powermenu []
+  (box :orientation "h"
+       :space-evenly false
+       :class "power-buttons"
+    (box :orientation "h"
+         :space-evenly false
+      (button :class "button-reload"
+              :tooltip "Leftwm Reload"
+              :onclick "leftwm-command SoftReload" "⭘" )
+      (button :class "button-reboot"
+              :tooltip "Reboot"
+              :onclick "reboot" "")
+      (button :class "button-quit"
+              :tooltip "Logout"
+              :onclick "loginctl kill-session $XDG_SESSION_ID" "拉")
+      (button :class "button-lock"
+              :tooltip "Lock Screen"
+              :onclick "betterlockscreen -l" "")
+      (button :class "button-off"
+              :tooltip "Shutdown"
+              :onclick "shutdown now" ""))))
+(defvar pwr false)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;							Widget Group Section's						 ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Top Left Widget Group ;;
+(defwidget top_left []
+  (box :orientation "h"
+       :space-evenly "false"
+       :valign "center"
+(launcher)
+(workspaces)))
+
+(defwidget top_right []
+  (box :orientation "h"
+       :space-evenly false
+       :halign "end"
+       :valign "center"
+(volume)
+(wifi)
+(bat)
+(power)
+(date)))
+
+;; Bar ;;
+(defwidget bar [orientation align]
+  (box :class "eww_bar"
+       :orientation orientation
+       :halign align
+       :vexpand "false"
+       :hexpand "false"
+(children)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;							Window Section's							 ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Bar Windows ;;
+
+;; TODO: Set the monitors up dynamically from a bash script ;;
+(defwindow single-bar1
+  :monitor 0
+  :windowtype "dock"
+  :geometry (geometry :x "20"
+                      :y "0"
+                      :height "15px"
+                      :width "12%"
+                      :anchor "top left")
+    :reserve (struts :distance "40px" :side "top")
+(bar :orientation "horizontal"
+     :align "h"
+  (top_left)))
+
+(defwindow single-bar2
+  :monitor 0
+  :windowtype "dock"
+  :geometry (geometry :x "0"
+                      :y "0"
+                      :height "15px"
+                      :width "12%"
+                      :anchor "top center")
+    :reserve (struts :distance "40px" :side "top")
+(bar :orientation "horizontal"
+     :align "h"
+  (window_focus)))
+
+(defwindow single-bar3
+  :monitor 0
+  :windowtype "dock"
+  :geometry (geometry :x "-20"
+                      :y "0"
+                      :height "15px"
+                      :width "12%"
+                      :anchor "top right")
+    :reserve (struts :distance "40px" :side "top")
+(bar :orientation "horizontal"
+     :align "h"
+  (top_right)))
+
+
+(defwindow single-calendar
+  :monitor 0
+  :geometry (geometry :x "91%"
+                      :y "40px"
+                      :width "270px"
+                      :height "60px")
+(cal))
+
+
+;; Multimontitor support ;;
+(defwindow bar1
+  :monitor 1
+  :windowtype "dock"
+  :geometry (geometry :x "20"
+                      :y "0"
+                      :height "15px"
+                      :width "12%"
+                      :anchor "top left")
+    :reserve (struts :distance "40px" :side "top")
+(bar :orientation "horizontal"
+     :align "h"
+  (top_left)))
+
+(defwindow bar2
+  :monitor 1
+  :windowtype "dock"
+  :geometry (geometry :x "0"
+                      :y "0"
+                      :height "15px"
+                      :width "12%" :anchor "top center")
+    :reserve (struts :distance "40px" :side "top")
+(bar :orientation "horizontal"
+     :align "h"
+  (window_focus)))
+
+(defwindow bar3
+  :monitor 1
+  :windowtype "dock"
+  :geometry (geometry :x "-20"
+                      :y "0"
+                      :height "15px"
+                      :width "12%"
+                      :anchor "top right")
+    :reserve (struts :distance "40px" :side "top")
+(bar :orientation "horizontal"
+     :align "h"
+  (top_right)))
+
+
+(defwindow calendar
+  :monitor 1
+  :geometry (geometry :x "91%"
+                      :y "40px"
+                      :width "270px"
+                      :height "60px")
+(cal))

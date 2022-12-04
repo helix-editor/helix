@@ -1947,6 +1947,23 @@ name = "wit"
 source = { git = "https://github.com/hh9527/tree-sitter-wit", rev = "c917790ab9aec50c5fd664cbfad8dd45110cfff3" }
 
 [[language]]
+name = "yuck"
+scope = "source.yuck"
+injection-regex = "yuck"
+file-types = ["yuck"]
+roots = []
+comment-token = ";;"
+indent = { tab-width = 2, unit = "  " }
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+"'" = "'"
+
+
+[[language]]
 name = "env"
 scope = "source.env"
 file-types = [".env", ".env.local", ".env.development", ".env.production"]
