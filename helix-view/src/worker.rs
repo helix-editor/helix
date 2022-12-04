@@ -1,4 +1,3 @@
-use once_cell::sync::Lazy;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -11,16 +10,15 @@ use tokio::sync::oneshot;
 use tokio::task::{self, JoinHandle};
 use tokio::time::timeout;
 
-use helix_core::regex::Regex;
+use helix_core::chars::char_is_word;
 
 use crate::DocumentId;
 
+// TODO get completion_trigger_len
+const COMPLETION_TRIGGER_LEN: usize = 2;
 // TODO get completion items len from config
 const MAX_COMPLETION_ITEMS_LEN: usize = 20;
 const TIMEOUT: Duration = Duration::from_millis(300);
-
-#[allow(clippy::trivial_regex)]
-static WORDS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\w{2,}").unwrap());
 
 pub struct Worker {
     tx: mpsc::Sender<WorkerRequest>,
@@ -82,6 +80,14 @@ impl std::fmt::Debug for WorkerRequest {
                 .finish(),
         }
     }
+}
+
+#[inline]
+fn text_to_words(text: &str) -> HashSet<&str> {
+    HashSet::from_iter(text.split_ascii_whitespace().flat_map(|item| {
+        item.split_terminator(|c| !char_is_word(c))
+            .filter(|word| word.len() >= COMPLETION_TRIGGER_LEN)
+    }))
 }
 
 impl Worker {
@@ -210,7 +216,7 @@ impl WorkerState {
     }
 
     fn process_text(&mut self, doc_id: DocumentId, text: String) {
-        let new_words: HashSet<&str> = WORDS_REGEX.find_iter(&text).map(|w| w.as_str()).collect();
+        let new_words = text_to_words(&text);
 
         if !new_words.is_empty() {
             let new_words: HashSet<String> = new_words.into_iter().map(String::from).collect();
@@ -228,8 +234,7 @@ impl WorkerState {
     fn process_line_text(&mut self, doc_id: DocumentId, lines: Vec<(usize, Option<String>)>) {
         for (line, text) in lines {
             if let Some(text) = text {
-                let new_words: HashSet<&str> =
-                    WORDS_REGEX.find_iter(&text).map(|w| w.as_str()).collect();
+                let new_words = text_to_words(&text);
 
                 let doc_lines = self
                     .doc_lines_words
@@ -249,8 +254,16 @@ impl WorkerState {
         }
     }
 
-    fn completion(&mut self, prefix: String, tx: oneshot::Sender<Option<Vec<String>>>) {
+    fn completion<'a>(&'a mut self, prefix: String, tx: oneshot::Sender<Option<Vec<String>>>) {
         // TODO use some index to speedup filter?
+
+        let filter = |word: &'a String| -> Option<&'a str> {
+            if word != &prefix && word.starts_with(&prefix) {
+                Some(word.as_str())
+            } else {
+                None
+            }
+        };
 
         // find in affected lines
         let items_by_lines = self
@@ -258,14 +271,7 @@ impl WorkerState {
             .values()
             .flatten()
             .flat_map(|m| m.1)
-            .filter_map(|word| {
-                // skip exact already typed prefix/word and find words starts with prefix
-                if word != &prefix && word.starts_with(&prefix) {
-                    Some(word.as_str())
-                } else {
-                    None
-                }
-            })
+            .filter_map(filter)
             .take(MAX_COMPLETION_ITEMS_LEN)
             .collect::<HashSet<&str>>();
 
@@ -282,14 +288,7 @@ impl WorkerState {
                 .doc_words
                 .values()
                 .flatten()
-                .filter_map(|word| {
-                    // skip exact already typed prefix/word and find words starts with prefix
-                    if word != &prefix && word.starts_with(&prefix) {
-                        Some(word.as_str())
-                    } else {
-                        None
-                    }
-                })
+                .filter_map(filter)
                 .take(MAX_COMPLETION_ITEMS_LEN - items_by_lines.len())
                 .collect::<HashSet<&str>>();
 
@@ -348,5 +347,33 @@ mod test {
 
             true
         });
+    }
+
+    #[test]
+    fn to_words() {
+        assert_eq!(
+            text_to_words("Hello World!"),
+            HashSet::from_iter(["Hello", "World"])
+        );
+
+        assert_eq!(
+            text_to_words("crate::mod::func"),
+            HashSet::from_iter(["crate", "mod", "func"])
+        );
+
+        assert_eq!(
+            text_to_words("crate::mod::a"),
+            HashSet::from_iter(["crate", "mod"])
+        );
+
+        assert_eq!(
+            text_to_words("crate10::mod2mod::func3"),
+            HashSet::from_iter(["crate10", "mod2mod", "func3"])
+        );
+
+        assert_eq!(
+            text_to_words("1 22 333 4444"),
+            HashSet::from_iter(["22", "333", "4444"])
+        );
     }
 }
