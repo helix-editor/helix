@@ -7,6 +7,7 @@
 
 "attribute" = "green"
 "type" = "light_blue"
+"type.enum.variant" = "purple"
 "type.builtin" = "orange"
 "constructor" = "yellow"
 "constant" = "cyan"
