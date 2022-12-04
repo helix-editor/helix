@@ -263,22 +263,22 @@ use default settings for all gutter components.
 
 ```toml
 [editor]
-gutters = ["diagnostics", "line-numbers"]
+gutters = ["diff", "diagnostics", "line-numbers", "spacer"]
 ```
 
 To customize the behavior of gutters, the `[editor.gutters]` section must
 be used. This section contains top level settings, as well as settings for
 specific gutter components as sub-sections.
 
-| Key           | Description                    | Default                                     |
-| ---           | ---                            | ---                                         |
-| `layout`      | A vector of gutters to display | `["diagnostics", "spacer", "line-numbers"]` |
+| Key      | Description                    | Default                                                       |
+| ---      | ---                            | ---                                                           |
+| `layout` | A vector of gutters to display | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
 
 Example:
 
 ```toml
 [editor.gutters]
-layout = ["diagnostics", "line-numbers"]
+layout = ["diff", "diagnostics", "line-numbers", "spacer"]
 ```
 
 #### `[editor.gutters.line-numbers]` Section
@@ -297,6 +297,10 @@ width = 1
 ```
 
 #### `[editor.gutters.diagnotics]` Section
+
+Currently unused
+
+#### `[editor.gutters.diff]` Section
 
 Currently unused
 
