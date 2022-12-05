@@ -80,10 +80,11 @@
 "ui.window" = { fg = "dark", bg = "darkest" }
 "ui.help" = { fg = "light", bg = "darkest" }
 "ui.text" = "light" # .focus / .info
+"ui.text.focus" = { fg = "lightest", bg = "focus" }
 "ui.virtual" = "dark" # .whitespace
 "ui.virtual.ruler" = { bg = "darker"}
 "ui.menu" = { fg = "light", bg = "darkest" } # .selected
-"ui.menu.selected" = { fg = "lightest", bg = "blue_accent" } # .selected
+"ui.menu.selected" = { fg = "lightest", bg = "focus" } # .selected
 "ui.selection" = { bg = "darker" } # .primary
 "ui.selection.primary" = { bg = "selection" }
 "hint" = "blue"
@@ -127,3 +128,4 @@ red_accent = "#F44747"
 red_error = "#EB5F6A"
 selection = "#1F3661"
 diff_plus = "#5A9F81"
+focus = "#204474"
