@@ -12,6 +12,7 @@
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
+| common-lisp | ✓ |  |  | `cl-lsp` |
 | cpon | ✓ |  | ✓ |  |
 | cpp | ✓ | ✓ | ✓ | `clangd` |
 | css | ✓ |  |  | `vscode-css-language-server` |
