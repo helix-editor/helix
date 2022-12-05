@@ -878,12 +878,23 @@ source = { git = "https://github.com/ganezdragon/tree-sitter-perl", rev = "0ac2c
 
 [[language]]
 name = "racket"
-scope = "source.rkt"
+scope = "source.racket"
 roots = []
-file-types = ["rkt"]
+file-types = ["rkt", "rktd", "rktl", "scrbl"]
 shebangs = ["racket"]
 comment-token = ";"
 language-server = { command = "racket", args = ["-l", "racket-langserver"] }
+grammar = "scheme"
+
+[[language]]
+name = "common-lisp"
+scope = "source.lisp"
+roots = []
+file-types = ["lisp", "asd", "cl", "l", "lsp", "ny"," podsl", "sexp"]
+shebangs = ["lisp", "sbcl", "ccl", "clisp", "ecl"]
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "cl-lsp", args = [ "stdio" ] }
 grammar = "scheme"
 
 [[language]]
