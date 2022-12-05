@@ -17,7 +17,7 @@
 "ui.menu" = {fg="black", bg="acme_bg"}
 "ui.menu.selected" = {bg="selected"}
 "ui.window" = {bg="acme_bg"}
-"diagnostic.error" = {bg="white", modifiers=["bold"]}
+"diagnostic.error" = {bg="acme_bar_bg", modifiers=["bold"]}
 "diagnostic.warning" = {bg="white", modifiers=["bold"]}
 "diagnostic.hint" = {bg="white", modifiers=["bold"]}
 "ui.bufferline" = { fg = "indent", bg = "acme_bar_bg" }
