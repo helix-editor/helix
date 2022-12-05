@@ -47,7 +47,7 @@ impl Client {
         cmd: &str,
         args: &[String],
         config: Option<Value>,
-        server_environment: impl IntoIterator<Item = (String, String)> + Clone,
+        server_environment: HashMap<String, String>,
         root_markers: &[String],
         id: usize,
         req_timeout: u64,
