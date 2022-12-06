@@ -195,4 +195,85 @@ impl FileHunks<'_> {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+
+    pub fn next_hunk(&self, line: u32) -> Option<u32> {
+        let hunk_range = if self.inverted {
+            |hunk: &Hunk| hunk.before.clone()
+        } else {
+            |hunk: &Hunk| hunk.after.clone()
+        };
+
+        let res = self
+            .hunks
+            .binary_search_by_key(&line, |hunk| hunk_range(hunk).start);
+
+        match res {
+            // Search found a hunk that starts exactly at this line, return the next hunk if it exists.
+            Ok(pos) if pos + 1 == self.hunks.len() => None,
+            Ok(pos) => Some(pos as u32 + 1),
+
+            // No hunk starts exactly at this line, so the search returns
+            // the position where a hunk starting at this line should be inserted.
+            // That position is exactly the position of the next hunk or the end
+            // of the list if no such hunk exists
+            Err(pos) if pos == self.hunks.len() => None,
+            Err(pos) => Some(pos as u32),
+        }
+    }
+
+    pub fn prev_hunk(&self, line: u32) -> Option<u32> {
+        let hunk_range = if self.inverted {
+            |hunk: &Hunk| hunk.before.clone()
+        } else {
+            |hunk: &Hunk| hunk.after.clone()
+        };
+        let res = self
+            .hunks
+            .binary_search_by_key(&line, |hunk| hunk_range(hunk).end);
+
+        match res {
+            // Search found a hunk that ends exactly at this line (so it does not include the current line).
+            // We can usually just return that hunk, however a special case for empty hunk is necessary
+            // which represents a pure removal.
+            // Removals are technically empty but are still shown as single line hunks
+            // and as such we must jump to the previous hunk (if it exists) if we are already inside the removal
+            Ok(pos) if !hunk_range(&self.hunks[pos]).is_empty() => Some(pos as u32),
+
+            // No hunk ends exactly at this line, so the search returns
+            // the position where a hunk ending at this line should be inserted.
+            // That position before this one is exactly the position of the previous hunk
+            Err(0) | Ok(0) => None,
+            Err(pos) | Ok(pos) => Some(pos as u32 - 1),
+        }
+    }
+
+    pub fn hunk_at(&self, line: u32, include_removal: bool) -> Option<u32> {
+        let hunk_range = if self.inverted {
+            |hunk: &Hunk| hunk.before.clone()
+        } else {
+            |hunk: &Hunk| hunk.after.clone()
+        };
+
+        let res = self
+            .hunks
+            .binary_search_by_key(&line, |hunk| hunk_range(hunk).start);
+
+        match res {
+            // Search found a hunk that starts exactly at this line, return it
+            Ok(pos) => Some(pos as u32),
+
+            // No hunk starts exactly at this line, so the search returns
+            // the position where a hunk starting at this line should be inserted.
+            // The previous hunk contains this hunk if it exists and doesn't end before this line
+            Err(0) => None,
+            Err(pos) => {
+                let hunk = hunk_range(&self.hunks[pos - 1]);
+                if hunk.end > line || include_removal && hunk.start == line && hunk.is_empty() {
+                    Some(pos as u32 - 1)
+                } else {
+                    None
+                }
+            }
+        }
+    }
 }
