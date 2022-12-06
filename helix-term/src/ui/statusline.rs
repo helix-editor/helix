@@ -9,6 +9,7 @@ use helix_view::{
 
 use crate::ui::ProgressSpinners;
 
+use helix_view::editor::ModeSeparator;
 use helix_view::editor::StatusLineElement as StatusLineElementID;
 use tui::buffer::Buffer as Surface;
 use tui::text::{Span, Spans};
@@ -164,6 +165,15 @@ where
     let visible = context.focused;
     let config = context.editor.config();
     let modenames = &config.statusline.mode;
+    let mode_style = if visible && config.color_modes {
+        match context.editor.mode() {
+            Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
+            Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
+            Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
+        }
+    } else {
+        None
+    };
     write(
         context,
         format!(
@@ -179,16 +189,31 @@ where
                 "   "
             }
         ),
-        if visible && config.color_modes {
-            match context.editor.mode() {
-                Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
-                Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
-                Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
-            }
-        } else {
-            None
-        },
+        mode_style,
     );
+
+    match config.statusline.mode_separator {
+        ModeSeparator::Flat => {}
+        _ => {
+            // invert the mode style background and foreground
+            let mode_separator_style = mode_style.map(|s| {
+                let mut c = s.clone();
+                c.fg = s.bg;
+                c.bg = s.fg;
+                return c;
+            });
+
+            let mode_separator_string = match config.statusline.mode_separator {
+                ModeSeparator::Angled => "",
+                ModeSeparator::Slanted => "",
+                ModeSeparator::Rounded => "",
+                ModeSeparator::Flat => unreachable!(),
+            }
+            .to_string();
+
+            write(context, mode_separator_string, mode_separator_style);
+        }
+    };
 }
 
 fn render_lsp_spinner<F>(context: &mut RenderContext, write: F)

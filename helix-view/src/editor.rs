@@ -271,6 +271,16 @@ pub struct StatusLineConfig {
     pub right: Vec<StatusLineElement>,
     pub separator: String,
     pub mode: ModeConfig,
+    pub mode_separator: ModeSeparator,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ModeSeparator {
+    Flat,
+    Angled,
+    Rounded,
+    Slanted,
 }
 
 impl Default for StatusLineConfig {
@@ -283,6 +293,7 @@ impl Default for StatusLineConfig {
             right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
             separator: String::from("│"),
             mode: ModeConfig::default(),
+            mode_separator: ModeSeparator::Flat,
         }
     }
 }
