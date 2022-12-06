@@ -272,6 +272,8 @@ fn diag_picker(
         }
     }
 
+    flat_diag.sort_by(severity_ordering);
+
     let styles = DiagnosticStyles {
         hint: cx.editor.theme.get("hint"),
         info: cx.editor.theme.get("info"),
@@ -306,6 +308,14 @@ fn diag_picker(
         },
     )
     .truncate_start(false)
+}
+
+fn severity_ordering(a: &PickerDiagnostic, b: &PickerDiagnostic) -> std::cmp::Ordering {
+    let severity_hint = lsp::DiagnosticSeverity::HINT;
+    a.diag
+        .severity
+        .unwrap_or(severity_hint)
+        .cmp(&b.diag.severity.unwrap_or(severity_hint))
 }
 
 pub fn symbol_picker(cx: &mut Context) {
