@@ -18,7 +18,7 @@
 "ui.menu.selected" = {bg="selected"}
 "ui.window" = {bg="acme_bg"}
 "diagnostic.error" = {bg="red", fg="white", modifiers=["bold"]}
-"diagnostic.warning" = {bg="yellow", fg="black", modifiers=["bold"]}
+"diagnostic.warning" = {bg="orange", fg="black", modifiers=["bold"]}
 "diagnostic.hint" = {fg="gray", modifiers=["bold"]}
 "ui.bufferline" = { fg = "indent", bg = "acme_bar_bg" }
 "ui.bufferline.active" = { fg = "black", bg = "acme_bg" }
@@ -37,5 +37,5 @@ cursor = "#444444"
 red = "#a0342f"
 green = "#065905"
 indent = "#aaaaaa"
-yellow = "#ffef4a"
+orange = "#f0ad4e"
 gray = "#777777"
