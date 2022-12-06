@@ -279,7 +279,7 @@ pub struct StatusLineConfig {
 pub enum ModeSeparator {
     Flat,
     Angled,
-    Rounded,
+    Round,
     Slanted,
 }
 

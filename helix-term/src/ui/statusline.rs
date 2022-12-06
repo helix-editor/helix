@@ -200,18 +200,17 @@ where
                 let mut c = s.clone();
                 c.fg = s.bg;
                 c.bg = s.fg;
-                return c;
+                c
             });
 
-            let mode_separator_string = match config.statusline.mode_separator {
+            let mode_separator = match config.statusline.mode_separator {
                 ModeSeparator::Angled => "",
                 ModeSeparator::Slanted => "",
-                ModeSeparator::Rounded => "",
+                ModeSeparator::Round => "",
                 ModeSeparator::Flat => unreachable!(),
-            }
-            .to_string();
+            };
 
-            write(context, mode_separator_string, mode_separator_style);
+            write(context, mode_separator.to_string(), mode_separator_style);
         }
     };
 }
