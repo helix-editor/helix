@@ -606,9 +606,10 @@ impl Default for Config {
             gutters: vec![
                 GutterType::Diagnostics,
                 GutterType::Spacer,
+                GutterType::Diff,
+                GutterType::Spacer,
                 GutterType::LineNumbers,
                 GutterType::Spacer,
-                GutterType::Diff,
             ],
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
