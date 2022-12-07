@@ -13,7 +13,7 @@ use helix_core::{
     },
     movement::Direction,
     syntax::{self, HighlightEvent},
-    unicode::width::UnicodeWidthStr,
+    unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr},
     visual_coords_at_pos, LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
@@ -1173,6 +1173,49 @@ impl EditorView {
                     if line < doc.text().len_lines() {
                         commands::dap_toggle_breakpoint_impl(cxt, path, line);
                         return EventResult::Consumed(None);
+                    }
+                }
+
+                if row == 0 {
+                    use helix_view::editor::BufferLine;
+                    let use_bufferline = match config.bufferline {
+                        BufferLine::Always => true,
+                        BufferLine::Multiple if cxt.editor.documents.len() > 1 => true,
+                        _ => false,
+                    };
+
+                    if use_bufferline {
+                        let mut column_counter = 0;
+                        let mut id = None;
+
+                        for doc in cxt.editor.documents() {
+                            let fname = doc
+                                .path()
+                                .map(|path| {
+                                    path.file_name()
+                                        .unwrap_or_default()
+                                        .to_str()
+                                        .unwrap_or_default()
+                                })
+                                .unwrap_or(SCRATCH_BUFFER_NAME);
+
+                            let is_modified = if doc.is_modified() { "[+]" } else { "" };
+                            let fname = format!(" {fname}{is_modified} ");
+
+                            for s in fname.graphemes(true) {
+                                column_counter += s.width();
+                            }
+
+                            if column_counter > column as usize {
+                                id = Some(doc.id());
+                                break;
+                            }
+                        }
+
+                        if let Some(id) = id {
+                            cxt.editor.switch(id, helix_view::editor::Action::Replace);
+                            return EventResult::Consumed(None);
+                        }
                     }
                 }
 
