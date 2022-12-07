@@ -50,6 +50,12 @@ fn get_rules() -> Vec<Require> {
         // Check for visible cursor
         Require::Existence(Rule::has_bg("ui.cursor.primary")),
         Require::Existence(Rule::has_either("ui.cursor.match")),
+        // Check for git gutter
+        Require::Existence(Rule::has_fg("diff.plus")),
+        Require::Existence(Rule::has_fg("diff.minus")),
+        Require::Existence(Rule::has_fg("diff.delta")),
+        Require::Difference("diff.plus", "diff.minus"),
+        Require::Difference("diff.plus", "diff.delta"),
     ]
 }
 
@@ -157,7 +163,8 @@ pub fn lint(file: String) -> Result<(), DynError> {
     }
     let path = path::themes().join(file.clone() + ".toml");
     let theme = std::fs::read(&path).unwrap();
-    let theme: Theme = toml::from_slice(&theme).expect("Failed to parse theme");
+    let theme: Theme =
+        toml::from_slice(&theme).expect(format!("Failed to parse: {}", file).as_str());
 
     let mut messages: Vec<String> = vec![];
     get_rules().iter().for_each(|lint| match lint {
