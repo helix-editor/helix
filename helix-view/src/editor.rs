@@ -72,20 +72,11 @@ where
     )
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 struct LayoutMap {
     from: String,
     into: String,
-}
-
-impl Default for LayoutMap {
-    fn default() -> Self {
-        LayoutMap {
-            from: String::new(),
-            into: String::new(),
-        }
-    }
 }
 
 fn deserialize_layout_remap<'de, D>(deserializer: D) -> Result<HashMap<char, char>, D::Error>
@@ -96,8 +87,7 @@ where
     // cases where `from == to` which we don't need to translate.
     let mut pairs = Vec::<LayoutMap>::deserialize(deserializer)?
         .iter()
-        .map(|layout_map| layout_map.from.chars().zip(layout_map.into.chars()))
-        .flatten()
+        .flat_map(|layout_map| layout_map.from.chars().zip(layout_map.into.chars()))
         .filter(|(from, to)| from != to)
         .collect::<HashMap<char, char>>();
     pairs
