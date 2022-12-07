@@ -798,7 +798,7 @@ impl<T: Item + Send + 'static> Component for DynamicPicker<T> {
         cx.jobs.callback(async move {
             let new_options = new_options.await?;
             let callback =
-                crate::job::Callback::EditorCompositor(Box::new(move |_editor, compositor| {
+                crate::job::Callback::EditorCompositor(Box::new(move |editor, compositor| {
                     // Wrapping of pickers in overlay is done outside the picker code,
                     // so this is fragile and will break if wrapped in some other widget.
                     let picker = match compositor.find_id::<Overlay<DynamicPicker<T>>>(Self::ID) {
@@ -808,6 +808,7 @@ impl<T: Item + Send + 'static> Component for DynamicPicker<T> {
                     picker.options = new_options;
                     picker.cursor = 0;
                     picker.force_score();
+                    editor.reset_idle_timer();
                 }));
             anyhow::Ok(callback)
         });
