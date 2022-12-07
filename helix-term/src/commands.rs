@@ -3049,6 +3049,11 @@ pub mod insert {
     }
 
     fn language_server_completion(cx: &mut Context, ch: char) {
+        let config = cx.editor.config();
+        if !config.auto_completion {
+            return;
+        }
+
         use helix_lsp::lsp;
         // if ch matches completion char, trigger completion
         let doc = doc_mut!(cx.editor);
