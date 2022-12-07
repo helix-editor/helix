@@ -85,7 +85,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Run cargo fmt
-        run: cargo fmt --all -- --check
+        run: cargo fmt --all --check
 
       - name: Run cargo clippy
         run: cargo clippy --workspace --all-targets -- -D warnings

@@ -22,6 +22,9 @@
 "diagnostic.hint" = {bg="white", modifiers=["bold"]}
 "ui.bufferline" = { fg = "indent", bg = "acme_bar_bg" }
 "ui.bufferline.active" = { fg = "black", bg = "acme_bg" }
+"diff.plus" = {fg = "green"}
+"diff.delta" = {fg = "acme_bar_bg"}
+"diff.minus" = {fg = "red"}
 
 [palette]
 white = "#ffffff"

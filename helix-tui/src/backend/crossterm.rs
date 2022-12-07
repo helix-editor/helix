@@ -14,6 +14,10 @@ use std::{
     fmt,
     io::{self, Write},
 };
+
+fn term_program() -> Option<String> {
+    std::env::var("TERM_PROGRAM").ok()
+}
 fn vte_version() -> Option<usize> {
     std::env::var("VTE_VERSION").ok()?.parse().ok()
 }
@@ -35,9 +39,11 @@ impl Capabilities {
             Ok(t) => Capabilities {
                 // Smulx, VTE: https://unix.stackexchange.com/a/696253/246284
                 // Su (used by kitty): https://sw.kovidgoyal.net/kitty/underlines
+                // WezTerm supports underlines but a lot of distros don't properly install it's terminfo
                 has_extended_underlines: t.extended_cap("Smulx").is_some()
                     || t.extended_cap("Su").is_some()
-                    || vte_version() >= Some(5102),
+                    || vte_version() >= Some(5102)
+                    || matches!(term_program().as_deref(), Some("WezTerm")),
             },
         }
     }

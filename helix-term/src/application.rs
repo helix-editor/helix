@@ -772,7 +772,8 @@ impl Application {
                                         severity,
                                         code,
                                         tags,
-                                        source: diagnostic.source.clone()
+                                        source: diagnostic.source.clone(),
+                                        data: diagnostic.data.clone(),
                                     })
                                 })
                                 .collect();

@@ -100,22 +100,26 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "[" => { "Left bracket"
             "d" => goto_prev_diag,
             "D" => goto_first_diag,
+            "g" => goto_prev_change,
+            "G" => goto_first_change,
             "f" => goto_prev_function,
-            "c" => goto_prev_class,
+            "t" => goto_prev_class,
             "a" => goto_prev_parameter,
-            "o" => goto_prev_comment,
-            "t" => goto_prev_test,
+            "c" => goto_prev_comment,
+            "T" => goto_prev_test,
             "p" => goto_prev_paragraph,
             "space" => add_newline_above,
         },
         "]" => { "Right bracket"
             "d" => goto_next_diag,
             "D" => goto_last_diag,
+            "g" => goto_next_change,
+            "G" => goto_last_change,
             "f" => goto_next_function,
-            "c" => goto_next_class,
+            "t" => goto_next_class,
             "a" => goto_next_parameter,
-            "o" => goto_next_comment,
-            "t" => goto_next_test,
+            "c" => goto_next_comment,
+            "T" => goto_next_test,
             "p" => goto_next_paragraph,
             "space" => add_newline_below,
         },
@@ -198,7 +202,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         // z family for save/restore/combine from/to sels from register
 
-        "tab" => jump_forward, // tab == <C-i>
+        "C-i" | "tab" => jump_forward, // tab == <C-i>
         "C-o" => jump_backward,
         "C-s" => save_selection,
 

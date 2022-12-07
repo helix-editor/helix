@@ -1,6 +1,10 @@
 ; Function calls
 
 (call_expression
+  function: (identifier) @function.builtin
+  (match? @function.builtin "^(append|cap|close|complex|copy|delete|imag|len|make|new|panic|print|println|real|recover)$"))
+
+(call_expression
   function: (identifier) @function)
 
 (call_expression
@@ -23,6 +27,9 @@
 
 (parameter_declaration (identifier) @variable.parameter)
 (variadic_parameter_declaration (identifier) @variable.parameter)
+
+((type_identifier) @type.builtin
+  (match? @type.builtin "^(any|bool|byte|comparable|complex128|complex64|error|float32|float64|int|int16|int32|int64|int8|rune|string|uint|uint16|uint32|uint64|uint8|uintptr)$"))
 
 (type_identifier) @type
 (field_identifier) @variable.other.member
