@@ -1,8 +1,13 @@
-# Author: Kristoffer Flottorp <kr.fl@outlook.com>
-# A take on the JetBrains Fleet theme sprinkled with some creative freedom
+# Fleet Dark
+# A take on the JetBrains Fleet theme. Feel free to contribute
 
+# Original author: @krfl
+# Contributors:
+# @matoous
+
+"attribute" = "green"
 "type" = "light_blue"
-"type.builtin" = "orange"
+"type.enum.variant" = "purple"
 "constructor" = "yellow"
 "constant" = "cyan"
 # "constant.builtin" = {} # .boolean
@@ -16,55 +21,55 @@
 "comment" = "light_gray" # .line
 # "comment.block" = {} # .documentation
 "variable" = "light" # .builtin
+"variable.builtin" = { fg = "red", modifiers = ["underlined"] }
 "variable.parameter" = "light"
 # "variable.other" = {} # .member
-"variable.other.member" = "yellow"
+"variable.other.member" = "purple"
 "label" = "yellow"
 "punctuation" = "light" # .delimiter / .bracket
 "keyword" = "cyan" # .operator / .directive / .function
-"keyword.control" = "yellow" # .conditional / .repeat / .import / .return / .exception
+# "keyword.control" = "cyan" # .conditional / .repeat / .import / .return / .exception
+"keyword.control.exception" = "purple"
 "operator" = "light"
 "function" = "yellow"
 "function.macro" = "green"
 "function.builtin" = "green"
 "function.special" = "green"
 "function.method" = "light"
-"tag" = "green"
+#"function.declaration.method" = { fg = "lightest", modifiers = ["bold"] } #depends on #4892
+"tag" = "light_blue"
 "special" = "green"
 "namespace" = "light"
 
 # used in theming
+# "markup" = {} # .normal / .quote / .raw
 # "markup.normal" = {} # .completion / .hover
-# "markup.raw.inline" = {} # .completion / .hover
-"markup" = "purple" # .quote
-"markup.bold" = { fg = "purple", modifiers = ["bold"] }
-"markup.italic" = { fg = "purple", modifiers = ["italic"] }
-"markup.heading" = "light" # .marker
-"markup.heading.1" = "yellow"
-"markup.heading.2" = "green"
-"markup.heading.3" = "pink"
-"markup.heading.4" = "purple"
-"markup.heading.5" = "cyan"
-"markup.heading.6" = "light_blue"
-"markup.list" = "cyan" # .unnumbered / .numbered
-"markup.link" = "green"
-"markup.link.url" = "pink"
+"markup.bold" = { fg = "lightest", modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.heading" = { fg = "cyan", modifiers = ["bold"] } # .marker / .1 / .2 / .3 / .4 / .5 / .6
+"markup.list" = "pink" # .unnumbered / .numbered
+"markup.list.numbered" = "cyan"
+"markup.list.unnumbered" = "cyan"
+# "markup.link" = "green"
+"markup.link.url" = { fg = "pink", modifiers = ['italic', 'underlined'] }
 "markup.link.text" = "cyan"
-"markup.link.label" = "yellow"
-"markup.raw" = "pink" # .inline
-"markup.raw.block" = "orange"
+"markup.link.label" = "purple"
+"markup.quote" = "pink"
+"markup.raw" = "pink"
+"markup.raw.inline" = "cyan" # .completion / .hover
+"markup.raw.block" = "pink"
 
-"diff.plus" = "cyan"
-"diff.minus" = "yellow"
-"diff.delta" = "purple"
+"diff.plus" = "diff_plus"
+"diff.minus" = "red_accent"
+"diff.delta" = "blue_accent"
 
 # ui specific
-"ui.background" = { bg = "#0d0d0d" } # .separator
+"ui.background" = { bg = "background" } # .separator
 "ui.cursor" = { bg = "dark_gray", modifiers = ["reversed"] } # .insert / .select / .match / .primary
-"ui.cursor.match" = { fg = "light", bg = "blue_accent" } # .insert / .select / .match / .primary
+"ui.cursor.match" = { fg = "light", bg = "selection" } # .insert / .select / .match / .primary
 "ui.cursorline" = { bg = "darker" }
 "ui.linenr" = "dark_gray"
-"ui.linenr.selected" = { fg = "light_gray", bg = "darker" }
+"ui.linenr.selected" = { fg = "light", bg = "darker" }
 "ui.statusline" = { fg = "light", bg = "darker" } # .inactive / .normal / .insert / .select
 "ui.statusline.inactive" = { fg = "dark", bg = "darker" }
 "ui.statusline.normal" = { fg = "lightest", bg = "darker"}
@@ -74,27 +79,28 @@
 "ui.window" = { fg = "dark", bg = "darkest" }
 "ui.help" = { fg = "light", bg = "darkest" }
 "ui.text" = "light" # .focus / .info
+"ui.text.focus" = { fg = "lightest", bg = "focus" }
 "ui.virtual" = "dark" # .whitespace
 "ui.virtual.ruler" = { bg = "darker"}
-"ui.menu" = { fg = "light", bg = "darker" } # .selected
-"ui.menu.selected" = { fg = "lightest", bg = "blue_accent" } # .selected
+"ui.menu" = { fg = "light", bg = "darkest" } # .selected
+"ui.menu.selected" = { fg = "lightest", bg = "focus" } # .selected
 "ui.selection" = { bg = "darker" } # .primary
-"ui.selection.primary" = { bg = "select" } # .primary
+"ui.selection.primary" = { bg = "selection" }
 "hint" = "blue"
 "info" = "yellow_accent"
 "warning" = "orange_accent"
-"error" = "red"
+"error" = "red_error"
 "diagnostic" = { modifiers = [] }
-"diagnostic.hint" = { underline = { color = "light", style = "curl" } }
-"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
-"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
-"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "light", style = "line" } }
+"diagnostic.info" = { underline = { color = "blue_accent", style = "line" } }
+"diagnostic.warning" = { underline = { color = "yellow_accent", style = "line" } }
+"diagnostic.error" = { underline = { color = "red_error", style = "line" } }
 
 [palette]
+background = "#181818"
 darkest = "#1e1e1e"
-darker = "#262626"
+darker = "#292929"
 dark = "#898989"
-select = "#102f5b"
 
 light = "#d6d6dd"
 lightest = "#ffffff"
@@ -109,13 +115,16 @@ green = "#afcb85"
 cyan = "#78d0bd"
 orange = "#efb080"
 yellow = "#e5c995"
-red = "#f44747"
+red = "#CC7C8A"
 
 blue_accent = "#2197F3"
 pink_accent = "#E44C7A"
 green_accent = "#00AF99"
 orange_accent = "#EE7F25"
 yellow_accent = "#DEA407"
+red_accent = "#F44747"
 
-# variables intended for future updates
-checkmark = "#44B254"
+red_error = "#EB5F6A"
+selection = "#1F3661"
+diff_plus = "#5A9F81"
+focus = "#204474"
