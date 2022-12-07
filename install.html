@@ -77,7 +77,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html" class="active"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">4.3.</strong> Hooks</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.4.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li><li class="chapter-item expanded "><a href="guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding Indent Queries</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html" class="active"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.3.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li><li class="chapter-item expanded "><a href="guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding Indent Queries</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -167,26 +167,69 @@ sudo dnf install helix
 <h3 id="void-linux"><a class="header" href="#void-linux">Void Linux</a></h3>
 <pre><code>sudo xbps-install helix
 </code></pre>
+<h2 id="windows"><a class="header" href="#windows">Windows</a></h2>
+<p>Helix can be installed using <a href="https://scoop.sh/">Scoop</a>, <a href="https://chocolatey.org/">Chocolatey</a>
+or <a href="https://msys2.org/">MSYS2</a>.</p>
+<p><strong>Scoop:</strong></p>
+<pre><code>scoop install helix
+</code></pre>
+<p><strong>Chocolatey:</strong></p>
+<pre><code>choco install helix
+</code></pre>
+<p><strong>MSYS2:</strong></p>
+<pre><code>pacman -S mingw-w64-i686-helix
+</code></pre>
+<p>or</p>
+<pre><code>pacman -S mingw-w64-x86_64-helix
+</code></pre>
+<p>or</p>
+<pre><code>pacman -S mingw-w64-ucrt-x86_64-helix
+</code></pre>
 <h2 id="build-from-source"><a class="header" href="#build-from-source">Build from source</a></h2>
 <pre><code>git clone https://github.com/helix-editor/helix
 cd helix
 cargo install --path helix-term
 </code></pre>
-<p>This will install the <code>hx</code> binary to <code>$HOME/.cargo/bin</code>.</p>
-<p>Helix also needs it's runtime files so make sure to copy/symlink the <code>runtime/</code> directory into the
+<p>This will install the <code>hx</code> binary to <code>$HOME/.cargo/bin</code> and build tree-sitter grammars in <code>./runtime/grammars</code>.</p>
+<p>Helix also needs its runtime files so make sure to copy/symlink the <code>runtime/</code> directory into the
 config directory (for example <code>~/.config/helix/runtime</code> on Linux/macOS). This location can be overridden
 via the <code>HELIX_RUNTIME</code> environment variable.</p>
-<div class="table-wrapper"><table><thead><tr><th>OS</th><th>command</th></tr></thead><tbody>
-<tr><td>windows(cmd.exe)</td><td><code>xcopy /e runtime %AppData%/helix/runtime</code></td></tr>
-<tr><td>windows(powershell)</td><td><code>xcopy /e runtime $Env:AppData\helix\runtime</code></td></tr>
-<tr><td>linux/macos</td><td><code>ln -s $PWD/runtime ~/.config/helix/runtime</code></td></tr>
+<div class="table-wrapper"><table><thead><tr><th>OS</th><th>Command</th></tr></thead><tbody>
+<tr><td>Windows (Cmd)</td><td><code>xcopy /e /i runtime %AppData%\helix\runtime</code></td></tr>
+<tr><td>Windows (PowerShell)</td><td><code>xcopy /e /i runtime $Env:AppData\helix\runtime</code></td></tr>
+<tr><td>Linux / macOS</td><td><code>ln -s $PWD/runtime ~/.config/helix/runtime</code></td></tr>
 </tbody></table>
 </div>
+<p>Starting with Windows Vista you can also create symbolic links on Windows. Note that this requires
+elevated privileges - i.e. PowerShell or Cmd must be run as administrator.</p>
+<p><strong>PowerShell:</strong></p>
+<pre><code class="language-powershell">New-Item -ItemType SymbolicLink -Target &quot;runtime&quot; -Path &quot;$Env:AppData\helix\runtime&quot;
+</code></pre>
+<p><strong>Cmd:</strong></p>
+<pre><code class="language-cmd">cd %appdata%\helix
+mklink /D runtime &quot;&lt;helix-repo&gt;\runtime&quot;
+</code></pre>
+<p>The runtime location can be overridden via the <code>HELIX_RUNTIME</code> environment variable.</p>
+<blockquote>
+<p>NOTE: if <code>HELIX_RUNTIME</code> is set prior to calling <code>cargo install --path helix-term</code>,
+tree-sitter grammars will be built in <code>$HELIX_RUNTIME/grammars</code>.</p>
+</blockquote>
+<p>If you plan on keeping the repo locally, an alternative to copying/symlinking
+runtime files is to set <code>HELIX_RUNTIME=/path/to/helix/runtime</code>
+(<code>HELIX_RUNTIME=$PWD/runtime</code> if you're in the helix repo directory).</p>
+<p>To use Helix in desktop environments that supports <a href="https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html">XDG desktop menu</a>, including Gnome and KDE, copy the provided <code>.desktop</code> file to the correct folder:</p>
+<pre><code class="language-bash">cp contrib/Helix.desktop ~/.local/share/applications
+</code></pre>
+<p>To use another terminal than the default, you will need to modify the <code>.desktop</code> file. For example, to use <code>kitty</code>:</p>
+<pre><code class="language-bash">sed -i &quot;s|Exec=hx %F|Exec=kitty hx %F|g&quot; ~/.local/share/applications/Helix.desktop
+sed -i &quot;s|Terminal=true|Terminal=false|g&quot; ~/.local/share/applications/Helix.desktop
+</code></pre>
+<p>Please note: there is no icon for Helix yet, so the system default will be used.</p>
 <h2 id="finishing-up-the-installation"><a class="header" href="#finishing-up-the-installation">Finishing up the installation</a></h2>
-<p>To make sure everything is set up as expected you should finally run the helix healthcheck via </p>
+<p>To make sure everything is set up as expected you should finally run the helix healthcheck via</p>
 <pre><code>hx --health
 </code></pre>
-<p>For more information on the information displayed in the healthcheck results refer to <a href="https://github.com/helix-editor/helix/wiki/Healthcheck">Healthcheck</a>.</p>
+<p>For more information on the information displayed in the health check results refer to <a href="https://github.com/helix-editor/helix/wiki/Healthcheck">Healthcheck</a>.</p>
 <h3 id="building-tree-sitter-grammars"><a class="header" href="#building-tree-sitter-grammars">Building tree-sitter grammars</a></h3>
 <p>Tree-sitter grammars must be fetched and compiled if not pre-packaged.
 Fetch grammars with <code>hx --grammar fetch</code> (requires <code>git</code>) and compile them

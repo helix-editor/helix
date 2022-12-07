@@ -77,7 +77,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html" class="active"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">4.3.</strong> Hooks</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.4.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li><li class="chapter-item expanded "><a href="guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding Indent Queries</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html" class="active"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.3.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li><li class="chapter-item expanded "><a href="guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding Indent Queries</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -145,44 +145,51 @@ appropriate Language Server.</p>
 <p>Also see the <a href="./languages.html">Language Configuration</a> docs and the <a href="./guides/adding_languages.html">Adding
 Languages</a> guide for more language configuration information.</p>
 <div class="table-wrapper"><table><thead><tr><th>Language</th><th>Syntax Highlighting</th><th>Treesitter Textobjects</th><th>Auto Indent</th><th>Default LSP</th></tr></thead><tbody>
+<tr><td>astro</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>awk</td><td>✓</td><td>✓</td><td></td><td><code>awk-language-server</code></td></tr>
 <tr><td>bash</td><td>✓</td><td></td><td></td><td><code>bash-language-server</code></td></tr>
+<tr><td>bass</td><td>✓</td><td></td><td></td><td><code>bass</code></td></tr>
 <tr><td>beancount</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>bicep</td><td>✓</td><td></td><td></td><td><code>bicep-langserver</code></td></tr>
 <tr><td>c</td><td>✓</td><td>✓</td><td>✓</td><td><code>clangd</code></td></tr>
 <tr><td>c-sharp</td><td>✓</td><td>✓</td><td></td><td><code>OmniSharp</code></td></tr>
 <tr><td>cairo</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>clojure</td><td>✓</td><td></td><td></td><td><code>clojure-lsp</code></td></tr>
 <tr><td>cmake</td><td>✓</td><td>✓</td><td>✓</td><td><code>cmake-language-server</code></td></tr>
 <tr><td>comment</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>common-lisp</td><td>✓</td><td></td><td></td><td><code>cl-lsp</code></td></tr>
 <tr><td>cpon</td><td>✓</td><td></td><td>✓</td><td></td></tr>
 <tr><td>cpp</td><td>✓</td><td>✓</td><td>✓</td><td><code>clangd</code></td></tr>
 <tr><td>css</td><td>✓</td><td></td><td></td><td><code>vscode-css-language-server</code></td></tr>
 <tr><td>cue</td><td>✓</td><td></td><td></td><td><code>cuelsp</code></td></tr>
+<tr><td>d</td><td>✓</td><td>✓</td><td>✓</td><td><code>serve-d</code></td></tr>
 <tr><td>dart</td><td>✓</td><td></td><td>✓</td><td><code>dart</code></td></tr>
 <tr><td>devicetree</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>diff</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>dockerfile</td><td>✓</td><td></td><td></td><td><code>docker-langserver</code></td></tr>
 <tr><td>dot</td><td>✓</td><td></td><td></td><td><code>dot-language-server</code></td></tr>
 <tr><td>edoc</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>eex</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>ejs</td><td>✓</td><td></td><td></td><td></td></tr>
-<tr><td>elixir</td><td>✓</td><td>✓</td><td></td><td><code>elixir-ls</code></td></tr>
+<tr><td>elixir</td><td>✓</td><td>✓</td><td>✓</td><td><code>elixir-ls</code></td></tr>
 <tr><td>elm</td><td>✓</td><td></td><td></td><td><code>elm-language-server</code></td></tr>
 <tr><td>elvish</td><td>✓</td><td></td><td></td><td><code>elvish</code></td></tr>
+<tr><td>env</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>erb</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>erlang</td><td>✓</td><td>✓</td><td></td><td><code>erlang_ls</code></td></tr>
 <tr><td>esdl</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>fish</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>fortran</td><td>✓</td><td></td><td>✓</td><td><code>fortls</code></td></tr>
-<tr><td>gdscript</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>gdscript</td><td>✓</td><td>✓</td><td></td><td></td></tr>
 <tr><td>git-attributes</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>git-commit</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>git-config</td><td>✓</td><td></td><td></td><td></td></tr>
-<tr><td>git-diff</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>git-ignore</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>git-rebase</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>gleam</td><td>✓</td><td>✓</td><td></td><td><code>gleam</code></td></tr>
 <tr><td>glsl</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>go</td><td>✓</td><td>✓</td><td>✓</td><td><code>gopls</code></td></tr>
+<tr><td>godot-resource</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>gomod</td><td>✓</td><td></td><td></td><td><code>gopls</code></td></tr>
 <tr><td>gotmpl</td><td>✓</td><td></td><td></td><td><code>gopls</code></td></tr>
 <tr><td>gowork</td><td>✓</td><td></td><td></td><td><code>gopls</code></td></tr>
@@ -190,16 +197,19 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>hare</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>haskell</td><td>✓</td><td></td><td></td><td><code>haskell-language-server-wrapper</code></td></tr>
 <tr><td>hcl</td><td>✓</td><td></td><td>✓</td><td><code>terraform-ls</code></td></tr>
-<tr><td>heex</td><td>✓</td><td>✓</td><td></td><td></td></tr>
+<tr><td>heex</td><td>✓</td><td>✓</td><td></td><td><code>elixir-ls</code></td></tr>
 <tr><td>html</td><td>✓</td><td></td><td></td><td><code>vscode-html-language-server</code></td></tr>
 <tr><td>idris</td><td></td><td></td><td></td><td><code>idris2-lsp</code></td></tr>
 <tr><td>iex</td><td>✓</td><td></td><td></td><td></td></tr>
-<tr><td>java</td><td>✓</td><td></td><td></td><td><code>jdtls</code></td></tr>
+<tr><td>ini</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>java</td><td>✓</td><td>✓</td><td></td><td><code>jdtls</code></td></tr>
 <tr><td>javascript</td><td>✓</td><td>✓</td><td>✓</td><td><code>typescript-language-server</code></td></tr>
 <tr><td>jsdoc</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>json</td><td>✓</td><td></td><td>✓</td><td><code>vscode-json-language-server</code></td></tr>
+<tr><td>jsonnet</td><td>✓</td><td></td><td></td><td><code>jsonnet-language-server</code></td></tr>
 <tr><td>jsx</td><td>✓</td><td>✓</td><td>✓</td><td><code>typescript-language-server</code></td></tr>
 <tr><td>julia</td><td>✓</td><td></td><td></td><td><code>julia</code></td></tr>
+<tr><td>kdl</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>kotlin</td><td>✓</td><td></td><td></td><td><code>kotlin-language-server</code></td></tr>
 <tr><td>latex</td><td>✓</td><td>✓</td><td></td><td><code>texlab</code></td></tr>
 <tr><td>lean</td><td>✓</td><td></td><td></td><td><code>lean</code></td></tr>
@@ -207,19 +217,19 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>llvm</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>llvm-mir</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>llvm-mir-yaml</td><td>✓</td><td></td><td>✓</td><td></td></tr>
-<tr><td>lua</td><td>✓</td><td></td><td>✓</td><td><code>lua-language-server</code></td></tr>
+<tr><td>lua</td><td>✓</td><td>✓</td><td>✓</td><td><code>lua-language-server</code></td></tr>
 <tr><td>make</td><td>✓</td><td></td><td></td><td></td></tr>
-<tr><td>markdown</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>markdown</td><td>✓</td><td></td><td></td><td><code>marksman</code></td></tr>
 <tr><td>markdown.inline</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>meson</td><td>✓</td><td></td><td>✓</td><td></td></tr>
 <tr><td>mint</td><td></td><td></td><td></td><td><code>mint</code></td></tr>
 <tr><td>nickel</td><td>✓</td><td></td><td>✓</td><td><code>nls</code></td></tr>
-<tr><td>nix</td><td>✓</td><td></td><td></td><td><code>rnix-lsp</code></td></tr>
+<tr><td>nix</td><td>✓</td><td></td><td></td><td><code>nil</code></td></tr>
 <tr><td>nu</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>ocaml</td><td>✓</td><td></td><td>✓</td><td><code>ocamllsp</code></td></tr>
 <tr><td>ocaml-interface</td><td>✓</td><td></td><td></td><td><code>ocamllsp</code></td></tr>
 <tr><td>odin</td><td>✓</td><td></td><td></td><td><code>ols</code></td></tr>
-<tr><td>openscad</td><td>✓</td><td></td><td></td><td><code>openscad-language-server</code></td></tr>
+<tr><td>openscad</td><td>✓</td><td></td><td></td><td><code>openscad-lsp</code></td></tr>
 <tr><td>org</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>pascal</td><td>✓</td><td>✓</td><td></td><td><code>pasls</code></td></tr>
 <tr><td>perl</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
@@ -227,9 +237,11 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>prisma</td><td>✓</td><td></td><td></td><td><code>prisma-language-server</code></td></tr>
 <tr><td>prolog</td><td></td><td></td><td></td><td><code>swipl</code></td></tr>
 <tr><td>protobuf</td><td>✓</td><td></td><td>✓</td><td></td></tr>
-<tr><td>python</td><td>✓</td><td>✓</td><td></td><td><code>pylsp</code></td></tr>
+<tr><td>purescript</td><td>✓</td><td></td><td></td><td><code>purescript-language-server</code></td></tr>
+<tr><td>python</td><td>✓</td><td>✓</td><td>✓</td><td><code>pylsp</code></td></tr>
+<tr><td>qml</td><td>✓</td><td></td><td>✓</td><td><code>qmlls</code></td></tr>
 <tr><td>r</td><td>✓</td><td></td><td></td><td><code>R</code></td></tr>
-<tr><td>racket</td><td></td><td></td><td></td><td><code>racket</code></td></tr>
+<tr><td>racket</td><td>✓</td><td></td><td></td><td><code>racket</code></td></tr>
 <tr><td>regex</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>rescript</td><td>✓</td><td>✓</td><td></td><td><code>rescript-language-server</code></td></tr>
 <tr><td>rmarkdown</td><td>✓</td><td></td><td>✓</td><td><code>R</code></td></tr>
@@ -240,6 +252,7 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>scheme</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>scss</td><td>✓</td><td></td><td></td><td><code>vscode-css-language-server</code></td></tr>
 <tr><td>slint</td><td>✓</td><td></td><td>✓</td><td><code>slint-lsp</code></td></tr>
+<tr><td>sml</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>solidity</td><td>✓</td><td></td><td></td><td><code>solc</code></td></tr>
 <tr><td>sql</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>sshclientconfig</td><td>✓</td><td></td><td></td><td></td></tr>
@@ -258,11 +271,16 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>v</td><td>✓</td><td></td><td></td><td><code>vls</code></td></tr>
 <tr><td>vala</td><td>✓</td><td></td><td></td><td><code>vala-language-server</code></td></tr>
 <tr><td>verilog</td><td>✓</td><td>✓</td><td></td><td><code>svlangserver</code></td></tr>
+<tr><td>vhs</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>vue</td><td>✓</td><td></td><td></td><td><code>vls</code></td></tr>
+<tr><td>wast</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>wat</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>wgsl</td><td>✓</td><td></td><td></td><td><code>wgsl_analyzer</code></td></tr>
+<tr><td>wit</td><td>✓</td><td></td><td>✓</td><td></td></tr>
 <tr><td>xit</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>xml</td><td>✓</td><td></td><td>✓</td><td></td></tr>
 <tr><td>yaml</td><td>✓</td><td></td><td>✓</td><td><code>yaml-language-server</code></td></tr>
-<tr><td>zig</td><td>✓</td><td></td><td>✓</td><td><code>zls</code></td></tr>
+<tr><td>zig</td><td>✓</td><td>✓</td><td>✓</td><td><code>zls</code></td></tr>
 </tbody></table>
 </div>
                     </main>
