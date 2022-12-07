@@ -18,7 +18,7 @@ use helix_core::{
     movement::Direction,
     syntax::{self, HighlightEvent},
     unicode::width::UnicodeWidthStr,
-    visual_coords_at_pos, Position, Range, Selection, Transaction,
+    visual_coords_at_pos_2, Position, Range, Selection, Transaction,
 };
 use helix_view::{
     apply_transaction,
@@ -123,10 +123,10 @@ impl EditorView {
         }
 
         if is_focused && config.cursorline {
-            Self::highlight_cursorline(doc, view, surface, theme);
+            Self::highlight_cursorline(doc, view, surface, theme, inner);
         }
         if is_focused && config.cursorcolumn {
-            Self::highlight_cursorcolumn(doc, view, surface, theme);
+            Self::highlight_cursorcolumn(doc, &config, view, surface, theme, inner);
         }
 
         let mut highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
@@ -433,40 +433,38 @@ impl EditorView {
         highlights: H,
         config: &helix_view::editor::Config,
     ) -> Vec<(u16, usize)> {
-        let render_config = TextRenderConfig::new(doc, config, theme, &offset);
-        let mut text_render = TextRender::new(surface, &render_config, offset.col, viewport);
         let text = doc.text();
+        let anchor = text.line_to_char(offset.row) + offset.col;
+        // TODO switch fully to char_based offset
 
-        if config.soft_wrap.enable {
-            debug_assert_eq!(offset.col, 0);
-        }
-
-        // TODO differentiate between view pos and doc pos
-        let doc_pos = text.line_to_char(offset.row);
-        let text = doc.text().slice(doc_pos..);
+        let text = doc.text().slice(..);
         // TODO add annotation like inline virtual text
-        let mut annotation_source = ();
-        let cursor = DocumentCursor::new(
-            text,
-            doc.cursor_config(viewport.width, config),
-            doc_pos,
-            offset.row,
-            &mut annotation_source,
-        );
+        let cursor =
+            DocumentCursor::new_at_prev_line(text, doc.cursor_config(viewport.width), anchor, ());
+
+        let cutoff = if config.soft_wrap.enable {
+            0
+        } else {
+            offset.col
+        };
+
+        let render_config = TextRenderConfig::new(doc, config, theme, cutoff);
+        let mut text_render = TextRender::new(surface, &render_config, cutoff, viewport);
+        text_render.posititon = cursor.visual_pos();
 
         let mut render =
             DocumentRender::new(config, theme, text, cursor, highlights, &mut text_render);
         let mut last_doc_line = usize::MAX;
         let mut line_starts = Vec::new();
         while !render.is_finished() {
-            if render.cursor.doc_line() != last_doc_line {
-                last_doc_line = render.cursor.doc_line();
+            if render.cursor.doc_line_idx() != last_doc_line {
+                last_doc_line = render.cursor.doc_line_idx();
                 line_starts.push((
-                    render.cursor.visual_pos().row as u16,
-                    render.cursor.doc_line(),
+                    text_render.posititon.row as u16,
+                    render.cursor.doc_line_idx(),
                 ))
             }
-            render.render_line::<true>(&mut text_render);
+            render.render_line(&mut text_render);
         }
         line_starts
     }
@@ -679,7 +677,13 @@ impl EditorView {
     }
 
     /// Apply the highlighting on the lines where a cursor is active
-    pub fn highlight_cursorline(doc: &Document, view: &View, surface: &mut Surface, theme: &Theme) {
+    pub fn highlight_cursorline(
+        doc: &Document,
+        view: &View,
+        surface: &mut Surface,
+        theme: &Theme,
+        viewport: Rect,
+    ) {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
 
@@ -718,9 +722,11 @@ impl EditorView {
     /// Apply the highlighting on the columns where a cursor is active
     pub fn highlight_cursorcolumn(
         doc: &Document,
+        config: &helix_view::editor::Config,
         view: &View,
         surface: &mut Surface,
         theme: &Theme,
+        viewport: Rect,
     ) {
         let text = doc.text().slice(..);
 
@@ -736,15 +742,24 @@ impl EditorView {
             .unwrap_or_else(|| theme.get("ui.cursorline.secondary"));
 
         let inner_area = view.inner_area(doc);
-        let offset = view.offset.col;
+        let offset = if config.soft_wrap.enable {
+            0
+        } else {
+            view.offset.col
+        };
+        let anchor = text.line_to_char(view.offset.row) + offset;
 
         let selection = doc.selection(view.id);
         let primary = selection.primary();
         for range in selection.iter() {
             let is_primary = primary == *range;
 
-            let Position { row: _, col } =
-                visual_coords_at_pos(text, range.cursor(text), doc.tab_width());
+            let Position { row: _, col } = visual_coords_at_pos_2(
+                text,
+                range.cursor(text),
+                anchor,
+                doc.cursor_config(viewport.width),
+            );
             // if the cursor is horizontally in the view
             if col >= offset && inner_area.width > (col - offset) as u16 {
                 let area = Rect::new(

@@ -27,7 +27,7 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
-use crate::editor::{self, RedrawHandle};
+use crate::editor::{RedrawHandle, SoftWrap};
 use crate::{apply_transaction, DocumentId, Editor, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -1197,18 +1197,17 @@ impl Document {
         }
     }
 
-    pub fn cursor_config(&self, viewport_width: u16, config: &editor::Config) -> CursorConfig {
+    pub fn cursor_config(&self, viewport_width: u16) -> CursorConfig {
+        // TODO find a way to share a config (probably with an Arc<RwLock>) that avoids polluting every callsite
+        // with an additional config: &editor::Config argument which would cause problems for async
+        let soft_wrap = SoftWrap::default();
         CursorConfig {
+            soft_wrap: soft_wrap.enable,
             tab_width: self.tab_width() as u16,
-            max_wrap: config.soft_wrap.max_wrap.min(viewport_width as usize / 4),
-            max_indent_retain: config
-                .soft_wrap
-                .max_indent_retain
-                .min(viewport_width as usize / 4),
-            wrap_indent: config.soft_wrap.wrap_indent,
-            // TODO temporary workaround to ensure EOL spaces added at line ends don't get cut off
-            // Instead they should properly aswell but that is pretty hard to implement
-            viewport_width: viewport_width.saturating_sub(1),
+            max_wrap: soft_wrap.max_wrap.min(viewport_width / 4),
+            max_indent_retain: soft_wrap.max_indent_retain.min(viewport_width / 4),
+            wrap_indent: soft_wrap.wrap_indent,
+            viewport_width,
         }
     }
 }

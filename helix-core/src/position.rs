@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use crate::{
     chars::char_is_line_ending,
+    doc_cursor::{CursorConfig, DocumentCursor},
     graphemes::{ensure_grapheme_boundary_prev, grapheme_width, RopeGraphemes},
     line_ending::line_end_char_index,
     RopeSlice,
@@ -93,6 +94,46 @@ pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Po
     Position::new(line, col)
 }
 
+/// Convert a character index to (line, column) coordinates visually.
+///
+/// Takes \t, double-width characters (CJK) into account as well as text
+/// not in the document in the future.
+/// See [`coords_at_pos`] for an "objective" one.
+pub fn visual_coords_at_pos_2(
+    text: RopeSlice,
+    anchor: usize,
+    pos: usize,
+    config: CursorConfig,
+) -> Position {
+    // TODO consider inline annotations
+    let mut cursor: DocumentCursor<(), _> =
+        DocumentCursor::new_at_prev_line(text, config, anchor, ());
+    let mut visual_pos = cursor.visual_pos();
+    let mut doc_char_idx = cursor.doc_char_idx();
+    let mut word = loop {
+        if let Some(mut word) = cursor.advance() {
+            if cursor.doc_char_idx() >= pos {
+                break word;
+            } else {
+                word.consume_graphemes(&mut cursor);
+                visual_pos = cursor.visual_pos();
+                doc_char_idx = cursor.doc_char_idx();
+            }
+        } else {
+            break cursor.finish();
+        }
+    };
+
+    for grapheme in word.consume_graphemes(&mut cursor) {
+        if doc_char_idx + grapheme.doc_chars as usize > pos {
+            break;
+        }
+        doc_char_idx += grapheme.doc_chars as usize;
+        visual_pos.col += grapheme.width() as usize;
+    }
+    visual_pos
+}
+
 /// Convert (line, column) coordinates to a character index.
 ///
 /// If the `line` coordinate is beyond the end of the file, the EOF
@@ -167,6 +208,50 @@ pub fn pos_at_visual_coords(text: RopeSlice, coords: Position, tab_width: usize)
     }
 
     line_start + col_char_offset
+}
+
+/// Convert a character index to (line, column) coordinates visually.
+///
+/// Takes \t, double-width characters (CJK) into account as well as text
+/// not in the document in the future.
+/// See [`coords_at_pos`] for an "objective" one.
+pub fn pos_at_visual_coords_2(
+    text: RopeSlice,
+    anchor: usize,
+    cords: Position,
+    config: CursorConfig,
+) -> usize {
+    // TODO consider inline annotations
+    let mut cursor: DocumentCursor<(), _> =
+        DocumentCursor::new_at_prev_line(text, config, anchor, ());
+    let mut visual_pos = cursor.visual_pos();
+    let mut doc_char_idx = cursor.doc_char_idx();
+    let mut word = loop {
+        if let Some(mut word) = cursor.advance() {
+            if visual_pos.row == cords.row {
+                if visual_pos.col + word.visual_width > cords.col {
+                    break word;
+                } else if word.terminating_linebreak.is_some() {
+                    word.consume_graphemes(&mut cursor);
+                    return cursor.doc_char_idx();
+                }
+            }
+            word.consume_graphemes(&mut cursor);
+            visual_pos = cursor.visual_pos();
+            doc_char_idx = cursor.doc_char_idx();
+        } else {
+            break cursor.finish();
+        }
+    };
+
+    for grapheme in word.consume_graphemes(&mut cursor) {
+        if visual_pos.col + grapheme.width() as usize > cords.col {
+            break;
+        }
+        doc_char_idx += grapheme.doc_chars as usize;
+        visual_pos.col += grapheme.width() as usize;
+    }
+    doc_char_idx
 }
 
 #[cfg(test)]

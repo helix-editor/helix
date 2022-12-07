@@ -14,7 +14,11 @@ use helix_view::Theme;
 use helix_view::{editor, Document};
 use tui::buffer::Buffer as Surface;
 
-pub struct DocumentRender<'a, H: Iterator<Item = HighlightEvent>, A: AnnotationSource<'a>> {
+pub struct DocumentRender<'a, A, H>
+where
+    H: Iterator<Item = HighlightEvent>,
+    A: AnnotationSource<'a, Style>,
+{
     pub config: &'a editor::Config,
     pub theme: &'a Theme,
 
@@ -28,7 +32,11 @@ pub struct DocumentRender<'a, H: Iterator<Item = HighlightEvent>, A: AnnotationS
     is_finished: bool,
 }
 
-impl<'a, H: Iterator<Item = HighlightEvent>, A: AnnotationSource<'a>> DocumentRender<'a, H, A> {
+impl<'a, H, A> DocumentRender<'a, A, H>
+where
+    H: Iterator<Item = HighlightEvent>,
+    A: AnnotationSource<'a, Style>,
+{
     pub fn new(
         config: &'a editor::Config,
         theme: &'a Theme,
@@ -90,22 +98,18 @@ impl<'a, H: Iterator<Item = HighlightEvent>, A: AnnotationSource<'a>> DocumentRe
 
     /// Renders the next line of the document.
     /// If softwrapping is enabled this may only correspond to rendering a part of the line
-    ///
-    /// # Returns
-    ///
-    /// Whether the rendered line was only partially rendered because the viewport end was reached
-    pub fn render_line<const SOFTWRAP: bool>(&mut self, text_render: &mut TextRender) {
+    pub fn render_line(&mut self, text_render: &mut TextRender) {
         if self.is_finished {
             return;
         }
 
         loop {
-            while let Some(word) = self.cursor.advance::<SOFTWRAP>(self.highlight_scope) {
-                text_render.posititon = word.visual_position;
-                for grapheme in word.graphmes {
+            while let Some(mut word) = self.cursor.advance_with_highlight(self.highlight_scope) {
+                for grapheme in word.consume_graphemes(&mut self.cursor) {
                     text_render.draw_grapheme(grapheme);
                 }
 
+                // TODO refactor to use let..else once MSRV reaches 1.65
                 let line_break = if let Some(line_break) = word.terminating_linebreak {
                     line_break
                 } else {
@@ -115,18 +119,9 @@ impl<'a, H: Iterator<Item = HighlightEvent>, A: AnnotationSource<'a>> DocumentRe
                 if self.config.indent_guides.render {
                     text_render.draw_indent_guides();
                 }
-                if !line_break.is_softwrap {
-                    // render EOL space
-                    text_render.draw_grapheme(StyledGrapheme {
-                        grapheme: Grapheme::Space,
-                        style: self.highlight_scope.1,
-                    });
-                }
 
-                if self.config.indent_guides.render {
-                    text_render.draw_indent_guides()
-                }
                 text_render.posititon.row += 1;
+                text_render.posititon.col = line_break.indent as usize;
                 self.is_finished = text_render.reached_viewport_end();
                 return;
             }
@@ -139,7 +134,7 @@ impl<'a, H: Iterator<Item = HighlightEvent>, A: AnnotationSource<'a>> DocumentRe
                 // the last word is garunteed to fit on the last line
                 // and to not wrap (otherwise it would have been yielded before)
                 // render it
-                for grapheme in self.cursor.finish() {
+                for grapheme in self.cursor.finish().consume_graphemes(&mut self.cursor) {
                     text_render.draw_grapheme(grapheme);
                 }
 
@@ -148,6 +143,7 @@ impl<'a, H: Iterator<Item = HighlightEvent>, A: AnnotationSource<'a>> DocumentRe
                     text_render.draw_grapheme(StyledGrapheme {
                         grapheme: Grapheme::Space,
                         style: self.highlight_scope.1,
+                        doc_chars: 0,
                     });
                 }
 
@@ -166,7 +162,7 @@ impl<'a, H: Iterator<Item = HighlightEvent>, A: AnnotationSource<'a>> DocumentRe
     }
 }
 
-pub type StyledGrapheme<'a> = helix_core::graphemes::StyledGrapheme<'a, Style>;
+pub type StyledGrapheme<'a> = helix_core::doc_cursor::StyledGraphemes<'a, Style>;
 
 /// A TextRender Basic grapheme rendering and visual position tracking
 #[derive(Debug)]
@@ -307,7 +303,7 @@ impl TextRenderConfig {
         doc: &Document,
         editor_config: &editor::Config,
         theme: &Theme,
-        offset: &Position,
+        cutoff: usize,
     ) -> TextRenderConfig {
         let WhitespaceConfig {
             render: ws_render,
@@ -349,7 +345,7 @@ impl TextRenderConfig {
             tab_width: tab_width as u16,
             tab,
             whitespace_style: theme.get("ui.virtual.whitespace"),
-            starting_indent: (offset.col / tab_width)
+            starting_indent: (cutoff / tab_width)
                 + editor_config.indent_guides.skip_levels as usize,
             indent_guide_style: text_style.patch(
                 theme

@@ -6,7 +6,7 @@ use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
 use unicode_width::UnicodeWidthStr;
 
 use std::borrow::Cow;
-use std::fmt;
+use std::fmt::{self, Display};
 
 #[derive(Debug)]
 /// A preprossed Grapheme that is ready for rendering
@@ -59,47 +59,20 @@ impl<'a> Grapheme<'a> {
     }
 }
 
-#[derive(Debug)]
-/// A preprossed Grapheme that is ready for rendering
-/// with attachted styling data
-pub struct StyledGrapheme<'a, S> {
-    pub grapheme: Grapheme<'a>,
-    pub style: S,
-}
-
-impl<'a, S: Default> StyledGrapheme<'a, S> {
-    pub fn placeholder() -> Self {
-        StyledGrapheme {
-            grapheme: Grapheme::Space,
-            style: S::default(),
+impl Display for Grapheme<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Grapheme::Space | Grapheme::Newline | Grapheme::Nbsp => write!(f, " "),
+            Grapheme::Tab { width } => {
+                for _ in 0..width {
+                    write!(f, " ")?;
+                }
+                Ok(())
+            }
+            Grapheme::Other { ref raw, .. } => {
+                write!(f, "{raw}")
+            }
         }
-    }
-
-    pub fn new(
-        raw: Cow<'a, str>,
-        style: S,
-        visual_x: usize,
-        tab_width: u16,
-    ) -> StyledGrapheme<'a, S> {
-        StyledGrapheme {
-            grapheme: Grapheme::new(raw, visual_x, tab_width),
-            style,
-        }
-    }
-
-    pub fn is_whitespace(&self) -> bool {
-        self.grapheme.is_whitespace()
-    }
-
-    pub fn is_breaking_space(&self) -> bool {
-        self.grapheme.is_breaking_space()
-    }
-
-    /// Returns the approximate visual width of this grapheme,
-    /// This serves as a lower bound for the width for use during soft wrapping.
-    /// The actual displayed witdth might be position dependent and larger (primarly tabs)
-    pub fn width(&self) -> u16 {
-        self.grapheme.width()
     }
 }
 

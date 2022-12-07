@@ -96,7 +96,8 @@ pub use {regex, tree_sitter};
 
 pub use graphemes::RopeGraphemes;
 pub use position::{
-    coords_at_pos, pos_at_coords, pos_at_visual_coords, visual_coords_at_pos, Position,
+    coords_at_pos, pos_at_coords, pos_at_visual_coords, pos_at_visual_coords_2,
+    visual_coords_at_pos, visual_coords_at_pos_2, Position,
 };
 pub use selection::{Range, Selection};
 pub use smallvec::{smallvec, SmallVec};

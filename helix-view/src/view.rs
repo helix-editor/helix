@@ -1,6 +1,7 @@
 use crate::{align_view, editor::GutterType, graphics::Rect, Align, Document, DocumentId, ViewId};
 use helix_core::{
-    pos_at_visual_coords, visual_coords_at_pos, Position, RopeSlice, Selection, Transaction,
+    pos_at_visual_coords_2, visual_coords_at_pos, visual_coords_at_pos_2, Position, RopeSlice,
+    Selection, Transaction,
 };
 
 use std::{
@@ -184,6 +185,8 @@ impl View {
             .primary()
             .cursor(doc.text().slice(..));
 
+        let config = doc.cursor_config();
+
         let Position { col, row: line } =
             visual_coords_at_pos(doc.text().slice(..), cursor, doc.tab_width());
 
@@ -239,7 +242,7 @@ impl View {
     pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {
         if let Some((row, col)) = self.offset_coords_to_in_view_center(doc, scrolloff, false) {
             self.offset.row = row;
-            self.offset.col = 0;
+            self.offset.col = col;
         }
     }
 
@@ -282,15 +285,17 @@ impl View {
             return None;
         }
 
-        let tab_width = doc.tab_width();
-        // TODO: visual_coords_at_pos also does char_to_line which we ignore, can we reuse the call?
-        let Position { col, .. } = visual_coords_at_pos(text, pos, tab_width);
+        let anchor = text.line_to_char(self.offset.row);
+        let viewport_width = self.inner_area(doc).width;
+        let config = doc.cursor_config(viewport_width);
 
-        // It is possible for underflow to occur if the buffer length is larger than the terminal width.
-        let row = line.saturating_sub(self.offset.row);
-        let col = col.saturating_sub(self.offset.col);
+        let mut pos = visual_coords_at_pos_2(text, anchor, pos, config);
 
-        Some(Position::new(row, col))
+        if !config.soft_wrap {
+            pos.col = pos.col.saturating_sub(self.offset.col);
+        }
+
+        Some(pos)
     }
 
     pub fn text_pos_at_screen_coords(
@@ -311,20 +316,24 @@ impl View {
             return None;
         }
 
-        let text_row = (row - inner.y) as usize + self.offset.row;
-        if text_row > text.len_lines() - 1 {
-            return Some(text.len_chars());
-        }
+        let text_row = (row - inner.y) as usize;
+        // if text_row > text.len_lines() - 1 {
+        //     return Some(text.len_chars());
+        // }
 
-        let text_col = (column - inner.x) as usize + self.offset.col;
+        let text_col = (column - inner.x) as usize;
+        let anchor = text.line_to_char(self.offset.row);
+        let mut config = doc.cursor_config(inner.width);
+        config.tab_width = tab_width as u16;
 
-        Some(pos_at_visual_coords(
+        Some(pos_at_visual_coords_2(
             text,
+            anchor,
             Position {
                 row: text_row,
                 col: text_col,
             },
-            tab_width,
+            config,
         ))
     }
 

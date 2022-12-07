@@ -193,18 +193,18 @@ pub struct SoftWrap {
     /// This is automatically hardlimited to a quarter of the viewport to ensure correct display on small views.
     ///
     /// Default to 5
-    pub max_wrap: usize,
+    pub max_wrap: u16,
     /// Maximum number of indentation that can be carried over from the previous line when softwrapping.
     /// If a line is indenten further then this limit it is rendered at the start of the viewport instead.
     ///
     /// This is automatically hardlimited to a quarter of the viewport to ensure correct display on small views.
     ///
     /// Default to 40
-    pub max_indent_retain: usize,
+    pub max_indent_retain: u16,
     /// Extra spaces inserted before rendeirng softwrapped lines.
     ///
     /// Default to 2
-    pub wrap_indent: usize,
+    pub wrap_indent: u16,
 }
 
 impl Default for SoftWrap {
