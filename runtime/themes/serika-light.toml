@@ -59,7 +59,7 @@
 "error" = "nasty-red"
 "diagnostic" = { fg = "nasty-red", modifiers = ["underlined"] }
 
-"diff.plus" = { fg = "bg_green"
+"diff.plus" = { fg = "bg_green" }
 "diff.delta" = { fg = "bg_blue" }
 "diff.minus" = { fg = "nasty-red" }
 
