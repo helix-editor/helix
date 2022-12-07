@@ -3,7 +3,7 @@ use crate::{
     compositor::{Component, Context, Event, EventResult},
     job::{self, Callback},
     key,
-    keymap::{KeymapResult, Keymaps},
+    keymap::{KeymapResult, Keymaps, LayoutRemap},
     ui::{Completion, ProgressSpinners},
 };
 
@@ -34,6 +34,7 @@ use super::statusline;
 
 pub struct EditorView {
     pub keymaps: Keymaps,
+    layout_remap: LayoutRemap,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     pseudo_pending: Vec<KeyEvent>,
     last_insert: (commands::MappableCommand, Vec<InsertEvent>),
@@ -50,14 +51,15 @@ pub enum InsertEvent {
 
 impl Default for EditorView {
     fn default() -> Self {
-        Self::new(Keymaps::default())
+        Self::new(Keymaps::default(), LayoutRemap::default())
     }
 }
 
 impl EditorView {
-    pub fn new(keymaps: Keymaps) -> Self {
+    pub fn new(keymaps: Keymaps, layout_remap: LayoutRemap) -> Self {
         Self {
             keymaps,
+            layout_remap,
             on_next_key: None,
             pseudo_pending: Vec::new(),
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
@@ -914,6 +916,12 @@ impl EditorView {
     ) -> Option<KeymapResult> {
         let mut last_mode = mode;
         self.pseudo_pending.extend(self.keymaps.pending());
+        // Translate Normal and Select mode keys using layout remap table.
+        let event = if !matches!(last_mode, Mode::Insert) {
+            self.layout_remap.translate(&event)
+        } else {
+            event
+        };
         let key_result = self.keymaps.get(mode, event);
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
