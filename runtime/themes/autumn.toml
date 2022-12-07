@@ -58,10 +58,11 @@
 "markup.raw" = "my_green"
 
 "diff.plus" = "my_green"
-"diff.delta" = "my_white"
+"diff.delta" = "my_gray4"
 "diff.minus" = "my_red"
 
 "diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.error" = { underline = { style = "curl", color = "my_red" } }
 "ui.gutter" = { bg = "my_gray0" }
 "hint" = "my_gray5"
 "debug" = "my_yellow2"
