@@ -14,8 +14,6 @@ use helix_core::chars::char_is_word;
 
 use crate::DocumentId;
 
-// TODO get completion_trigger_len
-const COMPLETION_TRIGGER_LEN: usize = 2;
 // TODO get completion items len from config
 const MAX_COMPLETION_ITEMS_LEN: usize = 20;
 const TIMEOUT: Duration = Duration::from_millis(300);
@@ -28,12 +26,13 @@ pub struct Worker {
 
 impl Default for Worker {
     fn default() -> Self {
-        Self::new()
+        Self::new(2)
     }
 }
 
 struct WorkerState {
     rx: mpsc::Receiver<WorkerRequest>,
+    min_word_len: usize,
 
     // TODO limit hashmap?
     // words extracted on load/save document
@@ -83,26 +82,34 @@ impl std::fmt::Debug for WorkerRequest {
 }
 
 #[inline]
-fn text_to_words(text: &str) -> HashSet<&str> {
+fn text_to_words(text: &str, min_word_len: usize) -> HashSet<&str> {
     HashSet::from_iter(text.split_ascii_whitespace().flat_map(|item| {
         item.split_terminator(|c| !char_is_word(c))
-            .filter(|word| word.len() >= COMPLETION_TRIGGER_LEN)
+            .filter(|word| word.len() >= min_word_len)
     }))
 }
 
 impl Worker {
-    pub fn new() -> Self {
+    pub fn new(completion_trigger_len: u8) -> Self {
         // channel buffer len allow to limit back-pressure
         let (command_tx, command_rx) = mpsc::channel::<WorkerRequest>(10);
 
         let is_stopped = Arc::new(AtomicBool::new(false));
         let is_stopped_clone = is_stopped.clone();
 
+        // no reasons to collect words less then 2 chars
+        let min_word_len = if completion_trigger_len <= 1 {
+            2
+        } else {
+            completion_trigger_len as usize
+        };
+
         // Start worker on separate thread
-        let handle = task::spawn_blocking(|| {
+        let handle = task::spawn_blocking(move || {
             log::debug!("Worker. Start");
             let mut state = WorkerState {
                 rx: command_rx,
+                min_word_len,
                 doc_words: HashMap::new(),
                 doc_lines_words: HashMap::new(),
                 is_stopped: is_stopped_clone,
@@ -216,7 +223,7 @@ impl WorkerState {
     }
 
     fn process_text(&mut self, doc_id: DocumentId, text: String) {
-        let new_words = text_to_words(&text);
+        let new_words = text_to_words(&text, self.min_word_len);
 
         if !new_words.is_empty() {
             let new_words: HashSet<String> = new_words.into_iter().map(String::from).collect();
@@ -234,7 +241,7 @@ impl WorkerState {
     fn process_line_text(&mut self, doc_id: DocumentId, lines: Vec<(usize, Option<String>)>) {
         for (line, text) in lines {
             if let Some(text) = text {
-                let new_words = text_to_words(&text);
+                let new_words = text_to_words(&text, self.min_word_len);
 
                 let doc_lines = self
                     .doc_lines_words
@@ -323,7 +330,7 @@ mod test {
         let doc_id = DocumentId::default();
 
         let _ = rt.block_on(async move {
-            let worker = Worker::new();
+            let worker = Worker::new(2);
 
             // buffer with text
             let _ = worker.extract_words(doc_id, "Hello".to_string());
@@ -352,27 +359,27 @@ mod test {
     #[test]
     fn to_words() {
         assert_eq!(
-            text_to_words("Hello World!"),
+            text_to_words("Hello World!", 2),
             HashSet::from_iter(["Hello", "World"])
         );
 
         assert_eq!(
-            text_to_words("crate::mod::func"),
+            text_to_words("crate::mod::func", 2),
             HashSet::from_iter(["crate", "mod", "func"])
         );
 
         assert_eq!(
-            text_to_words("crate::mod::a"),
+            text_to_words("crate::mod::a", 2),
             HashSet::from_iter(["crate", "mod"])
         );
 
         assert_eq!(
-            text_to_words("crate10::mod2mod::func3"),
+            text_to_words("crate10::mod2mod::func3", 2),
             HashSet::from_iter(["crate10", "mod2mod", "func3"])
         );
 
         assert_eq!(
-            text_to_words("1 22 333 4444"),
+            text_to_words("1 22 333 4444", 2),
             HashSet::from_iter(["22", "333", "4444"])
         );
     }

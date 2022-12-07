@@ -824,7 +824,7 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
-            worker: Arc::new(Worker::new()),
+            worker: Arc::new(Worker::new(conf.completion_trigger_len)),
             redraw_handle: Default::default(),
             needs_redraw: false,
         }
