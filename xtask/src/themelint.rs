@@ -164,7 +164,7 @@ pub fn lint(file: String) -> Result<(), DynError> {
     let path = path::themes().join(file.clone() + ".toml");
     let theme = std::fs::read(&path).unwrap();
     let theme: Theme =
-        toml::from_slice(&theme).expect(format!("Failed to parse: {}", file).as_str());
+        toml::from_slice(&theme).unwrap_or_else(|_| panic!("Failed to parse: {}", file));
 
     let mut messages: Vec<String> = vec![];
     get_rules().iter().for_each(|lint| match lint {
