@@ -1390,6 +1390,9 @@ fn tutor(
     }
 
     let path = helix_loader::runtime_dir().join("tutor");
+    if !path.exists() {
+        bail!("No path to the tutor found. Is the runtime directory linked?");
+    }
     cx.editor.open(&path, Action::Replace)?;
     // Unset path to prevent accidentally saving to the original tutor file.
     doc_mut!(cx.editor).set_path(None)?;
