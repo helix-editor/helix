@@ -1025,6 +1025,9 @@ impl Editor {
                 let (view, doc) = current!(self);
                 let view_id = view.id;
 
+                // Append any outstanding changes to history in the old document.
+                doc.append_changes_to_history(view);
+
                 if remove_empty_scratch {
                     // Copy `doc.id` into a variable before calling `self.documents.remove`, which requires a mutable
                     // borrow, invalidating direct access to `doc.id`.

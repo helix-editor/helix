@@ -694,6 +694,7 @@ fn goto_buffer(editor: &mut Editor, direction: Direction) {
 
     let id = *id;
 
+    normal_mode_impl(editor);
     editor.switch(id, Action::Replace);
 }
 
@@ -2672,12 +2673,16 @@ fn open_above(cx: &mut Context) {
 }
 
 fn normal_mode(cx: &mut Context) {
-    if cx.editor.mode == Mode::Normal {
+    normal_mode_impl(cx.editor);
+}
+
+fn normal_mode_impl(editor: &mut Editor) {
+    if editor.mode == Mode::Normal {
         return;
     }
 
-    cx.editor.mode = Mode::Normal;
-    let (view, doc) = current!(cx.editor);
+    editor.mode = Mode::Normal;
+    let (view, doc) = current!(editor);
 
     try_restore_indent(doc, view);
 
