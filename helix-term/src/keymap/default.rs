@@ -224,6 +224,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "D" => workspace_diagnostics_picker,
             "a" => code_action,
             "'" => last_picker,
+            "l" => code_lens_under_cursor,
+            "L" => code_lenses_picker,
             "g" => { "Debug (experimental)" sticky=true
                 "l" => dap_launch,
                 "r" => dap_restart,
