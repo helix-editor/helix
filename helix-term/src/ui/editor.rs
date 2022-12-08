@@ -671,6 +671,9 @@ impl EditorView {
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
+        use std::collections::HashMap;
+        let mut names_map: HashMap<&str, usize> = HashMap::new();
+
         for doc in editor.documents() {
             let fname = doc
                 .path()
@@ -679,6 +682,28 @@ impl EditorView {
                 .unwrap_or_default()
                 .to_str()
                 .unwrap_or_default();
+
+            if names_map.contains_key(fname) {
+                names_map.insert(fname, names_map.get(fname).unwrap() + 1);
+            } else {
+                names_map.insert(fname, 1);
+            }
+        }
+
+        for doc in editor.documents() {
+            let mut fname = doc
+                .path()
+                .unwrap_or(&scratch)
+                .file_name()
+                .unwrap_or_default()
+                .to_str()
+                .unwrap_or_default();
+
+            let rel_path = doc.relative_path().unwrap_or_default();
+
+            if *names_map.get(fname).unwrap() > 1 {
+                fname = rel_path.to_str().unwrap_or_default();
+            }
 
             let style = if current_doc == doc.id() {
                 bufferline_active
