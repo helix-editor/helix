@@ -78,6 +78,7 @@
 | `Alt-u`     | Move backward in history                                             | `earlier`                 |
 | `Alt-U`     | Move forward in history                                              | `later`                   |
 | `y`         | Yank selection                                                       | `yank`                    |
+| `Y`         | Join and yank selections                                             | `yank_joined`             |
 | `p`         | Paste after selection                                                | `paste_after`             |
 | `P`         | Paste before selection                                               | `paste_before`            |
 | `"` `<reg>` | Select a register to yank to or paste from                           | `select_register`         |

@@ -338,6 +338,7 @@ impl MappableCommand {
         later, "Move forward in history",
         commit_undo_checkpoint, "Commit changes to new checkpoint",
         yank, "Yank selection",
+        yank_joined, "Join and yank selections",
         yank_joined_to_clipboard, "Join and yank selections to clipboard",
         yank_main_selection_to_clipboard, "Yank main selection to clipboard",
         yank_joined_to_primary_clipboard, "Join and yank selections to primary clipboard",
@@ -3487,6 +3488,39 @@ fn yank(cx: &mut Context) {
         .write(cx.register.unwrap_or('"'), values);
 
     cx.editor.set_status(msg);
+    exit_select_mode(cx);
+}
+
+fn yank_joined_impl(cx: &mut Context, separator: &str) -> anyhow::Result<()> {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let values: Vec<String> = doc
+        .selection(view.id)
+        .fragments(text)
+        .map(Cow::into_owned)
+        .collect();
+
+    let msg = format!(
+        "yanked {} selection(s) to register {}",
+        values.len(),
+        cx.register.unwrap_or('"')
+    );
+
+    let joined = values.join(separator);
+
+    cx.editor
+        .registers
+        .write(cx.register.unwrap_or('"'), vec![joined]);
+
+    cx.editor.set_status(msg);
+
+    Ok(())
+}
+
+fn yank_joined(cx: &mut Context) {
+    let line_ending = doc!(cx.editor).line_ending;
+    let _ = yank_joined_impl(cx, line_ending.as_str());
     exit_select_mode(cx);
 }
 

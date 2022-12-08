@@ -136,7 +136,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "A-U" => later,
 
         "y" => yank,
-        // yank_all
+        "Y" => yank_joined,
         "p" => paste_after,
         // paste_all
         "P" => paste_before,
