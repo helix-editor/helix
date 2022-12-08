@@ -158,10 +158,13 @@
 
   "unsafe"
   "default"
-  "macro_rules!"
 
   "async"
 ] @keyword
+
+[
+ "macro_rules!"
+] @keyword.directive
 
 [
   "struct"
