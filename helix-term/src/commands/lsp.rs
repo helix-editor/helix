@@ -5,8 +5,8 @@ use helix_lsp::{
         self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity,
         NumberOrString,
     },
-    util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
-    Client, OffsetEncoding,
+    util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
+    Client, CodeLens, OffsetEncoding,
 };
 use tokio_stream::StreamExt;
 use tui::{
@@ -16,7 +16,10 @@ use tui::{
 
 use super::{align_view, push_jump, Align, Context, Editor};
 
-use helix_core::{syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection};
+use helix_core::{
+    syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Rope, Selection,
+};
+pub use helix_lsp::lsp::Command;
 use helix_stdx::path;
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId},
@@ -61,6 +64,17 @@ macro_rules! language_server_with_feature {
             }
         }
     }};
+}
+
+impl ui::menu::Item for CodeLens {
+    type Data = ();
+
+    fn format(&self, _: &Self::Data) -> Row {
+        match self.command.clone() {
+            Some(cmd) => cmd.title.into(),
+            None => "unresolved".into(),
+        }
+    }
 }
 
 impl ui::menu::Item for lsp::Location {
@@ -1327,4 +1341,175 @@ fn compute_inlay_hints_for_view(
     );
 
     Some(callback)
+}
+
+fn map_code_lens(
+    doc_text: &Rope,
+    cl: &lsp::CodeLens,
+    offset_enc: OffsetEncoding,
+    language_server_id: usize,
+) -> CodeLens {
+    use helix_core::diagnostic::Range;
+    let start = lsp_pos_to_pos(doc_text, cl.range.start, offset_enc).unwrap();
+    CodeLens {
+        range: Range {
+            start,
+            end: lsp_pos_to_pos(doc_text, cl.range.end, offset_enc).unwrap(),
+        },
+        line: doc_text.char_to_line(start),
+        data: cl.data.clone(),
+        language_server_id,
+        command: cl.command.clone(),
+    }
+}
+
+pub fn code_lens_under_cursor(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let doc_text = doc.text();
+
+    let language_server =
+        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::CodeLens);
+
+    let offset_encoding = language_server.offset_encoding();
+    let pos = doc.position(view.id, offset_encoding);
+    let path = match doc.path() {
+        Some(path) => path,
+        None => {
+            return;
+        }
+    };
+
+    if let Some(lenses) = cx.editor.code_lenses.get(path) {
+        let lenses: Vec<CodeLens> = lenses
+            .iter()
+            .filter(|cl| {
+                // TODO: fix the check
+                cl.range.start.line == pos.line
+            })
+            .map(|cl| {
+                // if cl.command.is_none() {
+                //     if let Some(req) = language_server.code_lens_resolve(cl.clone()) {
+                //         if let Some(code_lens) = block_on(req).ok().unwrap() {
+                //             log::info!("code_lense: resolved {:?} into {:?}", cl, code_lens);
+                //             return map_code_lens(doc, &code_lens);
+                //         }
+                //     }
+                // }
+                map_code_lens(doc_text, cl, offset_encoding, language_server.id())
+            })
+            .collect();
+
+        if lenses.is_empty() {
+            cx.editor.set_status("No code lens available");
+            return;
+        }
+
+        let mut picker = ui::Menu::new(lenses, (), move |editor, code_lens, event| {
+            if event != PromptEvent::Validate {
+                return;
+            }
+
+            let code_lens = code_lens.unwrap();
+            let Some(language_server) = editor.language_server_by_id(code_lens.language_server_id)
+                else {
+                    editor.set_error("Language Server disappeared");
+                    return;
+                };
+
+            let lens = code_lens.clone();
+            if let Some(cmd) = lens.command {
+                let future = match language_server.command(cmd) {
+                    Some(future) => future,
+                    None => {
+                        editor.set_error("Language server does not support executing commands");
+                        return;
+                    }
+                };
+
+                tokio::spawn(async move {
+                    let res = future.await;
+
+                    if let Err(e) = res {
+                        log::error!("execute LSP command: {}", e);
+                    }
+                });
+            }
+        });
+        picker.move_down(); // pre-select the first item
+
+        let popup = Popup::new("code-lens", picker).with_scrollbar(false);
+        cx.push_layer(Box::new(popup));
+    };
+}
+
+pub fn code_lenses_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+
+    let language_server =
+        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::CodeLens);
+    let language_server_id = language_server.id();
+
+    let request = match language_server.code_lens(doc.identifier()) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support code lens");
+            return;
+        }
+    };
+
+    let doc_id = doc.id();
+    let offset_enc = language_server.offset_encoding();
+
+    cx.callback(
+        request,
+        move |editor, compositor, lenses: Option<Vec<lsp::CodeLens>>| {
+            if let Some(lenses) = lenses {
+                let doc = doc_mut!(editor, &doc_id);
+                let doc_text = doc.text();
+                if let Some(current_url) = doc.path() {
+                    editor
+                        .code_lenses
+                        .insert(current_url.into(), lenses.clone());
+                };
+
+                let lenses: Vec<CodeLens> = lenses
+                    .iter()
+                    .map(|l| map_code_lens(doc_text, l, offset_enc, language_server_id))
+                    .collect();
+                log::error!("lenses got: {:?}", lenses);
+                doc.set_code_lens(lenses.clone());
+                let picker = Picker::new(lenses, (), |cx, meta, _action| {
+                    let doc = doc!(cx.editor);
+                    let language_server = language_server_with_feature!(
+                        cx.editor,
+                        doc,
+                        LanguageServerFeature::CodeLens
+                    );
+
+                    if let Some(cmd) = meta.command.clone() {
+                        let future = match language_server.command(cmd) {
+                            Some(future) => future,
+                            None => {
+                                cx.editor.set_error(
+                                    "Language server does not support executing commands",
+                                );
+                                return;
+                            }
+                        };
+                        tokio::spawn(async move {
+                            let res = future.await;
+
+                            if let Err(e) = res {
+                                log::error!("execute LSP command: {}", e);
+                            }
+                        });
+                    }
+                });
+                compositor.push(Box::new(picker));
+            } else {
+                editor.set_status("no lens found");
+            }
+        },
+    )
 }

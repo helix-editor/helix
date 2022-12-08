@@ -347,6 +347,7 @@ impl Client {
                 capabilities.inlay_hint_provider,
                 Some(OneOf::Left(true) | OneOf::Right(InlayHintServerCapabilities::Options(_)))
             ),
+            LanguageServerFeature::CodeLens => capabilities.code_lens_provider.is_some(),
         }
     }
 
@@ -642,6 +643,9 @@ impl Client {
                     inlay_hint: Some(lsp::InlayHintClientCapabilities {
                         dynamic_registration: Some(false),
                         resolve_support: None,
+                    }),
+                    code_lens: Some(lsp::CodeLensClientCapabilities {
+                        ..Default::default()
                     }),
                     ..Default::default()
                 }),
@@ -1539,6 +1543,47 @@ impl Client {
     ) -> impl Future<Output = std::result::Result<(), Error>> {
         self.notify::<lsp::notification::DidChangeWatchedFiles>(lsp::DidChangeWatchedFilesParams {
             changes,
+        })
+    }
+
+    pub fn code_lens(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        // Return early if the server does not support code lens.
+        capabilities.code_lens_provider.as_ref()?;
+
+        let params = lsp::CodeLensParams {
+            text_document,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        Some(self.call::<lsp::request::CodeLensRequest>(params))
+    }
+
+    pub fn code_lens_resolve(
+        &self,
+        code_lens: lsp::CodeLens,
+    ) -> Option<impl Future<Output = Result<Option<lsp::CodeLens>>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        // Return early if the server does not support resolving code lens.
+        match capabilities.code_lens_provider {
+            Some(lsp::CodeLensOptions {
+                resolve_provider: Some(true),
+                ..
+            }) => (),
+            _ => return None,
+        }
+
+        let request = self.call::<lsp::request::CodeLensResolve>(code_lens);
+        Some(async move {
+            let json = request.await?;
+            let response: Option<lsp::CodeLens> = serde_json::from_value(json)?;
+            Ok(response)
         })
     }
 }

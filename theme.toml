@@ -83,6 +83,8 @@ label = "honey"
 "diagnostic.unnecessary" = { modifiers = ["dim"] }
 "diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
+"code_lens" = { modifiers = ["underline"] }
+
 warning = "lightning"
 error = "apricot"
 info = "delta"

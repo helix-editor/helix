@@ -355,6 +355,27 @@ impl EditorView {
         text_annotations.collect_overlay_highlights(range)
     }
 
+    pub fn doc_code_lens_highlights(
+        doc: &Document,
+        theme: &Theme,
+    ) -> Option<Vec<(usize, std::ops::Range<usize>)>> {
+        let idx = theme
+            .find_scope_index("code_lens")
+            // get one of the themes below as fallback values
+            .or_else(|| theme.find_scope_index("diagnostic"))
+            .or_else(|| theme.find_scope_index("ui.cursor"))
+            .or_else(|| theme.find_scope_index("ui.selection"))
+            .expect(
+                "at least one of the following scopes must be defined in the theme: `diagnostic`, `ui.cursor`, or `ui.selection`",
+            );
+        Some(
+            doc.code_lens()
+                .iter()
+                .map(|l| (idx, l.range.start..l.range.end))
+                .collect(),
+        )
+    }
+
     /// Get highlight spans for document diagnostics
     pub fn doc_diagnostics_highlights(
         doc: &Document,

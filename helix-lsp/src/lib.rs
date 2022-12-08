@@ -13,8 +13,9 @@ pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::syntax::{
-    LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures,
+use helix_core::{
+    diagnostic::Range,
+    syntax::{LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures},
 };
 use helix_stdx::path;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -1100,4 +1101,14 @@ mod tests {
         let transaction = generate_transaction_from_edits(&source, edits, OffsetEncoding::Utf8);
         assert!(transaction.apply(&mut source));
     }
+}
+
+/// Corresponds to [`lsp_types::CodeLense`](https://docs.rs/lsp-types/0.94.0/lsp_types/struct.Diagnostic.html)
+#[derive(Debug, Clone)]
+pub struct CodeLens {
+    pub range: Range,
+    pub line: usize,
+    pub data: Option<serde_json::Value>,
+    pub language_server_id: usize,
+    pub command: Option<lsp::Command>,
 }
