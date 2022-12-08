@@ -195,12 +195,12 @@ where
     match config.statusline.mode_separator {
         ModeSeparator::Flat => {}
         _ => {
-            // invert the mode style background and foreground
-            let mode_separator_style = mode_style.map(|s| {
-                let mut c = s.clone();
-                c.fg = s.bg;
-                c.bg = s.fg;
-                c
+            // use mode style as mode separator style except set
+            // background to statusline background
+            let mode_separator_style = mode_style.map(|s| Style {
+                fg: s.bg,
+                bg: context.editor.theme.get("ui.statusline").bg,
+                ..Default::default()
             });
 
             let mode_separator = match config.statusline.mode_separator {
