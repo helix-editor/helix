@@ -386,10 +386,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     cx.callback(
         future,
         move |_editor, compositor, response: Option<Vec<lsp::SymbolInformation>>| {
-            let symbols = match response {
-                Some(s) => s,
-                None => return,
-            };
+            let symbols = response.unwrap_or_default();
             let picker = sym_picker(symbols, current_url, offset_encoding);
             let get_symbols = |query: String, editor: &mut Editor| {
                 let doc = doc!(editor);
@@ -420,9 +417,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
                     let response: Option<Vec<lsp::SymbolInformation>> =
                         serde_json::from_value(json)?;
 
-                    response.ok_or_else(|| {
-                        anyhow::anyhow!("No response for workspace symbols from language server")
-                    })
+                    Ok(response.unwrap_or_default())
                 };
                 future.boxed()
             };
