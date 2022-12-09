@@ -192,9 +192,9 @@ where
     );
 
     if visible {
-        match config.statusline.mode_separator.as_str() {
-            "" => {}
-            _ => {
+        match &config.statusline.mode_separator {
+            separator if separator.is_empty() => {}
+            separator => {
                 // use mode style as mode separator style except set
                 // background to statusline background
                 let mode_separator_style = mode_style.map(|s| Style {
@@ -203,14 +203,7 @@ where
                     ..Default::default()
                 });
 
-                let mode_separator = match config.statusline.mode_separator.as_str() {
-                    "angled" => "",
-                    "slanted" => "",
-                    "round" => "",
-                    s => s,
-                };
-
-                write(context, mode_separator.to_string(), mode_separator_style);
+                write(context, separator.to_string(), mode_separator_style);
             }
         };
     }
