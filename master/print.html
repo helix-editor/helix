@@ -1662,7 +1662,7 @@ injection-regex = &quot;^mylang$&quot;
 file-types = [&quot;mylang&quot;, &quot;myl&quot;]
 comment-token = &quot;#&quot;
 indent = { tab-width = 2, unit = &quot;  &quot; }
-language-server = { command = &quot;mylang-lsp&quot;, args = [&quot;--stdio&quot;] }
+language-server = { command = &quot;mylang-lsp&quot;, args = [&quot;--stdio&quot;], environment = { &quot;ENV1&quot; = &quot;value1&quot;, &quot;ENV2&quot; = &quot;value2&quot; } }
 formatter = { command = &quot;mylang-formatter&quot; , args = [&quot;--stdin&quot;] }
 </code></pre>
 <p>These configuration keys are available:</p>
@@ -1713,6 +1713,7 @@ system, so this rule would match against <code>.git\config</code> files on Windo
 <tr><td><code>args</code></td><td>A list of arguments to pass to the language server binary</td></tr>
 <tr><td><code>timeout</code></td><td>The maximum time a request to the language server may take, in seconds. Defaults to <code>20</code></td></tr>
 <tr><td><code>language-id</code></td><td>The language name to pass to the language server. Some language servers support multiple languages and use this field to determine which one is being served in a buffer</td></tr>
+<tr><td><code>environment</code></td><td>Any environment variables that will be used when starting the language server <code>{ &quot;KEY1&quot; = &quot;Value1&quot;, &quot;KEY2&quot; = &quot;Value2&quot; }</code></td></tr>
 </tbody></table>
 </div>
 <p>The top-level <code>config</code> field is used to configure the LSP initialization options. A <code>format</code>
