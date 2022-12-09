@@ -411,7 +411,7 @@ impl Component for Completion {
                             "```{}\n{}\n```\n{}",
                             language,
                             option.detail.as_deref().unwrap_or_default(),
-                            contents.clone()
+                            contents
                         ),
                         cx.editor.syn_loader.clone(),
                     )
@@ -421,15 +421,14 @@ impl Component for Completion {
                     value: contents,
                 })) => {
                     // TODO: set language based on doc scope
-                    Markdown::new(
-                        format!(
-                            "```{}\n{}\n```\n{}",
-                            language,
-                            option.detail.as_deref().unwrap_or_default(),
-                            contents.clone()
-                        ),
-                        cx.editor.syn_loader.clone(),
-                    )
+                    if let Some(detail) = &option.detail.as_deref() {
+                        Markdown::new(
+                            format!("```{}\n{}\n```\n{}", language, detail, contents),
+                            cx.editor.syn_loader.clone(),
+                        )
+                    } else {
+                        Markdown::new(contents.to_string(), cx.editor.syn_loader.clone())
+                    }
                 }
                 None if option.detail.is_some() => {
                     // TODO: copied from above
