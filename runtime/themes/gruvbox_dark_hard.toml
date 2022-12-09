@@ -39,6 +39,12 @@
 "info" = { fg = "aqua1", bg = "bg1" }
 "hint" = { fg = "blue1", bg = "bg1" }
 
+"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.error" = { underline = { style = "curl", color = "red0" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "orange1" } }
+"diagnostic.info" = { underline = { style = "curl", color = "aqua1" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "blue1" } }
+
 "ui.background" = { bg = "bg0" }
 "ui.linenr" = { fg = "bg4" }
 "ui.linenr.selected" = { fg = "yellow1" }
@@ -60,8 +66,6 @@
 "ui.menu.selected" = { fg = "bg2", bg = "blue1", modifiers = ["bold"] }
 "ui.virtual.whitespace" = "bg2"
 "ui.virtual.ruler" = { bg = "bg1" }
-
-"diagnostic" = { modifiers = ["underlined"] }
 
 "markup.heading" = "aqua1"
 "markup.bold" = { modifiers = ["bold"] }
