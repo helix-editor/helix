@@ -42,10 +42,12 @@ pub struct Client {
 
 impl Client {
     #[allow(clippy::type_complexity)]
+    #[allow(clippy::too_many_arguments)]
     pub fn start(
         cmd: &str,
         args: &[String],
         config: Option<Value>,
+        server_environment: HashMap<String, String>,
         root_markers: &[String],
         id: usize,
         req_timeout: u64,
@@ -55,6 +57,7 @@ impl Client {
         let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
 
         let process = Command::new(cmd)
+            .envs(server_environment)
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
