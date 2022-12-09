@@ -9,7 +9,6 @@ use helix_view::{
 
 use crate::ui::ProgressSpinners;
 
-use helix_view::editor::ModeSeparator;
 use helix_view::editor::StatusLineElement as StatusLineElementID;
 use tui::buffer::Buffer as Surface;
 use tui::text::{Span, Spans};
@@ -192,27 +191,29 @@ where
         mode_style,
     );
 
-    match config.statusline.mode_separator {
-        ModeSeparator::Flat => {}
-        _ => {
-            // use mode style as mode separator style except set
-            // background to statusline background
-            let mode_separator_style = mode_style.map(|s| Style {
-                fg: s.bg,
-                bg: context.editor.theme.get("ui.statusline").bg,
-                ..Default::default()
-            });
+    if visible {
+        match config.statusline.mode_separator.as_str() {
+            "" => {}
+            _ => {
+                // use mode style as mode separator style except set
+                // background to statusline background
+                let mode_separator_style = mode_style.map(|s| Style {
+                    fg: s.bg,
+                    bg: context.editor.theme.get("ui.statusline").bg,
+                    ..Default::default()
+                });
 
-            let mode_separator = match config.statusline.mode_separator {
-                ModeSeparator::Angled => "",
-                ModeSeparator::Slanted => "",
-                ModeSeparator::Round => "",
-                ModeSeparator::Flat => unreachable!(),
-            };
+                let mode_separator = match config.statusline.mode_separator.as_str() {
+                    "angled" => "",
+                    "slanted" => "",
+                    "round" => "",
+                    s => s,
+                };
 
-            write(context, mode_separator.to_string(), mode_separator_style);
-        }
-    };
+                write(context, mode_separator.to_string(), mode_separator_style);
+            }
+        };
+    }
 }
 
 fn render_lsp_spinner<F>(context: &mut RenderContext, write: F)
