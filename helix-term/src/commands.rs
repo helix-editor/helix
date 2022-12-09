@@ -3,6 +3,7 @@ pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
+use helix_vcs::Hunk;
 pub use lsp::*;
 use tui::text::Spans;
 pub use typed::*;
@@ -366,6 +367,10 @@ impl MappableCommand {
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
         goto_prev_diag, "Goto previous diagnostic",
+        goto_next_change, "Goto next change",
+        goto_prev_change, "Goto previous change",
+        goto_first_change, "Goto first change",
+        goto_last_change, "Goto last change",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
         goto_next_buffer, "Goto next buffer",
@@ -460,8 +465,8 @@ impl MappableCommand {
         select_textobject_inner, "Select inside object",
         goto_next_function, "Goto next function",
         goto_prev_function, "Goto previous function",
-        goto_next_class, "Goto next class",
-        goto_prev_class, "Goto previous class",
+        goto_next_class, "Goto next type definition",
+        goto_prev_class, "Goto previous type definition",
         goto_next_parameter, "Goto next parameter",
         goto_prev_parameter, "Goto previous parameter",
         goto_next_comment, "Goto next comment",
@@ -1725,12 +1730,7 @@ fn search_impl(
         };
 
         doc.set_selection(view.id, selection);
-        // TODO: is_cursor_in_view does the same calculation as ensure_cursor_in_view
-        if view.is_cursor_in_view(doc, 0) {
-            view.ensure_cursor_in_view(doc, scrolloff);
-        } else {
-            align_view(doc, view, Align::Center)
-        }
+        view.ensure_cursor_in_view_center(doc, scrolloff);
     };
 }
 
@@ -2492,8 +2492,10 @@ fn jumplist_picker(cx: &mut Context) {
         (),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
+            let config = cx.editor.config();
             let (view, doc) = current!(cx.editor);
             doc.set_selection(view.id, meta.selection.clone());
+            view.ensure_cursor_in_view_center(doc, config.scrolloff);
         },
         |editor, meta| {
             let doc = &editor.documents.get(&meta.id)?;
@@ -2973,6 +2975,100 @@ fn goto_prev_diag(cx: &mut Context) {
     goto_pos(editor, pos);
 }
 
+fn goto_first_change(cx: &mut Context) {
+    goto_first_change_impl(cx, false);
+}
+
+fn goto_last_change(cx: &mut Context) {
+    goto_first_change_impl(cx, true);
+}
+
+fn goto_first_change_impl(cx: &mut Context, reverse: bool) {
+    let editor = &mut cx.editor;
+    let (_, doc) = current!(editor);
+    if let Some(handle) = doc.diff_handle() {
+        let hunk = {
+            let hunks = handle.hunks();
+            let idx = if reverse {
+                hunks.len().saturating_sub(1)
+            } else {
+                0
+            };
+            hunks.nth_hunk(idx)
+        };
+        if hunk != Hunk::NONE {
+            let pos = doc.text().line_to_char(hunk.after.start as usize);
+            goto_pos(editor, pos)
+        }
+    }
+}
+
+fn goto_next_change(cx: &mut Context) {
+    goto_next_change_impl(cx, Direction::Forward)
+}
+
+fn goto_prev_change(cx: &mut Context) {
+    goto_next_change_impl(cx, Direction::Backward)
+}
+
+fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
+    let count = cx.count() as u32 - 1;
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+        let doc_text = doc.text().slice(..);
+        let diff_handle = if let Some(diff_handle) = doc.diff_handle() {
+            diff_handle
+        } else {
+            editor.set_status("Diff is not available in current buffer");
+            return;
+        };
+
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            let cursor_line = range.cursor_line(doc_text) as u32;
+
+            let hunks = diff_handle.hunks();
+            let hunk_idx = match direction {
+                Direction::Forward => hunks
+                    .next_hunk(cursor_line)
+                    .map(|idx| (idx + count).min(hunks.len() - 1)),
+                Direction::Backward => hunks
+                    .prev_hunk(cursor_line)
+                    .map(|idx| idx.saturating_sub(count)),
+            };
+            // TODO refactor with let..else once MSRV reaches 1.65
+            let hunk_idx = if let Some(hunk_idx) = hunk_idx {
+                hunk_idx
+            } else {
+                return range;
+            };
+            let hunk = hunks.nth_hunk(hunk_idx);
+
+            let hunk_start = doc_text.line_to_char(hunk.after.start as usize);
+            let hunk_end = if hunk.after.is_empty() {
+                hunk_start + 1
+            } else {
+                doc_text.line_to_char(hunk.after.end as usize)
+            };
+            let new_range = Range::new(hunk_start, hunk_end);
+            if editor.mode == Mode::Select {
+                let head = if new_range.head < range.anchor {
+                    new_range.anchor
+                } else {
+                    new_range.head
+                };
+
+                Range::new(range.anchor, head)
+            } else {
+                new_range.with_direction(direction)
+            }
+        });
+
+        doc.set_selection(view.id, selection)
+    };
+    motion(cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
 pub mod insert {
     use super::*;
     pub type Hook = fn(&Rope, &Selection, char) -> Option<Transaction>;
@@ -3011,6 +3107,11 @@ pub mod insert {
     }
 
     fn language_server_completion(cx: &mut Context, ch: char) {
+        let config = cx.editor.config();
+        if !config.auto_completion {
+            return;
+        }
+
         use helix_lsp::lsp;
         // if ch matches completion char, trigger completion
         let doc = doc_mut!(cx.editor);
@@ -4390,6 +4491,7 @@ fn match_brackets(cx: &mut Context) {
 
 fn jump_forward(cx: &mut Context) {
     let count = cx.count();
+    let config = cx.editor.config();
     let view = view_mut!(cx.editor);
     let doc_id = view.doc;
 
@@ -4403,12 +4505,13 @@ fn jump_forward(cx: &mut Context) {
         }
 
         doc.set_selection(view.id, selection);
-        align_view(doc, view, Align::Center);
+        view.ensure_cursor_in_view_center(doc, config.scrolloff);
     };
 }
 
 fn jump_backward(cx: &mut Context) {
     let count = cx.count();
+    let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
     let doc_id = doc.id();
 
@@ -4422,7 +4525,7 @@ fn jump_backward(cx: &mut Context) {
         }
 
         doc.set_selection(view.id, selection);
-        align_view(doc, view, Align::Center);
+        view.ensure_cursor_in_view_center(doc, config.scrolloff);
     };
 }
 
@@ -4701,19 +4804,41 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                     )
                 };
 
+                if ch == 'g' && doc.diff_handle().is_none() {
+                    editor.set_status("Diff is not available in current buffer");
+                    return;
+                }
+
+                let textobject_change = |range: Range| -> Range {
+                    let diff_handle = doc.diff_handle().unwrap();
+                    let hunks = diff_handle.hunks();
+                    let line = range.cursor_line(text);
+                    let hunk_idx = if let Some(hunk_idx) = hunks.hunk_at(line as u32, false) {
+                        hunk_idx
+                    } else {
+                        return range;
+                    };
+                    let hunk = hunks.nth_hunk(hunk_idx).after;
+
+                    let start = text.line_to_char(hunk.start as usize);
+                    let end = text.line_to_char(hunk.end as usize);
+                    Range::new(start, end).with_direction(range.direction())
+                };
+
                 let selection = doc.selection(view.id).clone().transform(|range| {
                     match ch {
                         'w' => textobject::textobject_word(text, range, objtype, count, false),
                         'W' => textobject::textobject_word(text, range, objtype, count, true),
-                        'c' => textobject_treesitter("class", range),
+                        't' => textobject_treesitter("class", range),
                         'f' => textobject_treesitter("function", range),
                         'a' => textobject_treesitter("parameter", range),
-                        'o' => textobject_treesitter("comment", range),
-                        't' => textobject_treesitter("test", range),
+                        'c' => textobject_treesitter("comment", range),
+                        'T' => textobject_treesitter("test", range),
                         'p' => textobject::textobject_paragraph(text, range, objtype, count),
                         'm' => textobject::textobject_pair_surround_closest(
                             text, range, objtype, count,
                         ),
+                        'g' => textobject_change(range),
                         // TODO: cancel new ranges if inconsistent surround matches across lines
                         ch if !ch.is_ascii_alphanumeric() => {
                             textobject::textobject_pair_surround(text, range, objtype, ch, count)
@@ -4737,11 +4862,11 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         ("w", "Word"),
         ("W", "WORD"),
         ("p", "Paragraph"),
-        ("c", "Class (tree-sitter)"),
+        ("t", "Type definition (tree-sitter)"),
         ("f", "Function (tree-sitter)"),
         ("a", "Argument/parameter (tree-sitter)"),
-        ("o", "Comment (tree-sitter)"),
-        ("t", "Test (tree-sitter)"),
+        ("c", "Comment (tree-sitter)"),
+        ("T", "Test (tree-sitter)"),
         ("m", "Closest surrounding pair to cursor"),
         (" ", "... or any character acting as a pair"),
     ];

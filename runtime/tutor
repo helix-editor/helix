@@ -96,7 +96,7 @@ _________________________________________________________________
  2. Move to a place in the line which is missing text and type
     i to enter Insert mode. Keys you type will now type text.
  3. Enter the missing text.
- 4. type Escape to exit Insert mode and return to Normal mode.
+ 4. Type Escape to exit Insert mode and return to Normal mode.
  5. Repeat until the line matches the line below it.
 
  --> Th stce misg so.

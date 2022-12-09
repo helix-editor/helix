@@ -17,11 +17,14 @@
 "ui.menu" = {fg="black", bg="acme_bg"}
 "ui.menu.selected" = {bg="selected"}
 "ui.window" = {bg="acme_bg"}
-"diagnostic.error" = {bg="white", modifiers=["bold"]}
-"diagnostic.warning" = {bg="white", modifiers=["bold"]}
-"diagnostic.hint" = {bg="white", modifiers=["bold"]}
+"diagnostic.error" = {bg="red", fg="white", modifiers=["bold"]}
+"diagnostic.warning" = {bg="orange", fg="black", modifiers=["bold"]}
+"diagnostic.hint" = {fg="gray", modifiers=["bold"]}
 "ui.bufferline" = { fg = "indent", bg = "acme_bar_bg" }
 "ui.bufferline.active" = { fg = "black", bg = "acme_bg" }
+"diff.plus" = {fg = "green"}
+"diff.delta" = {fg = "acme_bar_bg"}
+"diff.minus" = {fg = "red"}
 
 [palette]
 white = "#ffffff"
@@ -34,3 +37,5 @@ cursor = "#444444"
 red = "#a0342f"
 green = "#065905"
 indent = "#aaaaaa"
+orange = "#f0ad4e"
+gray = "#777777"
