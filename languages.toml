@@ -577,6 +577,34 @@ name = "latex"
 source = { git = "https://github.com/latex-lsp/tree-sitter-latex", rev = "8c75e93cd08ccb7ce1ccab22c1fbd6360e3bcea6" }
 
 [[language]]
+name = "bibtex"
+scope = "source.bib"
+injection-regex = "bib"
+file-types = ["bib"]
+roots = []
+comment-token = "%"
+language-server = { command = "texlab" }
+indent = { tab-width = 4, unit = "\t" }
+auto-format = true
+
+[language.formatter]
+command = 'bibtex-tidy'
+args = [
+  "-",
+  "--curly",
+  "--drop-all-caps",
+  "--remove-empty-fields",
+  "--sort-fields",
+  "--sort=year,author,id",
+  "--strip-enclosing-braces",
+  "--trailing-commas",
+]
+
+[[grammar]]
+name = "bibtex"
+source = { git = "https://github.com/latex-lsp/tree-sitter-bibtex", rev = "ccfd77db0ed799b6c22c214fe9d2937f47bc8b34" }
+
+[[language]]
 name = "lean"
 scope = "source.lean"
 injection-regex = "lean"
