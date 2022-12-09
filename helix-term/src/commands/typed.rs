@@ -627,7 +627,7 @@ pub fn write_all_impl(
         })
         .collect();
 
-    // manually callsave for the rest of docs that don't have a formatter
+    // manually call save for the rest of docs that don't have a formatter
     for id in saves {
         cx.editor.save::<PathBuf>(id, None, force)?;
     }

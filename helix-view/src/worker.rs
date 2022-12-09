@@ -167,7 +167,7 @@ impl Worker {
             .send_timeout(WorkerRequest::Completion { prefix, tx }, TIMEOUT)
             .await
         {
-            log::error!("On send command to worker: {}", e);
+            log::info!("On send command to worker: {}", e);
             return None;
         }
 
@@ -175,12 +175,12 @@ impl Worker {
             Ok(r) => match r {
                 Ok(items) => items,
                 Err(e) => {
-                    log::error!("On wait worker result: {}", e);
+                    log::info!("On wait worker result: {}", e);
                     None
                 }
             },
             Err(e) => {
-                log::error!("On wait worker result timeout: {}", e);
+                log::info!("On wait worker result timeout: {}", e);
                 None
             }
         }
@@ -311,7 +311,7 @@ impl WorkerState {
         };
 
         if tx.send(result).is_err() {
-            log::error!("On send worker completion result");
+            log::info!("On send worker completion result");
         }
     }
 }

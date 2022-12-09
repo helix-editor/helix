@@ -33,7 +33,7 @@ async fn words_completion_basic() -> anyhow::Result<()> {
                 Some("<tab>"),
                 Some(&|app| {
                     let doc = doc!(app.editor);
-                    assert_eq!(&"hello\n", doc.text());
+                    assert_eq!(helpers::platform_line("hello\n"), doc.text().to_string());
                 }),
             ),
             // w|
@@ -43,7 +43,10 @@ async fn words_completion_basic() -> anyhow::Result<()> {
                 Some("<tab>"),
                 Some(&|app| {
                     let doc = doc!(app.editor);
-                    assert_eq!(&"hello world\n", doc.text());
+                    assert_eq!(
+                        helpers::platform_line("hello world\n"),
+                        doc.text().to_string()
+                    );
                 }),
             ),
         ],
