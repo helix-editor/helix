@@ -16,7 +16,7 @@
 
 (command) @function.builtin
 
-(number) @number
+(number) @constant.numeric
 
 (field
   name: (identifier) @variable.builtin)
