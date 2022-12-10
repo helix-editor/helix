@@ -352,6 +352,7 @@ impl Prompt {
         let prompt_color = theme.get("ui.text");
         let completion_color = theme.get("ui.menu");
         let selected_color = theme.get("ui.menu.selected");
+        let suggestion_color = theme.get("ui.text.inactive");
         // completion
 
         let max_len = self
@@ -450,21 +451,29 @@ impl Prompt {
         // render buffer text
         surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
 
-        let input: Cow<str> = if self.line.is_empty() {
+        let (input, is_suggestion): (Cow<str>, bool) = if self.line.is_empty() {
             // latest value in the register list
-            self.history_register
+            match self
+                .history_register
                 .and_then(|reg| cx.editor.registers.last(reg))
                 .map(|entry| entry.into())
-                .unwrap_or_else(|| Cow::from(""))
+            {
+                Some(value) => (value, true),
+                None => (Cow::from(""), false),
+            }
         } else {
-            self.line.as_str().into()
+            (self.line.as_str().into(), false)
         };
 
         surface.set_string(
             area.x + self.prompt.len() as u16,
             area.y + line,
             &input,
-            prompt_color,
+            if is_suggestion {
+                suggestion_color
+            } else {
+                prompt_color
+            },
         );
     }
 }
