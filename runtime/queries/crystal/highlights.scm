@@ -25,15 +25,11 @@
 
 ; literals
 
-[
-  (nil)
-  (bool)
-] @constant.builtin
+(nil) @constant.builtin
+(bool) @constant.builtin.boolean
 
-[
-  (integer)
-  (float)
-] @number
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
 
 [
   (string)
@@ -54,7 +50,7 @@
 [
   (instance_variable)
   (class_variable)
-] @property
+] @variable.other.member
 
 (constant) @constant
 
@@ -71,4 +67,4 @@
 (type_identifier) @type
 
 
-(local_variable) @variable.local
+(local_variable) @variable
