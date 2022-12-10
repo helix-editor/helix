@@ -383,7 +383,7 @@ pub struct Picker<T: Item> {
     cursor: usize,
     // pattern: String,
     prompt: Prompt,
-    previous_pattern: String,
+    previous_pattern: (String, FuzzyQuery),
     /// Whether to truncate the start (default true)
     pub truncate_start: bool,
     /// Whether to show the preview panel (default true)
@@ -412,7 +412,7 @@ impl<T: Item> Picker<T> {
             matches: Vec::new(),
             cursor: 0,
             prompt,
-            previous_pattern: String::new(),
+            previous_pattern: (String::new(), FuzzyQuery::default()),
             truncate_start: true,
             show_preview: true,
             callback_fn: Box::new(callback_fn),
@@ -440,9 +440,14 @@ impl<T: Item> Picker<T> {
 
         let pattern = self.prompt.line();
 
-        if pattern == &self.previous_pattern {
+        if pattern == &self.previous_pattern.0 {
             return;
         }
+
+        let (query, is_refined) = self
+            .previous_pattern
+            .1
+            .refine(pattern, &self.previous_pattern.0);
 
         if pattern.is_empty() {
             // Fast path for no pattern.
@@ -456,8 +461,7 @@ impl<T: Item> Picker<T> {
                         len: text.chars().count(),
                     }
                 }));
-        } else if pattern.starts_with(&self.previous_pattern) {
-            let query = FuzzyQuery::new(pattern);
+        } else if is_refined {
             // optimization: if the pattern is a more specific version of the previous one
             // then we can score the filtered set.
             self.matches.retain_mut(|pmatch| {
@@ -484,7 +488,8 @@ impl<T: Item> Picker<T> {
         // reset cursor position
         self.cursor = 0;
         let pattern = self.prompt.line();
-        self.previous_pattern.clone_from(pattern);
+        self.previous_pattern.0.clone_from(pattern);
+        self.previous_pattern.1 = query;
     }
 
     pub fn force_score(&mut self) {
