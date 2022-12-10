@@ -18,7 +18,7 @@
 "ui.statusline.select" = { fg = "magenta", modifiers = ["reversed"] }
 "ui.help" = { fg = "light-gray" }
 "ui.cursor" = { modifiers = ["reversed"] }
-"ui.cursor.match" = { fg = "light-yellow", modifiers = ["underlined"] }
+"ui.cursor.match" = { fg = "light-yellow", underline = { color = "light-yellow", style = "line" } }
 "ui.cursor.primary" = { modifiers = ["reversed", "slow_blink"] }
 "ui.cursor.secondary" = { modifiers = ["reversed"] }
 "ui.virtual.ruler" = { fg = "gray", modifiers = ["reversed"] }
@@ -44,7 +44,7 @@
 "markup.list" = "light-red"
 "markup.bold" = { fg = "light-yellow", modifiers = ["bold"] }
 "markup.italic" = { fg = "light-magenta", modifiers = ["italic"] }
-"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.url" = { fg = "yellow", underline = { color = "yellow", style = "line"} }
 "markup.link.text" = "light-red"
 "markup.quote" = "light-cyan"
 "markup.raw" = "green"
@@ -63,9 +63,8 @@
 "warning" = "yellow" 
 "error" = "light-red" 
 
-"diagnostic" = { modifiers = ["underlined"] }
-"diagnostic.info" = { fg = "light-blue", modifiers = ["underlined"] }
-"diagnostic.hint" = { fg = "gray", modifiers = ["underlined"] }
-"diagnostic.debug" ={ fg ="gray",  modifiers = ["underlined"] }
-"diagnostic.warning" = { fg = "yellow", modifiers = ["underlined"] }
-"diagnostic.error" = { fg ="light-red", modifiers = ["underlined"] }
+"diagnostic.info" = { underline = { color = "light-blue", style = "dot" } }
+"diagnostic.hint" = { underline = { color = "light-gray", style = "double_line" } }
+"diagnostic.debug" = { underline ={ color ="light-gray", style = "dashed" } }
+"diagnostic.warning" = { underline = { color = "light-yellow", style = "curl" } }
+"diagnostic.error" = { underline = { color ="light-red", style = "curl" } }
