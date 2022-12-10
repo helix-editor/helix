@@ -143,6 +143,19 @@ struct PickerDiagnostic {
     offset_encoding: OffsetEncoding,
 }
 
+impl PickerDiagnostic {
+    fn severity_marker(&self) -> &'static str {
+        let empty_space = "  ";
+        self.diag.severity.map_or(empty_space, |s| match s {
+            DiagnosticSeverity::HINT => "H ",
+            DiagnosticSeverity::INFORMATION => "I ",
+            DiagnosticSeverity::WARNING => "W ",
+            DiagnosticSeverity::ERROR => "E ",
+            _ => empty_space,
+        })
+    }
+}
+
 impl ui::menu::Item for PickerDiagnostic {
     type Data = (DiagnosticStyles, DiagnosticsFormat);
 
@@ -178,6 +191,7 @@ impl ui::menu::Item for PickerDiagnostic {
         };
 
         Spans::from(vec![
+            Span::raw(self.severity_marker()),
             Span::raw(path),
             Span::styled(&self.diag.message, style),
             Span::styled(code, style),
