@@ -1,59 +1,33 @@
 ; Yuck is the configuration language for EWW widgets
+(comment) @comment
+(string) @string
+(number) @constant.numeric.integer
+(reserved_widget) @function.method
 
-; widgets
-[
-  "widget"
-  "combo-box-text"
-  "expander"
-  "revealer"
-  "checkbox"
-  "color-button"
-  "color-chooser"
-  "scale"
-  "progress"
-  "input"
-  "button"
-  "image"
-  "box"
-  "overlay"
-  "centerbox"
-  "scroll"
-  "eventbox"
-  "label"
-  "literal"
-  "calendar"
-  "transform"
-  "circular-progress"
-  "graph"
-] @keyword
+(vars
+  var: (identifier) @variable.other.member)
 
-; definitions
-[
-  "var"
-  "defwidget"
-  "defwindow"
-  "defpoll"
-  "deflisten"
-] @keyword.storage.type
+(defwidget
+  name: (identifier) @type)
+
+[ "(" ")" "{" "}" "[" "]" ] @punctuation.bracket
 
 [
-  "+"
-  "-"
-  "*"
-  "/"
-  "%"
-  "||"
-  "&&"
-  "!"
+  (reserved_widget)
+  (reserved_defs)
+] @keyword.control
+
+[
+  (boolean)
+] @constant.builtin
+
+(template_subsitution
+  "${" @punctuation.special
+  "}" @punctuation.special) @embedded
+
+[
   "?:"
-  "?."
-] @operators
-
-[
-  "("
-  ")"
-  "]"
-  "]"
-  "{"
-  "}"
-] @punction.bracket
+  "!="
+  "?"
+  ":"
+] @operator

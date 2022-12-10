@@ -1962,6 +1962,9 @@ indent = { tab-width = 2, unit = "  " }
 '"' = '"'
 "'" = "'"
 
+[[grammar]]
+name = "yuck"
+source = { git = "/home/justin/Repo/open-source/tree-sitter-yuck", rev = "5f521fef89ce7d06b00330b680d8a3183829df2c" }
 
 [[language]]
 name = "env"
