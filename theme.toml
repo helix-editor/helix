@@ -54,6 +54,7 @@ label = "honey"
 
 "ui.text" = { fg = "lavender" }
 "ui.text.focus" = { fg = "white" }
+"ui.text.inactive" = "sirocco"
 "ui.virtual" = { fg = "comet" }
 
 "ui.virtual.indent-guide" = { fg = "comet" }
