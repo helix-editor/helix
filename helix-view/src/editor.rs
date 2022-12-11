@@ -1005,6 +1005,8 @@ impl Editor {
             return;
         }
 
+        self.enter_normal_mode();
+
         match action {
             Action::Replace => {
                 let (view, doc) = current_ref!(self);
@@ -1024,6 +1026,9 @@ impl Editor {
 
                 let (view, doc) = current!(self);
                 let view_id = view.id;
+
+                // Append any outstanding changes to history in the old document.
+                doc.append_changes_to_history(view);
 
                 if remove_empty_scratch {
                     // Copy `doc.id` into a variable before calling `self.documents.remove`, which requires a mutable
@@ -1262,7 +1267,7 @@ impl Editor {
         // if leaving the view: mode should reset and the cursor should be
         // within view
         if prev_id != view_id {
-            self.mode = Mode::Normal;
+            self.enter_normal_mode();
             self.ensure_cursor_in_view(view_id);
 
             // Update jumplist selections with new document changes.
@@ -1426,5 +1431,68 @@ impl Editor {
         }
 
         Ok(())
+    }
+
+    /// Switches the editor into normal mode.
+    pub fn enter_normal_mode(&mut self) {
+        use helix_core::{graphemes, Range};
+
+        if self.mode == Mode::Normal {
+            return;
+        }
+
+        self.mode = Mode::Normal;
+        let (view, doc) = current!(self);
+
+        try_restore_indent(doc, view);
+
+        // if leaving append mode, move cursor back by 1
+        if doc.restore_cursor {
+            let text = doc.text().slice(..);
+            let selection = doc.selection(view.id).clone().transform(|range| {
+                Range::new(
+                    range.from(),
+                    graphemes::prev_grapheme_boundary(text, range.to()),
+                )
+            });
+
+            doc.set_selection(view.id, selection);
+            doc.restore_cursor = false;
+        }
+    }
+}
+
+fn try_restore_indent(doc: &mut Document, view: &mut View) {
+    use helix_core::{
+        chars::char_is_whitespace, line_ending::line_end_char_index, Operation, Transaction,
+    };
+
+    fn inserted_a_new_blank_line(changes: &[Operation], pos: usize, line_end_pos: usize) -> bool {
+        if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
+            changes
+        {
+            move_pos + inserted_str.len() == pos
+                && inserted_str.starts_with('\n')
+                && inserted_str.chars().skip(1).all(char_is_whitespace)
+                && pos == line_end_pos // ensure no characters exists after current position
+        } else {
+            false
+        }
+    }
+
+    let doc_changes = doc.changes().changes();
+    let text = doc.text().slice(..);
+    let range = doc.selection(view.id).primary();
+    let pos = range.cursor(text);
+    let line_end_pos = line_end_char_index(&text, range.cursor_line(text));
+
+    if inserted_a_new_blank_line(doc_changes, pos, line_end_pos) {
+        // Removes tailing whitespaces.
+        let transaction =
+            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+                let line_start_pos = text.line_to_char(range.cursor_line(text));
+                (line_start_pos, pos, None)
+            });
+        crate::apply_transaction(&transaction, doc, view);
     }
 }
