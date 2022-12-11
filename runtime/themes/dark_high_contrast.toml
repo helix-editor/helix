@@ -26,9 +26,8 @@
 "ui.cursor.primary" = { fg = "black", bg = "white", modifiers = ["slow_blink"] }
 
 "ui.cursor.secondary" = "white"
-"ui.cursorline.primary" = { fg = "orange", modifiers = ["underlined"] }
-"ui.cursorline.secondary" = { fg = "orange", modifiers = ["underlined"] }
-"ui.selection" = { fg = "deep_blue", bg = "white" }
+"ui.cursorline.primary" = { bg = "deep_blue", underline = { color = "orange", style = "double_line" } }
+"ui.cursorline.secondary" = { bg = "dark_blue", underline = { color = "white", style = "line" } }
 
 "ui.menu" = { fg = "white", bg = "deep_blue" }
 "ui.menu.selected" = { fg = "orange", modifiers = ["underlined"] }
@@ -44,10 +43,10 @@
 
 # Diagnostic
 "diagnostic" = "white"
-"diagnostic.info" = { bg = "white", modifiers = ["underlined"] }
-"diagnostic.hint" = { fg = "yellow", modifiers = ["underlined"] }
-"diagnostic.warning" = { fg = "orange", modifiers = ["underlined"] }
-"diagnostic.error" = { fg = "red", modifiers = ["underlined"] }
+"diagnostic.info" = { underline = { color = "white", style = "dotted" } }
+"diagnostic.hint" = { underline = { color = "yellow", style = "dashed" } }
+"diagnostic.warning" = { underline = { color = "orange", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
 "info" = "white" 
 "hint" = "yellow"
 "warning" = "orange"
@@ -79,11 +78,11 @@
 "label" = "blue"
 
 # Markup 
-"markup.heading" = { fg = "yellow", modifiers = ["bold", "underlined"] }
+"markup.heading" = { fg = "yellow", modifiers = ["bold"], underline = { color = "yellow", style = "double_line"} }
 "markup.list" = { fg = "pink" }
 "markup.bold" = { fg = "emerald_green", modifiers = ["bold"] }
 "markup.italic" = { fg = "blue", modifiers = ["italic"] }
-"markup.link.url" = { fg = "blue", modifiers = ["underlined"] }
+"markup.link.url" = { fg = "blue", underline = { color = "blue", style = "line" } }
 "markup.link.text" = "pink"
 "markup.quote" = "yellow"
 "markup.raw" = "brown"
