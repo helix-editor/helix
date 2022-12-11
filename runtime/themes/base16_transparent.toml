@@ -65,7 +65,7 @@
 "warning" = "light-yellow"
 "error" = "light-red"
 
-"diagnostic.info" = { underline = { color = "light-blue", style = "dot" } }
+"diagnostic.info" = { underline = { color = "light-blue", style = "dotted" } }
 "diagnostic.hint" = { underline = { color = "light-gray", style = "double_line" } }
 "diagnostic.debug" = { underline ={ color ="light-gray", style = "dashed" } }
 "diagnostic.warning" = { underline = { color = "light-yellow", style = "curl" } }
