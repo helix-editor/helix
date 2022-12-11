@@ -339,6 +339,12 @@ _________________________________________________________________
  3. Move to the fourth line.
  4. Type x twice or type 2x to select 2 lines, and d to delete.
 
+ This also works in reverse.
+
+ 1. Move the cursor to line labeled "7".
+ 2. Type X to select the current line.
+ 3. Type X again to select the previous line, and d to delete.
+
  --> 1) Roses are red,
  --> 2) Mud is fun,
  --> 3) Violets are blue,
@@ -347,8 +353,8 @@ _________________________________________________________________
  --> 6) Sugar is sweet,
  --> 7) And so are you.
 
- Note : X works similarly to x although it doesn't extend to
-      subsequent lines. X on an empty line does nothing.
+ Note : Alt-x works similarly to x although it doesn't extend to
+      subsequent lines.
 
 =================================================================
 =                   3.7 COLLAPSING SELECTIONS                   =

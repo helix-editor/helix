@@ -86,8 +86,9 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "%" => select_all,
         "x" => extend_line_below,
-        "X" => extend_to_line_bounds,
-        "A-x" => shrink_to_line_bounds,
+        "X" => extend_line_above,
+        "A-x" => extend_to_line_bounds,
+        "A-X" => shrink_to_line_bounds,
 
         "m" => { "Match"
             "m" => match_brackets,
