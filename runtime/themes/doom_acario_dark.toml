@@ -41,7 +41,7 @@
 
 'diff.plus' = { fg = 'green' }
 'diff.minus' = { fg = 'red' }
-'diff.delta' = { fg = 'green' }
+'diff.delta' = { fg = 'blue' }
 
 'ui.background'= { bg = 'bg' }
 'ui.cursor' = { bg = 'orange', fg = 'bg-alt' }

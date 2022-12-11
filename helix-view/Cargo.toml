@@ -21,6 +21,7 @@ helix-loader = { version = "0.6", path = "../helix-loader" }
 helix-lsp = { version = "0.6", path = "../helix-lsp" }
 helix-dap = { version = "0.6", path = "../helix-dap" }
 crossterm = { version = "0.25", optional = true }
+helix-vcs = { version = "0.6", path = "../helix-vcs" }
 
 # Conversion traits
 once_cell = "1.16"
@@ -42,6 +43,7 @@ toml = "0.5"
 log = "~0.4"
 
 which = "4.2"
+
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "4.4", features = ["std"] }

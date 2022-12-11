@@ -37,9 +37,9 @@
 
 "ui.virtual.indent-guide" = "#4f4f4f"
 
-"diff.plus" = {fg = "#709080", bg = "#313c36", modifiers = ["bold"] }
-"diff.delta" = "#333333"
-"diff.minus" = {fg = "#333333", bg = "#464646"}
+"diff.plus" = {fg = "#709080"}
+"diff.delta" = {fg = "#464646"}
+"diff.minus" = {fg = "#cc9393"}
 
 "diagnostic" = {bg = "statusbg"}
 "diagnostic.error" = { fg = "errorfg", bg = "errorbg"}

@@ -207,6 +207,8 @@ pub struct LanguageServerConfiguration {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub environment: HashMap<String, String>,
     #[serde(default = "default_timeout")]
     pub timeout: u64,
     pub language_id: Option<String>,

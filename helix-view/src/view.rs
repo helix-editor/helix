@@ -1,9 +1,12 @@
-use crate::{editor::GutterType, graphics::Rect, Document, DocumentId, ViewId};
+use crate::{align_view, editor::GutterType, graphics::Rect, Align, Document, DocumentId, ViewId};
 use helix_core::{
     pos_at_visual_coords, visual_coords_at_pos, Position, RopeSlice, Selection, Transaction,
 };
 
-use std::{collections::VecDeque, fmt};
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt,
+};
 
 const JUMP_LIST_CAPACITY: usize = 30;
 
@@ -102,6 +105,11 @@ pub struct View {
     pub object_selections: Vec<Selection>,
     /// GutterTypes used to fetch Gutter (constructor) and width for rendering
     gutters: Vec<GutterType>,
+    /// A mapping between documents and the last history revision the view was updated at.
+    /// Changes between documents and views are synced lazily when switching windows. This
+    /// mapping keeps track of the last applied history revision so that only new changes
+    /// are applied.
+    doc_revisions: HashMap<DocumentId, usize>,
 }
 
 impl fmt::Debug for View {
@@ -126,6 +134,7 @@ impl View {
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
             gutters: gutter_types,
+            doc_revisions: HashMap::new(),
         }
     }
 
@@ -149,17 +158,10 @@ impl View {
     }
 
     pub fn gutter_offset(&self, doc: &Document) -> u16 {
-        let mut offset = self
-            .gutters
+        self.gutters
             .iter()
             .map(|gutter| gutter.width(self, doc) as u16)
-            .sum();
-
-        if offset > 0 {
-            offset += 1
-        }
-
-        offset
+            .sum()
     }
 
     //
@@ -167,6 +169,15 @@ impl View {
         &self,
         doc: &Document,
         scrolloff: usize,
+    ) -> Option<(usize, usize)> {
+        self.offset_coords_to_in_view_center(doc, scrolloff, false)
+    }
+
+    pub fn offset_coords_to_in_view_center(
+        &self,
+        doc: &Document,
+        scrolloff: usize,
+        centering: bool,
     ) -> Option<(usize, usize)> {
         let cursor = doc
             .selection(self.id)
@@ -178,44 +189,66 @@ impl View {
 
         let inner_area = self.inner_area(doc);
         let last_line = (self.offset.row + inner_area.height as usize).saturating_sub(1);
-
-        // - 1 so we have at least one gap in the middle.
-        // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
-        // as we type
-        let scrolloff = scrolloff.min(inner_area.height.saturating_sub(1) as usize / 2);
-
         let last_col = self.offset.col + inner_area.width.saturating_sub(1) as usize;
 
-        let row = if line > last_line.saturating_sub(scrolloff) {
-            // scroll down
-            self.offset.row + line - (last_line.saturating_sub(scrolloff))
-        } else if line < self.offset.row + scrolloff {
-            // scroll up
-            line.saturating_sub(scrolloff)
-        } else {
-            self.offset.row
-        };
+        let new_offset = |scrolloff: usize| {
+            // - 1 so we have at least one gap in the middle.
+            // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
+            // as we type
+            let scrolloff = scrolloff.min(inner_area.height.saturating_sub(1) as usize / 2);
 
-        let col = if col > last_col.saturating_sub(scrolloff) {
-            // scroll right
-            self.offset.col + col - (last_col.saturating_sub(scrolloff))
-        } else if col < self.offset.col + scrolloff {
-            // scroll left
-            col.saturating_sub(scrolloff)
-        } else {
-            self.offset.col
+            let row = if line > last_line.saturating_sub(scrolloff) {
+                // scroll down
+                self.offset.row + line - (last_line.saturating_sub(scrolloff))
+            } else if line < self.offset.row + scrolloff {
+                // scroll up
+                line.saturating_sub(scrolloff)
+            } else {
+                self.offset.row
+            };
+
+            let col = if col > last_col.saturating_sub(scrolloff) {
+                // scroll right
+                self.offset.col + col - (last_col.saturating_sub(scrolloff))
+            } else if col < self.offset.col + scrolloff {
+                // scroll left
+                col.saturating_sub(scrolloff)
+            } else {
+                self.offset.col
+            };
+            (row, col)
         };
-        if row == self.offset.row && col == self.offset.col {
-            None
+        let current_offset = (self.offset.row, self.offset.col);
+        if centering {
+            // return None if cursor is out of view
+            let offset = new_offset(0);
+            (offset == current_offset).then(|| {
+                if scrolloff == 0 {
+                    offset
+                } else {
+                    new_offset(scrolloff)
+                }
+            })
         } else {
-            Some((row, col))
+            // return None if cursor is in (view - scrolloff)
+            let offset = new_offset(scrolloff);
+            (offset != current_offset).then(|| offset) // TODO: use 'then_some' when 1.62 <= MSRV
         }
     }
 
     pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {
-        if let Some((row, col)) = self.offset_coords_to_in_view(doc, scrolloff) {
+        if let Some((row, col)) = self.offset_coords_to_in_view_center(doc, scrolloff, false) {
             self.offset.row = row;
             self.offset.col = col;
+        }
+    }
+
+    pub fn ensure_cursor_in_view_center(&mut self, doc: &Document, scrolloff: usize) {
+        if let Some((row, col)) = self.offset_coords_to_in_view_center(doc, scrolloff, true) {
+            self.offset.row = row;
+            self.offset.col = col;
+        } else {
+            align_view(doc, self, Align::Center);
         }
     }
 
@@ -349,10 +382,33 @@ impl View {
     /// Applies a [`Transaction`] to the view.
     /// Instead of calling this function directly, use [crate::apply_transaction]
     /// which applies a transaction to the [`Document`] and view together.
-    pub fn apply(&mut self, transaction: &Transaction, doc: &Document) -> bool {
+    pub fn apply(&mut self, transaction: &Transaction, doc: &mut Document) {
         self.jumps.apply(transaction, doc);
-        // TODO: remove the boolean return. This is unused.
-        true
+        self.doc_revisions
+            .insert(doc.id(), doc.get_current_revision());
+    }
+
+    pub fn sync_changes(&mut self, doc: &mut Document) {
+        let latest_revision = doc.get_current_revision();
+        let current_revision = *self
+            .doc_revisions
+            .entry(doc.id())
+            .or_insert(latest_revision);
+
+        if current_revision == latest_revision {
+            return;
+        }
+
+        log::debug!(
+            "Syncing view {:?} between {} and {}",
+            self.id,
+            current_revision,
+            latest_revision
+        );
+
+        if let Some(transaction) = doc.history.get_mut().changes_since(current_revision) {
+            self.apply(&transaction, doc);
+        }
     }
 }
 
@@ -360,8 +416,8 @@ impl View {
 mod tests {
     use super::*;
     use helix_core::Rope;
-    const OFFSET: u16 = 4; // 1 diagnostic + 2 linenr (< 100 lines) + 1 gutter
-    const OFFSET_WITHOUT_LINE_NUMBERS: u16 = 2; // 1 diagnostic + 1 gutter
+    const OFFSET: u16 = 3; // 1 diagnostic + 2 linenr (< 100 lines)
+    const OFFSET_WITHOUT_LINE_NUMBERS: u16 = 1; // 1 diagnostic
                                                 // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
     use crate::document::Document;
     use crate::editor::GutterType;

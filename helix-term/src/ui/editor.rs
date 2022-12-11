@@ -516,8 +516,8 @@ impl EditorView {
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
                     for grapheme in RopeGraphemes::new(text) {
-                        let out_of_bounds = offset.col > (visual_x as usize)
-                            || (visual_x as usize) >= viewport.width as usize + offset.col;
+                        let out_of_bounds = offset.col > visual_x
+                            || visual_x >= viewport.width as usize + offset.col;
 
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
                             if !out_of_bounds {
@@ -547,7 +547,7 @@ impl EditorView {
                             let (display_grapheme, width) = if grapheme == "\t" {
                                 is_whitespace = true;
                                 // make sure we display tab as appropriate amount of spaces
-                                let visual_tab_width = tab_width - (visual_x as usize % tab_width);
+                                let visual_tab_width = tab_width - (visual_x % tab_width);
                                 let grapheme_tab_width =
                                     helix_core::str_utils::char_to_byte_idx(&tab, visual_tab_width);
 
@@ -566,7 +566,7 @@ impl EditorView {
                                 (grapheme.as_ref(), width)
                             };
 
-                            let cut_off_start = offset.col.saturating_sub(visual_x as usize);
+                            let cut_off_start = offset.col.saturating_sub(visual_x);
 
                             if !out_of_bounds {
                                 // if we're offscreen just keep going until we hit a new line
@@ -583,7 +583,7 @@ impl EditorView {
                             } else if cut_off_start != 0 && cut_off_start < width {
                                 // partially on screen
                                 let rect = Rect::new(
-                                    viewport.x as u16,
+                                    viewport.x,
                                     viewport.y + line,
                                     (width - cut_off_start) as u16,
                                     1,
@@ -730,7 +730,7 @@ impl EditorView {
         let mut text = String::with_capacity(8);
 
         for gutter_type in view.gutters() {
-            let gutter = gutter_type.style(editor, doc, view, theme, is_focused);
+            let mut gutter = gutter_type.style(editor, doc, view, theme, is_focused);
             let width = gutter_type.width(view, doc);
             text.reserve(width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
@@ -1319,7 +1319,7 @@ impl Component for EditorView {
                 // Store a history state if not in insert mode. Otherwise wait till we exit insert
                 // to include any edits to the paste in the history state.
                 if mode != Mode::Insert {
-                    doc.append_changes_to_history(view.id);
+                    doc.append_changes_to_history(view);
                 }
 
                 EventResult::Consumed(None)
@@ -1337,9 +1337,7 @@ impl Component for EditorView {
                 cx.editor.status_msg = None;
 
                 let mode = cx.editor.mode();
-                let (view, doc) = current!(cx.editor);
-                let original_doc_id = doc.id();
-                let original_doc_revision = doc.get_current_revision();
+                let (view, _) = current!(cx.editor);
                 let focus = view.id;
 
                 if let Some(on_next_key) = self.on_next_key.take() {
@@ -1415,31 +1413,13 @@ impl Component for EditorView {
                     let view = view_mut!(cx.editor, focus);
                     let doc = doc_mut!(cx.editor, &view.doc);
 
+                    view.ensure_cursor_in_view(doc, config.scrolloff);
+
                     // Store a history state if not in insert mode. This also takes care of
                     // committing changes when leaving insert mode.
                     if mode != Mode::Insert {
-                        doc.append_changes_to_history(view.id);
+                        doc.append_changes_to_history(view);
                     }
-
-                    // If the current document has been changed, apply the changes to all views.
-                    // This ensures that selections in jumplists follow changes.
-                    if doc.id() == original_doc_id
-                        && doc.get_current_revision() > original_doc_revision
-                    {
-                        if let Some(transaction) =
-                            doc.history.get_mut().changes_since(original_doc_revision)
-                        {
-                            let doc = doc!(cx.editor, &original_doc_id);
-                            for (view, _focused) in cx.editor.tree.views_mut() {
-                                view.apply(&transaction, doc);
-                            }
-                        }
-                    }
-
-                    let view = view_mut!(cx.editor, focus);
-                    let doc = doc_mut!(cx.editor, &view.doc);
-
-                    view.ensure_cursor_in_view(doc, config.scrolloff);
                 }
 
                 EventResult::Consumed(callback)

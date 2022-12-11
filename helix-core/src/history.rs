@@ -122,17 +122,16 @@ impl History {
     /// Returns the changes since the given revision composed into a transaction.
     /// Returns None if there are no changes between the current and given revisions.
     pub fn changes_since(&self, revision: usize) -> Option<Transaction> {
-        if self.at_root() || self.current >= revision {
-            return None;
-        }
-
-        // The bounds are checked in the if condition above:
-        // `revision` is known to be `< self.current`.
-        self.revisions[revision..self.current]
+        let lca = self.lowest_common_ancestor(revision, self.current);
+        let up = self.path_up(revision, lca);
+        let down = self.path_up(self.current, lca);
+        let up_txns = up
             .iter()
-            .map(|revision| &revision.transaction)
-            .cloned()
-            .reduce(|acc, transaction| acc.compose(transaction))
+            .rev()
+            .map(|&n| self.revisions[n].inversion.clone());
+        let down_txns = down.iter().map(|&n| self.revisions[n].transaction.clone());
+
+        down_txns.chain(up_txns).reduce(|acc, tx| tx.compose(acc))
     }
 
     /// Undo the last edit.
