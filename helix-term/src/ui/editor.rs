@@ -683,11 +683,7 @@ impl EditorView {
                 .to_str()
                 .unwrap_or_default();
 
-            if names_map.contains_key(fname) {
-                names_map.insert(fname, names_map.get(fname).unwrap() + 1);
-            } else {
-                names_map.insert(fname, 1);
-            }
+            *names_map.entry(fname).or_insert(0) += 1;
         }
 
         for doc in editor.documents() {
