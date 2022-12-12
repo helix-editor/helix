@@ -1380,7 +1380,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     let last_line = view.last_line(doc);
 
     if direction == Backward && view.offset.row == 0
-        || direction == Forward && last_line == doc_last_line
+        || !config.scroll_past_bottom && direction == Forward && last_line == doc_last_line
     {
         return;
     }

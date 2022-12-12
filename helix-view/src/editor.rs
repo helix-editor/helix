@@ -122,6 +122,8 @@ pub struct Config {
     pub scrolloff: usize,
     /// Number of lines to scroll at once. Defaults to 3
     pub scroll_lines: isize,
+    /// Allow scrolling down past half the buffer height. Defaults to false.
+    pub scroll_past_bottom: bool,
     /// Mouse support. Defaults to true.
     pub mouse: bool,
     /// Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise.
@@ -594,6 +596,7 @@ impl Default for Config {
         Self {
             scrolloff: 5,
             scroll_lines: 3,
+            scroll_past_bottom: false,
             mouse: true,
             shell: if cfg!(windows) {
                 vec!["cmd".to_owned(), "/C".to_owned()]
