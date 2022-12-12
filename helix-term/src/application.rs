@@ -186,9 +186,7 @@ impl Application {
         if args.load_tutor {
             let path = helix_loader::runtime_dir().join("tutor");
             if !path.exists() {
-                return Err(anyhow::anyhow!(
-                    "No path to the tutor found. Is the runtime directory linked?"
-                ));
+                anyhow::bail!("No path to the tutor found. Is the runtime directory linked?");
             }
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
