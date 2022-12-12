@@ -1429,6 +1429,7 @@ impl Component for EditorView {
             Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
             Event::FocusGained => EventResult::Ignored(None),
             Event::FocusLost => {
+                context.editor.enter_normal_mode();
                 if context.editor.config().auto_save {
                     if let Err(e) = commands::typed::write_all_impl(context, false, false) {
                         context.editor.set_error(format!("{}", e));
