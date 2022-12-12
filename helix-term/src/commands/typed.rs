@@ -1741,13 +1741,30 @@ fn insert_output(
     Ok(())
 }
 
+fn pipe_to(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::Ignore)
+}
+
 fn pipe(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::Replace)
+}
+
+fn pipe_impl(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+    behavior: &ShellBehavior,
+) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
     ensure!(!args.is_empty(), "Shell command required");
-    shell(cx, &args.join(" "), &ShellBehavior::Replace);
+    shell(cx, &args.join(" "), behavior);
     Ok(())
 }
 
@@ -2290,6 +2307,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Pipe each selection to the shell command.",
             fun: pipe,
+            completer: None,
+        },
+        TypableCommand {
+            name: "pipe-to",
+            aliases: &[],
+            doc: "Pipe each selection to the shell command, ignoring output.",
+            fun: pipe_to,
             completer: None,
         },
         TypableCommand {
