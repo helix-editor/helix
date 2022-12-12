@@ -918,12 +918,18 @@ grammar = "scheme"
 name = "common-lisp"
 scope = "source.lisp"
 roots = []
-file-types = ["lisp", "asd", "cl", "l", "lsp", "ny"," podsl", "sexp"]
+file-types = ["lisp", "asd", "cl", "l", "lsp", "ny", "podsl", "sexp"]
 shebangs = ["lisp", "sbcl", "ccl", "clisp", "ecl"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "cl-lsp", args = [ "stdio" ] }
 grammar = "scheme"
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
 
 [[language]]
 name = "comment"
