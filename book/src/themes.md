@@ -103,7 +103,7 @@ Some styles might not be supported by your terminal emulator.
 | `line`         |
 | `curl`         |
 | `dashed`       |
-| `dot`          |
+| `dotted`       |
 | `double_line`  |
 
 

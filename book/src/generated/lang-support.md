@@ -51,7 +51,7 @@
 | gowork | ✓ |  |  | `gopls` |
 | graphql | ✓ |  |  |  |
 | hare | ✓ |  |  |  |
-| haskell | ✓ |  |  | `haskell-language-server-wrapper` |
+| haskell | ✓ | ✓ |  | `haskell-language-server-wrapper` |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ | ✓ |  | `elixir-ls` |
 | html | ✓ |  |  | `vscode-html-language-server` |

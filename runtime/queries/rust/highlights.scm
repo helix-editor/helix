@@ -5,8 +5,6 @@
 ; overrides are unnecessary.
 ; -------
 
-
-
 ; -------
 ; Types
 ; -------
@@ -241,6 +239,14 @@
 
 
 
+(attribute
+  (identifier) @_macro
+  arguments: (token_tree (identifier) @constant.numeric.integer)
+  (#eq? @_macro "derive")
+)
+@special
+
+
 ; -------
 ; Functions
 ; -------
@@ -271,6 +277,7 @@
 ; ---
 ; Macros
 ; ---
+
 (attribute
   (identifier) @function.macro)
 (attribute
