@@ -313,6 +313,23 @@ pub fn split_lines_of_selection(text: RopeSlice, selection: &Selection) -> Selec
     Selection::new(ranges, 0)
 }
 
+/// Return token if the current line is commented.
+/// Otherwise, return None.
+pub fn find_line_comment_token<'a>(
+    doc: &Rope,
+    line: usize,
+    tokens: &'a [String],
+) -> Option<&'a str> {
+    // TODO: don't continue shebangs.
+    let line = doc.line(line);
+    let start = line.first_non_whitespace_char()?;
+    tokens
+        .iter()
+        .map(AsRef::as_ref)
+        .filter(|token| line.slice(start..).starts_with(token))
+        .max_by_key(|token| token.len())
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

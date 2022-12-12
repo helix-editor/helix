@@ -3495,15 +3495,32 @@ fn open(cx: &mut Context, open: Open) {
         let mut text = String::with_capacity(1 + indent_len);
         text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
+
+        let comment_len = if let Some(comment_token) = doc
+            .language_config()
+            .and_then(|config| config.comment_tokens.as_ref())
+            .and_then(|comment_tokens| {
+                comment::find_line_comment_token(doc.text(), cursor_line, comment_tokens)
+            }) {
+            text.push_str(comment_token);
+            text.push(' ');
+            comment_token.len() + 1
+        } else {
+            0
+        };
+
         let text = text.repeat(count);
 
         // calculate new selection ranges
         let pos = offs + line_end_index + line_end_offset_width;
         for i in 0..count {
-            // pos                    -> beginning of reference line,
-            // + (i * (1+indent_len)) -> beginning of i'th line from pos
-            // + indent_len ->        -> indent for i'th line
-            ranges.push(Range::point(pos + (i * (1 + indent_len)) + indent_len));
+            // pos                                -> beginning of reference line,
+            // + (i * (1+indent_len+comment_len)) -> beginning of i'th line from pos
+            // + indent_len                       -> indent for i'th line
+            // + comment_len                      -> comment token for the i'th line
+            ranges.push(Range::point(
+                pos + (i * (1 + indent_len + comment_len)) + indent_len + comment_len,
+            ));
         }
 
         offs += text.chars().count();
@@ -3962,15 +3979,28 @@ pub mod insert {
                     current_line,
                 );
 
+                let continue_comment = || {
+                    let comment_tokens = doc.language_config()?.comment_tokens.as_ref()?;
+                    comment::find_line_comment_token(doc.text(), current_line, comment_tokens)
+                };
+
                 // If we are between pairs (such as brackets), we want to
                 // insert an additional line which is indented one level
                 // more and place the cursor there
-                let on_auto_pair = doc
-                    .auto_pairs(cx.editor)
-                    .and_then(|pairs| pairs.get(prev))
-                    .map_or(false, |pair| pair.open == prev && pair.close == curr);
+                let on_auto_pair = || {
+                    doc.auto_pairs(cx.editor)
+                        .and_then(|pairs| pairs.get(prev))
+                        .map_or(false, |pair| pair.open == prev && pair.close == curr)
+                };
 
-                let local_offs = if on_auto_pair {
+                let local_offs = if let Some(comment_token) = continue_comment() {
+                    new_text.reserve_exact(1 + indent.len() + comment_token.len() + 1);
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&indent);
+                    new_text.push_str(comment_token);
+                    new_text.push(' ');
+                    new_text.chars().count()
+                } else if on_auto_pair() {
                     let inner_indent = indent.clone() + doc.indent_style.as_str();
                     new_text.reserve_exact(2 + indent.len() + inner_indent.len());
                     new_text.push_str(doc.line_ending.as_str());
