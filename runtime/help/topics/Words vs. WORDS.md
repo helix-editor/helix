@@ -8,10 +8,10 @@ non-whitespace characters.
 In the example below, the words are underlined by 'w', and the
 WORDS are underlined by 'W'.
 
-  This "stuff" is not-so difficult!
-  ---------------------------------
-  wwww  wwwww  ww www ww wwwwwwwww
-  WWWW WWWWWWW WW WWWWWW WWWWWWWWWW
+    This "stuff" is not-so difficult!
+    ---------------------------------
+    wwww  wwwww  ww www ww wwwwwwwww
+    WWWW WWWWWWW WW WWWWWW WWWWWWWWWW
 
 As is visible in the example, the words do not include any of the
 non-alphanumeric punctuation, while the WORDS do include the

@@ -1816,7 +1816,9 @@ fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     // TODO: Open a list of commands / overview?
     ensure!(!args.is_empty(), "Help topic or keybind required");
 
-    if args[0] == "topics" {
+    if args[0] == "runtime" {
+        todo!()
+    } else if args[0] == "topics" {
         let dir_path = helix_loader::runtime_dir().join("help/topics");
 
         struct Topic(PathBuf);
@@ -1879,7 +1881,7 @@ fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             let mut path = helix_loader::runtime_dir();
             path.push("help");
             path.push(help_dir);
-            path.push(format!("{}.txt", command));
+            path.push(format!("{}.md", command));
 
             ensure!(path.is_file(), "No help available for '{}'", args_msg);
             let id = editor.open(&path, Action::HorizontalSplit)?;
