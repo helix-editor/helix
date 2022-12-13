@@ -61,17 +61,17 @@ jobs:
         build: [x86_64-linux, x86_64-macos, x86_64-windows] #, x86_64-win-gnu, win32-msvc
         include:
         - build: x86_64-linux
-          os: ubuntu-20.04
+          os: ubuntu-latest
           rust: stable
           target: x86_64-unknown-linux-gnu
           cross: false
         - build: aarch64-linux
-          os: ubuntu-20.04
+          os: ubuntu-latest
           rust: stable
           target: aarch64-unknown-linux-gnu
           cross: true
         - build: riscv64-linux
-          os: ubuntu-20.04
+          os: ubuntu-latest
           rust: stable
           target: riscv64gc-unknown-linux-gnu
           cross: true
@@ -81,7 +81,7 @@ jobs:
           target: x86_64-apple-darwin
           cross: false
         - build: x86_64-windows
-          os: windows-2019
+          os: windows-latest
           rust: stable
           target: x86_64-pc-windows-msvc
           cross: false
