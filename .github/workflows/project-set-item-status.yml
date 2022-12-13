@@ -1,0 +1,110 @@
+name: Categorize new items
+on:
+  issues:
+    types:
+      - opened
+      - labeled
+  pull_request:
+    types:
+      - opened
+      - labeled
+  pull_request_review:
+    types:
+      - submitted
+jobs:
+  set-item-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Get project data
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+          ORGANIZATION: helix-editor
+          PROJECT_NUMBER: '5'
+        run: ./ci/fetch-project-data >> $GITHUB_ENV
+
+      - name: Add item to project
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+          CONTENT_ID: ${{ github.event.issue.node_id || github.event.pull_request.node_id }}
+        run: ./ci/add-item-to-project >> $GITHUB_ENV
+
+      - name: Get date
+        run: echo "DATE=$(date +"%Y-%m-%d")" >> $GITHUB_ENV
+
+      - name: New PR
+        if: github.event.pull_request && github.event.action == 'opened'
+        run: echo "TARGET_OPTION_ID=${STATUS_ID_NEEDS_INITIAL_REVIEW}" >> $GITHUB_ENV
+
+      - name: New issue
+        if: "github.event.issue && github.event.action == 'opened' && github.event.label.name != 'C-bug'"
+        run: echo "TARGET_OPTION_ID=${STATUS_ID_NEW}" >> $GITHUB_ENV
+
+      - name: Bugs
+        if: "github.event.issue && github.event.action == 'labeled' && github.event.label.name == 'C-bug'"
+        run: echo "TARGET_OPTION_ID=${STATUS_ID_BUGS}" >> $GITHUB_ENV
+
+      - name: Waiting on author from label
+        if: "github.event.action == 'labeled' && github.event.label.name == 'S-waiting-on-author'"
+        run: echo "TARGET_OPTION_ID=${STATUS_ID_WAITING_ON_AUTHOR}" >> $GITHUB_ENV
+
+      - name: Waiting on author from review
+        if: "github.event.pull_request_review && github.event.action == 'submitted' && github.event.review.state == 'changes_requested'"
+        run: echo "TARGET_OPTION_ID=${STATUS_ID_WAITING_ON_AUTHOR}" >> $GITHUB_ENV
+
+      - name: Needs review
+        if: "github.event.pull_request && github.event.action == 'labeled' && github.event.pull_request.review_comments == 0 && github.event.label.name == 'S-waiting-on-review'"
+        run: echo "TARGET_OPTION_ID=${STATUS_ID_NEEDS_INITIAL_REVIEW}" >> $GITHUB_ENV
+
+      - name: Needs re-review from label
+        if: "github.event.pull_request && github.event.action == 'labeled' && github.event.pull_request.review_comments > 0 && github.event.label.name == 'S-waiting-on-review'"
+        run: echo "TARGET_OPTION_ID=${STATUS_ID_NEEDS_RE_REVIEW}" >> $GITHUB_ENV
+
+      - name: Needs re-review from review
+        if: "github.event.pull_request_review && github.event.action == 'dismissed'"
+        run: echo "TARGET_OPTION_ID=${STATUS_ID_NEEDS_RE_REVIEW}" >> $GITHUB_ENV
+
+      - name: Blocked
+        if: "github.event.action == 'labeled' && github.event.label.name == 'S-waiting-on-pr'"
+        run: echo "TARGET_OPTION_ID=${STATUS_ID_BLOCKED}" >> $GITHUB_ENV
+
+      - name: Inactive
+        if: "github.event.action == 'labeled' && github.event.label.name == 'S-inactive'"
+        run: echo "TARGET_OPTION_ID=${STATUS_ID_STALLED}" >> $GITHUB_ENV
+
+      - name: Approved
+        if: "github.event.pull_request_review && github.event.action == 'submitted' && github.event.review.state == 'approved'"
+        run: echo "TARGET_OPTION_ID=${STATUS_ID_APPROVED}" >> $GITHUB_ENV
+
+      - name: Set fields
+        if: env.TARGET_OPTION_ID != null
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        run: |
+          gh api graphql -f query='
+            mutation (
+              $project: ID!
+              $item: ID!
+              $status_field: ID!
+              $status_value: String!
+            ) {
+              set_status: updateProjectV2ItemFieldValue(input: {
+                projectId: $project
+                itemId: $item
+                fieldId: $status_field
+                value: { 
+                  singleSelectOptionId: $status_value
+                  }
+              }) {
+                projectV2Item {
+                  id
+                }
+              }
+            }' \
+            -f project=$PROJECT_ID \
+            -f item=$ITEM_ID \
+            -f status_field=$STATUS_FIELD_ID \
+            -f status_value=${{ env.TARGET_OPTION_ID }} \
+            --silent

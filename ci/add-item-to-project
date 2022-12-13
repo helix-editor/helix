@@ -1,0 +1,20 @@
+#!/bin/bash
+
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
+
+if [[
+      -z "${CONTENT_ID}" ||
+      -z "${PROJECT_ID}" ||
+      (-z "${GH_TOKEN}" && -z "${GITHUB_TOKEN}")
+   ]]; then
+  echo "Please provide GITHUB_TOKEN, CONTENT_ID, and PROJECT_ID" >&2
+  exit 1
+fi
+
+item_id="$(gh api graphql \
+  -f "query=$(cat add-item-to-project.gql)" \
+  -f project="$PROJECT_ID" \
+  -f content="$CONTENT_ID" \
+  --jq '.data.addProjectV2ItemById.item.id')"
+
+echo 'ITEM_ID='"$item_id"

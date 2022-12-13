@@ -1,0 +1,32 @@
+#!/bin/bash
+
+set -e
+
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
+
+if [[
+      -z "${ORGANIZATION}" ||
+      -z "${PROJECT_NUMBER}" ||
+      (-z "${GH_TOKEN}" && -z "${GITHUB_TOKEN}")
+   ]]; then
+  echo "Please provide GITHUB_TOKEN, ORGANIZATION, and PROJECT_NUMBER" >&2
+  exit 1
+fi
+
+project_data="$(gh api graphql \
+  -f "query=$(cat fetch-statuses.gql)" \
+  -f org="$ORGANIZATION" \
+  -F number="$PROJECT_NUMBER")"
+
+echo 'PROJECT_ID='"$(echo "${project_data}" | jq -r '.data.organization.projectV2.id')"
+echo 'STATUS_FIELD_ID='"$(echo "${project_data}" \
+  | jq -r '.data.organization.projectV2.fields.nodes[] | select(.name== "Status") | .id')"
+
+# Transform each status field name into camel case and track its id
+echo "${project_data}" | jq -r '.data.organization.projectV2.fields.nodes[]
+  | select(.name == "Status")
+  | .options[]
+  | {id: .id, name: .name | gsub("[^\\w\\s]\\s"; "")
+  | ascii_upcase
+  | gsub("[\\s-]"; "_")}
+  | "STATUS_ID_" + .name + "=" + .id'
