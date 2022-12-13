@@ -1863,7 +1863,7 @@ fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
                         },
                         |_editor, Topic(path)| Some((path.clone().into(), None)),
                     );
-                    compositor.push(Box::new(picker));
+                    compositor.push(Box::new(overlayed(picker)));
                 },
             ));
 
