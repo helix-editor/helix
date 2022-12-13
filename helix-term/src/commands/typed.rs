@@ -1391,7 +1391,7 @@ fn tutor(
 
     let path = helix_loader::runtime_dir().join("tutor");
     if !path.exists() {
-        bail!("No path to the tutor found. Is the runtime directory linked?");
+        bail!("No path to the tutor found. Use :help runtime to receive further help.");
     }
     cx.editor.open(&path, Action::Replace)?;
     // Unset path to prevent accidentally saving to the original tutor file.
@@ -1700,6 +1700,21 @@ fn open_log(
     }
 
     cx.editor.open(&helix_loader::log_file(), Action::Replace)?;
+    Ok(())
+}
+
+fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let status = match args.first().unwrap_or(&Cow::from("")).trim() {
+        "runtime" => 
+            "There has to exist a symlink to the runtime folder in the folder of your config.",
+        _ => "Please check the documentation at the helix webpage for further info, or open an issue on Github.",
+    };
+
+    cx.editor.set_status(status);
     Ok(())
 }
 
@@ -2301,6 +2316,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run a shell command",
             fun: run_shell_command,
             completer: Some(completers::directory),
+        },
+        TypableCommand {
+            name: "help",
+            aliases: &["h"],
+            doc: "Get help for a specific feature.",
+            fun: help,
+            completer: Some(completers::help_command),
         },
     ];
 

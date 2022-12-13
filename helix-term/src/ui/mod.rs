@@ -441,6 +441,24 @@ pub mod completers {
         })
     }
 
+    pub fn help_command(_: &Editor, input: &str) -> Vec<Completion> {
+        let matcher = Matcher::default();
+        let mut help: Vec<_> = vec!["runtime", ""]
+            .iter()
+            .map(|str| str.to_owned())
+            .map(|name| ((0..), Cow::from(name)))
+            .filter_map(|(_range, name)| {
+                matcher.fuzzy_match(&name, input).map(|score| (name, score))
+            })
+            .collect();
+
+        help.sort_unstable_by(|(name1, score1), (name2, score2)| {
+            (Reverse(*score1), name1).cmp(&(Reverse(*score2), name2))
+        });
+
+        help.into_iter().map(|(name, _)| ((0..), name)).collect()
+    }
+
     #[derive(Copy, Clone, PartialEq, Eq)]
     enum FileMatch {
         /// Entry should be ignored
