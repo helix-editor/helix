@@ -1808,6 +1808,155 @@ fn run_shell_command(
     Ok(())
 }
 
+fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if args.is_empty() {
+        // TODO: Open a list of commands?
+        todo!()
+    }
+
+    if args[0] == "topics" {
+        let dir_path = helix_loader::runtime_dir().join("help/topics");
+
+        struct Topic(PathBuf);
+        impl crate::ui::menu::Item for Topic {
+            type Data = ();
+            fn label(&self, _data: &Self::Data) -> Spans {
+                self.0
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .map(From::from)
+                    .unwrap_or_default()
+            }
+        }
+
+        let entries: Vec<Topic> = std::fs::read_dir(&dir_path)
+            .map(|entries| {
+                entries
+                    .filter_map(|entry| {
+                        let entry = entry.ok()?;
+                        let path = entry.path();
+                        Some(path)
+                    })
+                    .map(Topic)
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        cx.jobs.callback(async move {
+            let callback = job::Callback::EditorCompositor(Box::new(
+                move |_editor: &mut Editor, compositor: &mut Compositor| {
+                    let picker = FilePicker::new(
+                        entries,
+                        (),
+                        |cx, Topic(path), _action| {
+                            if let Err(e) =
+                                cx.editor
+                                    .open(path, Action::HorizontalSplit)
+                                    .and_then(|id| {
+                                        cx.editor
+                                            .document_mut(id)
+                                            .unwrap()
+                                            .set_path(None)
+                                            .map_err(Into::into)
+                                    })
+                            {
+                                cx.editor.set_error(e.to_string());
+                            }
+                        },
+                        |_editor, Topic(path)| Some((path.clone().into(), None)),
+                    );
+                    compositor.push(Box::new(picker));
+                },
+            ));
+
+            Ok(callback)
+        });
+
+        return Ok(());
+    }
+
+    let args_msg = args.join(" ");
+    let open_help =
+        move |help_dir: &str, command: &str, editor: &mut Editor| -> anyhow::Result<()> {
+            let mut path = helix_loader::runtime_dir();
+            path.push("help");
+            path.push(help_dir);
+            path.push(format!("{}.txt", command));
+
+            ensure!(path.is_file(), "No help available for '{}'", args_msg);
+            let id = editor.open(&path, Action::HorizontalSplit)?;
+            editor.document_mut(id).unwrap().set_path(None)?;
+            Ok(())
+        };
+
+    const STATIC_HELP_DIR: &str = "static-commands";
+    const TYPABLE_HELP_DIR: &str = "typable-commands";
+
+    let (help_dir, command): (&str, &str) = {
+        let arg = &args[0];
+        if let Some(command) = arg.strip_prefix(':').and_then(|arg| {
+            TYPABLE_COMMAND_LIST.iter().find_map(|command| {
+                (command.name == arg || command.aliases.iter().any(|alias| *alias == arg))
+                    .then(|| command.name)
+            })
+        }) {
+            (TYPABLE_HELP_DIR, command)
+        } else if MappableCommand::STATIC_COMMAND_LIST
+            .iter()
+            .any(|command| command.name() == arg)
+        {
+            (STATIC_HELP_DIR, arg)
+        } else {
+            let arg = arg.to_owned().into_owned();
+            let keys = arg
+                .parse::<KeyEvent>()
+                .map(|key| vec![key])
+                .or_else(|_| helix_view::input::parse_macro(&arg))?;
+
+            cx.jobs.callback(async move {
+                let callback = job::Callback::EditorCompositor(Box::new(
+                    move |editor: &mut Editor, compositor: &mut Compositor| {
+                        use crate::keymap::KeymapResult;
+                        let editor_view = compositor.find::<ui::EditorView>().unwrap();
+                        let mode = editor.mode;
+                        let keymaps = &mut editor_view.keymaps;
+                        let (keys, last_key) = (&keys[..keys.len() - 1], keys.last().unwrap());
+                        keys.iter().for_each(|key| {
+                            keymaps.get(mode, *key);
+                        });
+                        let result = keymaps.get(mode, *last_key);
+                        let res: anyhow::Result<(&str, &str)> = match &result {
+                            KeymapResult::Matched(command) => match command {
+                                MappableCommand::Static { name, .. } => Ok((STATIC_HELP_DIR, name)),
+                                MappableCommand::Typable { name, .. } => {
+                                    Ok((TYPABLE_HELP_DIR, name))
+                                }
+                            },
+                            KeymapResult::NotFound | KeymapResult::Cancelled(_) => {
+                                Err(anyhow!("No command found for '{}'", arg))
+                            }
+                            _ => todo!(),
+                        };
+                        if let Err(e) =
+                            res.and_then(|(help_dir, command)| open_help(help_dir, command, editor))
+                        {
+                            editor.set_error(e.to_string());
+                        }
+                    },
+                ));
+                Ok(callback)
+            });
+            return Ok(());
+        }
+    };
+
+    open_help(help_dir, command, cx.editor)
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2322,6 +2471,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run a shell command",
             fun: run_shell_command,
             completer: Some(completers::directory),
+        },
+        TypableCommand {
+            name: "help",
+            aliases: &["h"],
+            doc: "Open documentation for a command or keybind.",
+            fun: help,
+            completer: Some(completers::help),
         },
     ];
 
