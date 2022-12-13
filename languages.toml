@@ -2043,3 +2043,16 @@ grammar = "qmljs"
 [[grammar]]
 name = "qmljs"
 source = { git = "https://github.com/yuja/tree-sitter-qmljs", rev = "0b2b25bcaa7d4925d5f0dda16f6a99c588a437f1" }
+
+[[language]]
+name = "mermaid"
+scope = "source.mermaid"
+injection-regex = "mermaid"
+file-types = ["mermaid"]
+roots = []
+comment-token = "%%"
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "mermaid"
+source = { git = "https://github.com/monaqa/tree-sitter-mermaid", rev = "d787c66276e7e95899230539f556e8b83ee16f6d" }
