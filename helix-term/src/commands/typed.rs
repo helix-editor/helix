@@ -1855,11 +1855,7 @@ fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
                                 cx.editor
                                     .open(path, Action::HorizontalSplit)
                                     .and_then(|id| {
-                                        cx.editor
-                                            .document_mut(id)
-                                            .unwrap()
-                                            .set_path(None)
-                                            .map_err(Into::into)
+                                        doc_mut!(cx.editor, &id).set_path(None).map_err(Into::into)
                                     })
                             {
                                 cx.editor.set_error(e.to_string());
@@ -1887,7 +1883,7 @@ fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
 
             ensure!(path.is_file(), "No help available for '{}'", args_msg);
             let id = editor.open(&path, Action::HorizontalSplit)?;
-            editor.document_mut(id).unwrap().set_path(None)?;
+            doc_mut!(editor, &id).set_path(None)?;
             Ok(())
         };
 
