@@ -1813,10 +1813,8 @@ fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         return Ok(());
     }
 
-    if args.is_empty() {
-        // TODO: Open a list of commands?
-        todo!()
-    }
+    // TODO: Open a list of commands / overview?
+    ensure!(!args.is_empty(), "Help topic or keybind required");
 
     if args[0] == "topics" {
         let dir_path = helix_loader::runtime_dir().join("help/topics");
