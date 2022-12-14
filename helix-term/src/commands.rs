@@ -3131,17 +3131,24 @@ pub mod insert {
             let curr = contents.get_char(pos).unwrap_or(' ');
 
             let current_line = text.char_to_line(pos);
+
             let line_is_only_whitespace = text
                 .line(current_line)
                 .chars()
                 .all(|char| char.is_ascii_whitespace());
 
+            let ws_cfg = &cx.editor.config().whitespace;
+
+            let clear_line = ws_cfg.clear_whitespace_line_on_ret &&
+                line_is_only_whitespace;
+
             let mut new_text = String::new();
 
-            // If the current line is all whitespace, insert a line ending at the beginning of
-            // the current line. This makes the current line empty and the new line contain the
-            // indentation of the old line.
-            let (from, to, local_offs) = if line_is_only_whitespace {
+            let (from, to, local_offs) = if clear_line {
+                // If the current line is all whitespace, insert a line ending at
+                // the beginning of the current line. This makes the current
+                // line empty and the new line contain the indentation of the
+                // old line.
                 let line_start = text.line_to_char(current_line);
                 new_text.push_str(doc.line_ending.as_str());
 

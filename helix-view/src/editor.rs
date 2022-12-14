@@ -477,8 +477,9 @@ impl std::str::FromStr for GutterType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, rename_all = "kebab-case")]
 pub struct WhitespaceConfig {
+    pub clear_whitespace_line_on_ret: bool,
     pub render: WhitespaceRender,
     pub characters: WhitespaceCharacters,
 }
@@ -486,6 +487,7 @@ pub struct WhitespaceConfig {
 impl Default for WhitespaceConfig {
     fn default() -> Self {
         Self {
+            clear_whitespace_line_on_ret: true,
             render: WhitespaceRender::Basic(WhitespaceRenderValue::None),
             characters: WhitespaceCharacters::default(),
         }
