@@ -87,6 +87,7 @@ fn thread_picker(
                     ));
                     Some((path.into(), pos))
                 },
+                None,
             );
             compositor.push(Box::new(picker));
         },
@@ -714,6 +715,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
                     )
                 })
         },
+        None,
     );
     cx.push_layer(Box::new(picker))
 }

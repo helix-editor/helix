@@ -98,6 +98,9 @@ pub struct FilePickerConfig {
     /// WalkBuilder options
     /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
     pub max_depth: Option<usize>,
+    /// FilePicker option
+    /// If set the FilePicker selects the current doc's path by default from the list, if possible.
+    pub highlight_current: bool,
 }
 
 impl Default for FilePickerConfig {
@@ -111,6 +114,7 @@ impl Default for FilePickerConfig {
             git_global: true,
             git_exclude: true,
             max_depth: None,
+            highlight_current: true,
         }
     }
 }

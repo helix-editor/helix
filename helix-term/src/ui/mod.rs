@@ -156,7 +156,11 @@ pub fn regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
+pub fn file_picker(
+    root: PathBuf,
+    default_path: Option<PathBuf>,
+    config: &helix_view::editor::Config,
+) -> FilePicker<PathBuf> {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time::Instant;
 
@@ -215,6 +219,12 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         files.take(MAX).collect()
     };
 
+    // Enforce the correct behavior based on the configuration.
+    let default_path = match default_path {
+        Some(path) if config.file_picker.highlight_current => Some(path),
+        _ => None,
+    };
+
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
     FilePicker::new(
@@ -231,6 +241,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
             }
         },
         |_editor, path| Some((path.clone().into(), None)),
+        default_path,
     )
 }
 

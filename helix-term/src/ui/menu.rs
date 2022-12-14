@@ -14,7 +14,7 @@ use fuzzy_matcher::FuzzyMatcher;
 use helix_view::{graphics::Rect, Editor};
 use tui::layout::Constraint;
 
-pub trait Item {
+pub trait Item: PartialEq {
     /// Additional editor state that is used for label calculation.
     type Data;
 

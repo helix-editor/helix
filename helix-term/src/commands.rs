@@ -1839,7 +1839,7 @@ fn make_search_word_bounded(cx: &mut Context) {
 }
 
 fn global_search(cx: &mut Context) {
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     struct FileResult {
         path: PathBuf,
         /// 0 indexed lines
@@ -2007,6 +2007,7 @@ fn global_search(cx: &mut Context) {
                     |_editor, FileResult { path, line_num }| {
                         Some((path.clone().into(), Some((*line_num, *line_num))))
                     },
+                    None,
                 );
                 compositor.push(Box::new(overlayed(picker)));
             },
@@ -2286,19 +2287,24 @@ fn file_picker(cx: &mut Context) {
     // We don't specify language markers, root will be the root of the current
     // git repo or the current dir if we're not in a repo
     let root = find_root(None, &[]);
-    let picker = ui::file_picker(root, &cx.editor.config());
+
+    let doc = doc!(cx.editor);
+    let picker = ui::file_picker(root, doc.path().cloned(), &cx.editor.config());
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
 fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
-    let picker = ui::file_picker(cwd, &cx.editor.config());
+
+    let doc = doc!(cx.editor);
+    let picker = ui::file_picker(cwd, doc.path().cloned(), &cx.editor.config());
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
+    #[derive(PartialEq)]
     struct BufferMeta {
         id: DocumentId,
         path: Option<PathBuf>,
@@ -2362,11 +2368,13 @@ fn buffer_picker(cx: &mut Context) {
                 .cursor_line(doc.text().slice(..));
             Some((meta.id.into(), Some((line, line))))
         },
+        None,
     );
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
 fn jumplist_picker(cx: &mut Context) {
+    #[derive(PartialEq)]
     struct JumpMeta {
         id: DocumentId,
         path: Option<PathBuf>,
@@ -2444,6 +2452,7 @@ fn jumplist_picker(cx: &mut Context) {
             let line = meta.selection.primary().cursor_line(doc.text().slice(..));
             Some((meta.path.clone()?.into(), Some((line, line))))
         },
+        None,
     );
     cx.push_layer(Box::new(overlayed(picker)));
 }

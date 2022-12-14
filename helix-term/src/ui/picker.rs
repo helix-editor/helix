@@ -112,9 +112,11 @@ impl<T: Item> FilePicker<T> {
         editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
+        initial_cursor: Option<T>,
     ) -> Self {
         let truncate_start = true;
-        let mut picker = Picker::new(options, editor_data, callback_fn);
+        let mut picker =
+            Picker::new(options, editor_data, callback_fn).with_default_item(initial_cursor);
         picker.truncate_start = truncate_start;
 
         Self {
@@ -365,6 +367,7 @@ impl Ord for PickerMatch {
 
 pub struct Picker<T: Item> {
     options: Vec<T>,
+    default_item: Option<T>,
     editor_data: T::Data,
     // filter: String,
     matcher: Box<Matcher>,
@@ -410,7 +413,9 @@ impl<T: Item> Picker<T> {
             show_preview: true,
             callback_fn: Box::new(callback_fn),
             completion_height: 0,
+            default_item: None,
         };
+        picker.cursor = picker.find_default_item_index().unwrap_or(0);
 
         // scoring on empty input:
         // TODO: just reuse score()
@@ -428,6 +433,11 @@ impl<T: Item> Picker<T> {
         picker
     }
 
+    pub fn with_default_item(mut self, default_item: Option<T>) -> Self {
+        self.default_item = default_item;
+        self
+    }
+
     pub fn score(&mut self) {
         let now = Instant::now();
 
@@ -437,7 +447,7 @@ impl<T: Item> Picker<T> {
             return;
         }
 
-        if pattern.is_empty() {
+        let cursor = if pattern.is_empty() {
             // Fast path for no pattern.
             self.matches.clear();
             self.matches
@@ -449,6 +459,8 @@ impl<T: Item> Picker<T> {
                         len: text.chars().count(),
                     }
                 }));
+
+            self.find_default_item_index().unwrap_or(0)
         } else if pattern.starts_with(&self.previous_pattern) {
             let query = FuzzyQuery::new(pattern);
             // optimization: if the pattern is a more specific version of the previous one
@@ -468,6 +480,7 @@ impl<T: Item> Picker<T> {
             });
 
             self.matches.sort_unstable();
+            0
         } else {
             let query = FuzzyQuery::new(pattern);
             self.matches.clear();
@@ -488,13 +501,24 @@ impl<T: Item> Picker<T> {
                     }),
             );
             self.matches.sort_unstable();
-        }
+            0
+        };
 
         log::debug!("picker score {:?}", Instant::now().duration_since(now));
 
         // reset cursor position
-        self.cursor = 0;
+        self.cursor = cursor;
         self.previous_pattern.clone_from(pattern);
+    }
+
+    fn find_default_item_index(&self) -> Option<usize> {
+        self.default_item
+            .as_ref()
+            .and_then(|default_item| self.find_item_index(default_item))
+    }
+
+    fn find_item_index(&self, item: &T) -> Option<usize> {
+        self.options.iter().position(|option| item.eq(option))
     }
 
     /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
