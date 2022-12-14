@@ -126,7 +126,7 @@
  (state_annotation_choice)
  ] @type
 
-(directive) @include
+(directive) @keyword.directive
 
 (pie_label) @string
 (pie_value) @constant.numeric
