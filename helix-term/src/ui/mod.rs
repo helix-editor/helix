@@ -468,14 +468,23 @@ pub mod completers {
         let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
             (path, None)
         } else {
-            let file_name = path
-                .file_name()
-                .and_then(|file| file.to_str().map(|path| path.to_owned()));
+            let is_period = (input.ends_with("/.") && input.len() > 2)
+                || (input.starts_with('.') && input.len() == 1);
+            let file_name = if is_period {
+                Some(String::from("."))
+            } else {
+                path.file_name()
+                    .and_then(|file| file.to_str().map(|path| path.to_owned()))
+            };
 
-            let path = match path.parent() {
-                Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
-                // Path::new("h")'s parent is Some("")...
-                _ => std::env::current_dir().expect("couldn't determine current directory"),
+            let path = if is_period {
+                path
+            } else {
+                match path.parent() {
+                    Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
+                    // Path::new("h")'s parent is Some("")...
+                    _ => std::env::current_dir().expect("couldn't determine current directory"),
+                }
             };
 
             (path, file_name)
