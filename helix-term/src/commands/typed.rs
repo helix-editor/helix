@@ -777,7 +777,7 @@ fn theme(
                     .editor
                     .theme_loader
                     .load(theme_name)
-                    .with_context(|| "Theme does not exist")?;
+                    .map_err(|err| anyhow::anyhow!("Could not load theme: {}", err))?;
                 if !(true_color || theme.is_16_color()) {
                     bail!("Unsupported theme: theme requires true color support");
                 }
