@@ -2789,35 +2789,28 @@ fn exit_select_mode(cx: &mut Context) {
     }
 }
 
-fn goto_pos(editor: &mut Editor, pos: usize) {
-    let (view, doc) = current!(editor);
-
-    push_jump(view, doc);
-    doc.set_selection(view.id, Selection::point(pos));
+fn goto_first_diag(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let selection = match doc.diagnostics().first() {
+        Some(diag) => Selection::single(diag.range.start, diag.range.end),
+        None => return,
+    };
+    doc.set_selection(view.id, selection);
     align_view(doc, view, Align::Center);
 }
 
-fn goto_first_diag(cx: &mut Context) {
-    let doc = doc!(cx.editor);
-    let pos = match doc.diagnostics().first() {
-        Some(diag) => diag.range.start,
-        None => return,
-    };
-    goto_pos(cx.editor, pos);
-}
-
 fn goto_last_diag(cx: &mut Context) {
-    let doc = doc!(cx.editor);
-    let pos = match doc.diagnostics().last() {
-        Some(diag) => diag.range.start,
+    let (view, doc) = current!(cx.editor);
+    let selection = match doc.diagnostics().last() {
+        Some(diag) => Selection::single(diag.range.start, diag.range.end),
         None => return,
     };
-    goto_pos(cx.editor, pos);
+    doc.set_selection(view.id, selection);
+    align_view(doc, view, Align::Center);
 }
 
 fn goto_next_diag(cx: &mut Context) {
-    let editor = &mut cx.editor;
-    let (view, doc) = current!(editor);
+    let (view, doc) = current!(cx.editor);
 
     let cursor_pos = doc
         .selection(view.id)
@@ -2830,17 +2823,16 @@ fn goto_next_diag(cx: &mut Context) {
         .find(|diag| diag.range.start > cursor_pos)
         .or_else(|| doc.diagnostics().first());
 
-    let pos = match diag {
-        Some(diag) => diag.range.start,
+    let selection = match diag {
+        Some(diag) => Selection::single(diag.range.start, diag.range.end),
         None => return,
     };
-
-    goto_pos(editor, pos);
+    doc.set_selection(view.id, selection);
+    align_view(doc, view, Align::Center);
 }
 
 fn goto_prev_diag(cx: &mut Context) {
-    let editor = &mut cx.editor;
-    let (view, doc) = current!(editor);
+    let (view, doc) = current!(cx.editor);
 
     let cursor_pos = doc
         .selection(view.id)
@@ -2854,12 +2846,14 @@ fn goto_prev_diag(cx: &mut Context) {
         .find(|diag| diag.range.start < cursor_pos)
         .or_else(|| doc.diagnostics().last());
 
-    let pos = match diag {
-        Some(diag) => diag.range.start,
+    let selection = match diag {
+        // NOTE: the selection is reversed because we're jumping to the
+        // previous diagnostic.
+        Some(diag) => Selection::single(diag.range.end, diag.range.start),
         None => return,
     };
-
-    goto_pos(editor, pos);
+    doc.set_selection(view.id, selection);
+    align_view(doc, view, Align::Center);
 }
 
 fn goto_first_change(cx: &mut Context) {
