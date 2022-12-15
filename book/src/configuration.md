@@ -138,11 +138,10 @@ Valid values for these options are `block`, `bar`, `underline`, or `hidden`.
 
 ### `[editor.file-picker]` Section
 
-Sets options for file picker and global search. All but the last key listed in
-the default file-picker configuration below are IgnoreOptions: whether hidden
-files and files listed within ignore files are ignored by (not visible in) the
-helix file picker and global search. There is also one other key, `max-depth`
-available, which is not defined by default.
+Sets options for file picker and global search. Except `max-depth` and `max-
+files`, all keys listed in the default file-picker configuration below are
+IgnoreOptions: whether hidden files and files listed within ignore files are
+ignored by (not visible in) the helix file picker and global search.
 
 All git related options are only enabled in a git repository.
 
@@ -155,6 +154,7 @@ All git related options are only enabled in a git repository.
 |`git-global` | Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option. | true
 |`git-exclude` | Enables reading `.git/info/exclude` files. | true
 |`max-depth` | Set with an integer value for maximum depth to recurse. | Defaults to `None`.
+|`max-files` | Cap on number of files to consider. Ignored in a git repository. | Defaults to `100_000`.
 
 ### `[editor.auto-pairs]` Section
 

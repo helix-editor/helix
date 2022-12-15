@@ -210,9 +210,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
     let mut files: Vec<PathBuf> = if root.join(".git").exists() {
         files.collect()
     } else {
-        // const MAX: usize = 8192;
-        const MAX: usize = 100_000;
-        files.take(MAX).collect()
+        files.take(config.file_picker.max_files).collect()
     };
     files.sort();
 

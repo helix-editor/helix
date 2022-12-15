@@ -98,6 +98,8 @@ pub struct FilePickerConfig {
     /// WalkBuilder options
     /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
     pub max_depth: Option<usize>,
+    /// Cap on number of files to consider. Default is 100_000. Ignored in a git repository.
+    pub max_files: usize,
 }
 
 impl Default for FilePickerConfig {
@@ -111,6 +113,7 @@ impl Default for FilePickerConfig {
             git_global: true,
             git_exclude: true,
             max_depth: None,
+            max_files: 100_000,
         }
     }
 }
