@@ -2789,6 +2789,14 @@ fn exit_select_mode(cx: &mut Context) {
     }
 }
 
+fn goto_pos(editor: &mut Editor, pos: usize) {
+    let (view, doc) = current!(editor);
+
+    push_jump(view, doc);
+    doc.set_selection(view.id, Selection::point(pos));
+    align_view(doc, view, Align::Center);
+}
+
 fn goto_first_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let selection = match doc.diagnostics().first() {
