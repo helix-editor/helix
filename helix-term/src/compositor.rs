@@ -197,10 +197,6 @@ impl Compositor {
             .find(|component| component.id() == Some(id))
             .and_then(|component| component.as_any_mut().downcast_mut())
     }
-
-    pub fn clear(&mut self) -> std::io::Result<()> {
-        self.terminal.clear()
-    }
 }
 
 // View casting, taken straight from Cursive
