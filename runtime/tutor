@@ -986,7 +986,9 @@ lines.
  --> if a wouldchuck could chuck would?
 
  Note: Additionally, Alt-( and Alt-) cycle the *contents* of the
-       selections as well.
+       selections as well. To see this in action, first select
+       different contents, like the words "would" and "much"
+       of the first line.
 
 =================================================================
 =                     10.2 CHANGING CASE                        =
