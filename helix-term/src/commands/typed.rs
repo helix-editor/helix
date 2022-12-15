@@ -1808,6 +1808,28 @@ fn run_shell_command(
     Ok(())
 }
 
+fn redraw(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let callback = Box::pin(async move {
+        let call: job::Callback = Box::new(|_editor, compositor| {
+            compositor.clear().expect("unable to redraw");
+        });
+
+        Ok(call)
+    });
+
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2322,6 +2344,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run a shell command",
             fun: run_shell_command,
             completer: Some(completers::directory),
+        },
+        TypableCommand {
+            name: "redraw",
+            aliases: &[],
+            doc: "Clear and re-render the whole UI",
+            fun: redraw,
+            completer: None,
         },
     ];
 
