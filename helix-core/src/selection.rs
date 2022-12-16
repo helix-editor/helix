@@ -499,7 +499,7 @@ impl Selection {
         self.ranges.sort_unstable_by_key(Range::from);
 
         self.ranges.dedup_by(|curr_range, prev_range| {
-            if prev_range.overlaps(&curr_range) {
+            if prev_range.overlaps(curr_range) {
                 let new_range = curr_range.merge(*prev_range);
                 if prev_range == &primary || curr_range == &primary {
                     primary = new_range;
