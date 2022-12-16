@@ -58,6 +58,10 @@
 "markup.link.text" = {fg="nord12"}
 "markup.quote" = {fg="nord3", modifiers=["italic"]}
 
+"diff.plus" = {fg = "nord14"}
+"diff.delta" = {fg = "nord13"}
+"diff.minus" = {fg = "nord11"}
+
 
 [palette]
 nord0 = "#2E3440"

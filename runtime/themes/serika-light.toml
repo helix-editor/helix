@@ -59,9 +59,9 @@
 "error" = "nasty-red"
 "diagnostic" = { fg = "nasty-red", modifiers = ["underlined"] }
 
-"diff.plus" = { fg = "green" }
-"diff.delta" = { fg = "orange" }
-"diff.minus" = { fg = "red" }
+"diff.plus" = { fg = "bg_green" }
+"diff.delta" = { fg = "bg_blue" }
+"diff.minus" = { fg = "nasty-red" }
 
 "markup.heading" = { fg = "purple", modifiers = ["bold"] }
 "markup.list" = "cyan"
@@ -71,7 +71,6 @@
 "markup.link.text" = "pink"
 "markup.quote" = { fg = "yellow", modifiers = ["italic"] }
 "markup.raw" = { fg = "fg" }
-
 
 [palette]
 

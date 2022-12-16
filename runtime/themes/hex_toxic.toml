@@ -2,7 +2,7 @@ inherits = "hex_steel"
 
 [palette]
 t1 = "#101719"
-t2 = "#152432"
+t2 = "#1b2a32"
 t3 = "#4b5968"
 t4 = "#8792ab"
 t5 = "#6f91bc"
@@ -13,15 +13,15 @@ t9 = "#b3ccd0"
 t10 = "#b0d4d8"
 t11 = "#ffbf52"
 
-highlight = "#ff2e5f"
+highlight = "#ff0a50"
 highlight_two = "#0affa9"
-highlight_three = "#d7ff52"
+highlight_three = "#f8ed8b"
 
 black = "#000000"
 
-selection = "#290019"
+selection = "#382e1e"
 
-comment = "#396884"
+comment = "#61bdd1"
 comment_doc = "#234048"
 
 error = "#ff0900"

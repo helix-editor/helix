@@ -185,7 +185,7 @@ impl<'a> EventAccumulator {
                     }
                     // Diff failed to complete in time log the event
                     // and wait until the diff occurs to trigger an async redraw
-                    log::warn!("Diff computation timed out, update of diffs might appear delayed");
+                    log::info!("Diff computation timed out, update of diffs might appear delayed");
                     diff_finished_notify.notified().await;
                     redraw_notify.notify_one();
                 });

@@ -131,7 +131,7 @@ impl History {
             .map(|&n| self.revisions[n].inversion.clone());
         let down_txns = down.iter().map(|&n| self.revisions[n].transaction.clone());
 
-        up_txns.chain(down_txns).reduce(|acc, tx| tx.compose(acc))
+        down_txns.chain(up_txns).reduce(|acc, tx| tx.compose(acc))
     }
 
     /// Undo the last edit.

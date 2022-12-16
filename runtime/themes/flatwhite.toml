@@ -77,9 +77,9 @@
 "ui.popup" = { fg = "base1", bg = "base6" }
 "ui.window" = { fg = "base1", bg = "base6" }
 
-"diff.plus" = { bg = "diff_add" }
-"diff.delta" = { bg = "diff_change" }
-"diff.minus" = { bg = "diff_delete" }
+"diff.plus" = { fg = "diff_add" }
+"diff.delta" = { fg = "diff_change" }
+"diff.minus" = { fg = "diff_delete" }
 
 [palette]
 base1 = "#605a52"

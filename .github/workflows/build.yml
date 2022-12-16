@@ -44,10 +44,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: helix-editor/rust-toolchain@v1
-        with:
-          profile: minimal
-          override: true
+        uses: dtolnay/rust-toolchain@1.61
 
       - uses: Swatinem/rust-cache@v2
 
@@ -76,10 +73,8 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: helix-editor/rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@1.61
         with:
-          profile: minimal
-          override: true
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
@@ -103,12 +98,12 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: helix-editor/rust-toolchain@v1
-        with:
-          profile: minimal
-          override: true
+        uses: dtolnay/rust-toolchain@1.61
 
       - uses: Swatinem/rust-cache@v2
+
+      - name: Validate queries
+        run: cargo xtask query-check
 
       - name: Generate docs
         run: cargo xtask docgen
@@ -120,20 +115,3 @@ jobs:
             || (echo "Run 'cargo xtask docgen', commit the changes and push again" \
             && exit 1)
 
-  queries:
-    name: Tree-sitter queries
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Install stable toolchain
-        uses: helix-editor/rust-toolchain@v1
-        with:
-          profile: minimal
-          override: true
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Generate docs
-        run: cargo xtask query-check

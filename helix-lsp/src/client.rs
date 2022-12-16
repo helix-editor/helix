@@ -5,6 +5,7 @@ use crate::{
 };
 
 use helix_core::{find_root, ChangeSet, Rope};
+use helix_loader::{self, VERSION_AND_GIT_HASH};
 use lsp_types as lsp;
 use serde::Deserialize;
 use serde_json::Value;
@@ -41,10 +42,12 @@ pub struct Client {
 
 impl Client {
     #[allow(clippy::type_complexity)]
+    #[allow(clippy::too_many_arguments)]
     pub fn start(
         cmd: &str,
         args: &[String],
         config: Option<Value>,
+        server_environment: HashMap<String, String>,
         root_markers: &[String],
         id: usize,
         req_timeout: u64,
@@ -54,6 +57,7 @@ impl Client {
         let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
 
         let process = Command::new(cmd)
+            .envs(server_environment)
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -376,7 +380,10 @@ impl Client {
                 ..Default::default()
             },
             trace: None,
-            client_info: None,
+            client_info: Some(lsp::ClientInfo {
+                name: String::from("helix"),
+                version: Some(String::from(VERSION_AND_GIT_HASH)),
+            }),
             locale: None, // TODO
         };
 
