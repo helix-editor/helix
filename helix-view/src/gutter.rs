@@ -199,8 +199,8 @@ pub fn line_numbers<'doc>(
 /// The width of a "line-numbers" gutter
 ///
 /// The width of the gutter depends on the number of lines in the document,
-/// whether there is content on the last line (the `~` line), and the `line-
-/// numbers-width-min` & `line-numbers-width-max` settings.
+/// whether there is content on the last line (the `~` line), and the
+/// `editor.gutters.line-numbers.min-width` settings.
 pub fn line_numbers_width(view: &View, doc: &Document) -> usize {
     let text = doc.text();
     let last_line = text.len_lines().saturating_sub(1);
