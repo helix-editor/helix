@@ -997,6 +997,37 @@ thread_local! {
     })
 }
 
+/// Creates an iterator over the captures in a query within the given range,
+/// re-using a cursor from the pool if available.
+fn query_captures<'a, 'tree>(
+    query: &'a Query,
+    root: Node<'tree>,
+    source: RopeSlice<'a>,
+    range: Option<std::ops::Range<usize>>,
+) -> (
+    QueryCursor,
+    QueryCaptures<'a, 'tree, RopeProvider<'a>, &'a [u8]>,
+) {
+    // Reuse a cursor from the pool if available.
+    let mut cursor = PARSER.with(|ts_parser| {
+        let highlighter = &mut ts_parser.borrow_mut();
+        highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
+    });
+
+    // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
+    // prevents them from being moved. But both of these values are really just
+    // pointers, so it's actually ok to move them.
+    let cursor_ref = unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
+
+    // if reusing cursors & no range this resets to whole range
+    cursor_ref.set_byte_range(range.unwrap_or(0..usize::MAX));
+    cursor_ref.set_match_limit(TREE_SITTER_MATCH_LIMIT);
+
+    let captures = cursor_ref.captures(query, root, RopeProvider(source));
+
+    (cursor, captures)
+}
+
 #[derive(Debug)]
 pub struct Syntax {
     layers: HopSlotMap<LayerId, LanguageLayer>,
@@ -1345,28 +1376,13 @@ impl Syntax {
             .layers
             .iter()
             .filter_map(|(_, layer)| {
-                // Reuse a cursor from the pool if available.
-                let mut cursor = PARSER.with(|ts_parser| {
-                    let highlighter = &mut ts_parser.borrow_mut();
-                    highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
-                });
-
-                // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
-                // prevents them from being moved. But both of these values are really just
-                // pointers, so it's actually ok to move them.
-                let cursor_ref =
-                    unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
-
-                cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
-                cursor_ref.set_match_limit(TREE_SITTER_MATCH_LIMIT);
-
-                let mut captures = cursor_ref
-                    .captures(
-                        query_fn(&layer.config),
-                        layer.tree().root_node(),
-                        RopeProvider(source),
-                    )
-                    .peekable();
+                let (cursor, captures) = query_captures(
+                    query_fn(&layer.config),
+                    layer.tree().root_node(),
+                    source,
+                    range.clone(),
+                );
+                let mut captures = captures.peekable();
 
                 // If there aren't any captures for this layer, skip the layer.
                 captures.peek()?;
@@ -1397,31 +1413,15 @@ impl Syntax {
             .filter_map(|(_, layer)| {
                 // TODO: if range doesn't overlap layer range, skip it
 
-                // Reuse a cursor from the pool if available.
-                let mut cursor = PARSER.with(|ts_parser| {
-                    let highlighter = &mut ts_parser.borrow_mut();
-                    highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
-                });
+                let (cursor, captures) = query_captures(
+                    &layer.config.query,
+                    layer.tree().root_node(),
+                    source,
+                    range.clone(),
+                );
+                let mut captures = captures.peekable();
 
-                // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
-                // prevents them from being moved. But both of these values are really just
-                // pointers, so it's actually ok to move them.
-                let cursor_ref =
-                    unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
-
-                // if reusing cursors & no range this resets to whole range
-                cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
-                cursor_ref.set_match_limit(TREE_SITTER_MATCH_LIMIT);
-
-                let mut captures = cursor_ref
-                    .captures(
-                        &layer.config.query,
-                        layer.tree().root_node(),
-                        RopeProvider(source),
-                    )
-                    .peekable();
-
-                // If there's no captures, skip the layer
+                // If there are no captures, skip the layer
                 captures.peek()?;
 
                 Some(HighlightIterLayer {
