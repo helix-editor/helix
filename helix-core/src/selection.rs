@@ -495,28 +495,27 @@ impl Selection {
 
     /// Normalizes a `Selection`.
     fn normalize(mut self) -> Self {
-        let primary = self.ranges[self.primary_index];
+        let mut primary = self.ranges[self.primary_index];
         self.ranges.sort_unstable_by_key(Range::from);
+
+        self.ranges.dedup_by(|curr_range, prev_range| {
+            if prev_range.overlaps(&curr_range) {
+                let new_range = curr_range.merge(*prev_range);
+                if prev_range == &primary || curr_range == &primary {
+                    primary = new_range;
+                }
+                *prev_range = new_range;
+                true
+            } else {
+                false
+            }
+        });
+
         self.primary_index = self
             .ranges
             .iter()
             .position(|&range| range == primary)
             .unwrap();
-
-        let mut prev_i = 0;
-        for i in 1..self.ranges.len() {
-            if self.ranges[prev_i].overlaps(&self.ranges[i]) {
-                self.ranges[prev_i] = self.ranges[prev_i].merge(self.ranges[i]);
-            } else {
-                prev_i += 1;
-                self.ranges[prev_i] = self.ranges[i];
-            }
-            if i == self.primary_index {
-                self.primary_index = prev_i;
-            }
-        }
-
-        self.ranges.truncate(prev_i + 1);
 
         self
     }
@@ -527,10 +526,11 @@ impl Selection {
 
         self.ranges.dedup_by(|curr_range, prev_range| {
             if prev_range.to() == curr_range.from() {
+                let new_range = curr_range.merge(*prev_range);
                 if prev_range == &primary || curr_range == &primary {
-                    primary = curr_range.merge(*prev_range);
+                    primary = new_range;
                 }
-                *prev_range = curr_range.merge(*prev_range);
+                *prev_range = new_range;
                 true
             } else {
                 false
