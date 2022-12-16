@@ -152,7 +152,7 @@ pub fn line_numbers<'doc>(
 
     // characters used to display last line, and settings for min/max
     let n_last_line = count_digits(last_drawn_line);
-    let n_min = view.gutters.line_numbers.width;
+    let n_min = view.gutters.line_numbers.min_width;
 
     let linenr = theme.get("ui.linenr");
     let linenr_select = theme.get("ui.linenr.selected");
@@ -207,7 +207,7 @@ pub fn line_numbers_width(view: &View, doc: &Document) -> usize {
     let draw_last = text.line_to_byte(last_line) < text.len_bytes();
     let last_drawn = if draw_last { last_line + 1 } else { last_line };
     let digits = count_digits(last_drawn);
-    let n_min = view.gutters.line_numbers.width;
+    let n_min = view.gutters.line_numbers.min_width;
     max(digits, n_min)
 }
 
@@ -340,7 +340,7 @@ mod tests {
 
         let gutters = GutterConfig {
             layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
-            line_numbers: GutterLineNumbersConfig { width: 10 },
+            line_numbers: GutterLineNumbersConfig { min_width: 10 },
         };
 
         let mut view = View::new(DocumentId::default(), gutters);
@@ -358,7 +358,7 @@ mod tests {
     fn test_line_numbers_gutter_width_resizes() {
         let gutters = GutterConfig {
             layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
-            line_numbers: GutterLineNumbersConfig { width: 1 },
+            line_numbers: GutterLineNumbersConfig { min_width: 1 },
         };
 
         let mut view = View::new(DocumentId::default(), gutters);

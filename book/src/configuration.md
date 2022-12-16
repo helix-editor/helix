@@ -285,15 +285,15 @@ layout = ["diff", "diagnostics", "line-numbers", "spacer"]
 
 Options for the line number gutter
 
-| Key     | Description                             | Default |
-| ---     | ---                                     | ---     |
-| `width` | The minimum number of characters to use | `3`     |
+| Key         | Description                             | Default |
+| ---         | ---                                     | ---     |
+| `min-width` | The minimum number of characters to use | `3`     |
 
 Example:
 
 ```toml
 [editor.gutters.line-numbers]
-width = 1
+min-width = 1
 ```
 
 #### `[editor.gutters.diagnotics]` Section

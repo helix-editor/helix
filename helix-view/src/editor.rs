@@ -20,6 +20,7 @@ use std::{
     borrow::Cow,
     collections::{BTreeMap, HashMap},
     io::stdin,
+    marker::PhantomData,
     num::NonZeroUsize,
     path::{Path, PathBuf},
     pin::Pin,
@@ -71,21 +72,6 @@ where
     )
 }
 
-// Accept either a simple array of strings as gutter defaults or
-// a [editor.gutters] block
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum GutterConfigOption {
-    Simple(Vec<GutterType>),
-    Detailed(GutterConfig),
-}
-
-impl Default for GutterConfigOption {
-    fn default() -> Self {
-        Self::Detailed(GutterConfig::default())
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct GutterConfig {
@@ -110,28 +96,78 @@ impl Default for GutterConfig {
     }
 }
 
-impl From<GutterConfigOption> for GutterConfig {
-    fn from(item: GutterConfigOption) -> Self {
-        match item {
-            GutterConfigOption::Simple(x) => GutterConfig {
-                layout: x,
-                ..Default::default()
-            },
-            GutterConfigOption::Detailed(x) => x,
+impl From<Vec<GutterType>> for GutterConfig {
+    fn from(x: Vec<GutterType>) -> Self {
+        GutterConfig {
+            layout: x,
+            ..Default::default()
         }
     }
+}
+
+fn deserialize_gutter_seq_or_struct<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+where
+    T: Deserialize<'de> + From<Vec<GutterType>>,
+    D: Deserializer<'de>,
+{
+    // This is a Visitor that forwards string types to T's `FromStr` impl and
+    // forwards map types to T's `Deserialize` impl. The `PhantomData` is to
+    // keep the compiler from complaining about T being an unused generic type
+    // parameter. We need T in order to know the Value type for the Visitor
+    // impl.
+    struct GutterSeqOrStruct<T>(PhantomData<fn() -> T>);
+
+    impl<'de, T> serde::de::Visitor<'de> for GutterSeqOrStruct<T>
+    where
+        T: Deserialize<'de> + From<Vec<GutterType>>,
+    {
+        type Value = T;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(
+                formatter,
+                "an array of gutter names or a detailed gutter configuration"
+            )
+        }
+
+        fn visit_seq<S>(self, mut seq: S) -> Result<Self::Value, S::Error>
+        where
+            S: serde::de::SeqAccess<'de>,
+        {
+            let mut gutters = Vec::new();
+            while let Some(gutter) = seq.next_element::<&str>()? {
+                gutters.push(
+                    gutter
+                        .parse::<GutterType>()
+                        .map_err(serde::de::Error::custom)?,
+                )
+            }
+
+            Ok(gutters.into())
+        }
+
+        fn visit_map<M>(self, map: M) -> Result<Self::Value, M::Error>
+        where
+            M: serde::de::MapAccess<'de>,
+        {
+            let deserializer = serde::de::value::MapAccessDeserializer::new(map);
+            Deserialize::deserialize(deserializer)
+        }
+    }
+
+    deserializer.deserialize_any(GutterSeqOrStruct(PhantomData))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct GutterLineNumbersConfig {
     /// Minimum number of characters to use for line number gutter. Defaults to 3.
-    pub width: usize,
+    pub min_width: usize,
 }
 
 impl Default for GutterLineNumbersConfig {
     fn default() -> Self {
-        Self { width: 3 }
+        Self { min_width: 3 }
     }
 }
 
@@ -197,7 +233,8 @@ pub struct Config {
     /// Highlight the columns cursors are currently on. Defaults to false.
     pub cursorcolumn: bool,
     /// Gutters. Default { layout: ["diagnostics", "spacer", "line-numbers"] }
-    pub gutters: GutterConfigOption,
+    #[serde(deserialize_with = "deserialize_gutter_seq_or_struct")]
+    pub gutters: GutterConfig,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
     /// Automatic insertion of pairs to parentheses, brackets,
@@ -667,7 +704,7 @@ impl Default for Config {
             line_number: LineNumber::Absolute,
             cursorline: false,
             cursorcolumn: false,
-            gutters: GutterConfigOption::default(),
+            gutters: GutterConfig::default(),
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
