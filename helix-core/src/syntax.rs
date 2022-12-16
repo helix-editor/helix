@@ -1331,6 +1331,57 @@ impl Syntax {
         self.layers[self.root].tree()
     }
 
+    /// Iterate over all captures for a query across injection layers.
+    fn query_iter<'a, F>(
+        &'a self,
+        query_fn: F,
+        source: RopeSlice<'a>,
+        range: Option<std::ops::Range<usize>>,
+    ) -> impl Iterator<Item = (&'a LanguageLayer, QueryMatch<'a, 'a>, usize)>
+    where
+        F: Fn(&'a HighlightConfiguration) -> Option<&'a Query>,
+    {
+        let layers = self
+            .layers
+            .iter()
+            .filter_map(|(_, layer)| {
+                // Reuse a cursor from the pool if available.
+                let mut cursor = PARSER.with(|ts_parser| {
+                    let highlighter = &mut ts_parser.borrow_mut();
+                    highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
+                });
+
+                // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
+                // prevents them from being moved. But both of these values are really just
+                // pointers, so it's actually ok to move them.
+                let cursor_ref =
+                    unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
+
+                cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
+                cursor_ref.set_match_limit(TREE_SITTER_MATCH_LIMIT);
+
+                let mut captures = cursor_ref
+                    .captures(
+                        query_fn(&layer.config),
+                        layer.tree().root_node(),
+                        RopeProvider(source),
+                    )
+                    .peekable();
+
+                // If there aren't any captures for this layer, skip the layer.
+                captures.peek()?;
+
+                Some(QueryIterLayer {
+                    cursor,
+                    captures,
+                    layer,
+                })
+            })
+            .collect();
+
+        QueryIter { layers }
+    }
+
     /// Iterate over the highlighted regions for a given slice of source code.
     pub fn highlight_iter<'a>(
         &'a self,
@@ -2637,6 +2688,81 @@ fn pretty_print_tree_impl<W: fmt::Write>(
     }
 
     Ok(())
+}
+
+struct QueryIterLayer<'a> {
+    cursor: QueryCursor,
+    captures: iter::Peekable<QueryCaptures<'a, 'a, RopeProvider<'a>, &'a [u8]>>,
+    layer: &'a LanguageLayer,
+}
+
+impl<'a> fmt::Debug for QueryIterLayer<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("QueryIterLayer").finish()
+    }
+}
+
+impl<'a> QueryIterLayer<'a> {
+    fn sort_key(&mut self) -> Option<(usize, isize)> {
+        let depth = -(self.layer.depth as isize);
+        let (match_, capture_index) = self.captures.peek()?;
+        let start = match_.captures[*capture_index].node.start_byte();
+
+        Some((start, depth))
+    }
+}
+
+#[derive(Debug)]
+pub struct QueryIter<'a> {
+    layers: Vec<QueryIterLayer<'a>>,
+}
+
+impl<'a> Iterator for QueryIter<'a> {
+    type Item = (&'a LanguageLayer, QueryMatch<'a, 'a>, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // Sort the layers so that the first layer in the Vec has the next
+        // capture ordered by start byte and depth (descending).
+        while !self.layers.is_empty() {
+            if let Some(sort_key) = self.layers[0].sort_key() {
+                let mut i = 0;
+                while i + 1 < self.layers.len() {
+                    if let Some(next_sort_key) = self.layers[i + 1].sort_key() {
+                        if next_sort_key < sort_key {
+                            i += 1;
+                            continue;
+                        }
+                    } else {
+                        let layer = self.layers.remove(i + 1);
+                        PARSER.with(|ts_parser| {
+                            let parser = &mut ts_parser.borrow_mut();
+                            parser.cursors.push(layer.cursor);
+                        });
+                    }
+                    break;
+                }
+                if i > 0 {
+                    self.layers[0..(i + 1)].rotate_left(1);
+                }
+                break;
+            } else {
+                let layer = self.layers.remove(0);
+                PARSER.with(|ts_parser| {
+                    let parser = &mut ts_parser.borrow_mut();
+                    parser.cursors.push(layer.cursor);
+                })
+            }
+        }
+
+        // Emit the next capture from the lowest layer. If there are no more
+        // layers, terminate.
+        let layer = self.layers.get_mut(0)?;
+        let inner = layer.layer;
+        layer
+            .captures
+            .next()
+            .map(|(match_, index)| (inner, match_, index))
+    }
 }
 
 #[cfg(test)]
