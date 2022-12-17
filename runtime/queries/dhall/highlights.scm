@@ -13,7 +13,7 @@
 
 ;; Imports
 (local_import) @string.special.path
-(http_import) @string.special.url
+(http_import) @string.special.uri.url
 (env_import) @keyword
 (env_variable) @string.special
 (import_hash) @string.special

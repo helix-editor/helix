@@ -92,7 +92,7 @@
 (switch_entry "case" @keyword)
 (switch_entry "fallthrough" @keyword)
 (switch_entry (default_keyword) @keyword)
-"return" @keyword.return
+"return" @keyword.control.return
 (ternary_expression
   ["?" ":"] @keyword.control.conditional)
 

@@ -19,8 +19,8 @@
 
 (list
   .
-  ((symbol) @keyword.conditional
-   (#match? @keyword.conditional "^(if|cond|case|when|unless)$"
+  ((symbol) @keyword.control.conditional
+   (#match? @keyword.control.conditional "^(if|cond|case|when|unless)$"
   )))
  
 (list
@@ -67,7 +67,7 @@
 (list
  .
  (symbol) @_f
- (#eq? @_f "quote")) @string.symbol
+ (#eq? @_f "quote")) @string.special.symbol
 
 ; library
 

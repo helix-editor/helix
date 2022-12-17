@@ -6,7 +6,7 @@
 (multi_line_string_literal
 	"${" @punctuation
 	(interpolated_expression) @none
-	"}" @punctuation.)
+	"}" @punctuation)
 
 ; NOTE: `interpolated_identifier`s can be highlighted in any way
 (line_string_literal

@@ -52,7 +52,7 @@
 [
   "{"
   "}"
-] @punctuation.brackets
+] @punctuation.bracket
 
 "=" @operator
 

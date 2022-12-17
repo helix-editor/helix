@@ -25,7 +25,7 @@
 
 (comment) @comment
 
-"*" @special
+"*" @punctuation.special
 (type) @type
 
 [

@@ -321,7 +321,7 @@
 
 (parameter_list
   (parameter
-    name: (identifier) @parameter))
+    name: (identifier) @variable.parameter))
 
 (parameter_list
   (parameter

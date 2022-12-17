@@ -29,7 +29,7 @@ function_name: (identifier) @function
 
 (function_definition end: (end) @keyword)
 
-["return" "break" "continue"] @keyword.return
+["return" "break" "continue"] @keyword.control.return
 
 (
 (identifier) @constant.builtin

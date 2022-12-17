@@ -125,7 +125,7 @@
   ";"
 ] @punctuation.delimiter
 
-"..." @special 
+"..." @punctuation.special 
 
 (comment) @comment
 

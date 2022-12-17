@@ -175,7 +175,7 @@
   "catch"
   "finally"
   "try"
-] @exception
+] @keyword.control.exception
 
 ((apply
   name: (identifier) @exception)
@@ -186,13 +186,13 @@
   "mut"
 ] @keyword
 
-[(true) (false)] @boolean
+[(true) (false)] @constant.builtin.boolean
 
 (number) @constant.numeric.integer
 (float) @constant.numeric.float
 
 (comment) @comment
-(char) @character
+(char) @constant.character
 (string) @string
 (interpolated_string) @string
 ; (escape_sequence) @string.escape

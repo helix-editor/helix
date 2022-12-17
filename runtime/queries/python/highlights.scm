@@ -190,8 +190,8 @@
   "try"
   "except"
   "finally"
-] @keyword.control.except
-(raise_statement "from" @keyword.control.except)
+] @keyword.control.exception
+(raise_statement "from" @keyword.control.exception)
 "import" @keyword.control.import
 
 (for_statement "in" @keyword.control)

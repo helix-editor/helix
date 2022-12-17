@@ -90,7 +90,7 @@
 
 [
   "func"
-] @keyword.control.function
+] @keyword.function
 
 [
   "export"

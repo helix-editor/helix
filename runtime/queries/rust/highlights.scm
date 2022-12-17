@@ -372,7 +372,7 @@
 ; Remaining Identifiers
 ; -------
 
-"?" @special
+"?" @punctuation.special
 
 (type_identifier) @type
 (identifier) @variable
