@@ -24,7 +24,6 @@ pub struct KeyTrieNode {
     /// A label for keys coming under this node, like "Goto mode"
     name: String,
     map: HashMap<KeyEvent, KeyTrie>,
-    order: Vec<KeyEvent>,
     pub is_sticky: bool,
 }
 
@@ -33,22 +32,18 @@ impl<'de> Deserialize<'de> for KeyTrieNode {
     where
         D: serde::Deserializer<'de>,
     {
-        let map = HashMap::<KeyEvent, KeyTrie>::deserialize(deserializer)?;
-        let order = map.keys().copied().collect::<Vec<_>>(); // NOTE: map.keys() has arbitrary order
         Ok(Self {
-            map,
-            order,
+            map: HashMap::<KeyEvent, KeyTrie>::deserialize(deserializer)?,
             ..Default::default()
         })
     }
 }
 
 impl KeyTrieNode {
-    pub fn new(name: &str, map: HashMap<KeyEvent, KeyTrie>, order: Vec<KeyEvent>) -> Self {
+    pub fn new(name: &str, map: HashMap<KeyEvent, KeyTrie>) -> Self {
         Self {
             name: name.to_string(),
             map,
-            order,
             is_sticky: false,
         }
     }
@@ -69,11 +64,6 @@ impl KeyTrieNode {
                 }
             }
             self.map.insert(key, trie);
-        }
-        for &key in self.map.keys() {
-            if !self.order.contains(&key) {
-                self.order.push(key);
-            }
         }
     }
 
@@ -97,12 +87,6 @@ impl KeyTrieNode {
                 None => body.push((desc, BTreeSet::from([key]))),
             }
         }
-        body.sort_unstable_by_key(|(_, keys)| {
-            self.order
-                .iter()
-                .position(|&k| k == *keys.iter().next().unwrap())
-                .unwrap()
-        });
         let prefix = format!("{} ", self.name());
         if body.iter().all(|(desc, _)| desc.starts_with(&prefix)) {
             body = body
@@ -116,7 +100,7 @@ impl KeyTrieNode {
 
 impl Default for KeyTrieNode {
     fn default() -> Self {
-        Self::new("", HashMap::new(), Vec::new())
+        Self::new("", HashMap::new())
     }
 }
 
@@ -195,12 +179,10 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
         M: serde::de::MapAccess<'de>,
     {
         let mut mapping = HashMap::new();
-        let mut order = Vec::new();
         while let Some((key, value)) = map.next_entry::<KeyEvent, KeyTrie>()? {
             mapping.insert(key, value);
-            order.push(key);
         }
-        Ok(KeyTrie::Node(KeyTrieNode::new("", mapping, order)))
+        Ok(KeyTrie::Node(KeyTrieNode::new("", mapping)))
     }
 }
 
@@ -535,9 +517,6 @@ mod tests {
             &KeyTrie::Leaf(MappableCommand::vsplit),
             "Leaf should be present in merged subnode"
         );
-        // Make sure an order was set during merge
-        let node = keymap.root().search(&[crate::key!(' ')]).unwrap();
-        assert!(!node.node().unwrap().order.as_slice().is_empty())
     }
 
     #[test]
