@@ -78,18 +78,22 @@ impl KeyTrieNode {
     }
 
     pub fn infobox(&self) -> Info {
-        let mut body: Vec<(&str, BTreeSet<KeyEvent>)> = Vec::with_capacity(self.len());
+        let mut body: Vec<(String, BTreeSet<KeyEvent>)> = Vec::with_capacity(self.len());
+        let desc_separator = "; ";
         for (&key, trie) in self.iter() {
             let desc = match trie {
                 KeyTrie::Leaf(cmd) => {
                     if cmd.name() == "no_op" {
                         continue;
                     }
-                    cmd.doc()
+                    vec![cmd.doc().to_owned()]
                 }
-                KeyTrie::Node(n) => n.name(),
-                KeyTrie::Sequence(_) => "[Multiple commands]",
+                KeyTrie::Node(n) => vec![n.name().to_owned()],
+                KeyTrie::Sequence(cmds) => {
+                    cmds.iter().map(|x| x.doc().to_owned()).collect::<Vec<_>>()
+                }
             };
+            let desc = desc.join(desc_separator);
             match body.iter().position(|(d, _)| d == &desc) {
                 Some(pos) => {
                     body[pos].1.insert(key);
@@ -107,7 +111,7 @@ impl KeyTrieNode {
         if body.iter().all(|(desc, _)| desc.starts_with(&prefix)) {
             body = body
                 .into_iter()
-                .map(|(desc, keys)| (desc.strip_prefix(&prefix).unwrap(), keys))
+                .map(|(desc, keys)| (desc.strip_prefix(&prefix).unwrap().to_owned(), keys))
                 .collect();
         }
         Info::from_keymap(self.name(), body)
