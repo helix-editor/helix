@@ -101,10 +101,12 @@ jobs:
       - name: Generate docs
         run: cargo xtask docgen
 
+      - name: All highlight queries keys are statically known
+        run: cargo xtask theme-keys-check
+
       - name: Check uncommitted documentation changes
         run: |
           git diff
           git diff-files --quiet \
             || (echo "Run 'cargo xtask docgen', commit the changes and push again" \
             && exit 1)
-

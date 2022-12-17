@@ -8,6 +8,7 @@ use std::fs;
 
 pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
 pub const LANG_SUPPORT_MD_OUTPUT: &str = "lang-support.md";
+pub const THEME_TABLE_MD_OUTPUT: &str = "theme-table.md";
 
 fn md_table_heading(cols: &[String]) -> String {
     let mut header = String::new();
