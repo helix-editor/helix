@@ -12,7 +12,10 @@ use tui::{
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use tui::widgets::Widget;
 
-use std::{cmp::Ordering, time::Instant};
+use std::{
+    cmp::{self, Ordering},
+    time::Instant,
+};
 use std::{collections::HashMap, io::Read, path::PathBuf};
 
 use crate::ui::{Prompt, PromptEvent};
@@ -344,9 +347,15 @@ impl<T: Item + 'static> Component for FilePicker<T> {
 
 #[derive(PartialEq, Eq, Debug)]
 struct PickerMatch {
-    index: usize,
     score: i64,
+    index: usize,
     len: usize,
+}
+
+impl PickerMatch {
+    fn key(&self) -> impl Ord {
+        (cmp::Reverse(self.score), self.len, self.index)
+    }
 }
 
 impl PartialOrd for PickerMatch {
@@ -357,10 +366,7 @@ impl PartialOrd for PickerMatch {
 
 impl Ord for PickerMatch {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.score
-            .cmp(&other.score)
-            .reverse()
-            .then_with(|| self.len.cmp(&other.len))
+        self.key().cmp(&other.key())
     }
 }
 
@@ -502,6 +508,7 @@ impl<T: Item> Picker<T> {
                         })
                 }),
         );
+
         self.matches.sort_unstable();
     }
 
