@@ -4,7 +4,6 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::io::Error as IOError;
-use std::path::PathBuf;
 use toml::de::Error as TomlError;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
