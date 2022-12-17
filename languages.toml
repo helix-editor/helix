@@ -224,6 +224,18 @@ name = "cpp"
 source = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev = "d5e90fba898f320db48d81ddedd78d52c67c1fed" }
 
 [[language]]
+name = "crystal"
+scope = "source.cr"
+file-types = ["cr"]
+roots = ["shard.yml", "shard.lock"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "crystal"
+source = { git = "https://github.com/will/tree-sitter-crystal", rev = "15597b307b18028b04d288561f9c29794621562b" }
+
+[[language]]
 name = "c-sharp"
 scope = "source.csharp"
 injection-regex = "c-?sharp"
