@@ -227,7 +227,11 @@ impl Application {
                         doc.set_selection(view_id, pos);
                     }
                 }
-                editor.set_status(format!("Loaded {} files.", nr_of_files));
+                editor.set_status(format!(
+                    "Loaded {} file{}.",
+                    nr_of_files,
+                    "s".repeat((nr_of_files != 1).into()) // avoid "Loaded 1 files." grammo
+                ));
                 // align the view to center after all files are loaded,
                 // does not affect views without pos since it is at the top
                 let (view, doc) = current!(editor);
