@@ -1,4 +1,3 @@
-use crate::input::KeyEvent;
 use helix_core::{register::Registers, unicode::width::UnicodeWidthStr};
 use std::fmt::Write;
 
@@ -53,18 +52,6 @@ impl Info {
             height: body.len() as u16,
             text,
         }
-    }
-
-    pub fn from_keymap(title: &str, body: Vec<(Vec<KeyEvent>, &str)>) -> Self {
-        let body: Vec<_> = body
-            .into_iter()
-            .map(|(events, desc)| {
-                let events = events.iter().map(ToString::to_string).collect::<Vec<_>>();
-                (events.join(", "), desc)
-            })
-            .collect();
-
-        Self::new(title, &body)
     }
 
     pub fn from_registers(registers: &Registers) -> Self {
