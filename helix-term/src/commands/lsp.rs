@@ -2,6 +2,7 @@ use futures_util::FutureExt;
 use helix_lsp::{
     block_on,
     lsp::{self, CodeAction, CodeActionOrCommand, DiagnosticSeverity, NumberOrString},
+    remap::LSPRemap,
     util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
@@ -567,6 +568,11 @@ pub fn code_action(cx: &mut Context) {
         }
     };
 
+    let path_mapping = language_server
+        .path_mapping()
+        .map(|a| a.clone())
+        .map(|(a, b)| (b, a));
+
     cx.callback(
         future,
         move |editor, compositor, response: Option<lsp::CodeActionResponse>| {
@@ -641,7 +647,13 @@ pub fn code_action(cx: &mut Context) {
                         log::debug!("code action: {:?}", code_action);
                         if let Some(ref workspace_edit) = code_action.edit {
                             log::debug!("edit: {:?}", workspace_edit);
-                            apply_workspace_edit(editor, offset_encoding, workspace_edit);
+
+                            apply_workspace_edit(
+                                editor,
+                                offset_encoding,
+                                workspace_edit,
+                                path_mapping.as_ref(),
+                            );
                         }
 
                         // if code action provides both edit and command first the edit
@@ -751,9 +763,16 @@ pub fn apply_workspace_edit(
     editor: &mut Editor,
     offset_encoding: OffsetEncoding,
     workspace_edit: &lsp::WorkspaceEdit,
+    path_mapping: Option<&(String, String)>,
 ) {
     let mut apply_edits = |uri: &helix_lsp::Url, text_edits: Vec<lsp::TextEdit>| {
-        let path = match uri.to_file_path() {
+        let path = if let Some((from, to)) = path_mapping {
+            uri.remap(&from, &to).to_file_path()
+        } else {
+            uri.to_file_path()
+        };
+
+        let path = match path {
             Ok(path) => path,
             Err(_) => {
                 let err = format!("unable to convert URI to filepath: {}", uri);
@@ -871,8 +890,16 @@ fn goto_impl(
     compositor: &mut Compositor,
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
+    path_mapping: Option<(String, String)>,
 ) {
     let cwdir = std::env::current_dir().unwrap_or_default();
+
+    let mut locations = locations;
+    if let Some((from, to)) = path_mapping {
+        locations.iter_mut().for_each(|l| {
+            l.uri = l.uri.remap(&from, &to);
+        });
+    }
 
     match locations.as_slice() {
         [location] => {
@@ -914,6 +941,9 @@ pub fn goto_definition(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
+    let path_mapping = language_server
+        .path_mapping()
+        .map(|(a, b)| (b.clone(), a.clone()));
 
     let pos = doc.position(view.id, offset_encoding);
 
@@ -930,7 +960,7 @@ pub fn goto_definition(cx: &mut Context) {
         future,
         move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
             let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
+            goto_impl(editor, compositor, items, offset_encoding, path_mapping);
         },
     );
 }
@@ -939,6 +969,9 @@ pub fn goto_type_definition(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
+    let path_mapping = language_server
+        .path_mapping()
+        .map(|(a, b)| (b.clone(), a.clone()));
 
     let pos = doc.position(view.id, offset_encoding);
 
@@ -955,7 +988,7 @@ pub fn goto_type_definition(cx: &mut Context) {
         future,
         move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
             let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
+            goto_impl(editor, compositor, items, offset_encoding, path_mapping);
         },
     );
 }
@@ -964,6 +997,9 @@ pub fn goto_implementation(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
+    let path_mapping = language_server
+        .path_mapping()
+        .map(|(a, b)| (b.clone(), a.clone()));
 
     let pos = doc.position(view.id, offset_encoding);
 
@@ -980,7 +1016,7 @@ pub fn goto_implementation(cx: &mut Context) {
         future,
         move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
             let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
+            goto_impl(editor, compositor, items, offset_encoding, path_mapping);
         },
     );
 }
@@ -989,6 +1025,9 @@ pub fn goto_reference(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
+    let path_mapping = language_server
+        .path_mapping()
+        .map(|(a, b)| (b.clone(), a.clone()));
 
     let pos = doc.position(view.id, offset_encoding);
 
@@ -1005,7 +1044,7 @@ pub fn goto_reference(cx: &mut Context) {
         future,
         move |editor, compositor, response: Option<Vec<lsp::Location>>| {
             let items = response.unwrap_or_default();
-            goto_impl(editor, compositor, items, offset_encoding);
+            goto_impl(editor, compositor, items, offset_encoding, path_mapping);
         },
     );
 }
@@ -1222,6 +1261,10 @@ pub fn rename_symbol(cx: &mut Context) {
 
             let (view, doc) = current!(cx.editor);
             let language_server = language_server!(cx.editor, doc);
+            let path_mapping = language_server
+                .path_mapping()
+                .map(|a| a.clone())
+                .map(|(a, b)| (b, a));
             let offset_encoding = language_server.offset_encoding();
 
             let pos = doc.position(view.id, offset_encoding);
@@ -1235,8 +1278,11 @@ pub fn rename_symbol(cx: &mut Context) {
                         return;
                     }
                 };
+
             match block_on(future) {
-                Ok(edits) => apply_workspace_edit(cx.editor, offset_encoding, &edits),
+                Ok(edits) => {
+                    apply_workspace_edit(cx.editor, offset_encoding, &edits, path_mapping.as_ref())
+                }
                 Err(err) => cx.editor.set_error(err.to_string()),
             }
         },

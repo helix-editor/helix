@@ -201,6 +201,12 @@ impl<'de> Deserialize<'de> for FileType {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct PathMappingConfiguration {
+    pub from: String,
+    pub to: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageServerConfiguration {
     pub command: String,
@@ -212,6 +218,8 @@ pub struct LanguageServerConfiguration {
     #[serde(default = "default_timeout")]
     pub timeout: u64,
     pub language_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path_mapping: Option<PathMappingConfiguration>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
