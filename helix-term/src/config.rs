@@ -28,7 +28,7 @@ impl Default for Config {
 }
 
 #[derive(Debug)]
-pub enum ConfigLoadError {
+pub enum ConfigLoadError { 
     BadConfig(TomlError),
     Error(IOError),
 }
@@ -43,17 +43,14 @@ impl Display for ConfigLoadError {
 }
 
 impl Config {
-    pub fn load(config_path: PathBuf) -> Result<Config, ConfigLoadError> {
-        match std::fs::read_to_string(config_path) {
+    // REFACTOR? code similar to config assignment in main.rs, 
+    pub fn load_default() -> Result<Config, ConfigLoadError> {
+        match std::fs::read_to_string(helix_loader::config_file()) {
             Ok(config) => toml::from_str(&config)
                 .map(merge_keys)
                 .map_err(ConfigLoadError::BadConfig),
             Err(err) => Err(ConfigLoadError::Error(err)),
         }
-    }
-
-    pub fn load_default() -> Result<Config, ConfigLoadError> {
-        Config::load(helix_loader::config_file())
     }
 }
 
