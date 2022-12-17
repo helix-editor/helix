@@ -779,7 +779,7 @@ fn theme(
                     .editor
                     .theme_loader
                     .load(theme_name)
-                    .with_context(|| "Theme does not exist")?;
+                    .map_err(|err| anyhow::anyhow!("Could not load theme: {}", err))?;
                 if !(true_color || theme.is_16_color()) {
                     bail!("Unsupported theme: theme requires true color support");
                 }
@@ -1743,13 +1743,30 @@ fn insert_output(
     Ok(())
 }
 
+fn pipe_to(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::Ignore)
+}
+
 fn pipe(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::Replace)
+}
+
+fn pipe_impl(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+    behavior: &ShellBehavior,
+) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
     ensure!(!args.is_empty(), "Shell command required");
-    shell(cx, &args.join(" "), &ShellBehavior::Replace);
+    shell(cx, &args.join(" "), behavior);
     Ok(())
 }
 
@@ -2292,6 +2309,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Pipe each selection to the shell command.",
             fun: pipe,
+            completer: None,
+        },
+        TypableCommand {
+            name: "pipe-to",
+            aliases: &[],
+            doc: "Pipe each selection to the shell command, ignoring output.",
+            fun: pipe_to,
             completer: None,
         },
         TypableCommand {

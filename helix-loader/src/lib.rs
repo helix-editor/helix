@@ -97,7 +97,7 @@ pub fn find_local_config_dirs() -> Vec<PathBuf> {
     let mut directories = Vec::new();
 
     for ancestor in current_dir.ancestors() {
-        if ancestor.join(".git").is_dir() {
+        if ancestor.join(".git").exists() {
             directories.push(ancestor.to_path_buf());
             // Don't go higher than repo if we're in one
             break;

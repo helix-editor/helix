@@ -263,7 +263,7 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
         ))?;
 
         // create the grammar dir contains a git directory
-        if !grammar_dir.join(".git").is_dir() {
+        if !grammar_dir.join(".git").exists() {
             git(&grammar_dir, ["init"])?;
         }
 

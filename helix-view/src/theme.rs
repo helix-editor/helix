@@ -136,8 +136,9 @@ impl Loader {
     // Loads the theme data as `toml::Value` first from the user_dir then in default_dir
     fn load_toml(&self, path: PathBuf) -> Result<Value> {
         let data = std::fs::read(&path)?;
+        let value = toml::from_slice(data.as_slice())?;
 
-        toml::from_slice(data.as_slice()).context("Failed to deserialize theme")
+        Ok(value)
     }
 
     // Returns the path to the theme with the name

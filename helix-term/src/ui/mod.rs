@@ -19,7 +19,7 @@ pub use completion::Completion;
 pub use editor::EditorView;
 pub use markdown::Markdown;
 pub use menu::Menu;
-pub use picker::{FileLocation, FilePicker, Picker};
+pub use picker::{DynamicPicker, FileLocation, FilePicker, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
@@ -207,7 +207,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     // Cap the number of files if we aren't in a git project, preventing
     // hangs when using the picker in your home directory
-    let files: Vec<_> = if root.join(".git").is_dir() {
+    let files: Vec<_> = if root.join(".git").exists() {
         files.collect()
     } else {
         // const MAX: usize = 8192;

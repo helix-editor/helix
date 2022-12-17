@@ -69,7 +69,7 @@ pub fn find_root(root: Option<&str>, root_markers: &[String]) -> std::path::Path
             top_marker = Some(ancestor);
         }
 
-        if ancestor.join(".git").is_dir() {
+        if ancestor.join(".git").exists() {
             // Top marker is repo root if not root marker was detected yet
             if top_marker.is_none() {
                 top_marker = Some(ancestor);

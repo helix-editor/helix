@@ -190,7 +190,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-c", rev = "7175a6dd
 name = "cpp"
 scope = "source.cpp"
 injection-regex = "cpp"
-file-types = ["cc", "hh", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino"]
+file-types = ["cc", "hh", "c++", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino"]
 roots = []
 comment-token = "//"
 language-server = { command = "clangd" }
@@ -918,12 +918,18 @@ grammar = "scheme"
 name = "common-lisp"
 scope = "source.lisp"
 roots = []
-file-types = ["lisp", "asd", "cl", "l", "lsp", "ny"," podsl", "sexp"]
+file-types = ["lisp", "asd", "cl", "l", "lsp", "ny", "podsl", "sexp"]
 shebangs = ["lisp", "sbcl", "ccl", "clisp", "ecl"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "cl-lsp", args = [ "stdio" ] }
 grammar = "scheme"
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
 
 [[language]]
 name = "comment"
@@ -1083,7 +1089,7 @@ source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev 
 name = "diff"
 scope = "source.diff"
 roots = []
-file-types = ["diff"]
+file-types = ["diff", "patch"]
 injection-regex = "diff"
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
@@ -1577,7 +1583,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "scheme"
-source = { git = "https://github.com/6cdh/tree-sitter-scheme", rev = "27fb77db05f890c2823b4bd751c6420378df146b" }
+source = { git = "https://github.com/6cdh/tree-sitter-scheme", rev = "c0741320bfca6b7b5b7a13b5171275951e96a842" }
 
 [[language]]
 name = "v"
@@ -2037,3 +2043,16 @@ grammar = "qmljs"
 [[grammar]]
 name = "qmljs"
 source = { git = "https://github.com/yuja/tree-sitter-qmljs", rev = "0b2b25bcaa7d4925d5f0dda16f6a99c588a437f1" }
+
+[[language]]
+name = "mermaid"
+scope = "source.mermaid"
+injection-regex = "mermaid"
+file-types = ["mermaid"]
+roots = []
+comment-token = "%%"
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "mermaid"
+source = { git = "https://github.com/monaqa/tree-sitter-mermaid", rev = "d787c66276e7e95899230539f556e8b83ee16f6d" }

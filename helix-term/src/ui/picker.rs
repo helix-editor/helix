@@ -3,6 +3,7 @@ use crate::{
     ctrl, key, shift,
     ui::{self, fuzzy_match::FuzzyQuery, EditorView},
 };
+use futures_util::future::BoxFuture;
 use tui::{
     buffer::Buffer as Surface,
     widgets::{Block, BorderType, Borders},
@@ -22,7 +23,7 @@ use helix_view::{
     Document, DocumentId, Editor,
 };
 
-use super::menu::Item;
+use super::{menu::Item, overlay::Overlay};
 
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 /// Biggest file size to preview in bytes
@@ -469,32 +470,39 @@ impl<T: Item> Picker<T> {
 
             self.matches.sort_unstable();
         } else {
-            let query = FuzzyQuery::new(pattern);
-            self.matches.clear();
-            self.matches.extend(
-                self.options
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(index, option)| {
-                        let text = option.filter_text(&self.editor_data);
-
-                        query
-                            .fuzzy_match(&text, &self.matcher)
-                            .map(|score| PickerMatch {
-                                index,
-                                score,
-                                len: text.chars().count(),
-                            })
-                    }),
-            );
-            self.matches.sort_unstable();
+            self.force_score();
         }
 
         log::debug!("picker score {:?}", Instant::now().duration_since(now));
 
         // reset cursor position
         self.cursor = 0;
+        let pattern = self.prompt.line();
         self.previous_pattern.clone_from(pattern);
+    }
+
+    pub fn force_score(&mut self) {
+        let pattern = self.prompt.line();
+
+        let query = FuzzyQuery::new(pattern);
+        self.matches.clear();
+        self.matches.extend(
+            self.options
+                .iter()
+                .enumerate()
+                .filter_map(|(index, option)| {
+                    let text = option.filter_text(&self.editor_data);
+
+                    query
+                        .fuzzy_match(&text, &self.matcher)
+                        .map(|score| PickerMatch {
+                            index,
+                            score,
+                            len: text.chars().count(),
+                        })
+                }),
+        );
+        self.matches.sort_unstable();
     }
 
     /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
@@ -742,5 +750,80 @@ impl<T: Item + 'static> Component for Picker<T> {
         let area = inner.clip_left(1).with_height(1);
 
         self.prompt.cursor(area, editor)
+    }
+}
+
+/// Returns a new list of options to replace the contents of the picker
+/// when called with the current picker query,
+pub type DynQueryCallback<T> =
+    Box<dyn Fn(String, &mut Editor) -> BoxFuture<'static, anyhow::Result<Vec<T>>>>;
+
+/// A picker that updates its contents via a callback whenever the
+/// query string changes. Useful for live grep, workspace symbols, etc.
+pub struct DynamicPicker<T: ui::menu::Item + Send> {
+    file_picker: FilePicker<T>,
+    query_callback: DynQueryCallback<T>,
+    query: String,
+}
+
+impl<T: ui::menu::Item + Send> DynamicPicker<T> {
+    pub const ID: &'static str = "dynamic-picker";
+
+    pub fn new(file_picker: FilePicker<T>, query_callback: DynQueryCallback<T>) -> Self {
+        Self {
+            file_picker,
+            query_callback,
+            query: String::new(),
+        }
+    }
+}
+
+impl<T: Item + Send + 'static> Component for DynamicPicker<T> {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        self.file_picker.render(area, surface, cx);
+    }
+
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+        let event_result = self.file_picker.handle_event(event, cx);
+        let current_query = self.file_picker.picker.prompt.line();
+
+        if !matches!(event, Event::IdleTimeout) || self.query == *current_query {
+            return event_result;
+        }
+
+        self.query.clone_from(current_query);
+
+        let new_options = (self.query_callback)(current_query.to_owned(), cx.editor);
+
+        cx.jobs.callback(async move {
+            let new_options = new_options.await?;
+            let callback =
+                crate::job::Callback::EditorCompositor(Box::new(move |editor, compositor| {
+                    // Wrapping of pickers in overlay is done outside the picker code,
+                    // so this is fragile and will break if wrapped in some other widget.
+                    let picker = match compositor.find_id::<Overlay<DynamicPicker<T>>>(Self::ID) {
+                        Some(overlay) => &mut overlay.content.file_picker.picker,
+                        None => return,
+                    };
+                    picker.options = new_options;
+                    picker.cursor = 0;
+                    picker.force_score();
+                    editor.reset_idle_timer();
+                }));
+            anyhow::Ok(callback)
+        });
+        EventResult::Consumed(None)
+    }
+
+    fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
+        self.file_picker.cursor(area, ctx)
+    }
+
+    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
+        self.file_picker.required_size(viewport)
+    }
+
+    fn id(&self) -> Option<&'static str> {
+        Some(Self::ID)
     }
 }
