@@ -68,27 +68,25 @@ impl KeyTrieNode {
     }
 
     pub fn infobox(&self) -> Info {
-        let mut body: Vec<(Vec<KeyEvent>, &str)> = Vec::with_capacity(self.len());
+        let mut body: Vec<(String, &str)> = Vec::with_capacity(self.len());
         for (&key, trie) in self.iter() {
-            let desc = match trie {
-                KeyTrie::Leaf(cmd) => {
-                    if cmd.name() == "no_op" {
+            let description: &str = match trie {
+                KeyTrie::Leaf(command) => {
+                    if command.name() == "no_op" {
                         continue;
                     }
-                    cmd.doc()
+                    command.doc()
                 }
-                KeyTrie::Node(n) => n.name(),
+                KeyTrie::Node(key_trie) => key_trie.name(),
                 KeyTrie::Sequence(_) => "[Multiple commands]",
             };
-            match body.iter().position(|(_, d)| d == &desc) {
-                Some(pos) => {
-                    body[pos].0.push(key);
-                }
-                None => body.push((Vec::from([key]), desc)),
+            match body.iter().position(|(_, existing_description)| &description == existing_description) {
+                Some(pos) =>  body[pos].0 += &format!(", {}", &key.to_string()),
+                None => body.push((key.to_string(), description)),
             }
         }
 
-        Info::from_keymap(self.name(), body)
+        Info::new(self.name(), &body)
     }
 }
 
