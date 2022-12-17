@@ -317,7 +317,7 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `]c`     | Go to next comment (**TS**)                  | `goto_next_comment`   |
 | `[c`     | Go to previous comment (**TS**)              | `goto_prev_comment`   |
 | `]T`     | Go to next test (**TS**)                     | `goto_next_test`      |
-| `]T`     | Go to previous test (**TS**)                 | `goto_prev_test`      |
+| `[T`     | Go to previous test (**TS**)                 | `goto_prev_test`      |
 | `]p`     | Go to next paragraph                         | `goto_next_paragraph` |
 | `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
 | `]g`     | Go to next change                            | `goto_next_change`    |
