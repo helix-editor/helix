@@ -43,9 +43,7 @@
 
 ; variables
 
-[
-  (local_variable)
-] @variable
+(local_variable) @variable
 
 [
   (instance_variable)
@@ -66,5 +64,3 @@
 (union_type) @type
 (type_identifier) @type
 
-
-(local_variable) @variable
