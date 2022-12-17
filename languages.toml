@@ -2056,3 +2056,16 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "mermaid"
 source = { git = "https://github.com/monaqa/tree-sitter-mermaid", rev = "d787c66276e7e95899230539f556e8b83ee16f6d" }
+
+[[language]]
+name = "matlab"
+scope = "source.m"
+file-types = ["m"]
+comment-token = "%"
+shebangs = ["octave-cli", "matlab"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "matlab"
+source = { git = "https://github.com/mstanciu552/tree-sitter-matlab", rev = "2d5d3d5193718a86477d4335aba5b34e79147326" }
