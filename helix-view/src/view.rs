@@ -185,8 +185,6 @@ impl View {
             .primary()
             .cursor(doc.text().slice(..));
 
-        let config = doc.cursor_config();
-
         let Position { col, row: line } =
             visual_coords_at_pos(doc.text().slice(..), cursor, doc.tab_width());
 

@@ -4,7 +4,7 @@ const WRAP_INDENT: u16 = 1;
 impl CursorConfig {
     fn new_test(softwrap: bool) -> CursorConfig {
         CursorConfig {
-            softwrap,
+            soft_wrap: softwrap,
             tab_width: 2,
             max_wrap: 3,
             max_indent_retain: 4,

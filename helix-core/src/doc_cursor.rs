@@ -20,7 +20,7 @@ use crate::{LineEnding, Position, RopeGraphemes, RopeSlice};
 
 /// A preprossed Grapheme that is ready for rendering
 /// with attachted styling data
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StyledGraphemes<'a, S> {
     pub grapheme: Grapheme<'a>,
     pub style: S,
@@ -72,7 +72,7 @@ impl<'a, S: Default> StyledGraphemes<'a, S> {
 /// functions except `set_pos` are only called with increasing `char_pos`.
 ///
 /// Further only `char_pos` correspoding to grapehme boundries are passed to `AnnotationSource`
-pub trait AnnotationSource<'t, S> {
+pub trait AnnotationSource<'t, S>: Clone {
     /// Yield a grapeheme to insert at the current `char_pos`.
     /// `char_pos` will not increase as long as this funciton yields `Some` grapheme.
     fn next_annotation_grapheme(&mut self, char_pos: usize) -> Option<(Cow<'t, str>, S)>;
@@ -158,10 +158,13 @@ impl Drop for Word {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DocumentCursor<'t, S: Default, A: AnnotationSource<'t, S>> {
     pub config: CursorConfig,
 
+    /// The indentation of the current line
+    /// Is set to `None` if the indentation level is not yet know
+    /// because no non-whitespace grahemes has been encountered yet
     indent_level: Option<usize>,
     /// The char index of the last yielded word boundary
     doc_char_idx: usize,
@@ -181,22 +184,20 @@ pub struct DocumentCursor<'t, S: Default, A: AnnotationSource<'t, S>> {
 }
 
 impl<'t, S: Default + Copy, A: AnnotationSource<'t, S>> DocumentCursor<'t, S, A> {
-    /// Create a new `DocumentCursor` that transveres `text`.
+    /// Create a new `DocumentFormatter` that transveres `text`.
     /// The char/document idx is offset by `doc_char_offset`
     /// and `doc_line_offset`.
     /// This has no effect on the cursor itself and only affects the char
     /// indecies passed to the `annotation_source` and used to determine when the end of the `highlight_scope`
     /// is reached
-    pub fn new(
+    fn new(
         text: RopeSlice<'t>,
         config: CursorConfig,
         doc_char_offset: usize,
         doc_line_offset: usize,
         annotation_source: A,
     ) -> Self {
-        // // TODO implement blocks that force hardwraps at specific positions to avoid backtracing huge distances for large files here
-        // let doc_line = text.char_to_line(char_pos);
-        // let doc_line_start = text.line_to_char(doc_line);
+        annotation_source.set_pos(doc_char_offset);
         DocumentCursor {
             config,
             indent_level: None,
@@ -223,51 +224,70 @@ impl<'t, S: Default + Copy, A: AnnotationSource<'t, S>> DocumentCursor<'t, S, A>
         (line_start, line)
     }
 
-    /// Creates a new cursor at the visual line start that is closest to
+    /// Creates a new formatter at the last block before `char_idx`.
+    /// A block is a chunk which always ends with a linebreak.
+    /// This is usally just a normal line break.
+    /// However very long lines are always wrapped at constant intervals that can be cheaply calculated
+    /// to avoid pathological behaviour.
+    pub fn new_at_prev_block(
+        text: RopeSlice<'t>,
+        config: CursorConfig,
+        char_idx: usize,
+        mut annotation_source: A,
+    ) -> Self {
+        // TODO support for blocks
+        let block_line_idx = text.char_to_line(char_idx);
+        let block_char_idx = text.line_to_char(block_line_idx);
+        DocumentCursor::new(
+            text.slice(block_char_idx..),
+            config,
+            block_char_idx,
+            block_line_idx,
+            annotation_source,
+        )
+    }
+
+    /// Creates a new cursor at the start of the visual line that contains `char_idx`
+    /// Note that this
     pub fn new_at_prev_line(
         text: RopeSlice<'t>,
         config: CursorConfig,
         char_idx: usize,
         mut annotation_source: A,
     ) -> Self {
-        let (mut checkpoint_char_idx, checkpoint_line_idx) = Self::prev_checkpoint(text, char_idx);
+        let mut cursor = Self::new_at_prev_block(text, config, char_idx, annotation_source);
         let mut line_off = 0;
         let mut indent_level = None;
 
         if config.soft_wrap {
-            annotation_source.set_pos(checkpoint_char_idx);
-            let mut cursor = DocumentCursor::new(
-                text.slice(checkpoint_char_idx..),
-                config,
-                checkpoint_char_idx,
-                checkpoint_line_idx,
-                &mut annotation_source,
-            );
+            annotation_source.set_pos(cursor.doc_char_idx);
+            let mut last_line_start = cursor.doc_char_idx();
+            let doc_line_idx = cursor.doc_line_idx;
 
             while let Some(mut word) = cursor.advance() {
                 word.consume_graphemes(&mut cursor);
                 if cursor.doc_char_idx > char_idx {
                     break;
                 }
+
                 if let Some(line_break) = word.terminating_linebreak {
                     line_off = line_break.indent;
-                    checkpoint_char_idx = cursor.doc_char_idx;
+                    last_line_start = cursor.doc_char_idx;
                     indent_level = Some((line_off - config.wrap_indent) as usize);
                 }
             }
+            cursor = DocumentCursor::new(
+                text.slice(last_line_start..),
+                config,
+                last_line_start,
+                doc_line_idx,
+                annotation_source,
+            );
+
+            cursor.indent_level = indent_level;
+            cursor.visual_pos.col = line_off as usize;
         }
 
-        annotation_source.set_pos(checkpoint_char_idx);
-        let mut cursor = DocumentCursor::new(
-            text.slice(checkpoint_char_idx..),
-            config,
-            checkpoint_char_idx,
-            checkpoint_line_idx,
-            annotation_source,
-        );
-
-        cursor.indent_level = indent_level;
-        cursor.visual_pos.col = line_off as usize;
         cursor
     }
 

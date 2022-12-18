@@ -8,7 +8,7 @@ use unicode_width::UnicodeWidthStr;
 use std::borrow::Cow;
 use std::fmt::{self, Display};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// A preprossed Grapheme that is ready for rendering
 pub enum Grapheme<'a> {
     Space,
