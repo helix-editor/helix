@@ -568,10 +568,7 @@ pub fn code_action(cx: &mut Context) {
         }
     };
 
-    let path_mapping = language_server
-        .path_mapping()
-        .map(|a| a.clone())
-        .map(|(a, b)| (b, a));
+    let path_mapping = language_server.path_mapping().cloned().map(|(a, b)| (b, a));
 
     cx.callback(
         future,
@@ -767,7 +764,7 @@ pub fn apply_workspace_edit(
 ) {
     let mut apply_edits = |uri: &helix_lsp::Url, text_edits: Vec<lsp::TextEdit>| {
         let path = if let Some((from, to)) = path_mapping {
-            uri.remap(&from, &to).to_file_path()
+            uri.remap(from, to).to_file_path()
         } else {
             uri.to_file_path()
         };
@@ -1261,10 +1258,7 @@ pub fn rename_symbol(cx: &mut Context) {
 
             let (view, doc) = current!(cx.editor);
             let language_server = language_server!(cx.editor, doc);
-            let path_mapping = language_server
-                .path_mapping()
-                .map(|a| a.clone())
-                .map(|(a, b)| (b, a));
+            let path_mapping = language_server.path_mapping().cloned().map(|(a, b)| (b, a));
             let offset_encoding = language_server.offset_encoding();
 
             let pos = doc.position(view.id, offset_encoding);

@@ -16,6 +16,6 @@ impl LSPRemap for Url {
                 .map_or(p.clone(), |stripped| Path::new(to).join(stripped));
             Self::from_file_path(replaced).ok()
         })
-        .unwrap_or(self.clone())
+        .unwrap_or_else(|| self.clone())
     }
 }

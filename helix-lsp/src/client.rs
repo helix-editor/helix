@@ -293,10 +293,10 @@ impl Client {
         let mut workspace_folders = self.workspace_folders.clone();
 
         if let Some((from, to)) = &self.path_mapping {
-            root_path = replace_path(&root_path, &from, &to);
-            root_uri = root_uri.map(|p| p.remap(&from, &to));
+            root_path = replace_path(&root_path, from, to);
+            root_uri = root_uri.map(|p| p.remap(from, to));
             workspace_folders.iter_mut().for_each(|wsf| {
-                wsf.uri = wsf.uri.remap(&from, &to);
+                wsf.uri = wsf.uri.remap(from, to);
             });
         }
 
@@ -457,7 +457,7 @@ impl Client {
         let mut uri = uri;
 
         if let Some((from, to)) = &self.path_mapping {
-            uri = uri.remap(&from, &to);
+            uri = uri.remap(from, to);
         }
 
         self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
@@ -595,7 +595,7 @@ impl Client {
 
         let mut text_document = text_document;
         if let Some((from, to)) = &self.path_mapping {
-            text_document.uri = text_document.uri.remap(&from, &to);
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         let changes = match sync_capabilities {
@@ -677,7 +677,7 @@ impl Client {
 
         let mut text_document = text_document;
         if let Some((from, to)) = &self.path_mapping {
-            text_document.uri = text_document.uri.remap(&from, &to);
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         let params = lsp::CompletionParams {
@@ -729,7 +729,7 @@ impl Client {
         let mut text_document = text_document;
 
         if let Some((from, to)) = &self.path_mapping {
-            text_document.uri = text_document.uri.remap(&from, &to);
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         let params = lsp::SignatureHelpParams {
@@ -765,7 +765,7 @@ impl Client {
         let mut text_document = text_document;
 
         if let Some((from, to)) = &self.path_mapping {
-            text_document.uri = text_document.uri.remap(&from, &to);
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         let params = lsp::HoverParams {
@@ -817,7 +817,7 @@ impl Client {
         let mut text_document = text_document;
 
         if let Some((from, to)) = &self.path_mapping {
-            text_document.uri = text_document.uri.remap(&from, &to);
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         let params = lsp::DocumentFormattingParams {
@@ -853,7 +853,7 @@ impl Client {
         let mut text_document = text_document;
 
         if let Some((from, to)) = &self.path_mapping {
-            text_document.uri = text_document.uri.remap(&from, &to);
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         let params = lsp::DocumentRangeFormattingParams {
@@ -889,7 +889,7 @@ impl Client {
         let mut text_document = text_document;
 
         if let Some((from, to)) = &self.path_mapping {
-            text_document.uri = text_document.uri.remap(&from, &to);
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         let params = lsp::DocumentHighlightParams {
@@ -920,7 +920,7 @@ impl Client {
         let mut text_document = text_document;
 
         if let Some((from, to)) = &self.path_mapping {
-            text_document.uri = text_document.uri.remap(&from, &to);
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         let params = lsp::GotoDefinitionParams {
@@ -954,7 +954,7 @@ impl Client {
         let mut text_document = text_document;
 
         if let Some((from, to)) = &self.path_mapping {
-            text_document.uri = text_document.uri.remap(&from, &to);
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         Some(self.goto_request::<lsp::request::GotoDefinition>(
@@ -984,7 +984,7 @@ impl Client {
         let mut text_document = text_document;
 
         if let Some((from, to)) = &self.path_mapping {
-            text_document.uri = text_document.uri.remap(&from, &to);
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         Some(self.goto_request::<lsp::request::GotoTypeDefinition>(
@@ -1014,7 +1014,7 @@ impl Client {
         let mut text_document = text_document;
 
         if let Some((from, to)) = &self.path_mapping {
-            text_document.uri = text_document.uri.remap(&from, &to);
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         Some(self.goto_request::<lsp::request::GotoImplementation>(
@@ -1041,7 +1041,7 @@ impl Client {
         let mut text_document = text_document;
 
         if let Some((from, to)) = &self.path_mapping {
-            text_document.uri = text_document.uri.remap(&from, &to);
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         let params = lsp::ReferenceParams {
@@ -1076,7 +1076,7 @@ impl Client {
         let mut text_document = text_document;
 
         if let Some((from, to)) = &self.path_mapping {
-            text_document.uri = text_document.uri.remap(&from, &to);
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         let params = lsp::DocumentSymbolParams {
@@ -1127,7 +1127,7 @@ impl Client {
         let mut text_document = text_document;
 
         if let Some((from, to)) = &self.path_mapping {
-            text_document.uri = text_document.uri.remap(&from, &to);
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         let params = lsp::CodeActionParams {
@@ -1159,7 +1159,7 @@ impl Client {
         let mut text_document = text_document;
 
         if let Some((from, to)) = &self.path_mapping {
-            text_document.uri = text_document.uri.remap(&from, &to);
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         let params = lsp::RenameParams {
@@ -1200,8 +1200,7 @@ impl Client {
     }
 }
 
-pub fn replace_path(path: &PathBuf, old: &str, new: &str) -> PathBuf {
-    path.as_path()
-        .strip_prefix(old)
-        .map_or(path.clone(), |s| Path::new(new).join(s))
+fn replace_path(path: &Path, old: &str, new: &str) -> PathBuf {
+    path.strip_prefix(old)
+        .map_or(path.to_path_buf(), |s| Path::new(new).join(s))
 }

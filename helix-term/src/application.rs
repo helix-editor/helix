@@ -678,7 +678,7 @@ impl Application {
                         match self.editor.language_servers.get_by_id(server_id) {
                             Some(language_server) => {
                                 if let Some((to, from)) = language_server.path_mapping() {
-                                    params.uri = params.uri.remap(&from, &to)
+                                    params.uri = params.uri.remap(from, to)
                                 }
                             }
                             None => {
@@ -963,7 +963,7 @@ impl Application {
                         let language_server = self.editor.language_servers.get_by_id(server_id);
                         let path_mapping = language_server
                             .and_then(|ls| ls.path_mapping())
-                            .map(|a| a.clone())
+                            .cloned()
                             .map(|(a, b)| (b, a));
 
                         apply_workspace_edit(
