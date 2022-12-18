@@ -2789,14 +2789,6 @@ fn exit_select_mode(cx: &mut Context) {
     }
 }
 
-fn goto_pos(editor: &mut Editor, pos: usize) {
-    let (view, doc) = current!(editor);
-
-    push_jump(view, doc);
-    doc.set_selection(view.id, Selection::point(pos));
-    align_view(doc, view, Align::Center);
-}
-
 fn goto_first_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let selection = match doc.diagnostics().first() {
@@ -2874,7 +2866,7 @@ fn goto_last_change(cx: &mut Context) {
 
 fn goto_first_change_impl(cx: &mut Context, reverse: bool) {
     let editor = &mut cx.editor;
-    let (_, doc) = current!(editor);
+    let (view, doc) = current!(editor);
     if let Some(handle) = doc.diff_handle() {
         let hunk = {
             let hunks = handle.hunks();
@@ -2886,8 +2878,8 @@ fn goto_first_change_impl(cx: &mut Context, reverse: bool) {
             hunks.nth_hunk(idx)
         };
         if hunk != Hunk::NONE {
-            let pos = doc.text().line_to_char(hunk.after.start as usize);
-            goto_pos(editor, pos)
+            let range = hunk_range(hunk, doc.text().slice(..));
+            doc.set_selection(view.id, Selection::single(range.anchor, range.head));
         }
     }
 }
@@ -2931,14 +2923,7 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
                 return range;
             };
             let hunk = hunks.nth_hunk(hunk_idx);
-
-            let hunk_start = doc_text.line_to_char(hunk.after.start as usize);
-            let hunk_end = if hunk.after.is_empty() {
-                hunk_start + 1
-            } else {
-                doc_text.line_to_char(hunk.after.end as usize)
-            };
-            let new_range = Range::new(hunk_start, hunk_end);
+            let new_range = hunk_range(hunk, doc_text);
             if editor.mode == Mode::Select {
                 let head = if new_range.head < range.anchor {
                     new_range.anchor
@@ -2956,6 +2941,20 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
     };
     motion(cx.editor);
     cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+/// Returns the [Range] for a [Hunk] in the given text.
+/// Additions and modifications cover the added and modified ranges.
+/// Deletions are represented as the point at the start of the deletion hunk.
+fn hunk_range(hunk: Hunk, text: RopeSlice) -> Range {
+    let anchor = text.line_to_char(hunk.after.start as usize);
+    let head = if hunk.after.is_empty() {
+        anchor + 1
+    } else {
+        text.line_to_char(hunk.after.end as usize)
+    };
+
+    Range::new(anchor, head)
 }
 
 pub mod insert {
