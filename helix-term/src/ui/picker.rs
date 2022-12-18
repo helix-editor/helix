@@ -15,10 +15,7 @@ use tui::{
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use tui::widgets::Widget;
 
-use std::{
-    cmp::{self, Ordering},
-    time::Instant,
-};
+use std::cmp::{self, Ordering};
 use std::{collections::HashMap, io::Read, path::PathBuf};
 
 use crate::ui::{Prompt, PromptEvent};

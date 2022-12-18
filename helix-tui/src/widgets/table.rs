@@ -4,14 +4,8 @@ use crate::{
     text::Text,
     widgets::{Block, Widget},
 };
-use cassowary::{
-    strength::{MEDIUM, REQUIRED, WEAK},
-    WeightedRelation::*,
-    {Expression, Solver},
-};
 use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::graphics::{Rect, Style};
-use std::collections::HashMap;
 
 /// A [`Cell`] contains the [`Text`] to be displayed in a [`Row`] of a [`Table`].
 ///
@@ -268,69 +262,32 @@ impl<'a> Table<'a> {
     }
 
     fn get_columns_widths(&self, max_width: u16, has_selection: bool) -> Vec<u16> {
-        let mut solver = Solver::new();
-        let mut var_indices = HashMap::new();
-        let mut ccs = Vec::new();
-        let mut variables = Vec::new();
-        for i in 0..self.widths.len() {
-            let var = cassowary::Variable::new();
-            variables.push(var);
-            var_indices.insert(var, i);
-        }
-        let spacing_width = (variables.len() as u16).saturating_sub(1) * self.column_spacing;
-        let mut available_width = max_width.saturating_sub(spacing_width);
+        let mut constraints = Vec::with_capacity(self.widths.len() * 2 + 1);
         if has_selection {
             let highlight_symbol_width =
                 self.highlight_symbol.map(|s| s.width() as u16).unwrap_or(0);
-            available_width = available_width.saturating_sub(highlight_symbol_width);
+            constraints.push(Constraint::Length(highlight_symbol_width));
         }
-        for (i, constraint) in self.widths.iter().enumerate() {
-            ccs.push(variables[i] | GE(WEAK) | 0.);
-            ccs.push(match *constraint {
-                Constraint::Length(v) => variables[i] | EQ(MEDIUM) | f64::from(v),
-                Constraint::Percentage(v) => {
-                    variables[i] | EQ(WEAK) | (f64::from(v * available_width) / 100.0)
-                }
-                Constraint::Ratio(n, d) => {
-                    variables[i]
-                        | EQ(WEAK)
-                        | (f64::from(available_width) * f64::from(n) / f64::from(d))
-                }
-                Constraint::Min(v) => variables[i] | GE(WEAK) | f64::from(v),
-                Constraint::Max(v) => variables[i] | LE(WEAK) | f64::from(v),
-            })
+        for constraint in self.widths {
+            constraints.push(*constraint);
+            constraints.push(Constraint::Length(self.column_spacing));
         }
-        solver
-            .add_constraint(
-                variables
-                    .iter()
-                    .fold(Expression::from_constant(0.), |acc, v| acc + *v)
-                    | LE(REQUIRED)
-                    | f64::from(available_width),
-            )
-            .unwrap();
-        solver.add_constraints(&ccs).unwrap();
-        let mut widths = vec![0; variables.len()];
-        for &(var, value) in solver.fetch_changes() {
-            let index = var_indices[&var];
-            let value = if value.is_sign_negative() {
-                0
-            } else {
-                value.round() as u16
-            };
-            widths[index] = value;
+        if !self.widths.is_empty() {
+            constraints.pop();
         }
-        // Cassowary could still return columns widths greater than the max width when there are
-        // fixed length constraints that cannot be satisfied. Therefore, we clamp the widths from
-        // left to right.
-        let mut available_width = max_width;
-        for w in &mut widths {
-            *w = available_width.min(*w);
-            available_width = available_width
-                .saturating_sub(*w)
-                .saturating_sub(self.column_spacing);
+        let mut chunks = crate::layout::Layout::default()
+            .direction(crate::layout::Direction::Horizontal)
+            .constraints(constraints)
+            .split(Rect {
+                x: 0,
+                y: 0,
+                width: max_width,
+                height: 1,
+            });
+        if has_selection {
+            chunks.remove(0);
         }
-        widths
+        chunks.iter().step_by(2).map(|c| c.width).collect()
     }
 
     fn get_row_bounds(
