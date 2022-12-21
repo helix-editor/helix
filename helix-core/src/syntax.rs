@@ -999,7 +999,8 @@ thread_local! {
 
 /// Creates an iterator over the captures in a query within the given range,
 /// re-using a cursor from the pool if available.
-fn query_captures<'a, 'tree>(
+/// SAFETY: The `QueryCaptures` must be droped before the `QueryCursor` is dropped.
+unsafe fn query_captures<'a, 'tree>(
     query: &'a Query,
     root: Node<'tree>,
     source: RopeSlice<'a>,
@@ -1014,10 +1015,11 @@ fn query_captures<'a, 'tree>(
         highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
     });
 
+    // This is the unsafe line:
     // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
     // prevents them from being moved. But both of these values are really just
     // pointers, so it's actually ok to move them.
-    let cursor_ref = unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
+    let cursor_ref = mem::transmute::<_, &'static mut QueryCursor>(&mut cursor);
 
     // if reusing cursors & no range this resets to whole range
     cursor_ref.set_byte_range(range.unwrap_or(0..usize::MAX));
@@ -1376,12 +1378,10 @@ impl Syntax {
             .layers
             .iter()
             .filter_map(|(_, layer)| {
-                let (cursor, captures) = query_captures(
-                    query_fn(&layer.config),
-                    layer.tree().root_node(),
-                    source,
-                    range.clone(),
-                );
+                let query = query_fn(&layer.config)?;
+                let (cursor, captures) = unsafe {
+                    query_captures(query, layer.tree().root_node(), source, range.clone())
+                };
                 let mut captures = captures.peekable();
 
                 // If there aren't any captures for this layer, skip the layer.
@@ -1413,12 +1413,14 @@ impl Syntax {
             .filter_map(|(_, layer)| {
                 // TODO: if range doesn't overlap layer range, skip it
 
-                let (cursor, captures) = query_captures(
-                    &layer.config.query,
-                    layer.tree().root_node(),
-                    source,
-                    range.clone(),
-                );
+                let (cursor, captures) = unsafe {
+                    query_captures(
+                        &layer.config.query,
+                        layer.tree().root_node(),
+                        source,
+                        range.clone(),
+                    )
+                };
                 let mut captures = captures.peekable();
 
                 // If there are no captures, skip the layer
