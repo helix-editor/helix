@@ -136,7 +136,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     } else if env_var_is_set("TMUX") && binary_exists("tmux") {
         command_provider! {
             paste => "tmux", "save-buffer", "-";
-            copy => "tmux", "load-buffer", "-";
+            copy => "tmux", "load-buffer", "-w", "-";
         }
     } else {
         Box::new(provider::FallbackProvider::new())

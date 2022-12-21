@@ -96,7 +96,7 @@ _________________________________________________________________
  2. Move to a place in the line which is missing text and type
     i to enter Insert mode. Keys you type will now type text.
  3. Enter the missing text.
- 4. type Escape to exit Insert mode and return to Normal mode.
+ 4. Type Escape to exit Insert mode and return to Normal mode.
  5. Repeat until the line matches the line below it.
 
  --> Th stce misg so.
@@ -535,7 +535,8 @@ _________________________________________________________________
 
  1. Move the cursor to the line marked '-->' below.
  2. Select the line with x and then type s.
- 3. Enter '  +' to select any amount of consecutive spaces >1.
+ 3. Type '  +' to select any amount of consecutive spaces >1,
+    then type Enter.
  4. Type c and change the matches to single spaces.
 
  --> This  sentence has   some      extra spaces.
@@ -545,7 +546,6 @@ _________________________________________________________________
        command is the way to do it. Select the text you want
        to replace in — type % to select the whole file — and
        then perform the steps explained above.
-
 
 
 =================================================================
@@ -845,16 +845,16 @@ lines.
  Type q to repeat the macro from register @ (the default).
 
  1. Move the cursor to the first line marked '-->' below.
-    Ensure your cursor is on the > of the arrow.
+    Ensure your cursor is on the '>' of the arrow.
  2. Type Q to start recording.
  3. Edit the line to look like the bottom one.
- 4. Exit insert and Type Q again to stop recording.
- 5. Move to the line below and put your cursor on the > again.
+ 4. Exit insert and type Q again to stop recording.
+ 5. Move to the line below and put your cursor on '>' again.
  6. Type q to repeat the macro.
 
- --> ... sentence doesn't have it's first and last ... .
- --> ... sentence doesn't have it's first and last ... .
-     This sentence doesn't have it's first and last word.
+ --> ... sentence doesn't have its first and last ... .
+ --> ... sentence doesn't have its first and last ... .
+     This sentence doesn't have its first and last word.
 
 =================================================================
 =                        CHAPTER 8 RECAP                        =

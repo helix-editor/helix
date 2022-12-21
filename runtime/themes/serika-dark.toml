@@ -61,7 +61,7 @@
 
 "diff.plus" = { fg = "green" }
 "diff.delta" = { fg = "orange" }
-"diff.minus" = { fg = "red" }
+"diff.minus" = { fg = "nasty-red" }
 
 "markup.heading" = { fg = "purple", modifiers = ["bold"] }
 "markup.list" = "cyan"

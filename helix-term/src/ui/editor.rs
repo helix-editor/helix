@@ -79,9 +79,10 @@ impl EditorView {
         surface: &mut Surface,
         is_focused: bool,
     ) {
-        let inner = view.inner_area();
+        let inner = view.inner_area(doc);
         let area = view.area;
         let theme = &editor.theme;
+        let config = editor.config();
 
         // DAP: Highlight current stack frame position
         let stack_frame = editor.debugger.as_ref().and_then(|debugger| {
@@ -117,10 +118,10 @@ impl EditorView {
             }
         }
 
-        if is_focused && editor.config().cursorline {
+        if is_focused && config.cursorline {
             Self::highlight_cursorline(doc, view, surface, theme);
         }
-        if is_focused && editor.config().cursorcolumn {
+        if is_focused && config.cursorcolumn {
             Self::highlight_cursorcolumn(doc, view, surface, theme);
         }
 
@@ -141,22 +142,14 @@ impl EditorView {
                     doc,
                     view,
                     theme,
-                    &editor.config().cursor_shape,
+                    &config.cursor_shape,
                 ),
             ))
         } else {
             Box::new(highlights)
         };
 
-        Self::render_text_highlights(
-            doc,
-            view.offset,
-            inner,
-            surface,
-            theme,
-            highlights,
-            &editor.config(),
-        );
+        Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights, &config);
         Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
@@ -176,7 +169,7 @@ impl EditorView {
             }
         }
 
-        self.render_diagnostics(doc, view, inner, surface, theme);
+        Self::render_diagnostics(doc, view, inner, surface, theme);
 
         let statusline_area = view
             .area
@@ -523,8 +516,8 @@ impl EditorView {
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
                     for grapheme in RopeGraphemes::new(text) {
-                        let out_of_bounds = offset.col > (visual_x as usize)
-                            || (visual_x as usize) >= viewport.width as usize + offset.col;
+                        let out_of_bounds = offset.col > visual_x
+                            || visual_x >= viewport.width as usize + offset.col;
 
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
                             if !out_of_bounds {
@@ -554,7 +547,7 @@ impl EditorView {
                             let (display_grapheme, width) = if grapheme == "\t" {
                                 is_whitespace = true;
                                 // make sure we display tab as appropriate amount of spaces
-                                let visual_tab_width = tab_width - (visual_x as usize % tab_width);
+                                let visual_tab_width = tab_width - (visual_x % tab_width);
                                 let grapheme_tab_width =
                                     helix_core::str_utils::char_to_byte_idx(&tab, visual_tab_width);
 
@@ -573,7 +566,7 @@ impl EditorView {
                                 (grapheme.as_ref(), width)
                             };
 
-                            let cut_off_start = offset.col.saturating_sub(visual_x as usize);
+                            let cut_off_start = offset.col.saturating_sub(visual_x);
 
                             if !out_of_bounds {
                                 // if we're offscreen just keep going until we hit a new line
@@ -590,7 +583,7 @@ impl EditorView {
                             } else if cut_off_start != 0 && cut_off_start < width {
                                 // partially on screen
                                 let rect = Rect::new(
-                                    viewport.x as u16,
+                                    viewport.x,
                                     viewport.y + line,
                                     (width - cut_off_start) as u16,
                                     1,
@@ -736,9 +729,10 @@ impl EditorView {
         // avoid lots of small allocations by reusing a text buffer for each line
         let mut text = String::with_capacity(8);
 
-        for (constructor, width) in view.gutters() {
-            let gutter = constructor(editor, doc, view, theme, is_focused, *width);
-            text.reserve(*width); // ensure there's enough space for the gutter
+        for gutter_type in view.gutters() {
+            let mut gutter = gutter_type.style(editor, doc, view, theme, is_focused);
+            let width = gutter_type.width(view, doc);
+            text.reserve(width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
                 let selected = cursors.contains(&line);
                 let x = viewport.x + offset;
@@ -751,13 +745,13 @@ impl EditorView {
                 };
 
                 if let Some(style) = gutter(line, selected, &mut text) {
-                    surface.set_stringn(x, y, &text, *width, gutter_style.patch(style));
+                    surface.set_stringn(x, y, &text, width, gutter_style.patch(style));
                 } else {
                     surface.set_style(
                         Rect {
                             x,
                             y,
-                            width: *width as u16,
+                            width: width as u16,
                             height: 1,
                         },
                         gutter_style,
@@ -766,12 +760,11 @@ impl EditorView {
                 text.clear();
             }
 
-            offset += *width as u16;
+            offset += width as u16;
         }
     }
 
     pub fn render_diagnostics(
-        &self,
         doc: &Document,
         view: &View,
         viewport: Rect,
@@ -882,7 +875,7 @@ impl EditorView {
             .or_else(|| theme.try_get_exact("ui.cursorcolumn"))
             .unwrap_or_else(|| theme.get("ui.cursorline.secondary"));
 
-        let inner_area = view.inner_area();
+        let inner_area = view.inner_area(doc);
         let offset = view.offset.col;
 
         let selection = doc.selection(view.id);
@@ -1326,7 +1319,7 @@ impl Component for EditorView {
                 // Store a history state if not in insert mode. Otherwise wait till we exit insert
                 // to include any edits to the paste in the history state.
                 if mode != Mode::Insert {
-                    doc.append_changes_to_history(view.id);
+                    doc.append_changes_to_history(view);
                 }
 
                 EventResult::Consumed(None)
@@ -1425,7 +1418,7 @@ impl Component for EditorView {
                     // Store a history state if not in insert mode. This also takes care of
                     // committing changes when leaving insert mode.
                     if mode != Mode::Insert {
-                        doc.append_changes_to_history(view.id);
+                        doc.append_changes_to_history(view);
                     }
                 }
 

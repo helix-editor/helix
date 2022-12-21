@@ -67,7 +67,7 @@ macro_rules! view {
 #[macro_export]
 macro_rules! doc {
     ($editor:expr, $id:expr) => {{
-        $editor.documents[$id]
+        &$editor.documents[$id]
     }};
     ($editor:expr) => {{
         $crate::current_ref!($editor).1

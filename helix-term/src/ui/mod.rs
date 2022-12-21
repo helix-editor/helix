@@ -19,7 +19,7 @@ pub use completion::Completion;
 pub use editor::EditorView;
 pub use markdown::Markdown;
 pub use menu::Menu;
-pub use picker::{FileLocation, FilePicker, Picker};
+pub use picker::{DynamicPicker, FileLocation, FilePicker, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
@@ -207,13 +207,14 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     // Cap the number of files if we aren't in a git project, preventing
     // hangs when using the picker in your home directory
-    let files: Vec<_> = if root.join(".git").is_dir() {
+    let mut files: Vec<PathBuf> = if root.join(".git").exists() {
         files.collect()
     } else {
         // const MAX: usize = 8192;
         const MAX: usize = 100_000;
         files.take(MAX).collect()
     };
+    files.sort();
 
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
@@ -230,7 +231,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
                 cx.editor.set_error(err);
             }
         },
-        |_editor, path| Some((path.clone(), None)),
+        |_editor, path| Some((path.clone().into(), None)),
     )
 }
 
@@ -254,8 +255,8 @@ pub mod completers {
     pub fn buffer(editor: &Editor, input: &str) -> Vec<Completion> {
         let mut names: Vec<_> = editor
             .documents
-            .iter()
-            .map(|(_id, doc)| {
+            .values()
+            .map(|doc| {
                 let name = doc
                     .relative_path()
                     .map(|p| p.display().to_string())
@@ -387,6 +388,45 @@ pub mod completers {
         matches
             .into_iter()
             .map(|(language, _score)| ((0..), language.clone().into()))
+            .collect()
+    }
+
+    pub fn lsp_workspace_command(editor: &Editor, input: &str) -> Vec<Completion> {
+        let matcher = Matcher::default();
+
+        let (_, doc) = current_ref!(editor);
+
+        let language_server = match doc.language_server() {
+            Some(language_server) => language_server,
+            None => {
+                return vec![];
+            }
+        };
+
+        let options = match &language_server.capabilities().execute_command_provider {
+            Some(options) => options,
+            None => {
+                return vec![];
+            }
+        };
+
+        let mut matches: Vec<_> = options
+            .commands
+            .iter()
+            .filter_map(|command| {
+                matcher
+                    .fuzzy_match(command, input)
+                    .map(|score| (command, score))
+            })
+            .collect();
+
+        matches.sort_unstable_by(|(command1, score1), (command2, score2)| {
+            (Reverse(*score1), command1).cmp(&(Reverse(*score2), command2))
+        });
+
+        matches
+            .into_iter()
+            .map(|(command, _score)| ((0..), command.clone().into()))
             .collect()
     }
 

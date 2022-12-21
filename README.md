@@ -1,6 +1,20 @@
-# Helix
+<div align="center">
+
+<h1>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="logo_dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="logo_light.svg">
+  <img alt="Helix" height="128" src="logo_light.svg">
+</picture>
+</h1>
 
 [![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
+[![GitHub Release](https://img.shields.io/github/v/release/helix-editor/helix)](https://github.com/helix-editor/helix/releases/latest)
+[![Documentation](https://shields.io/badge/-documentation-452859)](https://docs.helix-editor.com/)
+[![GitHub contributors](https://img.shields.io/github/contributors/helix-editor/helix)](https://github.com/helix-editor/helix/graphs/contributors)
+[![Matrix Space](https://img.shields.io/matrix/helix-community:matrix.org)](https://matrix.to/#/#helix-community:matrix.org)
+
+</div>
 
 ![Screenshot](./screenshot.png)
 
@@ -50,10 +64,10 @@ config directory (for example `~/.config/helix/runtime` on Linux/macOS, or `%App
 | -------------------- | ------------------------------------------------ |
 | Windows (Cmd)        | `xcopy /e /i runtime %AppData%\helix\runtime`    |
 | Windows (PowerShell) | `xcopy /e /i runtime $Env:AppData\helix\runtime` |
-| Linux / MacOS        | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
+| Linux / macOS        | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
 
 Starting with Windows Vista you can also create symbolic links on Windows. Note that this requires
-elevated priviliges - i.e. PowerShell or Cmd must be run as administrator.
+elevated privileges - i.e. PowerShell or Cmd must be run as administrator.
 
 **PowerShell:**
 
@@ -109,9 +123,9 @@ sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desk
 
 Please note: there is no icon for Helix yet, so the system default will be used.
 
-## MacOS
+## macOS
 
-Helix can be installed on MacOS through homebrew:
+Helix can be installed on macOS through homebrew:
 
 ```
 brew install helix
@@ -126,3 +140,7 @@ Contributing guidelines can be found [here](./docs/CONTRIBUTING.md).
 Your question might already be answered on the [FAQ](https://github.com/helix-editor/helix/wiki/FAQ).
 
 Discuss the project on the community [Matrix Space](https://matrix.to/#/#helix-community:matrix.org) (make sure to join `#helix-editor:matrix.org` if you're on a client that doesn't support Matrix Spaces yet).
+
+# Credits
+
+Thanks to [@JakeHL](https://github.com/JakeHL) for designing the logo!

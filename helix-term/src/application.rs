@@ -10,11 +10,13 @@ use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
     editor::{ConfigEvent, EditorEvent},
+    graphics::Rect,
     theme,
     tree::Layout,
     Align, Editor,
 };
 use serde_json::json;
+use tui::backend::Backend;
 
 use crate::{
     args::Args,
@@ -53,8 +55,21 @@ type Signals = futures_util::stream::Empty<()>;
 
 const LSP_DEADLINE: Duration = Duration::from_millis(16);
 
+#[cfg(not(feature = "integration"))]
+use tui::backend::CrosstermBackend;
+
+#[cfg(feature = "integration")]
+use tui::backend::TestBackend;
+
+#[cfg(not(feature = "integration"))]
+type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
+
+#[cfg(feature = "integration")]
+type Terminal = tui::terminal::Terminal<TestBackend>;
+
 pub struct Application {
     compositor: Compositor,
+    terminal: Terminal,
     pub editor: Editor,
 
     config: Arc<ArcSwap<Config>>,
@@ -143,10 +158,18 @@ impl Application {
 
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
-        let mut compositor = Compositor::new().context("build compositor")?;
+        #[cfg(not(feature = "integration"))]
+        let backend = CrosstermBackend::new(stdout());
+
+        #[cfg(feature = "integration")]
+        let backend = TestBackend::new(120, 150);
+
+        let terminal = Terminal::new(backend)?;
+        let area = terminal.size().expect("couldn't get terminal size");
+        let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
         let mut editor = Editor::new(
-            compositor.size(),
+            area,
             theme_loader.clone(),
             syn_loader.clone(),
             Box::new(Map::new(Arc::clone(&config), |config: &Config| {
@@ -233,6 +256,7 @@ impl Application {
 
         let app = Self {
             compositor,
+            terminal,
             editor,
 
             config,
@@ -250,26 +274,48 @@ impl Application {
     }
 
     #[cfg(feature = "integration")]
-    fn render(&mut self) {}
+    async fn render(&mut self) {}
 
     #[cfg(not(feature = "integration"))]
-    fn render(&mut self) {
-        let compositor = &mut self.compositor;
-
+    async fn render(&mut self) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,
         };
 
-        compositor.render(&mut cx);
+        // Acquire mutable access to the redraw_handle lock
+        // to ensure that there are no tasks running that want to block rendering
+        drop(cx.editor.redraw_handle.1.write().await);
+        cx.editor.needs_redraw = false;
+        {
+            // exhaust any leftover redraw notifications
+            let notify = cx.editor.redraw_handle.0.notified();
+            tokio::pin!(notify);
+            notify.enable();
+        }
+
+        let area = self
+            .terminal
+            .autoresize()
+            .expect("Unable to determine terminal size");
+
+        // TODO: need to recalculate view tree if necessary
+
+        let surface = self.terminal.current_buffer_mut();
+
+        self.compositor.render(area, surface, &mut cx);
+
+        let (pos, kind) = self.compositor.cursor(area, &self.editor);
+        let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
+        self.terminal.draw(pos, kind).unwrap();
     }
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
     where
         S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
     {
-        self.render();
+        self.render().await;
         self.last_render = Instant::now();
 
         loop {
@@ -294,18 +340,18 @@ impl Application {
                 biased;
 
                 Some(event) = input_stream.next() => {
-                    self.handle_terminal_events(event);
+                    self.handle_terminal_events(event).await;
                 }
                 Some(signal) = self.signals.next() => {
                     self.handle_signals(signal).await;
                 }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
-                    self.render();
+                    self.render().await;
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
-                    self.render();
+                    self.render().await;
                 }
                 event = self.editor.wait_event() => {
                     let _idle_handled = self.handle_editor_event(event).await;
@@ -392,38 +438,43 @@ impl Application {
 
     #[cfg(not(windows))]
     pub async fn handle_signals(&mut self, signal: i32) {
-        use helix_view::graphics::Rect;
         match signal {
             signal::SIGTSTP => {
-                self.compositor.save_cursor();
+                // restore cursor
+                use helix_view::graphics::CursorKind;
+                self.terminal
+                    .backend_mut()
+                    .show_cursor(CursorKind::Block)
+                    .ok();
                 restore_term().unwrap();
                 low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
             }
             signal::SIGCONT => {
                 self.claim_term().await.unwrap();
                 // redraw the terminal
-                let Rect { width, height, .. } = self.compositor.size();
-                self.compositor.resize(width, height);
-                self.compositor.load_cursor();
-                self.render();
+                let area = self.terminal.size().expect("couldn't get terminal size");
+                self.compositor.resize(area);
+                self.terminal.clear().expect("couldn't clear terminal");
+
+                self.render().await;
             }
             signal::SIGUSR1 => {
                 self.refresh_config();
-                self.render();
+                self.render().await;
             }
             _ => unreachable!(),
         }
     }
 
-    pub fn handle_idle_timeout(&mut self) {
+    pub async fn handle_idle_timeout(&mut self) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,
         };
         let should_render = self.compositor.handle_event(&Event::IdleTimeout, &mut cx);
-        if should_render {
-            self.render();
+        if should_render || self.editor.needs_redraw {
+            self.render().await;
         }
     }
 
@@ -496,11 +547,11 @@ impl Application {
         match event {
             EditorEvent::DocumentSaved(event) => {
                 self.handle_document_write(event);
-                self.render();
+                self.render().await;
             }
             EditorEvent::ConfigEvent(event) => {
                 self.handle_config_events(event);
-                self.render();
+                self.render().await;
             }
             EditorEvent::LanguageServerMessage((id, call)) => {
                 self.handle_language_server_message(call, id).await;
@@ -508,19 +559,19 @@ impl Application {
                 let last = self.editor.language_servers.incoming.is_empty();
 
                 if last || self.last_render.elapsed() > LSP_DEADLINE {
-                    self.render();
+                    self.render().await;
                     self.last_render = Instant::now();
                 }
             }
             EditorEvent::DebuggerEvent(payload) => {
                 let needs_render = self.editor.handle_debugger_message(payload).await;
                 if needs_render {
-                    self.render();
+                    self.render().await;
                 }
             }
             EditorEvent::IdleTimer => {
                 self.editor.clear_idle_timer();
-                self.handle_idle_timeout();
+                self.handle_idle_timeout().await;
 
                 #[cfg(feature = "integration")]
                 {
@@ -532,7 +583,10 @@ impl Application {
         false
     }
 
-    pub fn handle_terminal_events(&mut self, event: Result<CrosstermEvent, crossterm::ErrorKind>) {
+    pub async fn handle_terminal_events(
+        &mut self,
+        event: Result<CrosstermEvent, crossterm::ErrorKind>,
+    ) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -541,7 +595,14 @@ impl Application {
         // Handle key events
         let should_redraw = match event.unwrap() {
             CrosstermEvent::Resize(width, height) => {
-                self.compositor.resize(width, height);
+                self.terminal
+                    .resize(Rect::new(0, 0, width, height))
+                    .expect("Unable to resize terminal");
+
+                let area = self.terminal.size().expect("couldn't get terminal size");
+
+                self.compositor.resize(area);
+
                 self.compositor
                     .handle_event(&Event::Resize(width, height), &mut cx)
             }
@@ -549,7 +610,7 @@ impl Application {
         };
 
         if should_redraw && !self.editor.should_close() {
-            self.render();
+            self.render().await;
         }
     }
 
@@ -711,7 +772,8 @@ impl Application {
                                         severity,
                                         code,
                                         tags,
-                                        source: diagnostic.source.clone()
+                                        source: diagnostic.source.clone(),
+                                        data: diagnostic.data.clone(),
                                     })
                                 })
                                 .collect();
@@ -824,6 +886,32 @@ impl Application {
                     Notification::ProgressMessage(_params) => {
                         // do nothing
                     }
+                    Notification::Exit => {
+                        self.editor.set_status("Language server exited");
+
+                        // Clear any diagnostics for documents with this server open.
+                        let urls: Vec<_> = self
+                            .editor
+                            .documents_mut()
+                            .filter_map(|doc| {
+                                if doc.language_server().map(|server| server.id())
+                                    == Some(server_id)
+                                {
+                                    doc.set_diagnostics(Vec::new());
+                                    doc.url()
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+
+                        for url in urls {
+                            self.editor.diagnostics.remove(&url);
+                        }
+
+                        // Remove the language server from the registry.
+                        self.editor.language_servers.remove_by_id(server_id);
+                    }
                 }
             }
             Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
@@ -924,7 +1012,11 @@ impl Application {
     }
 
     async fn claim_term(&mut self) -> Result<(), Error> {
+        use helix_view::graphics::CursorKind;
         terminal::enable_raw_mode()?;
+        if self.terminal.cursor_kind() == CursorKind::Hidden {
+            self.terminal.backend_mut().hide_cursor().ok();
+        }
         let mut stdout = stdout();
         execute!(
             stdout,
@@ -958,6 +1050,13 @@ impl Application {
         self.event_loop(input_stream).await;
 
         let close_errs = self.close().await;
+
+        // restore cursor
+        use helix_view::graphics::CursorKind;
+        self.terminal
+            .backend_mut()
+            .show_cursor(CursorKind::Block)
+            .ok();
         restore_term()?;
 
         for err in close_errs {
