@@ -11,9 +11,7 @@ pub use typed::*;
 use helix_core::{
     comment, coords_at_pos, encoding, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
-    increment::date_time::DateTimeIncrementor,
-    increment::integer::IntegerIncrementor,
-    indent,
+    increment, indent,
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
@@ -5021,22 +5019,18 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
     apply_transaction(&transaction, doc, view);
 }
 
-enum IncrementDirection {
-    Increase,
-    Decrease,
-}
-/// Increment object under cursor by count.
+/// Increment objects within selections by count.
 fn increment(cx: &mut Context) {
-    increment_impl(cx, IncrementDirection::Increase);
+    increment_impl(cx, 1);
 }
 
-/// Decrement object under cursor by count.
+/// Decrement objects within selections by count.
 fn decrement(cx: &mut Context) {
-    increment_impl(cx, IncrementDirection::Decrease);
+    increment_impl(cx, -1);
 }
 
-/// Increment object under cursor by `amount`.
-/// A negative `amount` will decrement object under cursor.
+/// Increment objects within selections by `amount`.
+/// A negative `amount` will decrement objects within selections.
 fn increment_impl(cx: &mut Context, amount: i64) {
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
@@ -5047,14 +5041,11 @@ fn increment_impl(cx: &mut Context, amount: i64) {
     let mut changes = vec![];
 
     for range in selection {
-        let selected_text: Cow<str> = text.slice(range.from()..range.to()).into();
+        let selected_text: Cow<str> = range.fragment(text);
         let new_from = ((range.from() as i128) + cumulative_length_diff) as usize;
-        let incremented = [
-            IntegerIncrementor::increment,
-            DateTimeIncrementor::increment,
-        ]
-        .iter()
-        .find_map(|incrementor| incrementor(selected_text.as_ref(), amount));
+        let incremented = [increment::integer, increment::date_time]
+            .iter()
+            .find_map(|incrementor| incrementor(selected_text.as_ref(), amount));
 
         match incremented {
             None => {

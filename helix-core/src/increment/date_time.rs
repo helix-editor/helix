@@ -3,60 +3,55 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fmt::Write;
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct DateTimeIncrementor;
+/// Increment a Date or DateTime
+///
+/// If just a Date is selected the day will be incremented.
+/// If a DateTime is selected the second will be incremented.
+pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
+    if selected_text.is_empty() {
+        return None;
+    }
 
-impl DateTimeIncrementor {
-    /// Increment a Date or DateTime
-    ///
-    /// If just a Date is selected the day will be incremented.
-    /// If a DateTime is selected the second will be incremented.
-    pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
-        if selected_text.is_empty() {
+    FORMATS.iter().find_map(|format| {
+        let captures = format.regex.captures(selected_text)?;
+        if captures.len() - 1 != format.fields.len() {
             return None;
         }
 
-        FORMATS.iter().find_map(|format| {
-            let captures = format.regex.captures(selected_text)?;
-            if captures.len() - 1 != format.fields.len() {
-                return None;
+        let date_time = captures.get(0)?;
+        let has_date = format.fields.iter().any(|f| f.unit.is_date());
+        let has_time = format.fields.iter().any(|f| f.unit.is_time());
+        let date_time = &selected_text[date_time.start()..date_time.end()];
+        match (has_date, has_time) {
+            (true, true) => {
+                let date_time = NaiveDateTime::parse_from_str(date_time, format.fmt).ok()?;
+                Some(
+                    add_duration(date_time, Duration::minutes(amount))?
+                        .format(format.fmt)
+                        .to_string(),
+                )
             }
-
-            let date_time = captures.get(0)?;
-            let has_date = format.fields.iter().any(|f| f.unit.is_date());
-            let has_time = format.fields.iter().any(|f| f.unit.is_time());
-            let date_time = &selected_text[date_time.start()..date_time.end()];
-            match (has_date, has_time) {
-                (true, true) => {
-                    let date_time = NaiveDateTime::parse_from_str(date_time, format.fmt).ok()?;
-                    Some(
-                        add_duration(date_time, Duration::minutes(amount))?
-                            .format(format.fmt)
-                            .to_string(),
-                    )
-                }
-                (true, false) => {
-                    let date = NaiveDate::parse_from_str(date_time, format.fmt).ok()?;
-                    let date_time = date.and_hms(0, 0, 0);
-                    Some(
-                        add_duration(date_time, Duration::days(amount))?
-                            .format(format.fmt)
-                            .to_string(),
-                    )
-                }
-                (false, true) => {
-                    let time = NaiveTime::parse_from_str(date_time, format.fmt).ok()?;
-                    let date_time = NaiveDate::from_ymd(0, 1, 1).and_time(time);
-                    Some(
-                        add_duration(date_time, Duration::minutes(amount))?
-                            .format(format.fmt)
-                            .to_string(),
-                    )
-                }
-                (false, false) => None,
+            (true, false) => {
+                let date = NaiveDate::parse_from_str(date_time, format.fmt).ok()?;
+                let date_time = date.and_hms(0, 0, 0);
+                Some(
+                    add_duration(date_time, Duration::days(amount))?
+                        .format(format.fmt)
+                        .to_string(),
+                )
             }
-        })
-    }
+            (false, true) => {
+                let time = NaiveTime::parse_from_str(date_time, format.fmt).ok()?;
+                let date_time = NaiveDate::from_ymd(0, 1, 1).and_time(time);
+                Some(
+                    add_duration(date_time, Duration::minutes(amount))?
+                        .format(format.fmt)
+                        .to_string(),
+                )
+            }
+            (false, false) => None,
+        }
+    })
 }
 
 static FORMATS: Lazy<Vec<Format>> = Lazy::new(|| {
@@ -296,10 +291,7 @@ mod test {
         ];
 
         for (original, amount, expected) in tests {
-            assert_eq!(
-                DateTimeIncrementor::increment(original, amount).unwrap(),
-                expected
-            );
+            assert_eq!(increment(original, amount).unwrap(), expected);
         }
     }
 
@@ -328,7 +320,7 @@ mod test {
         ];
 
         for invalid in tests {
-            assert_eq!(DateTimeIncrementor::increment(invalid, 1), None)
+            assert_eq!(increment(invalid, 1), None)
         }
     }
 }
