@@ -393,12 +393,29 @@ impl Application {
         self.editor.refresh_config();
     }
 
+    /// refresh language config after config change
+    fn refresh_language(&mut self) {
+        match helix_core::config::user_syntax_loader() {
+            Ok(syntax_config) => {
+                self.syn_loader = std::sync::Arc::new(syntax::Loader::new(syntax_config));
+                for document in self.editor.documents.values_mut() {
+                    document.detect_language(self.syn_loader.clone());
+                }
+            }
+            Err(err) => {
+                let err_string = format!("failed to reload language config: {}", err);
+                self.editor.set_error(err_string);
+            }
+        }
+    }
+
     /// Refresh theme after config change
     fn refresh_theme(&mut self, config: &Config) {
         if let Some(theme) = config.theme.clone() {
             let true_color = self.true_color();
             match self.theme_loader.load(&theme) {
                 Ok(theme) => {
+                    self.refresh_language();
                     if true_color || theme.is_16_color() {
                         self.editor.set_theme(theme);
                     } else {
