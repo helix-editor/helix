@@ -169,6 +169,9 @@
 
 (mutable_specifier) @keyword.storage.modifier.mut
 
+(reference_type "&" @keyword.storage.modifier.ref)
+(self_parameter "&" @keyword.storage.modifier.ref)
+
 [
   "static"
   "const"
