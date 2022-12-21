@@ -74,7 +74,7 @@ impl Info {
             .map(|(ch, reg)| {
                 let content = reg
                     .read()
-                    .get(0)
+                    .last()
                     .and_then(|s| s.lines().next())
                     .unwrap_or_default();
                 (ch.to_string(), content)
