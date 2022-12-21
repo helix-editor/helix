@@ -982,6 +982,50 @@ fn change_current_directory(
     Ok(())
 }
 
+fn zoxide(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let new_dir = match args.first() {
+        Some(arg) => {
+            let child: std::process::Child = match std::process::Command::new("zoxide")
+                .arg("query")
+                .arg(&*arg.to_owned())
+                .stdout(std::process::Stdio::piped())
+                .spawn()
+            {
+                Ok(child) => child,
+                _ => bail!("Unable to spawn zoxide (check zoxide is installed and in $PATH)"),
+            };
+
+            let mut new_dir: String = match child.wait_with_output() {
+                Ok(output) => output.stdout.iter().map(|u| *u as char).collect(),
+                _ => bail!("Unable  to read stdout of child"),
+            };
+
+            new_dir.pop();
+            new_dir.into()
+        }
+        _ => helix_core::path::expand_tilde(&Into::<PathBuf>::into("~")),
+    };
+
+    if let Err(e) = std::env::set_current_dir(new_dir.clone()) {
+        bail!("Couldn't change the current working directory: {}", e);
+    }
+
+    let cwd = std::env::current_dir().context("Couldn't get the new working directory")?;
+    cx.editor.set_status(format!(
+        "Current working directory is now {}",
+        cwd.display()
+    ));
+    Ok(())
+}
+
 fn show_current_directory(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -2098,6 +2142,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Change the current working directory.",
             fun: change_current_directory,
             completer: Some(completers::directory),
+        },
+        TypableCommand {
+            name: "zoxide-cd",
+            aliases: &["z"],
+            doc: "Change working directory using zoxide. (zoxide must be installed)",
+            fun: zoxide,
+            completer: None,
         },
         TypableCommand {
             name: "show-directory",
