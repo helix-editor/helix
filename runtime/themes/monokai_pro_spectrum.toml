@@ -53,7 +53,7 @@
 "constructor" = "blue"
 "function" = "green"
 "function.macro" = { fg = "blue" }
-"function.builtin" = { fg = "cyan" }
+"function.builtin" = { fg = "blue" }
 
 # operator, tags, units, punctuations
 "operator" = "red"
