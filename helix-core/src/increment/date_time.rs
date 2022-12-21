@@ -26,28 +26,24 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
             (true, true) => {
                 let date_time = NaiveDateTime::parse_from_str(date_time, format.fmt).ok()?;
                 Some(
-                    add_duration(date_time, Duration::minutes(amount))?
+                    date_time
+                        .checked_add_signed(Duration::minutes(amount))?
                         .format(format.fmt)
                         .to_string(),
                 )
             }
             (true, false) => {
                 let date = NaiveDate::parse_from_str(date_time, format.fmt).ok()?;
-                let date_time = date.and_hms(0, 0, 0);
                 Some(
-                    add_duration(date_time, Duration::days(amount))?
+                    date.checked_add_signed(Duration::days(amount))?
                         .format(format.fmt)
                         .to_string(),
                 )
             }
             (false, true) => {
                 let time = NaiveTime::parse_from_str(date_time, format.fmt).ok()?;
-                let date_time = NaiveDate::from_ymd(0, 1, 1).and_time(time);
-                Some(
-                    add_duration(date_time, Duration::minutes(amount))?
-                        .format(format.fmt)
-                        .to_string(),
-                )
+                let (adjusted_time, _) = time.overflowing_add_signed(Duration::minutes(amount));
+                Some(adjusted_time.format(format.fmt).to_string())
             }
             (false, false) => None,
         }
@@ -249,10 +245,6 @@ impl DateUnit {
     }
 }
 
-fn add_duration(date_time: NaiveDateTime, duration: Duration) -> Option<NaiveDateTime> {
-    date_time.checked_add_signed(duration)
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -288,6 +280,8 @@ mod test {
             ("7:21 am", 1, "7:22 am"),
             ("23:24:23", 1, "23:25:23"),
             ("23:24", 1, "23:25"),
+            ("23:59", 1, "00:00"),
+            ("23:59:59", 1, "00:00:59"),
         ];
 
         for (original, amount, expected) in tests {
