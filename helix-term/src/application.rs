@@ -415,7 +415,6 @@ impl Application {
             let true_color = self.true_color();
             match self.theme_loader.load(&theme) {
                 Ok(theme) => {
-                    self.refresh_language_config();
                     if true_color || theme.is_16_color() {
                         self.editor.set_theme(theme);
                     } else {
@@ -434,6 +433,7 @@ impl Application {
     fn refresh_config(&mut self) {
         match Config::load_default() {
             Ok(config) => {
+                self.refresh_language_config();
                 self.refresh_theme(&config);
 
                 // Store new config
