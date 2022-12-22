@@ -468,7 +468,9 @@ pub mod completers {
         let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
             (path, None)
         } else {
-            let is_period = (input.ends_with("/.") && input.len() > 2) || input == ".";
+            let is_period = (input.ends_with((format!("{}.", std::path::MAIN_SEPARATOR)).as_str())
+                && input.len() > 2)
+                || input == ".";
             let file_name = if is_period {
                 Some(String::from("."))
             } else {
