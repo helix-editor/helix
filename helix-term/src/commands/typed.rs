@@ -68,13 +68,13 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         // If the path is a directory, open a file picker on that directory and update the status
         // message
         if std::fs::canonicalize(&path)?.is_dir() {
-            cx.editor.set_status(path.to_string_lossy().to_string());
             let callback = async move {
-                let call: job::Callback =
-                    Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                let call: job::Callback = job::Callback::EditorCompositor(Box::new(
+                    move |editor: &mut Editor, compositor: &mut Compositor| {
                         let picker = ui::file_picker(path, &editor.config());
                         compositor.push(Box::new(overlayed(picker)));
-                    });
+                    },
+                ));
                 Ok(call)
             };
             cx.jobs.callback(callback);
