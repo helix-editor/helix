@@ -394,7 +394,7 @@ impl Application {
     }
 
     /// refresh language config after config change
-    fn refresh_language(&mut self) {
+    fn refresh_language_config(&mut self) {
         match helix_core::config::user_syntax_loader() {
             Ok(syntax_config) => {
                 self.syn_loader = std::sync::Arc::new(syntax::Loader::new(syntax_config));
@@ -415,7 +415,7 @@ impl Application {
             let true_color = self.true_color();
             match self.theme_loader.load(&theme) {
                 Ok(theme) => {
-                    self.refresh_language();
+                    self.refresh_language_config();
                     if true_color || theme.is_16_color() {
                         self.editor.set_theme(theme);
                     } else {
