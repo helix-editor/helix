@@ -171,7 +171,7 @@ pub fn lint(file: String) -> Result<(), DynError> {
             let message = m.replace("$THEME", theme.as_str());
             println!("{}", message);
         });
-        Err(format!("{} has issues", file.clone().as_str()).into())
+        Err(format!("{} has issues", file).into())
     } else {
         Ok(())
     }
@@ -183,8 +183,7 @@ pub fn lint_all() -> Result<(), DynError> {
     let ok_files_count = files
         .into_iter()
         .filter_map(|path| lint(path.replace(".toml", "")).ok())
-        .collect::<Vec<()>>()
-        .len();
+        .count();
 
     if files_count != ok_files_count {
         Err(format!(

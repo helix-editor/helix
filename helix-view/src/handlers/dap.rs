@@ -262,7 +262,7 @@ impl Editor {
                     log::info!("{}", output);
                     self.set_status(format!("{} {}", prefix, output));
                 }
-                Event::Initialized => {
+                Event::Initialized(_) => {
                     // send existing breakpoints
                     for (path, breakpoints) in &mut self.breakpoints {
                         // TODO: call futures in parallel, await all

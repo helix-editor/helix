@@ -129,7 +129,7 @@
 | `X`                   | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
 | `Alt-x`               | Shrink selection to line bounds (line-wise selection)             | `shrink_to_line_bounds`              |
 | `J`                   | Join lines inside selection                                       | `join_selections`                    |
-| `A-J`                 | Join lines inside selection and select space                      | `join_selections_space`              |
+| `Alt-J`               | Join lines inside selection and select space                      | `join_selections_space`              |
 | `K`                   | Keep selections matching the regex                                | `keep_selections`                    |
 | `Alt-K`               | Remove selections matching the regex                              | `remove_selections`                  |
 | `Ctrl-c`              | Comment/uncomment the selections                                  | `toggle_comments`                    |
@@ -167,10 +167,13 @@ These sub-modes are accessible from normal mode and typically switch back to nor
 
 #### View mode
 
+Accessed by typing `z` in [normal mode](#normal-mode).
+
 View mode is intended for scrolling and manipulating the view without changing
-the selection. The "sticky" variant of this mode is persistent; use the Escape
-key to return to normal mode after usage (useful when you're simply looking
-over text and not actively editing it).
+the selection. The "sticky" variant of this mode (accessed by typing `Z` in
+normal mode) is persistent; use the Escape key to return to normal mode after
+usage (useful when you're simply looking over text and not actively editing
+it).
 
 
 | Key                  | Description                                               | Command             |
@@ -187,6 +190,8 @@ over text and not actively editing it).
 | `Ctrl-u`             | Move half page up                                         | `half_page_up`      |
 
 #### Goto mode
+
+Accessed by typing `g` in [normal mode](#normal-mode).
 
 Jumps to various locations.
 
@@ -213,9 +218,10 @@ Jumps to various locations.
 
 #### Match mode
 
-Enter this mode using `m` from normal mode. See the relevant section
-in [Usage](./usage.md) for an explanation about [surround](./usage.md#surround)
-and [textobject](./usage.md#textobject) usage.
+Accessed by typing `m` in [normal mode](#normal-mode).
+
+See the relevant section in [Usage](./usage.md) for an explanation about
+[surround](./usage.md#surround) and [textobject](./usage.md#textobjects) usage.
 
 | Key              | Description                                     | Command                    |
 | -----            | -----------                                     | -------                    |
@@ -229,6 +235,8 @@ and [textobject](./usage.md#textobject) usage.
 TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
 #### Window mode
+
+Accessed by typing `Ctrl-w` in [normal mode](#normal-mode).
 
 This layer is similar to Vim keybindings as Kakoune does not support window.
 
@@ -252,8 +260,9 @@ This layer is similar to Vim keybindings as Kakoune does not support window.
 
 #### Space mode
 
-This layer is a kludge of mappings, mostly pickers.
+Accessed by typing `Space` in [normal mode](#normal-mode).
 
+This layer is a kludge of mappings, mostly pickers.
 
 | Key     | Description                                                             | Command                             |
 | -----   | -----------                                                             | -------                             |
@@ -264,8 +273,8 @@ This layer is a kludge of mappings, mostly pickers.
 | `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                             |
 | `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                     |
 | `S`     | Open workspace symbol picker (**LSP**)                                  | `workspace_symbol_picker`           |
-| `g`     | Open document diagnostics picker (**LSP**)                              | `diagnostics_picker`                |
-| `G`     | Open workspace diagnostics picker (**LSP**)                             | `workspace_diagnostics_picker`
+| `d`     | Open document diagnostics picker (**LSP**)                              | `diagnostics_picker`                |
+| `D`     | Open workspace diagnostics picker (**LSP**)                             | `workspace_diagnostics_picker`      |
 | `r`     | Rename symbol (**LSP**)                                                 | `rename_symbol`                     |
 | `a`     | Apply code action  (**LSP**)                                            | `code_action`                       |
 | `'`     | Open last fuzzy picker                                                  | `last_picker`                       |
@@ -278,7 +287,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `/`     | Global search in workspace folder                                       | `global_search`                     |
 | `?`     | Open command palette                                                    | `command_palette`                   |
 
-> TIP: Global search displays results in a fuzzy picker, use `space + '` to bring it back up after opening a file.
+> TIP: Global search displays results in a fuzzy picker, use `Space + '` to bring it back up after opening a file.
 
 ##### Popup
 
@@ -288,7 +297,7 @@ Displays documentation for item under cursor.
 | ----     | ----------- |
 | `Ctrl-u` | Scroll up   |
 | `Ctrl-d` | Scroll down |
- 
+
 #### Unimpaired
 
 Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
@@ -301,18 +310,22 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`      |
 | `]f`     | Go to next function (**TS**)                 | `goto_next_function`  |
 | `[f`     | Go to previous function (**TS**)             | `goto_prev_function`  |
-| `]c`     | Go to next class (**TS**)                    | `goto_next_class`     |
-| `[c`     | Go to previous class (**TS**)                | `goto_prev_class`     |
+| `]t`     | Go to next type definition (**TS**)          | `goto_next_class`     |
+| `[t`     | Go to previous type definition (**TS**)      | `goto_prev_class`     |
 | `]a`     | Go to next argument/parameter (**TS**)       | `goto_next_parameter` |
 | `[a`     | Go to previous argument/parameter (**TS**)   | `goto_prev_parameter` |
-| `]o`     | Go to next comment (**TS**)                  | `goto_next_comment`   |
-| `[o`     | Go to previous comment (**TS**)              | `goto_prev_comment`   |
-| `]t`     | Go to next test (**TS**)                     | `goto_next_test`      |
-| `]t`     | Go to previous test (**TS**)                 | `goto_prev_test`      |
+| `]c`     | Go to next comment (**TS**)                  | `goto_next_comment`   |
+| `[c`     | Go to previous comment (**TS**)              | `goto_prev_comment`   |
+| `]T`     | Go to next test (**TS**)                     | `goto_next_test`      |
+| `[T`     | Go to previous test (**TS**)                 | `goto_prev_test`      |
 | `]p`     | Go to next paragraph                         | `goto_next_paragraph` |
 | `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
-| `[space` | Add newline above                            | `add_newline_above`   |
-| `]space` | Add newline below                            | `add_newline_below`   |
+| `]g`     | Go to next change                            | `goto_next_change`    |
+| `[g`     | Go to previous change                        | `goto_prev_change`    |
+| `]G`     | Go to first change                           | `goto_first_change`   |
+| `[G`     | Go to last change                            | `goto_last_change`    |
+| `[Space` | Add newline above                            | `add_newline_above`   |
+| `]Space` | Add newline below                            | `add_newline_below`   |
 
 ## Insert mode
 
@@ -391,7 +404,6 @@ Keys to use within picker. Remapping currently not supported.
 | `PageDown`, `Ctrl-d`         | Page down         |
 | `Home`                       | Go to first entry |
 | `End`                        | Go to last entry  |
-| `Ctrl-space`                 | Filter options    |
 | `Enter`                      | Open selected     |
 | `Ctrl-s`                     | Open horizontally |
 | `Ctrl-v`                     | Open vertically   |
@@ -415,8 +427,8 @@ Keys to use within prompt, Remapping currently not supported.
 | `Alt-d`, `Alt-Delete`, `Ctrl-Delete`        | Delete next word                                                        |
 | `Ctrl-u`                                    | Delete to start of line                                                 |
 | `Ctrl-k`                                    | Delete to end of line                                                   |
-| `backspace`, `Ctrl-h`                       | Delete previous char                                                    |
-| `delete`, `Ctrl-d`                          | Delete next char                                                        |
+| `Backspace`, `Ctrl-h`                       | Delete previous char                                                    |
+| `Delete`, `Ctrl-d`                          | Delete next char                                                        |
 | `Ctrl-s`                                    | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
 | `Ctrl-p`, `Up`                              | Select previous history                                                 |
 | `Ctrl-n`, `Down`                            | Select next history                                                     |

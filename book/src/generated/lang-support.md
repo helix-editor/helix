@@ -2,19 +2,24 @@
 | --- | --- | --- | --- | --- |
 | astro | ✓ |  |  |  |
 | awk | ✓ | ✓ |  | `awk-language-server` |
-| bash | ✓ |  |  | `bash-language-server` |
+| bash | ✓ |  | ✓ | `bash-language-server` |
 | bass | ✓ |  |  | `bass` |
 | beancount | ✓ |  |  |  |
+| bibtex | ✓ |  |  | `texlab` |
+| bicep | ✓ |  |  | `bicep-langserver` |
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | `OmniSharp` |
 | cairo | ✓ |  |  |  |
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
+| common-lisp | ✓ |  |  | `cl-lsp` |
 | cpon | ✓ |  | ✓ |  |
 | cpp | ✓ | ✓ | ✓ | `clangd` |
+| crystal | ✓ |  |  |  |
 | css | ✓ |  |  | `vscode-css-language-server` |
 | cue | ✓ |  |  | `cuelsp` |
+| d | ✓ | ✓ | ✓ | `serve-d` |
 | dart | ✓ |  | ✓ | `dart` |
 | devicetree | ✓ |  |  |  |
 | diff | ✓ |  |  |  |
@@ -23,9 +28,10 @@
 | edoc | ✓ |  |  |  |
 | eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |
-| elixir | ✓ | ✓ |  | `elixir-ls` |
+| elixir | ✓ | ✓ | ✓ | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
 | elvish | ✓ |  |  | `elvish` |
+| env | ✓ |  |  |  |
 | erb | ✓ |  |  |  |
 | erlang | ✓ | ✓ |  | `erlang_ls` |
 | esdl | ✓ |  |  |  |
@@ -46,19 +52,21 @@
 | gowork | ✓ |  |  | `gopls` |
 | graphql | ✓ |  |  |  |
 | hare | ✓ |  |  |  |
-| haskell | ✓ |  |  | `haskell-language-server-wrapper` |
+| haskell | ✓ | ✓ |  | `haskell-language-server-wrapper` |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
-| heex | ✓ | ✓ |  |  |
+| heex | ✓ | ✓ |  | `elixir-ls` |
 | html | ✓ |  |  | `vscode-html-language-server` |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
-| java | ✓ |  |  | `jdtls` |
+| ini | ✓ |  |  |  |
+| java | ✓ | ✓ |  | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | jsdoc | ✓ |  |  |  |
 | json | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsonnet | ✓ |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ |  |  | `julia` |
+| kdl | ✓ |  |  |  |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ | ✓ |  | `texlab` |
 | lean | ✓ |  |  | `lean` |
@@ -66,14 +74,16 @@
 | llvm | ✓ | ✓ | ✓ |  |
 | llvm-mir | ✓ | ✓ | ✓ |  |
 | llvm-mir-yaml | ✓ |  | ✓ |  |
-| lua | ✓ |  | ✓ | `lua-language-server` |
+| lua | ✓ | ✓ | ✓ | `lua-language-server` |
 | make | ✓ |  |  |  |
 | markdown | ✓ |  |  | `marksman` |
 | markdown.inline | ✓ |  |  |  |
+| matlab | ✓ |  |  |  |
+| mermaid | ✓ |  |  |  |
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
 | nickel | ✓ |  | ✓ | `nls` |
-| nix | ✓ |  |  | `rnix-lsp` |
+| nix | ✓ |  |  | `nil` |
 | nu | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |
@@ -86,9 +96,11 @@
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ |  | ✓ |  |
-| python | ✓ | ✓ |  | `pylsp` |
+| purescript | ✓ |  |  | `purescript-language-server` |
+| python | ✓ | ✓ | ✓ | `pylsp` |
+| qml | ✓ |  | ✓ | `qmlls` |
 | r | ✓ |  |  | `R` |
-| racket |  |  |  | `racket` |
+| racket | ✓ |  |  | `racket` |
 | regex | ✓ |  |  |  |
 | rescript | ✓ | ✓ |  | `rescript-language-server` |
 | rmarkdown | ✓ |  | ✓ | `R` |
@@ -118,10 +130,13 @@
 | v | ✓ |  |  | `vls` |
 | vala | ✓ |  |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |
+| vhs | ✓ |  |  |  |
 | vue | ✓ |  |  | `vls` |
 | wast | ✓ |  |  |  |
 | wat | ✓ |  |  |  |
 | wgsl | ✓ |  |  | `wgsl_analyzer` |
+| wit | ✓ |  | ✓ |  |
 | xit | ✓ |  |  |  |
+| xml | ✓ |  | ✓ |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |
-| zig | ✓ |  | ✓ | `zls` |
+| zig | ✓ | ✓ | ✓ | `zls` |

@@ -56,7 +56,7 @@ impl ChangeSet {
     }
 
     // Changeset builder operations: delete/insert/retain
-    fn delete(&mut self, n: usize) {
+    pub(crate) fn delete(&mut self, n: usize) {
         use Operation::*;
         if n == 0 {
             return;
@@ -71,7 +71,7 @@ impl ChangeSet {
         }
     }
 
-    fn insert(&mut self, fragment: Tendril) {
+    pub(crate) fn insert(&mut self, fragment: Tendril) {
         use Operation::*;
 
         if fragment.is_empty() {
@@ -93,7 +93,7 @@ impl ChangeSet {
         self.changes.push(new_last);
     }
 
-    fn retain(&mut self, n: usize) {
+    pub(crate) fn retain(&mut self, n: usize) {
         use Operation::*;
         if n == 0 {
             return;
@@ -577,7 +577,7 @@ impl<'a> Iterator for ChangeIterator<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::State;
+    use crate::history::State;
 
     #[test]
     fn composition() {
@@ -704,7 +704,10 @@ mod test {
 
     #[test]
     fn optimized_composition() {
-        let mut state = State::new("".into());
+        let mut state = State {
+            doc: "".into(),
+            selection: Selection::point(0),
+        };
         let t1 = Transaction::insert(&state.doc, &state.selection, Tendril::from("h"));
         t1.apply(&mut state.doc);
         state.selection = state.selection.clone().map(t1.changes());

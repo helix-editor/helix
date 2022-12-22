@@ -10,13 +10,13 @@
 "ui.background" = { bg = "my_gray0" }
 "ui.menu" = { fg = "my_white", bg = "my_gray2" }
 "ui.menu.selected" = { fg = "my_gray2", bg = "my_gray5" }
-"ui.linenr" = { fg = "my_gray4", bg = "my_gray2" }
+"ui.linenr" = { fg = "my_gray3", bg = "my_gray0" }
 "ui.popup" = { bg = "my_gray2" }
-"ui.window" = { fg = "my_gray4", bg = "my_gray2" }
-"ui.linenr.selected" = { fg = "my_gray6", bg = "my_gray1"}
+"ui.window" = { fg = "my_gray3", bg = "my_gray2" }
+"ui.linenr.selected" = { fg = "my_gray6", bg = "my_gray0"}
 "ui.selection" = { bg = "my_gray3" }
 "comment" = { fg = "my_gray4", modifiers = ["italic"] }
-"ui.cursorline" = { bg = "my_gray2" }
+"ui.cursorline" = { bg = "my_gray3" }
 "ui.statusline" = { fg = "my_gray6", bg = "my_gray2" }
 "ui.statusline.inactive" = { fg = 'my_gray4', bg = 'my_gray2' }
 "ui.statusline.insert" = {fg = "my_black", bg = "my_gray5", modifiers = ["bold"]}
@@ -58,11 +58,12 @@
 "markup.raw" = "my_green"
 
 "diff.plus" = "my_green"
-"diff.delta" = "my_white"
+"diff.delta" = "my_gray4"
 "diff.minus" = "my_red"
 
 "diagnostic" = { modifiers = ["underlined"] }
-"ui.gutter" = { bg = "my_gray2" }
+"diagnostic.error" = { underline = { style = "curl", color = "my_red" } }
+"ui.gutter" = { bg = "my_gray0" }
 "hint" = "my_gray5"
 "debug" = "my_yellow2"
 "info" = "my_yellow2"
@@ -77,7 +78,7 @@ my_gray2      = "#323232" # Lighter Background (Used for status bars, line numbe
 my_gray3      = "#505050" # Selection Background
 my_gray4      = "#7c7c7c" # Comments, Invisibles, Line Highlighting
 my_gray5      = "#a8a8a8" # Dark Foreground (Used for status bars)
-my_gray6      = "#c0c0c0" # Light Foreground (Not often used)
+my_gray6      = "#c8c8c8" # Light Foreground (Not often used)
 my_gray7      = "#e8e8e8" # Light Background (Not often used)
 my_white      = "#F3F2CC" # Default Foreground, Caret, Delimiters, Operators
 my_white2     = "#F3F2CC" # Variables, XML Tags, Markup Link Text, Markup Lists, Diff Deleted

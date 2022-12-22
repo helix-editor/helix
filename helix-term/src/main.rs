@@ -1,5 +1,6 @@
 use anyhow::{Context, Error, Result};
 use crossterm::event::EventStream;
+use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::Config;
@@ -74,7 +75,7 @@ FLAGS:
     --hsplit                       Splits all given files horizontally into different windows
 ",
         env!("CARGO_PKG_NAME"),
-        env!("VERSION_AND_GIT_HASH"),
+        VERSION_AND_GIT_HASH,
         env!("CARGO_PKG_AUTHORS"),
         env!("CARGO_PKG_DESCRIPTION"),
         logpath.display(),
@@ -89,7 +90,7 @@ FLAGS:
     }
 
     if args.display_version {
-        println!("helix {}", env!("VERSION_AND_GIT_HASH"));
+        println!("helix {}", VERSION_AND_GIT_HASH);
         std::process::exit(0);
     }
 
@@ -139,8 +140,18 @@ FLAGS:
         Err(err) => return Err(Error::new(err)),
     };
 
+    let syn_loader_conf = helix_core::config::user_syntax_loader().unwrap_or_else(|err| {
+        eprintln!("Bad language config: {}", err);
+        eprintln!("Press <ENTER> to continue with default language config");
+        use std::io::Read;
+        // This waits for an enter press.
+        let _ = std::io::stdin().read(&mut []);
+        helix_core::config::default_syntax_loader()
+    });
+
     // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app = Application::new(args, config).context("unable to create new application")?;
+    let mut app = Application::new(args, config, syn_loader_conf)
+        .context("unable to create new application")?;
 
     let exit_code = app.run(&mut EventStream::new()).await?;
 
