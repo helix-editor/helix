@@ -4607,6 +4607,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'm' => textobject::textobject_pair_surround_closest(
                             text, range, objtype, count,
                         ),
+                        'q' => textobject::textobject_any_quotes(text, range, objtype, count),
                         'g' => textobject_change(range),
                         // TODO: cancel new ranges if inconsistent surround matches across lines
                         ch if !ch.is_ascii_alphanumeric() => {
@@ -4637,6 +4638,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         ("c", "Comment (tree-sitter)"),
         ("T", "Test (tree-sitter)"),
         ("m", "Closest surrounding pair to cursor"),
+        ("q", "Closest quotes pair to cursor"),
         (" ", "... or any character acting as a pair"),
     ];
 
