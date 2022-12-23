@@ -1837,54 +1837,10 @@ fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     if args[0] == "topics" {
         let dir_path = helix_loader::runtime_dir().join("help/topics");
 
-        struct Topic(PathBuf);
-        impl crate::ui::menu::Item for Topic {
-            type Data = ();
-            fn label(&self, _data: &Self::Data) -> Spans {
-                self.0
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .map(From::from)
-                    .unwrap_or_default()
-            }
-        }
-
-        let entries: Vec<Topic> = std::fs::read_dir(&dir_path)
-            .map(|entries| {
-                entries
-                    .filter_map(|entry| {
-                        let entry = entry.ok()?;
-                        let path = entry.path();
-                        Some(path)
-                    })
-                    .map(Topic)
-                    .collect()
-            })
-            .unwrap_or_default();
-
         let callback = async move {
             let call: job::Callback = job::Callback::EditorCompositor(Box::new(
-                move |_editor: &mut Editor, compositor: &mut Compositor| {
-                    let picker = FilePicker::new(
-                        entries,
-                        (),
-                        |cx, Topic(path), _action| {
-                            if let Err(e) =
-                                cx.editor
-                                    .open(path, Action::HorizontalSplit)
-                                    .and_then(|id| {
-                                        cx.editor
-                                            .document_mut(id)
-                                            .unwrap()
-                                            .set_path(None)
-                                            .map_err(Into::into)
-                                    })
-                            {
-                                cx.editor.set_error(e.to_string());
-                            }
-                        },
-                        |_editor, Topic(path)| Some((path.clone().into(), None)),
-                    );
+                move |editor: &mut Editor, compositor: &mut Compositor| {
+                    let picker = ui::file_picker(dir_path, &editor.config());
                     compositor.push(Box::new(picker));
                 },
             ));
@@ -1898,10 +1854,10 @@ fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     let args_msg = args.join(" ");
     let open_help =
         move |help_dir: &str, command: &str, editor: &mut Editor| -> anyhow::Result<()> {
-            let mut path = helix_loader::runtime_dir();
-            path.push("help");
-            path.push(help_dir);
-            path.push(format!("{}.txt", command));
+            let path = helix_loader::runtime_dir()
+                .join("help")
+                .join(help_dir)
+                .join(command);
 
             ensure!(path.is_file(), "No help available for '{}'", args_msg);
             let id = editor.open(&path, Action::HorizontalSplit)?;

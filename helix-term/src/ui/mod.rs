@@ -451,7 +451,8 @@ pub mod completers {
                     .filter_map(|entry| {
                         let entry = entry.ok()?;
                         let path = entry.path();
-                        (path.extension()? == "txt")
+                        path.extension()
+                            .is_none()
                             .then(|| path.file_stem().unwrap().to_string_lossy().into_owned())
                     })
                     .chain(
@@ -460,7 +461,7 @@ pub mod completers {
                                 entries.filter_map(|entry| {
                                     let entry = entry.ok()?;
                                     let path = entry.path();
-                                    (path.extension()? == "txt").then(|| {
+                                    path.extension().is_none().then(|| {
                                         format!(":{}", path.file_stem().unwrap().to_string_lossy())
                                     })
                                 })
