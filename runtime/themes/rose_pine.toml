@@ -1,5 +1,6 @@
 # Author: RayGervais<raygervais@hotmail.ca>
 # Author: ChrisHa<chunghha@users.noreply.github.com>
+# Diagnostics patch author: cor<cor@pruijs.dev>
 
 "ui.background" = { bg = "base" }
 "ui.menu" = { fg = "text", bg = "overlay" }
@@ -45,11 +46,17 @@
 "diff.delta" = "rose"
 "diff.minus" = "love"
 
-"info" = "gold"
-"hint" = "gold"
+"info" = "foam"
+"hint" = "iris"
 "debug" = "rose"
-"diagnostic" = "rose"
+"warning" = "gold"
 "error" = "love"
+
+"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.error" = { underline = { style = "curl", color = "love" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "gold" } }
+"diagnostic.info" = { underline = { style = "curl", color = "foam" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "iris" } }
 
 "markup.heading.marker" = "subtle"
 "markup.heading.1" = { fg = "love", modifiers = ["bold"] }
