@@ -117,6 +117,7 @@ The following statusline elements can be configured:
 | `display-messages`    | Display LSP progress messages below statusline[^1]          | `false` |
 | `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
 | `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
+| `shutdown-timeout`    | Time in milliseconds to wait for lsp to shutdown before closing editor, set to 0 to close instantly. | `3000`  |
 
 [^1]: By default, a progress spinner is shown in the statusline beside the file path.
 

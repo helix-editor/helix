@@ -1087,7 +1087,8 @@ impl Application {
             errs.push(err);
         }
 
-        if self.editor.close_language_servers(None).await.is_err() {
+        let timeout = self.editor.config().lsp.shutdown_timeout;
+        if self.editor.close_language_servers(timeout).await.is_err() && !timeout.is_zero() {
             log::error!("Timed out waiting for language servers to shutdown");
             errs.push(anyhow::format_err!(
                 "Timed out waiting for language servers to shutdown"

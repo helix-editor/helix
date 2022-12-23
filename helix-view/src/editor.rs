@@ -242,6 +242,13 @@ pub struct LspConfig {
     pub auto_signature_help: bool,
     /// Display docs under signature help popup
     pub display_signature_help_docs: bool,
+    /// Time in milliseconds that the editor will wait for the lsp to shutdown before exiting
+    /// Set to 0 for instant. Defaults to 3000.
+    #[serde(
+        serialize_with = "serialize_duration_millis",
+        deserialize_with = "deserialize_duration_millis"
+    )]
+    pub shutdown_timeout: Duration,
 }
 
 impl Default for LspConfig {
@@ -250,6 +257,7 @@ impl Default for LspConfig {
             display_messages: false,
             auto_signature_help: true,
             display_signature_help_docs: true,
+            shutdown_timeout: Duration::from_millis(3000),
         }
     }
 }
@@ -1356,14 +1364,13 @@ impl Editor {
         }
     }
 
-    /// Closes language servers with timeout. The default timeout is 10000 ms, use
-    /// `timeout` parameter to override this.
+    /// Closes language servers with timeout, set to 0 to instantly shutdown without waiting for lsp
     pub async fn close_language_servers(
         &self,
-        timeout: Option<u64>,
+        timeout: Duration,
     ) -> Result<(), tokio::time::error::Elapsed> {
         tokio::time::timeout(
-            Duration::from_millis(timeout.unwrap_or(3000)),
+            timeout,
             future::join_all(
                 self.language_servers
                     .iter_clients()
