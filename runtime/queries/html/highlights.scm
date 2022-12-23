@@ -14,6 +14,7 @@
   ">"
   "</"
   "/>"
+  "<!"
 ] @punctuation.bracket
 
 "=" @punctuation.delimiter

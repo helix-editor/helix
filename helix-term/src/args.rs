@@ -32,8 +32,14 @@ impl Args {
                 "--version" => args.display_version = true,
                 "--help" => args.display_help = true,
                 "--tutor" => args.load_tutor = true,
-                "--vsplit" => args.split = Some(Layout::Vertical),
-                "--hsplit" => args.split = Some(Layout::Horizontal),
+                "--vsplit" => match args.split {
+                    Some(_) => anyhow::bail!("can only set a split once of a specific type"),
+                    None => args.split = Some(Layout::Vertical),
+                },
+                "--hsplit" => match args.split {
+                    Some(_) => anyhow::bail!("can only set a split once of a specific type"),
+                    None => args.split = Some(Layout::Horizontal),
+                },
                 "--health" => {
                     args.health = true;
                     args.health_arg = argv.next_if(|opt| !opt.starts_with('-'));

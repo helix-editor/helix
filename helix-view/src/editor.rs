@@ -1,16 +1,19 @@
 use crate::{
+    align_view,
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode},
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
     theme::{self, Theme},
     tree::{self, Tree},
-    Document, DocumentId, View, ViewId,
+    Align, Document, DocumentId, View, ViewId,
 };
+use helix_vcs::DiffProviderRegistry;
 
-use futures_util::future;
 use futures_util::stream::select_all::SelectAll;
+use futures_util::{future, StreamExt};
+use helix_lsp::Call;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -24,11 +27,14 @@ use std::{
 };
 
 use tokio::{
-    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    sync::{
+        mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+        Notify, RwLock,
+    },
     time::{sleep, Duration, Instant, Sleep},
 };
 
-use anyhow::{bail, Error};
+use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
@@ -65,7 +71,7 @@ where
     )
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
     /// IgnoreOptions
@@ -109,7 +115,7 @@ impl Default for FilePickerConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
@@ -124,6 +130,8 @@ pub struct Config {
     pub line_number: LineNumber,
     /// Highlight the lines cursors are currently on. Defaults to false.
     pub cursorline: bool,
+    /// Highlight the columns cursors are currently on. Defaults to false.
+    pub cursorcolumn: bool,
     /// Gutters. Default ["diagnostics", "line-numbers"]
     pub gutters: Vec<GutterType>,
     /// Middle click paste support. Defaults to true.
@@ -136,6 +144,8 @@ pub struct Config {
     pub auto_completion: bool,
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
+    /// Automatic save on focus lost. Defaults to false.
+    pub auto_save: bool,
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(
@@ -170,7 +180,7 @@ pub struct Config {
     pub color_modes: bool,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct TerminalConfig {
     pub command: String,
@@ -181,9 +191,9 @@ pub struct TerminalConfig {
 
 #[cfg(windows)]
 pub fn get_terminal_provider() -> Option<TerminalConfig> {
-    use crate::clipboard::provider::command::exists;
+    use crate::env::binary_exists;
 
-    if exists("wt") {
+    if binary_exists("wt") {
         return Some(TerminalConfig {
             command: "wt".to_string(),
             args: vec![
@@ -204,16 +214,16 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
 
 #[cfg(not(any(windows, target_os = "wasm32")))]
 pub fn get_terminal_provider() -> Option<TerminalConfig> {
-    use crate::clipboard::provider::command::{env_var_is_set, exists};
+    use crate::env::{binary_exists, env_var_is_set};
 
-    if env_var_is_set("TMUX") && exists("tmux") {
+    if env_var_is_set("TMUX") && binary_exists("tmux") {
         return Some(TerminalConfig {
             command: "tmux".to_string(),
             args: vec!["split-window".to_string()],
         });
     }
 
-    if env_var_is_set("WEZTERM_UNIX_SOCKET") && exists("wezterm") {
+    if env_var_is_set("WEZTERM_UNIX_SOCKET") && binary_exists("wezterm") {
         return Some(TerminalConfig {
             command: "wezterm".to_string(),
             args: vec!["cli".to_string(), "split-pane".to_string()],
@@ -223,7 +233,7 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
     None
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
     /// Display LSP progress messages below statusline
@@ -244,7 +254,7 @@ impl Default for LspConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct SearchConfig {
     /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
@@ -253,13 +263,14 @@ pub struct SearchConfig {
     pub wrap_around: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct StatusLineConfig {
     pub left: Vec<StatusLineElement>,
     pub center: Vec<StatusLineElement>,
     pub right: Vec<StatusLineElement>,
     pub separator: String,
+    pub mode: ModeConfig,
 }
 
 impl Default for StatusLineConfig {
@@ -271,6 +282,25 @@ impl Default for StatusLineConfig {
             center: vec![],
             right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
             separator: String::from("│"),
+            mode: ModeConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct ModeConfig {
+    pub normal: String,
+    pub insert: String,
+    pub select: String,
+}
+
+impl Default for ModeConfig {
+    fn default() -> Self {
+        Self {
+            normal: String::from("NOR"),
+            insert: String::from("INS"),
+            select: String::from("SEL"),
         }
     }
 }
@@ -299,8 +329,14 @@ pub enum StatusLineElement {
     /// A summary of the number of errors and warnings
     Diagnostics,
 
+    /// A summary of the number of errors and warnings on file and workspace
+    WorkspaceDiagnostics,
+
     /// The number of selections (cursors)
     Selections,
+
+    /// The number of characters currently in primary selection
+    PrimarySelectionLength,
 
     /// The cursor position
     Position,
@@ -311,13 +347,16 @@ pub enum StatusLineElement {
     /// The cursor position as a percent of the total file
     PositionPercentage,
 
+    /// The total line numbers of the current file
+    TotalLineNumbers,
+
     /// A single space
     Spacer,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
 // to be fast. Therefore we avoid a hashmap and use an enum indexed array.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CursorShapeConfig([CursorKind; 3]);
 
 impl CursorShapeConfig {
@@ -419,6 +458,8 @@ pub enum GutterType {
     LineNumbers,
     /// Show one blank space
     Spacer,
+    /// Highlight local changes
+    Diff,
 }
 
 impl std::str::FromStr for GutterType {
@@ -427,13 +468,15 @@ impl std::str::FromStr for GutterType {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "diagnostics" => Ok(Self::Diagnostics),
+            "spacer" => Ok(Self::Spacer),
             "line-numbers" => Ok(Self::LineNumbers),
+            "diff" => Ok(Self::Diff),
             _ => anyhow::bail!("Gutter type can only be `diagnostics` or `line-numbers`."),
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WhitespaceConfig {
     pub render: WhitespaceRender,
@@ -529,15 +572,17 @@ impl Default for WhitespaceCharacters {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, rename_all = "kebab-case")]
 pub struct IndentGuidesConfig {
     pub render: bool,
     pub character: char,
+    pub skip_levels: u8,
 }
 
 impl Default for IndentGuidesConfig {
     fn default() -> Self {
         Self {
+            skip_levels: 0,
             render: false,
             character: '│',
         }
@@ -557,11 +602,19 @@ impl Default for Config {
             },
             line_number: LineNumber::Absolute,
             cursorline: false,
-            gutters: vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            cursorcolumn: false,
+            gutters: vec![
+                GutterType::Diagnostics,
+                GutterType::Spacer,
+                GutterType::LineNumbers,
+                GutterType::Spacer,
+                GutterType::Diff,
+            ],
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             auto_format: true,
+            auto_save: false,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
@@ -615,12 +668,21 @@ pub struct Breakpoint {
     pub log_message: Option<String>,
 }
 
+use futures_util::stream::{Flatten, Once};
+
 pub struct Editor {
     /// Current editing mode.
     pub mode: Mode,
     pub tree: Tree,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
+
+    // We Flatten<> to resolve the inner DocumentSavedEventFuture. For that we need a stream of streams, hence the Once<>.
+    // https://stackoverflow.com/a/66875668
+    pub saves: HashMap<DocumentId, UnboundedSender<Once<DocumentSavedEventFuture>>>,
+    pub save_queue: SelectAll<Flatten<UnboundedReceiverStream<Once<DocumentSavedEventFuture>>>>,
+    pub write_count: usize,
+
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: Option<char>,
     pub registers: Registers,
@@ -628,6 +690,7 @@ pub struct Editor {
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
+    pub diff_providers: DiffProviderRegistry,
 
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
@@ -643,7 +706,7 @@ pub struct Editor {
     /// The currently applied editor theme. While previewing a theme, the previewed theme
     /// is set here.
     pub theme: Theme,
-
+    pub last_line_number: Option<usize>,
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
@@ -652,13 +715,28 @@ pub struct Editor {
 
     pub idle_timer: Pin<Box<Sleep>>,
     pub last_motion: Option<Motion>,
-    pub pseudo_pending: Option<String>,
 
     pub last_completion: Option<CompleteAction>,
 
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
+    /// Allows asynchronous tasks to control the rendering
+    /// The `Notify` allows asynchronous tasks to request the editor to perform a redraw
+    /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be aquired
+    pub redraw_handle: RedrawHandle,
+    pub needs_redraw: bool,
+}
+
+pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
+
+#[derive(Debug)]
+pub enum EditorEvent {
+    DocumentSaved(DocumentSavedEventResult),
+    ConfigEvent(ConfigEvent),
+    LanguageServerMessage((usize, Call)),
+    DebuggerEvent(dap::Payload),
+    IdleTimer,
 }
 
 #[derive(Debug, Clone)]
@@ -686,6 +764,16 @@ pub enum Action {
     VerticalSplit,
 }
 
+/// Error thrown on failed document closed
+pub enum CloseError {
+    /// Document doesn't exist
+    DoesNotExist,
+    /// Buffer is modified
+    BufferModified(String),
+    /// Document failed to save
+    SaveError(anyhow::Error),
+}
+
 impl Editor {
     pub fn new(
         mut area: Rect,
@@ -704,6 +792,9 @@ impl Editor {
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
+            saves: HashMap::new(),
+            save_queue: SelectAll::new(),
+            write_count: 0,
             count: None,
             selected_register: None,
             macro_recording: None,
@@ -711,12 +802,14 @@ impl Editor {
             theme: theme_loader.default(),
             language_servers: helix_lsp::Registry::new(),
             diagnostics: BTreeMap::new(),
+            diff_providers: DiffProviderRegistry::default(),
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
             syn_loader,
             theme_loader,
             last_theme: None,
+            last_line_number: None,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
@@ -724,11 +817,12 @@ impl Editor {
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
             last_motion: None,
             last_completion: None,
-            pseudo_pending: None,
             config,
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
+            redraw_handle: Default::default(),
+            needs_redraw: false,
         }
     }
 
@@ -769,12 +863,16 @@ impl Editor {
 
     #[inline]
     pub fn set_status<T: Into<Cow<'static, str>>>(&mut self, status: T) {
-        self.status_msg = Some((status.into(), Severity::Info));
+        let status = status.into();
+        log::debug!("editor status: {}", status);
+        self.status_msg = Some((status, Severity::Info));
     }
 
     #[inline]
     pub fn set_error<T: Into<Cow<'static, str>>>(&mut self, error: T) {
-        self.status_msg = Some((error.into(), Severity::Error));
+        let error = error.into();
+        log::error!("editor error: {}", error);
+        self.status_msg = Some((error, Severity::Error));
     }
 
     #[inline]
@@ -844,7 +942,7 @@ impl Editor {
 
         // try to find a language server based on the language name
         let language_server = doc.language.as_ref().and_then(|language| {
-            ls.get(language)
+            ls.get(language, doc.path())
                 .map_err(|e| {
                     log::error!(
                         "Failed to initialize the LSP for `{}` {{ {} }}",
@@ -881,7 +979,8 @@ impl Editor {
     fn _refresh(&mut self) {
         let config = self.config();
         for (view, _) in self.tree.views_mut() {
-            let doc = &self.documents[&view.doc];
+            let doc = doc_mut!(self, &view.doc);
+            view.sync_changes(doc);
             view.ensure_cursor_in_view(doc, config.scrolloff)
         }
     }
@@ -893,14 +992,9 @@ impl Editor {
 
         let doc = doc_mut!(self, &doc_id);
         doc.ensure_view_init(view.id);
+        view.sync_changes(doc);
 
-        // TODO: reuse align_view
-        let pos = doc
-            .selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..));
-        let line = doc.text().char_to_line(pos);
-        view.offset.row = line.saturating_sub(view.inner_area().height as usize / 2);
+        align_view(doc, view, Align::Center);
     }
 
     pub fn switch(&mut self, id: DocumentId, action: Action) {
@@ -910,6 +1004,8 @@ impl Editor {
             log::error!("cannot switch to document that does not exist (anymore)");
             return;
         }
+
+        self.enter_normal_mode();
 
         match action {
             Action::Replace => {
@@ -930,6 +1026,9 @@ impl Editor {
 
                 let (view, doc) = current!(self);
                 let view_id = view.id;
+
+                // Append any outstanding changes to history in the old document.
+                doc.append_changes_to_history(view);
 
                 if remove_empty_scratch {
                     // Copy `doc.id` into a variable before calling `self.documents.remove`, which requires a mutable
@@ -999,6 +1098,13 @@ impl Editor {
             DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
         doc.id = id;
         self.documents.insert(id, doc);
+
+        let (save_sender, save_receiver) = tokio::sync::mpsc::unbounded_channel();
+        self.saves.insert(id, save_sender);
+
+        let stream = UnboundedReceiverStream::new(save_receiver).flatten();
+        self.save_queue.push(stream);
+
         id
     }
 
@@ -1028,7 +1134,9 @@ impl Editor {
             let mut doc = Document::open(&path, None, Some(self.syn_loader.clone()))?;
 
             let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
-
+            if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
+                doc.set_diff_base(diff_base, self.redraw_handle.clone());
+            }
             self.new_document(doc)
         };
 
@@ -1037,29 +1145,28 @@ impl Editor {
     }
 
     pub fn close(&mut self, id: ViewId) {
-        let (_view, doc) = current!(self);
-        // remove selection
-        doc.remove_view(id);
+        // Remove selections for the closed view on all documents.
+        for doc in self.documents_mut() {
+            doc.remove_view(id);
+        }
         self.tree.remove(id);
         self._refresh();
     }
 
-    pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> anyhow::Result<()> {
-        let doc = match self.documents.get(&doc_id) {
+    pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> Result<(), CloseError> {
+        let doc = match self.documents.get_mut(&doc_id) {
             Some(doc) => doc,
-            None => bail!("document does not exist"),
+            None => return Err(CloseError::DoesNotExist),
         };
-
         if !force && doc.is_modified() {
-            bail!(
-                "buffer {:?} is modified",
-                doc.relative_path()
-                    .map(|path| path.to_string_lossy().to_string())
-                    .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
-            );
+            return Err(CloseError::BufferModified(doc.display_name().into_owned()));
         }
 
+        // This will also disallow any follow-up writes
+        self.saves.remove(&doc_id);
+
         if let Some(language_server) = doc.language_server() {
+            // TODO: track error
             tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
 
@@ -1122,6 +1229,32 @@ impl Editor {
         Ok(())
     }
 
+    pub fn save<P: Into<PathBuf>>(
+        &mut self,
+        doc_id: DocumentId,
+        path: Option<P>,
+        force: bool,
+    ) -> anyhow::Result<()> {
+        // convert a channel of futures to pipe into main queue one by one
+        // via stream.then() ? then push into main future
+
+        let path = path.map(|path| path.into());
+        let doc = doc_mut!(self, &doc_id);
+        let future = doc.save(path, force)?;
+
+        use futures_util::stream;
+
+        self.saves
+            .get(&doc_id)
+            .ok_or_else(|| anyhow::format_err!("saves are closed for this document!"))?
+            .send(stream::once(Box::pin(future)))
+            .map_err(|err| anyhow!("failed to send save event: {}", err))?;
+
+        self.write_count += 1;
+
+        Ok(())
+    }
+
     pub fn resize(&mut self, area: Rect) {
         if self.tree.resize(area) {
             self._refresh();
@@ -1131,21 +1264,22 @@ impl Editor {
     pub fn focus(&mut self, view_id: ViewId) {
         let prev_id = std::mem::replace(&mut self.tree.focus, view_id);
 
-        // if leaving the view: mode should reset
+        // if leaving the view: mode should reset and the cursor should be
+        // within view
         if prev_id != view_id {
-            self.mode = Mode::Normal;
+            self.enter_normal_mode();
+            self.ensure_cursor_in_view(view_id);
+
+            // Update jumplist selections with new document changes.
+            for (view, _focused) in self.tree.views_mut() {
+                let doc = doc_mut!(self, &view.doc);
+                view.sync_changes(doc);
+            }
         }
     }
 
     pub fn focus_next(&mut self) {
-        let prev_id = self.tree.focus;
-        self.tree.focus_next();
-        let id = self.tree.focus;
-
-        // if leaving the view: mode should reset
-        if prev_id != id {
-            self.mode = Mode::Normal;
-        }
+        self.focus(self.tree.next());
     }
 
     pub fn focus_direction(&mut self, direction: tree::Direction) {
@@ -1212,7 +1346,7 @@ impl Editor {
             .primary()
             .cursor(doc.text().slice(..));
         if let Some(mut pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
-            let inner = view.inner_area();
+            let inner = view.inner_area(doc);
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
             let cursorkind = config.cursor_shape.from_mode(self.mode);
@@ -1222,14 +1356,14 @@ impl Editor {
         }
     }
 
-    /// Closes language servers with timeout. The default timeout is 500 ms, use
+    /// Closes language servers with timeout. The default timeout is 10000 ms, use
     /// `timeout` parameter to override this.
     pub async fn close_language_servers(
         &self,
         timeout: Option<u64>,
     ) -> Result<(), tokio::time::error::Elapsed> {
         tokio::time::timeout(
-            Duration::from_millis(timeout.unwrap_or(500)),
+            Duration::from_millis(timeout.unwrap_or(3000)),
             future::join_all(
                 self.language_servers
                     .iter_clients()
@@ -1238,5 +1372,127 @@ impl Editor {
         )
         .await
         .map(|_| ())
+    }
+
+    pub async fn wait_event(&mut self) -> EditorEvent {
+        // the loop only runs once or twice and would be better implemented with a recursion + const generic
+        // however due to limitations with async functions that can not be implemented right now
+        loop {
+            tokio::select! {
+                biased;
+
+                Some(event) = self.save_queue.next() => {
+                    self.write_count -= 1;
+                    return EditorEvent::DocumentSaved(event)
+                }
+                Some(config_event) = self.config_events.1.recv() => {
+                    return EditorEvent::ConfigEvent(config_event)
+                }
+                Some(message) = self.language_servers.incoming.next() => {
+                    return EditorEvent::LanguageServerMessage(message)
+                }
+                Some(event) = self.debugger_events.next() => {
+                    return EditorEvent::DebuggerEvent(event)
+                }
+
+                _ = self.redraw_handle.0.notified() => {
+                    if  !self.needs_redraw{
+                        self.needs_redraw = true;
+                        let timeout = Instant::now() + Duration::from_millis(96);
+                        if timeout < self.idle_timer.deadline(){
+                            self.idle_timer.as_mut().reset(timeout)
+                        }
+                    }
+                }
+
+                _ = &mut self.idle_timer  => {
+                    return EditorEvent::IdleTimer
+                }
+            }
+        }
+    }
+
+    pub async fn flush_writes(&mut self) -> anyhow::Result<()> {
+        while self.write_count > 0 {
+            if let Some(save_event) = self.save_queue.next().await {
+                self.write_count -= 1;
+
+                let save_event = match save_event {
+                    Ok(event) => event,
+                    Err(err) => {
+                        self.set_error(err.to_string());
+                        bail!(err);
+                    }
+                };
+
+                let doc = doc_mut!(self, &save_event.doc_id);
+                doc.set_last_saved_revision(save_event.revision);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Switches the editor into normal mode.
+    pub fn enter_normal_mode(&mut self) {
+        use helix_core::{graphemes, Range};
+
+        if self.mode == Mode::Normal {
+            return;
+        }
+
+        self.mode = Mode::Normal;
+        let (view, doc) = current!(self);
+
+        try_restore_indent(doc, view);
+
+        // if leaving append mode, move cursor back by 1
+        if doc.restore_cursor {
+            let text = doc.text().slice(..);
+            let selection = doc.selection(view.id).clone().transform(|range| {
+                Range::new(
+                    range.from(),
+                    graphemes::prev_grapheme_boundary(text, range.to()),
+                )
+            });
+
+            doc.set_selection(view.id, selection);
+            doc.restore_cursor = false;
+        }
+    }
+}
+
+fn try_restore_indent(doc: &mut Document, view: &mut View) {
+    use helix_core::{
+        chars::char_is_whitespace, line_ending::line_end_char_index, Operation, Transaction,
+    };
+
+    fn inserted_a_new_blank_line(changes: &[Operation], pos: usize, line_end_pos: usize) -> bool {
+        if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
+            changes
+        {
+            move_pos + inserted_str.len() == pos
+                && inserted_str.starts_with('\n')
+                && inserted_str.chars().skip(1).all(char_is_whitespace)
+                && pos == line_end_pos // ensure no characters exists after current position
+        } else {
+            false
+        }
+    }
+
+    let doc_changes = doc.changes().changes();
+    let text = doc.text().slice(..);
+    let range = doc.selection(view.id).primary();
+    let pos = range.cursor(text);
+    let line_end_pos = line_end_char_index(&text, range.cursor_line(text));
+
+    if inserted_a_new_blank_line(doc_changes, pos, line_end_pos) {
+        // Removes tailing whitespaces.
+        let transaction =
+            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+                let line_start_pos = text.line_to_char(range.cursor_line(text));
+                (line_start_pos, pos, None)
+            });
+        crate::apply_transaction(&transaction, doc, view);
     }
 }

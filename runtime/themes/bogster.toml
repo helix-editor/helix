@@ -1,76 +1,96 @@
 # Author : Wojciech Kępka <wojciech@wkepka.dev>
 
-"attribute" = "#dc7759"
-"keyword" = { fg = "#dcb659", modifiers = ["bold"] }
-"keyword.directive" = "#dcb659"
-"namespace" = "#d32c5d"
-"punctuation" = "#dc7759"
-"punctuation.delimiter" = "#dc7759"
-"operator" = { fg = "#dc7759", modifiers = ["bold"] }
-"special" = "#7fdc59"
-"variable.other.member" = "#c6b8ad"
-"variable" = "#c6b8ad"
-"variable.parameter" = "#c6b8ad"
-"type" = "#dc597f"
-"type.builtin" = { fg = "#d32c5d", modifiers = ["bold"] }
-"constructor" = "#dc597f"
-"function" = "#59dcd8"
-"function.macro" = { fg = "#dc7759", modifiers = ["bold"] }
-"function.builtin" = { fg = "#59dcd8", modifiers = ["bold"] }
-"comment" = "#627d9d"
-"variable.builtin" = "#c6b8ad"
-"constant" = "#59dcb7"
-"constant.builtin" = "#59dcb7"
-"string" = "#59dcb7"
-"constant.numeric" = "#59c0dc"
-"constant.character.escape" = { fg = "#7fdc59", modifiers = ["bold"] }
-"label" = "#59c0dc"
+"attribute" = "bogster-orange"
+"keyword" = { fg = "bogster-yellow", modifiers = ["bold"] }
+"keyword.directive" = "bogster-yellow"
+"namespace" = "bogster-red"
+"punctuation" = "bogster-orange"
+"punctuation.delimiter" = "bogster-orange"
+"operator" = { fg = "bogster-orange", modifiers = ["bold"] }
+"special" = "bogster-lgreen"
+"variable.other.member" = "bogster-fg0"
+"variable" = "bogster-fg0"
+"variable.parameter" = "bogster-fg0"
+"type" = "bogster-lred"
+"type.builtin" = { fg = "bogster-red", modifiers = ["bold"] }
+"constructor" = "bogster-lred"
+"function" = "bogster-lblue"
+"function.macro" = { fg = "bogster-orange", modifiers = ["bold"] }
+"function.builtin" = { fg = "bogster-lblue", modifiers = ["bold"] }
+"comment" = "bogster-base5"
+"variable.builtin" = "bogster-fg0"
+"constant" = "bogster-teal"
+"constant.builtin" = "bogster-teal"
+"string" = "bogster-teal"
+"constant.numeric" = "bogster-blue"
+"constant.character.escape" = { fg = "bogster-lgreen", modifiers = ["bold"] }
+"label" = "bogster-blue"
+"module" = "bogster-red"
 
-"module" = "#d32c5d"
+"markup.heading" = "bogster-blue"
+"markup.list" = "bogster-red"
+"markup.bold" = { fg = "bogster-yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "bogster-purp", modifiers = ["italic"] }
+"markup.link.url" = { fg = "bogster-yellow", modifiers = ["underlined"] }
+"markup.link.text" = "bogster-red"
+"markup.quote" = "bogster-teal"
+"markup.raw" = "bogster-lgreen"
 
-# TODO
-"markup.heading" = "blue"
-"markup.list" = "red"
-"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
-"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
-"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
-"markup.link.text" = "red"
-"markup.quote" = "cyan"
-"markup.raw" = "green"
+"diff.plus" = "bogster-teal"
+"diff.delta" = "bogster-orange"
+"diff.minus" = "bogster-lred"
 
-"diff.plus" = "#59dcb7"
-"diff.delta" = "#dc7759"
-"diff.minus" = "#dc597f"
+"ui.background" = { bg = "bogster-base1" }
+"ui.linenr" = { fg = "bogster-base4" }
+"ui.linenr.selected" = { fg = "bogster-fg1" }
+"ui.cursorline" = { bg = "bogster-base0" }
+"ui.statusline" = { fg = "bogster-fg1", bg = "bogster-base2" }
+"ui.statusline.inactive" = { fg = "bogster-fg0", bg = "bogster-base2" }
+"ui.popup" = { bg = "bogster-base2" }
+"ui.window" = { bg = "bogster-base2" }
+"ui.help" = { bg = "bogster-base2", fg = "bogster-fg1" }
 
-"ui.background" = { bg = "#161c23" }
-"ui.linenr" = { fg = "#415367" }
-"ui.linenr.selected" = { fg = "#e5ded6" }  # TODO
-"ui.cursorline" = { bg = "#131920" }
-"ui.statusline" = { fg = "#e5ded6", bg = "#232d38" }
-"ui.statusline.inactive" = { fg = "#c6b8ad", bg = "#232d38" }
-"ui.bufferline" = { fg = "#627d9d", bg = "#131920" }
-"ui.bufferline.active" = { fg = "#e5ded6", bg = "#232d38" }
-"ui.popup" = { bg = "#232d38" }
-"ui.window" = { bg = "#232d38" }
-"ui.help" = { bg = "#232d38", fg = "#e5ded6" }
+"ui.statusline.normal" = { fg = "bogster-base1", bg = "bogster-blue", modifiers = [ "bold" ]}
+"ui.statusline.insert" = { fg = "bogster-base1", bg = "bogster-lgreen", modifiers = [ "bold" ]}
+"ui.statusline.select" = { fg = "bogster-base1", bg = "bogster-red", modifiers = [ "bold" ] }
 
-"ui.text" = { fg = "#e5ded6" }
-"ui.text.focus" = { fg = "#e5ded6", modifiers= ["bold"] }
-"ui.virtual.whitespace" = "#627d9d"
-"ui.virtual.ruler" = { bg = "#131920" }
+"ui.text" = { fg = "bogster-fg1" }
+"ui.text.focus" = { fg = "bogster-fg1", modifiers= ["bold"] }
+"ui.virtual.whitespace" = "bogster-base5"
+"ui.virtual.ruler" = { bg = "bogster-base0" }
 
-"ui.selection" = { bg = "#313f4e" }
-# "ui.cursor.match"  # TODO might want to override this because dimmed is not widely supported
-"ui.cursor.match" = { fg = "#313f4e", bg = "#dc7759" }
-"ui.cursor" = { fg = "#ABB2BF", modifiers = ["reversed"] }
+"ui.selection" = { bg = "bogster-base3" }
+"ui.cursor.match" = { fg = "bogster-base3", bg = "bogster-orange" }
+"ui.cursor" = { fg = "bogster-base5", modifiers = ["reversed"] }
 
-"ui.menu" = { fg = "#e5ded6bg", bg = "#232d38" }
-"ui.menu.selected" = { bg = "#313f4e" }
+"ui.menu" = { fg = "bogster-fg1", bg = "bogster-base2" }
+"ui.menu.selected" = { bg = "bogster-base3" }
 
-"warning" = "#dc7759"
-"error" = "#dc597f"
-"info" = "#59dcb7"
-"hint" = "#59c0dc"
+"warning" = "bogster-orange"
+"error" = "bogster-lred"
+"info" = "bogster-teal"
+"hint" = "bogster-blue"
 
 # make diagnostic underlined, to distinguish with selection text.
 diagnostic = { modifiers = ["underlined"] }
+
+[palette]
+bogster-yellow = "#dcb659"
+bogster-lblue = "#59dcd8"
+bogster-teal = "#59dcb7"
+bogster-blue = "#36b2d4"
+bogster-orange = "#dc7759"
+bogster-red = "#d32c5d"
+bogster-lgreen = "#7fdc59"
+bogster-lred = "#dc597f"
+bogster-purp = "#b759dc"
+
+bogster-base0 = "#13181e"
+bogster-base1 = "#161c23" 
+bogster-base2 = "#232d38"
+bogster-base3 = "#313f4e" 
+bogster-base4 = "#415367" 
+bogster-base5 = "#abb2bf"
+
+bogster-fg0 = "#c6b8ad"
+bogster-fg1 = "#e5ded6"

@@ -21,7 +21,6 @@ pub mod register;
 pub mod search;
 pub mod selection;
 pub mod shellwords;
-mod state;
 pub mod surround;
 pub mod syntax;
 pub mod test;
@@ -70,7 +69,7 @@ pub fn find_root(root: Option<&str>, root_markers: &[String]) -> std::path::Path
             top_marker = Some(ancestor);
         }
 
-        if ancestor.join(".git").is_dir() {
+        if ancestor.join(".git").exists() {
             // Top marker is repo root if not root marker was detected yet
             if top_marker.is_none() {
                 top_marker = Some(ancestor);
@@ -84,7 +83,7 @@ pub fn find_root(root: Option<&str>, root_markers: &[String]) -> std::path::Path
     top_marker.map_or(current_dir, |a| a.to_path_buf())
 }
 
-pub use ropey::{str_utils, Rope, RopeBuilder, RopeSlice};
+pub use ropey::{self, str_utils, Rope, RopeBuilder, RopeSlice};
 
 // pub use tendril::StrTendril as Tendril;
 pub use smartstring::SmartString;
@@ -103,7 +102,6 @@ pub use smallvec::{smallvec, SmallVec};
 pub use syntax::Syntax;
 
 pub use diagnostic::Diagnostic;
-pub use state::State;
 
 pub use line_ending::{LineEnding, DEFAULT_LINE_ENDING};
 pub use transaction::{Assoc, Change, ChangeSet, Operation, Transaction};

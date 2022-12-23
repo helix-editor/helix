@@ -17,12 +17,14 @@ term = ["crossterm"]
 bitflags = "1.3"
 anyhow = "1"
 helix-core = { version = "0.6", path = "../helix-core" }
+helix-loader = { version = "0.6", path = "../helix-loader" }
 helix-lsp = { version = "0.6", path = "../helix-lsp" }
 helix-dap = { version = "0.6", path = "../helix-dap" }
 crossterm = { version = "0.25", optional = true }
+helix-vcs = { version = "0.6", path = "../helix-vcs" }
 
 # Conversion traits
-once_cell = "1.15"
+once_cell = "1.16"
 url = "2"
 
 arc-swap = { version = "1.5.1" }
@@ -41,6 +43,7 @@ toml = "0.5"
 log = "~0.4"
 
 which = "4.2"
+
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "4.4", features = ["std"] }

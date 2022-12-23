@@ -389,6 +389,8 @@ fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> boo
     }
 }
 
+/// Finds the range of the next or previous textobject in the syntax sub-tree of `node`.
+/// Returns the range in the forwards direction.
 pub fn goto_treesitter_object(
     slice: RopeSlice,
     range: Range,
@@ -419,8 +421,8 @@ pub fn goto_treesitter_object(
                 .filter(|n| n.start_byte() > byte_pos)
                 .min_by_key(|n| n.start_byte())?,
             Direction::Backward => nodes
-                .filter(|n| n.start_byte() < byte_pos)
-                .max_by_key(|n| n.start_byte())?,
+                .filter(|n| n.end_byte() < byte_pos)
+                .max_by_key(|n| n.end_byte())?,
         };
 
         let len = slice.len_bytes();
@@ -434,7 +436,7 @@ pub fn goto_treesitter_object(
         let end_char = slice.byte_to_char(end_byte);
 
         // head of range should be at beginning
-        Some(Range::new(end_char, start_char))
+        Some(Range::new(start_char, end_char))
     };
     (0..count).fold(range, |range, _| get_range(range).unwrap_or(range))
 }

@@ -7,15 +7,13 @@ members = [
   "helix-lsp",
   "helix-dap",
   "helix-loader",
+  "helix-vcs",
   "xtask",
 ]
 
 default-members = [
   "helix-term"
 ]
-
-[profile.dev]
-split-debuginfo = "unpacked"
 
 [profile.release]
 lto = "thin"
