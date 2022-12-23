@@ -230,7 +230,7 @@ impl Application {
                 editor.set_status(format!(
                     "Loaded {} file{}.",
                     nr_of_files,
-                    "s".repeat((nr_of_files != 1).into()) // avoid "Loaded 1 files." grammo
+                    if nr_of_files == 1 { "" } else { "s" } // avoid "Loaded 1 files." grammo
                 ));
                 // align the view to center after all files are loaded,
                 // does not affect views without pos since it is at the top
