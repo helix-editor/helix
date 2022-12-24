@@ -122,11 +122,8 @@ impl<'a> Row<'a> {
     }
 
     /// Returns the contents of cells as plain text, without styles and colors.
-    pub fn cell_text(&self) -> Vec<String> {
-        self.cells
-            .iter()
-            .map(|cell| String::from(&cell.content))
-            .collect()
+    pub fn cell_text(&self) -> impl Iterator<Item = String> + '_ {
+        self.cells.iter().map(|cell| String::from(&cell.content))
     }
 }
 
