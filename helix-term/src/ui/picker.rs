@@ -727,7 +727,11 @@ impl<T: Item + 'static> Component for Picker<T> {
             .map(|mut row| {
                 const TEMP_CELL_SEP: &str = " ";
 
-                let line = row.cell_text().join(TEMP_CELL_SEP);
+                let line = row.cell_text().fold(String::new(), |mut s, frag| {
+                    s.push_str(&frag);
+                    s.push_str(TEMP_CELL_SEP);
+                    s
+                });
 
                 // Items are filtered by using the text returned by menu::Item::filter_text
                 // but we do highlighting here using the text in Row and therefore there
