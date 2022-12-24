@@ -1460,7 +1460,7 @@ file-types = ["tscn","tres"]
 shebangs = []
 roots = ["project.godot"]
 auto-format = false
-comment-token = "#"
+comment-token = ";"
 indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
