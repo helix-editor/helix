@@ -45,6 +45,11 @@ warning = "roninYellow"
 info = "waveAqua1"
 hint = "dragonBlue"
 
+## Git gutter
+"diff.plus" = "autumnGreen"
+"diff.minus" = "autumnRed"
+"diff.delta" = "autumnYellow"
+
 ## Syntax highlighting
 "type" = "waveAqua2"
 "constant" = "surimiOrange"
