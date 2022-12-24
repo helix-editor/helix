@@ -87,11 +87,15 @@ impl Prompt {
     }
 
     pub fn with_line(mut self, line: String, editor: &Editor) -> Self {
+        self.set_line(line, editor);
+        self
+    }
+
+    pub fn set_line(&mut self, line: String, editor: &Editor) {
         let cursor = line.len();
         self.line = line;
         self.cursor = cursor;
         self.recalculate_completion(editor);
-        self
     }
 
     pub fn line(&self) -> &String {

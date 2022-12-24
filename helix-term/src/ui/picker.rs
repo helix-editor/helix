@@ -150,6 +150,11 @@ impl<T: Item + 'static> FilePicker<T> {
         self
     }
 
+    pub fn with_line(mut self, line: String, editor: &Editor) -> Self {
+        self.picker.set_line(line, editor);
+        self
+    }
+
     fn current_file(&self, editor: &Editor) -> Option<FileLocation> {
         self.picker
             .selection()
@@ -678,6 +683,10 @@ impl<T: Item> Picker<T> {
             self.score();
         }
         EventResult::Consumed(None)
+    }
+
+    pub fn set_line(&mut self, line: String, editor: &Editor) {
+        self.prompt.set_line(line, editor);
     }
 }
 
