@@ -241,7 +241,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                     3.2 MORE ON MOTIONS                       =
+=                     3.2 MORE MOTIONS                          =
 =================================================================
 
  As you saw, typing w moves the cursor forward until the start
@@ -253,6 +253,19 @@ _________________________________________________________________
    e - Move forward to the end of the current word.
    b - Move backward to the beginning of the current word.
 
+ To select the word under cursor, combine e and b.
+
+ 1. Move the cursor to the line marked '-->' below.
+ 2. Move to a 'd' letter.
+ 3. Type e to select a half of the word.
+ 4. Type b to select the rest.
+
+--> The Middle Kingdom.
+
+=================================================================
+=                     3.3 WORDS AND words                       =
+=================================================================
+
  The w,e,b motions also have counterparts - W,E,B - which
  traverse WORDS instead of words. WORDS are only separated by
  whitespace, whereas words can be separated by other characters
@@ -262,8 +275,17 @@ _________________________________________________________________
 
 
 
+
+
+
+
+
+
+
+
+
 =================================================================
-=                    3.3 THE CHANGE COMMAND                     =
+=                    3.4 THE CHANGE COMMAND                     =
 =================================================================
 
  Type c to change the current selection.
@@ -285,7 +307,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                   3.4 COUNTS WITH MOTIONS                     =
+=                   3.5 COUNTS WITH MOTIONS                     =
 =================================================================
 
  Type a number before a motion to repeat it that many times.
@@ -307,7 +329,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                    3.5 SELECT / EXTEND MODE                   =
+=                    3.6 SELECT / EXTEND MODE                   =
 =================================================================
 
  Type v to enter Select mode.
@@ -329,7 +351,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                     3.6 SELECTING LINES                       =
+=                     3.7 SELECTING LINES                       =
 =================================================================
 
  Type x to select a whole line. Type x again to select the next.
@@ -351,7 +373,7 @@ _________________________________________________________________
       subsequent lines. X on an empty line does nothing.
 
 =================================================================
-=                   3.7 COLLAPSING SELECTIONS                   =
+=                   3.8 COLLAPSING SELECTIONS                   =
 =================================================================
 
  Type ; to collapse selections to single cursors.
