@@ -12,6 +12,9 @@
 "ui.background" = { fg = "fujiWhite", bg = "sumiInk1" }
 
 "ui.linenr" = { fg = "sumiInk4" }
+"ui.linenr.selected" = { fg = "roninYellow" }
+
+"ui.virtual.indent-guide" = "sumiInk4"
 
 "ui.statusline" = { fg = "oldWhite", bg = "sumiInk0" }
 "ui.statusline.inactive" = { fg = "fujiGray", bg = "sumiInk0" }
