@@ -2,6 +2,7 @@ use helix_core::{coords_at_pos, encoding, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
+    editor::FilenameDisplayMode,
     graphics::Rect,
     theme::Style,
     Document, Editor, View,
@@ -414,7 +415,14 @@ where
         let rel_path = context.doc.relative_path();
         let path = rel_path
             .as_ref()
-            .map(|p| p.to_string_lossy())
+            .and_then(
+                |p| match context.editor.config().statusline.filename_display_mode {
+                    FilenameDisplayMode::Relative => Some(p.to_string_lossy()),
+                    FilenameDisplayMode::Leaf => {
+                        p.as_path().file_name().map(|s| s.to_string_lossy())
+                    }
+                },
+            )
             .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
         format!(
             " {}{} ",

@@ -264,6 +264,21 @@ pub struct SearchConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FilenameDisplayMode {
+    /// Show only the filename
+    Leaf,
+    /// Show the relative path of the file (absolute if the file is not in the current working dir)
+    Relative,
+}
+
+impl Default for FilenameDisplayMode {
+    fn default() -> Self {
+        Self::Relative
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct StatusLineConfig {
     pub left: Vec<StatusLineElement>,
@@ -271,6 +286,7 @@ pub struct StatusLineConfig {
     pub right: Vec<StatusLineElement>,
     pub separator: String,
     pub mode: ModeConfig,
+    pub filename_display_mode: FilenameDisplayMode,
 }
 
 impl Default for StatusLineConfig {
@@ -283,6 +299,7 @@ impl Default for StatusLineConfig {
             right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
             separator: String::from("│"),
             mode: ModeConfig::default(),
+            filename_display_mode: FilenameDisplayMode::default(),
         }
     }
 }
