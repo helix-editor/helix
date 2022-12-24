@@ -1703,6 +1703,20 @@ fn open_config(
     Ok(())
 }
 
+fn open_language_config(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    cx.editor
+        .open(&helix_loader::lang_config_file(), Action::Replace)?;
+    Ok(())
+}
+
 fn open_log(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -2295,6 +2309,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Open the user config.toml file.",
             fun: open_config,
+            completer: None,
+        },
+        TypableCommand {
+            name: "config-language-open",
+            aliases: &["config-lang-open"],
+            doc: "Open the user config.toml file.",
+            fun: open_language_config,
             completer: None,
         },
         TypableCommand {
