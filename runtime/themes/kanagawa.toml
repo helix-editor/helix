@@ -27,7 +27,7 @@
 
 "ui.popup" = { fg = "fujiWhite", bg = "sumiInk0" }
 "ui.window" = { fg = "fujiWhite" }
-"ui.help" = { fg = "fujiWhite", bg = "waveBlue1" }
+"ui.help" = { fg = "fujiWhite", bg = "sumiInk1" }
 "ui.text" = "fujiWhite"
 "ui.text.focus" = { fg = "fujiWhite", bg = "waveBlue1", modifiers = ["bold"] }
 "ui.virtual" = "waveBlue1"
