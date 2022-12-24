@@ -9,6 +9,8 @@
 | `:buffer-close-others!`, `:bco!`, `:bcloseother!` | Force close all buffers but the currently focused one. |
 | `:buffer-close-all`, `:bca`, `:bcloseall` | Close all buffers without quitting. |
 | `:buffer-close-all!`, `:bca!`, `:bcloseall!` | Force close all buffers ignoring unsaved changes without quitting. |
+| `:buffer-close-nth`, `:bcn`, `:bclosenth` | Close nth buffer without quitting. |
+| `:buffer-nth`, `:bnth` | Goto nth buffer. |
 | `:buffer-next`, `:bn`, `:bnext` | Goto next buffer. |
 | `:buffer-previous`, `:bp`, `:bprev` | Goto previous buffer. |
 | `:write`, `:w` | Write changes to disk. Accepts an optional path (:write some/path.txt) |
@@ -50,6 +52,7 @@
 | `:lsp-restart` | Restarts the Language Server that is in use by the current doc |
 | `:tree-sitter-scopes` | Display tree sitter scopes, primarily for theming and development. |
 | `:debug-start`, `:dbg` | Start a debug session from a given template with given parameters. |
+| `:dap-toggle-breakpoint-by-line` | Toggle dap breakpoint by line |
 | `:debug-remote`, `:dbg-tcp` | Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters. |
 | `:debug-eval` | Evaluate expression in current debug context. |
 | `:vsplit`, `:vs` | Open the file in a vertical split. |

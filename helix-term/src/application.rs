@@ -180,7 +180,8 @@ impl Application {
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
         }));
-        let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
+        let mut editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
+        editor_view.mouse_enable(editor.config().mouse);
         compositor.push(editor_view);
 
         if args.load_tutor {

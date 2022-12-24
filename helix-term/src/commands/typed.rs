@@ -91,6 +91,17 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     Ok(())
 }
 
+pub fn buffer_open_nth_impl(cx: &mut compositor::Context, nth: usize) -> anyhow::Result<()> {
+    let doc_id = match cx.editor.documents().nth(nth) {
+        Some(doc) => doc.id(),
+        None => {
+            bail!("Selected buffer does not exist.");
+        }
+    };
+    cx.editor
+        .switch(doc_id, helix_view::editor::Action::Replace);
+    Ok(())
+}
 fn buffer_close_by_ids_impl(
     cx: &mut compositor::Context,
     doc_ids: &[DocumentId],
@@ -254,6 +265,71 @@ fn force_buffer_close_all(
     buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
+fn buffer_close_nth(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let index: usize = match args.first() {
+        Some(arg) => match arg.parse() {
+            Ok(ind) => ind,
+            _ => {
+                cx.editor.set_error(":bcn argument must be number!");
+                return Ok(());
+            }
+        },
+        None => {
+            cx.editor.set_error(":bcn take one argument!");
+            return Ok(());
+        }
+    };
+    let doc = match cx.editor.documents().nth(index) {
+        Some(doc) => doc,
+        None => {
+            // cx.editor.set_error(":bcn selected buffer does not exist!");
+            return Ok(());
+        }
+    };
+    let doc_id = doc.id();
+    buffer_close_by_ids_impl(cx, &[doc_id], false)
+}
+
+fn buffer_nth(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let index: usize = match args.first() {
+        Some(arg) => match arg.parse() {
+            Ok(ind) => ind,
+            _ => {
+                cx.editor.set_error(":bnth argument must be number!");
+                return Ok(());
+            }
+        },
+        None => {
+            cx.editor.set_error(":bnth take one argument!");
+            return Ok(());
+        }
+    };
+    let doc = match cx.editor.documents().nth(index) {
+        Some(doc) => doc,
+        None => {
+            // cx.editor.set_error(":bnth selected buffer does not exist!");
+            return Ok(());
+        }
+    };
+    let doc_id = doc.id();
+    cx.editor
+        .switch(doc_id, helix_view::editor::Action::Replace);
+    Ok(())
+}
 fn buffer_next(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1375,6 +1451,40 @@ fn debug_start(
     dap_start_impl(cx, name.as_deref(), None, Some(args))
 }
 
+fn dap_toggle_breakpoint_by_line(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let line: usize = match args.first() {
+        Some(arg) => match arg.parse() {
+            Ok(ind) => ind,
+            _ => {
+                cx.editor.set_error(":bcn argument must be number!");
+                return Ok(());
+            }
+        },
+        None => {
+            cx.editor.set_error(":bcn take one argument!");
+            return Ok(());
+        }
+    };
+
+    let mut cxt = Context {
+        register: None,
+        count: None,
+        editor: cx.editor,
+        callback: None,
+        on_next_key_callback: None,
+        jobs: cx.jobs,
+    };
+    super::dap_toggle_breakpoint_by_line(&mut cxt, line);
+    Ok(())
+}
+
 fn debug_remote(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1889,6 +1999,19 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: None,
         },
         TypableCommand {
+            name: "buffer-close-nth",
+            aliases: &["bcn", "bclosenth"],
+            doc: "Close nth buffer without quitting.",
+            fun: buffer_close_nth,
+            completer: None,
+        }, TypableCommand {
+            name: "buffer-nth",
+            aliases: &["bnth"],
+            doc: "Goto nth buffer.",
+            fun: buffer_nth,
+            completer: None,
+        },
+        TypableCommand {
             name: "buffer-next",
             aliases: &["bn", "bnext"],
             doc: "Goto next buffer.",
@@ -2176,6 +2299,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["dbg"],
             doc: "Start a debug session from a given template with given parameters.",
             fun: debug_start,
+            completer: None,
+        },
+        TypableCommand {
+            name: "dap-toggle-breakpoint-by-line",
+            aliases: &[],
+            doc: "Toggle dap breakpoint by line",
+            fun: dap_toggle_breakpoint_by_line,
             completer: None,
         },
         TypableCommand {

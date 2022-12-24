@@ -1,5 +1,5 @@
 use crate::{
-    commands,
+    commands::{self, MappableCommand},
     compositor::{Component, Context, Event, EventResult},
     job::{self, Callback},
     key,
@@ -25,7 +25,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{borrow::Cow, cmp::min, num::NonZeroUsize, path::PathBuf};
+use std::{borrow::Cow, cmp::min, collections::HashMap, num::NonZeroUsize, path::PathBuf};
 
 use tui::buffer::Buffer as Surface;
 
@@ -39,6 +39,81 @@ pub struct EditorView {
     last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
+    mouse_actions: HashMap<MouseEventKind, MouseMap>,
+    mosue_enable: bool,
+}
+pub struct MouseAreaAction {
+    area: Rect,
+    action: MouseMap,
+}
+impl MouseAreaAction {
+    fn init(x: u16, y: u16) -> MouseAreaAction {
+        MouseAreaAction {
+            area: Rect {
+                x,
+                y,
+                width: 0,
+                height: 0,
+            },
+            action: MouseMap::Area(Some(Vec::new())),
+        }
+    }
+    fn union(mut self, other: MouseAreaAction) -> MouseAreaAction {
+        match self.action {
+            // if action, change to area and append
+            MouseMap::Action(cmd) => {
+                self.action = MouseMap::Area(Some(vec![MouseAreaAction {
+                    area: self.area,
+                    action: MouseMap::Action(cmd),
+                }]));
+                self = self.union(other);
+                self
+            }
+            MouseMap::Area(mousearr) => {
+                self.area = self.area.union(other.area);
+                match mousearr {
+                    Some(mut arr) => {
+                        arr.push(other);
+                        self.action = MouseMap::Area(Some(arr));
+                        self
+                    }
+                    None => {
+                        self.action = MouseMap::Area(Some(vec![other]));
+                        self
+                    }
+                }
+            }
+        }
+    }
+}
+pub enum MouseMap {
+    Action(MappableCommand),
+    Area(Option<Vec<MouseAreaAction>>),
+}
+impl MouseMap {
+    fn get_action(&self, row: u16, column: u16) -> Option<&MappableCommand> {
+        match self {
+            MouseMap::Action(action) => Some(action),
+            MouseMap::Area(area) => match area {
+                Some(area) => {
+                    match area.iter().rev().find(|mouse_area_action| {
+                        if mouse_area_action.area.x <= column
+                            && mouse_area_action.area.x + mouse_area_action.area.width > column
+                            && mouse_area_action.area.y <= row
+                            && mouse_area_action.area.y + mouse_area_action.area.height > row
+                        {
+                            return true;
+                        }
+                        false
+                    }) {
+                        Some(mouse_area_action) => mouse_area_action.action.get_action(row, column),
+                        None => None,
+                    }
+                }
+                None => None,
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -63,15 +138,41 @@ impl EditorView {
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
+            mosue_enable: false,
+            mouse_actions: HashMap::new(),
+        }
+    }
+
+    /// add a click action
+    pub fn add_mouse_action(&mut self, mouse_event: MouseEventKind, action: MouseAreaAction) {
+        if self.mosue_enable {
+            match self.mouse_actions.get_mut(&mouse_event) {
+                Some(commands) => match commands {
+                    MouseMap::Action(_) => (),
+                    MouseMap::Area(actionarea) => match actionarea {
+                        Some(arr) => arr.push(action),
+                        None => {
+                            self.mouse_actions
+                                .insert(mouse_event, MouseMap::Area(Some(vec![action])));
+                        }
+                    },
+                },
+                None => {
+                    self.mouse_actions
+                        .insert(mouse_event, MouseMap::Area(Some(vec![action])));
+                }
+            }
         }
     }
 
     pub fn spinners_mut(&mut self) -> &mut ProgressSpinners {
         &mut self.spinners
     }
-
+    pub fn mouse_enable(&mut self, can: bool) {
+        self.mosue_enable = can;
+    }
     pub fn render_view(
-        &self,
+        &mut self,
         editor: &Editor,
         doc: &Document,
         view: &View,
@@ -150,7 +251,7 @@ impl EditorView {
         };
 
         Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights, &config);
-        Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
+        self.render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
         if is_focused {
@@ -648,7 +749,7 @@ impl EditorView {
     }
 
     /// Render bufferline at the top
-    pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
+    pub fn render_bufferline(&mut self, editor: &Editor, viewport: Rect, surface: &mut Surface) {
         let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
         surface.clear_with(
             viewport,
@@ -668,10 +769,20 @@ impl EditorView {
             .try_get("ui.bufferline")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
 
+        let modify = editor
+            .theme
+            .try_get("diff.plus")
+            .unwrap_or(bufferline_active);
+
+        let unmodify = editor
+            .theme
+            .try_get("diff.minus")
+            .unwrap_or(bufferline_inactive);
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
-        for doc in editor.documents() {
+        let mut submap = MouseAreaAction::init(viewport.x, viewport.y);
+        for (i, doc) in editor.documents().enumerate() {
             let fname = doc
                 .path()
                 .unwrap_or(&scratch)
@@ -680,27 +791,66 @@ impl EditorView {
                 .to_str()
                 .unwrap_or_default();
 
-            let style = if current_doc == doc.id() {
+            let mut style = if current_doc == doc.id() {
                 bufferline_active
             } else {
                 bufferline_inactive
             };
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
-            let used_width = viewport.x.saturating_sub(x);
-            let rem_width = surface.area.width.saturating_sub(used_width);
+            let text = format!(" {}   ", fname);
+            let width = min(text.chars().count(), 20);
 
-            x = surface
-                .set_stringn(x, viewport.y, text, rem_width as usize, style)
-                .0;
+            let area = Rect {
+                x,
+                y: viewport.y,
+                width: width as u16,
+                height: 1,
+            };
+            x = surface.set_stringn(x, viewport.y, text, width, style).0;
+            submap = submap.union(MouseAreaAction {
+                area,
+                action: MouseMap::Action(MappableCommand::Typable {
+                    name: "buffer-nth".to_owned(),
+                    args: vec![format!("{}", i)],
+                    doc: "".to_owned(),
+                }),
+            });
 
+            style = style.remove_modifier(Modifier::ITALIC);
+            let sign = if doc.is_modified() {
+                style.fg = modify.fg;
+                "•"
+            } else {
+                style.fg = unmodify.fg;
+                "×"
+            };
+            let width = sign.chars().count();
+
+            let area = Rect {
+                x: x - 2,
+                y: viewport.y,
+                width: width as u16,
+                height: 1,
+            };
+            surface.set_stringn(x - 2, viewport.y, sign, 1, style);
+
+            submap = submap.union(MouseAreaAction {
+                area,
+                action: MouseMap::Action(MappableCommand::Typable {
+                    name: "buffer-close-nth".to_owned(),
+                    args: vec![format!("{}", i)],
+                    doc: "".to_owned(),
+                }),
+            });
             if x >= surface.area.right() {
                 break;
             }
         }
+        self.add_mouse_action(MouseEventKind::Down(MouseButton::Left), submap);
     }
-
+    #[allow(clippy::too_many_arguments)]
     pub fn render_gutter(
+        &mut self,
         editor: &Editor,
         doc: &Document,
         view: &View,
@@ -729,10 +879,12 @@ impl EditorView {
         // avoid lots of small allocations by reusing a text buffer for each line
         let mut text = String::with_capacity(8);
 
+        let mut submap = MouseAreaAction::init(viewport.x, viewport.y);
         for gutter_type in view.gutters() {
             let mut gutter = gutter_type.style(editor, doc, view, theme, is_focused);
             let width = gutter_type.width(view, doc);
             text.reserve(width); // ensure there's enough space for the gutter
+
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
                 let selected = cursors.contains(&line);
                 let x = viewport.x + offset;
@@ -757,11 +909,26 @@ impl EditorView {
                         gutter_style,
                     );
                 }
+                let area = Rect {
+                    x,
+                    y,
+                    width: width as u16,
+                    height: 1,
+                };
+
+                submap = submap.union(MouseAreaAction {
+                    area,
+                    action: MouseMap::Action(MappableCommand::Typable {
+                        name: "dap-toggle-breakpoint-by-line".to_owned(),
+                        args: vec![format!("{}", line)],
+                        doc: "".to_owned(),
+                    }),
+                });
                 text.clear();
             }
-
             offset += width as u16;
         }
+        self.add_mouse_action(MouseEventKind::Down(MouseButton::Left), submap);
     }
 
     pub fn render_diagnostics(
@@ -1126,6 +1293,10 @@ impl EditorView {
             ..
         } = *event;
 
+        let has_click_action = |kind, row, column| match self.mouse_actions.get(kind) {
+            Some(commands) => commands.get_action(row, column),
+            None => None,
+        };
         let pos_and_view = |editor: &Editor, row, column| {
             editor.tree.views().find_map(|(view, _focus)| {
                 view.pos_at_screen_coords(&editor.documents[&view.doc], row, column)
@@ -1140,6 +1311,10 @@ impl EditorView {
             })
         };
 
+        if let Some(cmd) = has_click_action(&kind, row, column) {
+            cmd.execute(cxt);
+            return EventResult::Consumed(None);
+        }
         match kind {
             MouseEventKind::Down(MouseButton::Left) => {
                 let editor = &mut cxt.editor;
@@ -1158,23 +1333,6 @@ impl EditorView {
                     editor.ensure_cursor_in_view(view_id);
 
                     return EventResult::Consumed(None);
-                }
-
-                if let Some((coords, view_id)) = gutter_coords_and_view(editor, row, column) {
-                    editor.focus(view_id);
-
-                    let (view, doc) = current!(cxt.editor);
-
-                    let path = match doc.path() {
-                        Some(path) => path.clone(),
-                        None => return EventResult::Ignored(None),
-                    };
-
-                    let line = coords.row + view.offset.row;
-                    if line < doc.text().len_lines() {
-                        commands::dap_toggle_breakpoint_impl(cxt, path, line);
-                        return EventResult::Consumed(None);
-                    }
                 }
 
                 EventResult::Ignored(None)
@@ -1443,6 +1601,7 @@ impl Component for EditorView {
     }
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        self.mouse_actions.clear();
         // clear with background color
         surface.set_style(area, cx.editor.theme.get("ui.background"));
         let config = cx.editor.config();
@@ -1465,7 +1624,7 @@ impl Component for EditorView {
         cx.editor.resize(editor_area);
 
         if use_bufferline {
-            Self::render_bufferline(cx.editor, area.with_height(1), surface);
+            self.render_bufferline(cx.editor, area.with_height(1), surface);
         }
 
         for (view, is_focused) in cx.editor.tree.views() {

@@ -371,6 +371,19 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
     dap_toggle_breakpoint_impl(cx, path, line);
 }
 
+pub fn dap_toggle_breakpoint_by_line(cx: &mut Context, line: usize) {
+    let doc = doc!(cx.editor);
+    let path = match doc.path() {
+        Some(path) => path.clone(),
+        None => {
+            cx.editor
+                .set_error("Can't set breakpoint: document has no path");
+            return;
+        }
+    };
+    dap_toggle_breakpoint_impl(cx, path, line);
+}
+
 pub fn dap_toggle_breakpoint_impl(cx: &mut Context, path: PathBuf, line: usize) {
     // TODO: need to map breakpoints over edits and update them?
     // we shouldn't really allow editing while debug is running though
