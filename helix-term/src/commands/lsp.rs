@@ -492,7 +492,9 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         let symbols = initial_symbols.await?;
         let call = move |_editor: &mut Editor, compositor: &mut Compositor| {
             let picker = sym_picker(symbols, current_url);
-            let dyn_picker = DynamicPicker::new(picker, Box::new(get_symbols));
+            let query_callback =
+                Box::new(move |query, cx: &mut compositor::Context| get_symbols(query, cx.editor));
+            let dyn_picker = DynamicPicker::new(picker, query_callback);
             compositor.push(Box::new(overlaid(dyn_picker)))
         };
 
