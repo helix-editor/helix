@@ -224,6 +224,18 @@ name = "cpp"
 source = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev = "d5e90fba898f320db48d81ddedd78d52c67c1fed" }
 
 [[language]]
+name = "crystal"
+scope = "source.cr"
+file-types = ["cr"]
+roots = ["shard.yml", "shard.lock"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "crystal"
+source = { git = "https://github.com/will/tree-sitter-crystal", rev = "15597b307b18028b04d288561f9c29794621562b" }
+
+[[language]]
 name = "c-sharp"
 scope = "source.csharp"
 injection-regex = "c-?sharp"
@@ -1448,7 +1460,7 @@ file-types = ["tscn","tres"]
 shebangs = []
 roots = ["project.godot"]
 auto-format = false
-comment-token = "#"
+comment-token = ";"
 indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
@@ -2056,3 +2068,16 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "mermaid"
 source = { git = "https://github.com/monaqa/tree-sitter-mermaid", rev = "d787c66276e7e95899230539f556e8b83ee16f6d" }
+
+[[language]]
+name = "matlab"
+scope = "source.m"
+file-types = ["m"]
+comment-token = "%"
+shebangs = ["octave-cli", "matlab"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "matlab"
+source = { git = "https://github.com/mstanciu552/tree-sitter-matlab", rev = "2d5d3d5193718a86477d4335aba5b34e79147326" }

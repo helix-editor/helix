@@ -848,13 +848,13 @@ lines.
     Ensure your cursor is on the '>' of the arrow.
  2. Type Q to start recording.
  3. Edit the line to look like the bottom one.
- 4. Exit insert and Type Q again to stop recording.
+ 4. Exit insert and type Q again to stop recording.
  5. Move to the line below and put your cursor on '>' again.
  6. Type q to repeat the macro.
 
- --> ... sentence doesn't have it's first and last ... .
- --> ... sentence doesn't have it's first and last ... .
-     This sentence doesn't have it's first and last word.
+ --> ... sentence doesn't have its first and last ... .
+ --> ... sentence doesn't have its first and last ... .
+     This sentence doesn't have its first and last word.
 
 =================================================================
 =                        CHAPTER 8 RECAP                        =
@@ -985,11 +985,33 @@ lines.
  --> How much would would a wouldchuck chuck
  --> if a wouldchuck could chuck would?
 
- Note: Additionally, Alt-( and Alt-) cycle the *contents* of the
-       selections as well.
+
+
 
 =================================================================
-=                     10.2 CHANGING CASE                        =
+=             10.2 CYCLING THE CONTENT OF SELECTIONS            =
+=================================================================
+
+ Type Alt-) and Alt-( to cycle the content of the selections
+ forward and backward respectively.
+
+ 1. Move the cursor to the line marked '-->' below.
+ 2. Select both lines with xx or 2x.
+ 3. Type s to select, type "through|water|know" and enter.
+ 4. Use Alt-( and Alt-) to cycle the content of the selections.
+
+ --> Jumping through the water,
+ --> daring to know.
+
+
+
+
+
+
+
+
+=================================================================
+=                     10.3 CHANGING CASE                        =
 =================================================================
 
  Type ~ to switch the case of all selected letters.
@@ -1011,7 +1033,7 @@ lines.
  --> THIS sentence should ALL BE IN uppercase!
 
 =================================================================
-=                   10.3 SPLITTING SELECTIONS                   =
+=                   10.4 SPLITTING SELECTIONS                   =
 =================================================================
 
  Type S to split each selection on a regex pattern.
@@ -1039,13 +1061,13 @@ letters! that is not good grammar. you can fix this.
  * Use ) and ( to cycle the primary selection back and forward
    through selections respectively.
    * Type Alt-, to remove the primary selection.
+   * Type Alt-) and Alt-( to cycle the content of the selections.
 
  * Type ~ to alternate case of selected letters.
    * Use ` and Alt-` to set the case of selected letters to
      upper and lower respectively.
 
  * Type S to split selections on regex.
-
 
 
 
