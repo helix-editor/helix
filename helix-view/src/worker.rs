@@ -17,6 +17,7 @@ use crate::DocumentId;
 // TODO get completion items len from config
 const MAX_COMPLETION_ITEMS_LEN: usize = 20;
 const TIMEOUT: Duration = Duration::from_millis(300);
+const MAX_CONCURRENT_COMMANDS: usize = 10;
 
 pub struct Worker {
     tx: mpsc::Sender<WorkerRequest>,
@@ -91,18 +92,12 @@ fn text_to_words(text: &str, min_word_len: usize) -> HashSet<&str> {
 
 impl Worker {
     pub fn new(completion_trigger_len: u8) -> Self {
-        // channel buffer len allow to limit back-pressure
-        let (command_tx, command_rx) = mpsc::channel::<WorkerRequest>(10);
+        let (command_tx, command_rx) = mpsc::channel::<WorkerRequest>(MAX_CONCURRENT_COMMANDS);
 
         let is_stopped = Arc::new(AtomicBool::new(false));
         let is_stopped_clone = is_stopped.clone();
 
-        // no reasons to collect words less then 2 chars
-        let min_word_len = if completion_trigger_len <= 1 {
-            2
-        } else {
-            completion_trigger_len as usize
-        };
+        let min_word_len = completion_trigger_len as usize + 1;
 
         // Start worker on separate thread
         let handle = task::spawn_blocking(move || {
@@ -158,16 +153,19 @@ impl Worker {
             return None;
         }
 
+        log::trace!("Worker command: completion {}", prefix,);
+
         // TODO pool of oneshot channels
         let (tx, rx) = oneshot::channel::<Option<Vec<String>>>();
 
-        log::trace!("Worker command: completion {}", prefix,);
         if let Err(e) = self
             .tx
             .send_timeout(WorkerRequest::Completion { prefix, tx }, TIMEOUT)
             .await
         {
-            log::info!("On send command to worker: {}", e);
+            // MAX_CONCURRENT_COMMANDS reached (channel is full)
+            // worker can't accept and proccess command in time less then TIMEOUT
+            log::trace!("On send command to worker: {}", e);
             return None;
         }
 
