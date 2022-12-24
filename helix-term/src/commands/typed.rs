@@ -67,7 +67,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         let (path, pos) = args::parse_file(arg);
         // If the path is a directory, open a file picker on that directory and update the status
         // message
-        if std::fs::canonicalize(&path)?.is_dir() {
+        if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
             let callback = async move {
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
