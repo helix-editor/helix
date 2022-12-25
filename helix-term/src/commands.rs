@@ -5,7 +5,7 @@ pub(crate) mod typed;
 pub use dap::*;
 use helix_vcs::Hunk;
 pub use lsp::*;
-use tui::text::Spans;
+use tui::widgets::Row;
 pub use typed::*;
 
 use helix_core::{
@@ -1863,7 +1863,7 @@ fn global_search(cx: &mut Context) {
     impl ui::menu::Item for FileResult {
         type Data = Option<PathBuf>;
 
-        fn label(&self, current_path: &Self::Data) -> Spans {
+        fn format(&self, current_path: &Self::Data) -> Row {
             let relative_path = helix_core::path::get_relative_path(&self.path)
                 .to_string_lossy()
                 .into_owned();
@@ -2311,7 +2311,7 @@ fn buffer_picker(cx: &mut Context) {
     impl ui::menu::Item for BufferMeta {
         type Data = ();
 
-        fn label(&self, _data: &Self::Data) -> Spans {
+        fn format(&self, _data: &Self::Data) -> Row {
             let path = self
                 .path
                 .as_deref()
@@ -2380,7 +2380,7 @@ fn jumplist_picker(cx: &mut Context) {
     impl ui::menu::Item for JumpMeta {
         type Data = ();
 
-        fn label(&self, _data: &Self::Data) -> Spans {
+        fn format(&self, _data: &Self::Data) -> Row {
             let path = self
                 .path
                 .as_deref()
@@ -2453,19 +2453,40 @@ fn jumplist_picker(cx: &mut Context) {
 
 
 
+// NOTE: does not present aliases
 impl ui::menu::Item for MappableCommand {
     type Data = CommandList;
 
-    fn label(&self, keymap: &Self::Data) -> Spans {
+    fn format(&self, command_list: &Self::Data) -> Row {
         match self {
-            MappableCommand::Typable { description: doc, name, .. } => match keymap.get(name as &String) {
-                Some(key_events) => format!("{} {:?} ':{}'", doc, key_events, name).into(),
-                None => format!("{} ':{}'", doc, name).into(),
+            MappableCommand::Typable { description: doc, name, .. } => {
+                let mut row: Vec<Cell> = vec![Cell::from(&*name.as_str()), Cell::from(""), Cell::from(&*doc.as_str())];
+                match command_list.get(name as &String) {
+                    Some(key_events) => { row[1] = Cell::from(format_key_events(key_events)); },
+                    None => {}
+                }
+                return Row::new(row);
             },
-            MappableCommand::Static { description: doc, name, .. } => match keymap.get(*name) {
-                Some(key_events) => format!("{} {:?} '{}'", doc, key_events, name).into(),
-                None => format!("{} '{}'", doc, name).into(),
-            },
+            MappableCommand::Static { description: doc, name, .. } => {
+                let mut row: Vec<Cell> = vec![Cell::from(*name), Cell::from(""), Cell::from(*doc)];
+                match command_list.get(*name) {
+                    Some(key_events) => { row[1] = Cell::from(format_key_events(key_events)); },
+                    None => {}
+                }
+                return Row::new(row)
+            } 
+        }
+
+        // TODO: Generalize into a Vec<String> Display implemention?
+        fn format_key_events(key_events: &Vec<String>) -> String {
+            let mut result_string: String = String::new();
+            for key_event in key_events {
+                if !result_string.is_empty() {
+                    result_string.push_str(", ");
+                }
+                result_string.push_str(key_event);
+            }
+            result_string
         }
     }
 }

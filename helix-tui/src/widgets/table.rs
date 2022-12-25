@@ -127,6 +127,12 @@ impl<'a> Row<'a> {
     }
 }
 
+impl<'a, T: Into<Cell<'a>>> From<T> for Row<'a> {
+    fn from(cell: T) -> Self {
+        Row::new(vec![cell.into()])
+    }
+}
+
 /// A widget to display data in formatted columns.
 ///
 /// It is a collection of [`Row`]s, themselves composed of [`Cell`]s:
