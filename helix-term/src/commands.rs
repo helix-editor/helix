@@ -5,7 +5,7 @@ pub(crate) mod typed;
 pub use dap::*;
 use helix_vcs::Hunk;
 pub use lsp::*;
-use tui::text::Spans;
+use tui::widgets::Row;
 pub use typed::*;
 
 use helix_core::{
@@ -1864,7 +1864,7 @@ fn global_search(cx: &mut Context) {
     impl ui::menu::Item for FileResult {
         type Data = Option<PathBuf>;
 
-        fn label(&self, current_path: &Self::Data) -> Spans {
+        fn format(&self, current_path: &Self::Data) -> Row {
             let relative_path = helix_core::path::get_relative_path(&self.path)
                 .to_string_lossy()
                 .into_owned();
@@ -2312,7 +2312,7 @@ fn buffer_picker(cx: &mut Context) {
     impl ui::menu::Item for BufferMeta {
         type Data = ();
 
-        fn label(&self, _data: &Self::Data) -> Spans {
+        fn format(&self, _data: &Self::Data) -> Row {
             let path = self
                 .path
                 .as_deref()
@@ -2381,7 +2381,7 @@ fn jumplist_picker(cx: &mut Context) {
     impl ui::menu::Item for JumpMeta {
         type Data = ();
 
-        fn label(&self, _data: &Self::Data) -> Spans {
+        fn format(&self, _data: &Self::Data) -> Row {
             let path = self
                 .path
                 .as_deref()
@@ -2454,7 +2454,7 @@ fn jumplist_picker(cx: &mut Context) {
 impl ui::menu::Item for MappableCommand {
     type Data = ReverseKeymap;
 
-    fn label(&self, keymap: &Self::Data) -> Spans {
+    fn format(&self, keymap: &Self::Data) -> Row {
         let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
             bindings.iter().fold(String::new(), |mut acc, bind| {
                 if !acc.is_empty() {
