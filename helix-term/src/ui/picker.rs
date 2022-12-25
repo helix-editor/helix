@@ -409,10 +409,10 @@ impl<T: Item> Picker<T> {
 
         let n = options
             .first()
-            .map(|option| option.row(&editor_data).cells.len())
+            .map(|option| option.format(&editor_data).cells.len())
             .unwrap_or_default();
         let max_lens = options.iter().fold(vec![0; n], |mut acc, option| {
-            let row = option.row(&editor_data);
+            let row = option.format(&editor_data);
             // maintain max for each column
             for (acc, cell) in acc.iter_mut().zip(row.cells.iter()) {
                 let width = cell.content.width();
@@ -723,7 +723,7 @@ impl<T: Item + 'static> Component for Picker<T> {
             .skip(offset)
             .take(rows as usize)
             .map(|pmatch| &self.options[pmatch.index])
-            .map(|option| option.row(&self.editor_data))
+            .map(|option| option.format(&self.editor_data))
             .map(|mut row| {
                 const TEMP_CELL_SEP: &str = " ";
 
