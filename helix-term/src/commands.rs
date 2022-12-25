@@ -2053,16 +2053,10 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
     let selection = doc.selection(view.id).clone().transform(|range| {
         let (start_line, end_line) = range.line_range(text.slice(..));
 
-        let start = text.line_to_char(match extend {
-            Extend::Above => start_line.saturating_sub(count - 1),
-            Extend::Below => start_line,
-        });
+        let start = text.line_to_char(start_line);
         let end = text.line_to_char(
-            match extend {
-                Extend::Above => end_line + 1, // the start of next line
-                Extend::Below => end_line + count,
-            }
-            .min(text.len_lines()),
+            (end_line + 1) // newline of end_line
+                .min(text.len_lines()),
         );
 
         // extend to previous/next line if current line is selected
@@ -2076,8 +2070,11 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
             }
         } else {
             match extend {
-                Extend::Above => (end, start),
-                Extend::Below => (start, end),
+                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count - 1))),
+                Extend::Below => (
+                    start,
+                    text.line_to_char((end_line + count).min(text.len_lines())),
+                ),
             }
         };
 
