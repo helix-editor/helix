@@ -278,7 +278,7 @@ impl Default for StatusLineConfig {
         use StatusLineElement as E;
 
         Self {
-            left: vec![E::Mode, E::Spinner, E::FileName],
+            left: vec![E::Mode, E::Spinner, E::FilePath],
             center: vec![],
             right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
             separator: String::from("│"),
@@ -314,8 +314,11 @@ pub enum StatusLineElement {
     /// The LSP activity spinner
     Spinner,
 
-    /// The file nane/path, including a dirty flag if it's unsaved
+    /// The base file name, including a dirty flag if it's unsaved
     FileName,
+
+    /// The file path, including a dirty flag if it's unsaved
+    FilePath,
 
     /// The file encoding
     FileEncoding,
