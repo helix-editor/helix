@@ -23,6 +23,15 @@ select = "underline"
 
 [editor.file-picker]
 hidden = false
+
+[keys.insert]
+esc = ["collapse_selection", "normal_mode"]
+
+[keys.normal]
+esc = ["collapse_selection", "keep_primary_selection"]
+
+[keys.select]
+esc = ["collapse_selection", "keep_primary_selection", "normal_mode"]
 ```
 
 You may also specify a file to use for configuration with the `-c` or
