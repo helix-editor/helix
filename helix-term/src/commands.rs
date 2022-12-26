@@ -133,23 +133,23 @@ pub enum MappableCommand {
     Typable {
         name: String,
         args: Vec<String>,
-        doc: String,
+        description: String,
     },
     Static {
         name: &'static str,
         fun: fn(cx: &mut Context),
-        doc: &'static str,
+        description: &'static str,
     },
 }
 
 macro_rules! static_commands {
-    ( $($name:ident, $doc:literal,)* ) => {
+    ( $($name:ident, $description:literal,)* ) => {
         $(
             #[allow(non_upper_case_globals)]
             pub const $name: Self = Self::Static {
                 name: stringify!($name),
                 fun: $name,
-                doc: $doc
+                description: $description
             };
         )*
 
@@ -162,7 +162,7 @@ macro_rules! static_commands {
 impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
-            Self::Typable { name, args, doc: _ } => {
+            Self::Typable { name, args, description: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
@@ -186,10 +186,10 @@ impl MappableCommand {
         }
     }
 
-    pub fn doc(&self) -> &str {
+    pub fn description(&self) -> &str {
         match &self {
-            Self::Typable { doc, .. } => doc,
-            Self::Static { doc, .. } => doc,
+            Self::Typable { description, .. } => description,
+            Self::Static { description, .. } => description,
         }
     }
 
@@ -476,7 +476,7 @@ impl std::str::FromStr for MappableCommand {
                 .get(name)
                 .map(|cmd| MappableCommand::Typable {
                     name: cmd.name.to_owned(),
-                    doc: format!(":{} {:?}", cmd.name, args),
+                    description: format!(":{} {:?}", cmd.name, args),
                     args,
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
@@ -2458,11 +2458,11 @@ impl ui::menu::Item for MappableCommand {
 
     fn label(&self, keymap: &Self::Data) -> Spans {
         match self {
-            MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String) {
+            MappableCommand::Typable { description: doc, name, .. } => match keymap.get(name as &String) {
                 Some(key_events) => format!("{} {:?} ':{}'", doc, key_events, name).into(),
                 None => format!("{} ':{}'", doc, name).into(),
             },
-            MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
+            MappableCommand::Static { description: doc, name, .. } => match keymap.get(*name) {
                 Some(key_events) => format!("{} {:?} '{}'", doc, key_events, name).into(),
                 None => format!("{} '{}'", doc, name).into(),
             },
@@ -2481,7 +2481,7 @@ pub fn command_palette(cx: &mut Context) {
             commands.extend(typed::TYPABLE_COMMAND_LIST.iter().map(|cmd| {
                 MappableCommand::Typable {
                     name: cmd.name.to_owned(),
-                    doc: cmd.doc.to_owned(),
+                    description: cmd.doc.to_owned(),
                     args: Vec::new(),
                 }
             }));

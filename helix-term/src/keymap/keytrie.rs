@@ -60,8 +60,7 @@ impl KeyTrie {
     }
 
     /// Open an Info box for a given KeyTrie
-    /// Shows the children listed by possible KeyEvents 
-    /// and thier associated documentation.
+    /// Shows the children as possible KeyEvents and thier associated description.
     pub fn infobox(&self) -> Info {
         let mut body: Vec<(String, &str)> = Vec::with_capacity(self.len());
         for (&key_event, key_trie) in self.iter() {
@@ -70,7 +69,7 @@ impl KeyTrie {
                     if command.name() == "no_op" {
                         continue;
                     }
-                    command.doc()
+                    command.description()
                 },
                 KeyTrieNode::KeyTrie(key_trie) => &key_trie.documentation,
                 // FIX: default to a join of all command names
