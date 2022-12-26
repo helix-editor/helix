@@ -46,7 +46,7 @@ use crate::{
     args,
     compositor::{self, Component, Compositor},
     job::Callback,
-    keymap::ReverseKeymap,
+    keymap::CommandList,
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 
@@ -2454,30 +2454,21 @@ fn jumplist_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
+
+
+
 impl ui::menu::Item for MappableCommand {
-    type Data = ReverseKeymap;
+    type Data = CommandList;
 
-    fn format(&self, keymap: &Self::Data) -> Row {
-        let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
-            bindings.iter().fold(String::new(), |mut acc, bind| {
-                if !acc.is_empty() {
-                    acc.push(' ');
-                }
-                for key in bind {
-                    acc.push_str(&key.key_sequence_format());
-                }
-                acc
-            })
-        };
-
+    fn label(&self, keymap: &Self::Data) -> Spans {
         match self {
             MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String) {
-                Some(bindings) => format!("{} ({}) [:{}]", doc, fmt_binding(bindings), name).into(),
-                None => format!("{} [:{}]", doc, name).into(),
+                Some(key_events) => format!("{} {:?} ':{}'", doc, key_events, name).into(),
+                None => format!("{} ':{}'", doc, name).into(),
             },
             MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
-                Some(bindings) => format!("{} ({}) [{}]", doc, fmt_binding(bindings), name).into(),
-                None => format!("{} [{}]", doc, name).into(),
+                Some(key_events) => format!("{} {:?} '{}'", doc, key_events, name).into(),
+                None => format!("{} '{}'", doc, name).into(),
             },
         }
     }
@@ -2486,9 +2477,9 @@ impl ui::menu::Item for MappableCommand {
 pub fn command_palette(cx: &mut Context) {
     cx.callback = Some(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
-            let keymap = compositor.find::<ui::EditorView>().unwrap().keymaps.map()
+            let keymap_command_lists = compositor.find::<ui::EditorView>().unwrap().keymaps.load_keymaps()
                 [&cx.editor.mode]
-                .reverse_map();
+                .command_list();
 
             let mut commands: Vec<MappableCommand> = MappableCommand::STATIC_COMMAND_LIST.into();
             commands.extend(typed::TYPABLE_COMMAND_LIST.iter().map(|cmd| {
@@ -2499,7 +2490,7 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
+            let picker = Picker::new(commands, keymap_command_lists, move |cx, command, _action| {
                 let mut ctx = Context {
                     register: None,
                     count: std::num::NonZeroUsize::new(1),
@@ -2528,6 +2519,7 @@ pub fn command_palette(cx: &mut Context) {
             compositor.push(Box::new(overlayed(picker)));
         },
     ));
+
 }
 
 fn last_picker(cx: &mut Context) {

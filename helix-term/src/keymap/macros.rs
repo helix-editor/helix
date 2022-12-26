@@ -80,41 +80,35 @@ macro_rules! alt {
 /// ```
 #[macro_export]
 macro_rules! keymap {
-    (@trie $cmd:ident) => {
-        $crate::keymap::KeyTrie::Leaf($crate::commands::MappableCommand::$cmd)
-    };
-
-    (@trie
-        { $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }
-    ) => {
-        keymap!({ $label $(sticky=$sticky)? $($($key)|+ => $value,)+ })
-    };
-
-    (@trie [$($cmd:ident),* $(,)?]) => {
-        $crate::keymap::KeyTrie::Sequence(vec![$($crate::commands::Command::$cmd),*])
-    };
-
-    (
-        { $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }
-    ) => {
+    ({ $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }) => {
         // modified from the hashmap! macro
         {
             let _cap = hashmap!(@count $($($key),+),*);
-            let mut _map = ::std::collections::HashMap::with_capacity(_cap);
+            let mut _map: ::std::collections::HashMap<::helix_view::input::KeyEvent, $crate::keymap::keytrienode::KeyTrieNode> = 
+                ::std::collections::HashMap::with_capacity(_cap);
             $(
                 $(
                     let _key = $key.parse::<::helix_view::input::KeyEvent>().unwrap();
-                    let _duplicate = _map.insert(
-                        _key,
-                        keymap!(@trie $value)
-                    );
-                    assert!(_duplicate.is_none(), "Duplicate key found: {:?}", _duplicate.unwrap());
+                    let _potential_duplicate = _map.insert(_key,keymap!(@trie $value));
+                    assert!(_potential_duplicate.is_none(), "Duplicate key found: {:?}", _potential_duplicate.unwrap());
                 )+
             )*
-            let mut _node = $crate::keymap::KeyTrieNode::new($label, _map);
+            let mut _node = $crate::keymap::keytrie::KeyTrie::new($label, _map);
             $( _node.is_sticky = $sticky; )?
-            $crate::keymap::KeyTrie::Node(_node)
+            _node
         }
+    };
+
+    (@trie {$label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }) => {
+        $crate::keymap::keytrienode::KeyTrieNode::KeyTrie(keymap!({ $label $(sticky=$sticky)? $($($key)|+ => $value,)+ }))
+    };
+
+    (@trie $cmd:ident) => {
+        $crate::keymap::keytrienode::KeyTrieNode::MappableCommand($crate::commands::MappableCommand::$cmd)
+    };
+
+    (@trie [$($cmd:ident),* $(,)?]) => {
+        $crate::keymap::keytrienode::KeyTrieNode::CommandSequence(vec![$($crate::commands::Command::$cmd),*])
     };
 }
 
