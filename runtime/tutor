@@ -271,18 +271,17 @@ _________________________________________________________________
  whitespace, whereas words can be separated by other characters
  in addition to whitespace.
 
- All of these motions select the text they traverse.
+ 1. Move the cursor to the beginning of the line marked with '-->'.
+ 2. Type w repeatedly to select individual words until you
+    reach the end of the line.
+ 3. Note that 'one-of-a-kind' required 7 keystrokes to be
+    traversed. '"modal"' required 3 keystrokes.
+ 4. Move the cursor back to beginning of the line marked '-->'.
+ 5. Type W repeatedly to select individual WORDS.
+ 6. Note that 'one-of-a-kind' and '"modal"' have been selected
+    both with one keystroke each.
 
-
-
-
-
-
-
-
-
-
-
+--> Helix is a one-of-a-kind "modal" text editor
 
 =================================================================
 =                    3.4 THE CHANGE COMMAND                     =
