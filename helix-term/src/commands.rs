@@ -2509,7 +2509,23 @@ pub fn command_palette(cx: &mut Context) {
                     on_next_key_callback: None,
                     jobs: cx.jobs,
                 };
+                let (view, _) = current!(ctx.editor);
+                let focus = view.id;
+
                 command.execute(&mut ctx);
+
+                if ctx.editor.tree.contains(focus) {
+                    let config = ctx.editor.config();
+                    let mode = ctx.editor.mode();
+                    let view = view_mut!(ctx.editor, focus);
+                    let doc = doc_mut!(ctx.editor, &view.doc);
+
+                    view.ensure_cursor_in_view(doc, config.scrolloff);
+
+                    if mode != Mode::Insert {
+                        doc.append_changes_to_history(view);
+                    }
+                }
             });
             compositor.push(Box::new(overlayed(picker)));
         },
