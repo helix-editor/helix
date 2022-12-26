@@ -1007,7 +1007,10 @@ lines.
  --> How much would would a wouldchuck chuck
  --> if a wouldchuck could chuck would?
 
-
+ NOTE: If typing ) or ( appears to do nothing, try using a 
+ different color theme. These themes work well here:
+ - dark_plus
+ - emacs
 
 
 =================================================================
