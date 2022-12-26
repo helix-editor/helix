@@ -24,7 +24,7 @@ use crate::{
     compositor::{Compositor, Event},
     config::Config,
     job::Jobs,
-    keymap::Keymaps,
+    keymap::keymaps::Keymaps,
     ui::{self, overlay::overlayed},
 };
 

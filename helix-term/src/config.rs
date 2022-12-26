@@ -1,4 +1,4 @@
-use crate::keymap::{default::default, merge_keys, Keymap};
+use crate::keymap::{default::default, Keymap, keymaps::Keymaps};
 use helix_view::document::Mode;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -46,7 +46,7 @@ impl Config {
     pub fn load_default() -> Result<Config, ConfigLoadError> {
         match std::fs::read_to_string(helix_loader::config_file()) {
             Ok(config) => toml::from_str(&config)
-                .map(merge_keys)
+                .map(Keymaps::merge_with_default)
                 .map_err(ConfigLoadError::BadConfig),
             Err(err) => Err(ConfigLoadError::Error(err)),
         }
