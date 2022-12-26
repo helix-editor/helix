@@ -62,7 +62,7 @@ impl KeyTrie {
     /// Open an Info box for a given KeyTrie
     /// Shows the children as possible KeyEvents and thier associated description.
     pub fn infobox(&self) -> Info {
-        let mut body: Vec<(String, &str)> = Vec::with_capacity(self.len());
+        let mut body: Vec<(Vec<String>, &str)> = Vec::with_capacity(self.len());
         for (&key_event, key_trie) in self.iter() {
             let documentation: &str = match key_trie {
                 KeyTrieNode::MappableCommand(command) => {
@@ -78,12 +78,43 @@ impl KeyTrie {
                 KeyTrieNode::CommandSequence(_) => "[Multiple commands]",
             };
             match body.iter().position(|(_, existing_documentation)| &documentation == existing_documentation) {
-                Some(position) =>  body[position].0 += &format!(", {}", &key_event.to_string()),
-                None => body.push((key_event.to_string(), documentation)),
+                Some(position) =>  body[position].0.push(key_event.to_string()),
+                None => {
+                    let mut temp_vec: Vec<String> = Vec::new();
+                    temp_vec.push(key_event.to_string());
+                    body.push((temp_vec, documentation))   
+                },
             }
         }
+        // OPTIMIZATIONS?
+        // Change the children hashmap to an ordered datastructure? Like a regulap map maybe?
+        // Add sorted conditional?
+        // Add body as a keytrie field and reload it in keytrie merge?
 
-        Info::new(&self.documentation, &body)
+        // Make the shortest keyevents appear first
+        let mut sorted_body = body
+            .iter()
+            .map(|(key_events, description)| {
+                let mut temp_key_events = key_events.clone();
+                temp_key_events.sort_unstable_by(|a, b| a.len().cmp(&b.len()));
+                (temp_key_events, *description)
+            })
+            .collect::<Vec<(Vec<String>, &str)>>();
+        sorted_body.sort_unstable_by(|a, b| a.0[0].to_lowercase().cmp(&b.0[0].to_lowercase()));
+
+        let stringified_key_events_body: Vec<(String, &str)> = sorted_body
+            .iter()
+            .map(|(key_events, description)| {
+                let key_events_string: String = key_events.iter().fold(String::new(), |mut acc, key_event| {
+                    if acc.is_empty() { acc.push_str(key_event); }
+                    else { acc.push_str(&format!(", {}", key_event)) }
+                    acc
+                });
+                (key_events_string, *description)
+            })
+            .collect();
+
+        Info::new(&self.documentation, &stringified_key_events_body)
     }
 }
 
