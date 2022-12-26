@@ -1099,10 +1099,58 @@ letters! that is not good grammar. you can fix this.
 
 
 =================================================================
-=                                                               =
+=                     11.1 COMMENTING A LINE                    =
 =================================================================
 
+Type Ctrl-c to comment the line under your cursor.
+To uncomment the line, press Ctrl-c again.
 
+1. Move your cursor to the line marked '-->' below.
+2. Now comment the line marked with '-->'.
+3. Now try uncommenting the line.
+
+--> Comment me please
+
+
+
+
+
+
+
+
+
+
+=================================================================
+=                 11.2 COMMENTING MULTIPLE LINES                =
+=================================================================
+
+Using the selections and multi-cursor functionality, you can 
+comment multiple lines as long as it is under the selection or
+cursors. 
+
+1. Move your cursor to the line marked with '-->' below.
+2. Now try to select or add more cursors the other lines marked 
+   with '-->'. 
+3. Comment those lines.
+
+--> How many are you going to comment?
+--> Is this enough for a comment?
+--> What are you doing?!
+--> Stop commenting me!
+--> AAAAaargh!!!
+
+Note: If there are already commented lines under selections or
+multiple cursors, they won't be uncommented but commented again.
+
+=================================================================
+=                       CHAPTER 11 RECAP                        =
+=================================================================
+
+ * Use Ctrl-c to comment a line under your cursor. Type Ctrl-c
+   again to uncomment.
+ * To comment multiple lines, use the selections 
+   and multi-cursors before typing Ctrl-c.
+   * Commented lines cannot be uncommented but commented again.
 
 
 
