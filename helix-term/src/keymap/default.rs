@@ -259,6 +259,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
                     "C-s" | "s" => hsplit_new,
                     "C-v" | "v" => vsplit_new,
                 },
+                "a" => select_all,
             },
             "y" => yank_joined_to_clipboard,
             "Y" => yank_main_selection_to_clipboard,
