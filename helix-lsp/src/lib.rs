@@ -562,19 +562,24 @@ fn start_client(
     // Initialize the client asynchronously
     let _client = client.clone();
     tokio::spawn(async move {
-        use futures_util::TryFutureExt;
-        let value = _client
-            .capabilities
-            .get_or_try_init(|| {
+        if _client.capabilities.get().is_none() {
+            let response = match _client.initialize().await {
+                Ok(response) => response,
+                Err(e) => {
+                    log::error!("failed to initialize language server: {}", e);
+                    return;
+                }
+            };
+            _client
+                .capabilities
+                .set(response.capabilities)
+                .expect("capabilities should only be initialized once");
+            if let Some(server_info) = response.server_info {
                 _client
-                    .initialize()
-                    .map_ok(|response| response.capabilities)
-            })
-            .await;
-
-        if let Err(e) = value {
-            log::error!("failed to initialize language server: {}", e);
-            return;
+                    .server_info
+                    .set(server_info)
+                    .expect("server_info should only be initialized once");
+            }
         }
 
         // next up, notify<initialized>

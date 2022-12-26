@@ -32,6 +32,7 @@ pub struct Client {
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
     pub(crate) capabilities: OnceCell<lsp::ServerCapabilities>,
+    pub(crate) server_info: OnceCell<lsp::ServerInfo>,
     offset_encoding: OffsetEncoding,
     config: Option<Value>,
     root_path: std::path::PathBuf,
@@ -104,6 +105,7 @@ impl Client {
             server_tx,
             request_counter: AtomicU64::new(0),
             capabilities: OnceCell::new(),
+            server_info: OnceCell::new(),
             offset_encoding: OffsetEncoding::Utf8,
             config,
             req_timeout,
@@ -144,6 +146,10 @@ impl Client {
         self.capabilities
             .get()
             .expect("language server not yet initialized!")
+    }
+
+    pub fn server_info(&self) -> Option<&lsp::ServerInfo> {
+        self.server_info.get()
     }
 
     pub fn offset_encoding(&self) -> OffsetEncoding {
@@ -1066,6 +1072,13 @@ impl Client {
             let response: Option<lsp::WorkspaceEdit> = serde_json::from_value(json)?;
             Ok(response.unwrap_or_default())
         })
+    }
+
+    pub fn switch_source_header(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+    ) -> impl Future<Output = Result<Value>> {
+        self.call::<lsp::request::SwitchSourceHeader>(text_document)
     }
 
     pub fn command(&self, command: lsp::Command) -> Option<impl Future<Output = Result<Value>>> {

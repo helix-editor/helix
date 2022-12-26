@@ -1010,6 +1010,49 @@ pub fn goto_reference(cx: &mut Context) {
     );
 }
 
+pub fn switch_source_header(cx: &mut Context) {
+    let (_, doc) = current!(cx.editor);
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => {
+            cx.editor
+                .set_status("Language server not active for current buffer");
+            return;
+        }
+    };
+
+    // `switchSourceHeader` is not included in the capabilities list.
+    // At the moment this is only implemented by clangd, so we explicitly check
+    // for it to avoid sending unexpected requests.
+    if language_server
+        .server_info()
+        .map(|info| &info.name)
+        .map_or(true, |name| name != "clangd")
+    {
+        cx.editor
+            .set_status("Switch source/header is only supported for clangd");
+        return;
+    }
+
+    let future = language_server.switch_source_header(doc.identifier());
+
+    cx.callback(future, move |editor, _, response: Option<lsp::Url>| {
+        let url = match response {
+            Some(url) => url,
+            None => {
+                editor.set_status("Could not determine matching source/header");
+                return;
+            }
+        };
+        let path = url.to_file_path().unwrap();
+        if let Err(err) = editor.open(&path, Action::Replace) {
+            let err = format!("failed to open document: {}: {}", path.display(), err);
+            editor.set_error(err);
+            return;
+        }
+    });
+}
+
 #[derive(PartialEq, Eq)]
 pub enum SignatureHelpInvoked {
     Manual,

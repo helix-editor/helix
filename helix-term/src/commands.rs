@@ -445,6 +445,7 @@ impl MappableCommand {
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
+        switch_source_header, "Switch source/header",
     );
 }
 
