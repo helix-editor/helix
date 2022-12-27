@@ -15,7 +15,7 @@ pub use keymap::macros::*;
 #[cfg(not(windows))]
 fn true_color() -> bool {
     std::env::var("COLORTERM")
-        .map(|v| matches!(v.as_str(), "truecolor" | "24bit"))
+        .map(|v| matches!(v.as_str(), "truecolor" | "24bit" | "kmscon"))
         .unwrap_or(false)
 }
 #[cfg(windows)]
