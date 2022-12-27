@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use std::{collections::HashMap, ops::{Deref, DerefMut}};
+use std::{collections::HashMap, ops::{Deref, DerefMut}, cmp::Ordering};
 use helix_view::{info::Info, input::KeyEvent};
 use super::keytrienode::KeyTrieNode;
 
@@ -91,12 +91,19 @@ impl KeyTrie {
         // Add sorted conditional?
         // Add body as a keytrie field and reload it in keytrie merge?
 
-        // Make the shortest keyevent appear first
+        // Shortest keyevent appears first, unless is a "C-" KeyEvent
+        // Those events will always be placed after the one letter KeyEvent
         let mut sorted_body = body
             .iter()
             .map(|(key_events, description)| {
                 let mut temp_key_events = key_events.clone();
-                temp_key_events.sort_unstable_by(|a, b| a.len().cmp(&b.len()));
+                temp_key_events.sort_unstable_by(|a, b| {
+                    if a.len() == 1 { return Ordering::Less }
+                    if b.len() > a.len() && b.starts_with("C-") {
+                        return Ordering::Greater
+                    }
+                    a.len().cmp(&b.len())
+                });
                 (temp_key_events, *description)
             })
             .collect::<Vec<(Vec<String>, &str)>>();
