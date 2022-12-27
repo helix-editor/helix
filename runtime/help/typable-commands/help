@@ -9,11 +9,12 @@ editor in general.
 Opens this page.
 
 `:help <command>`
-Opens help for `command`, e.g. `:help find_next_char`.
+Opens help for `command`,
+e.g. `:help find_next_char`, `:help :open`.
 
 `:help <keybind>`
 Opens help for the command associated with `keybind`,
-e.g. `:help f`, `:help C-o`, `:help :open`
+e.g. `:help f`, `:help C-o`.
 
 `:help topics`
 Opens a picker with various help topics not related to
