@@ -16,6 +16,9 @@ theme = "onedark"
 line-number = "relative"
 mouse = false
 
+# Uncomment true-color to fix false positive "Unsupported theme: theme requires true color support."
+# true-color = true
+
 [editor.cursor-shape]
 insert = "bar"
 normal = "block"
@@ -24,14 +27,21 @@ select = "underline"
 [editor.file-picker]
 hidden = false
 
+# Mapping a key is easy.  E.g. Vim users can map 0 to go to start of line.
+# Experienced Helix users prefer that collapsing and keeping the primary
+# selection be explicit operations and distinct from changing modes.
+# However, beginners can map esc key to reset Helix to fully default state of
+# normal mode, single cursor, and not having multiple chars or words selected.
 [keys.insert]
 esc = ["collapse_selection", "normal_mode"]
 
 [keys.normal]
 esc = ["collapse_selection", "keep_primary_selection"]
+0   = "goto_line_start"
 
 [keys.select]
 esc = ["collapse_selection", "keep_primary_selection", "normal_mode"]
+0   = "goto_line_start"
 ```
 
 You may also specify a file to use for configuration with the `-c` or
