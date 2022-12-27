@@ -1871,8 +1871,7 @@ fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         let arg = &args[0];
         if let Some(command) = arg.strip_prefix(':').and_then(|arg| {
             TYPABLE_COMMAND_LIST.iter().find_map(|command| {
-                (command.name == arg || command.aliases.iter().any(|alias| *alias == arg))
-                    .then(|| command.name)
+                (command.name == arg || command.aliases.contains(&arg)).then(|| command.name)
             })
         }) {
             (TYPABLE_HELP_DIR, command)
@@ -1898,8 +1897,8 @@ fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
                         keys.iter().for_each(|key| {
                             keymaps.get(mode, *key);
                         });
-                        let result = keymaps.get(mode, *last_key);
-                        let res: anyhow::Result<(&str, &str)> = match &result {
+                        let key_result = keymaps.get(mode, *last_key);
+                        let result: anyhow::Result<(&str, &str)> = match &key_result {
                             KeymapResult::Matched(command) => match command {
                                 MappableCommand::Static { name, .. } => Ok((STATIC_HELP_DIR, name)),
                                 MappableCommand::Typable { name, .. } => {
@@ -1909,10 +1908,15 @@ fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
                             KeymapResult::NotFound | KeymapResult::Cancelled(_) => {
                                 Err(anyhow!("No command found for '{}'", arg))
                             }
-                            _ => todo!(),
+                            KeymapResult::Pending(_) => Err(anyhow!(
+                                "`:help` for branching keybinds is not yet supported."
+                            )),
+                            KeymapResult::MatchedSequence(_) => Err(anyhow!(
+                                "`:help` for sequence bindings is not yet supported."
+                            )),
                         };
-                        if let Err(e) =
-                            res.and_then(|(help_dir, command)| open_help(help_dir, command, editor))
+                        if let Err(e) = result
+                            .and_then(|(help_dir, command)| open_help(help_dir, command, editor))
                         {
                             editor.set_error(e.to_string());
                         }
