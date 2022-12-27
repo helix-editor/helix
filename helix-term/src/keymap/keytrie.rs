@@ -91,7 +91,7 @@ impl KeyTrie {
         // Add sorted conditional?
         // Add body as a keytrie field and reload it in keytrie merge?
 
-        // Make the shortest keyevents appear first
+        // Make the shortest keyevent appear first
         let mut sorted_body = body
             .iter()
             .map(|(key_events, description)| {
@@ -101,6 +101,27 @@ impl KeyTrie {
             })
             .collect::<Vec<(Vec<String>, &str)>>();
         sorted_body.sort_unstable_by(|a, b| a.0[0].to_lowercase().cmp(&b.0[0].to_lowercase()));
+
+        // Consistently place lowercase before uppercase of the same letter.
+        if sorted_body.len() > 1 {
+            let mut x_index = 0;
+            let mut y_index = 1;
+
+            while y_index < sorted_body.len() {
+                let x = &sorted_body[x_index].0[0];
+                let y = &sorted_body[y_index].0[0];
+                if x.to_lowercase() == y.to_lowercase() {
+                    // Uppercase regarded as lower value.
+                    if x < y {
+                        let temp_holder = sorted_body[x_index].clone();
+                        sorted_body[x_index] = sorted_body[y_index].clone();
+                        sorted_body[y_index] = temp_holder;
+                    }
+                }
+                x_index = y_index;
+                y_index += 1;
+            }
+        }
 
         let stringified_key_events_body: Vec<(String, &str)> = sorted_body
             .iter()
