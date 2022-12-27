@@ -86,10 +86,6 @@ impl KeyTrie {
                 },
             }
         }
-        // OPTIMIZATIONS?
-        // Change the children hashmap to an ordered datastructure? Like a regulap map maybe?
-        // Add sorted conditional?
-        // Add body as a keytrie field and reload it in keytrie merge?
 
         // Shortest keyevent appears first, unless is a "C-" KeyEvent
         // Those events will always be placed after the one letter KeyEvent
@@ -108,7 +104,6 @@ impl KeyTrie {
             })
             .collect::<Vec<(Vec<String>, &str)>>();
         sorted_body.sort_unstable_by(|a, b| a.0[0].to_lowercase().cmp(&b.0[0].to_lowercase()));
-
         // Consistently place lowercase before uppercase of the same letter.
         if sorted_body.len() > 1 {
             let mut x_index = 0;
