@@ -89,7 +89,7 @@ mod tests {
     }
 
     #[test]
-    fn order_should_be_set() {
+    fn merges_with_default_keymap_config() {
         let config = Config {
             keys: hashmap! {
                 Mode::Normal => Keymap::new(
@@ -105,10 +105,9 @@ mod tests {
             },
             ..Default::default()
         };
-        let mut merged_config = merge_keys(config.clone());
+        let mut merged_config = Keymaps::merge_with_default(config.clone());
         assert_ne!(config, merged_config);
         let keymap_normal = merged_config.keys.get_mut(&Mode::Normal).unwrap();
-        // Make sure mapping works
         assert_eq!(
             keymap_normal
                 .root_node
