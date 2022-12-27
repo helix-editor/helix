@@ -87,7 +87,7 @@ impl KeyTrie {
             }
         }
 
-        // Shortest keyevent appears first, unless is a "C-" KeyEvent
+        // Shortest keyevent (as string) appears first, unless is a "C-" KeyEvent
         // Those events will always be placed after the one letter KeyEvent
         let mut sorted_body = body
             .iter()
