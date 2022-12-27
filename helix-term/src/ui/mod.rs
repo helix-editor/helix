@@ -279,6 +279,50 @@ pub mod completers {
         names
     }
 
+    pub fn tutor(_editor: &Editor, input: &str) -> Vec<Completion> {
+        let mut names: Vec<String> = std::fs::read_dir(&helix_loader::runtime_dir().join("tutors"))
+            .map(|entries| {
+                entries
+                    .filter_map(|entry| {
+                        entry.ok().map(|entry| {
+                            entry
+                                .path()
+                                .file_stem()
+                                .unwrap()
+                                .to_string_lossy()
+                                .into_owned()
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        names.push("default".into());
+        names.sort();
+        names.dedup();
+
+        let mut names: Vec<_> = names
+            .into_iter()
+            .map(|name| ((0..), Cow::from(name)))
+            .collect();
+
+        let matcher = Matcher::default();
+
+        let mut matches: Vec<_> = names
+            .into_iter()
+            .filter_map(|(_range, name)| {
+                matcher.fuzzy_match(&name, input).map(|score| (name, score))
+            })
+            .collect();
+
+        matches.sort_unstable_by(|(name1, score1), (name2, score2)| {
+            (Reverse(*score1), name1).cmp(&(Reverse(*score2), name2))
+        });
+        names = matches.into_iter().map(|(name, _)| ((0..), name)).collect();
+
+        names
+    }
+
     pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
         let mut names = theme::Loader::read_names(&helix_loader::runtime_dir().join("themes"));
         names.extend(theme::Loader::read_names(

@@ -1524,15 +1524,29 @@ fn debug_remote(
 
 fn tutor(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let path = helix_loader::runtime_dir().join("tutor");
-    cx.editor.open(&path, Action::Replace)?;
+    let default_tutor = helix_loader::runtime_dir().join("tutor");
+
+    let path = if args.is_empty() {
+        None
+    } else {
+        let name = args[0].to_lowercase();
+        if name.eq("default") {
+            None
+        } else {
+            let p = helix_loader::runtime_dir().join("tutors").join(&name);
+            (p.exists()).then(|| p)
+        }
+    };
+
+    cx.editor
+        .open(&path.unwrap_or(default_tutor), Action::Replace)?;
     // Unset path to prevent accidentally saving to the original tutor file.
     doc_mut!(cx.editor).set_path(None)?;
     Ok(())
@@ -2360,7 +2374,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Open the tutorial.",
             fun: tutor,
-            completer: None,
+            completer: Some(completers::tutor),
         },
         TypableCommand {
             name: "goto",
