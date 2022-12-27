@@ -15,19 +15,14 @@
   (#not-match? @_no_lang "lang=")
   (#set! injection.language "javascript"))
 
-; <script lang="js|javascript">
+; <script lang="...">
 ((script_element
-    (start_tag (attribute (quoted_attribute_value (attribute_value) @_lang)))
-    (raw_text) @injection.content)
-    (#match? @_lang "^(js|javascript)$")
-    (#set! injection.language "javascript"))
-
-; <script lang="ts|typescript">
-((script_element
-    (start_tag (attribute (quoted_attribute_value (attribute_value) @_lang)))
-    (raw_text) @injection.content)
-    (#match? @_lang "^(ts|typescript)$")
-    (#set! injection.language "typescript"))
+  (start_tag
+    (attribute
+    (attribute_name) @_attr_name
+    (quoted_attribute_value (attribute_value) @injection.language)))
+  (raw_text) @injection.content)
+  (#eq? @_attr_name "lang"))
 
 ; <style>
 ((style_element
@@ -38,9 +33,12 @@
 
 ; <style lang="...">
 ((style_element
-    (start_tag (attribute (quoted_attribute_value (attribute_value) @injection.language)))
-    (raw_text) @injection.content)
-    (#match? @injection.language "^(css|scss)$"))
+  (start_tag
+    (attribute
+      (attribute_name) @_attr_name
+      (quoted_attribute_value (attribute_value) @injection.language)))
+   (raw_text) @injection.content)
+ (#eq? @_attr_name "lang"))
 
 ((comment) @injection.content
  (#set! injection.language "comment"))
