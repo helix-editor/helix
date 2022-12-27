@@ -445,46 +445,42 @@ pub mod completers {
     pub fn help(_editor: &Editor, input: &str) -> Vec<Completion> {
         let static_cmds_path = helix_loader::runtime_dir().join("help/static-commands");
         let typable_cmds_path = helix_loader::runtime_dir().join("help/typable-commands");
-        let mut items: Vec<String> = std::fs::read_dir(static_cmds_path)
-            .map(|entries| {
-                entries
-                    .filter_map(|entry| {
-                        let entry = entry.ok()?;
-                        let path = entry.path();
-                        path.extension()
-                            .is_none()
-                            .then(|| path.file_stem().unwrap().to_string_lossy().into_owned())
-                    })
-                    .chain(
-                        std::fs::read_dir(typable_cmds_path)
-                            .map(|entries| {
-                                entries.filter_map(|entry| {
-                                    let entry = entry.ok()?;
-                                    let path = entry.path();
-                                    path.extension().is_none().then(|| {
-                                        format!(":{}", path.file_stem().unwrap().to_string_lossy())
-                                    })
-                                })
-                            })
-                            .into_iter()
-                            .flatten(),
-                    )
-                    .collect()
-            })
-            .unwrap_or_default();
-        items.push("topics".to_owned());
+
+        let static_cmds = std::fs::read_dir(static_cmds_path)
+            .into_iter()
+            .flat_map(|entries| {
+                entries.filter_map(|entry| {
+                    let path = entry.ok()?.path();
+                    path.extension()
+                        .is_none()
+                        .then(|| path.file_stem().unwrap().to_string_lossy().into_owned())
+                })
+            });
+        let typable_cmds = std::fs::read_dir(typable_cmds_path)
+            .into_iter()
+            .flat_map(|entries| {
+                entries.filter_map(|entry| {
+                    let path = entry.ok()?.path();
+                    path.extension()
+                        .is_none()
+                        .then(|| format!(":{}", path.file_stem().unwrap().to_string_lossy()))
+                })
+            });
+
+        let items = std::iter::once("topics".to_owned())
+            .chain(static_cmds)
+            .chain(typable_cmds);
 
         let matcher = Matcher::default();
 
         let mut matches: Vec<_> = items
-            .into_iter()
             .map(Cow::from)
             .filter_map(|name| matcher.fuzzy_match(&name, input).map(|score| (name, score)))
             .collect();
 
         matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
 
-        matches.into_iter().map(|(name, _)| ((0..), name)).collect()
+        matches.into_iter().map(|(name, _)| (0.., name)).collect()
     }
 
     #[derive(Copy, Clone, PartialEq, Eq)]
