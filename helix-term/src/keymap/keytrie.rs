@@ -123,8 +123,8 @@ impl KeyTrie {
             .iter()
             .map(|(key_events, description)| {
                 let key_events_string: String = key_events.iter().fold(String::new(), |mut acc, key_event| {
-                    if acc.is_empty() { acc.push_str(key_event); }
-                    else { acc.push_str(&format!(", {}", key_event)) }
+                    if !acc.is_empty() { acc.push_str(", "); }
+                    acc.push_str(key_event);
                     acc
                 });
                 (key_events_string, *description)
