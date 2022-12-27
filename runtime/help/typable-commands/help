@@ -1,0 +1,20 @@
+`:help [command|keybind|'topics']`
+
+Aliases: `:h`
+
+Opens documentation for a command or keybind, or for the
+editor in general.
+
+`:help`
+Opens this page.
+
+`:help <command>`
+Opens help for `command`, e.g. `:help find_next_char`.
+
+`:help <keybind>`
+Opens help for the command associated with `keybind`,
+e.g. `:help f`, `:help C-o`, `:help :open`
+
+`:help topics`
+Opens a picker with various help topics not related to
+specific commands or keybinds.

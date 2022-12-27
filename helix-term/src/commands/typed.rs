@@ -1829,9 +1829,25 @@ fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         return Ok(());
     }
 
+    const STATIC_HELP_DIR: &str = "static-commands";
+    const TYPABLE_HELP_DIR: &str = "typable-commands";
+
+    let args_msg = args.join(" ");
+    let open_help =
+        move |help_dir: &str, command: &str, editor: &mut Editor| -> anyhow::Result<()> {
+            let path = helix_loader::runtime_dir()
+                .join("help")
+                .join(help_dir)
+                .join(command);
+
+            ensure!(path.is_file(), "No help available for '{}'", args_msg);
+            let id = editor.open(&path, Action::HorizontalSplit)?;
+            editor.document_mut(id).unwrap().set_path(None)?;
+            Ok(())
+        };
+
     if args.is_empty() {
-        // TODO: Open a list of commands?
-        todo!()
+        return open_help(TYPABLE_HELP_DIR, "help", cx.editor);
     }
 
     if args[0] == "topics" {
@@ -1850,23 +1866,6 @@ fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
 
         return Ok(());
     }
-
-    let args_msg = args.join(" ");
-    let open_help =
-        move |help_dir: &str, command: &str, editor: &mut Editor| -> anyhow::Result<()> {
-            let path = helix_loader::runtime_dir()
-                .join("help")
-                .join(help_dir)
-                .join(command);
-
-            ensure!(path.is_file(), "No help available for '{}'", args_msg);
-            let id = editor.open(&path, Action::HorizontalSplit)?;
-            editor.document_mut(id).unwrap().set_path(None)?;
-            Ok(())
-        };
-
-    const STATIC_HELP_DIR: &str = "static-commands";
-    const TYPABLE_HELP_DIR: &str = "typable-commands";
 
     let (help_dir, command): (&str, &str) = {
         let arg = &args[0];
