@@ -60,7 +60,7 @@ label = "honey"
 "ui.virtual.indent-guide" = { fg = "comet" }
 
 "ui.selection" = { bg = "#540099" }
-"ui.selection.primary" = { bg = "#540099" }
+"ui.selection.primary" = { bg = "#7900DB" }
 # TODO: namespace ui.cursor as ui.selection.cursor?
 "ui.cursor.select" = { bg = "delta" }
 "ui.cursor.insert" = { bg = "white" }
