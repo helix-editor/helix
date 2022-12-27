@@ -52,7 +52,8 @@ impl Keymap {
                     }
                 },
                 KeyTrieNode::MappableCommand(mappable_command) => {
-                        list.entry(mappable_command.name().to_string()).or_default().push(prefix.to_string());
+                    if mappable_command.name() == "no_op" { return }
+                    list.entry(mappable_command.name().to_string()).or_default().push(prefix.to_string());
                 },
                 KeyTrieNode::CommandSequence(_) => {}
             };
