@@ -436,7 +436,7 @@ impl MappableCommand {
         jump_mode_word, "Jump mode: word-wise",
         jump_mode_search, "Jump mode: character search",
         extend_jump_mode_search, "Jump mode: extending character search",
-        command_palette, "Open command pallete",
+        command_palette, "Open command palette",
     );
 }
 
