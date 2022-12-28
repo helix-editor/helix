@@ -3173,8 +3173,7 @@ pub mod insert {
                 let on_auto_pair = doc
                     .auto_pairs(cx.editor)
                     .and_then(|pairs| pairs.get(prev))
-                    .and_then(|pair| if pair.close == curr { Some(pair) } else { None })
-                    .is_some();
+                    .map_or(false, |pair| pair.open == prev && pair.close == curr);
 
                 let local_offs = if on_auto_pair {
                     let inner_indent = indent.clone() + doc.indent_style.as_str();
