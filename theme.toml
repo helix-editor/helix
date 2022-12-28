@@ -60,13 +60,13 @@ label = "honey"
 "ui.virtual.indent-guide" = { fg = "comet" }
 
 "ui.selection" = { bg = "#540099" }
-"ui.selection.primary" = { bg = "#8700F5" }
+"ui.selection.primary" = { bg = "#1212CE" }
 # TODO: namespace ui.cursor as ui.selection.cursor?
+"ui.cursor" = { fg = "#8984E1", modifiers = ["reversed"] }
+"ui.cursor.primary" = { modifiers = ["reversed"] }
 "ui.cursor.select" = { bg = "delta" }
 "ui.cursor.insert" = { bg = "white" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
-"ui.cursor" = { fg = "#756FDC", modifiers = ["reversed"] }
-"ui.cursor.primary" = { modifiers = ["reversed"] }
 "ui.cursorline.primary" = { bg = "bossanova" }
 "ui.highlight" = { bg = "bossanova" }
 
