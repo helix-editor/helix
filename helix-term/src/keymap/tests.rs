@@ -4,13 +4,11 @@ mod tests {
     use helix_core::hashmap;
     use helix_view::{document::Mode, input::KeyEvent};
     use crate::{
-        config::Config,
-        commands::MappableCommand,
-        keymap::*,
         keymap::macros::*,
-        keymaps::{Keymaps, KeymapResult}
+        keymap::keymaps::Keymaps,
+        keymap::Keymap,
     };
-    use arc_swap::access::Constant;
+    use std::collections::HashMap;
 
     #[test]
     #[should_panic]
@@ -25,99 +23,6 @@ mod tests {
     fn check_duplicate_keys_in_default_keymap() {
         // will panic on duplicate keys, assumes that `Keymaps` uses keymap! macro
         Keymaps::default();
-    }
-
-    #[test]
-    fn merge_partial_keys() {
-        let config = Config {
-            keys: hashmap! {
-                Mode::Normal => Keymap::new(
-                    keymap!({ "Normal mode"
-                        "i" => normal_mode,
-                        "无" => insert_mode,
-                        "z" => jump_backward,
-                        "g" => { "Merge into goto mode"
-                            "$" => goto_line_end,
-                            "g" => delete_char_forward,
-                        },
-                    })
-                )
-            },
-            ..Default::default()
-        };
-        let mut merged_config = merge_keys(config.clone());
-        assert_ne!(config, merged_config);
-
-        let mut keymap = Keymaps::new(Box::new(Constant(merged_config.keys.clone())));
-        assert_eq!(
-            keymap.get(Mode::Normal, key!('i')),
-            KeymapResult::Matched(MappableCommand::normal_mode),
-            "New mappable command should ovveride default."
-        );
-        assert_eq!(
-            keymap.get(Mode::Normal, key!('无')),
-            KeymapResult::Matched(MappableCommand::insert_mode),
-            "New mappable command should be present in merged keymap."
-        );
-        // Assumes that z is a node in the default keymap
-        assert_eq!(
-            keymap.get(Mode::Normal, key!('z')),
-            KeymapResult::Matched(MappableCommand::jump_backward),
-            "New Mappable command should replace default sub keytrie."
-        );
-
-        let keymap = merged_config.keys.get_mut(&Mode::Normal).unwrap();
-        // Assumes that `g` is a node in default keymap
-        assert_eq!(
-            keymap.root_node.traverse(&[key!('g'), key!('$')]).unwrap(),
-            KeyTrieNode::MappableCommand(MappableCommand::goto_line_end),
-            "Mappable command should be present in merged keytrie."
-        );
-        // Assumes that `gg` is in default keymap
-        assert_eq!(
-            keymap.root_node.traverse(&[key!('g'), key!('g')]).unwrap(),
-            KeyTrieNode::MappableCommand(MappableCommand::delete_char_forward),
-            "Mappable command should replace default in merged keytrie."
-        );
-        // Assumes that `ge` is in default keymap
-        assert_eq!(
-            keymap.root_node.traverse(&[key!('g'), key!('e')]).unwrap(),
-            KeyTrieNode::MappableCommand(MappableCommand::goto_last_line),
-            "Mappable commands from default keytrie should still be present in merged merged keytrie unless overridden."
-        );
-
-        assert!(merged_config.keys.get(&Mode::Normal).unwrap().len() > 1);
-        assert!(merged_config.keys.get(&Mode::Insert).unwrap().len() > 0);
-    }
-
-    #[test]
-    fn merges_with_default_keymap_config() {
-        let config = Config {
-            keys: hashmap! {
-                Mode::Normal => Keymap::new(
-                    keymap!({ "Normal mode"
-                        "space" => { ""
-                            "s" => { ""
-                                "v" => vsplit,
-                                "c" => hsplit,
-                            },
-                        },
-                    })
-                )
-            },
-            ..Default::default()
-        };
-        let mut merged_config = Keymaps::merge_with_default(config.clone());
-        assert_ne!(config, merged_config);
-        let keymap_normal = merged_config.keys.get_mut(&Mode::Normal).unwrap();
-        assert_eq!(
-            keymap_normal
-                .root_node
-                .traverse(&[key!(' '), key!('s'), key!('v')])
-                .unwrap(),
-            KeyTrieNode::MappableCommand(MappableCommand::vsplit),
-            "Mappable command should be present in merged keytrie."
-        );
     }
 
     #[test]
