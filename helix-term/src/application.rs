@@ -418,9 +418,7 @@ impl Application {
             if true_color || theme.is_16_color() {
                 self.editor.set_theme(theme);
             } else {
-                return Err(anyhow::anyhow!(
-                    "theme requires truecolor support, which is not available"
-                ));
+                anyhow::bail!("theme requires truecolor support, which is not available")
             }
         }
 
