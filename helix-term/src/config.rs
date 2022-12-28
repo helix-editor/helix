@@ -1,11 +1,8 @@
 use crate::keymap::{default::default, Keymap, keymaps::Keymaps};
 use helix_view::document::Mode;
-use serde::Deserialize;
-use std::collections::HashMap;
-use std::fmt::Display;
-use std::io::Error as IOError;
-use std::path::PathBuf;
+use std::{fmt::Display, collections::HashMap, io::Error as IOError};
 use toml::de::Error as TomlError;
+use serde::Deserialize;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]

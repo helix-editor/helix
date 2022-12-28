@@ -1,12 +1,11 @@
 pub mod keymaps;
-pub mod keytrienode;
 pub mod default;
 pub mod macros;
-pub mod keytrie;
 pub mod tests;
 
-use serde::Deserialize;
-use std::{collections::HashMap, ops::{Deref, DerefMut}};
+mod keytrie;
+mod keytrienode;
+
 use crate::{
     commands::MappableCommand,
     keymap::{
@@ -14,6 +13,8 @@ use crate::{
         keytrienode::KeyTrieNode
     }
 };
+use std::{collections::HashMap, ops::{Deref, DerefMut}};
+use serde::Deserialize;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(transparent)]
