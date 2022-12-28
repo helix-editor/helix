@@ -1,10 +1,7 @@
-use std::collections::HashMap;
-
-use super::macros::keymap;
-use super::Keymap;
-use super::keytrie::KeyTrie;
+use super::{macros::keymap, Keymap, keytrie::KeyTrie};
 use helix_view::document::Mode;
 use helix_core::hashmap;
+use std::collections::HashMap;
 
 pub fn default() -> HashMap<Mode, Keymap> {
     let normal: KeyTrie = keymap!({ "Normal mode"

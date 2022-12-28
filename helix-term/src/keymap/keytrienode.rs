@@ -1,9 +1,7 @@
-use std::collections::HashMap;
-use super::MappableCommand;
-use serde::Deserialize;
-use serde::de::Visitor;
-use super::keytrie::KeyTrie;
+use super::{MappableCommand, keytrie::KeyTrie};
 use helix_view::input::KeyEvent;
+use std::collections::HashMap;
+use serde::{Deserialize, de::Visitor};
 
 /// Each variant includes a documentaion property.
 /// For the MappableCommand and CommandSequence variants, the property is self explanatory.
