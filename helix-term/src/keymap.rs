@@ -2,9 +2,8 @@ pub mod keymaps;
 pub mod default;
 pub mod macros;
 pub mod tests;
-
-mod keytrie;
-mod keytrienode;
+pub mod keytrienode;
+pub mod keytrie;
 
 use crate::{
     commands::MappableCommand,
