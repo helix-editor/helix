@@ -88,7 +88,12 @@ impl Args {
 
 /// Parse arg into [`PathBuf`] and position.
 pub(crate) fn parse_file(s: &str) -> (PathBuf, Position) {
-    let def = || (PathBuf::from(s), Position::default());
+    let def = || {
+        (
+            helix_core::path::expand_tilde(Path::new(s)),
+            Position::default(),
+        )
+    };
     if Path::new(s).exists() {
         return def();
     }
