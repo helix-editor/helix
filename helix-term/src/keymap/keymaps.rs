@@ -1,12 +1,14 @@
+use super::{
+    macros::key,
+    keytrienode::KeyTrieNode,
+    keytrie::KeyTrie,
+    Keymap,
+    default,
+};
+use crate::{commands::MappableCommand, config::Config};
+use helix_view::{document::Mode, input::KeyEvent};
 use std::{sync::Arc, collections::HashMap};
 use arc_swap::{access::{DynAccess, DynGuard}, ArcSwap};
-use helix_view::{document::Mode, input::KeyEvent};
-use crate::commands::MappableCommand;
-use crate::config::Config;
-use super::{macros::key, keytrienode::KeyTrieNode, default};
-use super::keytrie::KeyTrie;
-use super::Keymap;
-use super::default::default;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum KeymapResult {
@@ -116,6 +118,6 @@ impl Keymaps {
 
 impl Default for Keymaps {
     fn default() -> Self {
-        Self::new(Box::new(ArcSwap::new(Arc::new(default()))))
+        Self::new(Box::new(ArcSwap::new(Arc::new(default::default()))))
     }
 }

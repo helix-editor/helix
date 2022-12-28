@@ -1,14 +1,16 @@
 #[macro_use]
 #[cfg(test)]
 mod tests {
-    use arc_swap::access::Constant;
     use helix_core::hashmap;
     use helix_view::{document::Mode, input::KeyEvent};
-    use crate::config::Config;
-    use crate::commands::MappableCommand;
-    use crate::keymap::*;
-    use keymaps::{Keymaps, KeymapResult};
-    use macros::*;
+    use crate::{
+        config::Config,
+        commands::MappableCommand,
+        keymap::*,
+        keymap::macros::*,
+        keymaps::{Keymaps, KeymapResult}
+    };
+    use arc_swap::access::Constant;
 
     #[test]
     #[should_panic]

@@ -3,11 +3,11 @@ pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
-use helix_vcs::Hunk;
 pub use lsp::*;
 use tui::widgets::Row;
 pub use typed::*;
 
+use helix_vcs::Hunk;
 use helix_core::{
     comment, coords_at_pos, encoding, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
@@ -15,7 +15,7 @@ use helix_core::{
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
-    movement::{self, Direction},
+    movement::{self, Direction, Movement},
     object, pos_at_coords, pos_at_visual_coords,
     regex::{self, Regex, RegexBuilder},
     search::{self, CharMatcher},
@@ -37,33 +37,27 @@ use helix_view::{
     view::View,
     Document, DocumentId, Editor, ViewId,
 };
-
-use anyhow::{anyhow, bail, ensure, Context as _};
-use fuzzy_matcher::FuzzyMatcher;
-use insert::*;
-use movement::Movement;
-
 use crate::{
+    commands::insert::*,
     args,
     compositor::{self, Component, Compositor},
-    job::Callback,
+    job::{Callback, self, Jobs},
     keymap::CommandList,
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
-
-use crate::job::{self, Jobs};
-use futures_util::StreamExt;
-use std::{collections::HashMap, fmt, future::Future};
-use std::{collections::HashSet, num::NonZeroUsize};
-
 use std::{
+    collections::{HashMap, HashSet},
+    num::NonZeroUsize,
+    future::Future,
     borrow::Cow,
     path::{Path, PathBuf},
+    fmt,
 };
-
+use anyhow::{anyhow, bail, ensure, Context as _};
+use fuzzy_matcher::FuzzyMatcher;
+use futures_util::StreamExt;
 use once_cell::sync::Lazy;
 use serde::de::{self, Deserialize, Deserializer};
-
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
