@@ -89,11 +89,11 @@ mod tests {
             toml::from_str::<Config>(sample_keymaps).unwrap(),
             Config {
                 keys: hashmap! {
-                    Mode::Insert => Keymap::new(keymap!({ "Insert mode"
+                    Mode::Insert => Keymap::new(keytrie!({ "Insert mode"
                         "y" => move_line_down,
                         "S-C-a" => delete_selection,
                     })),
-                    Mode::Normal => Keymap::new(keymap!({ "Normal mode"
+                    Mode::Normal => Keymap::new(keytrie!({ "Normal mode"
                         "A-F12" => move_next_word_end,
                     })),
                 },
@@ -118,7 +118,7 @@ mod tests {
         let user_config = Config {
             keys: hashmap! {
                 Mode::Normal => Keymap::new(
-                    keymap!({ "Normal mode"
+                    keytrie!({ "Normal mode"
                         "i" => normal_mode,
                         "无" => insert_mode,
                         "z" => jump_backward,

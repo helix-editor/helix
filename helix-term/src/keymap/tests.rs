@@ -9,7 +9,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn duplicate_keys_should_panic() {
-        keymap!({ "Normal mode"
+        keytrie!({ "Normal mode"
             "i" => normal_mode,
             "i" => goto_definition,
         });
@@ -39,7 +39,7 @@ mod tests {
 
     #[test]
     fn command_list() {
-        let normal_mode = keymap!({ "Normal mode"
+        let normal_mode = keytrie!({ "Normal mode"
             "i" => insert_mode,
             "g" => { "Goto"
                 "g" => goto_file_start,
