@@ -39,7 +39,7 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std
 tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = ["crossterm"] }
 crossterm = { version = "0.26", features = ["event-stream"] }
 signal-hook = "0.3"
-tokio-stream = "0.1"
+tokio-stream = { version = "0.1", features = ["net"] }
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 arc-swap = { version = "1.6.0" }
 
