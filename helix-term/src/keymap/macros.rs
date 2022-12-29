@@ -7,7 +7,7 @@ macro_rules! key {
         }
     };
     ($($ch:tt)*) => {
-        ::helix_view::input::KeyEvent {
+        helix_view::input::KeyEvent {
             code: helix_view::keyboard::KeyCode::Char($($ch)*),
             modifiers: helix_view::keyboard::KeyModifiers::NONE,
         }
@@ -66,9 +66,8 @@ macro_rules! alt {
 ///
 /// ```
 /// # use helix_core::hashmap;
-/// # use helix_term::keymap;
-/// # use helix_term::keymap::Keymap;
-/// let normal_mode = keymap!({ "Normal mode"
+/// # use helix_term::keymap::{Keymap, macros::keytrie};
+/// let normal_mode = keytrie!({ "Normal mode"
 ///     "i" => insert_mode,
 ///     "g" => { "Goto"
 ///         "g" => goto_file_start,
@@ -79,7 +78,7 @@ macro_rules! alt {
 /// let keymap = Keymap::new(normal_mode);
 /// ```
 #[macro_export]
-macro_rules! keymap {
+macro_rules! keytrie {
     ({ $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }) => {
         // modified from the hashmap! macro
         {
@@ -89,7 +88,7 @@ macro_rules! keymap {
             $(
                 $(
                     let _key = $key.parse::<helix_view::input::KeyEvent>().unwrap();
-                    let _potential_duplicate = _map.insert(_key,keymap!(@trie $value));
+                    let _potential_duplicate = _map.insert(_key,keytrie!(@trie $value));
                     assert!(_potential_duplicate.is_none(), "Duplicate key found: {:?}", _potential_duplicate.unwrap());
                 )+
             )*
@@ -100,7 +99,7 @@ macro_rules! keymap {
     };
 
     (@trie {$label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }) => {
-        $crate::keymap::keytrienode::KeyTrieNode::KeyTrie(keymap!({ $label $(sticky=$sticky)? $($($key)|+ => $value,)+ }))
+        $crate::keymap::keytrienode::KeyTrieNode::KeyTrie(keytrie!({ $label $(sticky=$sticky)? $($($key)|+ => $value,)+ }))
     };
 
     (@trie $cmd:ident) => {
@@ -116,4 +115,4 @@ pub use key;
 pub use shift;
 pub use ctrl;
 pub use alt;
-pub use keymap;
+pub use keytrie;
