@@ -242,6 +242,38 @@ fn buffer_close_all(
     buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
+fn buffer_close_nth(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let index: usize = match args.first() {
+        Some(arg) => match arg.parse() {
+            Ok(ind) => ind,
+            _ => {
+                cx.editor.set_error(":bcn argument must be number!");
+                return Ok(());
+            }
+        },
+        None => {
+            cx.editor.set_error(":bcn take one argument!");
+            return Ok(());
+        }
+    };
+    let doc = match cx.editor.documents().nth(index) {
+        Some(doc) => doc,
+        None => {
+            // cx.editor.set_error(":bcn selected buffer does not exist!");
+            return Ok(());
+        }
+    };
+    let doc_id = doc.id();
+    buffer_close_by_ids_impl(cx, &[doc_id], false)
+}
+
 fn force_buffer_close_all(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -253,6 +285,40 @@ fn force_buffer_close_all(
 
     let document_ids = buffer_gather_all_impl(cx.editor);
     buffer_close_by_ids_impl(cx, &document_ids, true)
+}
+
+fn buffer_nth(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let index: usize = match args.first() {
+        Some(arg) => match arg.parse() {
+            Ok(ind) => ind,
+            _ => {
+                cx.editor.set_error(":bnth argument must be number!");
+                return Ok(());
+            }
+        },
+        None => {
+            cx.editor.set_error(":bnth take one argument!");
+            return Ok(());
+        }
+    };
+    let doc = match cx.editor.documents().nth(index) {
+        Some(doc) => doc,
+        None => {
+            // cx.editor.set_error(":bnth selected buffer does not exist!");
+            return Ok(());
+        }
+    };
+    let doc_id = doc.id();
+    cx.editor
+        .switch(doc_id, helix_view::editor::Action::Replace);
+    Ok(())
 }
 
 fn buffer_next(
@@ -1887,6 +1953,19 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["bca!", "bcloseall!"],
             doc: "Force close all buffers ignoring unsaved changes without quitting.",
             fun: force_buffer_close_all,
+            completer: None,
+        },
+        TypableCommand {
+            name: "buffer-close-nth",
+            aliases: &["bcn", "bclosenth"],
+            doc: "Close nth buffer without quitting.",
+            fun: buffer_close_nth,
+            completer: None,
+        }, TypableCommand {
+            name: "buffer-nth",
+            aliases: &["bnth"],
+            doc: "Goto nth buffer.",
+            fun: buffer_nth,
             completer: None,
         },
         TypableCommand {
