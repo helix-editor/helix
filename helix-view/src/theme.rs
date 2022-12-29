@@ -14,11 +14,10 @@ use toml::{map::Map, Value};
 use crate::graphics::UnderlineStyle;
 pub use crate::graphics::{Color, Modifier, Style};
 
-// store default theme in to byte array.
-// const BASE16_DEFAULT_THEME_DATA: &[u8] = include_bytes!("../../base16_theme.toml");
 pub static DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
     toml::from_slice(include_bytes!("../../theme.toml")).expect("Failed to parse default theme")
 });
+
 pub static BASE16_DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
     toml::from_slice(include_bytes!("../../base16_theme.toml"))
         .expect("Failed to parse base 16 default theme")
