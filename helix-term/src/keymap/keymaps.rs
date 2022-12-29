@@ -5,7 +5,7 @@ use super::{
     Keymap,
     default,
 };
-use crate::{commands::MappableCommand, config::Config};
+use crate::commands::MappableCommand;
 use helix_view::{document::Mode, input::KeyEvent};
 use std::{sync::Arc, collections::HashMap};
 use arc_swap::{access::{DynAccess, DynGuard}, ArcSwap};
@@ -47,14 +47,6 @@ impl Keymaps {
 
     pub fn sticky_keytrie(&self) -> Option<&KeyTrie> {
         self.sticky_keytrie.as_ref()
-    }
-
-    pub fn merge_with_default(mut config: Config) -> Config {
-        let mut delta = std::mem::replace(&mut config.keys, default::default());
-        for (mode, keys) in &mut config.keys {
-            keys.merge_keytrie(delta.remove(mode).unwrap_or_default().root_node)
-        }
-        config
     }
 
     /// Lookup `key` in the keymap to try and find a command to execute.
@@ -116,6 +108,7 @@ impl Keymaps {
     }
 }
 
+// NOTE: Only used for testing purposes
 impl Default for Keymaps {
     fn default() -> Self {
         Self::new(Box::new(ArcSwap::new(Arc::new(default::default()))))
