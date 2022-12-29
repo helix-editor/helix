@@ -1,9 +1,9 @@
-use super::{macros::keytrie, Keymap};
+use super::{macros::keytrie, keytrie::KeyTrie};
 use helix_view::document::Mode;
 use helix_core::hashmap;
 use std::collections::HashMap;
 
-pub fn default() -> HashMap<Mode, Keymap> {
+pub fn default() -> HashMap<Mode, KeyTrie> {
     let normal = keytrie!({ "Normal mode"
         "h" | "left" => move_char_left,
         "j" | "down" => move_line_down,
@@ -370,8 +370,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "end" => goto_line_end_newline,
     });
     hashmap!(
-        Mode::Normal => Keymap::new(normal),
-        Mode::Select => Keymap::new(select),
-        Mode::Insert => Keymap::new(insert),
+        Mode::Normal => normal,
+        Mode::Select => select,
+        Mode::Insert => insert,
     )
 }

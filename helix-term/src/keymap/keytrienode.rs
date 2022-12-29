@@ -1,4 +1,5 @@
-use super::{MappableCommand, keytrie::KeyTrie};
+use super::keytrie::KeyTrie;
+use crate::commands::MappableCommand;
 use helix_view::input::KeyEvent;
 use std::collections::HashMap;
 use serde::{Deserialize, de::Visitor};
