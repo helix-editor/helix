@@ -1,4 +1,4 @@
-use crate::keymap::{default::default, keymaps::Keymaps, Keymap};
+use crate::keymap::{default, Keymap};
 use helix_view::document::Mode;
 use serde::Deserialize;
 use std::{collections::HashMap, fmt::Display, io::Error as IOError};
@@ -8,7 +8,7 @@ use toml::de::Error as TomlError;
 #[serde(deny_unknown_fields)]
 pub struct Config {
     pub theme: Option<String>,
-    #[serde(default = "default")]
+    #[serde(default = "default::default")]
     pub keys: HashMap<Mode, Keymap>,
     #[serde(default)]
     pub editor: helix_view::editor::Config,
@@ -18,7 +18,7 @@ impl Default for Config {
     fn default() -> Config {
         Config {
             theme: None,
-            keys: default(),
+            keys: default::default(),
             editor: helix_view::editor::Config::default(),
         }
     }
@@ -44,10 +44,18 @@ impl Config {
     pub fn load_default() -> Result<Config, ConfigLoadError> {
         match std::fs::read_to_string(helix_loader::config_file()) {
             Ok(config) => toml::from_str(&config)
-                .map(Keymaps::merge_with_default)
+                .map(self::Config::merge_in_default_keymap)
                 .map_err(ConfigLoadError::BadConfig),
             Err(err) => Err(ConfigLoadError::Error(err)),
         }
+    }
+
+    pub fn merge_in_default_keymap(mut config: Config) -> Config {
+        let mut delta = std::mem::replace(&mut config.keys, default::default());
+        for (mode, keys) in &mut config.keys {
+            keys.merge_keytrie(delta.remove(mode).unwrap_or_default().root_node)
+        }
+        config
     }
 }
 
@@ -124,7 +132,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let mut merged_config = Keymaps::merge_with_default(user_config.clone());
+        let mut merged_config = Keymaps::merge_in_default_keymap(user_config.clone());
         assert_ne!(
             user_config,
             merged_config,
