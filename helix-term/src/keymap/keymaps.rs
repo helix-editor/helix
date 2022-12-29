@@ -1,7 +1,7 @@
 use super::{
-    macros::key,
     keytrienode::KeyTrieNode,
     keytrie::KeyTrie,
+    macros::key,
     Keymap,
     default,
 };
@@ -108,7 +108,6 @@ impl Keymaps {
     }
 }
 
-// NOTE: Only used for testing purposes
 impl Default for Keymaps {
     fn default() -> Self {
         Self::new(Box::new(ArcSwap::new(Arc::new(default::default()))))
