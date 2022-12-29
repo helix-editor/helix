@@ -1,9 +1,10 @@
 pub mod keymaps;
 pub mod default;
 pub mod macros;
-pub mod tests;
+// NOTE: Only pub becuase of their use in macros
 pub mod keytrienode;
 pub mod keytrie;
+mod tests;
 
 use crate::{
     commands::MappableCommand,

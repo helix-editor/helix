@@ -102,7 +102,6 @@ impl Keymaps {
     }
 }
 
-// NOTE: Only used for testing purposes
 impl Default for Keymaps {
     fn default() -> Self {
         Self::new(Box::new(ArcSwap::new(Arc::new(default::default()))))
