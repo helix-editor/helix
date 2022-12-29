@@ -7,6 +7,15 @@ pub use lsp::*;
 use tui::widgets::{Row, Cell};
 pub use typed::*;
 
+use crate::{
+    commands::insert::*,
+    args,
+    keymap::keymaps::CommandList,
+    compositor::{self, Component, Compositor},
+    job::{Callback, self, Jobs},
+    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent, menu::{Cell, Row}},
+};
+
 use helix_vcs::Hunk;
 use helix_core::{
     comment, coords_at_pos, encoding, find_first_non_whitespace_char, find_root, graphemes,
@@ -35,14 +44,6 @@ use helix_view::{
     tree,
     view::View,
     Document, DocumentId, Editor, ViewId, apply_transaction,
-};
-use crate::{
-    commands::insert::*,
-    args,
-    compositor::{self, Component, Compositor},
-    job::{Callback, self, Jobs},
-    keymap::CommandList,
-    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -2489,9 +2490,7 @@ impl ui::menu::Item for MappableCommand {
 pub fn command_palette(cx: &mut Context) {
     cx.callback = Some(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
-            let keymap_command_lists = compositor.find::<ui::EditorView>().unwrap().keymaps.load_keymaps()
-                [&cx.editor.mode]
-                .command_list();
+            let keymap_command_lists = compositor.find::<ui::EditorView>().unwrap().keymaps.command_list(&cx.editor.mode);
 
             let mut commands: Vec<MappableCommand> = MappableCommand::STATIC_COMMAND_LIST.into();
             commands.extend(typed::TYPABLE_COMMAND_LIST.iter().map(|cmd| {

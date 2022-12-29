@@ -1,4 +1,4 @@
-use crate::keymap::{default, Keymap};
+use crate::keymap::{default, keytrie::KeyTrie};
 use helix_view::document::Mode;
 use serde::Deserialize;
 use std::{collections::HashMap, fmt::Display, io::Error as IOError};
@@ -9,7 +9,7 @@ use toml::de::Error as TomlError;
 pub struct Config {
     pub theme: Option<String>,
     #[serde(default = "default::default")]
-    pub keys: HashMap<Mode, Keymap>,
+    pub keys: HashMap<Mode, KeyTrie>,
     #[serde(default)]
     pub editor: helix_view::editor::Config,
 }
@@ -53,7 +53,7 @@ impl Config {
     pub fn merge_in_default_keymap(mut self) -> Config {
         let mut delta = std::mem::replace(&mut self.keys, default::default());
         for (mode, keys) in &mut self.keys {
-            keys.merge_keytrie(delta.remove(mode).unwrap_or_default().root_node)
+            keys.merge_keytrie(delta.remove(mode).unwrap_or_default())
         }
         self
     }
@@ -68,7 +68,6 @@ mod tests {
             default,
             keytrienode::KeyTrieNode,
             macros::*,
-            Keymap,
         },
     };
     use helix_core::hashmap;
@@ -89,13 +88,13 @@ mod tests {
             toml::from_str::<Config>(sample_keymaps).unwrap(),
             Config {
                 keys: hashmap! {
-                    Mode::Insert => Keymap::new(keytrie!({ "Insert mode"
+                    Mode::Insert => keytrie!({ "Insert mode"
                         "y" => move_line_down,
                         "S-C-a" => delete_selection,
-                    })),
-                    Mode::Normal => Keymap::new(keytrie!({ "Normal mode"
+                    }),
+                    Mode::Normal => keytrie!({ "Normal mode"
                         "A-F12" => move_next_word_end,
-                    })),
+                    }),
                 },
                 ..Default::default()
             }
@@ -117,8 +116,7 @@ mod tests {
     fn user_config_merges_with_default() {
         let user_config = Config {
             keys: hashmap! {
-                Mode::Normal => Keymap::new(
-                    keytrie!({ "Normal mode"
+                Mode::Normal => keytrie!({ "Normal mode"
                         "i" => normal_mode,
                         "无" => insert_mode,
                         "z" => jump_backward,
@@ -127,7 +125,7 @@ mod tests {
                             "g" => delete_char_forward,
                         },
                     })
-                )
+                
             },
             ..Default::default()
         };
@@ -138,7 +136,7 @@ mod tests {
             "Merged user keymap with default should differ from user keymap."
         );
 
-        let keymap_normal_root_key_trie = &merged_config.keys.get_mut(&Mode::Normal).unwrap().root_node;
+        let keymap_normal_root_key_trie = &merged_config.keys.get_mut(&Mode::Normal).unwrap();
         assert_eq!(
             keymap_normal_root_key_trie.traverse(&[key!('i')]).unwrap(),
             KeyTrieNode::MappableCommand(MappableCommand::normal_mode),

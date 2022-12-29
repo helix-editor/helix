@@ -3,8 +3,17 @@
 mod tests {
     use helix_core::hashmap;
     use helix_view::{document::Mode, input::KeyEvent};
+<<<<<<< HEAD
     use crate::keymap::{*, macros::*};
     use std::collections::HashMap;
+=======
+    use crate::{
+        keymap::macros::*,
+        keymap::keymaps::Keymaps,
+    };
+    use std::{sync::Arc, collections::HashMap};
+    use arc_swap::ArcSwap;
+>>>>>>> adb17e18 (Removed keymap::Keymap:)
 
     #[test]
     #[should_panic]
@@ -23,7 +32,12 @@ mod tests {
 
     #[test]
     fn aliased_modes_are_same_in_default_keymap() {
+<<<<<<< HEAD
         let root = Keymap::default().get(&Mode::Normal).unwrap().root_node.clone();
+=======
+        let keymaps = Keymaps::default().keymaps;
+        let root = keymaps.load().get(&Mode::Normal).unwrap().clone();
+>>>>>>> adb17e18 (Removed keymap::Keymap:)
         assert_eq!(
             root.traverse(&[key!(' '), key!('w')]).unwrap(),
             root.traverse(&["C-w".parse::<KeyEvent>().unwrap()]).unwrap(),
@@ -46,8 +60,9 @@ mod tests {
             },
             "j" | "k" => move_line_down,
         });
-        let keymap = Keymap::new(normal_mode);
-        let mut command_list = keymap.command_list();
+
+        let keymap = Keymaps::new(Box::new(ArcSwap::new(Arc::new(hashmap!(Mode::Normal => normal_mode)))));
+        let mut command_list = keymap.command_list(&Mode::Normal);
 
         // sort keybindings in order to have consistent tests
         // HashMaps can be compared but we can still get different ordering of bindings
