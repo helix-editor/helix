@@ -44,18 +44,18 @@ impl Config {
     pub fn load_default() -> Result<Config, ConfigLoadError> {
         match std::fs::read_to_string(helix_loader::config_file()) {
             Ok(config) => toml::from_str(&config)
-                .map(self::Config::merge_in_default_keymap)
+                .map(|config: Config| config.merge_in_default_keymap())
                 .map_err(ConfigLoadError::BadConfig),
             Err(err) => Err(ConfigLoadError::Error(err)),
         }
     }
 
-    pub fn merge_in_default_keymap(mut config: Config) -> Config {
-        let mut delta = std::mem::replace(&mut config.keys, default::default());
-        for (mode, keys) in &mut config.keys {
+    pub fn merge_in_default_keymap(mut self) -> Config {
+        let mut delta = std::mem::replace(&mut self.keys, default::default());
+        for (mode, keys) in &mut self.keys {
             keys.merge_keytrie(delta.remove(mode).unwrap_or_default().root_node)
         }
-        config
+        self
     }
 }
 
@@ -66,7 +66,6 @@ mod tests {
         config::Config,
         keymap::{
             default,
-            keymaps::Keymaps,
             keytrienode::KeyTrieNode,
             macros::*,
             Keymap,
@@ -132,7 +131,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let mut merged_config = Keymaps::merge_in_default_keymap(user_config.clone());
+        let mut merged_config = user_config.clone().merge_in_default_keymap();
         assert_ne!(
             user_config,
             merged_config,
