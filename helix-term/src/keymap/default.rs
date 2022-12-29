@@ -1,10 +1,10 @@
-use super::{macros::keymap, Keymap, keytrie::KeyTrie};
+use super::{macros::keytrie, Keymap};
 use helix_view::document::Mode;
 use helix_core::hashmap;
 use std::collections::HashMap;
 
 pub fn default() -> HashMap<Mode, Keymap> {
-    let normal: KeyTrie = keymap!({ "Normal mode"
+    let normal = keytrie!({ "Normal mode"
         "h" | "left" => move_char_left,
         "j" | "down" => move_line_down,
         "k" | "up" => move_line_up,
@@ -316,8 +316,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "C-a" => increment,
         "C-x" => decrement,
     });
-    let mut select: KeyTrie = normal.clone();
-    select.merge_keytrie(keymap!({ "Select mode"
+    let mut select = normal.clone();
+    select.merge_keytrie(keytrie!({ "Select mode"
         "h" | "left" => extend_char_left,
         "j" | "down" => extend_line_down,
         "k" | "up" => extend_line_up,
@@ -344,7 +344,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "v" => normal_mode,
     }));
-    let insert: KeyTrie = keymap!({ "Insert mode"
+    let insert = keytrie!({ "Insert mode"
         "esc" => normal_mode,
 
         "C-s" => commit_undo_checkpoint,
