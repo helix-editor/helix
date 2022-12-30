@@ -3,17 +3,8 @@
 mod tests {
     use helix_core::hashmap;
     use helix_view::{document::Mode, input::KeyEvent};
-<<<<<<< HEAD
     use crate::keymap::{*, macros::*};
     use std::collections::HashMap;
-=======
-    use crate::{
-        keymap::macros::*,
-        keymap::keymaps::Keymaps,
-    };
-    use std::{sync::Arc, collections::HashMap};
-    use arc_swap::ArcSwap;
->>>>>>> adb17e18 (Removed keymap::Keymap:)
 
     #[test]
     #[should_panic]
@@ -32,20 +23,15 @@ mod tests {
 
     #[test]
     fn aliased_modes_are_same_in_default_keymap() {
-<<<<<<< HEAD
-        let root = Keymap::default().get(&Mode::Normal).unwrap().root_node.clone();
-=======
-        let keymaps = Keymaps::default().keymaps;
-        let root = keymaps.load().get(&Mode::Normal).unwrap().clone();
->>>>>>> adb17e18 (Removed keymap::Keymap:)
+        let normal_mode_keytrie_root = Keymap::default().get_keytrie(&Mode::Normal);
         assert_eq!(
-            root.traverse(&[key!(' '), key!('w')]).unwrap(),
-            root.traverse(&["C-w".parse::<KeyEvent>().unwrap()]).unwrap(),
+            normal_mode_keytrie_root.traverse(&[key!(' '), key!('w')]).unwrap(),
+            normal_mode_keytrie_root.traverse(&["C-w".parse::<KeyEvent>().unwrap()]).unwrap(),
             "Mismatch for window mode on `Space-w` and `Ctrl-w`."
         );
         assert_eq!(
-            root.traverse(&[key!('z')]).unwrap(),
-            root.traverse(&[key!('Z')]).unwrap(),
+            normal_mode_keytrie_root.traverse(&[key!('z')]).unwrap(),
+            normal_mode_keytrie_root.traverse(&[key!('Z')]).unwrap(),
             "Mismatch for view mode on `z` and `Z`."
         );
     }
@@ -61,7 +47,7 @@ mod tests {
             "j" | "k" => move_line_down,
         });
 
-        let keymap = Keymaps::new(Box::new(ArcSwap::new(Arc::new(hashmap!(Mode::Normal => normal_mode)))));
+        let keymap = Keymap::new(Box::new(ArcSwap::new(Arc::new(hashmap!(Mode::Normal => normal_mode)))));
         let mut command_list = keymap.command_list(&Mode::Normal);
 
         // sort keybindings in order to have consistent tests
