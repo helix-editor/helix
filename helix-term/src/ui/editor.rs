@@ -1112,6 +1112,31 @@ impl EditorView {
 }
 
 impl EditorView {
+    fn clean_up(&mut self, cxt: &mut commands::Context) {
+        // not sure if this two should be clean up
+        // cxt.editor.reset_idle_timer();
+        // cxt.editor.status_msg = None;
+
+        // clean up completion
+        self.completion = None;
+
+        // clean up signatureHelp
+        cxt.jobs.callback(async {
+            let call: job::Callback =
+                Callback::EditorCompositor(Box::new(|_editor, compositor| {
+                    compositor.remove(SignatureHelp::ID);
+                }));
+            Ok(call)
+        });
+        // clean up hover popup
+        cxt.jobs.callback(async {
+            let call: job::Callback =
+                Callback::EditorCompositor(Box::new(|_editor, compositor| {
+                    compositor.remove("hover");
+                }));
+            Ok(call)
+        });
+    }
     fn handle_mouse_event(
         &mut self,
         event: &MouseEvent,
@@ -1142,6 +1167,8 @@ impl EditorView {
 
         match kind {
             MouseEventKind::Down(MouseButton::Left) => {
+                self.clean_up(cxt);
+
                 let editor = &mut cxt.editor;
 
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
@@ -1181,6 +1208,8 @@ impl EditorView {
             }
 
             MouseEventKind::Drag(MouseButton::Left) => {
+                self.clean_up(cxt);
+
                 let (view, doc) = current!(cxt.editor);
 
                 let pos = match view.pos_at_screen_coords(doc, row, column) {
@@ -1198,6 +1227,8 @@ impl EditorView {
             }
 
             MouseEventKind::ScrollUp | MouseEventKind::ScrollDown => {
+                self.clean_up(cxt);
+
                 let current_view = cxt.editor.tree.focus;
 
                 let direction = match event.kind {
@@ -1221,6 +1252,8 @@ impl EditorView {
             }
 
             MouseEventKind::Up(MouseButton::Left) => {
+                self.clean_up(cxt);
+
                 if !config.middle_click_paste {
                     return EventResult::Ignored(None);
                 }
@@ -1243,6 +1276,8 @@ impl EditorView {
             }
 
             MouseEventKind::Up(MouseButton::Right) => {
+                self.clean_up(cxt);
+
                 if let Some((coords, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
                     cxt.editor.focus(view_id);
 
@@ -1264,6 +1299,8 @@ impl EditorView {
             }
 
             MouseEventKind::Up(MouseButton::Middle) => {
+                self.clean_up(cxt);
+
                 let editor = &mut cxt.editor;
                 if !config.middle_click_paste {
                     return EventResult::Ignored(None);
