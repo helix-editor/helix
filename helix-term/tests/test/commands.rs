@@ -316,17 +316,39 @@ async fn test_undo_redo() -> anyhow::Result<()> {
 async fn test_extend_line() -> anyhow::Result<()> {
     // extend with line selected then count
     test((
-        platform_line("#[a|]#\na\na\n\n").as_str(),
+        platform_line(indoc! {"\
+            #[l|]#orem
+            ipsum
+            dolor
+            
+            "})
+        .as_str(),
         "x2x",
-        platform_line("#[a\na\na\n|]#\n").as_str(),
+        platform_line(indoc! {"\
+            #[lorem
+            ipsum
+            dolor
+            |]#
+            "})
+        .as_str(),
     ))
     .await?;
 
     // extend with count on partial selection
     test((
-        platform_line("#[a|]#\na\n\n").as_str(),
+        platform_line(indoc! {"\
+            #[l|]#orem
+            ipsum
+            
+            "})
+        .as_str(),
         "2x",
-        platform_line("#[a\na\n|]#\n").as_str(),
+        platform_line(indoc! {"\
+            #[lorem
+            ipsum
+            |]#
+            "})
+        .as_str(),
     ))
     .await?;
 
