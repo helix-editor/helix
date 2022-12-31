@@ -50,10 +50,10 @@ label = "scale.red.5"
 "ui.statusline.normal" = { fg = "fg.default", bg = "accent.muted" }
 "ui.statusline.insert" = { fg = "fg.default", bg = "attention.muted" }
 "ui.statusline.select" = { fg = "fg.default", bg = "sponsors.muted" }
-"ui.popup" = { bg = "canvas.default" }
-"ui.popup.info" = { fg = "fg.default", bg = "canvas.overlay" }
+"ui.popup" = { bg = "scale.gray.0" }
+"ui.popup.info" = { fg = "fg.default", bg = "scale.gray.0" }
 "ui.window" = { fg = "border.default" }
-"ui.help" = { fg = "fg.default", bg = "canvas.overlay" }
+"ui.help" = { fg = "fg.default", bg = "scale.gray.0" }
 
 "ui.text" = { fg = "fg.muted" }
 "ui.text.focus" = { fg = "fg.default" }
@@ -68,9 +68,9 @@ label = "scale.red.5"
 "ui.cursor" = { modifiers = ["reversed"] }
 "ui.cursorline.primary" = { bg = "canvas.subtle" }
 
-"ui.menu" = { fg = "fg.default", bg = "canvas.overlay" }
+"ui.menu" = { fg = "fg.default", bg = "scale.gray.0" }
 "ui.menu.selected" = { bg = "scale.gray.1" }
-"ui.menu.scroll" = { fg = "scale.gray.2", bg = "canvas.overlay" }
+"ui.menu.scroll" = { fg = "scale.gray.2", bg = "scale.gray.0" }
 
 "diagnostic.hint" = { underline = { color = "success.fg", style = "curl" } }
 "diagnostic.info" = { underline = { color = "accent.fg", style = "curl" } }
