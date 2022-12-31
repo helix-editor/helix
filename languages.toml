@@ -1579,6 +1579,7 @@ name = "sshclientconfig"
 scope = "source.sshclientconfig"
 file-types = [{ suffix = ".ssh/config" }, { suffix = "/etc/ssh/ssh_config" }]
 roots = []
+comment-token = "#"
 
 [[grammar]]
 name = "sshclientconfig"
