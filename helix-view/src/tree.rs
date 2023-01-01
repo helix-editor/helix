@@ -15,6 +15,8 @@ pub struct Tree {
 
     // used for traversals
     stack: Vec<(ViewId, Rect)>,
+    // Whether to draw  a bottom border in horizontal split
+    pub bottom_border: bool,
 }
 
 #[derive(Debug)]
@@ -84,7 +86,7 @@ impl Default for Container {
 }
 
 impl Tree {
-    pub fn new(area: Rect) -> Self {
+    pub fn new(area: Rect, bottom_border: bool) -> Self {
         let root = Node::container(Layout::Vertical);
 
         let mut nodes = HopSlotMap::with_key();
@@ -100,6 +102,7 @@ impl Tree {
             area,
             nodes,
             stack: Vec::new(),
+            bottom_border,
         }
     }
 
@@ -362,7 +365,7 @@ impl Tree {
                             let len = container.children.len();
 
                             let height = area.height / len as u16;
-
+                            let inner_gap = if self.bottom_border { 1 } else { 0 };
                             let mut child_y = area.y;
 
                             for (i, child) in container.children.iter().enumerate() {
@@ -372,9 +375,9 @@ impl Tree {
                                     container.area.width,
                                     height,
                                 );
-                                child_y += height;
 
-                                // last child takes the remaining width because we can get uneven
+                                child_y += height + inner_gap;
+                                // last child takes the remaining height because we can get uneven
                                 // space from rounding
                                 if i == len - 1 {
                                     area.height = container.area.y + container.area.height - area.y;
@@ -706,12 +709,16 @@ mod test {
 
     #[test]
     fn find_split_in_direction() {
-        let mut tree = Tree::new(Rect {
-            x: 0,
-            y: 0,
-            width: 180,
-            height: 80,
-        });
+        let mut tree = Tree::new(
+            Rect {
+                x: 0,
+                y: 0,
+                width: 180,
+                height: 80,
+            },
+            false,
+        );
+
         let mut view = View::new(
             DocumentId::default(),
             vec![GutterType::Diagnostics, GutterType::LineNumbers],
@@ -773,12 +780,15 @@ mod test {
 
     #[test]
     fn swap_split_in_direction() {
-        let mut tree = Tree::new(Rect {
-            x: 0,
-            y: 0,
-            width: 180,
-            height: 80,
-        });
+        let mut tree = Tree::new(
+            Rect {
+                x: 0,
+                y: 0,
+                width: 180,
+                height: 80,
+            },
+            false,
+        );
 
         let doc_l0 = DocumentId::default();
         let mut view = View::new(

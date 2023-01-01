@@ -157,15 +157,28 @@ impl EditorView {
             Self::render_focused_view_elements(view, doc, inner, theme, surface);
         }
 
+        let border_style = theme.get("ui.window");
         // if we're not at the edge of the screen, draw a right border
         if viewport.right() != view.area.right() {
             let x = area.right();
-            let border_style = theme.get("ui.window");
             for y in area.top()..area.bottom() {
                 surface[(x, y)]
                     .set_symbol(tui::symbols::line::VERTICAL)
                     //.set_symbol(" ")
                     .set_style(border_style);
+            }
+        }
+
+        // Draw a bottom border if needed
+        if editor.tree.bottom_border {
+            if area.bottom() != viewport.bottom() - 1 {
+                // -1 for the commandline
+                let y = area.bottom();
+                for x in area.left()..area.right() {
+                    surface[(x, y)]
+                        .set_symbol(tui::symbols::line::HORIZONTAL)
+                        .set_style(border_style);
+                }
             }
         }
 
