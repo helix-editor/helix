@@ -17,6 +17,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "F" => find_prev_char,
         "r" => replace,
         "R" => replace_with_yanked,
+        "A-R" => replace_with_count,
         "A-." =>  repeat_last_motion,
 
         "~" => switch_case,

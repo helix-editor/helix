@@ -369,6 +369,7 @@ impl MappableCommand {
         yank_joined_to_primary_clipboard, "Join and yank selections to primary clipboard",
         yank_main_selection_to_primary_clipboard, "Yank main selection to primary clipboard",
         replace_with_yanked, "Replace with yanked text",
+        replace_with_count, "Replace with count",
         replace_selections_with_clipboard, "Replace selections by clipboard content",
         replace_selections_with_primary_clipboard, "Replace selections by primary clipboard",
         paste_after, "Paste after selection",
@@ -3860,6 +3861,28 @@ fn replace_with_yanked(cx: &mut Context) {
             exit_select_mode(cx);
         }
     }
+}
+
+fn replace_with_count(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id);
+    let transaction =
+        Transaction::change_by_enumerated_selection(doc.text(), selection, |enum_range| {
+            let val = count + enum_range.0;
+            if !enum_range.1.is_empty() {
+                (
+                    enum_range.1.from(),
+                    enum_range.1.to(),
+                    Some(Tendril::from(val.to_string())),
+                )
+            } else {
+                (enum_range.1.from(), enum_range.1.to(), None)
+            }
+        });
+
+    apply_transaction(&transaction, doc, view);
+    exit_select_mode(cx);
 }
 
 fn replace_selections_with_clipboard_impl(

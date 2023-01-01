@@ -580,6 +580,14 @@ impl Transaction {
         )
     }
 
+    /// Generate a transaction with a change per selection range enumerated.
+    pub fn change_by_enumerated_selection<F>(doc: &Rope, selection: &Selection, f: F) -> Self
+    where
+        F: FnMut((usize, &Range)) -> Change,
+    {
+        Self::change(doc, selection.iter().enumerate().map(f))
+    }
+
     /// Insert text at each selection head.
     pub fn insert(doc: &Rope, selection: &Selection, text: Tendril) -> Self {
         Self::change_by_selection(doc, selection, |range| {
