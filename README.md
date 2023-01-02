@@ -112,6 +112,7 @@ If installing from source, to use Helix in desktop environments that supports [X
 
 ```bash
 cp contrib/Helix.desktop ~/.local/share/applications
+cp contrib/helix.png ~/.local/share/icons
 ```
 
 To use another terminal than the default, you will need to modify the `.desktop` file. For example, to use `kitty`:
@@ -120,8 +121,6 @@ To use another terminal than the default, you will need to modify the `.desktop`
 sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
 sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
 ```
-
-Please note: there is no icon for Helix yet, so the system default will be used.
 
 ## macOS
 
