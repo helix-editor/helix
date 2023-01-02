@@ -82,7 +82,8 @@
           packages = with common.pkgs;
             [lld_13 cargo-flamegraph rust-analyzer]
             ++ (lib.optional (stdenv.isx86_64 && stdenv.isLinux) cargo-tarpaulin)
-            ++ (lib.optional stdenv.isLinux lldb);
+            ++ (lib.optional stdenv.isLinux lldb)
+            ++ (lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.CoreFoundation);
           env = [
             {
               name = "HELIX_RUNTIME";
@@ -94,10 +95,10 @@
             }
             {
               name = "RUSTFLAGS";
-              value =
+              eval =
                 if common.pkgs.stdenv.isLinux
-                then "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment"
-                else "";
+                then "$RUSTFLAGS\" -C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment\""
+                else "$RUSTFLAGS";
             }
           ];
         };
