@@ -46,7 +46,7 @@ impl GutterType {
 }
 
 pub fn diagnostic<'doc>(
-    _editor: &'doc Editor,
+    editor: &'doc Editor,
     doc: &'doc Document,
     _view: &View,
     theme: &Theme,
@@ -73,7 +73,8 @@ pub fn diagnostic<'doc>(
             // This unwrap is safe because the iterator cannot be empty as it contains at least the item found by the binary search.
             let diagnostic = diagnostics_on_line.max_by_key(|d| d.severity).unwrap();
 
-            write!(out, "●").unwrap();
+            out.write_str(&editor.config().gutters.diagnostics.characters)
+                .unwrap();
             return Some(match diagnostic.severity {
                 Some(Severity::Error) => error,
                 Some(Severity::Warning) | None => warning,
@@ -86,7 +87,7 @@ pub fn diagnostic<'doc>(
 }
 
 pub fn diff<'doc>(
-    _editor: &'doc Editor,
+    editor: &'doc Editor,
     doc: &'doc Document,
     _view: &View,
     theme: &Theme,
@@ -116,12 +117,13 @@ pub fn diff<'doc>(
                 return None;
             }
 
+            let chars = &editor.config().gutters.diff.characters;
             let (icon, style) = if hunk.is_pure_insertion() {
-                ("▍", added)
+                (&chars.add, added)
             } else if hunk.is_pure_removal() {
-                ("▔", deleted)
+                (&chars.remove, deleted)
             } else {
-                ("▍", modified)
+                (&chars.change, modified)
             };
 
             write!(out, "{}", icon).unwrap();
@@ -268,7 +270,12 @@ pub fn breakpoints<'doc>(
             }
         };
 
-        let sym = if breakpoint.verified { "▲" } else { "⊚" };
+        let chars = &editor.config().gutters.breakpoints.characters;
+        let sym = if breakpoint.verified {
+            &chars.verified
+        } else {
+            &chars.other
+        };
         write!(out, "{}", sym).unwrap();
         Some(style)
     })
@@ -333,6 +340,7 @@ mod tests {
         let gutters = GutterConfig {
             layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             line_numbers: GutterLineNumbersConfig { min_width: 10 },
+            ..GutterConfig::default()
         };
 
         let mut view = View::new(DocumentId::default(), gutters);
@@ -351,6 +359,7 @@ mod tests {
         let gutters = GutterConfig {
             layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             line_numbers: GutterLineNumbersConfig { min_width: 1 },
+            ..GutterConfig::default()
         };
 
         let mut view = View::new(DocumentId::default(), gutters);

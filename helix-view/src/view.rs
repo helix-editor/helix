@@ -484,6 +484,7 @@ mod tests {
             GutterConfig {
                 layout: vec![GutterType::Diagnostics],
                 line_numbers: GutterLineNumbersConfig::default(),
+                ..GutterConfig::default()
             },
         );
         view.area = Rect::new(40, 40, 40, 40);
@@ -507,6 +508,7 @@ mod tests {
             GutterConfig {
                 layout: vec![],
                 line_numbers: GutterLineNumbersConfig::default(),
+                ..GutterConfig::default()
             },
         );
         view.area = Rect::new(40, 40, 40, 40);

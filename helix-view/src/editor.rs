@@ -78,6 +78,12 @@ pub struct GutterConfig {
     pub layout: Vec<GutterType>,
     /// Options specific to the "line-numbers" gutter
     pub line_numbers: GutterLineNumbersConfig,
+    /// Options specific to the "diagnostics" gutter.
+    pub diagnostics: DiagnosticsGutterConfig,
+    /// Options specific to the “breakpoints” gutter.
+    pub breakpoints: BreakpointsGutterConfig,
+    /// Options specific to the “diff” gutter.
+    pub diff: DiffGutterConfig,
 }
 
 impl Default for GutterConfig {
@@ -91,6 +97,9 @@ impl Default for GutterConfig {
                 GutterType::Diff,
             ],
             line_numbers: GutterLineNumbersConfig::default(),
+            diagnostics: DiagnosticsGutterConfig::default(),
+            breakpoints: BreakpointsGutterConfig::default(),
+            diff: DiffGutterConfig::default(),
         }
     }
 }
@@ -565,6 +574,66 @@ impl std::str::FromStr for GutterType {
             "line-numbers" => Ok(Self::LineNumbers),
             "diff" => Ok(Self::Diff),
             _ => anyhow::bail!("Gutter type can only be `diagnostics` or `line-numbers`."),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DiagnosticsGutterConfig {
+    pub characters: String,
+}
+
+impl Default for DiagnosticsGutterConfig {
+    fn default() -> Self {
+        Self {
+            characters: "●".to_owned(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct BreakpointsGutterConfig {
+    pub characters: BreakpointsGutterCharacters,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct BreakpointsGutterCharacters {
+    pub verified: String,
+    pub other: String,
+}
+
+impl Default for BreakpointsGutterCharacters {
+    fn default() -> Self {
+        Self {
+            verified: "▲".to_owned(),
+            other: "⊚".to_owned(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DiffGutterConfig {
+    pub characters: DiffGutterCharacters,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DiffGutterCharacters {
+    pub add: String,
+    pub remove: String,
+    pub change: String,
+}
+
+impl Default for DiffGutterCharacters {
+    fn default() -> Self {
+        Self {
+            add: "▍".to_owned(),
+            remove: "▔".to_owned(),
+            change: "▍".to_owned(),
         }
     }
 }
