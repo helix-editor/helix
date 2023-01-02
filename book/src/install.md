@@ -69,17 +69,21 @@ choco install helix
 
 **MSYS2:**
 
+Choose the proper command for your system from below:
+
+  - For 32 bit Windows 7 or above:
+
 ```
 pacman -S mingw-w64-i686-helix
 ```
 
-or
+  - For 64 bit Windows 7 or above:
 
 ```
 pacman -S mingw-w64-x86_64-helix
 ```
 
-or
+  - For 64 bit Windows 8.1 or above:
 
 ```
 pacman -S mingw-w64-ucrt-x86_64-helix
