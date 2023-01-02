@@ -2971,13 +2971,20 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
 }
 
 /// Gets all the lsp symbols for the current document.
-fn get_doc_lsp_symbols(doc: &Document) -> Option<Vec<SymbolInformation>> {
-    // let doc = doc!(cx.editor);
+fn get_doc_lsp_symbols(cx: &mut Context) -> Option<Vec<SymbolInformation>> {
+    let doc = doc!(cx.editor);
     let language_server = doc.language_server()?;
-    let symbols_json = tokio::task::block_in_place(|| {
-        helix_lsp::block_on(language_server.document_symbols(doc.identifier()))
-    })
-    .unwrap_or_default();
+    let future = match language_server.document_symbols(doc.identifier()) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does nto support document symbols");
+            return None;
+        }
+    };
+
+    let symbols_json =
+        tokio::task::block_in_place(|| helix_lsp::block_on(future)).unwrap_or_default();
 
     let symbols: DocumentSymbolResponse = serde_json::from_value(symbols_json).ok()?;
 
@@ -3003,8 +3010,7 @@ fn goto_lsp_symbol(cx: &mut Context, symbol: Option<&SymbolInformation>) {
 }
 
 fn goto_first_symbol(cx: &mut Context) {
-    let doc = doc!(cx.editor);
-    let symbols = match get_doc_lsp_symbols(doc) {
+    let symbols = match get_doc_lsp_symbols(cx) {
         Some(symbols) => symbols,
         None => return,
     };
@@ -3013,8 +3019,7 @@ fn goto_first_symbol(cx: &mut Context) {
 }
 
 fn goto_last_symbol(cx: &mut Context) {
-    let doc = doc!(cx.editor);
-    let symbols = match get_doc_lsp_symbols(doc) {
+    let symbols = match get_doc_lsp_symbols(cx) {
         Some(symbols) => symbols,
         None => return,
     };
@@ -3023,12 +3028,11 @@ fn goto_last_symbol(cx: &mut Context) {
 }
 
 fn goto_next_symbol(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-    let symbols = match get_doc_lsp_symbols(doc) {
+    let symbols = match get_doc_lsp_symbols(cx) {
         Some(symbols) => symbols,
         None => return,
     };
-
+    let (view, doc) = current!(cx.editor);
     let language_server = match doc.language_server() {
         Some(language_server) => language_server,
         None => return,
@@ -3053,12 +3057,11 @@ fn goto_next_symbol(cx: &mut Context) {
 }
 
 fn goto_prev_symbol(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-    let symbols = match get_doc_lsp_symbols(doc) {
+    let symbols = match get_doc_lsp_symbols(cx) {
         Some(symbols) => symbols,
         None => return,
     };
-
+    let (view, doc) = current!(cx.editor);
     let language_server = match doc.language_server() {
         Some(language_server) => language_server,
         None => return,
