@@ -263,6 +263,12 @@
 ; ---
 
 (attribute
+  (identifier) @special
+  arguments: (token_tree (identifier) @type)
+  (#eq? @special "derive")
+)
+
+(attribute
   (identifier) @function.macro)
 (attribute
   [
