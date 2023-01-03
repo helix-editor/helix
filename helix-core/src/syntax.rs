@@ -556,6 +556,10 @@ pub struct Loader {
     language_config_ids_by_extension: HashMap<String, usize>, // Vec<usize>
     language_config_ids_by_suffix: HashMap<String, usize>,
     language_config_ids_by_shebang: HashMap<String, usize>,
+    // Refer to #5380 for context. We can't find out the correct language with
+    // the comment token, but we're choosing an arbitrary language that uses
+    // the comment token.
+    language_config_ids_by_comment_token: HashMap<String, usize>,
 
     scopes: ArcSwap<Vec<String>>,
 }
@@ -567,6 +571,7 @@ impl Loader {
             language_config_ids_by_extension: HashMap::new(),
             language_config_ids_by_suffix: HashMap::new(),
             language_config_ids_by_shebang: HashMap::new(),
+            language_config_ids_by_comment_token: HashMap::new(),
             scopes: ArcSwap::from_pointee(Vec::new()),
         };
 
@@ -589,6 +594,13 @@ impl Loader {
                 loader
                     .language_config_ids_by_shebang
                     .insert(shebang.clone(), language_id);
+            }
+
+            if let Some(token) = config.comment_token.as_ref() {
+                // If multiple languages have the same comment token, this will override.
+                loader
+                    .language_config_ids_by_comment_token
+                    .insert(token.clone(), language_id);
             }
 
             loader.language_configs.push(Arc::new(config));
@@ -635,6 +647,34 @@ impl Loader {
             .captures(&line)
             .and_then(|cap| self.language_config_ids_by_shebang.get(&cap[1]));
 
+        configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
+    }
+
+    pub fn language_config_from_text_head(
+        &self,
+        source: &Rope,
+    ) -> Option<Arc<LanguageConfiguration>> {
+        let try_find_comment = |line: &str| -> Option<&str> {
+            const COMMENT_CANDIDATES: [&str; 9] =
+                ["//", "#", "--", "(**)", "%%", "%", "!", ";", ";;"];
+            for candidate in COMMENT_CANDIDATES {
+                if line.starts_with(candidate) {
+                    return Some(candidate);
+                }
+            }
+            None
+        };
+        const NUM_LINES: usize = 20;
+        let mut configuration_id: Option<&usize> = None;
+        for line in source.lines().take(NUM_LINES) {
+            match line.as_str().and_then(try_find_comment) {
+                Some(token) => {
+                    configuration_id = self.language_config_ids_by_comment_token.get(token);
+                    break;
+                }
+                None => (),
+            }
+        }
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
     }
 
