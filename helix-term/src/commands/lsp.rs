@@ -871,12 +871,13 @@ fn goto_impl(
     compositor: &mut Compositor,
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
+    action: Action,
 ) {
     let cwdir = std::env::current_dir().unwrap_or_default();
 
     match locations.as_slice() {
         [location] => {
-            jump_to_location(editor, location, offset_encoding, Action::Replace);
+            jump_to_location(editor, location, offset_encoding, action);
         }
         [] => {
             editor.set_error("No definition found.");
@@ -911,6 +912,18 @@ fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<lsp::Lo
 }
 
 pub fn goto_definition(cx: &mut Context) {
+    goto_definition_impl(cx, Action::Replace);
+}
+
+pub fn goto_definition_hsplit(cx: &mut Context) {
+    goto_definition_impl(cx, Action::HorizontalSplit);
+}
+
+pub fn goto_definition_vsplit(cx: &mut Context) {
+    goto_definition_impl(cx, Action::VerticalSplit);
+}
+
+fn goto_definition_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
@@ -930,12 +943,24 @@ pub fn goto_definition(cx: &mut Context) {
         future,
         move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
             let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
+            goto_impl(editor, compositor, items, offset_encoding, action);
         },
     );
 }
 
 pub fn goto_type_definition(cx: &mut Context) {
+    goto_type_definition_impl(cx, Action::Replace);
+}
+
+pub fn goto_type_definition_hsplit(cx: &mut Context) {
+    goto_type_definition_impl(cx, Action::HorizontalSplit);
+}
+
+pub fn goto_type_definition_vsplit(cx: &mut Context) {
+    goto_type_definition_impl(cx, Action::VerticalSplit);
+}
+
+fn goto_type_definition_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
@@ -955,12 +980,24 @@ pub fn goto_type_definition(cx: &mut Context) {
         future,
         move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
             let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
+            goto_impl(editor, compositor, items, offset_encoding, action);
         },
     );
 }
 
 pub fn goto_implementation(cx: &mut Context) {
+    goto_implementation_impl(cx, Action::Replace);
+}
+
+pub fn goto_implementation_hsplit(cx: &mut Context) {
+    goto_implementation_impl(cx, Action::HorizontalSplit);
+}
+
+pub fn goto_implementation_vsplit(cx: &mut Context) {
+    goto_implementation_impl(cx, Action::VerticalSplit);
+}
+
+fn goto_implementation_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
@@ -980,12 +1017,24 @@ pub fn goto_implementation(cx: &mut Context) {
         future,
         move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
             let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
+            goto_impl(editor, compositor, items, offset_encoding, action);
         },
     );
 }
 
 pub fn goto_reference(cx: &mut Context) {
+    goto_reference_impl(cx, Action::Replace);
+}
+
+pub fn goto_reference_hsplit(cx: &mut Context) {
+    goto_reference_impl(cx, Action::HorizontalSplit);
+}
+
+pub fn goto_reference_vsplit(cx: &mut Context) {
+    goto_reference_impl(cx, Action::VerticalSplit);
+}
+
+fn goto_reference_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
@@ -1005,7 +1054,7 @@ pub fn goto_reference(cx: &mut Context) {
         future,
         move |editor, compositor, response: Option<Vec<lsp::Location>>| {
             let items = response.unwrap_or_default();
-            goto_impl(editor, compositor, items, offset_encoding);
+            goto_impl(editor, compositor, items, offset_encoding, action);
         },
     );
 }
