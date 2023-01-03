@@ -93,6 +93,7 @@ pub fn regex_prompt(
                         false
                     };
 
+                    log::debug!("regex prompt input: {input}");
                     match RegexBuilder::new(input)
                         .case_insensitive(case_insensitive)
                         .multi_line(true)
@@ -236,6 +237,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 }
 
 pub mod completers {
+    use crate::commands::search_utils;
     use crate::ui::prompt::Completion;
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
@@ -360,6 +362,29 @@ pub mod completers {
                 FileMatch::Accept
             }
         })
+    }
+
+    pub fn regex_completer_impl(
+        editor: &Editor,
+        input: &str,
+        register: Option<char>,
+    ) -> Vec<Completion> {
+        log::debug!("regex completer input: {input}");
+        search_utils::search_completions(editor, register)
+            .iter()
+            .filter(|prev_search| prev_search.starts_with(input))
+            .map(|prev_search| (0.., Cow::Owned(prev_search.clone())))
+            .collect()
+    }
+
+    pub fn regex(editor: &Editor, input: &str) -> Vec<Completion> {
+        log::debug!("regex completer input: {input}");
+        regex_completer_impl(editor, input, Some('/'))
+    }
+
+    pub fn regex_template(editor: &Editor, input: &str) -> Vec<Completion> {
+        log::debug!("regex template completer input: {input}");
+        regex_completer_impl(editor, input, Some('?'))
     }
 
     pub fn language(editor: &Editor, input: &str) -> Vec<Completion> {
