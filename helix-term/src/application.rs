@@ -403,6 +403,7 @@ impl Application {
             .map_err(|err| anyhow::anyhow!("Failed to load language config: {}", err))?;
 
         self.syn_loader = std::sync::Arc::new(syntax::Loader::new(syntax_config));
+        self.editor.syn_loader = self.syn_loader.clone();
         for document in self.editor.documents.values_mut() {
             document.detect_language(self.syn_loader.clone());
         }
@@ -438,8 +439,13 @@ impl Application {
             Ok(())
         };
 
-        if let Err(err) = refresh_config() {
-            self.editor.set_error(err.to_string());
+        match refresh_config() {
+            Ok(_) => {
+                self.editor.set_status("Config refreshed");
+            }
+            Err(err) => {
+                self.editor.set_error(err.to_string());
+            }
         }
     }
 

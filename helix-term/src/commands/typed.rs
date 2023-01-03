@@ -1797,7 +1797,7 @@ fn run_shell_command(
     let shell = &cx.editor.config().shell;
     let (output, success) = shell_impl(shell, &args.join(" "), None)?;
     if success {
-        cx.editor.set_status("Command succeed");
+        cx.editor.set_status("Command succeeded");
     } else {
         cx.editor.set_error("Command failed");
     }
