@@ -45,7 +45,7 @@ crossterm = { version = "0.25", features = ["event-stream"] }
 signal-hook = "0.3"
 tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
-arc-swap = { version = "1.5.1" }
+arc-swap = { version = "1.6.0" }
 
 # Logging
 fern = "0.6"
