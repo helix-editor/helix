@@ -17,7 +17,14 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "F" => find_prev_char,
         "r" => replace,
         "R" => replace_with_yanked,
-        "A-R" => replace_with_count,
+        "A-R" => { "Replace with incrementing"
+            "n" => replace_with_number,
+            "z" => replace_with_zero_index,
+            "a" => replace_with_alpha_lower,
+            "A" => replace_with_alpha_upper,
+            "i" => replace_with_roman_lower,
+            "I" => replace_with_roman_upper,
+        },
         "A-." =>  repeat_last_motion,
 
         "~" => switch_case,

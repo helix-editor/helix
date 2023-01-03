@@ -72,9 +72,11 @@ use std::{
 use once_cell::sync::Lazy;
 use serde::de::{self, Deserialize, Deserializer};
 
+use based::{Base, NumeralSystem};
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
+use septem::Roman;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 pub type OnKeyCallback = Box<dyn FnOnce(&mut Context, KeyEvent)>;
@@ -369,7 +371,12 @@ impl MappableCommand {
         yank_joined_to_primary_clipboard, "Join and yank selections to primary clipboard",
         yank_main_selection_to_primary_clipboard, "Yank main selection to primary clipboard",
         replace_with_yanked, "Replace with yanked text",
-        replace_with_count, "Replace with count",
+        replace_with_number, "Replace with number",
+        replace_with_zero_index, "Replace with zero index number",
+        replace_with_roman_upper, "Replace with roman upper",
+        replace_with_roman_lower, "Replace with roman lower",
+        replace_with_alpha_upper, "Replace with alpha upper",
+        replace_with_alpha_lower, "Replace with alpha lower",
         replace_selections_with_clipboard, "Replace selections by clipboard content",
         replace_selections_with_primary_clipboard, "Replace selections by primary clipboard",
         paste_after, "Paste after selection",
@@ -3863,7 +3870,7 @@ fn replace_with_yanked(cx: &mut Context) {
     }
 }
 
-fn replace_with_count(cx: &mut Context) {
+fn replace_with_count_converter(cx: &mut Context, converter: fn(usize) -> String) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
@@ -3874,7 +3881,7 @@ fn replace_with_count(cx: &mut Context) {
                 (
                     enum_range.1.from(),
                     enum_range.1.to(),
-                    Some(Tendril::from(val.to_string())),
+                    Some(Tendril::from(converter(val))),
                 )
             } else {
                 (enum_range.1.from(), enum_range.1.to(), None)
@@ -3883,6 +3890,65 @@ fn replace_with_count(cx: &mut Context) {
 
     apply_transaction(&transaction, doc, view);
     exit_select_mode(cx);
+}
+
+fn converter_number_to_string(num: usize) -> String {
+    num.to_string()
+}
+
+fn converter_zero_index_to_string(num: usize) -> String {
+    (num - 1).to_string()
+}
+
+fn converter_number_to_roman_lower(num: usize) -> String {
+    let rnum = Roman::from(num.clamp(1, 3999) as u32).unwrap();
+    rnum.to_lowercase()
+}
+
+fn converter_number_to_roman_upper(num: usize) -> String {
+    let rnum = Roman::from(num.clamp(1, 3999) as u32).unwrap();
+    rnum.to_uppercase()
+}
+
+fn converter_number_to_alpha_upper(num: usize) -> String {
+    let alpha_base: Base = "0ABCDEFGHIJKLMNOPQRSTUVWXYZ".parse().unwrap();
+    // There is no zero in excel style column counts which this is beinging
+    // modeled after. We skip any zero by adding 1 + number of multiples of 26
+    let znum = num - 1;
+    let anum = znum / 26 + znum + 1;
+    alpha_base.encode(anum).unwrap()
+}
+fn converter_number_to_alpha_lower(num: usize) -> String {
+    let alpha_base: Base = "0abcdefghijklmnopqrstuvwxyz".parse().unwrap();
+    // There is no zero in excel style column counts which this is beinging
+    // modeled after. We skip any zero by adding 1 + number of multiples of 26
+    let znum = num - 1;
+    let anum = znum / 26 + znum + 1;
+    alpha_base.encode(anum).unwrap()
+}
+
+fn replace_with_number(cx: &mut Context) {
+    replace_with_count_converter(cx, converter_number_to_string);
+}
+
+fn replace_with_zero_index(cx: &mut Context) {
+    replace_with_count_converter(cx, converter_zero_index_to_string);
+}
+
+fn replace_with_roman_lower(cx: &mut Context) {
+    replace_with_count_converter(cx, converter_number_to_roman_lower);
+}
+
+fn replace_with_roman_upper(cx: &mut Context) {
+    replace_with_count_converter(cx, converter_number_to_roman_upper);
+}
+
+fn replace_with_alpha_upper(cx: &mut Context) {
+    replace_with_count_converter(cx, converter_number_to_alpha_upper);
+}
+
+fn replace_with_alpha_lower(cx: &mut Context) {
+    replace_with_count_converter(cx, converter_number_to_alpha_lower);
 }
 
 fn replace_selections_with_clipboard_impl(
