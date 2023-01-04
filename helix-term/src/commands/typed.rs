@@ -382,80 +382,6 @@ pub mod global_search {
         }
     }
 
-    pub fn global_search_cmd_impl(
-        editor: &mut Editor,
-        jobs: &mut Jobs,
-        regex: impl AsRef<str>,
-    ) -> anyhow::Result<()> {
-        let (all_matches_sx, all_matches_rx) = tokio::sync::mpsc::unbounded_channel::<FileResult>();
-        let regexp = regex.as_ref().to_owned();
-        launch_search_walkers(editor, regex, all_matches_sx).map(|_| {
-            // Now we know this is a valid regexp so we add it to
-            // our history
-            log::debug!("Setting register / to {}", regexp);
-            editor.registers.push('/', regexp);
-        })?;
-
-        collect_file_results(editor, jobs, all_matches_rx);
-        Ok(())
-    }
-
-    pub fn template_global_search_cmd_impl(
-        editor: &mut Editor,
-        jobs: &mut Jobs,
-        regex_template: impl AsRef<str>,
-        args: &[impl AsRef<str>],
-    ) -> anyhow::Result<()> {
-        let regex = format_template(regex_template.as_ref(), args)?;
-
-        let (all_matches_sx, all_matches_rx) = tokio::sync::mpsc::unbounded_channel::<FileResult>();
-
-        launch_search_walkers(editor, regex.as_str(), all_matches_sx.clone()).map(|_| {
-            // Now we know this is a valid regexp so we add the completed regex to
-            // our regex history and the template to our ? template register history
-            log::debug!("Setting register / to {}", regex);
-            log::debug!("Setting register ? to {}", regex_template.as_ref());
-            editor.registers.push('/', regex);
-            editor
-                .registers
-                .push('?', regex_template.as_ref().to_owned());
-        })?;
-
-        collect_file_results(editor, jobs, all_matches_rx);
-
-        Ok(())
-    }
-
-    fn format_template(regex_template: &str, args: &[impl AsRef<str>]) -> anyhow::Result<String> {
-        let mut regex = regex_template.to_owned();
-        let mi = regex_template.match_indices("{}");
-        let match_count = mi.clone().count();
-
-        if match_count != args.len() {
-            let msg = format!(
-                "Expected {} arguments for template; received {} arguments",
-                match_count,
-                args.len()
-            );
-            log::error!("{}", msg);
-            return Err(anyhow!(msg));
-        }
-
-        mi.zip(args.iter())
-            .fold(0, |adjustment, ((match_idx, _), arg)| {
-                // We need to adjust for the replacements we have done so far
-                let adjusted_idx = match_idx + adjustment;
-                regex.replace_range(adjusted_idx..(adjusted_idx + 2), arg.as_ref());
-
-                // The next adjustment will have to account for the current replacement
-                // string length and we need to account for the removal of the `{}`
-                // placeholder
-                adjustment + arg.as_ref().len() - 2
-            });
-
-        Ok(regex)
-    }
-
     pub fn collect_file_results(
         editor: &mut Editor,
         jobs: &mut Jobs,
@@ -589,6 +515,7 @@ pub mod global_search {
 pub mod search_utils {
     use std::{borrow::Cow, collections::HashSet};
 
+    use anyhow::anyhow;
     use helix_core::regex;
     use helix_view::Editor;
 
@@ -606,7 +533,7 @@ pub mod search_utils {
         completions
     }
 
-    pub fn escaped_current_selection(editor: &mut Editor) -> String {
+    pub fn regex_escaped_current_selection(editor: &mut Editor) -> String {
         let (view, doc) = current!(editor);
         let contents = doc.text().slice(..);
         doc.selection(view.id)
@@ -617,6 +544,58 @@ pub mod search_utils {
             .collect::<Vec<_>>()
             .join("|")
     }
+
+    pub fn format_regex_template(
+        regex_template: &str,
+        args: &[impl AsRef<str>],
+    ) -> anyhow::Result<String> {
+        let mut regex = regex_template.to_owned();
+        let mi = regex_template.match_indices("{}");
+        let match_count = mi.clone().count();
+
+        if match_count != args.len() {
+            let msg = format!(
+                "Expected {} arguments for template; received {} arguments",
+                match_count,
+                args.len()
+            );
+            log::error!("{}", msg);
+            return Err(anyhow!(msg));
+        }
+
+        mi.zip(args.iter())
+            .fold(0, |adjustment, ((match_idx, _), arg)| {
+                // We need to adjust for the replacements we have done so far
+                let adjusted_idx = match_idx + adjustment;
+                regex.replace_range(adjusted_idx..(adjusted_idx + 2), arg.as_ref());
+
+                // The next adjustment will have to account for the current replacement
+                // string length and we need to account for the removal of the `{}`
+                // placeholder
+                adjustment + arg.as_ref().len() - 2
+            });
+
+        Ok(regex)
+    }
+}
+
+fn global_search_cmd_impl(
+    editor: &mut Editor,
+    jobs: &mut Jobs,
+    regex: impl AsRef<str>,
+) -> anyhow::Result<()> {
+    let (all_matches_sx, all_matches_rx) =
+        tokio::sync::mpsc::unbounded_channel::<global_search::FileResult>();
+    let regexp = regex.as_ref().to_owned();
+    global_search::launch_search_walkers(editor, regex, all_matches_sx).map(|_| {
+        // Now we know this is a valid regexp so we add it to
+        // our history
+        log::debug!("Setting register / to {}", regexp);
+        editor.registers.push('/', regexp);
+    })?;
+
+    global_search::collect_file_results(editor, jobs, all_matches_rx);
+    Ok(())
 }
 
 fn global_search_cmd(
@@ -628,7 +607,36 @@ fn global_search_cmd(
         return Ok(());
     }
 
-    global_search::global_search_cmd_impl(cx.editor, cx.jobs, args.join("\\s+"))
+    global_search_cmd_impl(cx.editor, cx.jobs, args.join("\\s+"))
+}
+
+fn template_global_search_cmd_impl(
+    editor: &mut Editor,
+    jobs: &mut Jobs,
+    regex_template: impl AsRef<str>,
+    args: &[impl AsRef<str>],
+) -> anyhow::Result<()> {
+    let regex = search_utils::format_regex_template(regex_template.as_ref(), args)?;
+
+    let (all_matches_sx, all_matches_rx) =
+        tokio::sync::mpsc::unbounded_channel::<global_search::FileResult>();
+
+    global_search::launch_search_walkers(editor, regex.as_str(), all_matches_sx.clone()).map(
+        |_| {
+            // Now we know this is a valid regexp so we add the completed regex to
+            // our regex history and the template to our ? template register history
+            log::debug!("Setting register / to {}", regex);
+            log::debug!("Setting register ? to {}", regex_template.as_ref());
+            editor.registers.push('/', regex);
+            editor
+                .registers
+                .push('?', regex_template.as_ref().to_owned());
+        },
+    )?;
+
+    global_search::collect_file_results(editor, jobs, all_matches_rx);
+
+    Ok(())
 }
 
 fn template_global_search_selection_cmd(
@@ -646,7 +654,7 @@ fn template_global_search_selection_cmd(
         return Err(anyhow!(msg));
     }
 
-    let current_selection = search_utils::escaped_current_selection(cx.editor);
+    let current_selection = search_utils::regex_escaped_current_selection(cx.editor);
 
     let sep = args.get(1);
     let template_args = sep
@@ -659,12 +667,7 @@ fn template_global_search_selection_cmd(
         })
         .unwrap_or(vec![current_selection]);
 
-    global_search::template_global_search_cmd_impl(
-        cx.editor,
-        cx.jobs,
-        args.first().unwrap(),
-        &template_args,
-    )
+    template_global_search_cmd_impl(cx.editor, cx.jobs, args.first().unwrap(), &template_args)
 }
 
 fn force_write(

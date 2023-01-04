@@ -1790,7 +1790,7 @@ fn extend_search_prev(cx: &mut Context) {
 }
 
 fn search_selection(cx: &mut Context) {
-    let regex = search_utils::escaped_current_selection(cx.editor);
+    let regex = search_utils::regex_escaped_current_selection(cx.editor);
 
     let msg = format!("register '{}' set to '{}'", '/', &regex);
     cx.editor.registers.push('/', regex);
