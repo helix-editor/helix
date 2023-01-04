@@ -628,7 +628,7 @@ fn global_search_cmd(
         return Ok(());
     }
 
-    global_search::global_search_cmd_impl(cx.editor, cx.jobs, args.join(" "))
+    global_search::global_search_cmd_impl(cx.editor, cx.jobs, args.join("\\s+"))
 }
 
 fn template_global_search_selection_cmd(
@@ -648,11 +648,12 @@ fn template_global_search_selection_cmd(
 
     let current_selection = search_utils::escaped_current_selection(cx.editor);
 
-    let sep = args.get(2);
+    let sep = args.get(1);
     let template_args = sep
         .map(|sep| {
             current_selection
                 .split(sep.as_ref())
+                .map(&str::trim)
                 .map(ToOwned::to_owned)
                 .collect::<Vec<_>>()
         })
