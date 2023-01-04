@@ -564,18 +564,61 @@ pub mod search_utils {
         }
 
         mi.zip(args.iter())
-            .fold(0, |adjustment, ((match_idx, _), arg)| {
+            .fold(0_isize, |adjustment, ((match_idx, _), arg)| {
                 // We need to adjust for the replacements we have done so far
-                let adjusted_idx = match_idx + adjustment;
+                let adjusted_idx = (match_idx as isize + adjustment) as usize;
                 regex.replace_range(adjusted_idx..(adjusted_idx + 2), arg.as_ref());
 
                 // The next adjustment will have to account for the current replacement
                 // string length and we need to account for the removal of the `{}`
                 // placeholder
-                adjustment + arg.as_ref().len() - 2
+                adjustment + arg.as_ref().len() as isize - 2
             });
 
         Ok(regex)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use std::borrow::Cow;
+
+        use super::format_regex_template;
+
+        #[test]
+        fn test_format_template() {
+            let regex_template = "(fn|func|def)\\s+(\\w+_?)*{}(_?\\w+)*";
+            let args: Vec<_> = ["global_search"].into_iter().map(Cow::from).collect();
+
+            assert_eq!(
+                format_regex_template(regex_template, &args).unwrap(),
+                "(fn|func|def)\\s+(\\w+_?)*global_search(_?\\w+)*"
+            );
+        }
+
+        #[test]
+        fn test_repeater_template() {
+            let regex_template = "(fn|func|def){1}\\s{{}}(\\w+_?){{},}{}(_?\\w+){{},{}}";
+            let args: Vec<_> = ["1", "3", "global_search", "5", "10"]
+                .into_iter()
+                .map(Cow::from)
+                .collect();
+
+            assert_eq!(
+                format_regex_template(regex_template, &args).unwrap(),
+                "(fn|func|def){1}\\s{1}(\\w+_?){3,}global_search(_?\\w+){5,10}"
+            );
+        }
+
+        #[test]
+        fn test_invalid_args() {
+            let regex_template = "(fn|func|def){1}\\s{{}}(\\w+_?){{},}{}(_?\\w+){{},{}}";
+            let args: Vec<_> = ["1", "3", "global_search", "5", "10", "11"] // Extra argument from last test
+                .into_iter()
+                .map(Cow::from)
+                .collect();
+
+            assert!(format_regex_template(regex_template, &args).is_err());
+        }
     }
 }
 
