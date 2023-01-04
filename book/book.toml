@@ -7,6 +7,6 @@ edit-url-template = "https://github.com/helix-editor/helix/tree/master/book/{pat
 
 [output.html]
 cname = "docs.helix-editor.com"
-default-theme = "colibri"
+default-theme = "rust"
 preferred-dark-theme = "colibri"
 git-repository-url = "https://github.com/helix-editor/helix"
