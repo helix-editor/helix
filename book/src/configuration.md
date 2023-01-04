@@ -284,7 +284,7 @@ layout = ["diff", "diagnostics", "line-numbers", "spacer"]
 
 #### `[editor.gutters.line-numbers]` Section
 
-Options for the line number gutter
+Options for the line number gutter.
 
 | Key         | Description                             | Default |
 | ---         | ---                                     | ---     |
@@ -297,13 +297,36 @@ Example:
 min-width = 1
 ```
 
-#### `[editor.gutters.diagnotics]` Section
+#### `[editor.gutters.diagnostics]` Section
 
-Currently unused
+Options for the diagnostics gutter.
+
+| Key          | Description                                | Default |
+| ---          | ---                                        | ---     |
+| `characters` | Characters to be used in the gutter column | `"●"`   |
+
+#### `[editor.gutters.breakpoints]` Section
+
+Options for the breakpoints gutter.
+
+| Key                   | Description                                                         | Default |
+| ---                   | ---                                                                 | ---     |
+| `characters.verified` | Characters to be used in the gutter column for verified breakpoints | `"▲"`   |
+| `characters.other`    | Characters to be used in the gutter column for other breakpoints    | `"⊚"`   |
+
+Alternatively, you can use the `[editor.gutters.breakpoints.characters]` section 
+and use the `verified` and `other` keys.
 
 #### `[editor.gutters.diff]` Section
 
-Currently unused
+| Key                 | Description                                                   | Default |
+| ---                 | ---                                                           | ---     |
+| `characters.add`    | Characters to be used in the gutter column for code additions | `"▍"`   |
+| `characters.remove` | Characters to be used in the gutter column for code deletions | `"▔"`   |
+| `characters.change` | Characters to be used in the gutter column for code changes   | `"▍"`   |
+
+Alternatively, you can use the `[editor.gutters.diff.characters]` section 
+and use the `add`, `remove` and `change` keys.
 
 #### `[editor.gutters.spacer]` Section
 
