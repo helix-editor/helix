@@ -93,7 +93,6 @@ pub fn regex_prompt(
                         false
                     };
 
-                    log::debug!("regex prompt input: {input}");
                     match RegexBuilder::new(input)
                         .case_insensitive(case_insensitive)
                         .multi_line(true)
@@ -369,7 +368,6 @@ pub mod completers {
         input: &str,
         register: Option<char>,
     ) -> Vec<Completion> {
-        log::debug!("regex completer input: {input}");
         search_utils::search_completions(editor, register)
             .iter()
             .filter(|prev_search| prev_search.starts_with(input))
@@ -378,12 +376,10 @@ pub mod completers {
     }
 
     pub fn regex(editor: &Editor, input: &str) -> Vec<Completion> {
-        log::debug!("regex completer input: {input}");
         regex_completer_impl(editor, input, Some('/'))
     }
 
     pub fn regex_template(editor: &Editor, input: &str) -> Vec<Completion> {
-        log::debug!("regex template completer input: {input}");
         regex_completer_impl(editor, input, Some('?'))
     }
 

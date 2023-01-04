@@ -522,14 +522,12 @@ pub mod search_utils {
     use crate::commands::Context;
 
     pub fn search_completions(editor: &Editor, reg: Option<char>) -> Vec<String> {
-        log::debug!("using reg: {reg:?}");
         let mut items = reg
             .and_then(|reg| editor.registers.get(reg))
             .map_or(Vec::new(), |reg| reg.read().iter().take(200).collect());
         items.sort_unstable();
         items.dedup();
         let completions = items.into_iter().cloned().collect();
-        log::debug!("{completions:?}");
         completions
     }
 
@@ -2761,7 +2759,6 @@ pub(super) fn command_mode(cx: &mut Context) {
         ":".into(),
         Some(':'),
         |editor: &Editor, input: &str| {
-            log::debug!("command mode input: {input}");
             static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
                 Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);
 
