@@ -2082,3 +2082,32 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "matlab"
 source = { git = "https://github.com/mstanciu552/tree-sitter-matlab", rev = "2d5d3d5193718a86477d4335aba5b34e79147326" }
+
+[[language]]
+name = "ponylang"
+scope = "source.pony"
+file-types = ["pony"]
+injection-regex = "pony"
+roots = ["corral.json", "lock.json"]
+auto-format = false
+indent = { tab-width = 2, unit = "  " }
+comment-token = "//"
+
+[[grammar]]
+name = "ponylang"
+source = { path = "/home/mat/dev/pony/tree-sitter-ponylang" } 
+# source = { git = "https://github.com/mfelsche/tree-sitter-ponylang", rev = "96c104dc25a67b2cf32aaf23b4689e06253ce3c3" }
+
+[[language]]
+name = "ponylang"
+scope = "source.pony"
+file-types = ["pony"]
+injection-regex = "pony"
+roots = ["corral.json", "lock.json"]
+auto-format = false
+indent = { tab-width = 2, unit = "  " }
+comment-token = "//"
+
+[[grammar]]
+name = "ponylang"
+source = { git = "https://github.com/mfelsche/tree-sitter-ponylang", rev = "ef66b151bc2604f431b5668fcec4747db4290e11" }
