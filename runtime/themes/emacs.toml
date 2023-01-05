@@ -45,7 +45,7 @@
 
 "ui.background" = { fg = "black", bg = "white" }
 "ui.background.separator" = { fg = "black", bg = "white" }
-"ui.cursor" =  { fg = "white", bg = "gray70" }
+"ui.cursor" = { fg = "white", bg = "gray70" }
 "ui.cursor.primary" = { fg = "white", bg = "black" }
 "ui.cursor.match" = { fg = "black", bg = "turquoise" }
 "ui.cursor.select" = { fg = "white", bg = "black" }
@@ -68,7 +68,7 @@
 "ui.selection" = { bg = "lightgoldenrod1" }
 "ui.selection.primary" = { bg = "lightgoldenrod2" }
 "ui.virtual.whitespace" = "highlight"
-"ui.virtual.ruler" = { bg ="gray95" }
+"ui.virtual.ruler" = { bg = "gray95" }
 "ui.cursorline.primary" = { bg = "darkseagreen2" }
 "ui.cursorline.secondary" = { bg = "darkseagreen2" }
 
@@ -80,7 +80,11 @@
 "warning" = { fg = "dark_orange" }
 "info" = { fg = "forest_green" }
 "hint" = { fg = "dark_cyan" }
-"diagnostic" = { modifiers = ["underlined"] }
+
+"diagnostic.error" = { underline = { color = "red1", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "dark_orange", style = "curl" } }
+"diagnostic.info" = { underline = { color = "forest_green", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "dark_cyan", style = "curl" } }
 
 [palette]
 black = "#000000"

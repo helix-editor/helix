@@ -41,7 +41,10 @@
 
 "ui.cursorline.primary" = { bg = "sumiInk3"}
 
-diagnostic = { modifiers = ["underlined"] }
+"diagnostic.error" = { underline = { color = "samuraiRed", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "roninYellow", style = "curl" } }
+"diagnostic.info" = { underline = { color = "waveAqua1", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "dragonBlue", style = "curl" } }
 
 error = "samuraiRed"
 warning = "roninYellow"

@@ -52,7 +52,6 @@
 "warning" = "gold"
 "error" = "love"
 
-"diagnostic" = { modifiers = ["underlined"] }
 "diagnostic.error" = { underline = { style = "curl", color = "love" } }
 "diagnostic.warning" = { underline = { style = "curl", color = "gold" } }
 "diagnostic.info" = { underline = { style = "curl", color = "foam" } }

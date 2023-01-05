@@ -118,7 +118,12 @@
 "error" = { fg = "red", modifiers= ["bold", "underlined"] }
 "info" = { fg = "blue", modifiers= ["bold", "underlined"] }
 "hint" = { fg = "base01", modifiers= ["bold", "underlined"] }
-"diagnostic" = { modifiers = ["underlined"] }
+
+"diagnostic.warning" = { underline = { style = "curl", color = "orange" } }
+"diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.info" = { underline = { style = "curl", color = "blue" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "base01" } }
+
 
 [palette]
 red      = '#dc322f'
