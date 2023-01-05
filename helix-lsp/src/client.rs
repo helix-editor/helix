@@ -52,6 +52,7 @@ impl Client {
         id: usize,
         req_timeout: u64,
         doc_path: Option<&std::path::PathBuf>,
+        match_nearest_root: bool,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
         // Resolve path to the binary
         let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
@@ -79,6 +80,7 @@ impl Client {
         let root_path = find_root(
             doc_path.and_then(|x| x.parent().and_then(|x| x.to_str())),
             root_markers,
+            match_nearest_root,
         );
 
         let root_uri = lsp::Url::from_file_path(root_path.clone()).ok();

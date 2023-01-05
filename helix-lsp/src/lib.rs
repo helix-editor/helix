@@ -555,6 +555,7 @@ fn start_client(
         id,
         ls_config.timeout,
         doc_path,
+        config.match_nearest_root,
     )?;
 
     let client = Arc::new(client);

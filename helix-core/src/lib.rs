@@ -41,11 +41,16 @@ pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
 /// Find project root.
 ///
 /// Order of detection:
-/// * Top-most folder containing a root marker in current git repository
+/// * Top-most folder containing a root marker in current git repository unless
+///   `match_nearest_root` is true in which case the nearest match is returned
 /// * Git repository root if no marker detected
 /// * Top-most folder containing a root marker if not git repository detected
 /// * Current working directory as fallback
-pub fn find_root(root: Option<&str>, root_markers: &[String]) -> std::path::PathBuf {
+pub fn find_root(
+    root: Option<&str>,
+    root_markers: &[String],
+    match_nearest_root: bool,
+) -> std::path::PathBuf {
     let current_dir = std::env::current_dir().expect("unable to determine current directory");
 
     let root = match root {
@@ -67,6 +72,9 @@ pub fn find_root(root: Option<&str>, root_markers: &[String]) -> std::path::Path
             .any(|marker| ancestor.join(marker).exists())
         {
             top_marker = Some(ancestor);
+            if match_nearest_root {
+                break;
+            }
         }
 
         if ancestor.join(".git").exists() {

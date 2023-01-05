@@ -126,6 +126,10 @@ pub struct LanguageConfiguration {
     pub auto_pairs: Option<AutoPairs>,
 
     pub rulers: Option<Vec<u16>>, // if set, override editor's rulers
+    /// Use the nearest directory that matches one of the options in `roots`
+    /// as the workspace root for the language server
+    #[serde(default)]
+    pub match_nearest_root: bool,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
