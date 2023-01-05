@@ -19,7 +19,7 @@ pub struct NumberIncrementor<'a> {
 }
 
 impl<'a> NumberIncrementor<'a> {
-    /// Return information about number under rang if there is one.
+    /// Return information about number under range if there is one.
     pub fn from_range(text: RopeSlice, range: Range) -> Option<NumberIncrementor> {
         // If the cursor is on the minus sign of a number we want to get the word textobject to the
         // right of it.
