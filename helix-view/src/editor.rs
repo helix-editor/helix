@@ -1,5 +1,5 @@
 use crate::{
-    align_view,
+    align_view, apply_transaction,
     clipboard::{get_clipboard_provider, ClipboardProvider},
     document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode},
     graphics::{CursorKind, Rect},
@@ -38,11 +38,10 @@ use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::Position;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig},
-    Change,
+    Change, Position, Range, Selection, Tendril, Transaction,
 };
 use helix_dap as dap;
 use helix_lsp::lsp;
@@ -178,6 +177,7 @@ pub struct Config {
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
+    pub newline_at_eof: bool,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -633,6 +633,7 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
+            newline_at_eof: true,
         }
     }
 }
@@ -1242,7 +1243,29 @@ impl Editor {
         // via stream.then() ? then push into main future
 
         let path = path.map(|path| path.into());
+        let config = self.config();
         let doc = doc_mut!(self, &doc_id);
+
+        // handle adding newline at the end of the file if there is none
+        let newline = doc.line_ending.as_str();
+        let text = doc.text();
+        let doc_len = text.len_chars();
+        if config.newline_at_eof
+            && text
+                .get_slice((doc_len - newline.len())..)
+                .and_then(|s| s.as_str())
+                .filter(|s| s != &newline)
+                .is_some()
+        {
+            let newline = Tendril::from(newline);
+            let selection = Selection::point(doc_len);
+            let transaction = Transaction::insert(text, &selection, newline);
+            let mut view = View::new(doc_id, config.gutters.clone());
+            doc.set_selection(view.id, selection);
+            apply_transaction(&transaction, doc, &view);
+            doc.append_changes_to_history(&mut view);
+        }
+
         let future = doc.save(path, force)?;
 
         use futures_util::stream;
@@ -1438,7 +1461,7 @@ impl Editor {
 
     /// Switches the editor into normal mode.
     pub fn enter_normal_mode(&mut self) {
-        use helix_core::{graphemes, Range};
+        use helix_core::graphemes;
 
         if self.mode == Mode::Normal {
             return;
@@ -1466,9 +1489,7 @@ impl Editor {
 }
 
 fn try_restore_indent(doc: &mut Document, view: &mut View) {
-    use helix_core::{
-        chars::char_is_whitespace, line_ending::line_end_char_index, Operation, Transaction,
-    };
+    use helix_core::{chars::char_is_whitespace, line_ending::line_end_char_index, Operation};
 
     fn inserted_a_new_blank_line(changes: &[Operation], pos: usize, line_end_pos: usize) -> bool {
         if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
