@@ -2089,7 +2089,6 @@ scope = "source.pony"
 file-types = ["pony"]
 injection-regex = "pony"
 roots = ["corral.json", "lock.json"]
-auto-format = false
 indent = { tab-width = 2, unit = "  " }
 comment-token = "//"
 

@@ -33,5 +33,5 @@
 ; only lower case identifiers are references
 (
   (identifier) @local.reference
-  (#match? @local.reference "^[a-z_][a-zA-Z_]+")
+  (#match? @local.reference "^[a-z_][a-zA-Z_]*")
 )
