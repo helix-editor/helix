@@ -513,13 +513,11 @@ pub mod global_search {
 }
 
 pub mod search_utils {
-    use std::{borrow::Cow, collections::HashSet};
+    use std::collections::HashSet;
 
     use anyhow::anyhow;
     use helix_core::regex;
     use helix_view::Editor;
-
-    use crate::commands::Context;
 
     pub fn search_completions(editor: &Editor, reg: Option<char>) -> Vec<String> {
         let mut items = reg
@@ -527,8 +525,7 @@ pub mod search_utils {
             .map_or(Vec::new(), |reg| reg.read().iter().take(200).collect());
         items.sort_unstable();
         items.dedup();
-        let completions = items.into_iter().cloned().collect();
-        completions
+        items.into_iter().cloned().collect()
     }
 
     pub fn regex_escaped_current_selection(editor: &mut Editor) -> String {
@@ -662,18 +659,16 @@ fn template_global_search_cmd_impl(
     let (all_matches_sx, all_matches_rx) =
         tokio::sync::mpsc::unbounded_channel::<global_search::FileResult>();
 
-    global_search::launch_search_walkers(editor, regex.as_str(), all_matches_sx.clone()).map(
-        |_| {
-            // Now we know this is a valid regexp so we add the completed regex to
-            // our regex history and the template to our ? template register history
-            log::debug!("Setting register / to {}", regex);
-            log::debug!("Setting register ? to {}", regex_template.as_ref());
-            editor.registers.push('/', regex);
-            editor
-                .registers
-                .push('?', regex_template.as_ref().to_owned());
-        },
-    )?;
+    global_search::launch_search_walkers(editor, regex.as_str(), all_matches_sx).map(|_| {
+        // Now we know this is a valid regexp so we add the completed regex to
+        // our regex history and the template to our ? template register history
+        log::debug!("Setting register / to {}", regex);
+        log::debug!("Setting register ? to {}", regex_template.as_ref());
+        editor.registers.push('/', regex);
+        editor
+            .registers
+            .push('?', regex_template.as_ref().to_owned());
+    })?;
 
     global_search::collect_file_results(editor, jobs, all_matches_rx);
 
@@ -706,7 +701,7 @@ fn template_global_search_selection_cmd(
                 .map(ToOwned::to_owned)
                 .collect::<Vec<_>>()
         })
-        .unwrap_or(vec![current_selection]);
+        .unwrap_or_else(|| vec![current_selection]);
 
     template_global_search_cmd_impl(cx.editor, cx.jobs, args.first().unwrap(), &template_args)
 }
@@ -2845,12 +2840,8 @@ pub(super) fn command_mode(cx: &mut Context) {
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
                 let shellwords = Shellwords::from(input);
                 let args = if cmd.name.contains("search") {
-                    let regex_args: Vec<Cow<str>> = input
-                        .trim_start()
-                        .split_whitespace()
-                        .skip(1)
-                        .map(Cow::from)
-                        .collect();
+                    let regex_args: Vec<Cow<str>> =
+                        input.split_whitespace().skip(1).map(Cow::from).collect();
                     Cow::Owned(regex_args)
                 } else {
                     Cow::Borrowed(&shellwords.words()[1..])

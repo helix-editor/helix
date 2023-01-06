@@ -19,7 +19,7 @@ use helix_core::{
     match_brackets,
     movement::{self, Direction},
     object, pos_at_coords, pos_at_visual_coords,
-    regex::{self, Regex, RegexBuilder},
+    regex::{Regex, RegexBuilder},
     search::{self, CharMatcher},
     selection, shellwords, surround, textobject,
     tree_sitter::Node,
@@ -54,7 +54,6 @@ use crate::{
 };
 
 use crate::job::{self, Jobs};
-use futures_util::StreamExt;
 use std::{collections::HashMap, fmt, future::Future};
 use std::{collections::HashSet, num::NonZeroUsize};
 
@@ -65,11 +64,6 @@ use std::{
 
 use once_cell::sync::Lazy;
 use serde::de::{self, Deserialize, Deserializer};
-
-use grep_regex::RegexMatcherBuilder;
-use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
-use ignore::{DirEntry, WalkBuilder, WalkState};
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 pub struct Context<'a> {
     pub register: Option<char>,
@@ -1850,7 +1844,11 @@ fn global_search(cx: &mut Context) {
                 return;
             }
 
-            global_search::launch_search_walkers(editor, regex.as_str(), all_matches_sx.clone());
+            if global_search::launch_search_walkers(editor, regex.as_str(), all_matches_sx.clone())
+                .is_err()
+            {
+                // Nothing special to do here on error
+            }
         },
     );
 
