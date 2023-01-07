@@ -94,7 +94,7 @@ pacman -S mingw-w64-ucrt-x86_64-helix
 ```
 git clone https://github.com/helix-editor/helix
 cd helix
-cargo install --path helix-term
+cargo install --path helix-term --locked
 ```
 
 This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars in `./runtime/grammars`.
