@@ -285,7 +285,7 @@ pub mod provider {
                     .stderr(Stdio::null());
 
                 // Fix for https://github.com/helix-editor/helix/issues/5424
-                if cfg!(not(any(windows, target_os = "wasm32", target_os = "macos"))) {
+                if cfg!(unix) {
                     use std::os::unix::process::CommandExt;
 
                     unsafe {
