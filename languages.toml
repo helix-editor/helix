@@ -537,7 +537,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-ruby", rev = "4c600
 name = "bash"
 scope = "source.bash"
 injection-regex = "(shell|bash|zsh|sh)"
-file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc"]
+file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc", ".bash_aliases"]
 shebangs = ["sh", "bash", "dash", "zsh"]
 roots = []
 comment-token = "#"
@@ -1579,6 +1579,7 @@ name = "sshclientconfig"
 scope = "source.sshclientconfig"
 file-types = [{ suffix = ".ssh/config" }, { suffix = "/etc/ssh/ssh_config" }]
 roots = []
+comment-token = "#"
 
 [[grammar]]
 name = "sshclientconfig"
@@ -1676,7 +1677,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "prisma"
-source = { git = "https://github.com/victorhqc/tree-sitter-prisma", rev = "17a59236ac25413b81b1613ea6ba5d8d52d7cd6c" }
+source = { git = "https://github.com/victorhqc/tree-sitter-prisma", rev = "eca2596a355b1a9952b4f80f8f9caed300a272b5" }
 
 [[language]]
 name = "clojure"

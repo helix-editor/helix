@@ -7,10 +7,14 @@
 # because of some theming differences, it's not an exact copy of the original.
 
 ## User interface
-"ui.selection" = { bg = "waveBlue1" }
+"ui.selection" = { bg = "waveBlue2" }
+"ui.selection.primary" = { bg = "waveBlue1" }
 "ui.background" = { fg = "fujiWhite", bg = "sumiInk1" }
 
 "ui.linenr" = { fg = "sumiInk4" }
+"ui.linenr.selected" = { fg = "roninYellow" }
+
+"ui.virtual.indent-guide" = "sumiInk4"
 
 "ui.statusline" = { fg = "oldWhite", bg = "sumiInk0" }
 "ui.statusline.inactive" = { fg = "fujiGray", bg = "sumiInk0" }
@@ -23,15 +27,19 @@
 
 "ui.popup" = { fg = "fujiWhite", bg = "sumiInk0" }
 "ui.window" = { fg = "fujiWhite" }
-"ui.help" = { fg = "fujiWhite", bg = "waveBlue1" }
+"ui.help" = { fg = "fujiWhite", bg = "sumiInk1" }
 "ui.text" = "fujiWhite"
 "ui.text.focus" = { fg = "fujiWhite", bg = "waveBlue1", modifiers = ["bold"] }
 "ui.virtual" = "waveBlue1"
 
-"ui.cursor" = { fg = "fujiWhite", bg = "waveBlue1"}
-"ui.cursor.primary" = { fg = "seaFoam", bg = "waveBlue1" }
+"ui.cursor" = { fg = "waveBlue1", bg = "fujiWhite"}
+"ui.cursor.primary" = { fg = "waveBlue1", bg = "seaFoam" }
 "ui.cursor.match" = { fg = "seaFoam", modifiers = ["bold"] }
 "ui.highlight" = { fg = "fujiWhite", bg = "waveBlue2" }
+"ui.menu" = { fg = "fujiWhite", bg = "sumiInk1" }
+"ui.menu.selected" = { fg = "fujiWhite", bg = "waveBlue1" }
+
+"ui.cursorline.primary" = { bg = "sumiInk3"}
 
 diagnostic = { modifiers = ["underlined"] }
 
@@ -39,6 +47,11 @@ error = "samuraiRed"
 warning = "roninYellow"
 info = "waveAqua1"
 hint = "dragonBlue"
+
+## Git gutter
+"diff.plus" = "autumnGreen"
+"diff.minus" = "autumnRed"
+"diff.delta" = "autumnYellow"
 
 ## Syntax highlighting
 "type" = "waveAqua2"
@@ -54,8 +67,8 @@ hint = "dragonBlue"
 "variable.other.member" = "carpYellow"
 "label" = "springBlue"
 "punctuation" = "springViolet2"
-"punctuation.delimiter" = "springViolet2" 
-"punctuation.bracket" = "springViolet2" 
+"punctuation.delimiter" = "springViolet2"
+"punctuation.bracket" = "springViolet2"
 "keyword" = "oniViolet"
 "keyword.directive" = "peachRed"
 "operator" = "boatYellow2"

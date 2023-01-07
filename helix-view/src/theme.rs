@@ -14,15 +14,23 @@ use toml::{map::Map, Value};
 use crate::graphics::UnderlineStyle;
 pub use crate::graphics::{Color, Modifier, Style};
 
+pub static DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
+    toml::from_slice(include_bytes!("../../theme.toml")).expect("Failed to parse default theme")
+});
+
+pub static BASE16_DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
+    toml::from_slice(include_bytes!("../../base16_theme.toml"))
+        .expect("Failed to parse base 16 default theme")
+});
+
 pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
     name: "default".into(),
-    ..toml::from_slice(include_bytes!("../../theme.toml")).expect("Failed to parse default theme")
+    ..Theme::from(DEFAULT_THEME_DATA.clone())
 });
 
 pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
-    name: "base16_theme".into(),
-    ..toml::from_slice(include_bytes!("../../base16_theme.toml"))
-        .expect("Failed to parse base 16 default theme")
+    name: "base16_default".into(),
+    ..Theme::from(BASE16_DEFAULT_THEME_DATA.clone())
 });
 
 #[derive(Clone, Debug)]
@@ -78,11 +86,16 @@ impl Loader {
                 )
             })?;
 
-            let parent_theme_toml = self.load_theme(
-                parent_theme_name,
-                base_them_name,
-                base_them_name == parent_theme_name,
-            )?;
+            let parent_theme_toml = match parent_theme_name {
+                // load default themes's toml from const.
+                "default" => DEFAULT_THEME_DATA.clone(),
+                "base16_default" => BASE16_DEFAULT_THEME_DATA.clone(),
+                _ => self.load_theme(
+                    parent_theme_name,
+                    base_them_name,
+                    base_them_name == parent_theme_name,
+                )?,
+            };
 
             self.merge_themes(parent_theme_toml, theme_toml)
         } else {

@@ -241,7 +241,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                     3.2 MORE ON MOTIONS                       =
+=                     3.2 MORE MOTIONS                          =
 =================================================================
 
  As you saw, typing w moves the cursor forward until the start
@@ -253,17 +253,39 @@ _________________________________________________________________
    e - Move forward to the end of the current word.
    b - Move backward to the beginning of the current word.
 
+ To select the word under cursor, combine e and b.
+
+ 1. Move the cursor to the line marked '-->' below.
+ 2. Move to a 'd' letter.
+ 3. Type e to select a half of the word.
+ 4. Type b to select the rest.
+
+--> The Middle Kingdom.
+
+=================================================================
+=                     3.3 WORDS AND words                       =
+=================================================================
+
  The w,e,b motions also have counterparts - W,E,B - which
  traverse WORDS instead of words. WORDS are only separated by
  whitespace, whereas words can be separated by other characters
  in addition to whitespace.
 
- All of these motions select the text they traverse.
+ 1. Move the cursor to the beginning of the line marked with '-->'.
+ 2. Type w repeatedly to select individual words until you
+    reach the end of the line.
+ 3. Note that 'one-of-a-kind' required 7 keystrokes to be
+    traversed. '"modal"' required 3 keystrokes.
+ 4. Move the cursor back to beginning of the line marked '-->'.
+ 5. Type W repeatedly to select individual WORDS.
+ 6. Note that 'one-of-a-kind' and '"modal"' have been selected
+    both with one keystroke each.
 
+--> Helix is a one-of-a-kind "modal" text editor
 
 
 =================================================================
-=                    3.3 THE CHANGE COMMAND                     =
+=                    3.4 THE CHANGE COMMAND                     =
 =================================================================
 
  Type c to change the current selection.
@@ -285,7 +307,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                   3.4 COUNTS WITH MOTIONS                     =
+=                   3.5 COUNTS WITH MOTIONS                     =
 =================================================================
 
  Type a number before a motion to repeat it that many times.
@@ -307,7 +329,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                    3.5 SELECT / EXTEND MODE                   =
+=                    3.6 SELECT / EXTEND MODE                   =
 =================================================================
 
  Type v to enter Select mode.
@@ -329,7 +351,7 @@ _________________________________________________________________
 
 
 =================================================================
-=                     3.6 SELECTING LINES                       =
+=                     3.7 SELECTING LINES                       =
 =================================================================
 
  Type x to select a whole line. Type x again to select the next.
@@ -351,7 +373,7 @@ _________________________________________________________________
       subsequent lines. X on an empty line does nothing.
 
 =================================================================
-=                   3.7 COLLAPSING SELECTIONS                   =
+=                   3.8 COLLAPSING SELECTIONS                   =
 =================================================================
 
  Type ; to collapse selections to single cursors.
@@ -1077,10 +1099,58 @@ letters! that is not good grammar. you can fix this.
 
 
 =================================================================
-=                                                               =
+=                     11.1 COMMENTING A LINE                    =
 =================================================================
 
+Type Ctrl-c to comment the line under your cursor.
+To uncomment the line, press Ctrl-c again.
 
+1. Move your cursor to the line marked '-->' below.
+2. Now comment the line marked with '-->'.
+3. Now try uncommenting the line.
+
+--> Comment me please
+
+
+
+
+
+
+
+
+
+
+=================================================================
+=                 11.2 COMMENTING MULTIPLE LINES                =
+=================================================================
+
+Using the selections and multi-cursor functionality, you can 
+comment multiple lines as long as it is under the selection or
+cursors. 
+
+1. Move your cursor to the line marked with '-->' below.
+2. Now try to select or add more cursors the other lines marked 
+   with '-->'. 
+3. Comment those lines.
+
+--> How many are you going to comment?
+--> Is this enough for a comment?
+--> What are you doing?!
+--> Stop commenting me!
+--> AAAAaargh!!!
+
+Note: If there are already commented lines under selections or
+multiple cursors, they won't be uncommented but commented again.
+
+=================================================================
+=                       CHAPTER 11 RECAP                        =
+=================================================================
+
+ * Use Ctrl-c to comment a line under your cursor. Type Ctrl-c
+   again to uncomment.
+ * To comment multiple lines, use the selections 
+   and multi-cursors before typing Ctrl-c.
+   * Commented lines cannot be uncommented but commented again.
 
 
 

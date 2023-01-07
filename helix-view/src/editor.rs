@@ -315,7 +315,10 @@ pub enum StatusLineElement {
     /// The LSP activity spinner
     Spinner,
 
-    /// The file nane/path, including a dirty flag if it's unsaved
+    /// The base file name, including a dirty flag if it's unsaved
+    FileBaseName,
+
+    /// The relative file path, including a dirty flag if it's unsaved
     FileName,
 
     /// The file encoding

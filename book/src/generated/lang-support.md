@@ -120,7 +120,7 @@
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
 | task | ✓ |  |  |  |
-| tfvars |  |  |  | `terraform-ls` |
+| tfvars | ✓ |  | ✓ | `terraform-ls` |
 | toml | ✓ |  |  | `taplo` |
 | tsq | ✓ |  |  |  |
 | tsx | ✓ | ✓ | ✓ | `typescript-language-server` |
