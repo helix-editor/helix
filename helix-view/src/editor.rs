@@ -633,7 +633,7 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
-            newline_at_eof: true,
+            newline_at_eof: false,
         }
     }
 }
