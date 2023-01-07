@@ -52,7 +52,7 @@ If you would like to build from source:
 ```shell
 git clone https://github.com/helix-editor/helix
 cd helix
-cargo install --path helix-term
+cargo install --locked --path helix-term
 ```
 
 This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars in `./runtime/grammars`.
@@ -84,7 +84,7 @@ mklink /D runtime "<helix-repo>\runtime"
 
 The runtime location can be overridden via the `HELIX_RUNTIME` environment variable.
 
-> NOTE: if `HELIX_RUNTIME` is set prior to calling `cargo install --path helix-term`,
+> NOTE: if `HELIX_RUNTIME` is set prior to calling `cargo install --locked --path helix-term`,
 > tree-sitter grammars will be built in `$HELIX_RUNTIME/grammars`.
 
 If you plan on keeping the repo locally, an alternative to copying/symlinking
