@@ -206,7 +206,7 @@ or <a href="https://msys2.org/">MSYS2</a>.</p>
 <h2 id="build-from-source"><a class="header" href="#build-from-source">Build from source</a></h2>
 <pre><code>git clone https://github.com/helix-editor/helix
 cd helix
-cargo install --path helix-term
+cargo install --path helix-term --locked
 </code></pre>
 <p>This will install the <code>hx</code> binary to <code>$HOME/.cargo/bin</code> and build tree-sitter grammars in <code>./runtime/grammars</code>.</p>
 <p>Helix also needs its runtime files so make sure to copy/symlink the <code>runtime/</code> directory into the
@@ -229,7 +229,7 @@ mklink /D runtime &quot;&lt;helix-repo&gt;\runtime&quot;
 </code></pre>
 <p>The runtime location can be overridden via the <code>HELIX_RUNTIME</code> environment variable.</p>
 <blockquote>
-<p>NOTE: if <code>HELIX_RUNTIME</code> is set prior to calling <code>cargo install --path helix-term</code>,
+<p>NOTE: if <code>HELIX_RUNTIME</code> is set prior to calling <code>cargo install --path helix-term --locked</code>,
 tree-sitter grammars will be built in <code>$HELIX_RUNTIME/grammars</code>.</p>
 </blockquote>
 <p>If you plan on keeping the repo locally, an alternative to copying/symlinking
