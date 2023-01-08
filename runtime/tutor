@@ -1087,7 +1087,7 @@ letters! that is not good grammar. you can fix this.
 
  * Type ~ to alternate case of selected letters.
    * Use ` and Alt-` to set the case of selected letters to
-     upper and lower respectively.
+     lower and upper respectively.
 
  * Type S to split selections on regex.
 
