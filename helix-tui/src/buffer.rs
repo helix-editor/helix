@@ -6,7 +6,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use helix_view::graphics::{Color, Modifier, Rect, Style, UnderlineStyle};
 
 /// A buffer cell
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cell {
     pub symbol: String,
     pub fg: Color,
@@ -119,7 +119,7 @@ impl Default for Cell {
 /// buf[(5, 0)].set_char('x');
 /// assert_eq!(buf[(5, 0)].symbol, "x");
 /// ```
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Buffer {
     /// The area represented by this buffer
     pub area: Rect,
@@ -360,14 +360,14 @@ impl Buffer {
             let mut start_index = self.index_of(x, y);
             let mut index = self.index_of(max_offset as u16, y);
 
-            let total_width = string.width();
-            let truncated = total_width > width;
+            let content_width = string.width();
+            let truncated = content_width > width;
             if ellipsis && truncated {
                 self.content[start_index].set_symbol("…");
                 start_index += 1;
             }
             if !truncated {
-                index -= width - total_width;
+                index -= width - content_width;
             }
             for (byte_offset, s) in graphemes.rev() {
                 let width = s.width();
@@ -384,6 +384,7 @@ impl Buffer {
                     self.content[i].reset();
                 }
                 index -= width;
+                x_offset += width;
             }
         }
         (x_offset as u16, y)

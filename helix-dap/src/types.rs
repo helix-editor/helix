@@ -22,7 +22,7 @@ pub trait Request {
     const COMMAND: &'static str;
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ColumnDescriptor {
     pub attribute_name: String,
@@ -35,7 +35,7 @@ pub struct ColumnDescriptor {
     pub width: Option<usize>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExceptionBreakpointsFilter {
     pub filter: String,
@@ -50,7 +50,7 @@ pub struct ExceptionBreakpointsFilter {
     pub condition_description: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DebuggerCapabilities {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -131,14 +131,14 @@ pub struct DebuggerCapabilities {
     pub supported_checksum_algorithms: Option<Vec<String>>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Checksum {
     pub algorithm: String,
     pub checksum: String,
 }
 
-#[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Source {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -159,7 +159,7 @@ pub struct Source {
     pub checksums: Option<Vec<Checksum>>,
 }
 
-#[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceBreakpoint {
     pub line: usize,
@@ -173,7 +173,7 @@ pub struct SourceBreakpoint {
     pub log_message: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Breakpoint {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -197,7 +197,7 @@ pub struct Breakpoint {
     pub offset: Option<usize>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StackFrameFormat {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -216,7 +216,7 @@ pub struct StackFrameFormat {
     pub include_all: Option<bool>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StackFrame {
     pub id: usize,
@@ -239,14 +239,14 @@ pub struct StackFrame {
     pub presentation_hint: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Thread {
     pub id: ThreadId,
     pub name: String,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Scope {
     pub name: String,
@@ -270,14 +270,14 @@ pub struct Scope {
     pub end_column: Option<usize>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ValueFormat {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hex: Option<bool>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VariablePresentationHint {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -288,7 +288,7 @@ pub struct VariablePresentationHint {
     pub visibility: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Variable {
     pub name: String,
@@ -308,7 +308,7 @@ pub struct Variable {
     pub memory_reference: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Module {
     pub id: String, // TODO: || number
@@ -333,7 +333,7 @@ pub struct Module {
 
 pub mod requests {
     use super::*;
-    #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct InitializeArguments {
         #[serde(rename = "clientID", skip_serializing_if = "Option::is_none")]
@@ -409,7 +409,7 @@ pub mod requests {
         const COMMAND: &'static str = "configurationDone";
     }
 
-    #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct SetBreakpointsArguments {
         pub source: Source,
@@ -420,7 +420,7 @@ pub mod requests {
         pub source_modified: Option<bool>,
     }
 
-    #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct SetBreakpointsResponse {
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -436,13 +436,13 @@ pub mod requests {
         const COMMAND: &'static str = "setBreakpoints";
     }
 
-    #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct ContinueArguments {
         pub thread_id: ThreadId,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct ContinueResponse {
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -458,7 +458,7 @@ pub mod requests {
         const COMMAND: &'static str = "continue";
     }
 
-    #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StackTraceArguments {
         pub thread_id: ThreadId,
@@ -470,7 +470,7 @@ pub mod requests {
         pub format: Option<StackFrameFormat>,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StackTraceResponse {
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -487,7 +487,7 @@ pub mod requests {
         const COMMAND: &'static str = "stackTrace";
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct ThreadsResponse {
         pub threads: Vec<Thread>,
@@ -502,13 +502,13 @@ pub mod requests {
         const COMMAND: &'static str = "threads";
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct ScopesArguments {
         pub frame_id: usize,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct ScopesResponse {
         pub scopes: Vec<Scope>,
@@ -523,7 +523,7 @@ pub mod requests {
         const COMMAND: &'static str = "scopes";
     }
 
-    #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct VariablesArguments {
         pub variables_reference: usize,
@@ -537,7 +537,7 @@ pub mod requests {
         pub format: Option<ValueFormat>,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct VariablesResponse {
         pub variables: Vec<Variable>,
@@ -552,7 +552,7 @@ pub mod requests {
         const COMMAND: &'static str = "variables";
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StepInArguments {
         pub thread_id: ThreadId,
@@ -571,7 +571,7 @@ pub mod requests {
         const COMMAND: &'static str = "stepIn";
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StepOutArguments {
         pub thread_id: ThreadId,
@@ -588,7 +588,7 @@ pub mod requests {
         const COMMAND: &'static str = "stepOut";
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct NextArguments {
         pub thread_id: ThreadId,
@@ -605,7 +605,7 @@ pub mod requests {
         const COMMAND: &'static str = "next";
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct PauseArguments {
         pub thread_id: ThreadId,
@@ -620,7 +620,7 @@ pub mod requests {
         const COMMAND: &'static str = "pause";
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct EvaluateArguments {
         pub expression: String,
@@ -632,7 +632,7 @@ pub mod requests {
         pub format: Option<ValueFormat>,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct EvaluateResponse {
         pub result: String,
@@ -658,7 +658,7 @@ pub mod requests {
         const COMMAND: &'static str = "evaluate";
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct SetExceptionBreakpointsArguments {
         pub filters: Vec<String>,
@@ -666,7 +666,7 @@ pub mod requests {
         // pub exceptionOptions: Option<Vec<ExceptionOptions>>, // needs capability
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct SetExceptionBreakpointsResponse {
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -684,7 +684,7 @@ pub mod requests {
 
     // Reverse Requests
 
-    #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct RunInTerminalResponse {
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -693,7 +693,7 @@ pub mod requests {
         pub shell_process_id: Option<u32>,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct RunInTerminalArguments {
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -745,7 +745,7 @@ pub mod events {
         Memory(Memory),
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Stopped {
         pub reason: String,
@@ -763,7 +763,7 @@ pub mod events {
         pub hit_breakpoint_ids: Option<Vec<usize>>,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Continued {
         pub thread_id: ThreadId,
@@ -771,27 +771,27 @@ pub mod events {
         pub all_threads_continued: Option<bool>,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Exited {
         pub exit_code: usize,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Terminated {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub restart: Option<Value>,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Thread {
         pub reason: String,
         pub thread_id: ThreadId,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Output {
         pub output: String,
@@ -811,28 +811,28 @@ pub mod events {
         pub data: Option<Value>,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Breakpoint {
         pub reason: String,
         pub breakpoint: super::Breakpoint,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Module {
         pub reason: String,
         pub module: super::Module,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct LoadedSource {
         pub reason: String,
         pub source: super::Source,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Process {
         pub name: String,
@@ -846,13 +846,13 @@ pub mod events {
         pub pointer_size: Option<usize>,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Capabilities {
         pub capabilities: super::DebuggerCapabilities,
     }
 
-    // #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    // #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     // #[serde(rename_all = "camelCase")]
     // pub struct Invalidated {
     // pub areas: Vec<InvalidatedArea>,
@@ -860,7 +860,7 @@ pub mod events {
     // pub stack_frame_id: Option<usize>,
     // }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Memory {
         pub memory_reference: String,

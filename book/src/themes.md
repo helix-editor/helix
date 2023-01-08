@@ -103,7 +103,7 @@ Some styles might not be supported by your terminal emulator.
 | `line`         |
 | `curl`         |
 | `dashed`       |
-| `dot`          |
+| `dotted`       |
 | `double_line`  |
 
 
@@ -268,6 +268,7 @@ These scopes are used for theming the editor interface.
 | `ui.help`                   | Description box for commands                                                                   |
 | `ui.text`                   | Command prompts, popup text, etc.                                                              |
 | `ui.text.focus`             |                                                                                                |
+| `ui.text.inactive`          | Same as `ui.text` but when the text is inactive (e.g. suggestions)                             |
 | `ui.text.info`              | The key: command text in `ui.popup.info` boxes                                                 |
 | `ui.virtual.ruler`          | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
 | `ui.virtual.whitespace`     | Visible whitespace characters                                                                 |

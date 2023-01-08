@@ -1,5 +1,5 @@
-"comment" = { fg = "highlight_three" }
-"comment.block.documentation" = { bg = "t4", modifiers = ["italic"] }
+"comment" = { fg = "comment" }
+"comment.block.documentation" = { bg = "comment_doc", modifiers = ["italic"] }
 
 "constant" = { fg = "t11" }
 "function" = { fg = "t10" }
@@ -20,18 +20,19 @@
 "variable" = { fg = "t4" }
 "label" = { fg = "t4" }
 
-"diff.plus" = { fg = "t4" }
-"diff.delta" = { fg = "t4" }
-"diff.minus" = { fg = "t4" }
+"diff.plus" = { fg = "diff_plus" }
+"diff.delta" = { fg = "diff_delta" }
+"diff.delta.moved" = { fg = "diff_delta_moved" }
+"diff.minus" = { fg = "diff_minus" }
 
 "ui.cursor.insert" = { fg = "t2", bg = "highlight" }
 "ui.cursor.select" = { fg = "t2", bg = "highlight_two" }
 "ui.cursor" = { fg = "t1", bg = "highlight_three" }
-"ui.cursor.match" = { fg = "highlight", bg = "t1", modifiers = ["bold"] }
+"ui.cursor.match" = { fg = "highlight", bg = "selection", modifiers = ["bold"] }
 
-"ui.linenr" = { fg = "t3", bg = "t1" }
-"ui.linenr.selected" = { fg = "highlight_three", bg = "t1" }
-"ui.gutter" = { bg = "t1" }
+"ui.linenr" = { fg = "t3", bg = "t2" }
+"ui.linenr.selected" = { fg = "highlight_three", bg = "t2" }
+"ui.gutter" = { bg = "t2" }
 
 "ui.background" = { fg = "t4", bg = "t2" }
 "ui.background.separator" = { fg = "t3" }
@@ -76,8 +77,8 @@
 "markup.raw" = { fg = "t4" }
 
 [palette]
-t1 = "#0f0b0b"
-t2 = "#161010"
+t1 = "#0e0e0d"
+t2 = "#1d1e1b"
 t3 = "#5b5555"
 t4 = "#656869"
 t5 = "#727b7c"
@@ -95,11 +96,15 @@ highlight_three = "#d4d987"
 selection = "#032d4a"
 
 black = "#000000"
-
-comment = "#396884"
+comment = "#d4d987"
 comment_doc = "#234048"
 
 error = "#ff0900"
 warning = "#ffbf00"
-display = "#57ff89"
+display = "#42baff"
 info = "#dad7d5"
+
+diff_minus = "#ff0900"
+diff_delta = "#0078bd"
+diff_plus = "#87a800"
+diff_delta_moved = "#0048bd"

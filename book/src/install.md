@@ -69,17 +69,21 @@ choco install helix
 
 **MSYS2:**
 
+Choose the proper command for your system from below:
+
+  - For 32 bit Windows 7 or above:
+
 ```
 pacman -S mingw-w64-i686-helix
 ```
 
-or
+  - For 64 bit Windows 7 or above:
 
 ```
 pacman -S mingw-w64-x86_64-helix
 ```
 
-or
+  - For 64 bit Windows 8.1 or above:
 
 ```
 pacman -S mingw-w64-ucrt-x86_64-helix
@@ -90,7 +94,7 @@ pacman -S mingw-w64-ucrt-x86_64-helix
 ```
 git clone https://github.com/helix-editor/helix
 cd helix
-cargo install --path helix-term
+cargo install --path helix-term --locked
 ```
 
 This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars in `./runtime/grammars`.
@@ -103,10 +107,10 @@ via the `HELIX_RUNTIME` environment variable.
 | -------------------- | ------------------------------------------------ |
 | Windows (Cmd)        | `xcopy /e /i runtime %AppData%\helix\runtime`    |
 | Windows (PowerShell) | `xcopy /e /i runtime $Env:AppData\helix\runtime` |
-| Linux / MacOS        | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
+| Linux / macOS        | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
 
 Starting with Windows Vista you can also create symbolic links on Windows. Note that this requires
-elevated priviliges - i.e. PowerShell or Cmd must be run as administrator.
+elevated privileges - i.e. PowerShell or Cmd must be run as administrator.
 
 **PowerShell:**
 
@@ -123,7 +127,7 @@ mklink /D runtime "<helix-repo>\runtime"
 
 The runtime location can be overridden via the `HELIX_RUNTIME` environment variable.
 
-> NOTE: if `HELIX_RUNTIME` is set prior to calling `cargo install --path helix-term`,
+> NOTE: if `HELIX_RUNTIME` is set prior to calling `cargo install --path helix-term --locked`,
 > tree-sitter grammars will be built in `$HELIX_RUNTIME/grammars`.
 
 If you plan on keeping the repo locally, an alternative to copying/symlinking

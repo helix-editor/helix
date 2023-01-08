@@ -72,9 +72,9 @@
 "ui.cursorline.primary" = { bg = "darkseagreen2" }
 "ui.cursorline.secondary" = { bg = "darkseagreen2" }
 
-"diff.plus" = { fg = "#22aa22", bg = "#eeffee" }
-"diff.delta" = { fg = "#aaaa22", bg = "#ffffcc" }
-"diff.minus" = { fg = "#aa2222", bg = "#ffdddd" }
+"diff.plus" = { fg = "green3" }
+"diff.delta" = { fg = "orange2" }
+"diff.minus" = { fg = "red2" }
 
 "error" = { fg = "red1" }
 "warning" = { fg = "dark_orange" }

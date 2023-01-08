@@ -2,17 +2,21 @@
 | --- | --- | --- | --- | --- |
 | astro | ✓ |  |  |  |
 | awk | ✓ | ✓ |  | `awk-language-server` |
-| bash | ✓ |  |  | `bash-language-server` |
+| bash | ✓ |  | ✓ | `bash-language-server` |
 | bass | ✓ |  |  | `bass` |
 | beancount | ✓ |  |  |  |
+| bibtex | ✓ |  |  | `texlab` |
+| bicep | ✓ |  |  | `bicep-langserver` |
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | `OmniSharp` |
 | cairo | ✓ |  |  |  |
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
+| common-lisp | ✓ |  |  | `cl-lsp` |
 | cpon | ✓ |  | ✓ |  |
 | cpp | ✓ | ✓ | ✓ | `clangd` |
+| crystal | ✓ | ✓ |  |  |
 | css | ✓ |  |  | `vscode-css-language-server` |
 | cue | ✓ |  |  | `cuelsp` |
 | d | ✓ | ✓ | ✓ | `serve-d` |
@@ -24,7 +28,7 @@
 | edoc | ✓ |  |  |  |
 | eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |
-| elixir | ✓ | ✓ |  | `elixir-ls` |
+| elixir | ✓ | ✓ | ✓ | `elixir-ls` |
 | elm | ✓ |  |  | `elm-language-server` |
 | elvish | ✓ |  |  | `elvish` |
 | env | ✓ |  |  |  |
@@ -48,14 +52,14 @@
 | gowork | ✓ |  |  | `gopls` |
 | graphql | ✓ |  |  |  |
 | hare | ✓ |  |  |  |
-| haskell | ✓ |  |  | `haskell-language-server-wrapper` |
+| haskell | ✓ | ✓ |  | `haskell-language-server-wrapper` |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
-| heex | ✓ | ✓ |  |  |
+| heex | ✓ | ✓ |  | `elixir-ls` |
 | html | ✓ |  |  | `vscode-html-language-server` |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | ini | ✓ |  |  |  |
-| java | ✓ |  |  | `jdtls` |
+| java | ✓ | ✓ |  | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | jsdoc | ✓ |  |  |  |
 | json | ✓ |  | ✓ | `vscode-json-language-server` |
@@ -74,10 +78,12 @@
 | make | ✓ |  |  |  |
 | markdown | ✓ |  |  | `marksman` |
 | markdown.inline | ✓ |  |  |  |
+| matlab | ✓ |  |  |  |
+| mermaid | ✓ |  |  |  |
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
 | nickel | ✓ |  | ✓ | `nls` |
-| nix | ✓ |  |  | `rnix-lsp` |
+| nix | ✓ |  |  | `nil` |
 | nu | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |
@@ -92,8 +98,9 @@
 | protobuf | ✓ |  | ✓ |  |
 | purescript | ✓ |  |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | `pylsp` |
+| qml | ✓ |  | ✓ | `qmlls` |
 | r | ✓ |  |  | `R` |
-| racket |  |  |  | `racket` |
+| racket | ✓ |  |  | `racket` |
 | regex | ✓ |  |  |  |
 | rescript | ✓ | ✓ |  | `rescript-language-server` |
 | rmarkdown | ✓ |  | ✓ | `R` |
@@ -113,7 +120,7 @@
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
 | task | ✓ |  |  |  |
-| tfvars |  |  |  | `terraform-ls` |
+| tfvars | ✓ |  | ✓ | `terraform-ls` |
 | toml | ✓ |  |  | `taplo` |
 | tsq | ✓ |  |  |  |
 | tsx | ✓ | ✓ | ✓ | `typescript-language-server` |

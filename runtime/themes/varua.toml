@@ -45,7 +45,7 @@
 "diff.minus" = "red"
 
 "ui.background" = { bg = "bg0" }
-"ui.cursorline.primary" = { bg = "bg2" }
+"ui.cursorline.primary" = { bg = "bg6" }
 "ui.cursor" = { fg = "bg0", bg = "fg" }
 "ui.cursor.match" = { fg = "orange", bg = "bg_yellow" }
 "ui.cursor.insert" = { fg = "bg0", bg = "grey1" }
@@ -63,6 +63,8 @@
 "ui.menu.selected" = { fg = "fg", bg = "bg1" }
 "ui.selection" = { bg = "bg3" }
 "ui.virtual.whitespace" = "grey0"
+"ui.statusline.insert" = { bg = "green", fg = "bg2" }
+"ui.statusline.select" = { bg = "blue", fg = "bg2" }
 
 "hint" = "blue"
 "info" = "aqua"
@@ -77,6 +79,7 @@ bg2 = "#32302f"
 bg3 = "#3c3836"
 bg4 = "#4c555b"
 bg5 = "#53605c"
+bg6 = "#2c2c2c"
 bg_visual = "#503946"
 bg_red = "#4e3e43"
 bg_green = "#404d44"
