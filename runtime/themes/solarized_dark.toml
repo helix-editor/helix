@@ -68,7 +68,7 @@
 "ui.help" = { modifiers = ["reversed"] }
 
 # 快捷键窗口 
-"ui.popup.info" = { bg = "base1" }
+"ui.popup.info" = {fg = "base02", bg = "base1", modifiers = ["bold"]}
 # 快捷键字体
 "ui.text.info" = {fg = "base02", modifiers = ["bold"]}
 
