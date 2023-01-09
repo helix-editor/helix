@@ -453,11 +453,7 @@ where
 {
     let sep = &context.editor.config().statusline.separator;
 
-    write(
-        context,
-        sep.to_string(),
-        Some(context.editor.theme.get("ui.statusline.separator")),
-    );
+    write( context, sep.to_string(), None );
 }
 
 fn render_spacer<F>(context: &mut RenderContext, write: F)
