@@ -463,20 +463,30 @@ pub mod completers {
         use ignore::WalkBuilder;
         use std::path::Path;
 
-        let is_tilde = input.starts_with('~') && input.len() == 1;
+        let is_tilde = input == "~";
         let path = helix_core::path::expand_tilde(Path::new(input));
 
         let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
             (path, None)
         } else {
-            let file_name = path
-                .file_name()
-                .and_then(|file| file.to_str().map(|path| path.to_owned()));
+            let is_period = (input.ends_with((format!("{}.", std::path::MAIN_SEPARATOR)).as_str())
+                && input.len() > 2)
+                || input == ".";
+            let file_name = if is_period {
+                Some(String::from("."))
+            } else {
+                path.file_name()
+                    .and_then(|file| file.to_str().map(|path| path.to_owned()))
+            };
 
-            let path = match path.parent() {
-                Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
-                // Path::new("h")'s parent is Some("")...
-                _ => std::env::current_dir().expect("couldn't determine current directory"),
+            let path = if is_period {
+                path
+            } else {
+                match path.parent() {
+                    Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
+                    // Path::new("h")'s parent is Some("")...
+                    _ => std::env::current_dir().expect("couldn't determine current directory"),
+                }
             };
 
             (path, file_name)
