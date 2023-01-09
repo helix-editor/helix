@@ -148,7 +148,7 @@ impl Hunk {
         after: u32::MAX..u32::MAX,
     };
 
-    /// Inverts a change so that `before`
+    /// Inverts a change so that `before` becomes `after` and conversely.
     pub fn invert(&self) -> Hunk {
         Hunk {
             before: self.after.clone(),
