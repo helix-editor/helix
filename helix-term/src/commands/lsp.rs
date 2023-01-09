@@ -10,7 +10,7 @@ use tui::{
     widgets::Row,
 };
 
-use super::{align_view, push_jump, Align, Context, Editor, Open};
+use super::{align_view, push_jump, Align, Context, Editor, Open, SourcePathFormat};
 
 use helix_core::{path, Selection};
 use helix_view::{document::Mode, editor::Action, theme::Style};
@@ -111,7 +111,7 @@ struct PickerDiagnostic {
 }
 
 impl ui::menu::Item for PickerDiagnostic {
-    type Data = (DiagnosticStyles, DiagnosticsFormat);
+    type Data = (DiagnosticStyles, SourcePathFormat);
 
     fn format(&self, (styles, format): &Self::Data) -> Row {
         let mut style = self
@@ -140,8 +140,8 @@ impl ui::menu::Item for PickerDiagnostic {
             .unwrap_or_default();
 
         let path = match format {
-            DiagnosticsFormat::HideSourcePath => String::new(),
-            DiagnosticsFormat::ShowSourcePath => {
+            SourcePathFormat::Hide => String::new(),
+            SourcePathFormat::Show => {
                 let path = path::get_truncated_path(self.url.path());
                 format!("{}: ", path.to_string_lossy())
             }
@@ -251,17 +251,11 @@ fn sym_picker(
     .truncate_start(false)
 }
 
-#[derive(Copy, Clone, PartialEq)]
-enum DiagnosticsFormat {
-    ShowSourcePath,
-    HideSourcePath,
-}
-
 fn diag_picker(
     cx: &Context,
     diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
     current_path: Option<lsp::Url>,
-    format: DiagnosticsFormat,
+    format: SourcePathFormat,
     offset_encoding: OffsetEncoding,
 ) -> FilePicker<PickerDiagnostic> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
@@ -446,7 +440,7 @@ pub fn diagnostics_picker(cx: &mut Context) {
             cx,
             [(current_url.clone(), diagnostics)].into(),
             Some(current_url),
-            DiagnosticsFormat::HideSourcePath,
+            SourcePathFormat::Hide,
             offset_encoding,
         );
         cx.push_layer(Box::new(overlayed(picker)));
@@ -463,7 +457,7 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
         cx,
         diagnostics,
         current_url,
-        DiagnosticsFormat::ShowSourcePath,
+        SourcePathFormat::Show,
         offset_encoding,
     );
     cx.push_layer(Box::new(overlayed(picker)));

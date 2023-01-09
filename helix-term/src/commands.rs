@@ -546,6 +546,15 @@ impl PartialEq for MappableCommand {
     }
 }
 
+/// Used in both LSP and VCS commands to determine if the source path should be shown or not.
+///
+/// The usual case is hiding for a single-document picker and showing for a multiple-document one.
+#[derive(Debug, Copy, Clone, PartialEq)]
+enum SourcePathFormat {
+    Show,
+    Hide,
+}
+
 fn no_op(_cx: &mut Context) {}
 
 type MoveFn =
