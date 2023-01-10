@@ -28,11 +28,18 @@ struct Event {
     render_lock: Option<RenderLock>,
 }
 
+#[derive(Clone, Debug, Default)]
+struct DiffInner {
+    diff_base: Rope,
+    doc: Rope,
+    hunks: Vec<Hunk>,
+}
+
 #[derive(Clone, Debug)]
 pub struct DiffHandle {
     channel: UnboundedSender<Event>,
     render_lock: Arc<RwLock<()>>,
-    hunks: Arc<Mutex<Vec<Hunk>>>,
+    diff: Arc<Mutex<DiffInner>>,
     inverted: bool,
 }
 
@@ -47,10 +54,10 @@ impl DiffHandle {
         redraw_handle: RedrawHandle,
     ) -> (DiffHandle, JoinHandle<()>) {
         let (sender, receiver) = unbounded_channel();
-        let hunks: Arc<Mutex<Vec<Hunk>>> = Arc::default();
+        let diff: Arc<Mutex<DiffInner>> = Arc::default();
         let worker = DiffWorker {
             channel: receiver,
-            hunks: hunks.clone(),
+            diff: diff.clone(),
             new_hunks: Vec::default(),
             redraw_notify: redraw_handle.0,
             diff_finished_notify: Arc::default(),
@@ -58,7 +65,7 @@ impl DiffHandle {
         let handle = tokio::spawn(worker.run(diff_base, doc));
         let differ = DiffHandle {
             channel: sender,
-            hunks,
+            diff,
             inverted: false,
             render_lock: redraw_handle.1,
         };
@@ -69,9 +76,9 @@ impl DiffHandle {
         self.inverted = !self.inverted;
     }
 
-    pub fn hunks(&self) -> FileHunks {
-        FileHunks {
-            hunks: self.hunks.lock(),
+    pub fn load(&self) -> Diff {
+        Diff {
+            diff: self.diff.lock(),
             inverted: self.inverted,
         }
     }
@@ -168,12 +175,28 @@ impl Hunk {
 /// A list of changes in a file sorted in ascending
 /// non-overlapping order
 #[derive(Debug)]
-pub struct FileHunks<'a> {
-    hunks: MutexGuard<'a, Vec<Hunk>>,
+pub struct Diff<'a> {
+    diff: MutexGuard<'a, DiffInner>,
     inverted: bool,
 }
 
-impl FileHunks<'_> {
+impl Diff<'_> {
+    pub fn diff_base(&self) -> &Rope {
+        if self.inverted {
+            &self.diff.doc
+        } else {
+            &self.diff.diff_base
+        }
+    }
+
+    pub fn doc(&self) -> &Rope {
+        if self.inverted {
+            &self.diff.diff_base
+        } else {
+            &self.diff.doc
+        }
+    }
+
     pub fn is_inverted(&self) -> bool {
         self.inverted
     }
@@ -181,7 +204,7 @@ impl FileHunks<'_> {
     /// Returns the `Hunk` for the `n`th change in this file.
     /// if there is no `n`th change  `Hunk::NONE` is returned instead.
     pub fn nth_hunk(&self, n: u32) -> Hunk {
-        match self.hunks.get(n as usize) {
+        match self.diff.hunks.get(n as usize) {
             Some(hunk) if self.inverted => hunk.invert(),
             Some(hunk) => hunk.clone(),
             None => Hunk::NONE,
@@ -189,7 +212,7 @@ impl FileHunks<'_> {
     }
 
     pub fn len(&self) -> u32 {
-        self.hunks.len() as u32
+        self.diff.hunks.len() as u32
     }
 
     pub fn is_empty(&self) -> bool {
@@ -204,19 +227,20 @@ impl FileHunks<'_> {
         };
 
         let res = self
+            .diff
             .hunks
             .binary_search_by_key(&line, |hunk| hunk_range(hunk).start);
 
         match res {
             // Search found a hunk that starts exactly at this line, return the next hunk if it exists.
-            Ok(pos) if pos + 1 == self.hunks.len() => None,
+            Ok(pos) if pos + 1 == self.diff.hunks.len() => None,
             Ok(pos) => Some(pos as u32 + 1),
 
             // No hunk starts exactly at this line, so the search returns
             // the position where a hunk starting at this line should be inserted.
             // That position is exactly the position of the next hunk or the end
             // of the list if no such hunk exists
-            Err(pos) if pos == self.hunks.len() => None,
+            Err(pos) if pos == self.diff.hunks.len() => None,
             Err(pos) => Some(pos as u32),
         }
     }
@@ -228,6 +252,7 @@ impl FileHunks<'_> {
             |hunk: &Hunk| hunk.after.clone()
         };
         let res = self
+            .diff
             .hunks
             .binary_search_by_key(&line, |hunk| hunk_range(hunk).end);
 
@@ -237,7 +262,7 @@ impl FileHunks<'_> {
             // which represents a pure removal.
             // Removals are technically empty but are still shown as single line hunks
             // and as such we must jump to the previous hunk (if it exists) if we are already inside the removal
-            Ok(pos) if !hunk_range(&self.hunks[pos]).is_empty() => Some(pos as u32),
+            Ok(pos) if !hunk_range(&self.diff.hunks[pos]).is_empty() => Some(pos as u32),
 
             // No hunk ends exactly at this line, so the search returns
             // the position where a hunk ending at this line should be inserted.
@@ -255,6 +280,7 @@ impl FileHunks<'_> {
         };
 
         let res = self
+            .diff
             .hunks
             .binary_search_by_key(&line, |hunk| hunk_range(hunk).start);
 
@@ -267,7 +293,7 @@ impl FileHunks<'_> {
             // The previous hunk contains this hunk if it exists and doesn't end before this line
             Err(0) => None,
             Err(pos) => {
-                let hunk = hunk_range(&self.hunks[pos - 1]);
+                let hunk = hunk_range(&self.diff.hunks[pos - 1]);
                 if hunk.end > line || include_removal && hunk.start == line && hunk.is_empty() {
                     Some(pos as u32 - 1)
                 } else {
