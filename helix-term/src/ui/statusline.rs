@@ -144,6 +144,7 @@ where
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
+        helix_view::editor::StatusLineElement::FileIndexer => render_file_indexer,
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
         helix_view::editor::StatusLineElement::WorkspaceDiagnostics => render_workspace_diagnostics,
         helix_view::editor::StatusLineElement::Selections => render_selections,
@@ -445,6 +446,21 @@ where
     };
 
     write(context, title, None);
+}
+
+fn render_file_indexer<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let docs = &context.editor.documents;
+    let id = context.doc.id();
+    let index = match docs.keys().enumerate().find(|(_, key)| **key == id) {
+        Some((num, _)) => num + 1,
+        None => 0,
+    };
+    let count = docs.len();
+
+    write(context, format!(" {}/{} ", index, count), None);
 }
 
 fn render_separator<F>(context: &mut RenderContext, write: F)
