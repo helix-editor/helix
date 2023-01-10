@@ -28,23 +28,23 @@
 "ui.popup" = { bg = "surface" }
 "ui.popup.info" = { bg = "surface" }
 
-"ui.window" = {}
-# "ui.help" = {}
+"ui.window" = { fg = "overlay", bg = "base" }
+"ui.help" = { fg = "subtle", bg = "overlay" }
 
 "ui.text" = { fg = "text" }
 # "ui.text.focus" = {}
 "ui.text.info" = { fg = "subtle" }
 
 "ui.virtual.ruler" = { bg = "overlay" }
-# "ui.virtual.whitespace" = {}
+"ui.virtual.whitespace" = { fg = "highlight_low" }
 "ui.virtual.indent-guide" = { fg = "muted" }
 
 "ui.menu" = { fg = "subtle", bg = "surface" }
 "ui.menu.selected" = { fg = "text" }
 "ui.menu.scroll" = { fg = "muted", bg = "highlight_med" }
 
-"ui.selection" = { bg = "highlight_med" }
-# "ui.selection.primary" = {}
+"ui.selection" = { bg = "overlay" }
+"ui.selection.primary" = { bg = "highlight_med" }
 
 "ui.cursorline.primary" = { bg = "highlight_low" }
 # "ui.cursorline.secondary" = {}
