@@ -124,6 +124,8 @@ impl Completion {
             ) -> Transaction {
                 use helix_lsp::snippet;
                 let selection = doc.selection(view_id);
+                let text = doc.text().slice(..);
+                let primary_cursor = selection.primary().cursor(text);
 
                 let (start_offset, end_offset, new_text) = if let Some(edit) = &item.text_edit {
                     let edit = match edit {
@@ -133,8 +135,6 @@ impl Completion {
                             lsp::TextEdit::new(item.replace, item.new_text.clone())
                         }
                     };
-                    let text = doc.text().slice(..);
-                    let primary_cursor = selection.primary().cursor(text);
 
                     let start_offset =
                         match util::lsp_pos_to_pos(doc.text(), edit.range.start, offset_encoding) {
@@ -149,24 +149,26 @@ impl Completion {
 
                     (start_offset, end_offset, edit.new_text)
                 } else {
-                    let new_text = item.insert_text.as_ref().unwrap_or(&item.label);
-                    // Some LSPs just give you an insertText with no offset ¯\_(ツ)_/¯
-                    // in these cases we need to check for a common prefix and remove it
-                    let prefix = Cow::from(doc.text().slice(start_offset..trigger_offset));
-                    let new_text = new_text.trim_start_matches::<&str>(&prefix);
+                    let new_text = item
+                        .insert_text
+                        .clone()
+                        .unwrap_or_else(|| item.label.clone());
 
-                    // TODO: this needs to be true for the numbers to work out correctly
-                    // in the closure below. It's passed in to a callback as this same
-                    // formula, but can the value change between the LSP request and
-                    // response? If it does, can we recover?
-                    debug_assert!(
-                        doc.selection(view_id)
-                            .primary()
-                            .cursor(doc.text().slice(..))
-                            == trigger_offset
-                    );
+                    // check that we are still at the correct savepoint
+                    // we can still generate a transaction regardless but if the
+                    // document changed (and not just the selection) then we will
+                    // likely delete the wrong text (same if we applied an edit sent by the LS)
+                    debug_assert!(primary_cursor == trigger_offset);
 
-                    (0, 0, new_text.into())
+                    // TODO: Respect editor.completion_replace?
+                    // Would require detecting the end of the word boundary for every cursor individually.
+                    // We don't do the same for normal `edits, to be consistent we would have to do it for those too
+
+                    (
+                        start_offset as i128 - primary_cursor as i128,
+                        trigger_offset as i128 - primary_cursor as i128,
+                        new_text,
+                    )
                 };
 
                 if matches!(item.kind, Some(lsp::CompletionItemKind::SNIPPET))
