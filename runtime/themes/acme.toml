@@ -20,7 +20,7 @@
 "diagnostic.error" = {bg="red", fg="white", modifiers=["bold"]}
 "diagnostic.warning" = {bg="orange", fg="black", modifiers=["bold"]}
 "diagnostic.hint" = {fg="gray", modifiers=["bold"]}
-"ui.bufferline" = { fg = "indent", bg = "acme_bar_bg" }
+"ui.bufferline" = { fg = "black", bg = "acme_bar_bg" }
 "ui.bufferline.active" = { fg = "black", bg = "acme_bg" }
 "diff.plus" = {fg = "green"}
 "diff.delta" = {fg = "acme_bar_bg"}
