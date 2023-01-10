@@ -130,10 +130,6 @@ impl Completion {
                     )
                 } else {
                     let text = item.insert_text.as_ref().unwrap_or(&item.label);
-                    // Some LSPs just give you an insertText with no offset ¯\_(ツ)_/¯
-                    // in these cases we need to check for a common prefix and remove it
-                    let prefix = Cow::from(doc.text().slice(start_offset..trigger_offset));
-                    let text = text.trim_start_matches::<&str>(&prefix);
 
                     // TODO: this needs to be true for the numbers to work out correctly
                     // in the closure below. It's passed in to a callback as this same
@@ -146,10 +142,8 @@ impl Completion {
                             == trigger_offset
                     );
 
-                    Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
-                        let cursor = range.cursor(doc.text().slice(..));
-
-                        (cursor, cursor, Some(text.into()))
+                    Transaction::change_by_selection(doc.text(), doc.selection(view_id), |_| {
+                        (start_offset, trigger_offset, Some(text.into()))
                     })
                 };
 
