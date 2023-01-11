@@ -2509,8 +2509,7 @@ pub fn command_palette(cx: &mut Context) {
                     on_next_key_callback: None,
                     jobs: cx.jobs,
                 };
-                let (view, _) = current!(ctx.editor);
-                let focus = view.id;
+                let focus = view!(ctx.editor).id;
 
                 command.execute(&mut ctx);
 
