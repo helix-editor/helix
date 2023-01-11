@@ -70,7 +70,7 @@ impl Client {
         process: Option<Child>,
     ) -> Result<(Self, UnboundedReceiver<Payload>)> {
         let (server_rx, server_tx) = Transport::start(rx, tx, err, id);
-        let (client_rx, client_tx) = unbounded_channel();
+        let (client_tx, client_rx) = unbounded_channel();
 
         let client = Self {
             id,
@@ -86,9 +86,9 @@ impl Client {
             quirks: DebuggerQuirks::default(),
         };
 
-        tokio::spawn(Self::recv(server_rx, client_rx));
+        tokio::spawn(Self::recv(server_rx, client_tx));
 
-        Ok((client, client_tx))
+        Ok((client, client_rx))
     }
 
     pub async fn tcp(
