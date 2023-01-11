@@ -1,3 +1,97 @@
+# Next
+
+> Checkpoint: `927fa112ec049e5f40309ffdd57c314897e18bbc`
+
+Breaking changes:
+
+- Select diagnostic range in `goto_*_diag` commands (#4713, #5164)
+
+Features:
+
+- Dynamic workspace symbol picker (#5055)
+
+Commands:
+
+- `:pipe-to` which pipes selections into a shell command and ignores output (#4931)
+- `merge_consecutive_selections` (`A-_`) combines all consecutive selections (#5047)
+
+Usability improvements and fixes:
+
+- Remove empty detail section in completion menu when LSP doesn't send details (#4902)
+- Pass client information on LSP initialization (#4904)
+- Fix behavior of `auto-completion` flag for completion-on-trigger (#5042)
+- Allow specifying environment variables for language servers in language config (#4004)
+- VCS gutter: Properly handle detached git worktrees (#5097)
+- Reset editor mode when changing buffers (#5072)
+- Improve error message handling for theme loading failures (#5073)
+- Print the names of binaries required for LSP/DAP in health-check (#5195)
+- Improve sorting in the picker in cases of ties (#5169)
+- Add theming for prompt suggestions (#5104)
+- Open a file picker when using `:open` on directories (#2707, #5278)
+- Respect scrolloff settings in mouse movements (#5255)
+- Avoid trailing `s` when only one file is opened (#5189)
+- Fix erroneous indent between closers of auto-pairs (#5330)
+- Reload language config with `:config-reload` (#5239, #5381, #5431)
+- Expand `~` when parsing file paths in `:open` (#5329)
+- Fix theme inheritance for default themes (#5218)
+- Add a statusline element for the basename of the current file (#5318)
+- Fix `extend_line` with a count when the current line(s) are selected (#5288)
+- Improve indent queries for python when the tree is errored (#5332)
+- Prompt: Fix autocompletion for paths containing periods (#5175)
+- Skip serializing JSONRPC params if params is null (#5471)
+
+Themes:
+
+- Update `serika` (#5038)
+- Update `flatwhite` (#5036)
+- Update `autumn` (#5051, #5397)
+- Update `acme` (#5019, #5486, #5488)
+- Update `gruvbox` themes (#5066, #5333)
+- Update `base16_transparent` (#5105)
+- Update `dark_high_contrast` (#5105)
+- Update `dracula` (#5236)
+- Update `monokai_pro_spectrum` (#5250)
+- Update `rose_pine` (#5267)
+- Update `kanagawa` (#5273)
+- Update `emacs` (#5334)
+- Add `github` themes (#5353)
+    - Dark themes: `github_dark`, `github_dark_colorblind`, `github_dark_dimmed`, `github_dark_high_contrast`, `github_dark_tritanopia`
+    - Light themes: `github_light`, `github_light_colorblind`, `github_light_dimmed`, `github_light_high_contrast`, `github_light_tritanopia`
+- Update `solarized_dark` (#5445)
+
+LSP configurations:
+
+- Support BibTeX (#5064)
+
+New languages:
+
+- BibTeX (#5064)
+- Mermaid.js (#5147)
+- Crystal (#4993, #5205)
+- MATLAB/Octave (#5192)
+- `tfvars` (uses HCL) (#5396)
+
+Updated languages and queries:
+
+- Use diff syntax for patch files (#5085)
+- Add Haskell textobjects (#5061)
+- Fix commonlisp configuration (#5091)
+- Update Scheme (bae890d)
+- Add indent queries for Bash (#5149)
+- Recognize `c++` as a C++ extension (#5183)
+- Inject comment grammar into Nix (#5208)
+- Update Rust highlights (#5238, #5349)
+- Fix HTML injection within Markdown (#5265)
+- Fix comment token for godot (#5276)
+- Expand injections for Vue (#5268)
+- Add `.bash_aliases` as a Bash file-type (#5347)
+- Fix comment token for sshclientconfig (#5351)
+- Update Prisma (#5417)
+
+Packaging:
+
+- Fix Nix flake devShell for darwin hosts (#5368)
+
 # 22.12 (2022-12-06)
 
 This is a great big release filled with changes from a 99 contributors. A big _thank you_ to you all!
