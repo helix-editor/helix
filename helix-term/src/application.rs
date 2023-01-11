@@ -31,6 +31,7 @@ use crate::{
 use log::{debug, error, warn};
 use std::{
     io::{stdin, stdout, Write},
+    path::Path,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -183,7 +184,7 @@ impl Application {
         compositor.push(editor_view);
 
         if args.load_tutor {
-            let path = helix_loader::runtime_file("tutor");
+            let path = helix_loader::runtime_file(Path::new("tutor"));
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;

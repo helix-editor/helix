@@ -69,7 +69,7 @@ pub fn get_language(name: &str) -> Result<Language> {
     use libloading::{Library, Symbol};
     let mut rel_library_path = PathBuf::new().join("grammars").join(name);
     rel_library_path.set_extension(DYLIB_EXTENSION);
-    let library_path = crate::runtime_file(rel_library_path);
+    let library_path = crate::runtime_file(&rel_library_path);
 
     let library = unsafe { Library::new(&library_path) }
         .with_context(|| format!("Error opening dynamic library {:?}", library_path))?;

@@ -79,9 +79,9 @@ pub fn runtime_dirs() -> &'static [PathBuf] {
 /// `rel_path` should be the relative path from within the `runtime/` directory.
 /// The valid runtime directories are searched in priority order and the first
 /// file found to exist is returned, otherwise None.
-fn find_runtime_file<P: AsRef<Path>>(rel_path: P) -> Option<PathBuf> {
+fn find_runtime_file(rel_path: &Path) -> Option<PathBuf> {
     RUNTIME_DIRS.iter().find_map(|rt_dir| {
-        let path = rt_dir.join(rel_path.as_ref());
+        let path = rt_dir.join(rel_path);
         if path.exists() {
             Some(path)
         } else {
@@ -96,11 +96,11 @@ fn find_runtime_file<P: AsRef<Path>>(rel_path: P) -> Option<PathBuf> {
 /// The valid runtime directories are searched in priority order and the first
 /// file found to exist is returned, otherwise the path to the final attempt
 /// that failed.
-pub fn runtime_file<P: AsRef<Path>>(rel_path: P) -> PathBuf {
-    find_runtime_file(&rel_path).unwrap_or_else(|| {
+pub fn runtime_file(rel_path: &Path) -> PathBuf {
+    find_runtime_file(rel_path).unwrap_or_else(|| {
         RUNTIME_DIRS
             .last()
-            .map(|dir| dir.join(rel_path.as_ref()))
+            .map(|dir| dir.join(rel_path))
             .unwrap_or_default()
     })
 }
