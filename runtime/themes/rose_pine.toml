@@ -47,7 +47,7 @@
 "ui.selection.primary" = { bg = "highlight_med" }
 
 "ui.cursorline.primary" = { bg = "highlight_low" }
-# "ui.cursorline.secondary" = {}
+"ui.cursorline.secondary" = { bg = "surface" }
 
 "warning" = "gold"
 "error" = "love"
