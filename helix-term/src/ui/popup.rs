@@ -282,7 +282,7 @@ impl<T: Component> Component for Popup<T> {
         }
     }
 
-    fn area(&self, _viewport: Rect) -> Option<Rect> {
+    fn area(&self) -> Option<Rect> {
         Some(self.area)
     }
 

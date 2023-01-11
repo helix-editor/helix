@@ -72,7 +72,7 @@ pub trait Component: Any + AnyComponent {
         None
     }
 
-    fn area(&self, viewport: Rect) -> Option<Rect> {
+    fn area(&self) -> Option<Rect> {
         None
     }
 
@@ -146,31 +146,24 @@ impl Compositor {
 
         // propagate events through the layers until we either find a layer that consumes it or we
         // run out of layers (event bubbling)
-        for layer in self.layers.iter_mut().rev().filter(|component| {
-            // Returns true if either doesn't have a level, or level hasn't been seen before.
-            component
-                .level()
-                .filter(|level| {
-                    self.layers
-                        .iter()
-                        .rev()
-                        .find(|other| {
-                            other
-                                .level()
-                                .filter(|other_level| other_level == level)
-                                .is_some()
-                        })
-                        .and_then(|other| {
-                            Some(
-                                other
-                                    .area(self.size())?
-                                    .intersects(component.area(self.size())?),
-                            )
-                        })
-                        .is_none()
-                })
-                .is_none()
-        }) {
+        let components_by_level: Vec<(usize, Rect)> = self
+            .layers
+            .iter()
+            .filter_map(|component| Some((component.level()?, component.area()?)))
+            .collect();
+        let layers = self.layers.iter_mut().rev().filter(|component| {
+            match (component.level(), component.area()) {
+                (Some(level), Some(area)) => components_by_level
+                    .iter()
+                    .rev()
+                    .find(|(other_level, other_area)| {
+                        *other_level == level && other_area.intersects(area)
+                    })
+                    .is_none(),
+                _ => false,
+            }
+        });
+        for layer in layers {
             match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {
                     callbacks.push(callback);
@@ -196,33 +189,24 @@ impl Compositor {
     }
 
     pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        let components_by_level: Vec<(usize, Rect)> = self
+            .layers
+            .iter()
+            .filter_map(|component| Some((component.level()?, component.area()?)))
+            .collect();
         let layers = self
             .layers
             .iter_mut()
             .rev()
-            .filter(|component| {
-                // Returns true if either doesn't have a level, or level hasn't been seen before.
-                component
-                    .level()
-                    .filter(|level| {
-                        self.layers
-                            .iter()
-                            .rev()
-                            .find(|other| {
-                                other
-                                    .level()
-                                    .filter(|other_level| other_level == level)
-                                    .is_some()
-                            })
-                            .and_then(|other| {
-                                Some((other.area(self.size())?, component.area(self.size())?))
-                            })
-                            .filter(|(other_area, component_area)| {
-                                other_area.intersects(*component_area)
-                            })
-                            .is_none()
+            .filter(|component| match (component.level(), component.area()) {
+                (Some(level), Some(area)) => components_by_level
+                    .iter()
+                    .rev()
+                    .find(|(other_level, other_area)| {
+                        *other_level == level && other_area.intersects(area)
                     })
-                    .is_none()
+                    .is_none(),
+                _ => false,
             })
             .rev();
         for layer in layers {
