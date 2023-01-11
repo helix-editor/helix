@@ -46,7 +46,7 @@ which = "4.2"
 
 
 [target.'cfg(windows)'.dependencies]
-clipboard-win = { version = "4.4", features = ["std"] }
+clipboard-win = { version = "4.5", features = ["std"] }
 
 [dev-dependencies]
 helix-tui = { path = "../helix-tui" }

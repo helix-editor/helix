@@ -59,6 +59,7 @@
 "ui.text" = { fg = "fg1" }
 "ui.text.focus" = { fg = "fg1" }
 "ui.selection" = { bg = "bg3", modifiers = ["reversed"] }
+"ui.selection.primary" = { bg = "bg4", modifiers = ["reversed"] }
 "ui.cursor.primary" = { modifiers = ["reversed"] }
 "ui.cursor.match" = { bg = "bg2" }
 "ui.menu" = { fg = "fg1", bg = "bg2" }

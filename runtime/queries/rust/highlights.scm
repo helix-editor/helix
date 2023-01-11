@@ -231,13 +231,6 @@
 ((identifier) @type
   (#match? @type "^[A-Z]"))
 
-(attribute
-  (identifier) @_macro
-  arguments: (token_tree (identifier) @constant.numeric.integer)
-  (#eq? @_macro "derive")
-)
-@special
-
 ; -------
 ; Functions
 ; -------
@@ -268,6 +261,12 @@
 ; ---
 ; Macros
 ; ---
+
+(attribute
+  (identifier) @special
+  arguments: (token_tree (identifier) @type)
+  (#eq? @special "derive")
+)
 
 (attribute
   (identifier) @function.macro)

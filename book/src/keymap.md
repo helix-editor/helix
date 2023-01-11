@@ -323,8 +323,8 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
 | `]g`     | Go to next change                            | `goto_next_change`    |
 | `[g`     | Go to previous change                        | `goto_prev_change`    |
-| `]G`     | Go to first change                           | `goto_first_change`   |
-| `[G`     | Go to last change                            | `goto_last_change`    |
+| `[G`     | Go to first change                           | `goto_first_change`   |
+| `]G`     | Go to last change                            | `goto_last_change`    |
 | `[Space` | Add newline above                            | `add_newline_above`   |
 | `]Space` | Add newline below                            | `add_newline_below`   |
 
