@@ -23,6 +23,8 @@ pub struct Popup<T: Component> {
     ignore_escape_key: bool,
     id: &'static str,
     has_scrollbar: bool,
+    level: Option<usize>,
+    area: Rect,
 }
 
 impl<T: Component> Popup<T> {
@@ -39,7 +41,13 @@ impl<T: Component> Popup<T> {
             ignore_escape_key: false,
             id,
             has_scrollbar: true,
+            level: None,
+            area: Rect::default(),
         }
+    }
+
+    pub fn set_level(mut self, level: usize) {
+        self.level = Some(level);
     }
 
     pub fn position(mut self, pos: Option<Position>) -> Self {
@@ -231,7 +239,7 @@ impl<T: Component> Component for Popup<T> {
 
         // clip to viewport
         let area = viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1));
-
+        self.area = area;
         // clear area
         let background = cx.editor.theme.get("ui.popup");
         surface.clear_with(area, background);
@@ -272,6 +280,10 @@ impl<T: Component> Component for Popup<T> {
                 }
             }
         }
+    }
+
+    fn area(&self, _viewport: Rect) -> Option<Rect> {
+        Some(self.area)
     }
 
     fn id(&self) -> Option<&'static str> {

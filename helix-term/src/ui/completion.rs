@@ -484,4 +484,8 @@ impl Component for Completion {
             markdown_doc.render(area, surface, cx);
         }
     }
+
+    fn level(&self) -> Option<usize> {
+        Some(0)
+    }
 }

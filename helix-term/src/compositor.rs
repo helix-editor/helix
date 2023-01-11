@@ -71,6 +71,15 @@ pub trait Component: Any + AnyComponent {
     fn id(&self) -> Option<&'static str> {
         None
     }
+
+    fn area(&self, viewport: Rect) -> Option<Rect> {
+        None
+    }
+
+    /// If multiple components share the same level, then only the most recent one is rendered.
+    fn level(&self) -> Option<usize> {
+        None
+    }
 }
 
 pub struct Compositor {
@@ -137,7 +146,31 @@ impl Compositor {
 
         // propagate events through the layers until we either find a layer that consumes it or we
         // run out of layers (event bubbling)
-        for layer in self.layers.iter_mut().rev() {
+        for layer in self.layers.iter_mut().rev().filter(|component| {
+            // Returns true if either doesn't have a level, or level hasn't been seen before.
+            component
+                .level()
+                .filter(|level| {
+                    self.layers
+                        .iter()
+                        .rev()
+                        .find(|other| {
+                            other
+                                .level()
+                                .filter(|other_level| other_level == level)
+                                .is_some()
+                        })
+                        .and_then(|other| {
+                            Some(
+                                other
+                                    .area(self.size())?
+                                    .intersects(component.area(self.size())?),
+                            )
+                        })
+                        .is_none()
+                })
+                .is_none()
+        }) {
             match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {
                     callbacks.push(callback);
@@ -163,7 +196,36 @@ impl Compositor {
     }
 
     pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        for layer in &mut self.layers {
+        let layers = self
+            .layers
+            .iter_mut()
+            .rev()
+            .filter(|component| {
+                // Returns true if either doesn't have a level, or level hasn't been seen before.
+                component
+                    .level()
+                    .filter(|level| {
+                        self.layers
+                            .iter()
+                            .rev()
+                            .find(|other| {
+                                other
+                                    .level()
+                                    .filter(|other_level| other_level == level)
+                                    .is_some()
+                            })
+                            .and_then(|other| {
+                                Some((other.area(self.size())?, component.area(self.size())?))
+                            })
+                            .filter(|(other_area, component_area)| {
+                                other_area.intersects(*component_area)
+                            })
+                            .is_none()
+                    })
+                    .is_none()
+            })
+            .rev();
+        for layer in layers {
             layer.render(area, surface, cx);
         }
     }
