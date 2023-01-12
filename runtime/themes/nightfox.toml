@@ -60,15 +60,15 @@
 
 
 # DIAGNOSTICS
-"warning" = { fg ="yellow", bg = "bg1" } # Diagnostics warning (gutter)
+"warning" = { fg = "yellow", bg = "bg1" } # Diagnostics warning (gutter)
 "error" = { fg = "red", bg = "bg1" } # Diagnostics error (gutter)
 "info" = { fg = "blue", bg = "bg1" } # Diagnostics info (gutter)
 "hint" = { fg = "green", bg = "bg1" } # Diagnostics hint (gutter)
-"diagnostic" = { modifiers = ["underlined"] } # Diagnostics fallback style (editing area)
-"diagnostic.error" = { fg = "red" } #	Diagnostics error (editing area)
-"diagnostic.warning" = { fg = "yellow" } #	Diagnostics warning (editing area)
-"diagnostic.info" = { fg = "blue" } #	Diagnostics info (editing area)
-"diagnostic.hint" = { fg = "green" } #	Diagnostics hint (editing area)
+
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } } #	Diagnostics warning (editing area)
+"diagnostic.error" = { underline = { color = "red", style = "curl" } } #	Diagnostics error (editing area)
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } } #	Diagnostics info (editing area)
+"diagnostic.hint" = { underline = { color = "green", style = "curl" } } #	Diagnostics hint (editing area)
 
 
 # SYNTAX HIGHLIGHTING

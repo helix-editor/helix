@@ -61,7 +61,10 @@
 "ui.virtual.whitespace" = "bg2"
 "ui.virtual.ruler" = { bg = "bg1" }
 
-"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.warning" = { underline = { color = "orange1", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red1", style = "curl" } }
+"diagnostic.info" = { underline = { color = "aqua1", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "blue1", style = "curl" } }
 
 "markup.heading" = "aqua1"
 "markup.bold" = { modifiers = ["bold"] }

@@ -60,7 +60,11 @@
 "ui.virtual.indent-guide" = { fg = "t3" }
 "ui.virtual.whitespace" = { fg = "t3" }
 
-"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.error" = { underline = { color = "error", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "warning", style = "curl" } }
+"diagnostic.info" = { underline = { color = "info", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "display", style = "curl" } }
+
 "error" = { fg = "error", modifiers = ["bold"] }
 "warning" = { fg = "warning", modifiers = ["bold"] }
 "info" = { fg = "info", modifiers = ["bold"] }

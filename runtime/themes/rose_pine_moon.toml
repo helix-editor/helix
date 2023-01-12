@@ -51,8 +51,12 @@
 "info" = "gold"
 "hint" = "gold"
 "debug" = "rose"
-"diagnostic" = "rose"
 "error" = "love"
+
+"diagnostic.error" = { underline = { style = "curl", color = "love" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "gold" } }
+"diagnostic.info" = { underline = { style = "curl", color = "foam" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "iris" } }
 
 "markup.heading.marker" = "subtle"
 "markup.heading.1" = { fg = "love", modifiers = ["bold"] }

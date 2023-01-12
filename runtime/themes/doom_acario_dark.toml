@@ -73,10 +73,10 @@
 'info' = { fg = 'blue', modifiers = ['bold'] }
 'hint' = { fg = 'blue', modifiers = ['bold'] }
 
-'diagnostic'= { fg = 'red', modifiers = ['underlined'] }
-'diagnostic.error'= { fg = 'red', modifiers = ['underlined'] }
-'diagnostic.info'= { fg = 'blue', modifiers = ['underlined'] }
-'diagnostic.warning'= { fg = 'yellow', modifiers = ['underlined'] }
+'diagnostic.hint'= { underline = { color = 'red', style = "curl"} }
+'diagnostic.error'= { underline = { color = 'red', style = "curl"} }
+'diagnostic.info'= { underline = { color = 'blue', style = "curl"} }
+'diagnostic.warning'= { underline = { color = 'yellow', style = "curl"} }
 
 'special' = { fg = 'orange' }
 

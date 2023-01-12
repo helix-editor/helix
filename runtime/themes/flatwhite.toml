@@ -21,6 +21,11 @@
 "variable.parameter" = { fg = "blue_text", bg = "blue_bg" }
 
 "diagnostic" = { modifiers = ["underlined"] }
+
+"diagnostic.info" = { underline = { color = "orange_text", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "orange_text", style = "curl" } }
+"diagnostic.error" = { underline = { color = "diff_delete", style = "curl" } }
+
 "info" = { fg = "orange_text", bg = "orange_bg" }
 "hint" = { modifiers = ["bold"] }
 "warning" = { fg = "orange_text", bg = "orange_bg" }
