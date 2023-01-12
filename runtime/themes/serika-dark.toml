@@ -57,7 +57,11 @@
 "info" = "aqua"
 "warning" = "yellow"
 "error" = "nasty-red"
-"diagnostic" = { fg = "nasty-red", modifiers = ["underlined"] }
+
+"diagnostic.hint" = { underline = { style = "curl", color = "blue" } }
+"diagnostic.info" = { underline = { style = "curl", color = "aqua" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
+"diagnostic.error" = { underline = { style = "curl", color = "nasty-red" } }
 
 "diff.plus" = { fg = "green" }
 "diff.delta" = { fg = "orange" }

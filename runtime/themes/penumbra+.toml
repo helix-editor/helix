@@ -43,7 +43,10 @@ info = "sky"
 warning = "yellow"
 error = "red"
 
-diagnostic = { modifiers = ["underlined"] }
+"diagnostic.hint".underline = { color = "sky-", style = "curl" } 
+"diagnostic.info".underline = { color = "sky", style = "curl" } 
+"diagnostic.warning".underline = { color = "yellow", style = "curl" } 
+"diagnostic.error".underline = { color = "red", style = "curl" } 
 
 "ui.background" = { bg = "shade" }
 "ui.background.separator" = "sky"

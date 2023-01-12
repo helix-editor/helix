@@ -73,7 +73,11 @@
 "warning" = "bright4"
 "error" = "regular1"
 "info" = "bright4"
-diagnostic = { modifiers = ["bold", "underlined"]}
+
+"diagnostic.warning".underline = { color = "bright4", style = "curl" } 
+"diagnostic.error".underline = { color = "regular1", style = "curl" } 
+"diagnostic.info".underline = { color = "bright4", style = "curl" } 
+"diagnostic.hint".underline = { color = "bright4", style = "curl" } 
 
 
 [palette]
