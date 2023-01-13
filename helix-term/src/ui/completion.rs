@@ -433,7 +433,7 @@ impl Component for Completion {
         };
 
         let popup_area = {
-            let (popup_x, popup_y) = self.popup.get_rel_position(area, cx);
+            let (popup_x, popup_y) = self.popup.get_rel_position(area, cx.editor);
             let (popup_width, popup_height) = self.popup.get_size();
             Rect::new(popup_x, popup_y, popup_width, popup_height)
         };
@@ -478,5 +478,9 @@ impl Component for Completion {
         let background = cx.editor.theme.get("ui.popup");
         surface.clear_with(doc_area, background);
         markdown_doc.render(doc_area, surface, cx);
+    }
+
+    fn area(&mut self, viewport: Rect, editor: &Editor) -> Option<Rect> {
+        self.popup.area(viewport, editor)
     }
 }

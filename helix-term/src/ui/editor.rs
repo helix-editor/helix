@@ -942,20 +942,27 @@ impl EditorView {
 
     pub fn set_completion(
         &mut self,
+        // compositor: &mut crate::compositor::Compositor,
+        signature_help_area: Option<Rect>,
         editor: &mut Editor,
         items: Vec<helix_lsp::lsp::CompletionItem>,
         offset_encoding: helix_lsp::OffsetEncoding,
         start_offset: usize,
         trigger_offset: usize,
         size: Rect,
-    ) {
+    ) -> bool {
         let mut completion =
             Completion::new(editor, items, offset_encoding, start_offset, trigger_offset);
 
         if completion.is_empty() {
             // skip if we got no completion results
-            return;
+            return false;
         }
+
+        // Check if the auto-complete would intersect with the signature help popup.
+        let intersects = signature_help_area
+            .filter(|area| area.intersects(completion.area(size, editor).unwrap()))
+            .is_some();
 
         // Immediately initialize a savepoint
         doc_mut!(editor).savepoint();
@@ -966,6 +973,7 @@ impl EditorView {
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
         self.completion = Some(completion);
+        intersects
     }
 
     pub fn clear_completion(&mut self, editor: &mut Editor) {

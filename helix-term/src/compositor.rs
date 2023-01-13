@@ -72,6 +72,10 @@ pub trait Component: Any + AnyComponent {
     fn id(&self) -> Option<&'static str> {
         None
     }
+
+    fn area(&mut self, _viewport: Rect, _editor: &Editor) -> Option<Rect> {
+        None
+    }
 }
 
 pub struct Compositor {

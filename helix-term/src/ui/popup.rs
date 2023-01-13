@@ -6,7 +6,10 @@ use crate::{
 use tui::buffer::Buffer as Surface;
 
 use helix_core::Position;
-use helix_view::graphics::{Margin, Rect};
+use helix_view::{
+    graphics::{Margin, Rect},
+    Editor,
+};
 
 // TODO: share logic with Menu, it's essentially Popup(render_fn), but render fn needs to return
 // a width/height hint. maybe Popup(Box<Component>)
@@ -88,10 +91,10 @@ impl<T: Component> Popup<T> {
 
     /// Calculate the position where the popup should be rendered and return the coordinates of the
     /// top left corner.
-    pub fn get_rel_position(&mut self, viewport: Rect, cx: &Context) -> (u16, u16) {
+    pub fn get_rel_position(&mut self, viewport: Rect, editor: &Editor) -> (u16, u16) {
         let position = self
             .position
-            .get_or_insert_with(|| cx.editor.cursor().0.unwrap_or_default());
+            .get_or_insert_with(|| editor.cursor().0.unwrap_or_default());
 
         let (width, height) = self.size;
 
@@ -232,15 +235,8 @@ impl<T: Component> Component for Popup<T> {
     }
 
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
-        // trigger required_size so we recalculate if the child changed
-        self.required_size((viewport.width, viewport.height));
-
+        let area = self.area(viewport, cx.editor).unwrap();
         cx.scroll = Some(self.scroll);
-
-        let (rel_x, rel_y) = self.get_rel_position(viewport, cx);
-
-        // clip to viewport
-        let area = viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1));
 
         // clear area
         let background = cx.editor.theme.get("ui.popup");
@@ -286,5 +282,16 @@ impl<T: Component> Component for Popup<T> {
 
     fn id(&self) -> Option<&'static str> {
         Some(self.id)
+    }
+
+    fn area(&mut self, viewport: Rect, editor: &Editor) -> Option<Rect> {
+        // trigger required_size so we recalculate if the child changed
+        self.required_size((viewport.width, viewport.height));
+
+        let (rel_x, rel_y) = self.get_rel_position(viewport, editor);
+
+        // clip to viewport
+        let area = viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1));
+        Some(area)
     }
 }
