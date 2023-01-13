@@ -22,7 +22,6 @@ helix-lsp = { version = "0.6", path = "../helix-lsp" }
 helix-dap = { version = "0.6", path = "../helix-dap" }
 crossterm = { version = "0.25", optional = true }
 helix-vcs = { version = "0.6", path = "../helix-vcs" }
-libc = "0.2"
 
 # Conversion traits
 once_cell = "1.17"
@@ -48,6 +47,9 @@ which = "4.2"
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "4.5", features = ["std"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 helix-tui = { path = "../helix-tui" }
