@@ -9,3 +9,4 @@ edit-url-template = "https://github.com/helix-editor/helix/tree/master/book/{pat
 cname = "docs.helix-editor.com"
 default-theme = "colibri"
 preferred-dark-theme = "colibri"
+git-repository-url = "https://github.com/helix-editor/helix"

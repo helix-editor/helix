@@ -57,11 +57,15 @@
 "info" = "aqua"
 "warning" = "yellow"
 "error" = "nasty-red"
-"diagnostic" = { fg = "nasty-red", modifiers = ["underlined"] }
 
-"diff.plus" = { fg = "green" }
-"diff.delta" = { fg = "orange" }
-"diff.minus" = { fg = "red" }
+"diagnostic.hint" = { underline = { style = "curl", color = "blue" } }
+"diagnostic.info" = { underline = { style = "curl", color = "aqua" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
+"diagnostic.error" = { underline = { style = "curl", color = "nasty-red" } }
+
+"diff.plus" = { fg = "bg_green" }
+"diff.delta" = { fg = "bg_blue" }
+"diff.minus" = { fg = "nasty-red" }
 
 "markup.heading" = { fg = "purple", modifiers = ["bold"] }
 "markup.list" = "cyan"
@@ -71,7 +75,6 @@
 "markup.link.text" = "pink"
 "markup.quote" = { fg = "yellow", modifiers = ["italic"] }
 "markup.raw" = { fg = "fg" }
-
 
 [palette]
 

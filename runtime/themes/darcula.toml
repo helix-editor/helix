@@ -65,7 +65,11 @@
 "diff.delta" = "grey"
 "diff.minus" = "red"
 
-"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.warning" = { underline = { color = "orange", style = "curl"} }
+"diagnostic.error" = { underline = { color = "red", style = "curl"} }
+"diagnostic.info" = { underline = { color = "grey05", style = "curl"} }
+"diagnostic.hint" = { underline = { color = "grey05", style = "curl"} }
+
 "info" = "grey05"
 "hint" = "grey05"
 "debug" = "grey05"

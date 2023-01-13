@@ -21,6 +21,11 @@
 "variable.parameter" = { fg = "blue_text", bg = "blue_bg" }
 
 "diagnostic" = { modifiers = ["underlined"] }
+
+"diagnostic.info" = { underline = { color = "orange_text", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "orange_text", style = "curl" } }
+"diagnostic.error" = { underline = { color = "diff_delete", style = "curl" } }
+
 "info" = { fg = "orange_text", bg = "orange_bg" }
 "hint" = { modifiers = ["bold"] }
 "warning" = { fg = "orange_text", bg = "orange_bg" }
@@ -77,9 +82,9 @@
 "ui.popup" = { fg = "base1", bg = "base6" }
 "ui.window" = { fg = "base1", bg = "base6" }
 
-"diff.plus" = { bg = "diff_add" }
-"diff.delta" = { bg = "diff_change" }
-"diff.minus" = { bg = "diff_delete" }
+"diff.plus" = { fg = "diff_add" }
+"diff.delta" = { fg = "diff_change" }
+"diff.minus" = { fg = "diff_delete" }
 
 [palette]
 base1 = "#605a52"
