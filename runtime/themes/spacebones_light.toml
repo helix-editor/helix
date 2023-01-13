@@ -72,7 +72,10 @@
 "ui.virtual" = "base-dim"
 "ui.virtual.ruler" = { bg = "bg1" }
 
-"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.warning" = { underline = { style = "curl", color = "meta" } }
+"diagnostic.error" = { underline = { style = "curl", color = "#e0211d" } }
+"diagnostic.info" = { underline = { style = "curl", color = "theme_yellow" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "bg2" } }
 
 [palette]
 base = "#655370"

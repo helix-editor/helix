@@ -72,7 +72,10 @@
 "hint" = "bogster-blue"
 
 # make diagnostic underlined, to distinguish with selection text.
-diagnostic = { modifiers = ["underlined"] }
+"diagnostic.warning" = { underline = { color = "bogster-orange", style = "curl"} }
+"diagnostic.error" = { underline = { color = "bogster-lred", style = "curl"} }
+"diagnostic.info" = { underline = { color = "bogster-teal", style = "curl"} }
+"diagnostic.hint" = { underline = { color = "bogster-blue", style = "curl"} }
 
 [palette]
 bogster-orange = "#dc7759"

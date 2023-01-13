@@ -35,7 +35,7 @@ Each language is configured by adding a `[[language]]` section to a
 [[language]]
 name = "mylang"
 scope = "source.mylang"
-injection-regex = "^mylang$"
+injection-regex = "mylang"
 file-types = ["mylang", "myl"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }

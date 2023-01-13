@@ -54,7 +54,11 @@
 "ui.virtual.indent-guide" = { fg = "dark_grey2" }
 "ui.virtual.whitespace" = { fg = "grey" }
  
-"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "orange", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "magenta", style = "curl" } }
+
 "error" = { fg = "red" }
 "warning" = { fg = "orange" }
 "info" = { fg = "blue" }

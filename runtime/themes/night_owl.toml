@@ -5,7 +5,11 @@
 'error' = { fg = 'red', modifiers = ['dim'] }
 'info' = { fg = 'blue', modifiers = ['dim'] }
 'hint' = { fg = 'paleblue', modifiers = ['dim'] }
-'diagnostic' = { modifiers = ['underlined'] }
+
+"diagnostic.warning" = { underline = { color = "peach", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "paleblue", style = "curl" } }
 
 # UI
 'ui.background' = { fg = 'foreground', bg = 'background' }

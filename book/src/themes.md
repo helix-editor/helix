@@ -140,6 +140,8 @@ We use a similar set of scopes as
 
 - `type` - Types
   - `builtin` - Primitive types provided by the language (`int`, `usize`)
+  - `enum`
+    - `variant`
 - `constructor`
 
 - `constant` (TODO: constant.other.placeholder for %v)
@@ -201,6 +203,8 @@ We use a similar set of scopes as
 - `tag` - Tags (e.g. `<body>` in HTML)
 
 - `namespace`
+
+- `special`
 
 - `markup`
   - `heading`
