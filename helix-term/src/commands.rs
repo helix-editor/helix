@@ -4225,7 +4225,6 @@ pub fn completion(cx: &mut Context) {
 
             // Delete the signature help popup if they intersect.
             if ui.set_completion(
-                // compositor,
                 signature_help_area,
                 editor,
                 items,

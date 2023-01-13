@@ -940,9 +940,9 @@ impl EditorView {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn set_completion(
         &mut self,
-        // compositor: &mut crate::compositor::Compositor,
         signature_help_area: Option<Rect>,
         editor: &mut Editor,
         items: Vec<helix_lsp::lsp::CompletionItem>,
@@ -1195,7 +1195,7 @@ impl Component for EditorView {
         event: &Event,
         context: &mut crate::compositor::Context,
     ) -> EventResult {
-        let mut cx = commands::Context {
+        let mut cxt = commands::Context {
             editor: context.editor,
             count: None,
             register: None,
@@ -1206,13 +1206,13 @@ impl Component for EditorView {
 
         match event {
             Event::Paste(contents) => {
-                cx.count = cx.editor.count;
-                commands::paste_bracketed_value(&mut cx, contents.clone());
-                cx.editor.count = None;
+                cxt.count = cxt.editor.count;
+                commands::paste_bracketed_value(&mut cxt, contents.clone());
+                cxt.editor.count = None;
 
-                let config = cx.editor.config();
-                let mode = cx.editor.mode();
-                let (view, doc) = current!(cx.editor);
+                let config = cxt.editor.config();
+                let mode = cxt.editor.mode();
+                let (view, doc) = current!(cxt.editor);
                 view.ensure_cursor_in_view(doc, config.scrolloff);
 
                 // Store a history state if not in insert mode. Otherwise wait till we exit insert
@@ -1229,19 +1229,19 @@ impl Component for EditorView {
                 EventResult::Consumed(None)
             }
             Event::Key(mut key) => {
-                cx.editor.reset_idle_timer();
+                cxt.editor.reset_idle_timer();
                 canonicalize_key(&mut key);
 
                 // clear status
-                cx.editor.status_msg = None;
+                cxt.editor.status_msg = None;
 
-                let mode = cx.editor.mode();
-                let (view, _) = current!(cx.editor);
+                let mode = cxt.editor.mode();
+                let (view, _) = current!(cxt.editor);
                 let focus = view.id;
 
                 if let Some(on_next_key) = self.on_next_key.take() {
                     // if there's a command waiting input, do that first
-                    on_next_key(&mut cx, key);
+                    on_next_key(&mut cxt, key);
                 } else {
                     match mode {
                         Mode::Insert => {
@@ -1250,8 +1250,8 @@ impl Component for EditorView {
                             if let Some(completion) = &mut self.completion {
                                 // use a fake context here
                                 let mut cx = Context {
-                                    editor: cx.editor,
-                                    jobs: cx.jobs,
+                                    editor: cxt.editor,
+                                    jobs: cxt.jobs,
                                     scroll: None,
                                 };
                                 let res = completion.handle_event(event, &mut cx);
@@ -1262,55 +1262,61 @@ impl Component for EditorView {
                                     if callback.is_some() {
                                         // assume close_fn
                                         self.clear_completion(cx.editor);
+
+                                        // In case the popup was deleted beacuse of an intersection w/ the auto-complete menu.
+                                        commands::signature_help_impl(
+                                            &mut cxt,
+                                            commands::SignatureHelpInvoked::Automatic,
+                                        );
                                     }
                                 }
                             }
 
                             // if completion didn't take the event, we pass it onto commands
                             if !consumed {
-                                if let Some(compl) = cx.editor.last_completion.take() {
+                                if let Some(compl) = cxt.editor.last_completion.take() {
                                     self.last_insert.1.push(InsertEvent::CompletionApply(compl));
                                 }
 
-                                self.insert_mode(&mut cx, key);
+                                self.insert_mode(&mut cxt, key);
 
                                 // record last_insert key
                                 self.last_insert.1.push(InsertEvent::Key(key));
 
                                 // lastly we recalculate completion
                                 if let Some(completion) = &mut self.completion {
-                                    completion.update(&mut cx);
+                                    completion.update(&mut cxt);
                                     if completion.is_empty() {
-                                        self.clear_completion(cx.editor);
+                                        self.clear_completion(cxt.editor);
                                     }
                                 }
                             }
                         }
-                        mode => self.command_mode(mode, &mut cx, key),
+                        mode => self.command_mode(mode, &mut cxt, key),
                     }
                 }
 
-                self.on_next_key = cx.on_next_key_callback.take();
+                self.on_next_key = cxt.on_next_key_callback.take();
                 match self.on_next_key {
                     Some(_) => self.pseudo_pending.push(key),
                     None => self.pseudo_pending.clear(),
                 }
 
                 // appease borrowck
-                let callback = cx.callback.take();
+                let callback = cxt.callback.take();
 
                 // if the command consumed the last view, skip the render.
                 // on the next loop cycle the Application will then terminate.
-                if cx.editor.should_close() {
+                if cxt.editor.should_close() {
                     return EventResult::Ignored(None);
                 }
 
                 // if the focused view still exists and wasn't closed
-                if cx.editor.tree.contains(focus) {
-                    let config = cx.editor.config();
-                    let mode = cx.editor.mode();
-                    let view = view_mut!(cx.editor, focus);
-                    let doc = doc_mut!(cx.editor, &view.doc);
+                if cxt.editor.tree.contains(focus) {
+                    let config = cxt.editor.config();
+                    let mode = cxt.editor.mode();
+                    let view = view_mut!(cxt.editor, focus);
+                    let doc = doc_mut!(cxt.editor, &view.doc);
 
                     view.ensure_cursor_in_view(doc, config.scrolloff);
 
@@ -1324,8 +1330,8 @@ impl Component for EditorView {
                 EventResult::Consumed(callback)
             }
 
-            Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
-            Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
+            Event::Mouse(event) => self.handle_mouse_event(event, &mut cxt),
+            Event::IdleTimeout => self.handle_idle_timeout(&mut cxt),
             Event::FocusGained => EventResult::Ignored(None),
             Event::FocusLost => {
                 if context.editor.config().auto_save {
