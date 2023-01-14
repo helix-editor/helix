@@ -1845,6 +1845,9 @@ fn rename_buffer(
         .map_err(|_| anyhow!("Could not get absolute path of the document"))?;
     let mut path_new = path.clone();
     path_new.set_file_name(OsStr::new(new_name.as_ref()));
+    if path_new.exists() {
+        return Err(anyhow!("This file already exists"));
+    }
 
     if std::fs::rename(&path, &path_new).is_err() {
         return Err(anyhow!("Could not rename file"))
