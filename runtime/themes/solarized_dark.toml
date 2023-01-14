@@ -68,7 +68,7 @@
 "ui.help" = { modifiers = ["reversed"] }
 
 # 快捷键窗口 
-"ui.popup.info" = { bg = "base1" }
+"ui.popup.info" = {fg = "base02", bg = "base1", modifiers = ["bold"]}
 # 快捷键字体
 "ui.text.info" = {fg = "base02", modifiers = ["bold"]}
 
@@ -101,7 +101,11 @@
 "error" = { fg = "red", modifiers= ["bold", "underlined"] }
 "info" = { fg = "blue", modifiers= ["bold", "underlined"] }
 "hint" = { fg = "base01", modifiers= ["bold", "underlined"] }
-"diagnostic" = { modifiers = ["underlined"] }
+
+"diagnostic.warning" = { underline = { style = "curl", color = "orange" } }
+"diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.info" = { underline = { style = "curl", color = "blue" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "base01" } }
 
 [palette]
 # 深色 越来越深

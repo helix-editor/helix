@@ -54,7 +54,10 @@
 "warning" = { fg = "yellow" }
 "info" = { fg = "blue" }
 "hint" = { fg = "teal" }
-"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
+"diagnostic.info" = { underline = { style = "curl", color = "blue" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "teal" } }
 "special" = { fg = "orange" }
 
 "markup.heading" = { fg = "cyan", modifiers = ["bold"] }

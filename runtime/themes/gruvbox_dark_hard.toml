@@ -21,7 +21,7 @@
 "function.macro" = "aqua1"
 "function.builtin" = "yellow1"
 "tag" = "red1"
-"comment" = { fg = "gray1", modifiers = ["italic"]  }
+"comment" = { fg = "gray1", modifiers = ["italic"] }
 "constant" = { fg = "purple1" }
 "constant.builtin" = { fg = "purple1", modifiers = ["bold"] }
 "string" = "green1"
@@ -39,7 +39,6 @@
 "info" = { fg = "aqua1", bg = "bg1" }
 "hint" = { fg = "blue1", bg = "bg1" }
 
-"diagnostic" = { modifiers = ["underlined"] }
 "diagnostic.error" = { underline = { style = "curl", color = "red0" } }
 "diagnostic.warning" = { underline = { style = "curl", color = "orange1" } }
 "diagnostic.info" = { underline = { style = "curl", color = "aqua1" } }
@@ -60,6 +59,7 @@
 "ui.text" = { fg = "fg1" }
 "ui.text.focus" = { fg = "fg1" }
 "ui.selection" = { bg = "bg3", modifiers = ["reversed"] }
+"ui.selection.primary" = { bg = "bg4", modifiers = ["reversed"] }
 "ui.cursor.primary" = { modifiers = ["reversed"] }
 "ui.cursor.match" = { bg = "bg2" }
 "ui.menu" = { fg = "fg1", bg = "bg2" }
@@ -90,8 +90,8 @@ fg4 = "#a89984" # gray0
 gray0 = "#a89984"
 gray1 = "#928374"
 
-red0 = "#cc241d" # neutral
-red1 = "#fb4934" # bright
+red0 = "#cc241d"    # neutral
+red1 = "#fb4934"    # bright
 green0 = "#98971a"
 green1 = "#b8bb26"
 yellow0 = "#d79921"

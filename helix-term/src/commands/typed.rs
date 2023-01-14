@@ -65,12 +65,29 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(!args.is_empty(), "wrong argument count");
     for arg in args {
         let (path, pos) = args::parse_file(arg);
-        let _ = cx.editor.open(&path, Action::Replace)?;
-        let (view, doc) = current!(cx.editor);
-        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-        doc.set_selection(view.id, pos);
-        // does not affect opening a buffer without pos
-        align_view(doc, view, Align::Center);
+        let path = helix_core::path::expand_tilde(&path);
+        // If the path is a directory, open a file picker on that directory and update the status
+        // message
+        if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
+            let callback = async move {
+                let call: job::Callback = job::Callback::EditorCompositor(Box::new(
+                    move |editor: &mut Editor, compositor: &mut Compositor| {
+                        let picker = ui::file_picker(path, &editor.config());
+                        compositor.push(Box::new(overlayed(picker)));
+                    },
+                ));
+                Ok(call)
+            };
+            cx.jobs.callback(callback);
+        } else {
+            // Otherwise, just open the file
+            let _ = cx.editor.open(&path, Action::Replace)?;
+            let (view, doc) = current!(cx.editor);
+            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+            doc.set_selection(view.id, pos);
+            // does not affect opening a buffer without pos
+            align_view(doc, view, Align::Center);
+        }
     }
     Ok(())
 }
@@ -1780,7 +1797,7 @@ fn run_shell_command(
     let shell = &cx.editor.config().shell;
     let (output, success) = shell_impl(shell, &args.join(" "), None)?;
     if success {
-        cx.editor.set_status("Command succeed");
+        cx.editor.set_status("Command succeeded");
     } else {
         cx.editor.set_error("Command failed");
     }

@@ -314,7 +314,10 @@ pub enum StatusLineElement {
     /// The LSP activity spinner
     Spinner,
 
-    /// The file nane/path, including a dirty flag if it's unsaved
+    /// The base file name, including a dirty flag if it's unsaved
+    FileBaseName,
+
+    /// The relative file path, including a dirty flag if it's unsaved
     FileName,
 
     /// The file encoding
@@ -1338,6 +1341,8 @@ impl Editor {
             .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
     }
 
+    /// Gets the primary cursor position in screen coordinates,
+    /// or `None` if the primary cursor is not visible on screen.
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
         let config = self.config();
         let (view, doc) = current_ref!(self);
