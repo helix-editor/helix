@@ -1,9 +1,10 @@
-use std::ops::Deref;
+use std::{ops::Deref, ffi::OsStr};
 
 use crate::job::Job;
 
 use super::*;
 
+use helix_lsp::{ Url, lsp };
 use helix_view::{
     apply_transaction,
     editor::{Action, CloseError, ConfigEvent},
@@ -1825,6 +1826,63 @@ fn run_shell_command(
     Ok(())
 }
 
+fn rename_buffer(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    ensure!(args.len() == 1, ":rename_buffer takes one argument");
+    let new_name = args.first().unwrap();
+
+    let (_, doc) = current!(cx.editor);
+    let path = doc
+        .relative_path()
+        .ok_or_else(|| anyhow!("Buffer not saved, use :write"))?
+        .canonicalize()
+        .map_err(|_| anyhow!("Could not get absolute path of the document"))?;
+    let mut path_new = path.clone();
+    path_new.set_file_name(OsStr::new(new_name.as_ref()));
+
+    if std::fs::rename(&path, &path_new).is_err() {
+        return Err(anyhow!("Could not rename file"))
+    }
+    let (_, doc) = current!(cx.editor);
+    doc.set_path(Some(path_new.as_path()))
+        .map_err(|_| anyhow!("File renamed, but could not set path of the document"))?;
+
+   let mut lsp_success = false;
+    if let Some(lsp_client) = doc.language_server() {
+        let old_uri = Url::from_file_path(&path)
+            .map_err(|_| anyhow!("Language server request failed, could not get current path uri"))?
+            .to_string();
+        let new_uri = Url::from_file_path(&path_new)
+            .map_err(|_| anyhow!("Language server request failed, could not get new path uri"))?
+            .to_string();
+        let mut files = vec![
+            lsp::FileRename {
+                old_uri,
+                new_uri
+            }
+        ];
+        let result = helix_lsp::block_on(lsp_client.will_rename_files(&files))?;
+        _ = helix_lsp::block_on(lsp_client.did_rename_files(&files)).is_ok();
+        if let Some(edit) = result {
+            apply_workspace_edit(cx.editor, helix_lsp::OffsetEncoding::Utf8, &edit);
+            lsp_success = true;
+        } else {
+            files.clear();
+        }
+    }
+
+    match lsp_success {
+        true => Ok(()),
+        false => Err(anyhow!("File renaming succeeded, but language server did not respond to change"))
+    }
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2339,6 +2397,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run a shell command",
             fun: run_shell_command,
             completer: Some(completers::directory),
+        },
+        TypableCommand {
+            name: "rename",
+            aliases: &[],
+            doc: "Rename the currently selected buffer",
+            fun: rename_buffer,
+            completer: None
         },
     ];
 
