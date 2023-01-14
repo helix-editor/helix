@@ -64,9 +64,17 @@ pub struct LanguageConfigurations {
     pub language: Vec<LanguageConfiguration>,
 }
 
+impl LanguageConfigurations {
+    /// Attemps to deserialize a merged user configured languages.toml with the repository languages.toml file.
+    pub fn merged() -> Result<Self, toml::de::Error> {
+        helix_loader::merged_lang_config()?.try_into()
+    }
+}
 impl Default for LanguageConfigurations {
     fn default() -> Self {
-        crate::config::default_syntax_loader()
+       helix_loader::default_lang_config()
+            .try_into()
+            .expect("Failed to deserialize built-in languages.toml into LanguageConfigurations")
     }
 }
 

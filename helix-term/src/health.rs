@@ -2,7 +2,7 @@ use crossterm::{
     style::{Color, Print, Stylize},
     tty::IsTty,
 };
-use helix_core::config::{default_syntax_loader, user_syntax_loader};
+use helix_core::syntax::LanguageConfigurations;
 use helix_loader::grammar::load_runtime_file;
 use helix_view::clipboard::get_clipboard_provider;
 use std::io::Write;
@@ -114,7 +114,7 @@ pub fn languages_all() -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let mut syn_loader_conf = match user_syntax_loader() {
+    let mut syn_loader_conf = match LanguageConfigurations::merged() {
         Ok(conf) => conf,
         Err(err) => {
             let stderr = std::io::stderr();
@@ -127,7 +127,7 @@ pub fn languages_all() -> std::io::Result<()> {
                 err
             )?;
             writeln!(stderr, "{}", "Using default language config".yellow())?;
-            default_syntax_loader()
+            LanguageConfigurations::default()
         }
     };
 
@@ -206,7 +206,7 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let syn_loader_conf = match user_syntax_loader() {
+    let syn_loader_conf = match helix_loader::merged_lang_config()?.try_into() {
         Ok(conf) => conf,
         Err(err) => {
             let stderr = std::io::stderr();
@@ -219,7 +219,7 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
                 err
             )?;
             writeln!(stderr, "{}", "Using default language config".yellow())?;
-            default_syntax_loader()
+            LanguageConfigurations::default()
         }
     };
 
