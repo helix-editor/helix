@@ -686,7 +686,26 @@ impl EditorView {
                 bufferline_inactive
             };
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
+            let diagnostic_count = doc.diagnostics().len();
+
+            let text = format!(
+                " {}{}{} ",
+                fname,
+                if diagnostic_count > 9 {
+                    String::from(" 9+")
+                } else if diagnostic_count > 0 {
+                    format!(" {}", diagnostic_count)
+                } else {
+                    String::new()
+                },
+                if doc.is_modified() && diagnostic_count > 0 {
+                    " [+]"
+                } else if doc.is_modified() {
+                    "[+]"
+                } else {
+                    ""
+                }
+            );
             let used_width = viewport.x.saturating_sub(x);
             let rem_width = surface.area.width.saturating_sub(used_width);
 
