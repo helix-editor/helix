@@ -18,17 +18,14 @@ async fn main_impl() -> Result<i32> {
     let args = Args::parse_args().context("failed to parse arguments")?;
     setup_logging(args.log_file.clone(), args.verbosity).context("failed to initialize logging")?;
 
-    // Help has a higher priority and should be handled separately.
     if args.display_help {
         print!("{}", help::help());
         return Ok(0);
     }
-
     if args.display_version {
         println!("helix {}", VERSION_AND_GIT_HASH);
         return Ok(0);
     }
-
     if args.health {
         if let Err(err) = helix_term::health::print_health(args.health_arg) {
             // Piping to for example `head -10` requires special handling:
@@ -39,20 +36,13 @@ async fn main_impl() -> Result<i32> {
         }
         return Ok(0);
     }
-
     if args.fetch_grammars {
         helix_loader::grammar::fetch_grammars()?;
         return Ok(0);
     }
-
     if args.build_grammars {
         helix_loader::grammar::build_grammars(None)?;
         return Ok(0);
-    }
-
-    let config_dir = helix_loader::config_dir();
-    if !config_dir.exists() {
-        std::fs::create_dir_all(&config_dir).ok();
     }
 
     helix_loader::setup_config_file(args.config_file.clone());
