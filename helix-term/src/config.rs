@@ -1,11 +1,8 @@
-use crate::keymap::{default::default, merge_keys, Keymap};
+use crate::keymap::{default::{default, self}, merge_keys, Keymap};
 use helix_view::document::Mode;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::fmt::Display;
-use std::io::Error as IOError;
-use std::path::PathBuf;
-use toml::de::Error as TomlError;
+use anyhow::{Error, anyhow};
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -17,46 +14,25 @@ pub struct Config {
     pub editor: helix_view::editor::Config,
 }
 
+impl Config {
+    pub fn merged() -> Result<Self, Error> {
+        let config_string = std::fs::read_to_string(helix_loader::config_file())?;
+        toml::from_str(&config_string)
+            .map(|config: Config| config.merge_in_default_keymap()) 
+            .map_err(|error| anyhow!("{}", error))
+    }
+}
+
 impl Default for Config {
     fn default() -> Config {
         Config {
             theme: None,
-            keys: default(),
+            keys: default::default(),
             editor: helix_view::editor::Config::default(),
         }
     }
 }
-
-#[derive(Debug)]
-pub enum ConfigLoadError {
-    BadConfig(TomlError),
-    Error(IOError),
-}
-
-impl Display for ConfigLoadError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ConfigLoadError::BadConfig(err) => err.fmt(f),
-            ConfigLoadError::Error(err) => err.fmt(f),
-        }
-    }
-}
-
-impl Config {
-    pub fn load(config_path: PathBuf) -> Result<Config, ConfigLoadError> {
-        match std::fs::read_to_string(config_path) {
-            Ok(config) => toml::from_str(&config)
-                .map(merge_keys)
-                .map_err(ConfigLoadError::BadConfig),
-            Err(err) => Err(ConfigLoadError::Error(err)),
-        }
-    }
-
-    pub fn load_default() -> Result<Config, ConfigLoadError> {
-        Config::load(helix_loader::config_file())
-    }
-}
-
+ 
 #[cfg(test)]
 mod tests {
     use super::*;

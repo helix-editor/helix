@@ -2,6 +2,7 @@ mod help;
 
 use anyhow::{Context, Error, Result};
 use crossterm::event::EventStream;
+use helix_core::syntax::LanguageConfigurations;
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
@@ -46,7 +47,14 @@ async fn main_impl() -> Result<i32> {
     }
 
     helix_loader::setup_config_file(args.config_file.clone());
+    let config = Config::merged().unwrap_or_else(|err| {
+        eprintln!("Bad config: {}", err);
+        eprintln!("Press <ENTER> to continue with default config");
+        let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut[]);
+        Config::default()
+    });
 
+<<<<<<< HEAD
     let config = match std::fs::read_to_string(helix_loader::config_file()) {
         Ok(config) => toml::from_str(&config)
             .map(helix_term::keymap::merge_keys)
@@ -62,20 +70,19 @@ async fn main_impl() -> Result<i32> {
     };
 
     let syn_loader_conf =  helix_loader::default_lang_config().try_into().unwrap_or_else(|err| {
+=======
+    let language_configurations = LanguageConfigurations::merged().unwrap_or_else(|err| {
+>>>>>>> 4731861d (Unify config loading)
         eprintln!("Bad language config: {}", err);
         eprintln!("Press <ENTER> to continue with default language config");
-        use std::io::Read;
-        // This waits for an enter press.
-        let _ = std::io::stdin().read(&mut []);
-        helix_core::syntax::LanguageConfigurations::default()
+        let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut[]);
+        LanguageConfigurations::default()
     });
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app = Application::new(args, config, syn_loader_conf)
+    let mut app = Application::new(args, config, language_configurations)
         .context("unable to create new application")?;
-
     let exit_code = app.run(&mut EventStream::new()).await?;
-
     Ok(exit_code)
 }
 
