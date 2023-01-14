@@ -430,12 +430,10 @@ impl Client {
 
     pub fn will_rename_files(
         &self,
-        params: &Vec<lsp::FileRename>
+        params: &Vec<lsp::FileRename>,
     ) -> impl Future<Output = Result<Option<lsp::WorkspaceEdit>>> {
         let files = params.clone();
-        let request = self.call::<lsp::request::WillRenameFiles>(
-            lsp::RenameFilesParams { files }
-        );
+        let request = self.call::<lsp::request::WillRenameFiles>(lsp::RenameFilesParams { files });
 
         async move {
             let json = request.await?;
@@ -446,12 +444,10 @@ impl Client {
 
     pub fn did_rename_files(
         &self,
-        params: &Vec<lsp::FileRename>
-    ) -> impl Future<Output = Result<()>>{
+        params: &Vec<lsp::FileRename>,
+    ) -> impl Future<Output = Result<()>> {
         let files = params.clone();
-        self.notify::<lsp::notification::DidRenameFiles>(
-            lsp::RenameFilesParams { files }
-        )
+        self.notify::<lsp::notification::DidRenameFiles>(lsp::RenameFilesParams { files })
     }
 
     // -------------------------------------------------------------------------------------------

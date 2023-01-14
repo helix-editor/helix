@@ -1,10 +1,10 @@
-use std::{ops::Deref, ffi::OsStr};
+use std::{ffi::OsStr, ops::Deref};
 
 use crate::job::Job;
 
 use super::*;
 
-use helix_lsp::{ Url, lsp };
+use helix_lsp::{lsp, Url};
 use helix_view::{
     apply_transaction,
     editor::{Action, CloseError, ConfigEvent},
@@ -1850,13 +1850,13 @@ fn rename_buffer(
     }
 
     if std::fs::rename(&path, &path_new).is_err() {
-        return Err(anyhow!("Could not rename file"))
+        return Err(anyhow!("Could not rename file"));
     }
     let (_, doc) = current!(cx.editor);
     doc.set_path(Some(path_new.as_path()))
         .map_err(|_| anyhow!("File renamed, but could not set path of the document"))?;
 
-   let mut lsp_success = false;
+    let mut lsp_success = false;
     if let Some(lsp_client) = doc.language_server() {
         let old_uri = Url::from_file_path(&path)
             .map_err(|_| anyhow!("Language server request failed, could not get current path uri"))?
@@ -1864,12 +1864,7 @@ fn rename_buffer(
         let new_uri = Url::from_file_path(&path_new)
             .map_err(|_| anyhow!("Language server request failed, could not get new path uri"))?
             .to_string();
-        let mut files = vec![
-            lsp::FileRename {
-                old_uri,
-                new_uri
-            }
-        ];
+        let mut files = vec![lsp::FileRename { old_uri, new_uri }];
         let result = helix_lsp::block_on(lsp_client.will_rename_files(&files))?;
         _ = helix_lsp::block_on(lsp_client.did_rename_files(&files)).is_ok();
         if let Some(edit) = result {
@@ -1882,7 +1877,9 @@ fn rename_buffer(
 
     match lsp_success {
         true => Ok(()),
-        false => Err(anyhow!("File renaming succeeded, but language server did not respond to change"))
+        false => Err(anyhow!(
+            "File renaming succeeded, but language server did not respond to change"
+        )),
     }
 }
 
