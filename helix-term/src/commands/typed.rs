@@ -1834,7 +1834,7 @@ fn rename_buffer(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    ensure!(args.len() == 1, ":rename_buffer takes one argument");
+    ensure!(args.len() == 1, ":rename takes one argument");
     let new_name = args.first().unwrap();
 
     let (_, doc) = current!(cx.editor);
