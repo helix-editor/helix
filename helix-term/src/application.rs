@@ -128,7 +128,7 @@ impl Application {
     pub fn new(
         args: Args,
         config: Config,
-        syn_loader_conf: syntax::Configuration,
+        syn_loader_conf: syntax::LanguageConfigurations,
     ) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
         setup_integration_logging();
