@@ -8,20 +8,28 @@ pub const VERSION_AND_GIT_HASH: &str = env!("VERSION_AND_GIT_HASH");
 pub static RUNTIME_DIR: once_cell::sync::Lazy<PathBuf> = once_cell::sync::Lazy::new(runtime_dir);
 
 static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+static LOG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 
-pub fn initialize_config_file(specified_file: Option<PathBuf>) {
+pub fn setup_log_file(specified_file: Option<PathBuf>) {
+    let log_file = specified_file.unwrap_or_else(|| {
+        let log_dir = cache_dir();
+        if !log_dir.exists() {
+            std::fs::create_dir_all(&log_dir).ok();
+        }
+        log_dir.join("helix.log")
+    });
+    LOG_FILE.set(log_file).ok();
+}
+
+pub fn setup_config_file(specified_file: Option<PathBuf>) {
     let config_file = specified_file.unwrap_or_else(|| {
         let config_dir = config_dir();
-
         if !config_dir.exists() {
             std::fs::create_dir_all(&config_dir).ok();
         }
-
         config_dir.join("config.toml")
     });
-
-    // We should only initialize this value once.
-    CONFIG_FILE.set(config_file).ok();
+    CONFIG_FILE.set(config_file).unwrap();
 }
 
 pub fn runtime_dir() -> PathBuf {
@@ -76,19 +84,27 @@ pub fn cache_dir() -> PathBuf {
     path
 }
 
+pub fn log_file() -> PathBuf {
+    match LOG_FILE.get() {
+        Some(log_path) => log_path.to_path_buf(),
+        None => {
+            setup_log_file(None);
+            log_file()
+        }
+    }
+}
 pub fn config_file() -> PathBuf {
-    CONFIG_FILE
-        .get()
-        .map(|path| path.to_path_buf())
-        .unwrap_or_else(|| config_dir().join("config.toml"))
+    match CONFIG_FILE.get() {
+        Some(config_path) => config_path.to_path_buf(),
+        None => {
+            setup_config_file(None);
+            config_file()
+        }
+    }
 }
 
 pub fn lang_config_file() -> PathBuf {
     config_dir().join("languages.toml")
-}
-
-pub fn log_file() -> PathBuf {
-    cache_dir().join("helix.log")
 }
 
 pub fn find_local_config_dirs() -> Vec<PathBuf> {
