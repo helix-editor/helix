@@ -8,34 +8,6 @@ use helix_term::args::Args;
 use helix_term::config::Config;
 use std::path::PathBuf;
 
-fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
-    let mut base_config = fern::Dispatch::new();
-
-    base_config = match verbosity {
-        0 => base_config.level(log::LevelFilter::Warn),
-        1 => base_config.level(log::LevelFilter::Info),
-        2 => base_config.level(log::LevelFilter::Debug),
-        _3_or_more => base_config.level(log::LevelFilter::Trace),
-    };
-
-    // Separate file config so we can include year, month and day in file logs
-    let file_config = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{} {} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .chain(fern::log_file(logpath)?);
-
-    base_config.chain(file_config).apply()?;
-
-    Ok(())
-}
-
 fn main() -> Result<()> {
     let exit_code = main_impl()?;
     std::process::exit(exit_code);
@@ -43,13 +15,8 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let logpath = helix_loader::log_file();
-    let parent = logpath.parent().unwrap();
-    if !parent.exists() {
-        std::fs::create_dir_all(parent).ok();
-    }
-
-    let args = Args::parse_args().context("could not parse arguments")?;
+    let args = Args::parse_args().context("failed to parse arguments")?;
+    setup_logging(args.log_file.clone(), args.verbosity).context("failed to initialize logging")?;
 
     // Help has a higher priority and should be handled separately.
     if args.display_help {
@@ -84,15 +51,12 @@ async fn main_impl() -> Result<i32> {
         return Ok(0);
     }
 
-    let logpath = args.log_file.as_ref().cloned().unwrap_or(logpath);
-    setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
-
     let config_dir = helix_loader::config_dir();
     if !config_dir.exists() {
         std::fs::create_dir_all(&config_dir).ok();
     }
 
-    helix_loader::initialize_config_file(args.config_file.clone());
+    helix_loader::setup_config_file(args.config_file.clone());
 
     let config = match std::fs::read_to_string(helix_loader::config_file()) {
         Ok(config) => toml::from_str(&config)
@@ -114,9 +78,7 @@ async fn main_impl() -> Result<i32> {
         use std::io::Read;
         // This waits for an enter press.
         let _ = std::io::stdin().read(&mut []);
-        helix_loader::default_lang_config()
-            .try_into()
-            .expect("Could not serialize built-in languages.toml")
+        helix_core::syntax::LanguageConfigurations::default()
     });
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
@@ -126,4 +88,31 @@ async fn main_impl() -> Result<i32> {
     let exit_code = app.run(&mut EventStream::new()).await?;
 
     Ok(exit_code)
+}
+
+fn setup_logging(logpath: Option<PathBuf>, verbosity: u64) -> Result<()> {
+    helix_loader::setup_log_file(logpath); 
+
+    let mut base_config = fern::Dispatch::new();
+    base_config = match verbosity {
+        0 => base_config.level(log::LevelFilter::Warn),
+        1 => base_config.level(log::LevelFilter::Info),
+        2 => base_config.level(log::LevelFilter::Debug),
+        _3_or_more => base_config.level(log::LevelFilter::Trace),
+    };
+
+    // Separate file config so we can include year, month and day in file logs
+    let file_config = fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "{} {} [{}] {}",
+                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
+                record.target(),
+                record.level(),
+                message
+            ))
+        })
+        .chain(fern::log_file(helix_loader::log_file())?);
+    base_config.chain(file_config).apply()?;
+    Ok(())
 }
