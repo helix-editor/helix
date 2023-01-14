@@ -430,14 +430,12 @@ fn render_file_modification_indicator<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let title = format!(
-        "{}",
-        if context.doc.is_modified() {
-            "[+]"
-        } else {
-            "   "
-        }
-    );
+    let title = (if context.doc.is_modified() {
+        "[+]"
+    } else {
+        "   "
+    })
+    .to_string();
 
     write(context, title, None);
 }
