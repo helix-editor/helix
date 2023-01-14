@@ -548,6 +548,11 @@ impl Client {
                         dynamic_registration: Some(true),
                         relative_pattern_support: Some(false),
                     }),
+                    file_operations: Some(lsp::WorkspaceFileOperationsClientCapabilities {
+                        will_rename: Some(true),
+                        did_rename: Some(true),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
@@ -698,6 +703,28 @@ impl Client {
         self.notify::<DidChangeWorkspaceFolders>(DidChangeWorkspaceFoldersParams {
             event: WorkspaceFoldersChangeEvent { added, removed },
         })
+    }
+
+    pub fn will_rename_files(
+        &self,
+        params: &Vec<lsp::FileRename>,
+    ) -> impl Future<Output = Result<Option<lsp::WorkspaceEdit>>> {
+        let files = params.clone();
+        let request = self.call::<lsp::request::WillRenameFiles>(lsp::RenameFilesParams { files });
+
+        async move {
+            let json = request.await?;
+            let response: Option<lsp::WorkspaceEdit> = serde_json::from_value(json)?;
+            Ok(response)
+        }
+    }
+
+    pub fn did_rename_files(
+        &self,
+        params: &Vec<lsp::FileRename>,
+    ) -> impl Future<Output = Result<()>> {
+        let files = params.clone();
+        self.notify::<lsp::notification::DidRenameFiles>(lsp::RenameFilesParams { files })
     }
 
     // -------------------------------------------------------------------------------------------
