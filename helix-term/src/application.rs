@@ -429,12 +429,12 @@ impl Application {
 
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
-            let default_config = Config::load_default()
+            let merged_user_config = Config::merged()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
             self.refresh_language_config()?;
-            self.refresh_theme(&default_config)?;
+            self.refresh_theme(&merged_user_config)?;
             // Store new config
-            self.config.store(Arc::new(default_config));
+            self.config.store(Arc::new(merged_user_config));
             Ok(())
         };
 

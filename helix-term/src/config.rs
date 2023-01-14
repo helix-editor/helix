@@ -1,8 +1,8 @@
 use crate::keymap::{default, Keymap};
 use helix_view::document::Mode;
 use serde::Deserialize;
-use std::{collections::HashMap, fmt::Display, io::Error as IOError};
-use toml::de::Error as TomlError;
+use std::collections::HashMap;
+use anyhow::{Error, anyhow};
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -14,40 +14,12 @@ pub struct Config {
     pub editor: helix_view::editor::Config,
 }
 
-impl Default for Config {
-    fn default() -> Config {
-        Config {
-            theme: None,
-            keys: default::default(),
-            editor: helix_view::editor::Config::default(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum ConfigLoadError {
-    BadConfig(TomlError),
-    Error(IOError),
-}
-
-impl Display for ConfigLoadError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ConfigLoadError::BadConfig(err) => err.fmt(f),
-            ConfigLoadError::Error(err) => err.fmt(f),
-        }
-    }
-}
-
 impl Config {
-    // REFACTOR? code similar to config assignment in main.rs,
-    pub fn load_default() -> Result<Config, ConfigLoadError> {
-        match std::fs::read_to_string(helix_loader::config_file()) {
-            Ok(config) => toml::from_str(&config)
-                .map(|config: Config| config.merge_in_default_keymap())
-                .map_err(ConfigLoadError::BadConfig),
-            Err(err) => Err(ConfigLoadError::Error(err)),
-        }
+    pub fn merged() -> Result<Self, Error> {
+        let config_string = std::fs::read_to_string(helix_loader::config_file())?;
+        toml::from_str(&config_string)
+            .map(|config: Config| config.merge_in_default_keymap()) 
+            .map_err(|error| anyhow!("{}", error))
     }
 
     pub fn merge_in_default_keymap(mut self) -> Config {
@@ -59,6 +31,16 @@ impl Config {
     }
 }
 
+impl Default for Config {
+    fn default() -> Config {
+        Config {
+            theme: None,
+            keys: default::default(),
+            editor: helix_view::editor::Config::default(),
+        }
+    }
+}
+ 
 #[cfg(test)]
 mod tests {
     use crate::{
