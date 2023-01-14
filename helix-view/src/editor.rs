@@ -1,5 +1,5 @@
 use crate::{
-    align_view, apply_transaction,
+    align_view,
     clipboard::{get_clipboard_provider, ClipboardProvider},
     document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode},
     graphics::{CursorKind, Rect},
@@ -1260,10 +1260,10 @@ impl Editor {
             let newline = Tendril::from(newline);
             let selection = Selection::point(doc_len);
             let transaction = Transaction::insert(text, &selection, newline);
-            let mut view = View::new(doc_id, config.gutters.clone());
+            let view = view_mut!(self);
             doc.set_selection(view.id, selection);
-            apply_transaction(&transaction, doc, &view);
-            doc.append_changes_to_history(&mut view);
+            doc.apply(&transaction, view.id);
+            doc.append_changes_to_history(view);
         }
 
         let future = doc.save(path, force)?;
