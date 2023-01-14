@@ -60,11 +60,11 @@ fn default_timeout() -> u64 {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Configuration {
+pub struct LanguageConfigurations {
     pub language: Vec<LanguageConfiguration>,
 }
 
-impl Default for Configuration {
+impl Default for LanguageConfigurations {
     fn default() -> Self {
         crate::config::default_syntax_loader()
     }
@@ -75,11 +75,11 @@ impl Default for Configuration {
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
-    pub language_id: String, // c-sharp, rust
+    pub language_id: String,       // c-sharp, rust
     pub scope: String,             // source.rust
     pub file_types: Vec<FileType>, // filename extension or ends_with? <Gemfile, rb, etc>
     #[serde(default)]
-    pub shebangs: Vec<String>, // interpreter(s) associated with language
+    pub shebangs: Vec<String>,     // interpreter(s) associated with language
     pub roots: Vec<String>,        // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
     pub max_line_length: Option<usize>,
@@ -561,7 +561,7 @@ pub struct Loader {
 }
 
 impl Loader {
-    pub fn new(config: Configuration) -> Self {
+    pub fn new(config: LanguageConfigurations) -> Self {
         let mut loader = Self {
             language_configs: Vec::new(),
             language_config_ids_by_extension: HashMap::new(),
@@ -2278,7 +2278,7 @@ mod test {
         "#,
         );
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(LanguageConfigurations { language: vec![] });
         let language = get_language("rust").unwrap();
 
         let query = Query::new(language, query_str).unwrap();
@@ -2337,7 +2337,7 @@ mod test {
         .map(String::from)
         .collect();
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(LanguageConfigurations { language: vec![] });
 
         let language = get_language("rust").unwrap();
         let config = HighlightConfiguration::new(
@@ -2440,7 +2440,7 @@ mod test {
     ) {
         let source = Rope::from_str(source);
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(LanguageConfigurations { language: vec![] });
         let language = get_language(language_name).unwrap();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
