@@ -1,4 +1,5 @@
 use crate::{
+    requests::DisconnectArguments,
     transport::{Payload, Request, Response, Transport},
     types::*,
     Error, Result, ThreadId,
@@ -31,6 +32,7 @@ pub struct Client {
     _process: Option<Child>,
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
+    connection_type: Option<ConnectionType>,
     pub caps: Option<DebuggerCapabilities>,
     // thread_id -> frames
     pub stack_frames: HashMap<ThreadId, Vec<StackFrame>>,
@@ -39,6 +41,12 @@ pub struct Client {
     /// Currently active frame for the current thread.
     pub active_frame: Option<usize>,
     pub quirks: DebuggerQuirks,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ConnectionType {
+    Launch,
+    Attach,
 }
 
 impl Client {
@@ -78,7 +86,7 @@ impl Client {
             server_tx,
             request_counter: AtomicU64::new(0),
             caps: None,
-            //
+            connection_type: None,
             stack_frames: HashMap::new(),
             thread_states: HashMap::new(),
             thread_id: None,
@@ -205,6 +213,10 @@ impl Client {
 
     pub fn id(&self) -> usize {
         self.id
+    }
+
+    pub fn connection_type(&self) -> Option<ConnectionType> {
+        self.connection_type
     }
 
     fn next_request_id(&self) -> u64 {
@@ -334,15 +346,21 @@ impl Client {
         Ok(())
     }
 
-    pub fn disconnect(&self) -> impl Future<Output = Result<Value>> {
-        self.call::<requests::Disconnect>(())
+    pub fn disconnect(
+        &mut self,
+        args: Option<DisconnectArguments>,
+    ) -> impl Future<Output = Result<Value>> {
+        self.connection_type = None;
+        self.call::<requests::Disconnect>(args)
     }
 
-    pub fn launch(&self, args: serde_json::Value) -> impl Future<Output = Result<Value>> {
+    pub fn launch(&mut self, args: serde_json::Value) -> impl Future<Output = Result<Value>> {
+        self.connection_type = Some(ConnectionType::Launch);
         self.call::<requests::Launch>(args)
     }
 
-    pub fn attach(&self, args: serde_json::Value) -> impl Future<Output = Result<Value>> {
+    pub fn attach(&mut self, args: serde_json::Value) -> impl Future<Output = Result<Value>> {
+        self.connection_type = Some(ConnectionType::Attach);
         self.call::<requests::Attach>(args)
     }
 
