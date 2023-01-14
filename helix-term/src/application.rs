@@ -1,7 +1,7 @@
 use helix_core::{
     diagnostic::{DiagnosticTag, NumberOrString},
     path::get_relative_path,
-    pos_at_coords, syntax, Selection,
+    pos_at_coords, syntax::{self, LanguageConfigurations}, Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{
@@ -396,7 +396,7 @@ impl Application {
 
     /// refresh language config after config change
     fn refresh_language_config(&mut self) -> Result<(), Error> {
-        let syntax_config = helix_core::config::user_syntax_loader()
+        let syntax_config = LanguageConfigurations::merged()
             .map_err(|err| anyhow::anyhow!("Failed to load language config: {}", err))?;
 
         self.syn_loader = std::sync::Arc::new(syntax::Loader::new(syntax_config));
