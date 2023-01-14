@@ -5,7 +5,7 @@ pub fn default_lang_config() -> toml::Value {
 }
 
 /// User configured languages.toml file, merged with the default config.
-pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
+pub fn merged_lang_config() -> Result<toml::Value, toml::de::Error> {
     let config = crate::local_config_dirs()
         .into_iter()
         .chain([crate::config_dir()].into_iter())
