@@ -21,12 +21,12 @@ async fn main_impl() -> Result<i32> {
     // Help has a higher priority and should be handled separately.
     if args.display_help {
         print!("{}", help::help());
-        std::process::exit(0);
+        return Ok(0);
     }
 
     if args.display_version {
         println!("helix {}", VERSION_AND_GIT_HASH);
-        std::process::exit(0);
+        return Ok(0);
     }
 
     if args.health {
@@ -37,8 +37,7 @@ async fn main_impl() -> Result<i32> {
                 return Err(err.into());
             }
         }
-
-        std::process::exit(0);
+        return Ok(0);
     }
 
     if args.fetch_grammars {
