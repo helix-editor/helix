@@ -74,7 +74,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 // TODO use Either?
 pub enum CompletionResult {
     LanguageServer(helix_lsp::Result<serde_json::Value>),
-    Worker(Option<Vec<String>>),
+    WordsCompletionResult(Option<Vec<String>>),
 }
 
 impl CompletionResult {
@@ -84,9 +84,9 @@ impl CompletionResult {
             _ => unreachable!(),
         }
     }
-    pub fn from_worker(self) -> Option<Vec<String>> {
+    pub fn from_words_completion(self) -> Option<Vec<String>> {
         match self {
-            CompletionResult::Worker(v) => v,
+            CompletionResult::WordsCompletionResult(v) => v,
             _ => unreachable!(),
         }
     }
@@ -168,7 +168,7 @@ impl<'a> Context<'a> {
                         }
                     };
 
-                    let words = words.from_worker();
+                    let words = words.from_words_completion();
                     callback(editor, compositor, response, words)
                 },
             ));
@@ -3152,9 +3152,9 @@ pub mod insert {
 
         let prefix = text.slice(start_offset..cursor).to_string();
 
-        let worker = cx.editor.worker.clone();
+        let words_completion = cx.editor.words_completion.clone();
         let callback = Box::pin(async move {
-            let items = worker.completion(prefix).await;
+            let items = words_completion.completion(prefix).await;
 
             let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                 move |editor: &mut Editor, compositor: &mut Compositor| {
@@ -4217,11 +4217,11 @@ pub fn completion(cx: &mut Context) {
     let start_offset = cursor.saturating_sub(offset);
     let prefix = text.slice(start_offset..cursor).to_string();
 
-    let worker = cx.editor.worker.clone();
+    let words_completion = cx.editor.words_completion.clone();
     let words_future = async move {
-        worker
+        words_completion
             .completion(prefix)
-            .map(CompletionResult::Worker)
+            .map(CompletionResult::WordsCompletionResult)
             .await
     };
 

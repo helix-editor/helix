@@ -36,7 +36,7 @@ use tokio::{
 
 use anyhow::{anyhow, bail, Error};
 
-use crate::worker::Worker;
+use crate::words_completion::WordsCompletion;
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
 use helix_core::Position;
@@ -725,7 +725,7 @@ pub struct Editor {
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
-    pub worker: Arc<Worker>,
+    pub words_completion: Arc<WordsCompletion>,
 
     /// Allows asynchronous tasks to control the rendering
     /// The `Notify` allows asynchronous tasks to request the editor to perform a redraw
@@ -827,7 +827,7 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
-            worker: Arc::new(Worker::new(conf.completion_trigger_len)),
+            words_completion: Arc::new(WordsCompletion::new(conf.completion_trigger_len)),
             redraw_handle: Default::default(),
             needs_redraw: false,
         }
@@ -1123,14 +1123,14 @@ impl Editor {
     }
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
-        self.new_file_from_document(action, Document::new(Some(self.worker.clone())))
+        self.new_file_from_document(action, Document::new(Some(self.words_completion.clone())))
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
         let (rope, encoding) = crate::document::from_reader(&mut stdin(), None)?;
         Ok(self.new_file_from_document(
             action,
-            Document::from(rope, Some(encoding), Some(self.worker.clone())),
+            Document::from(rope, Some(encoding), Some(self.words_completion.clone())),
         ))
     }
 
@@ -1146,7 +1146,7 @@ impl Editor {
                 &path,
                 None,
                 Some(self.syn_loader.clone()),
-                Some(self.worker.clone()),
+                Some(self.words_completion.clone()),
             )?;
 
             let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);

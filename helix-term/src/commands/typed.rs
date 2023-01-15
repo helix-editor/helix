@@ -534,7 +534,7 @@ fn write_quit(
         return Ok(());
     }
 
-    cx.editor.worker.stop();
+    cx.editor.words_completion.stop();
     write_impl(cx, args.first(), false)?;
     cx.block_try_flush_writes()?;
     quit(cx, &[], event)
@@ -549,7 +549,7 @@ fn force_write_quit(
         return Ok(());
     }
 
-    cx.editor.worker.stop();
+    cx.editor.words_completion.stop();
     write_impl(cx, args.first(), true)?;
     cx.block_try_flush_writes()?;
     force_quit(cx, &[], event)

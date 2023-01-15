@@ -18,21 +18,22 @@ use crate::DocumentId;
 const MAX_COMPLETION_ITEMS_LEN: usize = 20;
 const TIMEOUT: Duration = Duration::from_millis(300);
 const MAX_CONCURRENT_COMMANDS: usize = 10;
+pub const CHANGED_LINES_TO_PROCESS_WHOLE_DOC: usize = 100;
 
-pub struct Worker {
-    tx: mpsc::Sender<WorkerRequest>,
+pub struct WordsCompletion {
+    tx: mpsc::Sender<CompletionRequest>,
     handle: JoinHandle<()>,
     is_stopped: Arc<AtomicBool>,
 }
 
-impl Default for Worker {
+impl Default for WordsCompletion {
     fn default() -> Self {
         Self::new(2)
     }
 }
 
-struct WorkerState {
-    rx: mpsc::Receiver<WorkerRequest>,
+struct WordsCompletionState {
+    rx: mpsc::Receiver<CompletionRequest>,
     min_word_len: usize,
 
     // TODO limit hashmap?
@@ -46,7 +47,7 @@ struct WorkerState {
     is_stopped: Arc<AtomicBool>,
 }
 
-pub enum WorkerRequest {
+pub enum CompletionRequest {
     ExtractDocWords {
         doc_id: DocumentId,
         text: String,
@@ -61,20 +62,20 @@ pub enum WorkerRequest {
     },
 }
 
-impl std::fmt::Debug for WorkerRequest {
+impl std::fmt::Debug for CompletionRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            WorkerRequest::ExtractDocWords { doc_id, text } => f
+            CompletionRequest::ExtractDocWords { doc_id, text } => f
                 .debug_struct("ExtractDocWords")
                 .field("doc_id", doc_id)
                 .field("text_len", &text.len())
                 .finish(),
-            WorkerRequest::ExtractDocLineWords { doc_id, lines } => f
+            CompletionRequest::ExtractDocLineWords { doc_id, lines } => f
                 .debug_struct("ExtractDocLineWords")
                 .field("doc_id", doc_id)
                 .field("lines_len", &lines.len())
                 .finish(),
-            WorkerRequest::Completion { prefix, tx: _ } => f
+            CompletionRequest::Completion { prefix, tx: _ } => f
                 .debug_struct("Completion")
                 .field("prefix", prefix)
                 .finish(),
@@ -90,19 +91,19 @@ fn text_to_words(text: &str, min_word_len: usize) -> HashSet<&str> {
     }))
 }
 
-impl Worker {
+impl WordsCompletion {
     pub fn new(completion_trigger_len: u8) -> Self {
-        let (command_tx, command_rx) = mpsc::channel::<WorkerRequest>(MAX_CONCURRENT_COMMANDS);
+        let (command_tx, command_rx) = mpsc::channel::<CompletionRequest>(MAX_CONCURRENT_COMMANDS);
 
         let is_stopped = Arc::new(AtomicBool::new(false));
         let is_stopped_clone = is_stopped.clone();
 
         let min_word_len = completion_trigger_len as usize + 1;
 
-        // Start worker on separate thread
+        // Start on separate thread
         let handle = task::spawn_blocking(move || {
-            log::debug!("Worker. Start");
-            let mut state = WorkerState {
+            log::debug!("Words completion. start");
+            let mut state = WordsCompletionState {
                 rx: command_rx,
                 min_word_len,
                 doc_words: HashMap::new(),
@@ -113,24 +114,24 @@ impl Worker {
             state.process_commands();
         });
 
-        Worker {
+        WordsCompletion {
             tx: command_tx,
             handle,
             is_stopped,
         }
     }
 
-    fn send(&self, cmd: WorkerRequest) {
+    fn send(&self, cmd: CompletionRequest) {
         if self.is_stopped.load(Ordering::SeqCst) {
             return;
         }
-        log::debug!("Worker command: {:?}", cmd);
+        log::debug!("Words completion command: {:?}", cmd);
         match self.tx.try_send(cmd) {
             Err(mpsc::error::TrySendError::Closed(_)) => {
-                log::debug!("Worker commands channel is closed");
+                log::debug!("Words completion commands channel is closed");
             }
             Err(mpsc::error::TrySendError::Full(_)) => {
-                log::trace!("Worker commands channel is full");
+                log::trace!("Words completion commands channel is full");
             }
             _ => {}
         };
@@ -141,11 +142,11 @@ impl Worker {
     }
 
     pub fn extract_words(&self, doc_id: DocumentId, text: String) {
-        self.send(WorkerRequest::ExtractDocWords { doc_id, text });
+        self.send(CompletionRequest::ExtractDocWords { doc_id, text });
     }
 
     pub fn extract_line_words(&self, doc_id: DocumentId, lines: Vec<(usize, Option<String>)>) {
-        self.send(WorkerRequest::ExtractDocLineWords { doc_id, lines });
+        self.send(CompletionRequest::ExtractDocLineWords { doc_id, lines });
     }
 
     pub async fn completion(&self, prefix: String) -> Option<Vec<String>> {
@@ -153,19 +154,19 @@ impl Worker {
             return None;
         }
 
-        log::trace!("Worker command: completion {}", prefix,);
+        log::trace!("Words completion command: completion {}", prefix,);
 
         // TODO pool of oneshot channels
         let (tx, rx) = oneshot::channel::<Option<Vec<String>>>();
 
         if let Err(e) = self
             .tx
-            .send_timeout(WorkerRequest::Completion { prefix, tx }, TIMEOUT)
+            .send_timeout(CompletionRequest::Completion { prefix, tx }, TIMEOUT)
             .await
         {
             // MAX_CONCURRENT_COMMANDS reached (channel is full)
             // worker can't accept and proccess command in time less then TIMEOUT
-            log::trace!("On send command to worker: {}", e);
+            log::trace!("On send command: {}", e);
             return None;
         }
 
@@ -173,30 +174,30 @@ impl Worker {
             Ok(r) => match r {
                 Ok(items) => items,
                 Err(e) => {
-                    log::info!("On wait worker result: {}", e);
+                    log::info!("On wait esult: {}", e);
                     None
                 }
             },
             Err(e) => {
-                log::info!("On wait worker result timeout: {}", e);
+                log::info!("On wait result timeout: {}", e);
                 None
             }
         }
     }
 }
 
-impl Drop for Worker {
+impl Drop for WordsCompletion {
     fn drop(&mut self) {
         self.stop();
         self.handle.abort();
     }
 }
 
-impl WorkerState {
+impl WordsCompletionState {
     fn process_commands(&mut self) {
         loop {
             if self.is_stopped.load(Ordering::SeqCst) {
-                log::debug!("Worker Stop");
+                log::debug!("Words completion. Stop");
                 return;
             }
 
@@ -205,17 +206,21 @@ impl WorkerState {
                 let cmd_debug = format!("{:?}", command);
 
                 match command {
-                    WorkerRequest::ExtractDocWords { doc_id, text } => {
+                    CompletionRequest::ExtractDocWords { doc_id, text } => {
                         self.process_text(doc_id, text);
                     }
-                    WorkerRequest::ExtractDocLineWords { doc_id, lines } => {
+                    CompletionRequest::ExtractDocLineWords { doc_id, lines } => {
                         self.process_line_text(doc_id, lines);
                     }
-                    WorkerRequest::Completion { prefix, tx } => {
+                    CompletionRequest::Completion { prefix, tx } => {
                         self.completion(prefix, tx);
                     }
                 }
-                log::debug!("Worker {} took {}ms", cmd_debug, now.elapsed().as_millis());
+                log::debug!(
+                    "Workds completion {} took {}ms",
+                    cmd_debug,
+                    now.elapsed().as_millis()
+                );
             }
         }
     }
@@ -309,7 +314,7 @@ impl WorkerState {
         };
 
         if tx.send(result).is_err() {
-            log::info!("On send worker completion result");
+            log::info!("On send completion result");
         }
     }
 }
@@ -328,27 +333,27 @@ mod test {
         let doc_id = DocumentId::default();
 
         let _ = rt.block_on(async move {
-            let worker = Worker::new(2);
+            let instance = WordsCompletion::new(2);
 
             // buffer with text
-            let _ = worker.extract_words(doc_id, "Hello".to_string());
+            let _ = instance.extract_words(doc_id, "Hello".to_string());
 
-            let items = worker.completion("H".to_string()).await;
+            let items = instance.completion("H".to_string()).await;
             assert_eq!(items, Some(vec!["Hello".to_string()]));
 
             // add text to the same line
-            let _ = worker.extract_line_words(doc_id, vec![(0, Some("Hello world".to_string()))]);
+            let _ = instance.extract_line_words(doc_id, vec![(0, Some("Hello world".to_string()))]);
 
-            let items = worker.completion("w".to_string()).await;
+            let items = instance.completion("w".to_string()).await;
             assert_eq!(items, Some(vec!["world".to_string()]));
 
             // reload buffer with text
-            let _ = worker.extract_words(doc_id, "Hello".to_string());
+            let _ = instance.extract_words(doc_id, "Hello".to_string());
 
-            let items = worker.completion("w".to_string()).await;
+            let items = instance.completion("w".to_string()).await;
             assert_eq!(items, None);
 
-            drop(worker);
+            drop(instance);
 
             true
         });

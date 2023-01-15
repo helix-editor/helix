@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 
-use crate::worker::Worker;
+use crate::words_completion::{WordsCompletion, CHANGED_LINES_TO_PROCESS_WHOLE_DOC};
 use helix_core::{
     encoding,
     history::{History, State, UndoKind},
@@ -139,7 +139,7 @@ pub struct Document {
     language_server: Option<Arc<helix_lsp::Client>>,
 
     // for completion
-    worker: Option<Arc<Worker>>,
+    words_completion: Option<Arc<WordsCompletion>>,
     diff_handle: Option<DiffHandle>,
 }
 
@@ -357,7 +357,7 @@ impl Document {
     pub fn from(
         text: Rope,
         encoding: Option<&'static encoding::Encoding>,
-        worker: Option<Arc<Worker>>,
+        worker: Option<Arc<WordsCompletion>>,
     ) -> Self {
         let encoding = encoding.unwrap_or(encoding::UTF_8);
         let changes = ChangeSet::new(&text);
@@ -384,13 +384,13 @@ impl Document {
             modified_since_accessed: false,
             language_server: None,
             diff_handle: None,
-            worker,
+            words_completion: worker,
         }
     }
 
-    pub fn new(worker: Option<Arc<Worker>>) -> Self {
+    pub fn new(worker: Option<Arc<WordsCompletion>>) -> Self {
         Document {
-            worker,
+            words_completion: worker,
             ..Default::default()
         }
     }
@@ -402,7 +402,7 @@ impl Document {
         path: &Path,
         encoding: Option<&'static encoding::Encoding>,
         config_loader: Option<Arc<syntax::Loader>>,
-        worker: Option<Arc<Worker>>,
+        worker: Option<Arc<WordsCompletion>>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding) = if path.exists() {
@@ -430,13 +430,13 @@ impl Document {
     }
 
     fn extract_words_by_worker(&self, text: String) {
-        if let Some(worker) = &self.worker {
+        if let Some(worker) = &self.words_completion {
             worker.extract_words(self.id, text);
         }
     }
 
     fn extract_line_words_by_worker(&self, lines: Vec<(usize, Option<String>)>) {
-        if let Some(worker) = &self.worker {
+        if let Some(worker) = &self.words_completion {
             worker.extract_line_words(self.id, lines);
         }
     }
@@ -584,7 +584,7 @@ impl Document {
 
         let identifier = self.path().map(|_| self.identifier());
         let language_server = self.language_server.clone();
-        let worker = self.worker.clone();
+        let worker = self.words_completion.clone();
 
         // mark changes up to now as saved
         let current_rev = self.get_current_revision();
@@ -886,7 +886,7 @@ impl Document {
             }
 
             // find affected lines, sync lines text with worker doc-line index
-            if self.worker.is_some() {
+            if self.words_completion.is_some() {
                 let new_pos = self
                     .selection(view_id)
                     .primary()
@@ -907,7 +907,7 @@ impl Document {
                         new_line..old_line
                     };
 
-                    if range.end - range.start > 100 {
+                    if range.end - range.start > CHANGED_LINES_TO_PROCESS_WHOLE_DOC {
                         // on too many lines changed - use whole text
                         self.extract_words_by_worker(self.text.to_string());
                     } else {
@@ -1145,8 +1145,8 @@ impl Document {
         server.is_initialized().then(|| server)
     }
 
-    pub fn worker(&self) -> Option<&Worker> {
-        self.worker.as_deref()
+    pub fn worker(&self) -> Option<&WordsCompletion> {
+        self.words_completion.as_deref()
     }
 
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
