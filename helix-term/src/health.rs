@@ -159,8 +159,13 @@ pub fn languages_all() -> std::io::Result<()> {
     };
 
     for heading in headings {
-        column(heading, Color::White);
+        column(heading, Color::Reset);
     }
+    writeln!(stdout)?;
+
+    // Creates a dashed line between headings and body information
+    let dashes = "-".repeat(terminal_cols as usize);
+    let _ = crossterm::execute!(std::io::stdout(), Print(dashes));
     writeln!(stdout)?;
 
     syn_loader_conf
