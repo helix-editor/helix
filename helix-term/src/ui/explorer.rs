@@ -67,7 +67,11 @@ impl FileInfo {
             FileType::Parent => "..".into(),
             FileType::Placeholder => "---".into(),
             FileType::Root => return format!("{}", self.path.display()).into(),
-            FileType::File | FileType::Exe | FileType::Dir => self
+            FileType::Dir => self
+                .path
+                .file_name()
+                .map_or("/".into(), |p| format!(" {}",p.to_string_lossy().into_owned()).into()),
+            FileType::File | FileType::Exe  => self
                 .path
                 .file_name()
                 .map_or("/".into(), |p| p.to_string_lossy().into_owned().into()),
@@ -590,7 +594,7 @@ impl Explorer {
                     .tree
                     .handle_event(Event::Key(event), cx, &mut self.state)
             }
-            key!(Enter) => {
+            key!(Enter) | key!('l') => {
                 let search_str = prompt.line().clone();
                 if !search_str.is_empty() {
                     self.repeat_motion = Some(Box::new(move |explorer, action, cx| {
@@ -740,6 +744,20 @@ impl Component for Explorer {
         match (*key_event).into() {
             
             key!(Esc) => self.unfocus(),
+            key!(' ') => {
+                self.on_next_key = Some(Box::new(|_, explorer, event| {
+                    match event.into() {
+                        key!('e') => explorer.unfocus(),
+                        key!('c') => return EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
+                            if let Some(editor) = compositor.find::<ui::EditorView>() {
+                                editor.explorer = None;
+                            }
+                        }))),
+                        _ => return EventResult::Ignored(None),
+                    };
+                    EventResult::Consumed(None)
+                }));
+            }
             ctrl!('c') => return close_fn,
             key!('n') => {
                 if let Some(mut repeat_motion) = self.repeat_motion.take() {
