@@ -10,7 +10,12 @@
 "info" = { fg = "mid-blue", bg = "mid-green" } # Code diagnostic info in gutter (LSP).
 # ? Difference between info and hint ?
 "hint" = { fg = "light-green", modifiers = ["bold"] } # Code diagnostics hint in gutter (LSP).
-"diagnostic" = { modifiers = ["underlined"] } # Code diagnostics in editing area (LSP).
+
+# Code diagnostics in editing area (LSP).
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.info" = { underline = { color = "mid-blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "light-green", style = "curl" } }
 
 # UI ==============================
 # For styling helix itself.

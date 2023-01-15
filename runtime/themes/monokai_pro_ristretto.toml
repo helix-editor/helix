@@ -87,7 +87,10 @@
 "diff.minus" = "red"
 
 # make diagnostic underlined, to distinguish with selection text.
-diagnostic = { modifiers = ["underlined"] }
+"diagnostic.warning" = { underline = { color = "orange", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.info" = { underline = { color = "base8", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "base8", style = "curl" } }
 
 # markup highlight, no need for `markup.raw` and `markup.list`, make them to be default
 "markup.heading" = "green"

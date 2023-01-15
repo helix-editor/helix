@@ -75,7 +75,11 @@ info = { fg = 'green', bg = 'bg2' }
 hint = { fg = 'blue', bg = 'bg2', modifiers = ['bold'] }
 warning = { fg = 'yellow', bg = 'bg2', modifiers = ['bold'] }
 error = { fg = 'red', bg = 'bg2', modifiers = ['bold'] }
-diagnostic = { modifiers = ['underlined'] }
+
+"diagnostic.info" = { underline = { style = "curl", color = "green" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "blue" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
+"diagnostic.error" = { underline = { style = "curl", color = "red" } }
 
 
 

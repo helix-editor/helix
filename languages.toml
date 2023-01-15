@@ -138,7 +138,7 @@ indent = { tab-width = 2, unit = "  " }
 name = "json"
 scope = "source.json"
 injection-regex = "json"
-file-types = ["json"]
+file-types = ["json", "jsonc"]
 roots = []
 language-server = { command = "vscode-json-language-server", args = ["--stdio"] }
 auto-format = true
@@ -147,7 +147,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "json"
-source = { git = "https://github.com/tree-sitter/tree-sitter-json", rev = "65bceef69c3b0f24c0b19ce67d79f57c96e90fcb" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-json", rev = "73076754005a460947cafe8e03a8cf5fa4fa2938" }
 
 [[language]]
 name = "c"
@@ -221,7 +221,7 @@ args = { console = "internalConsole", attachCommands = [ "platform select remote
 
 [[grammar]]
 name = "cpp"
-source = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev = "d5e90fba898f320db48d81ddedd78d52c67c1fed" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev = "2d2c4aee8672af4c7c8edff68e7dd4c07e88d2b1" }
 
 [[language]]
 name = "crystal"
@@ -230,10 +230,7 @@ file-types = ["cr"]
 roots = ["shard.yml", "shard.lock"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-
-[[grammar]]
-name = "crystal"
-source = { git = "https://github.com/will/tree-sitter-crystal", rev = "15597b307b18028b04d288561f9c29794621562b" }
+grammar = "ruby"
 
 [[language]]
 name = "c-sharp"
@@ -2082,3 +2079,31 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "matlab"
 source = { git = "https://github.com/mstanciu552/tree-sitter-matlab", rev = "2d5d3d5193718a86477d4335aba5b34e79147326" }
+
+[[language]]
+name = "ponylang"
+scope = "source.pony"
+file-types = ["pony"]
+injection-regex = "pony"
+roots = ["corral.json", "lock.json"]
+indent = { tab-width = 2, unit = "  " }
+comment-token = "//"
+
+[[grammar]]
+name = "ponylang"
+source = { git = "https://github.com/mfelsche/tree-sitter-ponylang", rev = "ef66b151bc2604f431b5668fcec4747db4290e11" }
+
+[[language]]
+name = "dhall"
+scope = "source.dhall"
+injection-regex = "dhall"
+file-types = ["dhall"]
+roots = []
+comment-token = "--"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "dhall-lsp-server" }
+formatter = { command = "dhall" , args = ["format"] }
+
+[[grammar]]
+name = "dhall"
+source = { git = "https://github.com/jbellerb/tree-sitter-dhall", rev = "affb6ee38d629c9296749767ab832d69bb0d9ea8" }

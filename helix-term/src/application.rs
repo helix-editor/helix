@@ -436,6 +436,8 @@ impl Application {
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
             self.refresh_language_config()?;
             self.refresh_theme(&default_config)?;
+            // Store new config
+            self.config.store(Arc::new(default_config));
             Ok(())
         };
 

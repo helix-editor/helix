@@ -53,6 +53,7 @@
 "ui.text" = { fg = "fg1" }
 "ui.text.focus" = { fg = "fg1" }
 "ui.selection" = { bg = "bg2" }
+"ui.selection.primary" = { bg = "bg3" }
 "ui.cursor.primary" = { bg = "fg4", fg = "bg1" }
 "ui.cursor.match" = { bg = "bg3" }
 "ui.menu" = { fg = "fg1", bg = "bg2" }
@@ -60,7 +61,10 @@
 "ui.virtual.whitespace" = "bg2"
 "ui.virtual.ruler" = { bg = "bg1" }
 
-"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.warning" = { underline = { color = "orange1", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red1", style = "curl" } }
+"diagnostic.info" = { underline = { color = "aqua1", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "blue1", style = "curl" } }
 
 "markup.heading" = "aqua1"
 "markup.bold" = { modifiers = ["bold"] }

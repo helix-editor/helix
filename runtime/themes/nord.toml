@@ -98,6 +98,12 @@
 "markup.link.text" = "nord8"
 "markup.raw" = "nord7"
 
+# lsp diagnostics
+"diagnostic.error" = { underline = { color = "nord11", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "nord13", style = "curl" } }
+"diagnostic.info" = { underline = { color = "nord8", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "nord8", style = "curl" } }
+
 # vcs
 "diff.plus" = "nord14"
 "diff.delta" = "nord12"
