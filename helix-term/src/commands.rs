@@ -1049,7 +1049,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             true,
         );
         // Trims some surrounding chars so that the actual file is opened.
-        let surrounding_chars: &[_] = &['\'', '"', '(', ')'];
+        let surrounding_chars: &[_] = &['\'', '"', '(', ')', ',', '.', ';'];
         paths.clear();
         paths.push(
             current_word
