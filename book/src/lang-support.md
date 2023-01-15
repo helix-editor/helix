@@ -11,6 +11,7 @@ Languages][adding-languages] guide for more language configuration information.
 
 {{#include ./generated/lang-support.md}}
 
-[lsp-install-wiki]: https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers
+[lsp-install-wiki]:
+  https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers
 [lang-config]: ./languages.md
 [adding-languages]: ./guides/adding_languages.md

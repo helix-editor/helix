@@ -1,8 +1,8 @@
 # Key Remapping
 
 One-way key remapping is temporarily supported via a simple TOML configuration
-file. (More powerful solutions such as rebinding via commands will be
-available in the future).
+file. (More powerful solutions such as rebinding via commands will be available
+in the future).
 
 To remap keys, write a `config.toml` file in your `helix` configuration
 directory (default `~/.config/helix` in Linux systems) with a structure like
@@ -23,13 +23,15 @@ g = { a = "code_action" } # Maps `ga` to show possible code actions
 "A-x" = "normal_mode" # Maps Alt-X to enter normal mode
 j = { k = "normal_mode" } # Maps `jk` to exit insert mode
 ```
-> NOTE: Typable commands can also be remapped, remember to keep the `:` prefix to indicate it's a typable command.
 
-Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
-`C-`, `S-` and `A-`. Special keys are encoded as follows:
+> NOTE: Typable commands can also be remapped, remember to keep the `:` prefix
+> to indicate it's a typable command.
+
+Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes `C-`,
+`S-` and `A-`. Special keys are encoded as follows:
 
 | Key name     | Representation |
-| ---          | ---            |
+| ------------ | -------------- |
 | Backspace    | `"backspace"`  |
 | Space        | `"space"`      |
 | Return/Enter | `"ret"`        |
@@ -50,5 +52,9 @@ Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
 
 Keys can be disabled by binding them to the `no_op` command.
 
-Commands can be found at [Keymap](https://docs.helix-editor.com/keymap.html) Commands.
-> Commands can also be found in the source code at [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs) at the invocation of `static_commands!` macro and the `TypableCommandList`.
+Commands can be found at [Keymap](https://docs.helix-editor.com/keymap.html)
+Commands.
+
+> Commands can also be found in the source code at
+> [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs)
+> at the invocation of `static_commands!` macro and the `TypableCommandList`.

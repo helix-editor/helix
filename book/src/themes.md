@@ -1,14 +1,22 @@
 # Themes
 
-To use a theme add `theme = "<name>"` to your [`config.toml`](./configuration.md) at the very top of the file before the first section or select it during runtime using `:theme <name>`.
+To use a theme add `theme = "<name>"` to your
+[`config.toml`](./configuration.md) at the very top of the file before the first
+section or select it during runtime using `:theme <name>`.
 
 ## Creating a theme
 
-Create a file with the name of your theme as file name (i.e `mytheme.toml`) and place it in your `themes` directory (i.e `~/.config/helix/themes`). The directory might have to be created beforehand.
+Create a file with the name of your theme as file name (i.e `mytheme.toml`) and
+place it in your `themes` directory (i.e `~/.config/helix/themes`). The
+directory might have to be created beforehand.
 
-The names "default" and "base16_default" are reserved for the builtin themes and cannot be overridden by user defined themes.
+The names "default" and "base16_default" are reserved for the builtin themes and
+cannot be overridden by user defined themes.
 
-The default theme.toml can be found [here](https://github.com/helix-editor/helix/blob/master/theme.toml), and user submitted themes [here](https://github.com/helix-editor/helix/blob/master/runtime/themes). 
+The default theme.toml can be found
+[here](https://github.com/helix-editor/helix/blob/master/theme.toml), and user
+submitted themes
+[here](https://github.com/helix-editor/helix/blob/master/runtime/themes).
 
 Each line in the theme file is specified as below:
 
@@ -16,7 +24,10 @@ Each line in the theme file is specified as below:
 key = { fg = "#ffffff", bg = "#000000", underline = { color = "#ff0000", style = "curl"}, modifiers = ["bold", "italic"] }
 ```
 
-where `key` represents what you want to style, `fg` specifies the foreground color, `bg` the background color, `underline` the underline `style`/`color`, and `modifiers` is a list of style modifiers. `bg`, `underline` and `modifiers` can be omitted to defer to the defaults.
+where `key` represents what you want to style, `fg` specifies the foreground
+color, `bg` the background color, `underline` the underline `style`/`color`, and
+`modifiers` is a list of style modifiers. `bg`, `underline` and `modifiers` can
+be omitted to defer to the defaults.
 
 To specify only the foreground color:
 
@@ -24,7 +35,8 @@ To specify only the foreground color:
 key = "#ffffff"
 ```
 
-if the key contains a dot `'.'`, it must be quoted to prevent it being parsed as a [dotted key](https://toml.io/en/v1.0.0#keys).
+if the key contains a dot `'.'`, it must be quoted to prevent it being parsed as
+a [dotted key](https://toml.io/en/v1.0.0#keys).
 
 ```toml
 "key.key" = "#ffffff"
@@ -33,8 +45,8 @@ if the key contains a dot `'.'`, it must be quoted to prevent it being parsed as
 ### Color palettes
 
 It's recommended define a palette of named colors, and refer to them from the
-configuration values in your theme. To do this, add a table called
-`palette` to your theme file:
+configuration values in your theme. To do this, add a table called `palette` to
+your theme file:
 
 ```toml
 "ui.background" = "white"
@@ -45,15 +57,15 @@ white = "#ffffff"
 black = "#000000"
 ```
 
-Remember that the `[palette]` table includes all keys after its header,
-so you should define the palette after normal theme options.
+Remember that the `[palette]` table includes all keys after its header, so you
+should define the palette after normal theme options.
 
 The default palette uses the terminal's default 16 colors, and the colors names
 are listed below. The `[palette]` section in the config file takes precedence
 over it and is merged into the default palette.
 
 | Color Name      |
-| ---             |
+| --------------- |
 | `black`         |
 | `red`           |
 | `green`         |
@@ -73,43 +85,43 @@ over it and is merged into the default palette.
 
 ### Modifiers
 
-The following values may be used as modifiers. 
+The following values may be used as modifiers.
 
 Less common modifiers might not be supported by your terminal emulator.
 
-| Modifier             |
-| ---                  |
-| `bold`               |
-| `dim`                |
-| `italic`             |
-| `underlined`         |
-| `slow_blink`         |
-| `rapid_blink`        |
-| `reversed`           |
-| `hidden`             |
-| `crossed_out`        |
+| Modifier      |
+| ------------- |
+| `bold`        |
+| `dim`         |
+| `italic`      |
+| `underlined`  |
+| `slow_blink`  |
+| `rapid_blink` |
+| `reversed`    |
+| `hidden`      |
+| `crossed_out` |
 
-> Note: The `underlined` modifier is deprecated and only available for backwards compatibility.
-> Its behavior is equivalent to setting `underline.style="line"`.
+> Note: The `underlined` modifier is deprecated and only available for backwards
+> compatibility. Its behavior is equivalent to setting `underline.style="line"`.
 
 ### Underline Style
 
-One of the following values may be used as a value for `underline.style`. 
+One of the following values may be used as a value for `underline.style`.
 
 Some styles might not be supported by your terminal emulator.
 
-| Modifier       |
-| ---            |
-| `line`         |
-| `curl`         |
-| `dashed`       |
-| `dotted`       |
-| `double_line`  |
-
+| Modifier      |
+| ------------- |
+| `line`        |
+| `curl`        |
+| `dashed`      |
+| `dotted`      |
+| `double_line` |
 
 ### Inheritance
 
-Extend upon other themes by setting the `inherits` property to an existing theme.
+Extend upon other themes by setting the `inherits` property to an existing
+theme.
 
 ```toml
 inherits = "boo_berry"
@@ -128,9 +140,12 @@ The following is a list of scopes available to use for styling.
 
 #### Syntax highlighting
 
-These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme).
+These keys match
+[tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme).
 
-For a given highlight produced, styling will be determined based on the longest matching theme key. For example, the highlight `function.builtin.static` would match the key `function.builtin` rather than `function`.
+For a given highlight produced, styling will be determined based on the longest
+matching theme key. For example, the highlight `function.builtin.static` would
+match the key `function.builtin` rather than `function`.
 
 We use a similar set of scopes as
 [SublimeText](https://www.sublimetext.com/docs/scope_naming.html). See also
@@ -145,7 +160,9 @@ We use a similar set of scopes as
 - `constructor`
 
 - `constant` (TODO: constant.other.placeholder for %v)
-  - `builtin` Special constants provided by the language (`true`, `false`, `nil` etc)
+
+  - `builtin` Special constants provided by the language (`true`, `false`, `nil`
+    etc)
     - `boolean`
   - `character`
     - `escape`
@@ -154,6 +171,7 @@ We use a similar set of scopes as
     - `float`
 
 - `string` (TODO: string.quoted.{single, double}, string.raw/.unquoted)?
+
   - `regexp` - Regular expressions
   - `special`
     - `path`
@@ -161,11 +179,13 @@ We use a similar set of scopes as
     - `symbol` - Erlang/Elixir atoms, Ruby symbols, Clojure keywords
 
 - `comment` - Code comments
+
   - `line` - Single line comments (`//`)
-  - `block` - Block comments (e.g. (`/*     */`)
+  - `block` - Block comments (e.g. (`/* */`)
     - `documentation` - Documentation comments (e.g. `///` in Rust)
 
 - `variable` - Variables
+
   - `builtin` - Reserved language variables (`self`, `this`, `super`, etc)
   - `parameter` - Function parameters
   - `other`
@@ -174,11 +194,13 @@ We use a similar set of scopes as
 - `label`
 
 - `punctuation`
+
   - `delimiter` - Commas, colons
   - `bracket` - Parentheses, angle brackets, etc.
   - `special` - String interpolation brackets.
 
 - `keyword`
+
   - `control`
     - `conditional` - `if`, `else`
     - `repeat` - `for`, `while`, `loop`
@@ -186,15 +208,16 @@ We use a similar set of scopes as
     - `return`
     - `exception`
   - `operator` - `or`, `in`
-  - `directive` - Preprocessor directives (`#if` in C) 
+  - `directive` - Preprocessor directives (`#if` in C)
   - `function` - `fn`, `func`
   - `storage` - Keywords describing how things are stored
-    - `type` - The type of something, `class`, `function`, `var`, `let`, etc. 
+    - `type` - The type of something, `class`, `function`, `var`, `let`, etc.
     - `modifier` - Storage modifiers like `static`, `mut`, `const`, `ref`, etc.
 
 - `operator` - `||`, `+=`, `>`
 
 - `function`
+
   - `builtin`
   - `method`
   - `macro`
@@ -207,6 +230,7 @@ We use a similar set of scopes as
 - `special`
 
 - `markup`
+
   - `heading`
     - `marker`
     - `1`, `2`, `3`, `4`, `5`, `6` - heading text for h1 through h6
@@ -246,9 +270,8 @@ These scopes are used for theming the editor interface.
       - `completion` - for completion doc popup ui
       - `hover` - for hover popup ui
 
-
 | Key                         | Notes                                                                                          |
-| ---                         | ---                                                                                            |
+| --------------------------- | ---------------------------------------------------------------------------------------------- |
 | `ui.background`             |                                                                                                |
 | `ui.background.separator`   | Picker separator below input line                                                              |
 | `ui.cursor`                 |                                                                                                |
@@ -266,7 +289,7 @@ These scopes are used for theming the editor interface.
 | `ui.statusline.insert`      | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.select`      | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.separator`   | Separator character in statusline                                                              |
-| `ui.popup`                  | Documentation popups (e.g Space + k)                                                             |
+| `ui.popup`                  | Documentation popups (e.g Space + k)                                                           |
 | `ui.popup.info`             | Prompt for multiple key options                                                                |
 | `ui.window`                 | Border lines separating splits                                                                 |
 | `ui.help`                   | Description box for commands                                                                   |
@@ -275,7 +298,7 @@ These scopes are used for theming the editor interface.
 | `ui.text.inactive`          | Same as `ui.text` but when the text is inactive (e.g. suggestions)                             |
 | `ui.text.info`              | The key: command text in `ui.popup.info` boxes                                                 |
 | `ui.virtual.ruler`          | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
-| `ui.virtual.whitespace`     | Visible whitespace characters                                                                 |
+| `ui.virtual.whitespace`     | Visible whitespace characters                                                                  |
 | `ui.virtual.indent-guide`   | Vertical indent width guides                                                                   |
 | `ui.menu`                   | Code and command completion menus                                                              |
 | `ui.menu.selected`          | Selected autocomplete item                                                                     |
