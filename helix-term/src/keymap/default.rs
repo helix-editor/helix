@@ -270,6 +270,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "r" => rename_symbol,
             "h" => select_references_to_symbol_under_cursor,
             "?" => command_palette,
+            "e" => toggle_or_focus_explorer,
+            "E" => open_explorer_recursion,
         },
         "z" => { "View"
             "z" | "c" => align_view_center,
