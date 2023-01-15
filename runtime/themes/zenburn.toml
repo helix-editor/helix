@@ -34,6 +34,10 @@
 "ui.help" = { fg = "white", bg = "black" }
 "ui.virtual.ruler" = { bg = "#484848" }
 "ui.virtual.whitespace" = { fg = "#5b605e", modifiers = ["bold"]}
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 
 "punctuation.delimiter" = "#8f8f8f"
 

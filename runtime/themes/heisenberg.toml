@@ -51,6 +51,10 @@
 "ui.virtual.whitespace" = { fg = "#08341B" }
 "ui.virtual.ruler" = { bg = "#041B0E" }
 "ui.virtual.indent-guide" = { fg = "#08341B" }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 "ui.menu" = { fg = "crystal_blue", bg = "background" }
 "ui.menu.selected" = { bg = "hazmat_yellow", fg = "background" }
 "ui.selection" = { bg = "#1B0334" }

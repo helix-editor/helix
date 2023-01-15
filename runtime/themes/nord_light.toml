@@ -8,6 +8,10 @@
 "ui.statusline.inactive" = {bg="nord5", fg="nord0"}
 "ui.virtual" = "nord8"
 "ui.virtual.ruler" = {bg="nord4"}
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 "ui.cursor.match" = {bg="nord8"}
 "ui.cursor" = {bg="nord10", fg="nord6"}
 "ui.cursorline.primary" = {bg="nord5"}

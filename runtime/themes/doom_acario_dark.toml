@@ -65,6 +65,10 @@
 'ui.text.info' = { fg = 'fg' }
 'ui.virtual.whitespace' = { fg = 'base2' }
 'ui.virtual.ruler' = { bg = 'black' }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 'ui.menu' = { fg = 'fg', bg = 'bg-alt' }
 'ui.menu.selected' = { bg = 'base3', fg = 'fg' }
 'ui.selection' = { bg = 'base2' }

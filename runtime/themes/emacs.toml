@@ -71,6 +71,10 @@
 "ui.virtual.whitespace" = "highlight"
 "ui.virtual.ruler" = { bg = "gray95" }
 "ui.virtual.inlay-hint" = { fg = "gray75" }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 "ui.cursorline.primary" = { bg = "darkseagreen2" }
 "ui.cursorline.secondary" = { bg = "darkseagreen2" }
 

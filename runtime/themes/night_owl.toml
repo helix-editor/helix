@@ -36,6 +36,10 @@
 'ui.help' = { fg = 'gold', bg = 'background2'}
 'ui.virtual.ruler' = { bg = 'grey4' }
 'ui.virtual.whitespace' = { fg = 'grey4' }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 'ui.cursorline.primary' = { bg = 'background2' }
 
 # SYNTAX

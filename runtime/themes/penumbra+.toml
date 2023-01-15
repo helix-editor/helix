@@ -84,6 +84,10 @@ error = "red"
 "ui.virtual.ruler" = { bg = "shade-" }
 "ui.virtual.whitespace" = "sky-"
 "ui.virtual.indent-guide" = "shade+"
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 
 "ui.menu" = { fg = "sky", bg = "shade-" }
 "ui.menu.selected" = { fg = "blue", modifiers = ["bold"] }

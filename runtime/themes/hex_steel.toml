@@ -59,6 +59,10 @@
 "ui.virtual.ruler" = { bg = "t1" }
 "ui.virtual.indent-guide" = { fg = "t3" }
 "ui.virtual.whitespace" = { fg = "t3" }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 
 "diagnostic.error" = { underline = { color = "error", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "warning", style = "curl" } }

@@ -60,6 +60,10 @@ label = "scale.red.5"
 "ui.text.focus" = { fg = "fg.default" }
 "ui.text.inactive" = "fg.subtle"
 "ui.virtual" = { fg = "scale.gray.2" }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 
 "ui.selection" = { bg = "scale.blue.0" }
 "ui.selection.primary" = { bg = "scale.blue.1" }
