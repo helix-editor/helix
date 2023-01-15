@@ -63,6 +63,10 @@
 "ui.menu.selected" = { fg = "fg", bg = "bg1" }
 "ui.selection" = { bg = "bg3" }
 "ui.virtual.whitespace" = "grey0"
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 "ui.statusline.insert" = { bg = "green", fg = "bg2" }
 "ui.statusline.select" = { bg = "blue", fg = "bg2" }
 "ui.virtual.wrap" = { fg = "grey0" }

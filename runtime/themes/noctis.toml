@@ -47,6 +47,10 @@
 'ui.virtual.ruler' = { bg = "mid-green" } # Vertical rulers (colored columns in editing area).
 'ui.virtual.whitespace' = { fg = "light-gray"} # Whitespace markers in editing area.
 'ui.virtual.indent-guide' = { fg = "light-gray" } # Indentation guides.
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 
 'ui.statusline' = { fg = "light-green", bg = "autocomp-green"} # Status line.
 'ui.statusline.inactive' = { fg = "white", bg = "mid-green"} # Status line in unfocused windows.

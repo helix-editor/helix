@@ -49,6 +49,10 @@
 "ui.virtual.ruler" = { bg = "foreground_gutter" }
 "ui.virtual.whitespace" = { fg = "foreground_gutter" }
 "ui.virtual.inlay-hint" = { fg = "comment" }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 "ui.window" = { fg = "black" }
 
 "error" = { fg = "red" }

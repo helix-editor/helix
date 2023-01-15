@@ -31,6 +31,10 @@
 "ui.virtual.inlay-hint.parameter" = { fg = "white", bg = "gray"}
 "ui.virtual.inlay-hint.type" = { fg = "white", bg = "gray"}
 "ui.virtual.wrap" = "gray"
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 
 "variable" = "light-red"
 "constant.numeric" = "yellow"

@@ -57,6 +57,10 @@
 "ui.text.focus" = { fg = "#250E07", modifiers= ["bold"] }
 "ui.virtual.whitespace" = "#A6B6CE"
 "ui.virtual.ruler" = { bg = "#F3EAE9" }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 
 "ui.selection" = { bg = "#F3EAE9" }
 "ui.cursor.primary" = { bg = "#ED5466", fg = "#FFFCFD", modifiers = ["bold"] }

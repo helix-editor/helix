@@ -3,6 +3,16 @@
 # https://www.nordtheme.com/docs/colors-and-palettes
 
 ## SYNTAX HIGHLIGHTING
+"ui.linenr.selected" = "nord4"
+"ui.cursorline.primary" = { bg = "nord1" }
+"ui.text.focus" = { fg = "nord8", modifiers = ["bold"] }
+"ui.menu" = { fg = "nord6", bg = "nord1" }
+"ui.menu.selected" = { fg = "nord8", bg = "nord2" }
+"ui.virtual.ruler" = { bg = "nord1" }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 
 # Constants
 "constant" = "nord4" 

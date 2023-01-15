@@ -72,6 +72,10 @@
 "ui.menu.selected" = { fg = "bg0", bg = "green" }
 "ui.virtual.whitespace" = { fg = "grey_dim" }
 "ui.virtual.ruler" = { bg = "grey_dim" }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 
 info = { fg = 'green', bg = 'bg2' }
 hint = { fg = 'blue', bg = 'bg2', modifiers = ['bold'] }

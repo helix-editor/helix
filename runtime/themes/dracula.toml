@@ -93,6 +93,10 @@
 "ui.virtual.inlay-hint"           = { fg    = "cyan"                                                        }
 "ui.virtual.inlay-hint.parameter" = { fg    = "cyan",            modifiers = ["italic", "dim"]              }
 "ui.virtual.inlay-hint.type"      = { fg    = "cyan",            modifiers = ["italic", "dim"]              }
+"ui.virtual.jump.single"          = { fg    = "#ff007c", modifiers         = ["bold"] }
+"ui.virtual.jump.multi.first"     = { fg    = "#00dfff", modifiers         = ["bold"] }
+"ui.virtual.jump.multi.rest"      = "#2b8db3"
+"ui.virtual.jump.dim"             = "#666666"
 "hint"                            = { fg    = "purple"                                                      }
 "error"                           = { fg    = "red"                                                         }
 "warning"                         = { fg    = "yellow"                                                      }

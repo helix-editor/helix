@@ -2,6 +2,10 @@
 
 "ui.background" = { bg = "base00" }
 "ui.virtual.whitespace" = "base03"
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 "ui.menu" = { fg = "base05", bg = "base01" }
 "ui.menu.selected" = { fg = "base01", bg = "base04" }
 "ui.linenr" = { fg = "base03", bg = "base01" }

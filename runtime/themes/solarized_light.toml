@@ -107,6 +107,10 @@
 
 "ui.virtual.indent-guide" = { fg = "base02" }
 "ui.virtual.ruler" = { fg = "red" }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 
 # normal模式的光标
 # normal mode cursor

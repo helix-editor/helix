@@ -73,6 +73,10 @@
 "ui.menu.selected" = { fg = "base", bg = "bg2", modifiers = ["bold"] }
 "ui.virtual" = "base-dim"
 "ui.virtual.ruler" = { bg = "bg1" }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 
 "diagnostic.warning" = { underline = { style = "curl", color = "meta" } }
 "diagnostic.error" = { underline = { style = "curl", color = "#e0211d" } }

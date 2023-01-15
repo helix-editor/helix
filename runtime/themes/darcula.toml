@@ -24,6 +24,10 @@
 "ui.virtual.indent-guide" = "grey02"
 "ui.virtual.whitespace" = "grey03"
 "ui.virtual.inlay-hint" = { fg = "grey03", modifiers = ["italic"] }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 "ui.bufferline" = { fg = "grey04", bg = "grey00" }
 "ui.bufferline.active" = { fg = "grey07", bg = "grey02" }
 

@@ -14,6 +14,10 @@
 "ui.statusline.inactive" = {bg="selection_foreground", fg="foreground"}
 "ui.virtual.whitespace" = { fg = "regular5" }
 "ui.virtual.ruler" = {bg="cursorline_background"}
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 "ui.cursor.match" = {bg = "regular5", fg = "regular0"}
 "ui.cursor" = {bg = "regular5", fg = "background"}
 "ui.window" = {bg = "#303030", fg = "bright2"}

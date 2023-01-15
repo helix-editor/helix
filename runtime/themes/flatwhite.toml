@@ -62,6 +62,10 @@
 "ui.virtual.inlay-hint" = { fg = "base4", modifiers = ["normal"] }
 "ui.virtual.inlay-hint.parameter" = { fg = "base3", modifiers = ["normal"] }
 "ui.virtual.inlay-hint.type" = { fg = "base3", modifiers = ["italic"] }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 
 "ui.linenr" = { bg = "base6" }
 "ui.linenr.selected" = { bg = "base6", modifiers = ["reversed"] }

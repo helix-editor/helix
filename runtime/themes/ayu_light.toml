@@ -55,6 +55,10 @@
 "ui.virtual.whitespace" = "dark_gray"
 "ui.virtual.ruler" = { bg = "black" }
 "ui.virtual.inlay-hint" = { fg = "#f4a028", bg = "#fcf2e3" }  # bg original #ffaa3333
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 "ui.menu" = { fg = "foreground", bg = "black" }
 "ui.menu.selected" = { bg = "gray", fg = "background" }
 "ui.selection" = { bg = "dark_gray" }

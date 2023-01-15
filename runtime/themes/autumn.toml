@@ -75,6 +75,12 @@
 "ui.window" = { fg = "my_gray3", bg = "my_gray2" }
 "variable" = "my_white3"
 "variable.other.member" = "my_brown"
+
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
+
 "warning" = "my_yellow2"
 
 [palette]

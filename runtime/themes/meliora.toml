@@ -53,6 +53,10 @@
 "ui.virtual.ruler" = { bg = "light_black2" }
 "ui.virtual.indent-guide" = { fg = "dark_grey2" }
 "ui.virtual.whitespace" = { fg = "grey" }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
  
 "diagnostic.error" = { underline = { color = "red", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "orange", style = "curl" } }

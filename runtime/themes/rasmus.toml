@@ -86,6 +86,10 @@
 "ui.virtual" = { fg = "gray03" }
 "ui.virtual.indent-guide" = { fg = "gray04" }
 "ui.virtual.inlay-hint" = { fg = "gray05" }
+"ui.virtual.jump.single" = { fg = "#ff007c", modifiers = ["bold"] }
+"ui.virtual.jump.multi.first" = { fg = "#00dfff", modifiers = ["bold"] }
+"ui.virtual.jump.multi.rest" = "#2b8db3"
+"ui.virtual.jump.dim" = "#666666"
 
 "ui.selection" = { bg = "gray03" }
 "ui.selection.primary" = { bg = "gray03" }
