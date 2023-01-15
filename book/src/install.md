@@ -148,7 +148,7 @@ accessible, you must follow the instructions for your operating system:
 
 Either,
 
-1. Set the `HELIX_RUNTIME` environmental variable on your system to tell Helix
+1. Set the `HELIX_RUNTIME` environment variable on your system to tell Helix
    where to find the runtime files.
 
    Use the `HELIX_RUNTIME=/path/to/helix/runtime` format, for example:
@@ -160,7 +160,9 @@ Or,
 2. Create a symlink in `~/.config/helix/` that links to the source code
    directory.
 
-`ln -s $PWD/runtime ~/.config/helix/runtime`
+   ```sh
+   ln -s $PWD/runtime ~/.config/helix/runtime
+   ```
 
 And optionally:
 
@@ -186,28 +188,33 @@ sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desk
 
 - Windows
 
-> TODO Add correct file paths after feedback
-
 Either,
 
-1. Set the `HELIX_RUNTIME` environmental variable on your system to tell Helix
+1. Set the `HELIX_RUNTIME` environment variable on your system to tell Helix
    where to find the runtime files.
 
-   Use the `???` format, for example: `???`. Add this variable to your `???`
-   file or equivalent to persist it.
+   You can either do this using the Windows settings (search for `Edit
+   environment variables for your account`) or use the `setx` command in Cmd:
+
+   ```sh
+   setx HELIX_RUNTIME "%userprofile%\source\repos\helix\runtime"
+   ```
+
+   > 💡 `%userprofile%` resolves to your user directory like
+   > `C:\Users\Your-Name\` for example.
 
 Or,
 
-2. Create a symlink in `???` that links to the source code directory.
+2. Create a symlink in `%appdata%\helix\` that links to the source
+   code directory.
 
-| Method     | Command                                                                                |
-| ---------- | -------------------------------------------------------------------------------------- |
-| PowerShell | `New-Item -ItemType SymbolicLink -Target "runtime" -Path "$Env:AppData\helix\runtime"` |
-| Cmd        | `cd %appdata%\helix`                                                                   |
-|            | `mklink /D runtime "<helix-repo>\runtime"`                                             |
+   | Method     | Command                                                                                |
+   | ---------- | -------------------------------------------------------------------------------------- |
+   | PowerShell | `New-Item -ItemType SymbolicLink -Target "runtime" -Path "$Env:AppData\helix\runtime"` |
+   | Cmd        | `cd %appdata%\helix` <br/> `mklink /D runtime "%userprofile%\src\helix\runtime"`       |
 
-> 💡 On Windows, creating a symbolic link may require running PowerShell or Cmd
-> as an administrator.
+   > 💡 On Windows, creating a symbolic link may require running PowerShell or Cmd
+   > as an administrator.
 
 ## Validating the Installation
 
