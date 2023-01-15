@@ -72,7 +72,7 @@ impl LanguageConfigurations {
 }
 impl Default for LanguageConfigurations {
     fn default() -> Self {
-       helix_loader::default_lang_config()
+       helix_loader::default_lang_configs()
             .try_into()
             .expect("Failed to deserialize built-in languages.toml into LanguageConfigurations")
     }
