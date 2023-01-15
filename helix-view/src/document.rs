@@ -357,7 +357,7 @@ impl Document {
     pub fn from(
         text: Rope,
         encoding: Option<&'static encoding::Encoding>,
-        worker: Option<Arc<WordsCompletion>>,
+        words_completion: Option<Arc<WordsCompletion>>,
     ) -> Self {
         let encoding = encoding.unwrap_or(encoding::UTF_8);
         let changes = ChangeSet::new(&text);
@@ -384,13 +384,13 @@ impl Document {
             modified_since_accessed: false,
             language_server: None,
             diff_handle: None,
-            words_completion: worker,
+            words_completion,
         }
     }
 
-    pub fn new(worker: Option<Arc<WordsCompletion>>) -> Self {
+    pub fn new(words_completion: Option<Arc<WordsCompletion>>) -> Self {
         Document {
-            words_completion: worker,
+            words_completion,
             ..Default::default()
         }
     }
@@ -402,7 +402,7 @@ impl Document {
         path: &Path,
         encoding: Option<&'static encoding::Encoding>,
         config_loader: Option<Arc<syntax::Loader>>,
-        worker: Option<Arc<WordsCompletion>>,
+        words_completion: Option<Arc<WordsCompletion>>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding) = if path.exists() {
@@ -414,7 +414,7 @@ impl Document {
             (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding)
         };
 
-        let mut doc = Self::from(rope, Some(encoding), worker);
+        let mut doc = Self::from(rope, Some(encoding), words_completion);
 
         // set the path and try detecting the language
         doc.set_path(Some(path))?;
@@ -424,20 +424,14 @@ impl Document {
 
         doc.detect_indent_and_line_ending();
 
-        doc.extract_words_by_worker(doc.text().to_string());
+        doc.extract_words(doc.text().to_string());
 
         Ok(doc)
     }
 
-    fn extract_words_by_worker(&self, text: String) {
-        if let Some(worker) = &self.words_completion {
-            worker.extract_words(self.id, text);
-        }
-    }
-
-    fn extract_line_words_by_worker(&self, lines: Vec<(usize, Option<String>)>) {
-        if let Some(worker) = &self.words_completion {
-            worker.extract_line_words(self.id, lines);
+    fn extract_words(&self, text: String) {
+        if let Some(words_completion) = &self.words_completion {
+            words_completion.extract_words(self.id, text);
         }
     }
 
@@ -584,7 +578,7 @@ impl Document {
 
         let identifier = self.path().map(|_| self.identifier());
         let language_server = self.language_server.clone();
-        let worker = self.words_completion.clone();
+        let words_completion = self.words_completion.clone();
 
         // mark changes up to now as saved
         let current_rev = self.get_current_revision();
@@ -630,8 +624,8 @@ impl Document {
                 }
             }
 
-            if let Some(worker) = worker {
-                worker.extract_words(doc_id, text.to_string());
+            if let Some(words_completion) = words_completion {
+                words_completion.extract_words(doc_id, text.to_string());
             }
 
             Ok(event)
@@ -689,7 +683,7 @@ impl Document {
 
         self.detect_indent_and_line_ending();
 
-        self.extract_words_by_worker(self.text().to_string());
+        self.extract_words(self.text().to_string());
 
         match provider_registry.get_diff_base(&path) {
             Some(diff_base) => self.set_diff_base(diff_base, redraw_handle),
@@ -885,8 +879,8 @@ impl Document {
                 }
             }
 
-            // find affected lines, sync lines text with worker doc-line index
-            if self.words_completion.is_some() {
+            // find affected lines, sync lines text with doc-line index
+            if let Some(words_completion) = &self.words_completion {
                 let new_pos = self
                     .selection(view_id)
                     .primary()
@@ -896,10 +890,10 @@ impl Document {
                 let new_line = self.text.char_to_line(new_pos);
 
                 if old_line == new_line {
-                    self.extract_line_words_by_worker(vec![(
-                        old_line,
-                        self.text.get_line(old_line).map(String::from),
-                    )]);
+                    words_completion.extract_line_words(
+                        self.id,
+                        vec![(old_line, self.text.get_line(old_line).map(String::from))],
+                    );
                 } else {
                     let range = if old_line < new_line {
                         old_line..new_line
@@ -909,7 +903,7 @@ impl Document {
 
                     if range.end - range.start > CHANGED_LINES_TO_PROCESS_WHOLE_DOC {
                         // on too many lines changed - use whole text
-                        self.extract_words_by_worker(self.text.to_string());
+                        words_completion.extract_words(self.id, self.text.to_string());
                     } else {
                         let lines_text = range
                             .into_iter()
@@ -923,7 +917,7 @@ impl Document {
                             })
                             .collect::<Vec<(usize, Option<String>)>>();
 
-                        self.extract_line_words_by_worker(lines_text);
+                        words_completion.extract_line_words(self.id, lines_text);
                     }
                 }
             }
@@ -1145,7 +1139,7 @@ impl Document {
         server.is_initialized().then(|| server)
     }
 
-    pub fn worker(&self) -> Option<&WordsCompletion> {
+    pub fn words_completion(&self) -> Option<&WordsCompletion> {
         self.words_completion.as_deref()
     }
 
