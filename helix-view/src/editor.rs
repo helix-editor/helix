@@ -172,11 +172,12 @@ impl Default for ExplorerConfig {
     fn default() -> Self {
         Self {
             style: ExplorerStyle::Tree,
-            position: ExplorerPosition::Overlay,
+            position: ExplorerPosition::Embed,
             column_width: 30,
         }
     }
 }
+impl Eq for ExplorerConfig  {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]

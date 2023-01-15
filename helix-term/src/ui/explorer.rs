@@ -569,7 +569,7 @@ impl Explorer {
             }
             key!(Esc) | ctrl!('c') => self.tree.restore_recycle(),
             _ => {
-                if let EventResult::Consumed(_) = prompt.handle_event(Event::Key(event), cx) {
+                if let EventResult::Consumed(_) = prompt.handle_event(&Event::Key(event), cx) {
                     self.tree.filter(prompt.line(), cx, &mut self.state);
                 }
                 self.prompt = Some((action, prompt));
@@ -616,7 +616,7 @@ impl Explorer {
             }
             key!(Esc) | ctrl!('c') => self.tree.restore_view(),
             _ => {
-                if let EventResult::Consumed(_) = prompt.handle_event(Event::Key(event), cx) {
+                if let EventResult::Consumed(_) = prompt.handle_event(&Event::Key(event), cx) {
                     if search_next {
                         self.tree.search_next(cx, prompt.line(), &mut self.state);
                     } else {
@@ -672,7 +672,7 @@ impl Explorer {
             }
             (_, key!(Esc) | ctrl!('c')) => {}
             _ => {
-                prompt.handle_event(Event::Key(event), cx);
+                prompt.handle_event(&Event::Key(event), cx);
                 self.prompt = Some((action, prompt));
             }
         }
@@ -714,7 +714,7 @@ impl Explorer {
 
 impl Component for Explorer {
     /// Process input events, return true if handled.
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let key_event = match event {
             Event::Key(event) => event,
             Event::Resize(..) => return EventResult::Consumed(None),
@@ -724,10 +724,10 @@ impl Component for Explorer {
             return EventResult::Ignored(None);
         }
         if let Some(mut on_next_key) = self.on_next_key.take() {
-            return on_next_key(cx, self, key_event);
+            return on_next_key(cx, self, *key_event);
         }
 
-        if let EventResult::Consumed(c) = self.handle_prompt_event(key_event, cx) {
+        if let EventResult::Consumed(c) = self.handle_prompt_event(*key_event, cx) {
             return EventResult::Consumed(c);
         }
 
@@ -737,7 +737,8 @@ impl Component for Explorer {
             }
         })));
 
-        match key_event.into() {
+        match (*key_event).into() {
+            
             key!(Esc) => self.unfocus(),
             ctrl!('c') => return close_fn,
             key!('n') => {
@@ -788,7 +789,7 @@ impl Component for Explorer {
             }
             _ => {
                 self.tree
-                    .handle_event(Event::Key(key_event), cx, &mut self.state);
+                    .handle_event(Event::Key(*key_event), cx, &mut self.state);
             }
         }
 
