@@ -50,7 +50,7 @@ pub fn general() -> std::io::Result<()> {
     let mut stdout = stdout.lock();
 
     let config_file = helix_loader::config_file();
-    let lang_file = helix_loader::lang_config_file();
+    let lang_file = helix_loader::user_lang_config_file();
     let log_file = helix_loader::log_file();
     let rt_dir = helix_loader::runtime_dir();
     let clipboard_provider = get_clipboard_provider();

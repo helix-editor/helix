@@ -1,6 +1,6 @@
 mod help;
 
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Result};
 use crossterm::event::EventStream;
 use helix_core::syntax::LanguageConfigurations;
 use helix_loader::VERSION_AND_GIT_HASH;

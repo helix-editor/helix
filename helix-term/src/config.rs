@@ -22,7 +22,7 @@ impl Config {
             .map_err(|error| anyhow!("{}", error))
     }
 
-    pub fn merge_in_default_keymap(mut self) -> Config {
+    pub fn merge_in_default_keymap(mut self) -> Self {
         let mut delta = std::mem::replace(&mut self.keys, default::default());
         for (mode, keys) in &mut self.keys {
             keys.merge_keytrie(delta.remove(mode).unwrap_or_default())
