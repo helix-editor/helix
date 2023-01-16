@@ -20,7 +20,6 @@ use std::{
     borrow::Cow,
     collections::{BTreeMap, HashMap},
     io::stdin,
-    marker::PhantomData,
     num::NonZeroUsize,
     path::{Path, PathBuf},
     pin::Pin,
