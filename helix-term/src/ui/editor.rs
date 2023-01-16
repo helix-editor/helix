@@ -706,12 +706,23 @@ impl EditorView {
                     ""
                 }
             );
+
             let used_width = viewport.x.saturating_sub(x);
             let rem_width = surface.area.width.saturating_sub(used_width);
 
-            x = surface
-                .set_stringn(x, viewport.y, text, rem_width as usize, style)
-                .0;
+            x = if diagnostic_count > 0 {
+                let background_style = editor.theme.get("ui.background");
+                let error_style = editor.theme.get("error");
+                let diagnostic_style = Style::reset().patch(background_style).patch(error_style);
+
+                surface
+                    .set_stringn(x, viewport.y, text, rem_width as usize, diagnostic_style)
+                    .0
+            } else {
+                surface
+                    .set_stringn(x, viewport.y, text, rem_width as usize, style)
+                    .0
+            };
 
             if x >= surface.area.right() {
                 break;

@@ -2308,6 +2308,7 @@ fn buffer_picker(cx: &mut Context) {
         path: Option<PathBuf>,
         is_modified: bool,
         is_current: bool,
+        has_diagnostics: bool,
     }
 
     impl ui::menu::Item for BufferMeta {
@@ -2324,6 +2325,10 @@ fn buffer_picker(cx: &mut Context) {
             };
 
             let mut flags = Vec::new();
+
+            if self.has_diagnostics {
+                flags.push("!");
+            }
             if self.is_modified {
                 flags.push("+");
             }
@@ -2336,6 +2341,7 @@ fn buffer_picker(cx: &mut Context) {
             } else {
                 format!(" ({})", flags.join(""))
             };
+
             format!("{} {}{}", self.id, path, flag).into()
         }
     }
@@ -2345,6 +2351,7 @@ fn buffer_picker(cx: &mut Context) {
         path: doc.path().cloned(),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
+        has_diagnostics: !doc.diagnostics().is_empty(),
     };
 
     let picker = FilePicker::new(
