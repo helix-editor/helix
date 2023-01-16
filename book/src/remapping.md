@@ -25,6 +25,9 @@ j = { k = "normal_mode" } # Maps `jk` to exit insert mode
 ```
 > NOTE: Typable commands can also be remapped, remember to keep the `:` prefix to indicate it's a typable command.
 
+> NOTE: Bindings can be nested, to create (or edit) minor modes: `g = { a = "code_action"}` adds a new entry to
+> the `goto` mode.
+
 Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
 `C-`, `S-` and `A-`. Special keys are encoded as follows:
 
