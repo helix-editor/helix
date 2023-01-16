@@ -1274,6 +1274,7 @@ dependencies = [
  "helix-lsp",
  "helix-tui",
  "helix-vcs",
+ "libc",
  "log",
  "once_cell",
  "serde",
