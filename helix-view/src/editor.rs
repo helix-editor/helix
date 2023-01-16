@@ -105,23 +105,14 @@ impl From<Vec<GutterType>> for GutterConfig {
     }
 }
 
-fn deserialize_gutter_seq_or_struct<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+fn deserialize_gutter_seq_or_struct<'de, D>(deserializer: D) -> Result<GutterConfig, D::Error>
 where
-    T: Deserialize<'de> + From<Vec<GutterType>>,
     D: Deserializer<'de>,
 {
-    // This is a Visitor that forwards string types to T's `FromStr` impl and
-    // forwards map types to T's `Deserialize` impl. The `PhantomData` is to
-    // keep the compiler from complaining about T being an unused generic type
-    // parameter. We need T in order to know the Value type for the Visitor
-    // impl.
-    struct GutterSeqOrStruct<T>(PhantomData<fn() -> T>);
+    struct GutterVisitor;
 
-    impl<'de, T> serde::de::Visitor<'de> for GutterSeqOrStruct<T>
-    where
-        T: Deserialize<'de> + From<Vec<GutterType>>,
-    {
-        type Value = T;
+    impl<'de> serde::de::Visitor<'de> for GutterVisitor {
+        type Value = GutterConfig;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
             write!(
@@ -155,7 +146,7 @@ where
         }
     }
 
-    deserializer.deserialize_any(GutterSeqOrStruct(PhantomData))
+    deserializer.deserialize_any(GutterVisitor)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
