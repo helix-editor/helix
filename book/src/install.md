@@ -43,10 +43,15 @@ throughout the Linux ecosystem:
 If Helix is not available through your distribution's official repository, use a
 third-party repository.
 
-- Ubuntu
+### Ubuntu
 
-Helix is available for 20.04 LTS (Focal Fossa) and 22.04 Ubuntu 22.04 LTS (Jammy
-Jellyfish) via
+Helix is available for the following versions of Ubuntu:
+
+- 20.04 LTS (Focal Fossa)
+- 22.04 LTS (Jammy Jellyfish)
+- 22.10 (Kinetic Kudu)
+
+Via
 [Maveonair's PPA](https://launchpad.net/~maveonair/+archive/ubuntu/helix-editor):
 
 ```sh
@@ -55,7 +60,7 @@ sudo apt update
 sudo apt install helix
 ```
 
-- Fedora/RHEL Linux
+### Fedora/RHEL Linux
 
 Helix is available via `copr`:
 
@@ -64,13 +69,13 @@ sudo dnf copr enable varlad/helix
 sudo dnf install helix
 ```
 
-- Arch Linux Community
+### Arch Linux Community
 
 Releases are available in the community repository. Additionally, a
 [helix-git](https://aur.archlinux.org/packages/helix-git/) package is available
 in the AUR, which builds the master branch.
 
-- NixOS
+### NixOS
 
 Helix is available as a [flake](https://nixos.wiki/wiki/Flakes) in the project
 root. Use `nix develop` to spin up a reproducible development shell. Outputs are
@@ -193,8 +198,9 @@ Either,
 1. Set the `HELIX_RUNTIME` environment variable on your system to tell Helix
    where to find the runtime files.
 
-   You can either do this using the Windows settings (search for `Edit
-   environment variables for your account`) or use the `setx` command in Cmd:
+   You can either do this using the Windows settings (search for
+   `Edit environment variables for your account`) or use the `setx` command in
+   Cmd:
 
    ```sh
    setx HELIX_RUNTIME "%userprofile%\source\repos\helix\runtime"
@@ -205,16 +211,16 @@ Either,
 
 Or,
 
-2. Create a symlink in `%appdata%\helix\` that links to the source
-   code directory.
+2. Create a symlink in `%appdata%\helix\` that links to the source code
+   directory.
 
    | Method     | Command                                                                                |
    | ---------- | -------------------------------------------------------------------------------------- |
    | PowerShell | `New-Item -ItemType SymbolicLink -Target "runtime" -Path "$Env:AppData\helix\runtime"` |
    | Cmd        | `cd %appdata%\helix` <br/> `mklink /D runtime "%userprofile%\src\helix\runtime"`       |
 
-   > 💡 On Windows, creating a symbolic link may require running PowerShell or Cmd
-   > as an administrator.
+   > 💡 On Windows, creating a symbolic link may require running PowerShell or
+   > Cmd as an administrator.
 
 ## Validating the Installation
 
