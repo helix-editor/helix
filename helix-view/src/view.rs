@@ -10,7 +10,7 @@ use helix_core::{
     char_idx_at_visual_offset,
     doc_formatter::TextFormat,
     syntax::Highlight,
-    text_annotations::TextAnnotations,
+    text_annotations::{Overlay, TextAnnotations},
     visual_offset_from_anchor, visual_offset_from_block, Position, RopeSlice, Selection,
     Transaction,
     VisualOffsetError::{PosAfterMaxRow, PosBeforeAnchorRow},
@@ -114,6 +114,8 @@ pub struct View {
     pub offset: ViewPosition,
     pub area: Rect,
     pub doc: DocumentId,
+    // If true, greys out the view.
+    pub dimmed: bool,
     pub jumps: JumpList,
     // documents accessed from this view from the oldest one to last viewed one
     pub docs_access_history: Vec<DocumentId>,
@@ -131,6 +133,15 @@ pub struct View {
     /// mapping keeps track of the last applied history revision so that only new changes
     /// are applied.
     doc_revisions: HashMap<DocumentId, usize>,
+    // `visual_jump_labels` are annotated overlay texts that the user can type, to move the cursor
+    // to the annotated location. It's a single array from logical standpoint, but it's split into
+    // three arrays such that each array corresponds to one highlight. The first array contains
+    // single character jump labels. The second and third arrays collectively represent multi-char
+    // jump labels, but the second one contains the leading (first) character, whereas the third
+    // array contains the remaining characters. The purpose of this is such that the leading
+    // character can be painted differently from the remaining characters.
+    pub visual_jump_labels: [Rc<[Overlay]>; 3],
+    pub in_visual_jump_mode: bool,
 }
 
 impl fmt::Debug for View {
@@ -153,6 +164,7 @@ impl View {
                 horizontal_offset: 0,
                 vertical_offset: 0,
             },
+            dimmed: false,
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
             docs_access_history: Vec::new(),
@@ -160,6 +172,8 @@ impl View {
             object_selections: Vec::new(),
             gutters,
             doc_revisions: HashMap::new(),
+            visual_jump_labels: [Rc::new([]), Rc::new([]), Rc::new([])],
+            in_visual_jump_mode: false,
         }
     }
 
@@ -414,6 +428,31 @@ impl View {
 
         let mut text_annotations = doc.text_annotations(theme);
 
+        let mut add_overlay = |overlays: Rc<[Overlay]>, style| {
+            if !overlays.is_empty() {
+                text_annotations.add_overlay(overlays, style);
+            }
+        };
+
+        let try_get_style =
+            |scope: &str| theme.and_then(|t| t.find_scope_index(scope)).map(Highlight);
+
+        // Overlays are added from lowest priority to highest, such that higher priority
+        // overlays can overwrite the lower ones.
+        add_overlay(
+            self.visual_jump_labels[2].clone(),
+            try_get_style("ui.virtual.jump.multi.rest"),
+        );
+        add_overlay(
+            self.visual_jump_labels[1].clone(),
+            try_get_style("ui.virtual.jump.multi.first"),
+        );
+        add_overlay(
+            self.visual_jump_labels[0].clone(),
+            try_get_style("ui.virtual.jump.single"),
+        );
+        text_annotations.reset_pos(self.offset.anchor);
+
         let DocumentInlayHints {
             id: _,
             type_inlay_hints,
@@ -426,15 +465,9 @@ impl View {
             None => return text_annotations,
         };
 
-        let type_style = theme
-            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.type"))
-            .map(Highlight);
-        let parameter_style = theme
-            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.parameter"))
-            .map(Highlight);
-        let other_style = theme
-            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint"))
-            .map(Highlight);
+        let type_style = try_get_style("ui.virtual.inlay-hint.type");
+        let parameter_style = try_get_style("ui.virtual.inlay-hint.parameter");
+        let other_style = try_get_style("ui.virtual.inlay-hint");
 
         let mut add_annotations = |annotations: &Rc<[_]>, style| {
             if !annotations.is_empty() {

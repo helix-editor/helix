@@ -16,10 +16,11 @@ use helix_core::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
     },
     movement::Direction,
-    syntax::{self, HighlightEvent},
+    syntax::{self, Highlight, HighlightEvent},
     text_annotations::TextAnnotations,
     unicode::width::UnicodeWidthStr,
-    visual_offset_from_block, Change, Position, Range, Selection, Transaction,
+    visual_offset_from_block, Change, Position, Range, RopeSlice, Selection,
+    Transaction,
 };
 use helix_view::{
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
@@ -124,28 +125,44 @@ impl EditorView {
             line_decorations.push(Box::new(line_decoration));
         }
 
-        let mut highlights =
-            Self::doc_syntax_highlights(doc, view.offset.anchor, inner.height, theme);
-        let overlay_highlights = Self::overlay_syntax_highlights(
-            doc,
-            view.offset.anchor,
-            inner.height,
-            &text_annotations,
-        );
-        if !overlay_highlights.is_empty() {
-            highlights = Box::new(syntax::merge(highlights, overlay_highlights));
-        }
-
-        for diagnostic in Self::doc_diagnostics_highlights(doc, theme) {
-            // Most of the `diagnostic` Vecs are empty most of the time. Skipping
-            // a merge for any empty Vec saves a significant amount of work.
-            if diagnostic.is_empty() {
-                continue;
+        let gather_base_hl = || {
+            if view.dimmed {
+                Self::dimmed_view(doc, view.offset.anchor, inner.height, theme)
+            } else {
+                Self::doc_syntax_highlights(doc, view.offset.anchor, inner.height, theme)
             }
-            highlights = Box::new(syntax::merge(highlights, diagnostic));
-        }
+        };
 
-        let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
+        let gather_overlay_hl = |highlights: Box<dyn Iterator<Item = HighlightEvent>>| {
+            let overlay_hl = Self::overlay_syntax_highlights(
+                doc,
+                view.offset.anchor,
+                inner.height,
+                &text_annotations,
+            );
+            if overlay_hl.is_empty() {
+                highlights
+            } else {
+                Box::new(syntax::merge(highlights, overlay_hl))
+            }
+        };
+
+        let gather_diagnostic_hl = |mut highlights: Box<dyn Iterator<Item = HighlightEvent>>| {
+            for diagnostic in Self::doc_diagnostics_highlights(doc, theme) {
+                // Most of the `diagnostic` Vecs are empty most of the time. Skipping
+                // a merge for any empty Vec saves a significant amount of work.
+                if diagnostic.is_empty() {
+                    continue;
+                }
+                highlights = Box::new(syntax::merge(highlights, diagnostic));
+            }
+            highlights
+        };
+
+        let gather_selection_hl = |highlights: Box<dyn Iterator<Item = HighlightEvent>>| {
+            if !is_focused {
+                return highlights;
+            }
             let highlights = syntax::merge(
                 highlights,
                 Self::doc_selection_highlights(
@@ -162,8 +179,19 @@ impl EditorView {
             } else {
                 Box::new(syntax::merge(highlights, focused_view_elements))
             }
+        };
+
+        let highlights = if view.in_visual_jump_mode {
+            let mut hl = gather_base_hl();
+            hl = gather_overlay_hl(hl);
+            hl = gather_selection_hl(hl);
+            hl
         } else {
-            Box::new(highlights)
+            let mut hl = gather_base_hl();
+            hl = gather_overlay_hl(hl);
+            hl = gather_diagnostic_hl(hl);
+            hl = gather_selection_hl(hl);
+            hl
         };
 
         let gutter_overflow = view.gutter_offset(doc) == 0;
@@ -257,6 +285,18 @@ impl EditorView {
             .for_each(|area| surface.set_style(area, ruler_theme))
     }
 
+    #[inline]
+    fn viewport_byte_range(text: RopeSlice, anchor: usize, height: u16) -> std::ops::Range<usize> {
+        let row = text.char_to_line(anchor.min(text.len_chars()));
+        // Saturating subs to make it inclusive zero indexing.
+        let last_line = text.len_lines().saturating_sub(1);
+        let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
+        let start = text.line_to_byte(row.min(last_line));
+        let end = text.line_to_byte(last_visible_line + 1);
+
+        start..end
+    }
+
     pub fn overlay_syntax_highlights(
         doc: &Document,
         anchor: usize,
@@ -264,19 +304,7 @@ impl EditorView {
         text_annotations: &TextAnnotations,
     ) -> Vec<(usize, std::ops::Range<usize>)> {
         let text = doc.text().slice(..);
-        let row = text.char_to_line(anchor.min(text.len_chars()));
-
-        let range = {
-            // Calculate viewport byte ranges:
-            // Saturating subs to make it inclusive zero indexing.
-            let last_line = text.len_lines().saturating_sub(1);
-            let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
-            let start = text.line_to_byte(row.min(last_line));
-            let end = text.line_to_byte(last_visible_line + 1);
-
-            start..end
-        };
-
+        let range = Self::viewport_byte_range(text, anchor, height);
         text_annotations.collect_overlay_highlights(range)
     }
 
@@ -290,19 +318,7 @@ impl EditorView {
         _theme: &Theme,
     ) -> Box<dyn Iterator<Item = HighlightEvent> + 'doc> {
         let text = doc.text().slice(..);
-        let row = text.char_to_line(anchor.min(text.len_chars()));
-
-        let range = {
-            // Calculate viewport byte ranges:
-            // Saturating subs to make it inclusive zero indexing.
-            let last_line = text.len_lines().saturating_sub(1);
-            let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
-            let start = text.line_to_byte(row.min(last_line));
-            let end = text.line_to_byte(last_visible_line + 1);
-
-            start..end
-        };
-
+        let range = Self::viewport_byte_range(text, anchor, height);
         match doc.syntax() {
             Some(syntax) => {
                 let iter = syntax
@@ -332,6 +348,34 @@ impl EditorView {
                 .into_iter(),
             ),
         }
+    }
+
+    pub fn dimmed_view(
+        doc: &Document,
+        anchor: usize,
+        height: u16,
+        theme: &Theme,
+    ) -> Box<dyn Iterator<Item = HighlightEvent>> {
+        let Some(highlight) = theme
+            .find_scope_index("ui.virtual.jump.dim")
+            .or_else(|| theme.find_scope_index("comment")) else {
+            // comment style as fallback
+            return Box::new(::std::iter::empty());
+        };
+
+        let text = doc.text().slice(..);
+        let range = Self::viewport_byte_range(text, anchor, height);
+        Box::new(
+            [
+                HighlightEvent::HighlightStart(Highlight(highlight)),
+                HighlightEvent::Source {
+                    start: text.byte_to_char(range.start),
+                    end: text.byte_to_char(range.end),
+                },
+                HighlightEvent::HighlightEnd,
+            ]
+            .into_iter(),
+        )
     }
 
     /// Get highlight spans for document diagnostics
