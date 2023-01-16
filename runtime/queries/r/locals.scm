@@ -3,7 +3,6 @@
 (function_definition) @local.scope
 
 (formal_parameters (identifier) @local.definition)
-(formal_parameters (default_parameter (identifier) @local.definition))
 
 (left_assignment name: (identifier) @local.definition)
 (equals_assignment name: (identifier) @local.definition)
