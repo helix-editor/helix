@@ -11,9 +11,7 @@ pub use typed::*;
 use helix_core::{
     comment, coords_at_pos, encoding, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
-    increment::date_time::DateTimeIncrementor,
-    increment::{number::NumberIncrementor, Increment},
-    indent,
+    increment, indent,
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
@@ -5028,57 +5026,25 @@ enum IncrementDirection {
     Increase,
     Decrease,
 }
-/// Increment object under cursor by count.
+
+/// Increment objects within selections by count.
 fn increment(cx: &mut Context) {
     increment_impl(cx, IncrementDirection::Increase);
 }
 
-/// Decrement object under cursor by count.
+/// Decrement objects within selections by count.
 fn decrement(cx: &mut Context) {
     increment_impl(cx, IncrementDirection::Decrease);
 }
 
-/// This function differs from find_next_char_impl in that it stops searching at the newline, but also
-/// starts searching at the current character, instead of the next.
-/// It does not want to start at the next character because this function is used for incrementing
-/// number and we don't want to move forward if we're already on a digit.
-fn find_next_char_until_newline<M: CharMatcher>(
-    text: RopeSlice,
-    char_matcher: M,
-    pos: usize,
-    _count: usize,
-    _inclusive: bool,
-) -> Option<usize> {
-    // Since we send the current line to find_nth_next instead of the whole text, we need to adjust
-    // the position we send to this function so that it's relative to that line and its returned
-    // position since it's expected this function returns a global position.
-    let line_index = text.char_to_line(pos);
-    let pos_delta = text.line_to_char(line_index);
-    let pos = pos - pos_delta;
-    search::find_nth_next(text.line(line_index), char_matcher, pos, 1).map(|pos| pos + pos_delta)
-}
-
-/// Decrement object under cursor by `amount`.
+/// Increment objects within selections by `amount`.
+/// A negative `amount` will decrement objects within selections.
 fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
-    // TODO: when incrementing or decrementing a number that gets a new digit or lose one, the
-    // selection is updated improperly.
-    find_char_impl(
-        cx.editor,
-        &find_next_char_until_newline,
-        true,
-        true,
-        char::is_ascii_digit,
-        1,
-    );
-
-    // Increase by 1 if `IncrementDirection` is `Increase`
-    // Decrease by 1 if `IncrementDirection` is `Decrease`
     let sign = match increment_direction {
         IncrementDirection::Increase => 1,
         IncrementDirection::Decrease => -1,
     };
     let mut amount = sign * cx.count() as i64;
-
     // If the register is `#` then increase or decrease the `amount` by 1 per element
     let increase_by = if cx.register == Some('#') { sign } else { 0 };
 
@@ -5086,55 +5052,40 @@ fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
     let selection = doc.selection(view.id);
     let text = doc.text().slice(..);
 
-    let changes: Vec<_> = selection
-        .ranges()
-        .iter()
-        .filter_map(|range| {
-            let incrementor: Box<dyn Increment> =
-                if let Some(incrementor) = DateTimeIncrementor::from_range(text, *range) {
-                    Box::new(incrementor)
-                } else if let Some(incrementor) = NumberIncrementor::from_range(text, *range) {
-                    Box::new(incrementor)
-                } else {
-                    return None;
-                };
+    let mut new_selection_ranges = SmallVec::new();
+    let mut cumulative_length_diff: i128 = 0;
+    let mut changes = vec![];
 
-            let (range, new_text) = incrementor.increment(amount);
+    for range in selection {
+        let selected_text: Cow<str> = range.fragment(text);
+        let new_from = ((range.from() as i128) + cumulative_length_diff) as usize;
+        let incremented = [increment::integer, increment::date_time]
+            .iter()
+            .find_map(|incrementor| incrementor(selected_text.as_ref(), amount));
 
-            amount += increase_by;
+        amount += increase_by;
 
-            Some((range.from(), range.to(), Some(new_text)))
-        })
-        .collect();
-
-    // Overlapping changes in a transaction will panic, so we need to find and remove them.
-    // For example, if there are cursors on each of the year, month, and day of `2021-11-29`,
-    // incrementing will give overlapping changes, with each change incrementing a different part of
-    // the date. Since these conflict with each other we remove these changes from the transaction
-    // so nothing happens.
-    let mut overlapping_indexes = HashSet::new();
-    for (i, changes) in changes.windows(2).enumerate() {
-        if changes[0].1 > changes[1].0 {
-            overlapping_indexes.insert(i);
-            overlapping_indexes.insert(i + 1);
+        match incremented {
+            None => {
+                let new_range = Range::new(
+                    new_from,
+                    (range.to() as i128 + cumulative_length_diff) as usize,
+                );
+                new_selection_ranges.push(new_range);
+            }
+            Some(new_text) => {
+                let new_range = Range::new(new_from, new_from + new_text.len());
+                cumulative_length_diff += new_text.len() as i128 - selected_text.len() as i128;
+                new_selection_ranges.push(new_range);
+                changes.push((range.from(), range.to(), Some(new_text.into())));
+            }
         }
     }
-    let changes: Vec<_> = changes
-        .into_iter()
-        .enumerate()
-        .filter_map(|(i, change)| {
-            if overlapping_indexes.contains(&i) {
-                None
-            } else {
-                Some(change)
-            }
-        })
-        .collect();
 
     if !changes.is_empty() {
+        let new_selection = Selection::new(new_selection_ranges, selection.primary_index());
         let transaction = Transaction::change(doc.text(), changes.into_iter());
-        let transaction = transaction.with_selection(selection.clone());
-
+        let transaction = transaction.with_selection(new_selection);
         apply_transaction(&transaction, doc, view);
     }
 }
