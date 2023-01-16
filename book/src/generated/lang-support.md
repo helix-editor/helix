@@ -92,6 +92,7 @@
 | openscad | ✓ |  |  | `openscad-lsp` |
 | org | ✓ |  |  |  |
 | pascal | ✓ | ✓ |  | `pasls` |
+| passwd | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |
 | php | ✓ | ✓ | ✓ | `intelephense` |
 | ponylang | ✓ | ✓ | ✓ |  |

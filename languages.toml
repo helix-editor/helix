@@ -2108,3 +2108,13 @@ formatter = { command = "dhall" , args = ["format"] }
 [[grammar]]
 name = "dhall"
 source = { git = "https://github.com/jbellerb/tree-sitter-dhall", rev = "affb6ee38d629c9296749767ab832d69bb0d9ea8" }
+
+[[language]]
+name = "passwd"
+scope = "source.passwd"
+file-types = ["passwd"]
+roots = []
+
+[[grammar]]
+name = "passwd"
+source = { git = "https://github.com/ath3/tree-sitter-passwd", rev = "20239395eacdc2e0923a7e5683ad3605aee7b716" }
