@@ -1,4 +1,3 @@
-use std::cmp::max;
 use std::fmt::Write;
 
 use crate::{
@@ -36,10 +35,10 @@ impl GutterType {
         }
     }
 
-    pub fn width(self, _view: &View, doc: &Document) -> usize {
+    pub fn width(self, view: &View, doc: &Document) -> usize {
         match self {
             GutterType::Diagnostics => 1,
-            GutterType::LineNumbers => line_numbers_width(_view, doc),
+            GutterType::LineNumbers => line_numbers_width(view, doc),
             GutterType::Spacer => 1,
             GutterType::Diff => 1,
         }
@@ -165,8 +164,8 @@ pub fn line_numbers<'doc>(
     let mode = editor.mode;
 
     Box::new(move |line: usize, selected: bool, out: &mut String| {
+        let width = n_last_line.max(n_min);
         if line == last_line_in_view && !draw_last {
-            let width = max(n_last_line, n_min);
             write!(out, "{:>1$}", '~', width).unwrap();
             Some(linenr)
         } else {
@@ -189,7 +188,6 @@ pub fn line_numbers<'doc>(
                 linenr
             };
 
-            let width = max(n_last_line, n_min);
             write!(out, "{:>1$}", display_num, width).unwrap();
             Some(style)
         }
@@ -201,14 +199,14 @@ pub fn line_numbers<'doc>(
 /// The width of the gutter depends on the number of lines in the document,
 /// whether there is content on the last line (the `~` line), and the
 /// `editor.gutters.line-numbers.min-width` settings.
-pub fn line_numbers_width(view: &View, doc: &Document) -> usize {
+fn line_numbers_width(view: &View, doc: &Document) -> usize {
     let text = doc.text();
     let last_line = text.len_lines().saturating_sub(1);
     let draw_last = text.line_to_byte(last_line) < text.len_bytes();
     let last_drawn = if draw_last { last_line + 1 } else { last_line };
     let digits = count_digits(last_drawn);
     let n_min = view.gutters.line_numbers.min_width;
-    max(digits, n_min)
+    digits.max(n_min)
 }
 
 pub fn padding<'doc>(
