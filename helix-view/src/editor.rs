@@ -330,7 +330,7 @@ pub enum StatusLineElement {
     FileType,
 
     /// The number of open files and current index
-    FileIndexer,
+    FileCount,
 
     /// A summary of the number of errors and warnings
     Diagnostics,

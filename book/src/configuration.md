@@ -100,7 +100,7 @@ The following statusline elements can be configured:
 | `file-base-name` | The basename of the opened file |
 | `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
 | `file-line-ending` | The file line endings (CRLF or LF) |
-| `file-indexer` | The number of open files and current index |
+| `file-count` | The number of open files and current index |
 | `total-line-numbers` | The total line numbers of the opened file |
 | `file-type` | The type of the opened file |
 | `diagnostics` | The number of warnings and/or errors |
