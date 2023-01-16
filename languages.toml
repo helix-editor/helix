@@ -1061,6 +1061,7 @@ file-types = ["scala", "sbt", "sc"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "metals" }
+config = { "isHttpEnabled" = true }
 
 [[grammar]]
 name = "scala"
