@@ -1,4 +1,5 @@
 pub(crate) mod dap;
+pub(crate) mod jump;
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
@@ -48,6 +49,10 @@ use fuzzy_matcher::FuzzyMatcher;
 use insert::*;
 use movement::Movement;
 
+use self::jump::{
+    cleanup, find_all_identifiers_in_view, find_all_str_occurrences_in_view,
+    show_key_annotations_with_callback, sort_jump_targets, JumpSequencer, TrieNode, JUMP_KEYS,
+};
 use crate::{
     args,
     compositor::{self, Component, Compositor},
@@ -62,7 +67,7 @@ use crate::{
 
 use crate::job::{self, Jobs};
 use futures_util::{stream::FuturesUnordered, StreamExt, TryStreamExt};
-use std::{collections::HashMap, fmt, future::Future};
+use std::{cmp::Ordering, collections::HashMap, fmt, future::Future};
 use std::{collections::HashSet, num::NonZeroUsize};
 
 use std::{
@@ -485,6 +490,10 @@ impl MappableCommand {
         decrement, "Decrement item under cursor",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
+        jump_to_identifier_label, "Jump mode: word-wise",
+        jump_to_str_label, "Jump mode: character search",
+        jump_to_identifier_label_and_extend_selection, "Jump mode: extend selection with word-wise jump",
+        jump_to_str_label_and_extend_selection, "Jump mode: extend selection with character search",
         command_palette, "Open command palette",
     );
 }
@@ -5587,4 +5596,179 @@ fn replay_macro(cx: &mut Context) {
         // replaying recursively.
         cx.editor.macro_replaying.pop();
     }));
+}
+
+fn jump_to_identifier_label(cx: &mut Context) {
+    let jump_targets = find_all_identifiers_in_view(cx);
+    jump_with_targets(cx, jump_targets, false);
+}
+
+fn jump_to_identifier_label_and_extend_selection(cx: &mut Context) {
+    let jump_targets = find_all_identifiers_in_view(cx);
+    jump_with_targets(cx, jump_targets, true);
+}
+
+fn jump_to_str_label(cx: &mut Context) {
+    find_and_jump_to_str(cx, false);
+}
+
+fn jump_to_str_label_and_extend_selection(cx: &mut Context) {
+    find_and_jump_to_str(cx, true);
+}
+
+fn find_and_jump_to_str(cx: &mut Context, extend_selection: bool) {
+    jump::setup(cx);
+    let nchars = doc!(cx.editor)
+        .config
+        .load()
+        .jump_mode
+        .num_chars_before_label as usize;
+    cx.editor.set_status(format!("Press {} key(s)", nchars));
+    cx.on_next_key(move |cx, event| {
+        jump_with_str_input(
+            cx,
+            event,
+            extend_selection,
+            String::with_capacity(nchars),
+            nchars,
+        )
+    });
+}
+
+fn jump_with_str_input(
+    cx: &mut Context,
+    event: KeyEvent,
+    extend_selection: bool,
+    mut s: String,
+    nchars: usize,
+) {
+    let Some(c) = event.char().filter(|c| c.is_ascii()) else {
+        return cleanup(cx);
+    };
+    s.push(c);
+    if s.len() == nchars {
+        let jump_targets = find_all_str_occurrences_in_view(cx, s);
+        jump_with_targets(cx, jump_targets, extend_selection);
+        return;
+    }
+    cx.editor
+        .set_status(format!("Press {} more key(s)", nchars - s.len()));
+    cx.on_next_key(move |cx, event| jump_with_str_input(cx, event, extend_selection, s, nchars));
+}
+
+fn jump_with_targets(cx: &mut Context, mut jump_targets: Vec<Range>, extend_selection: bool) {
+    if jump_targets.is_empty() {
+        return cleanup(cx);
+    }
+    // Jump targets are sorted based on their distance to the current cursor.
+    jump_targets = sort_jump_targets(cx, jump_targets);
+    if extend_selection {
+        jump_targets = extend_jump_selection(cx, jump_targets);
+    }
+    if jump_targets.len() == 1 {
+        jump_to(cx, jump_targets[0], extend_selection);
+        return cleanup(cx);
+    }
+    let root = TrieNode::build(JUMP_KEYS, jump_targets);
+    show_key_annotations_with_callback(cx, root.generate(), move |cx, event| {
+        handle_key_event(root, cx, event, extend_selection)
+    });
+}
+
+fn fix_extend_mode_off_by_one(selection: &Range, target: &mut Range) {
+    // Non-zero width ranges are always inclusive on the left and exclusive on
+    // the right. But when we're extending the selection, this often creates
+    // off-by-one behavior, where the cursor doesn't quite reach the target.
+    // Thus we need to increment the upper bound when the target head is after
+    // the current anchor.
+    if selection.anchor < target.head {
+        match target.anchor.cmp(&target.head) {
+            Ordering::Less => target.head += 1,
+            Ordering::Greater => target.anchor += 1,
+            Ordering::Equal => {}
+        };
+    }
+}
+
+fn jump_to(cx: &mut Context, mut range: Range, extend_selection: bool) {
+    let (view, doc) = current!(cx.editor);
+    push_jump(view, doc);
+    let selection = doc.selection(view.id).primary();
+    if extend_selection {
+        fix_extend_mode_off_by_one(&selection, &mut range);
+    }
+    doc.set_selection(view.id, Selection::single(range.anchor, range.head));
+}
+
+/// Handle user key press.
+/// Returns whether we are finished and should move out of jump mode.
+fn handle_key(
+    mut sequencer: impl JumpSequencer + 'static,
+    cx: &mut Context,
+    key: u8,
+    extend_selection: bool,
+) -> bool {
+    cleanup(cx);
+    match sequencer.choose(key) {
+        Some(subnode) => {
+            sequencer = *subnode;
+        }
+        // char `c` is not a valid character. Finish jump mode
+        None => return true,
+    }
+    match sequencer.try_get_range() {
+        Some(range) => {
+            jump_to(cx, range, extend_selection);
+            return true;
+        }
+        None => {
+            show_key_annotations_with_callback(cx, sequencer.generate(), move |cx, event| {
+                handle_key_event(sequencer, cx, event, extend_selection)
+            });
+        }
+    }
+    false
+}
+
+fn handle_key_event(
+    node: impl JumpSequencer + 'static,
+    cx: &mut Context,
+    event: KeyEvent,
+    extend_selection: bool,
+) {
+    let finished = match event.char() {
+        Some(key) => {
+            if event.modifiers.is_empty() && key.is_ascii() {
+                handle_key(node, cx, key as u8, extend_selection)
+            } else {
+                // Only accept ascii characters with no modifiers. Otherwise, finish jump mode.
+                true
+            }
+        }
+        // We didn't get a valid character. Finish jump mode.
+        None => true,
+    };
+    if finished {
+        cleanup(cx);
+    }
+}
+
+fn extend_jump_selection(cx: &Context, jump_targets: Vec<Range>) -> Vec<Range> {
+    let (view, doc) = current_ref!(cx.editor);
+    // We only care about the primary selection
+    let mut cur = doc.selection(view.id).primary();
+    jump_targets
+        .into_iter()
+        .map(|mut range| {
+            // We want to grow the selection, so if the new head crosses the
+            // old anchor, swap the old head and old anchor
+            let cross_fwd = cur.head < cur.anchor && cur.anchor < range.head;
+            let cross_bwd = range.head < cur.anchor && cur.anchor < cur.head;
+            if cross_fwd || cross_bwd {
+                std::mem::swap(&mut cur.head, &mut cur.anchor);
+            }
+            range.anchor = cur.anchor;
+            range
+        })
+        .collect()
 }
