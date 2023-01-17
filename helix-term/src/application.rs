@@ -3,9 +3,13 @@ use futures_util::Stream;
 use helix_core::{
     diagnostic::{DiagnosticTag, NumberOrString},
     path::get_relative_path,
-    pos_at_coords, syntax, Selection,
+    pos_at_coords, syntax, Rope, Selection,
 };
-use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
+use helix_lsp::{
+    lsp::{self, MessageType},
+    util::lsp_pos_to_pos,
+    LspProgressMap,
+};
 use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
@@ -25,7 +29,7 @@ use crate::{
     config::Config,
     job::Jobs,
     keymap::Keymaps,
-    ui::{self, overlay::overlayed},
+    ui::{self, overlay::overlayed, FileLocation, FilePicker, Popup},
 };
 
 use log::{debug, error, warn};
@@ -965,11 +969,11 @@ impl Application {
                             "Language Server: Method {} not found in request {}",
                             method, id
                         );
-                        Err(helix_lsp::jsonrpc::Error {
+                        Some(Err(helix_lsp::jsonrpc::Error {
                             code: helix_lsp::jsonrpc::ErrorCode::MethodNotFound,
                             message: format!("Method not found: {}", method),
                             data: None,
-                        })
+                        }))
                     }
                     Err(err) => {
                         log::error!(
@@ -978,11 +982,11 @@ impl Application {
                             id,
                             err
                         );
-                        Err(helix_lsp::jsonrpc::Error {
+                        Some(Err(helix_lsp::jsonrpc::Error {
                             code: helix_lsp::jsonrpc::ErrorCode::ParseError,
                             message: format!("Malformed method call: {}", method),
                             data: None,
-                        })
+                        }))
                     }
                     Ok(MethodCall::WorkDoneProgressCreate(params)) => {
                         self.lsp_progress.create(server_id, params.token);
@@ -996,7 +1000,7 @@ impl Application {
                             spinner.start();
                         }
 
-                        Ok(serde_json::Value::Null)
+                        Some(Ok(serde_json::Value::Null))
                     }
                     Ok(MethodCall::ApplyWorkspaceEdit(params)) => {
                         let res = apply_workspace_edit(
@@ -1005,20 +1009,69 @@ impl Application {
                             &params.edit,
                         );
 
-                        Ok(json!(lsp::ApplyWorkspaceEditResponse {
+                        Some(Ok(json!(lsp::ApplyWorkspaceEditResponse {
                             applied: res.is_ok(),
                             failure_reason: res.as_ref().err().map(|err| err.kind.to_string()),
                             failed_change: res
                                 .as_ref()
                                 .err()
                                 .map(|err| err.failed_change_idx as u32),
-                        }))
+                        })))
                     }
                     Ok(MethodCall::WorkspaceFolders) => {
                         let language_server =
                             self.editor.language_servers.get_by_id(server_id).unwrap();
 
-                        Ok(json!(language_server.workspace_folders()))
+                        Some(Ok(json!(language_server.workspace_folders())))
+                    }
+                    Ok(MethodCall::ShowMessageRequest(params)) => {
+                        if let Some(actions) = params.actions {
+                            let call_id = id.clone();
+                            let icon = match params.typ {
+                                MessageType::ERROR => "❗",
+                                MessageType::WARNING => "⚠️",
+                                MessageType::INFO => "ℹ️",
+                                _ => "📝",
+                            };
+                            let message = format!("{}: {}", icon, &params.message);
+                            let rope = Rope::from(message);
+                            let picker = FilePicker::new(
+                                actions,
+                                (),
+                                move |ctx, message_action, _event| {
+                                    let server_from_id =
+                                        ctx.editor.language_servers.get_by_id(server_id);
+                                    let language_server = match server_from_id {
+                                        Some(language_server) => language_server,
+                                        None => {
+                                            warn!(
+                                                "can't find language server with id `{server_id}`"
+                                            );
+                                            return;
+                                        }
+                                    };
+                                    let response = match message_action {
+                                        Some(item) => json!(item),
+                                        None => serde_json::Value::Null,
+                                    };
+
+                                    tokio::spawn(
+                                        language_server.reply(call_id.clone(), Ok(response)),
+                                    );
+                                },
+                                move |_editor, _value| {
+                                    let file_location: FileLocation = (rope.clone().into(), None);
+                                    Some(file_location)
+                                },
+                            );
+                            let popup_id = "show_message_request";
+                            let popup = Popup::new(popup_id, picker);
+                            self.compositor.replace_or_push(popup_id, popup);
+                            // do not send a reply just yet
+                            None
+                        } else {
+                            Some(Ok(serde_json::Value::Null))
+                        }
                     }
                     Ok(MethodCall::WorkspaceConfiguration(params)) => {
                         let result: Vec<_> = params
@@ -1046,7 +1099,7 @@ impl Application {
                                 Some(config)
                             })
                             .collect();
-                        Ok(json!(result))
+                        Some(Ok(json!(result)))
                     }
                     Ok(MethodCall::RegisterCapability(_params)) => {
                         log::warn!("Ignoring a client/registerCapability request because dynamic capability registration is not enabled. Please report this upstream to the language server");
@@ -1057,19 +1110,21 @@ impl Application {
                         // exit. So we work around this by ignoring the request and sending back an OK
                         // response.
 
-                        Ok(serde_json::Value::Null)
+                        Some(Ok(serde_json::Value::Null))
                     }
                 };
 
-                let language_server = match self.editor.language_servers.get_by_id(server_id) {
-                    Some(language_server) => language_server,
-                    None => {
-                        warn!("can't find language server with id `{}`", server_id);
-                        return;
-                    }
-                };
+                if let Some(reply) = reply {
+                    let language_server = match self.editor.language_servers.get_by_id(server_id) {
+                        Some(language_server) => language_server,
+                        None => {
+                            warn!("can't find language server with id `{}`", server_id);
+                            return;
+                        }
+                    };
 
-                tokio::spawn(language_server.reply(id, reply));
+                    tokio::spawn(language_server.reply(id, reply));
+                }
             }
             Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
         }

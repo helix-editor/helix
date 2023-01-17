@@ -218,37 +218,39 @@ fn sym_picker(
     FilePicker::new(
         symbols,
         current_path.clone(),
-        move |cx, symbol, action| {
-            let (view, doc) = current!(cx.editor);
-            push_jump(view, doc);
+        move |cx, symbol_information, action| {
+            if let Some(symbol) = symbol_information {
+                let (view, doc) = current!(cx.editor);
+                push_jump(view, doc);
 
-            if current_path.as_ref() != Some(&symbol.location.uri) {
-                let uri = &symbol.location.uri;
-                let path = match uri.to_file_path() {
-                    Ok(path) => path,
-                    Err(_) => {
-                        let err = format!("unable to convert URI to filepath: {}", uri);
+                if current_path.as_ref() != Some(&symbol.location.uri) {
+                    let uri = &symbol.location.uri;
+                    let path = match uri.to_file_path() {
+                        Ok(path) => path,
+                        Err(_) => {
+                            let err = format!("unable to convert URI to filepath: {}", uri);
+                            cx.editor.set_error(err);
+                            return;
+                        }
+                    };
+                    if let Err(err) = cx.editor.open(&path, action) {
+                        let err = format!("failed to open document: {}: {}", uri, err);
+                        log::error!("{}", err);
                         cx.editor.set_error(err);
                         return;
                     }
-                };
-                if let Err(err) = cx.editor.open(&path, action) {
-                    let err = format!("failed to open document: {}: {}", uri, err);
-                    log::error!("{}", err);
-                    cx.editor.set_error(err);
-                    return;
                 }
-            }
 
-            let (view, doc) = current!(cx.editor);
+                let (view, doc) = current!(cx.editor);
 
-            if let Some(range) =
-                lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
-            {
-                // we flip the range so that the cursor sits on the start of the symbol
-                // (for example start of the function).
-                doc.set_selection(view.id, Selection::single(range.head, range.anchor));
-                align_view(doc, view, Align::Center);
+                if let Some(range) =
+                    lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
+                {
+                    // we flip the range so that the cursor sits on the start of the symbol
+                    // (for example start of the function).
+                    doc.set_selection(view.id, Selection::single(range.head, range.anchor));
+                    align_view(doc, view, Align::Center);
+                }
             }
         },
         move |_editor, symbol| Some(location_to_file_location(&symbol.location)),
@@ -293,22 +295,24 @@ fn diag_picker(
     FilePicker::new(
         flat_diag,
         (styles, format),
-        move |cx, PickerDiagnostic { url, diag }, action| {
-            if current_path.as_ref() == Some(url) {
+        move |cx, picker_diagnostic, action| {
+            if let Some(PickerDiagnostic { url, diag }) = picker_diagnostic {
+                if current_path.as_ref() == Some(url) {
+                    let (view, doc) = current!(cx.editor);
+                    push_jump(view, doc);
+                } else {
+                    let path = url.to_file_path().unwrap();
+                    cx.editor.open(&path, action).expect("editor.open failed");
+                }
+
                 let (view, doc) = current!(cx.editor);
-                push_jump(view, doc);
-            } else {
-                let path = url.to_file_path().unwrap();
-                cx.editor.open(&path, action).expect("editor.open failed");
-            }
 
-            let (view, doc) = current!(cx.editor);
-
-            if let Some(range) = lsp_range_to_range(doc.text(), diag.range, offset_encoding) {
-                // we flip the range so that the cursor sits on the start of the symbol
-                // (for example start of the function).
-                doc.set_selection(view.id, Selection::single(range.head, range.anchor));
-                align_view(doc, view, Align::Center);
+                if let Some(range) = lsp_range_to_range(doc.text(), diag.range, offset_encoding) {
+                    // we flip the range so that the cursor sits on the start of the symbol
+                    // (for example start of the function).
+                    doc.set_selection(view.id, Selection::single(range.head, range.anchor));
+                    align_view(doc, view, Align::Center);
+                }
             }
         },
         move |_editor, PickerDiagnostic { url, diag }| {
@@ -481,6 +485,13 @@ impl ui::menu::Item for lsp::CodeActionOrCommand {
             lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str().into(),
             lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
         }
+    }
+}
+
+impl ui::menu::Item for lsp::MessageActionItem {
+    type Data = ();
+    fn format(&self, _data: &Self::Data) -> Row {
+        self.title.as_str().into()
     }
 }
 
@@ -951,7 +962,9 @@ fn goto_impl(
                 locations,
                 cwdir,
                 move |cx, location, action| {
-                    jump_to_location(cx.editor, location, offset_encoding, action)
+                    if let Some(l) = location {
+                        jump_to_location(cx.editor, l, offset_encoding, action)
+                    }
                 },
                 move |_editor, location| Some(location_to_file_location(location)),
             );

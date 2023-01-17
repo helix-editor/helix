@@ -76,7 +76,11 @@ fn thread_picker(
             let picker = FilePicker::new(
                 threads,
                 thread_states,
-                move |cx, thread, _action| callback_fn(cx.editor, thread),
+                move |cx, thread, _action| {
+                    if let Some(t) = thread {
+                        callback_fn(cx.editor, t)
+                    }
+                },
                 move |editor, thread| {
                     let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
                     let frame = frames.get(0)?;
@@ -273,18 +277,20 @@ pub fn dap_launch(cx: &mut Context) {
     cx.push_layer(Box::new(overlayed(Picker::new(
         templates,
         (),
-        |cx, template, _action| {
-            let completions = template.completion.clone();
-            let name = template.name.clone();
-            let callback = Box::pin(async move {
-                let call: Callback =
-                    Callback::EditorCompositor(Box::new(move |_editor, compositor| {
-                        let prompt = debug_parameter_prompt(completions, name, Vec::new());
-                        compositor.push(Box::new(prompt));
-                    }));
-                Ok(call)
-            });
-            cx.jobs.callback(callback);
+        |cx, debug_template, _action| {
+            if let Some(template) = debug_template {
+                let completions = template.completion.clone();
+                let name = template.name.clone();
+                let callback = Box::pin(async move {
+                    let call: Callback =
+                        Callback::EditorCompositor(Box::new(move |_editor, compositor| {
+                            let prompt = debug_parameter_prompt(completions, name, Vec::new());
+                            compositor.push(Box::new(prompt));
+                        }));
+                    Ok(call)
+                });
+                cx.jobs.callback(callback);
+            }
         },
     ))));
 }
@@ -731,19 +737,21 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
     let picker = FilePicker::new(
         frames,
         (),
-        move |cx, frame, _action| {
-            let debugger = debugger!(cx.editor);
-            // TODO: this should be simpler to find
-            let pos = debugger.stack_frames[&thread_id]
-                .iter()
-                .position(|f| f.id == frame.id);
-            debugger.active_frame = pos;
+        move |cx, stack_frame, _action| {
+            if let Some(frame) = stack_frame {
+                let debugger = debugger!(cx.editor);
+                // TODO: this should be simpler to find
+                let pos = debugger.stack_frames[&thread_id]
+                    .iter()
+                    .position(|f| f.id == frame.id);
+                debugger.active_frame = pos;
 
-            let frame = debugger.stack_frames[&thread_id]
-                .get(pos.unwrap_or(0))
-                .cloned();
-            if let Some(frame) = &frame {
-                jump_to_stack_frame(cx.editor, frame);
+                let frame = debugger.stack_frames[&thread_id]
+                    .get(pos.unwrap_or(0))
+                    .cloned();
+                if let Some(frame) = &frame {
+                    jump_to_stack_frame(cx.editor, frame);
+                }
             }
         },
         move |_editor, frame| {
