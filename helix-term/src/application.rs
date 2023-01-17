@@ -74,7 +74,7 @@ pub struct Application {
     #[allow(dead_code)]
     theme_loader: Arc<theme::Loader>,
     #[allow(dead_code)]
-    syn_loader: Arc<syntax::Loader>,
+    lang_configs_loader: Arc<syntax::Loader>,
 
     signals: Signals,
     jobs: Jobs,
@@ -125,7 +125,7 @@ impl Application {
     pub fn new(
         args: Args,
         config: Config,
-        syn_loader_conf: syntax::LanguageConfigurations,
+        langauge_configurations: syntax::LanguageConfigurations,
     ) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
         setup_integration_logging();
@@ -153,7 +153,7 @@ impl Application {
             })
             .unwrap_or_else(|| theme_loader.default_theme(true_color));
 
-        let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
+        let lang_configs_loader = std::sync::Arc::new(syntax::Loader::new(langauge_configurations));
 
         #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout());
@@ -168,7 +168,7 @@ impl Application {
         let mut editor = Editor::new(
             area,
             theme_loader.clone(),
-            syn_loader.clone(),
+            lang_configs_loader.clone(),
             Box::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
@@ -263,7 +263,7 @@ impl Application {
             config,
 
             theme_loader,
-            syn_loader,
+            lang_configs_loader,
 
             signals,
             jobs: Jobs::new(),
@@ -396,32 +396,13 @@ impl Application {
 
     /// refresh language config after config change
     fn refresh_language_config(&mut self) -> Result<(), Error> {
-        let syntax_config = LanguageConfigurations::merged()
+        let language_configs = LanguageConfigurations::merged()
             .map_err(|err| anyhow::anyhow!("Failed to load language config: {}", err))?;
 
-        self.syn_loader = std::sync::Arc::new(syntax::Loader::new(syntax_config));
-        self.editor.syn_loader = self.syn_loader.clone();
+        self.lang_configs_loader = std::sync::Arc::new(syntax::Loader::new(language_configs));
+        self.editor.lang_configs_loader = self.lang_configs_loader.clone();
         for document in self.editor.documents.values_mut() {
-            document.detect_language(self.syn_loader.clone());
-        }
-
-        Ok(())
-    }
-
-    /// Refresh theme after config change
-    fn refresh_theme(&mut self, config: &Config) -> Result<(), Error> {
-        if let Some(theme) = config.theme.clone() {
-            let true_color = self.true_color();
-            let theme = self
-                .theme_loader
-                .load(&theme)
-                .map_err(|err| anyhow::anyhow!("Failed to load theme `{}`: {}", theme, err))?;
-
-            if true_color || theme.is_16_color() {
-                self.editor.set_theme(theme);
-            } else {
-                anyhow::bail!("theme requires truecolor support, which is not available")
-            }
+            document.detect_language(self.lang_configs_loader.clone());
         }
 
         Ok(())
@@ -432,24 +413,27 @@ impl Application {
             let merged_user_config = Config::merged()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
             self.refresh_language_config()?;
-            self.refresh_theme(&merged_user_config)?;
-            // Store new config
+
+            if let Some(theme) = &self.config.load().theme {
+                let true_color = self.config.load().editor.true_color || crate::true_color();
+                let theme = self.theme_loader.load(theme)
+                    .map_err(|err| anyhow::anyhow!("Failed to load theme `{}`: {}", theme, err))?;
+
+                if true_color || theme.is_16_color() {
+                    self.editor.set_theme(theme);
+                } else {
+                    anyhow::bail!("Theme requires truecolor support, which is not available!")
+                }
+            }
+
             self.config.store(Arc::new(merged_user_config));
             Ok(())
         };
 
         match refresh_config() {
-            Ok(_) => {
-                self.editor.set_status("Config refreshed");
-            }
-            Err(err) => {
-                self.editor.set_error(err.to_string());
-            }
+            Ok(_) => { self.editor.set_status("Config refreshed"); },
+            Err(err) => { self.editor.set_error(err.to_string()); }
         }
-    }
-
-    fn true_color(&self) -> bool {
-        self.config.load().editor.true_color || crate::true_color()
     }
 
     #[cfg(windows)]
@@ -542,7 +526,7 @@ impl Application {
                 return;
             }
 
-            let loader = self.editor.syn_loader.clone();
+            let loader = self.editor.lang_configs_loader.clone();
 
             // borrowing the same doc again to get around the borrow checker
             let doc = doc_mut!(self.editor, &doc_save_event.doc_id);

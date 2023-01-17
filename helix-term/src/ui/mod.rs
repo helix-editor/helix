@@ -368,7 +368,7 @@ pub mod completers {
         let text: String = "text".into();
 
         let language_ids = editor
-            .syn_loader
+            .lang_configs_loader
             .language_configs()
             .map(|config| &config.language_id)
             .chain(std::iter::once(&text));

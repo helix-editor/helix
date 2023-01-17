@@ -1246,7 +1246,7 @@ fn tree_sitter_scopes(
     let callback = async move {
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
-                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                let contents = ui::Markdown::new(contents, editor.lang_configs_loader.clone());
                 let popup = Popup::new("hover", contents).auto_close(true);
                 compositor.replace_or_push("hover", popup);
             },
@@ -1539,7 +1539,7 @@ fn language(
     if args[0] == "text" {
         doc.set_language(None, None)
     } else {
-        doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone())?;
+        doc.set_language_by_language_id(&args[0], cx.editor.lang_configs_loader.clone())?;
     }
     doc.detect_indent_and_line_ending();
 
@@ -1675,7 +1675,7 @@ fn tree_sitter_subtree(
             let callback = async move {
                 let call: job::Callback = Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                        let contents = ui::Markdown::new(contents, editor.lang_configs_loader.clone());
                         let popup = Popup::new("hover", contents).auto_close(true);
                         compositor.replace_or_push("hover", popup);
                     },
@@ -1808,7 +1808,7 @@ fn run_shell_command(
                 move |editor: &mut Editor, compositor: &mut Compositor| {
                     let contents = ui::Markdown::new(
                         format!("```sh\n{}\n```", output),
-                        editor.syn_loader.clone(),
+                        editor.lang_configs_loader.clone(),
                     );
                     let popup = Popup::new("shell", contents).position(Some(
                         helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
