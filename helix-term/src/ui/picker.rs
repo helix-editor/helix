@@ -1,4 +1,5 @@
 use crate::{
+    alt,
     compositor::{Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
     ui::{self, fuzzy_match::FuzzyQuery, EditorView},
@@ -618,6 +619,11 @@ impl<T: Item + 'static> Component for Picker<T> {
             }
             key!(Esc) | ctrl!('c') => {
                 return close_fn;
+            }
+            alt!(Enter) => {
+                if let Some(option) = self.selection() {
+                    (self.callback_fn)(cx, option, Action::Load);
+                }
             }
             key!(Enter) => {
                 if let Some(option) = self.selection() {

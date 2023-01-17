@@ -48,5 +48,8 @@ which = "4.2"
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "4.5", features = ["std"] }
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 helix-tui = { path = "../helix-tui" }
