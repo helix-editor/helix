@@ -1285,6 +1285,10 @@ impl Editor {
         self.focus(self.tree.next());
     }
 
+    pub fn focus_prev(&mut self) {
+        self.focus(self.tree.prev());
+    }
+
     pub fn focus_direction(&mut self, direction: tree::Direction) {
         let current_view = self.tree.focus;
         if let Some(id) = self.tree.find_split_in_direction(current_view, direction) {

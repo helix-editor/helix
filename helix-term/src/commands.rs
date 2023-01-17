@@ -384,6 +384,7 @@ impl MappableCommand {
         swap_view_down, "Swap with split below",
         transpose_view, "Transpose splits",
         rotate_view, "Goto next window",
+        rotate_view_reverse, "Goto previous window",
         hsplit, "Horizontal bottom split",
         hsplit_new, "Horizontal bottom split scratch buffer",
         vsplit, "Vertical right split",
@@ -4315,6 +4316,10 @@ fn save_selection(cx: &mut Context) {
 
 fn rotate_view(cx: &mut Context) {
     cx.editor.focus_next()
+}
+
+fn rotate_view_reverse(cx: &mut Context) {
+    cx.editor.focus_prev()
 }
 
 fn jump_view_right(cx: &mut Context) {
