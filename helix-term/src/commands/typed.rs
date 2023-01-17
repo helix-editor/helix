@@ -1849,8 +1849,8 @@ fn rename_buffer(
         return Err(anyhow!("This file already exists"));
     }
 
-    if std::fs::rename(&path, &path_new).is_err() {
-        return Err(anyhow!("Could not rename file"));
+    if let Err(e) = std::fs::rename(&path, &path_new) {
+        return Err(anyhow!("Could not rename file, error: {}", e));
     }
     let (_, doc) = current!(cx.editor);
     doc.set_path(Some(path_new.as_path()))
@@ -1858,20 +1858,21 @@ fn rename_buffer(
 
     let mut lsp_success = false;
     if let Some(lsp_client) = doc.language_server() {
-        let old_uri = Url::from_file_path(&path)
-            .map_err(|_| anyhow!("Language server request failed, could not get current path uri"))?
-            .to_string();
-        let new_uri = Url::from_file_path(&path_new)
-            .map_err(|_| anyhow!("Language server request failed, could not get new path uri"))?
-            .to_string();
-        let mut files = vec![lsp::FileRename { old_uri, new_uri }];
-        let result = helix_lsp::block_on(lsp_client.will_rename_files(&files))?;
-        _ = helix_lsp::block_on(lsp_client.did_rename_files(&files)).is_ok();
-        if let Some(edit) = result {
-            apply_workspace_edit(cx.editor, helix_lsp::OffsetEncoding::Utf8, &edit);
-            lsp_success = true;
+        if let Ok(old_uri_str) = Url::from_file_path(&path) {
+            let old_uri = old_uri_str.to_string();
+            if let Ok(new_uri_str) = Url::from_file_path(&path_new) {
+                let new_uri = new_uri_str.to_string();
+                let files = vec![lsp::FileRename { old_uri, new_uri }];
+                let result = helix_lsp::block_on(lsp_client.will_rename_files(&files))?;
+                if let Some(edit) = result {
+                    apply_workspace_edit(cx.editor, helix_lsp::OffsetEncoding::Utf8, &edit);
+                    lsp_success = true;
+                }
+            } else {
+                log::error!(":rename command could not get new path uri")
+            }
         } else {
-            files.clear();
+            log::error!(":rename command could not get current path uri")
         }
     }
 
