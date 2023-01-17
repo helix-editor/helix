@@ -140,18 +140,13 @@ pub fn line_numbers<'doc>(
     is_focused: bool,
 ) -> GutterFn<'doc> {
     let text = doc.text().slice(..);
+    let width = line_numbers_width(view, doc);
 
-    let last_line = text.len_lines().saturating_sub(1);
     let last_line_in_view = view.last_line(doc);
 
     // Whether to draw the line number for the last line of the
     // document or not.  We only draw it if it's not an empty line.
     let draw_last = text.line_to_byte(last_line_in_view) < text.len_bytes();
-    let last_drawn_line = if draw_last { last_line + 1 } else { last_line };
-
-    // characters used to display last line, and settings for min/max
-    let n_last_line = count_digits(last_drawn_line);
-    let n_min = view.gutters.line_numbers.min_width;
 
     let linenr = theme.get("ui.linenr");
     let linenr_select = theme.get("ui.linenr.selected");
@@ -164,7 +159,6 @@ pub fn line_numbers<'doc>(
     let mode = editor.mode;
 
     Box::new(move |line: usize, selected: bool, out: &mut String| {
-        let width = n_last_line.max(n_min);
         if line == last_line_in_view && !draw_last {
             write!(out, "{:>1$}", '~', width).unwrap();
             Some(linenr)
