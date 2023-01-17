@@ -4,7 +4,7 @@ pub(crate) mod typed;
 
 pub use dap::*;
 pub use lsp::*;
-use tui::widgets::Row;
+use tui::widgets::{Row, Cell};
 pub use typed::*;
 
 use helix_vcs::Hunk;
