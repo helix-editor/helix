@@ -1,6 +1,4 @@
 mod docgen;
-mod helpers;
-mod querycheck;
 mod themelint;
 
 use std::{env, error::Error};
@@ -10,7 +8,6 @@ type DynError = Box<dyn Error>;
 pub mod tasks {
     use crate::docgen::{lang_features, typable_commands, write};
     use crate::docgen::{LANG_SUPPORT_MD_OUTPUT, TYPABLE_COMMANDS_MD_OUTPUT};
-    use crate::querycheck::query_check;
     use crate::themelint::{lint, lint_all};
     use crate::DynError;
 
@@ -28,7 +25,27 @@ pub mod tasks {
     }
 
     pub fn querycheck() -> Result<(), DynError> {
-        query_check()
+        use helix_core::{syntax, tree_sitter::Query};
+        use helix_loader::grammar::get_language;
+        use helix_loader::ts_probe::TsFeature;
+        for language_config in syntax::LanguageConfigurations::default().language {
+            for ts_feature in TsFeature::all() {
+                // TODO: do language name and grammar name discrepancies exist? 
+                let language_name = &language_config.language_id;
+                let grammar_name = language_config.grammar.as_ref().unwrap_or(language_name);
+                if let Ok(treesitter_parser) = get_language(grammar_name) {
+                    let query_feature_file_name = ts_feature.runtime_filename();
+                    let query_file_text_contents = syntax::read_query(language_name, query_feature_file_name);
+                    if !query_file_text_contents.is_empty() {
+                        if let Err(err) = Query::new(treesitter_parser, &query_file_text_contents) {
+                            return Err(format!("Failed to parse {query_feature_file_name} queries for {language_name}: {err}").into());
+                        }
+                    }
+                }
+            }
+        }
+        println!("Query check succeeded");
+        Ok(())    
     }
 
     pub fn print_help() {

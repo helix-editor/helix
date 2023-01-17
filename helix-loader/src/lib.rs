@@ -1,4 +1,5 @@
 pub mod grammar;
+pub mod ts_probe;
 pub mod repo_paths;
 
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};

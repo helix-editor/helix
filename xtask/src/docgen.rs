@@ -1,10 +1,9 @@
-use crate::helpers;
 use crate::DynError;
 
 use helix_core::syntax::LanguageConfigurations;
 use helix_loader::repo_paths;
+use helix_loader::ts_probe::TsFeature;
 use helix_term::commands::TYPABLE_COMMAND_LIST;
-use helix_term::health::TsFeature;
 use std::fs;
 
 pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
@@ -72,9 +71,16 @@ pub fn lang_features() -> Result<String, DynError> {
         .collect::<Vec<_>>();
     langs.sort_unstable();
 
-    let mut ts_features_to_langs = Vec::new();
-    for &feat in ts_features {
-        ts_features_to_langs.push((feat, helpers::ts_lang_support(feat)));
+    let mut ts_support_by_feature = Vec::with_capacity(TsFeature::all().len());
+    for feature in TsFeature::all() {
+        let mut langs_with_ts_support: Vec<String> = Vec::new();
+        for lang in LanguageConfigurations::default().language {
+            if helix_loader::grammar::load_runtime_file(&lang.language_id, feature.runtime_filename()).is_ok() {
+                langs_with_ts_support.push(lang.language_id.clone());
+            }
+        }
+
+        ts_support_by_feature.push(langs_with_ts_support);
     }
 
     let mut row = Vec::new();
@@ -86,7 +92,7 @@ pub fn lang_features() -> Result<String, DynError> {
             .unwrap(); // lang comes from config
         row.push(lc.language_id.clone());
 
-        for (_feat, support_list) in &ts_features_to_langs {
+        for support_list in &ts_support_by_feature {
             row.push(
                 if support_list.contains(&lang) {
                     "✓"

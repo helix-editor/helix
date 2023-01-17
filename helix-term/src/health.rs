@@ -1,73 +1,36 @@
-use crossterm::{
-    style::{Color, Print, Stylize},
-    tty::IsTty,
-};
-use helix_core::syntax::LanguageConfigurations;
-use helix_loader::grammar::load_runtime_file;
-use helix_view::clipboard::get_clipboard_provider;
+use crossterm::{style::{Color, Print, Stylize}, tty::IsTty};
+use helix_loader::ts_probe::TsFeature;
+use helix_loader::grammar;
+use helix_core::syntax::{LanguageConfigurations, LanguageConfiguration};
+use helix_view::clipboard;
 use std::io::Write;
 
-#[derive(Copy, Clone)]
-pub enum TsFeature {
-    Highlight,
-    TextObject,
-    AutoIndent,
+pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
+    match health_arg.as_deref() {
+        None => {
+            display_paths()?;
+            display_clipboard()?;
+            writeln!(std::io::stdout().lock())?;
+            display_all_languages()?;
+        }
+        Some("paths") => display_paths()?,
+        Some("clipboard") => display_clipboard()?,
+        Some("languages") => display_all_languages()?,
+        Some(lang) => display_language(lang.to_string())?,
+    }
+    Ok(())
 }
 
-impl TsFeature {
-    pub fn all() -> &'static [Self] {
-        &[Self::Highlight, Self::TextObject, Self::AutoIndent]
-    }
+fn display_paths() -> std::io::Result<()> {
+    let mut stdout = std::io::stdout().lock();
 
-    pub fn runtime_filename(&self) -> &'static str {
-        match *self {
-            Self::Highlight => "highlights.scm",
-            Self::TextObject => "textobjects.scm",
-            Self::AutoIndent => "indents.scm",
-        }
-    }
+    writeln!(stdout, "Default config merged with user preferences supplied in:")?;
+    writeln!(stdout, "Config: {}", helix_loader::config_file().display())?;
+    writeln!(stdout, "Language config: {}", helix_loader::user_lang_config_file().display())?;
+    writeln!(stdout, "Log file: {}", helix_loader::log_file().display())?;
 
-    pub fn long_title(&self) -> &'static str {
-        match *self {
-            Self::Highlight => "Syntax Highlighting",
-            Self::TextObject => "Treesitter Textobjects",
-            Self::AutoIndent => "Auto Indent",
-        }
-    }
-
-    pub fn short_title(&self) -> &'static str {
-        match *self {
-            Self::Highlight => "Highlight",
-            Self::TextObject => "Textobject",
-            Self::AutoIndent => "Indent",
-        }
-    }
-}
-
-/// Display general diagnostics.
-pub fn general() -> std::io::Result<()> {
-    let stdout = std::io::stdout();
-    let mut stdout = stdout.lock();
-
-    let config_file = helix_loader::config_file();
-    let lang_file = helix_loader::user_lang_config_file();
-    let log_file = helix_loader::log_file();
     let rt_dir = helix_loader::runtime_dir();
-    let clipboard_provider = get_clipboard_provider();
-
-    if config_file.exists() {
-        writeln!(stdout, "Config file: {}", config_file.display())?;
-    } else {
-        writeln!(stdout, "Config file: default")?;
-    }
-    if lang_file.exists() {
-        writeln!(stdout, "Language file: {}", lang_file.display())?;
-    } else {
-        writeln!(stdout, "Language file: default")?;
-    }
-    writeln!(stdout, "Log file: {}", log_file.display())?;
     writeln!(stdout, "Runtime directory: {}", rt_dir.display())?;
-
     if let Ok(path) = std::fs::read_link(&rt_dir) {
         let msg = format!("Runtime directory is symlinked to {}", path.display());
         writeln!(stdout, "{}", msg.yellow())?;
@@ -78,245 +41,137 @@ pub fn general() -> std::io::Result<()> {
     if rt_dir.read_dir().ok().map(|it| it.count()) == Some(0) {
         writeln!(stdout, "{}", "Runtime directory is empty.".red())?;
     }
-    writeln!(stdout, "Clipboard provider: {}", clipboard_provider.name())?;
 
     Ok(())
 }
 
-pub fn clipboard() -> std::io::Result<()> {
-    let stdout = std::io::stdout();
-    let mut stdout = stdout.lock();
-
-    let board = get_clipboard_provider();
-    match board.name().as_ref() {
+fn display_clipboard() -> std::io::Result<()> {
+    let mut stdout = std::io::stdout().lock();
+    let clipboard = clipboard::get_clipboard_provider();
+    match clipboard.name().as_ref() {
         "none" => {
-            writeln!(
-                stdout,
-                "{}",
-                "System clipboard provider: Not installed".red()
-            )?;
-            writeln!(
-                stdout,
-                "    {}",
-                "For troubleshooting system clipboard issues, refer".red()
-            )?;
-            writeln!(stdout, "    {}",
-                "https://github.com/helix-editor/helix/wiki/Troubleshooting#copypaste-fromto-system-clipboard-not-working"
-            .red().underlined())?;
+            writeln!(stdout, "{}", "No system clipboard provider installed, refer to:".red())?;
+            let link = "https://github.com/helix-editor/helix/wiki/Troubleshooting#copypaste-fromto-system-clipboard-not-working";
+            writeln!(stdout, "{}", link.red().underlined())?;
         }
         name => writeln!(stdout, "System clipboard provider: {}", name)?,
     }
-
     Ok(())
 }
 
-pub fn languages_all() -> std::io::Result<()> {
-    let stdout = std::io::stdout();
-    let mut stdout = stdout.lock();
-
-    let mut syn_loader_conf = match LanguageConfigurations::merged() {
-        Ok(conf) => conf,
-        Err(err) => {
-            let stderr = std::io::stderr();
-            let mut stderr = stderr.lock();
-
-            writeln!(
-                stderr,
-                "{}: {}",
-                "Error parsing user language config".red(),
-                err
-            )?;
+fn load_merged_language_configurations() -> std::io::Result<Vec<LanguageConfiguration>>  {
+    LanguageConfigurations::merged().or_else(|err| {
+            let mut stderr = std::io::stderr().lock();
+            writeln!(stderr,"{}: {}","Error parsing user language config".red(),err)?;
             writeln!(stderr, "{}", "Using default language config".yellow())?;
-            LanguageConfigurations::default()
-        }
-    };
-
-    let mut headings = vec!["Language", "LSP", "DAP"];
-
-    for feat in TsFeature::all() {
-        headings.push(feat.short_title())
-    }
-
-    let terminal_cols = crossterm::terminal::size().map(|(c, _)| c).unwrap_or(80);
-    let column_width = terminal_cols as usize / headings.len();
-    let is_terminal = std::io::stdout().is_tty();
-
-    let column = |item: &str, color: Color| {
-        let mut data = format!(
-            "{:width$}",
-            item.get(..column_width - 2)
-                .map(|s| format!("{}…", s))
-                .unwrap_or_else(|| item.to_string()),
-            width = column_width,
-        );
-        if is_terminal {
-            data = data.stylize().with(color).to_string();
-        }
-
-        // We can't directly use println!() because of
-        // https://github.com/crossterm-rs/crossterm/issues/589
-        let _ = crossterm::execute!(std::io::stdout(), Print(data));
-    };
-
-    for heading in headings {
-        column(heading, Color::White);
-    }
-    writeln!(stdout)?;
-
-    syn_loader_conf
-        .language
-        .sort_unstable_by_key(|l| l.language_id.clone());
-
-    let check_binary = |cmd: Option<String>| match cmd {
-        Some(cmd) => match which::which(&cmd) {
-            Ok(_) => column(&format!("✓ {}", cmd), Color::Green),
-            Err(_) => column(&format!("✘ {}", cmd), Color::Red),
-        },
-        None => column("None", Color::Yellow),
-    };
-
-    for lang in &syn_loader_conf.language {
-        column(&lang.language_id, Color::Reset);
-
-        let lsp = lang
-            .language_server
-            .as_ref()
-            .map(|lsp| lsp.command.to_string());
-        check_binary(lsp);
-
-        let dap = lang.debugger.as_ref().map(|dap| dap.command.to_string());
-        check_binary(dap);
-
-        for ts_feat in TsFeature::all() {
-            match load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok() {
-                true => column("✓", Color::Green),
-                false => column("✘", Color::Red),
-            }
-        }
-
-        writeln!(stdout)?;
-    }
-
-    Ok(())
+            Ok(LanguageConfigurations::default())
+    })
+    .map(|lang_configs| lang_configs.language)
 }
 
-/// Display diagnostics pertaining to a particular language (LSP,
-/// highlight queries, etc).
-pub fn language(lang_str: String) -> std::io::Result<()> {
-    let stdout = std::io::stdout();
-    let mut stdout = stdout.lock();
+fn display_language(lang_str: String) -> std::io::Result<()> {
+    let mut stdout = std::io::stdout().lock();
 
-    let syn_loader_conf = match helix_loader::merged_lang_config()?.try_into() {
-        Ok(conf) => conf,
-        Err(err) => {
-            let stderr = std::io::stderr();
-            let mut stderr = stderr.lock();
-
-            writeln!(
-                stderr,
-                "{}: {}",
-                "Error parsing user language config".red(),
-                err
-            )?;
-            writeln!(stderr, "{}", "Using default language config".yellow())?;
-            LanguageConfigurations::default()
-        }
-    };
-
-    let lang = match syn_loader_conf
-        .language
-        .iter()
-        .find(|l| l.language_id == lang_str)
-    {
-        Some(l) => l,
+    let language_configurations = load_merged_language_configurations()?;
+    let lang = match language_configurations.iter().find(|l| l.language_id == lang_str) {
+        Some(found_language) => found_language,
         None => {
-            let msg = format!("Language '{}' not found", lang_str);
-            writeln!(stdout, "{}", msg.red())?;
-            let suggestions: Vec<&str> = syn_loader_conf
-                .language
-                .iter()
+            writeln!(stdout, "{}", format!("Language '{lang_str}' not found").red())?;
+            let suggestions: Vec<&str> = language_configurations.iter()
                 .filter(|l| l.language_id.starts_with(lang_str.chars().next().unwrap()))
                 .map(|l| l.language_id.as_str())
                 .collect();
             if !suggestions.is_empty() {
                 let suggestions = suggestions.join(", ");
-                writeln!(
-                    stdout,
-                    "Did you mean one of these: {} ?",
-                    suggestions.yellow()
-                )?;
+                writeln!(stdout,"Did you mean one of these: {} ?",suggestions.yellow())?;
             }
             return Ok(());
         }
     };
 
-    probe_protocol(
-        "language server",
-        lang.language_server
-            .as_ref()
-            .map(|lsp| lsp.command.to_string()),
-    )?;
-
-    probe_protocol(
-        "debug adapter",
-        lang.debugger.as_ref().map(|dap| dap.command.to_string()),
-    )?;
-
-    for ts_feat in TsFeature::all() {
-        probe_treesitter_feature(&lang_str, *ts_feat)?
-    }
-
-    Ok(())
-}
-
-/// Display diagnostics about LSP and DAP.
-fn probe_protocol(protocol_name: &str, server_cmd: Option<String>) -> std::io::Result<()> {
-    let stdout = std::io::stdout();
-    let mut stdout = stdout.lock();
-
-    let cmd_name = match server_cmd {
-        Some(ref cmd) => cmd.as_str().green(),
-        None => "None".yellow(),
-    };
-    writeln!(stdout, "Configured {}: {}", protocol_name, cmd_name)?;
-
-    if let Some(cmd) = server_cmd {
-        let path = match which::which(&cmd) {
-            Ok(path) => path.display().to_string().green(),
-            Err(_) => format!("'{}' not found in $PATH", cmd).red(),
+    let probe_protocol = |protocol_name: &str, server_cmd: Option<String>| -> std::io::Result<()> {
+        let mut stdout = std::io::stdout().lock();
+        match server_cmd {
+            Some(server_cmd) => { 
+                writeln!(stdout, "Configured {protocol_name}: {}", server_cmd.clone().green())?;
+                let result = match which::which(&server_cmd) {
+                    Ok(path) => path.display().to_string().green(),
+                    Err(_) => format!("Not found in $PATH").red()
+                };
+                writeln!(stdout, "Binary for {server_cmd}: {result}")?
+            },
+            None => writeln!(stdout, "Configured {protocol_name}: {}", "None".yellow())?
         };
-        writeln!(stdout, "Binary for {}: {}", protocol_name, path)?;
+        Ok(())
+    };
+
+    probe_protocol("language server",lang.language_server.as_ref()
+        .map(|lsp| lsp.command.to_string()))?;
+    probe_protocol("debug adapter",lang.debugger.as_ref()
+        .map(|dap| dap.command.to_string()))?;
+
+    for feature in TsFeature::all() {
+        let supported = match grammar::load_runtime_file(&lang.language_id, feature.runtime_filename()).is_ok() {
+            true => "✓".green(),
+            false => "✗".red(),
+        };
+        writeln!(stdout, "{} queries: {supported}", feature.short_title())?;
+    }
+    Ok(())
+}
+
+fn display_all_languages() -> std::io::Result<()> {
+    let mut stdout = std::io::stdout().lock();
+
+    let mut column_headers = vec!["Language", "LSP", "DAP"];
+    for treesitter_feature in TsFeature::all() {
+        column_headers.push(treesitter_feature.short_title())
     }
 
-    Ok(())
-}
+    let column_width = crossterm::terminal::size().map(|(c, _)| c).unwrap_or(80) as usize / column_headers.len();
+    let print_column = |item: &str, color: Color| {
+        let mut data = format!("{:column_width$}", item
+            .get(..column_width - 2)
+            .map(|s| format!("{}…", s))
+            .unwrap_or_else(|| item.to_string()));
 
-/// Display diagnostics about a feature that requires tree-sitter
-/// query files (highlights, textobjects, etc).
-fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<()> {
-    let stdout = std::io::stdout();
-    let mut stdout = stdout.lock();
-
-    let found = match load_runtime_file(lang, feature.runtime_filename()).is_ok() {
-        true => "✓".green(),
-        false => "✘".red(),
-    };
-    writeln!(stdout, "{} queries: {}", feature.short_title(), found)?;
-
-    Ok(())
-}
-
-pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
-    match health_arg.as_deref() {
-        Some("languages") => languages_all()?,
-        Some("clipboard") => clipboard()?,
-        None | Some("all") => {
-            general()?;
-            clipboard()?;
-            writeln!(std::io::stdout().lock())?;
-            languages_all()?;
+        if std::io::stdout().is_tty() {
+            data = data.stylize().with(color).to_string();
         }
-        Some(lang) => language(lang.to_string())?,
+        // https://github.com/crossterm-rs/crossterm/issues/589
+        let _ = crossterm::execute!(std::io::stdout(), Print(data));
+    };
+
+    for header in column_headers {
+        print_column(header, Color::White);
+    }
+    writeln!(stdout)?;
+
+    let check_binary = |cmd: Option<String>| match cmd {
+        Some(cmd) => match which::which(&cmd) {
+            Ok(_) => print_column(&format!("✓ {}", cmd), Color::Green),
+            Err(_) => print_column(&format!("✗ {}", cmd), Color::Red),
+        },
+        None => print_column("None", Color::Yellow),
+    };
+
+    let mut language_configurations = load_merged_language_configurations()?;
+    language_configurations.sort_unstable_by_key(|l| l.language_id.clone());
+    for lang in &language_configurations {
+        print_column(&lang.language_id, Color::Reset);
+
+        let lsp = lang.language_server.as_ref().map(|lsp| lsp.command.to_string());
+        check_binary(lsp);
+        let dap = lang.debugger.as_ref().map(|dap| dap.command.to_string());
+        check_binary(dap);
+
+        for ts_feat in TsFeature::all() {
+            match grammar::load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok() {
+                true => print_column("✓", Color::Green),
+                false => print_column("✗", Color::Red),
+            }
+        }
+        writeln!(stdout)?;
     }
     Ok(())
 }
