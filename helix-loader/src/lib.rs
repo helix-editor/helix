@@ -126,8 +126,8 @@ pub fn user_lang_config_file() -> PathBuf {
 
 /// Default built-in languages.toml.
 pub fn default_lang_configs() -> toml::Value {
-    toml::from_slice(ineclude_bytes!("../..languages.toml")).unwrap())
-        .expect("Could not parse built-in languages.toml to valid toml")
+        toml::from_slice(&std::fs::read(repo_paths::default_lang_configs()).unwrap())
+            .expect("Could not parse built-in languages.toml to valid toml")
 }
 
 /// Searces for language.toml in config path (user config) and in 'helix' directories

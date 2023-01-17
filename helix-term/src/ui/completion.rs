@@ -408,7 +408,7 @@ impl Component for Completion {
                             option.detail.as_deref().unwrap_or_default(),
                             contents
                         ),
-                        cx.editor.syn_loader.clone(),
+                        cx.editor.lang_configs_loader.clone(),
                     )
                 }
                 Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
@@ -419,10 +419,10 @@ impl Component for Completion {
                     if let Some(detail) = &option.detail.as_deref() {
                         Markdown::new(
                             format!("```{}\n{}\n```\n{}", language, detail, contents),
-                            cx.editor.syn_loader.clone(),
+                            cx.editor.lang_configs_loader.clone(),
                         )
                     } else {
-                        Markdown::new(contents.to_string(), cx.editor.syn_loader.clone())
+                        Markdown::new(contents.to_string(), cx.editor.lang_configs_loader.clone())
                     }
                 }
                 None if option.detail.is_some() => {
@@ -435,7 +435,7 @@ impl Component for Completion {
                             language,
                             option.detail.as_deref().unwrap_or_default(),
                         ),
-                        cx.editor.syn_loader.clone(),
+                        cx.editor.lang_configs_loader.clone(),
                     )
                 }
                 None => return,

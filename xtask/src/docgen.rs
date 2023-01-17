@@ -1,7 +1,8 @@
 use crate::helpers;
-use crate::path;
 use crate::DynError;
 
+use helix_core::syntax::LanguageConfigurations;
+use helix_loader::repo_paths;
 use helix_term::commands::TYPABLE_COMMAND_LIST;
 use helix_term::health::TsFeature;
 use std::fs;
@@ -62,9 +63,9 @@ pub fn lang_features() -> Result<String, DynError> {
     cols.push("Default LSP".to_owned());
 
     md.push_str(&md_table_heading(&cols));
-    let config = helpers::lang_config();
+    let lang_configs = LanguageConfigurations::default();
 
-    let mut langs = config
+    let mut langs = lang_configs
         .language
         .iter()
         .map(|l| l.language_id.clone())
@@ -78,7 +79,7 @@ pub fn lang_features() -> Result<String, DynError> {
 
     let mut row = Vec::new();
     for lang in langs {
-        let lc = config
+        let lc = lang_configs
             .language
             .iter()
             .find(|l| l.language_id == lang)
@@ -112,6 +113,6 @@ pub fn lang_features() -> Result<String, DynError> {
 
 pub fn write(filename: &str, data: &str) {
     let error = format!("Could not write to {}", filename);
-    let path = path::book_gen().join(filename);
+    let path = repo_paths::book_gen().join(filename);
     fs::write(path, data).expect(&error);
 }

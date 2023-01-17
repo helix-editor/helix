@@ -211,7 +211,7 @@ impl<T: Item> FilePicker<T> {
         // Then attempt to highlight it if it has no language set
         if let Some(doc) = doc {
             if doc.language_config().is_none() {
-                let loader = cx.editor.syn_loader.clone();
+                let loader = cx.editor.lang_configs_loader.clone();
                 doc.detect_language(loader);
             }
         }

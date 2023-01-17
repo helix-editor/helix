@@ -1,6 +1,5 @@
 mod docgen;
 mod helpers;
-mod path;
 mod querycheck;
 mod themelint;
 

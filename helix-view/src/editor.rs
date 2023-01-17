@@ -788,7 +788,7 @@ pub struct Editor {
 
     pub clipboard_provider: Box<dyn ClipboardProvider>,
 
-    pub syn_loader: Arc<syntax::Loader>,
+    pub lang_configs_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
     /// last_theme is used for theme previews. We store the current theme here,
     /// and if previewing is cancelled, we can return to it.
@@ -896,7 +896,7 @@ impl Editor {
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
-            syn_loader,
+            lang_configs_loader: syn_loader,
             theme_loader,
             last_theme: None,
             last_line_number: None,
@@ -1003,7 +1003,7 @@ impl Editor {
         }
 
         let scopes = theme.scopes();
-        self.syn_loader.set_scopes(scopes.to_vec());
+        self.lang_configs_loader.set_scopes(scopes.to_vec());
 
         match preview {
             ThemeAction::Preview => {
@@ -1223,7 +1223,7 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::open(&path, None, Some(self.syn_loader.clone()))?;
+            let mut doc = Document::open(&path, None, Some(self.lang_configs_loader.clone()))?;
 
             let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
