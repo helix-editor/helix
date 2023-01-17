@@ -571,6 +571,8 @@ and therefore requires the corresponding query file to work properly.</p>
 <tr><td><code>Space</code></td><td>Enter <a href="keymap.html#space-mode">space mode</a></td><td>N/A</td></tr>
 </tbody></table>
 </div>
+<p>These modes (except command mode) can be configured by
+<a href="https://docs.helix-editor.com/remapping.html#minor-modes">remapping keys</a>.</p>
 <h4 id="view-mode"><a class="header" href="#view-mode">View mode</a></h4>
 <p>Accessed by typing <code>z</code> in <a href="keymap.html#normal-mode">normal mode</a>.</p>
 <p>View mode is intended for scrolling and manipulating the view without changing
@@ -689,10 +691,10 @@ it).</p>
 <h4 id="unimpaired"><a class="header" href="#unimpaired">Unimpaired</a></h4>
 <p>Mappings in the style of <a href="https://github.com/tpope/vim-unimpaired">vim-unimpaired</a>.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
-<tr><td><code>[d</code></td><td>Go to previous diagnostic (<strong>LSP</strong>)</td><td><code>goto_prev_diag</code></td></tr>
 <tr><td><code>]d</code></td><td>Go to next diagnostic (<strong>LSP</strong>)</td><td><code>goto_next_diag</code></td></tr>
-<tr><td><code>[D</code></td><td>Go to first diagnostic in document (<strong>LSP</strong>)</td><td><code>goto_first_diag</code></td></tr>
+<tr><td><code>[d</code></td><td>Go to previous diagnostic (<strong>LSP</strong>)</td><td><code>goto_prev_diag</code></td></tr>
 <tr><td><code>]D</code></td><td>Go to last diagnostic in document (<strong>LSP</strong>)</td><td><code>goto_last_diag</code></td></tr>
+<tr><td><code>[D</code></td><td>Go to first diagnostic in document (<strong>LSP</strong>)</td><td><code>goto_first_diag</code></td></tr>
 <tr><td><code>]f</code></td><td>Go to next function (<strong>TS</strong>)</td><td><code>goto_next_function</code></td></tr>
 <tr><td><code>[f</code></td><td>Go to previous function (<strong>TS</strong>)</td><td><code>goto_prev_function</code></td></tr>
 <tr><td><code>]t</code></td><td>Go to next type definition (<strong>TS</strong>)</td><td><code>goto_next_class</code></td></tr>
@@ -707,10 +709,10 @@ it).</p>
 <tr><td><code>[p</code></td><td>Go to previous paragraph</td><td><code>goto_prev_paragraph</code></td></tr>
 <tr><td><code>]g</code></td><td>Go to next change</td><td><code>goto_next_change</code></td></tr>
 <tr><td><code>[g</code></td><td>Go to previous change</td><td><code>goto_prev_change</code></td></tr>
-<tr><td><code>[G</code></td><td>Go to first change</td><td><code>goto_first_change</code></td></tr>
 <tr><td><code>]G</code></td><td>Go to last change</td><td><code>goto_last_change</code></td></tr>
-<tr><td><code>[Space</code></td><td>Add newline above</td><td><code>add_newline_above</code></td></tr>
+<tr><td><code>[G</code></td><td>Go to first change</td><td><code>goto_first_change</code></td></tr>
 <tr><td><code>]Space</code></td><td>Add newline below</td><td><code>add_newline_below</code></td></tr>
+<tr><td><code>[Space</code></td><td>Add newline above</td><td><code>add_newline_above</code></td></tr>
 </tbody></table>
 </div>
 <h2 id="insert-mode"><a class="header" href="#insert-mode">Insert mode</a></h2>
@@ -1641,10 +1643,27 @@ j = { k = &quot;normal_mode&quot; } # Maps `jk` to exit insert mode
 <blockquote>
 <p>NOTE: Typable commands can also be remapped, remember to keep the <code>:</code> prefix to indicate it's a typable command.</p>
 </blockquote>
-<blockquote>
-<p>NOTE: Bindings can be nested, to create (or edit) minor modes: <code>g = { a = &quot;code_action&quot;}</code> adds a new entry to
-the <code>goto</code> mode.</p>
-</blockquote>
+<h2 id="minor-modes-1"><a class="header" href="#minor-modes-1">Minor modes</a></h2>
+<p>Minor modes are accessed by pressing a key (usually from normal mode), giving access to dedicated bindings. Bindings
+can be modified or added by nesting definitions.</p>
+<pre><code class="language-toml">[keys.insert.j]
+k = &quot;normal_mode&quot; # Maps `jk` to exit insert mode
+
+[keys.normal.g]
+a = &quot;code_action&quot; # Maps `ga` to show possible code actions
+
+# invert `j` and `k` in view mode
+[keys.normal.z]
+j = &quot;scroll_up&quot;
+k = &quot;scroll_down&quot;
+
+# create a new minor mode bound to `+`
+[keys.normal.&quot;+&quot;]
+m = &quot;:run-shell-command make&quot;
+c = &quot;:run-shell-command cargo build&quot;
+t = &quot;:run-shell-command cargo test&quot;
+</code></pre>
+<h2 id="special-keys-and-modifiers"><a class="header" href="#special-keys-and-modifiers">Special keys and modifiers</a></h2>
 <p>Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
 <code>C-</code>, <code>S-</code> and <code>A-</code>. Special keys are encoded as follows:</p>
 <div class="table-wrapper"><table><thead><tr><th>Key name</th><th>Representation</th></tr></thead><tbody>

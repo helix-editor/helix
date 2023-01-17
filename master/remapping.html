@@ -171,10 +171,27 @@ j = { k = &quot;normal_mode&quot; } # Maps `jk` to exit insert mode
 <blockquote>
 <p>NOTE: Typable commands can also be remapped, remember to keep the <code>:</code> prefix to indicate it's a typable command.</p>
 </blockquote>
-<blockquote>
-<p>NOTE: Bindings can be nested, to create (or edit) minor modes: <code>g = { a = &quot;code_action&quot;}</code> adds a new entry to
-the <code>goto</code> mode.</p>
-</blockquote>
+<h2 id="minor-modes"><a class="header" href="#minor-modes">Minor modes</a></h2>
+<p>Minor modes are accessed by pressing a key (usually from normal mode), giving access to dedicated bindings. Bindings
+can be modified or added by nesting definitions.</p>
+<pre><code class="language-toml">[keys.insert.j]
+k = &quot;normal_mode&quot; # Maps `jk` to exit insert mode
+
+[keys.normal.g]
+a = &quot;code_action&quot; # Maps `ga` to show possible code actions
+
+# invert `j` and `k` in view mode
+[keys.normal.z]
+j = &quot;scroll_up&quot;
+k = &quot;scroll_down&quot;
+
+# create a new minor mode bound to `+`
+[keys.normal.&quot;+&quot;]
+m = &quot;:run-shell-command make&quot;
+c = &quot;:run-shell-command cargo build&quot;
+t = &quot;:run-shell-command cargo test&quot;
+</code></pre>
+<h2 id="special-keys-and-modifiers"><a class="header" href="#special-keys-and-modifiers">Special keys and modifiers</a></h2>
 <p>Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
 <code>C-</code>, <code>S-</code> and <code>A-</code>. Special keys are encoded as follows:</p>
 <div class="table-wrapper"><table><thead><tr><th>Key name</th><th>Representation</th></tr></thead><tbody>
