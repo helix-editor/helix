@@ -166,6 +166,9 @@ These sub-modes are accessible from normal mode and typically switch back to nor
 | `Ctrl-w` | Enter [window mode](#window-mode)                  | N/A            |
 | `Space`  | Enter [space mode](#space-mode)                    | N/A            |
 
+These modes (except command mode) can be configured by
+[remapping keys](https://docs.helix-editor.com/remapping.html#minor-modes).
+
 #### View mode
 
 Accessed by typing `z` in [normal mode](#normal-mode).
