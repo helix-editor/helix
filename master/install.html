@@ -209,6 +209,10 @@ cd helix
 cargo install --path helix-term --locked
 </code></pre>
 <p>This will install the <code>hx</code> binary to <code>$HOME/.cargo/bin</code> and build tree-sitter grammars in <code>./runtime/grammars</code>.</p>
+<p>If you are using the musl-libc instead of glibc the following environment variable must be set during the build
+to ensure tree sitter grammars can be loaded correctly:</p>
+<pre><code>RUSTFLAGS=&quot;-C target-feature=-crt-static&quot;
+</code></pre>
 <p>Helix also needs its runtime files so make sure to copy/symlink the <code>runtime/</code> directory into the
 config directory (for example <code>~/.config/helix/runtime</code> on Linux/macOS). This location can be overridden
 via the <code>HELIX_RUNTIME</code> environment variable.</p>
