@@ -269,6 +269,7 @@ impl MappableCommand {
         command_mode, "Enter command mode",
         file_picker, "Open file picker",
         file_picker_in_current_directory, "Open file picker at current working directory",
+        directory_picker, "Open directory picker",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
@@ -2296,6 +2297,53 @@ fn file_picker(cx: &mut Context) {
 fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
     let picker = ui::file_picker(cwd, &cx.editor.config());
+    cx.push_layer(Box::new(overlayed(picker)));
+}
+
+fn directory_picker(cx: &mut Context) {
+    let root = find_root(None, &[]);
+    let config = cx.editor.config();
+
+    let mut walk_builder = ignore::WalkBuilder::new(&root);
+    walk_builder
+        .hidden(config.file_picker.hidden)
+        .parents(config.file_picker.parents)
+        .ignore(config.file_picker.ignore)
+        .follow_links(config.file_picker.follow_symlinks)
+        .git_ignore(config.file_picker.git_ignore)
+        .git_global(config.file_picker.git_global)
+        .git_exclude(config.file_picker.git_exclude)
+        .max_depth(config.file_picker.max_depth)
+        .filter_entry(|entry| entry.file_name() != ".git");
+
+    const MAX: usize = 100_000;
+    let mut dirs: Vec<PathBuf> = walk_builder
+        .build()
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+
+            let is_dir = entry.file_type().map_or(false, |ft| ft.is_dir());
+            if is_dir {
+                Some(entry.into_path())
+            } else {
+                None
+            }
+        })
+        .take(MAX)
+        .collect();
+    dirs.sort();
+    dirs[0] = PathBuf::from(".");
+
+    let mut picker = FilePicker::new(
+        dirs,
+        root,
+        |cx, path, _action| {
+            cx.editor
+                .change_current_directory(path)
+                .unwrap_or_else(|e| cx.editor.set_error(format!("{}", e)));
+        },
+        |_editor, _path| None,
+    );
     cx.push_layer(Box::new(overlayed(picker)));
 }
 

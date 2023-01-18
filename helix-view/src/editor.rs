@@ -1147,6 +1147,19 @@ impl Editor {
         Ok(id)
     }
 
+    pub fn change_current_directory(&mut self, path: &Path) -> Result<(), Error> {
+        let dir = helix_core::path::get_canonicalized_path(path)?;
+        std::env::set_current_dir(dir)?;
+
+        let cwd = std::env::current_dir()?;
+        self.set_status(format!(
+            "Current working directory is now {}",
+            cwd.display()
+        ));
+
+        Ok(())
+    }
+
     pub fn close(&mut self, id: ViewId) {
         // Remove selections for the closed view on all documents.
         for doc in self.documents_mut() {
