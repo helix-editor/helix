@@ -139,6 +139,7 @@ where
     match element_id {
         helix_view::editor::StatusLineElement::Mode => render_mode,
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
+        helix_view::editor::StatusLineElement::FileBaseName => render_file_base_name,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
@@ -415,6 +416,26 @@ where
         let path = rel_path
             .as_ref()
             .map(|p| p.to_string_lossy())
+            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
+        format!(
+            " {}{} ",
+            path,
+            if context.doc.is_modified() { "[+]" } else { "" }
+        )
+    };
+
+    write(context, title, None);
+}
+
+fn render_file_base_name<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let title = {
+        let rel_path = context.doc.relative_path();
+        let path = rel_path
+            .as_ref()
+            .and_then(|p| p.as_path().file_name().map(|s| s.to_string_lossy()))
             .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
         format!(
             " {}{} ",

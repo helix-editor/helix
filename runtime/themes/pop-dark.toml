@@ -8,7 +8,10 @@ info = { fg = 'yellowH', bg = 'brownD' }
 hint = { fg = 'brownD', bg = 'yellowH', modifiers = ['bold'] }
 warning = { fg = 'brownD', bg = 'orangeW', modifiers = ['bold'] }
 error = { fg = 'brownD', bg = 'redE', modifiers = ['bold'] }
-diagnostic = { fg = 'greyT', bg = 'redD' }
+"diagnostic.info".underline = { color = "yellowH", style = "curl" } 
+"diagnostic.hint".underline = { color = "yellowH", style = "curl" } 
+"diagnostic.warning".underline = { color = "orangeW", style = "curl" } 
+"diagnostic.error".underline = { color = "redE", style = "curl" } 
 'ui.background' = { bg = 'brownN' }
 'ui.window' = { bg = 'brownH', fg = "brownD" } 
 'ui.gutter' = { bg = 'brownH' }

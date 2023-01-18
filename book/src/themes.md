@@ -140,6 +140,8 @@ We use a similar set of scopes as
 
 - `type` - Types
   - `builtin` - Primitive types provided by the language (`int`, `usize`)
+  - `enum`
+    - `variant`
 - `constructor`
 
 - `constant` (TODO: constant.other.placeholder for %v)
@@ -202,6 +204,8 @@ We use a similar set of scopes as
 
 - `namespace`
 
+- `special`
+
 - `markup`
   - `heading`
     - `marker`
@@ -248,10 +252,14 @@ These scopes are used for theming the editor interface.
 | `ui.background`             |                                                                                                |
 | `ui.background.separator`   | Picker separator below input line                                                              |
 | `ui.cursor`                 |                                                                                                |
+| `ui.cursor.normal`          |                                                                                                |
 | `ui.cursor.insert`          |                                                                                                |
 | `ui.cursor.select`          |                                                                                                |
 | `ui.cursor.match`           | Matching bracket etc.                                                                          |
 | `ui.cursor.primary`         | Cursor with primary selection                                                                  |
+| `ui.cursor.primary.normal`  |                                                                                                |
+| `ui.cursor.primary.insert`  |                                                                                                |
+| `ui.cursor.primary.select`  |                                                                                                |
 | `ui.gutter`                 | Gutter                                                                                         |
 | `ui.gutter.selected`        | Gutter for the line the cursor is on                                                           |
 | `ui.linenr`                 | Line numbers                                                                                   |
@@ -268,6 +276,7 @@ These scopes are used for theming the editor interface.
 | `ui.help`                   | Description box for commands                                                                   |
 | `ui.text`                   | Command prompts, popup text, etc.                                                              |
 | `ui.text.focus`             |                                                                                                |
+| `ui.text.inactive`          | Same as `ui.text` but when the text is inactive (e.g. suggestions)                             |
 | `ui.text.info`              | The key: command text in `ui.popup.info` boxes                                                 |
 | `ui.virtual.ruler`          | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
 | `ui.virtual.whitespace`     | Visible whitespace characters                                                                 |

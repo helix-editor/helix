@@ -342,23 +342,29 @@ impl EditorView {
         let selection_scope = theme
             .find_scope_index("ui.selection")
             .expect("could not find `ui.selection` scope in the theme!");
+        let primary_selection_scope = theme
+            .find_scope_index("ui.selection.primary")
+            .unwrap_or(selection_scope);
         let base_cursor_scope = theme
             .find_scope_index("ui.cursor")
             .unwrap_or(selection_scope);
+        let base_primary_cursor_scope = theme
+            .find_scope_index("ui.cursor.primary")
+            .unwrap_or(base_cursor_scope);
 
         let cursor_scope = match mode {
             Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
             Mode::Select => theme.find_scope_index("ui.cursor.select"),
-            Mode::Normal => Some(base_cursor_scope),
+            Mode::Normal => theme.find_scope_index("ui.cursor.normal"),
         }
         .unwrap_or(base_cursor_scope);
 
-        let primary_cursor_scope = theme
-            .find_scope_index("ui.cursor.primary")
-            .unwrap_or(cursor_scope);
-        let primary_selection_scope = theme
-            .find_scope_index("ui.selection.primary")
-            .unwrap_or(selection_scope);
+        let primary_cursor_scope = match mode {
+            Mode::Insert => theme.find_scope_index("ui.cursor.primary.insert"),
+            Mode::Select => theme.find_scope_index("ui.cursor.primary.select"),
+            Mode::Normal => theme.find_scope_index("ui.cursor.primary.normal"),
+        }
+        .unwrap_or(base_primary_cursor_scope);
 
         let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
         for (i, range) in selection.iter().enumerate() {
@@ -1155,6 +1161,7 @@ impl EditorView {
                     }
 
                     editor.focus(view_id);
+                    editor.ensure_cursor_in_view(view_id);
 
                     return EventResult::Consumed(None);
                 }
@@ -1191,7 +1198,8 @@ impl EditorView {
                 let primary = selection.primary_mut();
                 *primary = primary.put_cursor(doc.text().slice(..), pos, true);
                 doc.set_selection(view.id, selection);
-
+                let view_id = view.id;
+                cxt.editor.ensure_cursor_in_view(view_id);
                 EventResult::Consumed(None)
             }
 
@@ -1213,6 +1221,7 @@ impl EditorView {
                 commands::scroll(cxt, offset, direction);
 
                 cxt.editor.tree.focus = current_view;
+                cxt.editor.ensure_cursor_in_view(current_view);
 
                 EventResult::Consumed(None)
             }

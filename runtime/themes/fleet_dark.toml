@@ -91,10 +91,10 @@
 "warning" = "orange_accent"
 "error" = "red_error"
 "diagnostic" = { modifiers = [] }
-"diagnostic.hint" = { underline = { color = "light", style = "line" } }
-"diagnostic.info" = { underline = { color = "blue_accent", style = "line" } }
-"diagnostic.warning" = { underline = { color = "yellow_accent", style = "line" } }
-"diagnostic.error" = { underline = { color = "red_error", style = "line" } }
+"diagnostic.hint" = { underline = { color = "light", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue_accent", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow_accent", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red_error", style = "curl" } }
 
 [palette]
 background = "#181818"

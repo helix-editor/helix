@@ -16,11 +16,13 @@
 | common-lisp | ✓ |  |  | `cl-lsp` |
 | cpon | ✓ |  | ✓ |  |
 | cpp | ✓ | ✓ | ✓ | `clangd` |
+| crystal | ✓ | ✓ |  |  |
 | css | ✓ |  |  | `vscode-css-language-server` |
 | cue | ✓ |  |  | `cuelsp` |
 | d | ✓ | ✓ | ✓ | `serve-d` |
 | dart | ✓ |  | ✓ | `dart` |
 | devicetree | ✓ |  |  |  |
+| dhall | ✓ | ✓ |  | `dhall-lsp-server` |
 | diff | ✓ |  |  |  |
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | dot | ✓ |  |  | `dot-language-server` |
@@ -77,6 +79,7 @@
 | make | ✓ |  |  |  |
 | markdown | ✓ |  |  | `marksman` |
 | markdown.inline | ✓ |  |  |  |
+| matlab | ✓ |  |  |  |
 | mermaid | ✓ |  |  |  |
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
@@ -91,6 +94,7 @@
 | pascal | ✓ | ✓ |  | `pasls` |
 | perl | ✓ | ✓ | ✓ |  |
 | php | ✓ | ✓ | ✓ | `intelephense` |
+| ponylang | ✓ | ✓ | ✓ |  |
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ |  | ✓ |  |
@@ -118,7 +122,7 @@
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
 | task | ✓ |  |  |  |
-| tfvars |  |  |  | `terraform-ls` |
+| tfvars | ✓ |  | ✓ | `terraform-ls` |
 | toml | ✓ |  |  | `taplo` |
 | tsq | ✓ |  |  |  |
 | tsx | ✓ | ✓ | ✓ | `typescript-language-server` |

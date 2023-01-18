@@ -138,7 +138,7 @@ indent = { tab-width = 2, unit = "  " }
 name = "json"
 scope = "source.json"
 injection-regex = "json"
-file-types = ["json"]
+file-types = ["json", "jsonc"]
 roots = []
 language-server = { command = "vscode-json-language-server", args = ["--stdio"] }
 auto-format = true
@@ -147,7 +147,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "json"
-source = { git = "https://github.com/tree-sitter/tree-sitter-json", rev = "65bceef69c3b0f24c0b19ce67d79f57c96e90fcb" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-json", rev = "73076754005a460947cafe8e03a8cf5fa4fa2938" }
 
 [[language]]
 name = "c"
@@ -221,7 +221,16 @@ args = { console = "internalConsole", attachCommands = [ "platform select remote
 
 [[grammar]]
 name = "cpp"
-source = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev = "d5e90fba898f320db48d81ddedd78d52c67c1fed" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev = "2d2c4aee8672af4c7c8edff68e7dd4c07e88d2b1" }
+
+[[language]]
+name = "crystal"
+scope = "source.cr"
+file-types = ["cr"]
+roots = ["shard.yml", "shard.lock"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+grammar = "ruby"
 
 [[language]]
 name = "c-sharp"
@@ -525,7 +534,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-ruby", rev = "4c600
 name = "bash"
 scope = "source.bash"
 injection-regex = "(shell|bash|zsh|sh)"
-file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc"]
+file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc", ".bash_aliases"]
 shebangs = ["sh", "bash", "dash", "zsh"]
 roots = []
 comment-token = "#"
@@ -1052,10 +1061,11 @@ file-types = ["scala", "sbt", "sc"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "metals" }
+config = { "isHttpEnabled" = true }
 
 [[grammar]]
 name = "scala"
-source = { git = "https://github.com/tree-sitter/tree-sitter-scala", rev = "140c96cf398693189d4e50f76d19ddfcd8a018f8" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-scala", rev = "db1c8c23d7996476a791db85a0d292084c19c232" }
 
 [[language]]
 name = "dockerfile"
@@ -1448,7 +1458,7 @@ file-types = ["tscn","tres"]
 shebangs = []
 roots = ["project.godot"]
 auto-format = false
-comment-token = "#"
+comment-token = ";"
 indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
@@ -1567,6 +1577,7 @@ name = "sshclientconfig"
 scope = "source.sshclientconfig"
 file-types = [{ suffix = ".ssh/config" }, { suffix = "/etc/ssh/ssh_config" }]
 roots = []
+comment-token = "#"
 
 [[grammar]]
 name = "sshclientconfig"
@@ -1664,7 +1675,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "prisma"
-source = { git = "https://github.com/victorhqc/tree-sitter-prisma", rev = "17a59236ac25413b81b1613ea6ba5d8d52d7cd6c" }
+source = { git = "https://github.com/victorhqc/tree-sitter-prisma", rev = "eca2596a355b1a9952b4f80f8f9caed300a272b5" }
 
 [[language]]
 name = "clojure"
@@ -2056,3 +2067,44 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "mermaid"
 source = { git = "https://github.com/monaqa/tree-sitter-mermaid", rev = "d787c66276e7e95899230539f556e8b83ee16f6d" }
+
+[[language]]
+name = "matlab"
+scope = "source.m"
+file-types = ["m"]
+comment-token = "%"
+shebangs = ["octave-cli", "matlab"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "matlab"
+source = { git = "https://github.com/mstanciu552/tree-sitter-matlab", rev = "2d5d3d5193718a86477d4335aba5b34e79147326" }
+
+[[language]]
+name = "ponylang"
+scope = "source.pony"
+file-types = ["pony"]
+injection-regex = "pony"
+roots = ["corral.json", "lock.json"]
+indent = { tab-width = 2, unit = "  " }
+comment-token = "//"
+
+[[grammar]]
+name = "ponylang"
+source = { git = "https://github.com/mfelsche/tree-sitter-ponylang", rev = "ef66b151bc2604f431b5668fcec4747db4290e11" }
+
+[[language]]
+name = "dhall"
+scope = "source.dhall"
+injection-regex = "dhall"
+file-types = ["dhall"]
+roots = []
+comment-token = "--"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "dhall-lsp-server" }
+formatter = { command = "dhall" , args = ["format"] }
+
+[[grammar]]
+name = "dhall"
+source = { git = "https://github.com/jbellerb/tree-sitter-dhall", rev = "affb6ee38d629c9296749767ab832d69bb0d9ea8" }

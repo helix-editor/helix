@@ -97,6 +97,7 @@ The following statusline elements can be configured:
 | `mode` | The current editor mode (`mode.normal`/`mode.insert`/`mode.select`) |
 | `spinner` | A progress spinner indicating LSP activity |
 | `file-name` | The path/name of the opened file |
+| `file-base-name` | The basename of the opened file |
 | `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
 | `file-line-ending` | The file line endings (CRLF or LF) |
 | `total-line-numbers` | The total line numbers of the opened file |
@@ -215,7 +216,7 @@ Options for rendering whitespace with visible characters. Use `:set whitespace.r
 
 | Key | Description | Default |
 |-----|-------------|---------|
-| `render` | Whether to render whitespace. May either be `"all"` or `"none"`, or a table with sub-keys `space`, `tab`, and `newline`. | `"none"` |
+| `render` | Whether to render whitespace. May either be `"all"` or `"none"`, or a table with sub-keys `space`, `nbsp`, `tab`, and `newline`. | `"none"` |
 | `characters` | Literal characters to use when rendering whitespace. Sub-keys may be any of `tab`, `space`, `nbsp`, `newline` or `tabpad` | See example below |
 
 Example
