@@ -73,4 +73,4 @@
 | `:pipe` | Pipe each selection to the shell command. |
 | `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
 | `:run-shell-command`, `:sh` | Run a shell command |
-| `:rename` | Rename the currently selected buffer |
+| `:rename`, `:rnm` | Rename the currently selected buffer |
