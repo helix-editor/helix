@@ -26,7 +26,7 @@
 "ui.bufferline.inactive" = { fg = "fujiGray", bg = "sumiInk0" }
 
 "ui.popup" = { fg = "fujiWhite", bg = "sumiInk0" }
-"ui.window" = { fg = "fujiWhite" }
+"ui.window" = { fg = "sumiInk0" }
 "ui.help" = { fg = "fujiWhite", bg = "sumiInk0" }
 "ui.text" = "fujiWhite"
 "ui.text.focus" = { fg = "fujiWhite", bg = "waveBlue1", modifiers = ["bold"] }
