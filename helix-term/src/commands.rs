@@ -3938,6 +3938,11 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
         }
     }
 
+    // nothing to do, bail out early to avoid crashes later
+    if changes.is_empty() {
+        return;
+    }
+
     changes.sort_unstable_by_key(|(from, _to, _text)| *from);
     changes.dedup();
 
