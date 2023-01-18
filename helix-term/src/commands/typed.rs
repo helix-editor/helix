@@ -3069,10 +3069,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "rename",
-        aliases: &[],
+        aliases: &["rnm"],
         doc: "Rename the currently selected buffer",
         fun: rename_buffer,
-        completer: None
+        signature: CommandSignature::none(),
     },
 ];
 
