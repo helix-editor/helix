@@ -5,6 +5,7 @@ use crate::{
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
+    session::Session,
     theme::{self, Theme},
     tree::{self, Tree},
     view::ViewPosition,
@@ -972,6 +973,10 @@ impl Editor {
             needs_redraw: false,
             cursor_cache: Cell::new(None),
         }
+    }
+
+    pub fn session(&self) -> anyhow::Result<Session> {
+        Session::new(std::env::current_dir()?)
     }
 
     /// Current editing mode for the [`Editor`].

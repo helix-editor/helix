@@ -1267,6 +1267,7 @@ dependencies = [
  "chardetng",
  "clipboard-win",
  "crossterm",
+ "either",
  "futures-util",
  "helix-core",
  "helix-dap",
@@ -1279,12 +1280,14 @@ dependencies = [
  "once_cell",
  "serde",
  "serde_json",
+ "sha1_smol",
  "slotmap",
  "tokio",
  "tokio-stream",
  "toml",
  "url",
  "which",
+ "winapi",
 ]
 
 [[package]]
