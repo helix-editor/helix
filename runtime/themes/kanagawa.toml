@@ -14,6 +14,8 @@
 "ui.linenr" = { fg = "sumiInk4" }
 "ui.linenr.selected" = { fg = "roninYellow" }
 
+"ui.virtual.ruler" = { bg = "sumiInk2" }
+"ui.virtual.whitespace" = "waveBlue1"
 "ui.virtual.indent-guide" = "sumiInk4"
 
 "ui.statusline" = { fg = "oldWhite", bg = "sumiInk0" }
@@ -30,8 +32,6 @@
 "ui.help" = { fg = "fujiWhite", bg = "sumiInk0" }
 "ui.text" = "fujiWhite"
 "ui.text.focus" = { fg = "fujiWhite", bg = "waveBlue1", modifiers = ["bold"] }
-"ui.virtual.whitespace" = "waveBlue1"
-"ui.virtual.ruler" = { bg = "sumiInk2" }
 
 "ui.cursor" = { fg = "waveBlue1", bg = "fujiWhite"}
 "ui.cursor.primary" = { fg = "waveBlue1", bg = "seaFoam" }
