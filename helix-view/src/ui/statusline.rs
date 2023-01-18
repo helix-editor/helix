@@ -1,17 +1,17 @@
-use helix_core::{coords_at_pos, encoding, Position};
-use helix_lsp::lsp::DiagnosticSeverity;
-use helix_view::{
+use crate::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
     theme::Style,
     Document, Editor, View,
 };
+use helix_core::{coords_at_pos, encoding, Position};
+use helix_lsp::lsp::DiagnosticSeverity;
 
 use crate::ui::ProgressSpinners;
 
-use helix_view::editor::StatusLineElement as StatusLineElementID;
-use tui::buffer::Buffer as Surface;
-use tui::text::{Span, Spans};
+use crate::editor::StatusLineElement as StatusLineElementID;
+use helix_tui::buffer::Buffer as Surface;
+use helix_tui::text::{Span, Spans};
 
 pub struct RenderContext<'a> {
     pub editor: &'a Editor,
@@ -137,24 +137,22 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     match element_id {
-        helix_view::editor::StatusLineElement::Mode => render_mode,
-        helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
-        helix_view::editor::StatusLineElement::FileBaseName => render_file_base_name,
-        helix_view::editor::StatusLineElement::FileName => render_file_name,
-        helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
-        helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
-        helix_view::editor::StatusLineElement::FileType => render_file_type,
-        helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
-        helix_view::editor::StatusLineElement::WorkspaceDiagnostics => render_workspace_diagnostics,
-        helix_view::editor::StatusLineElement::Selections => render_selections,
-        helix_view::editor::StatusLineElement::PrimarySelectionLength => {
-            render_primary_selection_length
-        }
-        helix_view::editor::StatusLineElement::Position => render_position,
-        helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
-        helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
-        helix_view::editor::StatusLineElement::Separator => render_separator,
-        helix_view::editor::StatusLineElement::Spacer => render_spacer,
+        crate::editor::StatusLineElement::Mode => render_mode,
+        crate::editor::StatusLineElement::Spinner => render_lsp_spinner,
+        crate::editor::StatusLineElement::FileBaseName => render_file_base_name,
+        crate::editor::StatusLineElement::FileName => render_file_name,
+        crate::editor::StatusLineElement::FileEncoding => render_file_encoding,
+        crate::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
+        crate::editor::StatusLineElement::FileType => render_file_type,
+        crate::editor::StatusLineElement::Diagnostics => render_diagnostics,
+        crate::editor::StatusLineElement::WorkspaceDiagnostics => render_workspace_diagnostics,
+        crate::editor::StatusLineElement::Selections => render_selections,
+        crate::editor::StatusLineElement::PrimarySelectionLength => render_primary_selection_length,
+        crate::editor::StatusLineElement::Position => render_position,
+        crate::editor::StatusLineElement::PositionPercentage => render_position_percentage,
+        crate::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
+        crate::editor::StatusLineElement::Separator => render_separator,
+        crate::editor::StatusLineElement::Spacer => render_spacer,
     }
 }
 

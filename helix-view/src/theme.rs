@@ -475,6 +475,18 @@ impl TryFrom<Value> for ThemePalette {
     }
 }
 
+#[cfg(not(windows))]
+pub fn true_color() -> bool {
+    std::env::var("COLORTERM")
+        .map(|v| matches!(v.as_str(), "truecolor" | "24bit"))
+        .unwrap_or(false)
+}
+
+#[cfg(windows)]
+pub fn true_color() -> bool {
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

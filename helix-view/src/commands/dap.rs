@@ -1,4 +1,5 @@
 use super::{Context, Editor};
+use crate::editor::Breakpoint;
 use crate::{
     compositor::{self, Compositor},
     job::{Callback, Jobs},
@@ -8,11 +9,10 @@ use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
 use helix_dap::{self as dap, Client};
 use helix_lsp::block_on;
-use helix_view::editor::Breakpoint;
 
+use helix_tui::{text::Spans, widgets::Row};
 use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tui::{text::Spans, widgets::Row};
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -20,7 +20,8 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, bail};
 
-use helix_view::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select_thread_id};
+use crate::debugger;
+use crate::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select_thread_id};
 
 impl ui::menu::Item for StackFrame {
     type Data = ();
@@ -505,8 +506,8 @@ pub fn dap_variables(cx: &mut Context) {
     let text_style = theme.get("ui.text.focus");
 
     for scope in scopes.iter() {
-        // use helix_view::graphics::Style;
-        use tui::text::Span;
+        // use crate::graphics::Style;
+        use helix_tui::text::Span;
         let response = block_on(debugger.variables(scope.variables_reference));
 
         variables.push(Spans::from(Span::styled(
@@ -531,7 +532,7 @@ pub fn dap_variables(cx: &mut Context) {
         }
     }
 
-    let contents = Text::from(tui::text::Text::from(variables));
+    let contents = Text::from(helix_tui::text::Text::from(variables));
     let popup = Popup::new("dap-variables", contents);
     cx.push_layer(Box::new(popup));
 }

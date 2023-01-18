@@ -1,10 +1,10 @@
 use crate::compositor::{Component, Context};
-use tui::buffer::Buffer as Surface;
+use helix_tui::buffer::Buffer as Surface;
 
-use helix_view::graphics::Rect;
+use crate::graphics::Rect;
 
 pub struct Text {
-    pub(crate) contents: tui::text::Text<'static>,
+    pub(crate) contents: helix_tui::text::Text<'static>,
     size: (u16, u16),
     viewport: (u16, u16),
 }
@@ -12,15 +12,15 @@ pub struct Text {
 impl Text {
     pub fn new(contents: String) -> Self {
         Self {
-            contents: tui::text::Text::from(contents),
+            contents: helix_tui::text::Text::from(contents),
             size: (0, 0),
             viewport: (0, 0),
         }
     }
 }
 
-impl From<tui::text::Text<'static>> for Text {
-    fn from(contents: tui::text::Text<'static>) -> Self {
+impl From<helix_tui::text::Text<'static>> for Text {
+    fn from(contents: helix_tui::text::Text<'static>) -> Self {
         Self {
             contents,
             size: (0, 0),
@@ -31,7 +31,7 @@ impl From<tui::text::Text<'static>> for Text {
 
 impl Component for Text {
     fn render(&mut self, area: Rect, surface: &mut Surface, _cx: &mut Context) {
-        use tui::widgets::{Paragraph, Widget, Wrap};
+        use helix_tui::widgets::{Paragraph, Widget, Wrap};
 
         let par = Paragraph::new(self.contents.clone()).wrap(Wrap { trim: false });
         // .scroll(x, y) offsets
@@ -50,7 +50,7 @@ impl Component for Text {
     }
 }
 
-pub fn required_size(text: &tui::text::Text, max_text_width: u16) -> (u16, u16) {
+pub fn required_size(text: &helix_tui::text::Text, max_text_width: u16) -> (u16, u16) {
     let mut text_width = 0;
     let mut height = 0;
     for content in &text.lines {

@@ -12,14 +12,18 @@ pub mod handlers {
     pub mod lsp;
 }
 pub mod base64;
+pub mod commands;
+pub mod compositor;
+pub mod config;
 pub mod info;
 pub mod input;
+pub mod job;
 pub mod keyboard;
+pub mod keymap;
 pub mod theme;
 pub mod tree;
+pub mod ui;
 pub mod view;
-pub mod compositor;
-pub mod job;
 
 use std::num::NonZeroUsize;
 

@@ -4,7 +4,8 @@ use crate::job::Job;
 
 use super::*;
 
-use helix_view::editor::{Action, CloseError, ConfigEvent};
+use crate::editor::{Action, CloseError, ConfigEvent};
+use helix_core::path::parse_file;
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -61,7 +62,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
 
     ensure!(!args.is_empty(), "wrong argument count");
     for arg in args {
-        let (path, pos) = args::parse_file(arg);
+        let (path, pos) = parse_file(arg);
         let path = helix_core::path::expand_tilde(&path);
         // If the path is a directory, open a file picker on that directory and update the status
         // message
@@ -767,7 +768,7 @@ fn theme(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    let true_color = cx.editor.config.load().true_color || crate::true_color();
+    let true_color = cx.editor.config.load().true_color || crate::theme::true_color();
     match event {
         PromptEvent::Abort => {
             cx.editor.unset_theme_preview();

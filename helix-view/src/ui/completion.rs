@@ -1,15 +1,15 @@
 use crate::compositor::{Component, Context, Event, EventResult};
-use helix_view::{editor::CompleteAction, ViewId};
-use tui::buffer::Buffer as Surface;
+use crate::{editor::CompleteAction, ViewId};
+use helix_tui::buffer::Buffer as Surface;
 
 use std::borrow::Cow;
 
-use helix_core::{Change, Transaction};
-use helix_view::{
+use crate::{
     graphics::Rect,
     input::{KeyCode, KeyEvent},
     Document, Editor,
 };
+use helix_core::{Change, Transaction};
 
 use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};

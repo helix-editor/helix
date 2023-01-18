@@ -5,7 +5,7 @@ use crate::{
     ui::{self, fuzzy_match::FuzzyQuery, EditorView},
 };
 use futures_util::future::BoxFuture;
-use tui::{
+use helix_tui::{
     buffer::Buffer as Surface,
     layout::Constraint,
     text::{Span, Spans},
@@ -13,19 +13,19 @@ use tui::{
 };
 
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
-use tui::widgets::Widget;
+use helix_tui::widgets::Widget;
 
 use std::cmp::{self, Ordering};
 use std::{collections::HashMap, io::Read, path::PathBuf};
 
 use crate::ui::{Prompt, PromptEvent};
-use helix_core::{movement::Direction, unicode::segmentation::UnicodeSegmentation, Position};
-use helix_view::{
+use crate::{
     editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
     theme::Style,
     Document, DocumentId, Editor,
 };
+use helix_core::{movement::Direction, unicode::segmentation::UnicodeSegmentation, Position};
 
 use super::{menu::Item, overlay::Overlay};
 
@@ -823,7 +823,7 @@ impl<T: Item + 'static> Component for Picker<T> {
             .column_spacing(1)
             .widths(&self.widths);
 
-        use tui::widgets::TableState;
+        use helix_tui::widgets::TableState;
 
         table.render_table(
             inner,

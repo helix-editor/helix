@@ -46,6 +46,19 @@ log = "~0.4"
 
 which = "4.2"
 
+# File picker
+fuzzy-matcher = "0.3"
+ignore = "0.4"
+# markdown doc rendering
+pulldown-cmark = { version = "0.9", default-features = false }
+# file type detection
+content_inspector = "0.2.4"
+
+# ripgrep for global search
+grep-regex = "0.1.10"
+grep-searcher = "0.1.10"
+
+signal-hook = "0.3"
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "4.5", features = ["std"] }
