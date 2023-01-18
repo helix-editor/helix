@@ -342,23 +342,29 @@ impl EditorView {
         let selection_scope = theme
             .find_scope_index("ui.selection")
             .expect("could not find `ui.selection` scope in the theme!");
+        let primary_selection_scope = theme
+            .find_scope_index("ui.selection.primary")
+            .unwrap_or(selection_scope);
         let base_cursor_scope = theme
             .find_scope_index("ui.cursor")
             .unwrap_or(selection_scope);
+        let base_primary_cursor_scope = theme
+            .find_scope_index("ui.cursor.primary")
+            .unwrap_or(base_cursor_scope);
 
         let cursor_scope = match mode {
             Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
             Mode::Select => theme.find_scope_index("ui.cursor.select"),
-            Mode::Normal => Some(base_cursor_scope),
+            Mode::Normal => theme.find_scope_index("ui.cursor.normal"),
         }
         .unwrap_or(base_cursor_scope);
 
-        let primary_cursor_scope = theme
-            .find_scope_index("ui.cursor.primary")
-            .unwrap_or(cursor_scope);
-        let primary_selection_scope = theme
-            .find_scope_index("ui.selection.primary")
-            .unwrap_or(selection_scope);
+        let primary_cursor_scope = match mode {
+            Mode::Insert => theme.find_scope_index("ui.cursor.primary.insert"),
+            Mode::Select => theme.find_scope_index("ui.cursor.primary.select"),
+            Mode::Normal => theme.find_scope_index("ui.cursor.primary.normal"),
+        }
+        .unwrap_or(base_primary_cursor_scope);
 
         let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
         for (i, range) in selection.iter().enumerate() {
