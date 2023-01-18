@@ -57,6 +57,10 @@ impl Registers {
         }
     }
 
+    pub fn clear(&mut self, name: char) {
+        self.inner.remove(&name);
+    }
+
     pub fn push(&mut self, name: char, value: String) {
         if name != '_' {
             if let Some(r) = self.inner.get_mut(&name) {

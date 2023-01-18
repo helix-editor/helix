@@ -4423,6 +4423,7 @@ fn wonly(cx: &mut Context) {
 }
 
 fn select_register(cx: &mut Context) {
+    cx.editor.update_registers();
     cx.editor.autoinfo = Some(Info::from_registers(&cx.editor.registers));
     cx.on_next_key(move |cx, event| {
         if let Some(ch) = event.char() {
@@ -4433,6 +4434,7 @@ fn select_register(cx: &mut Context) {
 }
 
 fn insert_register(cx: &mut Context) {
+    cx.editor.update_registers();
     cx.editor.autoinfo = Some(Info::from_registers(&cx.editor.registers));
     cx.on_next_key(move |cx, event| {
         if let Some(ch) = event.char() {

@@ -592,6 +592,7 @@ impl Component for Prompt {
             }
             ctrl!('q') => self.exit_selection(),
             ctrl!('r') => {
+                cx.editor.update_registers();
                 self.completion = cx
                     .editor
                     .registers

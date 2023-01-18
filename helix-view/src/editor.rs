@@ -1469,6 +1469,13 @@ impl Editor {
             doc.restore_cursor = false;
         }
     }
+
+    /// Update read-only registers.
+    pub fn update_registers(&mut self) {
+        let doc = doc!(self);
+        self.registers
+            .write('%', vec![doc.display_name().to_string()]);
+    }
 }
 
 fn try_restore_indent(doc: &mut Document, view: &mut View) {
