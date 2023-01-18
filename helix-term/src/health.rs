@@ -66,18 +66,26 @@ pub fn general() -> std::io::Result<()> {
         writeln!(stdout, "Language file: default")?;
     }
     writeln!(stdout, "Log file: {}", log_file.display())?;
-    writeln!(stdout, "Number of Runtime directories: {}", rt_dirs.len())?;
-    for (i, rt_dir) in rt_dirs.iter().enumerate() {
-        writeln!(stdout, "Runtime directory {}: {}", i + 1, rt_dir.display())?;
+    writeln!(
+        stdout,
+        "Runtime directories: {}",
+        rt_dirs
+            .iter()
+            .map(|d| d.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join(";")
+    )?;
+    for rt_dir in rt_dirs.iter() {
         if let Ok(path) = std::fs::read_link(&rt_dir) {
-            let msg = format!("Runtime directory is symlinked to {}", path.display());
+            let msg = format!("Runtime directory is symlinked to: {}", path.display());
             writeln!(stdout, "{}", msg.yellow())?;
         }
         if !rt_dir.exists() {
-            writeln!(stdout, "{}", "Runtime directory does not exist.".red())?;
-        }
-        if rt_dir.read_dir().ok().map(|it| it.count()) == Some(0) {
-            writeln!(stdout, "{}", "Runtime directory is empty.".red())?;
+            let msg = format!("Runtime directory does not exist: {}", rt_dir.display());
+            writeln!(stdout, "{}", msg.yellow())?;
+        } else if rt_dir.read_dir().ok().map(|it| it.count()) == Some(0) {
+            let msg = format!("Runtime directory is empty: {}", rt_dir.display());
+            writeln!(stdout, "{}", msg.yellow())?;
         }
     }
     writeln!(stdout, "Clipboard provider: {}", clipboard_provider.name())?;
