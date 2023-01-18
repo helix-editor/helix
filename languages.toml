@@ -1065,7 +1065,7 @@ config = { "isHttpEnabled" = true }
 
 [[grammar]]
 name = "scala"
-source = { git = "https://github.com/tree-sitter/tree-sitter-scala", rev = "db1c8c23d7996476a791db85a0d292084c19c232" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-scala", rev = "f6bbf35de41653b409ca9a3537a154f2b095ef64" }
 
 [[language]]
 name = "dockerfile"
