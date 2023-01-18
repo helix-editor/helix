@@ -2344,6 +2344,8 @@ fn directory_picker(cx: &mut Context) {
         },
         |_editor, _path| None,
     );
+    picker.picker.show_preview = false;
+
     cx.push_layer(Box::new(overlayed(picker)));
 }
 

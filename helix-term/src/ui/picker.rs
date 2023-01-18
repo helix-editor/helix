@@ -65,7 +65,7 @@ impl From<DocumentId> for PathOrId {
 pub type FileLocation = (PathOrId, Option<(usize, usize)>);
 
 pub struct FilePicker<T: Item> {
-    picker: Picker<T>,
+    pub picker: Picker<T>,
     pub truncate_start: bool,
     /// Caches paths to documents
     preview_cache: HashMap<PathBuf, CachedPreview>,
@@ -388,7 +388,7 @@ pub struct Picker<T: Item> {
     /// Whether to truncate the start (default true)
     pub truncate_start: bool,
     /// Whether to show the preview panel (default true)
-    show_preview: bool,
+    pub show_preview: bool,
     /// Constraints for tabular formatting
     widths: Vec<Constraint>,
 
