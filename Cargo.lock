@@ -1158,6 +1158,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "helix-graphics"
+version = "0.6.0"
+dependencies = [
+ "bitflags",
+ "crossterm",
+ "serde",
+]
+
+[[package]]
 name = "helix-loader"
 version = "0.6.0"
 dependencies = [
@@ -1238,7 +1247,7 @@ dependencies = [
  "cassowary",
  "crossterm",
  "helix-core",
- "helix-view",
+ "helix-graphics",
  "serde",
  "termini",
  "unicode-segmentation",
@@ -1270,6 +1279,7 @@ dependencies = [
  "futures-util",
  "helix-core",
  "helix-dap",
+ "helix-graphics",
  "helix-loader",
  "helix-lsp",
  "helix-tui",

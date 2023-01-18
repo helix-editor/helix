@@ -10,8 +10,8 @@ repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 
 [features]
-default = []
-term = ["crossterm"]
+default = ["term"]
+term = ["crossterm", "helix-graphics/term"]
 
 [dependencies]
 bitflags = "1.3"
@@ -22,7 +22,9 @@ helix-lsp = { version = "0.6", path = "../helix-lsp" }
 helix-dap = { version = "0.6", path = "../helix-dap" }
 crossterm = { version = "0.25", optional = true }
 helix-vcs = { version = "0.6", path = "../helix-vcs" }
+helix-graphics = { version = "0.6", path = "../helix-graphics" }
 
+helix-tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = ["crossterm"] }
 # Conversion traits
 once_cell = "1.17"
 url = "2"

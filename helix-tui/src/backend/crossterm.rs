@@ -9,7 +9,7 @@ use crossterm::{
     terminal::{self, Clear, ClearType},
     Command,
 };
-use helix_view::graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle};
+use helix_graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle};
 use std::{
     fmt,
     io::{self, Write},

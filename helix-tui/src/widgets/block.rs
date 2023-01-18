@@ -4,7 +4,7 @@ use crate::{
     text::{Span, Spans},
     widgets::{Borders, Widget},
 };
-use helix_view::graphics::{Rect, Style};
+use helix_graphics::{Rect, Style};
 
 /// Border render type. Defaults to [`BorderType::Plain`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,7 +39,7 @@ impl Default for BorderType {
 ///
 /// ```
 /// # use helix_tui::widgets::{Block, BorderType, Borders};
-/// # use helix_view::graphics::{Style, Color};
+/// # use helix_graphics::{Style, Color};
 /// Block::default()
 ///     .title("Block")
 ///     .borders(Borders::LEFT | Borders::RIGHT)

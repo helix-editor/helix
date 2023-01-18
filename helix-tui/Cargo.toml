@@ -22,5 +22,5 @@ unicode-segmentation = "1.10"
 crossterm = { version = "0.25", optional = true }
 termini = "0.1"
 serde = { version = "1", "optional" = true, features = ["derive"]}
-helix-view = { version = "0.6", path = "../helix-view", features = ["term"] }
+helix-graphics = { version = "0.6", path = "../helix-graphics", features = ["term"] }
 helix-core = { version = "0.6", path = "../helix-core" }
