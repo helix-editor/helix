@@ -11,6 +11,8 @@
 | `:buffer-close-all!`, `:bca!`, `:bcloseall!` | Force close all buffers ignoring unsaved changes without quitting. |
 | `:buffer-next`, `:bn`, `:bnext` | Goto next buffer. |
 | `:buffer-previous`, `:bp`, `:bprev` | Goto previous buffer. |
+| `:template_global_search_selection`, `:tgs` | Templatable global search as a typable command. Accepts one mandatory regex argument that can have `{}` placeholders and an optional delimiter argument. The current selection in the document is split by the delimiter if present, and is used to fill the placeholders. |
+| `:global_search`, `:gs` | Global search as a typable command. |
 | `:write`, `:w` | Write changes to disk. Accepts an optional path (:write some/path.txt) |
 | `:write!`, `:w!` | Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write some/path.txt) |
 | `:new`, `:n` | Create a new scratch buffer. |
