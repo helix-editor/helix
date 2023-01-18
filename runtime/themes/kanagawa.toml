@@ -30,7 +30,8 @@
 "ui.help" = { fg = "fujiWhite", bg = "sumiInk1" }
 "ui.text" = "fujiWhite"
 "ui.text.focus" = { fg = "fujiWhite", bg = "waveBlue1", modifiers = ["bold"] }
-"ui.virtual" = "waveBlue1"
+"ui.virtual.whitespace" = "waveBlue1"
+"ui.virtual.ruler" = { bg = "sumiInk2" }
 
 "ui.cursor" = { fg = "waveBlue1", bg = "fujiWhite"}
 "ui.cursor.primary" = { fg = "waveBlue1", bg = "seaFoam" }
@@ -107,7 +108,8 @@ fujiWhite     = "#DCD7BA" # default foreground
 oldWhite      = "#C8C093" # dark foreground, e.g. statuslines
 sumiInk0      = "#16161D" # dark background, e.g. statuslines, floating windows
 sumiInk1      = "#1F1F28" # default background
-sumiInk3      = "#363646" # lighter background, e.g. colorcolumns and folds
+sumiInk2      = "#2A2A37" # lighter background, e.g. colorcolumns, folds
+sumiInk3      = "#363646" # lighter background, e.g. cursorline
 sumiInk4      = "#54546D" # darker foreground, e.g. linenumbers, fold column
 waveBlue1     = "#223249" # popup background, visual selection background
 waveBlue2     = "#2D4F67" # popup selection background, search background
