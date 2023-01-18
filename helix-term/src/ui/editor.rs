@@ -392,7 +392,14 @@ impl EditorView {
             if range.head > range.anchor {
                 // Standard case.
                 let cursor_start = prev_grapheme_boundary(text, range.head);
-                spans.push((selection_scope, range.anchor..cursor_start));
+                // non block cursors look like they exclude the cursor
+                let selection_end =
+                    if selection_is_primary && !cursor_is_block && mode != Mode::Insert {
+                        range.head
+                    } else {
+                        cursor_start
+                    };
+                spans.push((selection_scope, range.anchor..selection_end));
                 if !selection_is_primary || cursor_is_block {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
@@ -402,7 +409,16 @@ impl EditorView {
                 if !selection_is_primary || cursor_is_block {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
-                spans.push((selection_scope, cursor_end..range.anchor));
+                // non block cursors look like they exclude the cursor
+                let selection_start = if selection_is_primary
+                    && !cursor_is_block
+                    && !(mode == Mode::Insert && cursor_end == range.anchor)
+                {
+                    range.head
+                } else {
+                    cursor_end
+                };
+                spans.push((selection_scope, selection_start..range.anchor));
             }
         }
 
