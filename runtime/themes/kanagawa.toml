@@ -19,8 +19,8 @@
 "ui.statusline" = { fg = "oldWhite", bg = "sumiInk0" }
 "ui.statusline.inactive" = { fg = "fujiGray", bg = "sumiInk0" }
 "ui.statusline.normal" = { fg = "sumiInk0", bg = "crystalBlue", modifiers = ["bold"] }
-"ui.statusline.insert" = { fg = "sumiInk0", bg = "autumnGreen"  }
-"ui.statusline.select" = { fg = "sumiInk0", bg = "oniViolet" }
+"ui.statusline.insert" = { fg = "sumiInk0", bg = "autumnGreen", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "sumiInk0", bg = "oniViolet", modifiers = ["bold"] }
 
 "ui.bufferline" = { fg = "oldWhite", bg = "sumiInk0" }
 "ui.bufferline.inactive" = { fg = "fujiGray", bg = "sumiInk0" }
