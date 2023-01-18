@@ -6,7 +6,8 @@
 "ui.linenr" = { fg = "#9fafaf", bg = "#262626"}
 "ui.linenr.selected" = { modifiers = ["bold"]}
 "ui.popup" = { bg = "uibg" }
-"ui.selection" = { bg = "#2f2f2f" }
+"ui.selection" = { bg = "#304a3d" }
+"ui.selection.primary" = { bg = "#2f2f2f" }
 "comment" = { fg = "#7f9f7f" }
 "comment.block.documentation" = { fg = "black", modifiers = ["bold"] }
 "ui.statusline" = { bg = "statusbg", fg = "#ccdc90" }
