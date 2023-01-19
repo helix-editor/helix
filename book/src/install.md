@@ -69,7 +69,7 @@ choco install helix
 
 **MSYS2:**
 
-Choose the proper command for your system from below:
+Choose the [proper command](https://www.msys2.org/docs/package-naming/) for your system from below:
 
   - For 32 bit Windows 7 or above:
 
