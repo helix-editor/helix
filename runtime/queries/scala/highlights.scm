@@ -112,6 +112,9 @@
 (generic_function
   function: (identifier) @function)
 
+(interpolated_string_expression
+  interpolator: (identifier) @function.call)
+
 (
   (identifier) @function.builtin
   (#match? @function.builtin "^super$")
