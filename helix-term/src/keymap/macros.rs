@@ -87,13 +87,8 @@ macro_rules! keytrie {
                 ::std::collections::HashMap::with_capacity(_cap);
             $(
                 $(
-<<<<<<< HEAD
                     let _key = $key.parse::<::helix_view::input::KeyEvent>().unwrap();
-                    let _potential_duplicate = _map.insert(_key,keymap!(@trie $value));
-=======
-                    let _key = $key.parse::<helix_view::input::KeyEvent>().unwrap();
                     let _potential_duplicate = _map.insert(_key,keytrie!(@trie $value));
->>>>>>> 8cb9a917 (Renamed the keymap! macro to keytrie!:)
                     assert!(_potential_duplicate.is_none(), "Duplicate key found: {:?}", _potential_duplicate.unwrap());
                 )+
             )*
@@ -117,11 +112,7 @@ macro_rules! keytrie {
 }
 
 pub use alt;
-<<<<<<< HEAD
 pub use ctrl;
 pub use key;
-pub use keymap;
 pub use shift;
-=======
 pub use keytrie;
->>>>>>> 8cb9a917 (Renamed the keymap! macro to keytrie!:)

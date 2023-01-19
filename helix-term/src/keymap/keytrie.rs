@@ -1,6 +1,6 @@
 use super::keytrienode::KeyTrieNode;
 use helix_view::{info::Info, input::KeyEvent};
-use std::{collections::HashMap, ops::{Deref, DerefMut}, cmp::Ordering};
+use std::{collections::HashMap, ops::{Deref, DerefMut}};
 use serde::Deserialize;
 
 /// Edges of the trie are KeyEvents and the nodes are descrbibed by KeyTrieNode

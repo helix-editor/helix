@@ -1,4 +1,5 @@
 use super::*;
+use crate::keymap::macros::*;
 use crate::commands::MappableCommand;
 use helix_view::{document::Mode, input::KeyEvent};
 use std::{sync::Arc, collections::HashMap};
