@@ -113,7 +113,7 @@
   function: (identifier) @function)
 
 (interpolated_string_expression
-  interpolator: (identifier) @function.call)
+  interpolator: (identifier) @function)
 
 (
   (identifier) @function.builtin
