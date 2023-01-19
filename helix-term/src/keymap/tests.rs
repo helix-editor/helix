@@ -3,7 +3,7 @@
 mod tests {
     use helix_core::hashmap;
     use helix_view::{document::Mode, input::KeyEvent};
-    use crate::keymap::*;
+    use crate::keymap::{*, macros::*};
     use std::collections::HashMap;
 
     #[test]
@@ -17,14 +17,13 @@ mod tests {
 
     #[test]
     fn check_duplicate_keys_in_default_keymap() {
-        // will panic on duplicate keys, assumes that `Keymaps` uses keymap! macro
-        Keymaps::default();
+        // will panic on duplicate keys, assumes that `Keymap` uses keymap! macro
+        Keymap::default();
     }
 
     #[test]
     fn aliased_modes_are_same_in_default_keymap() {
-        let keymaps = Keymaps::default().keymaps;
-        let root = keymaps.load().get(&Mode::Normal).unwrap().root_node.clone();
+        let root = Keymap::default().get(&Mode::Normal).unwrap().root_node.clone();
         assert_eq!(
             root.traverse(&[key!(' '), key!('w')]).unwrap(),
             root.traverse(&["C-w".parse::<KeyEvent>().unwrap()]).unwrap(),

@@ -26,7 +26,7 @@ pub struct Keymap {
 pub type CommandList = HashMap<String, Vec<String>>;
 impl Keymap {
     pub fn new(root_node: KeyTrie) -> Self {
-        Keymap { root_node }
+        Self { root_node }
     }
 
     /// Returns a key-value list of all commands associated to a given Keymap.
