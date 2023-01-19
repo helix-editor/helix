@@ -1502,6 +1502,6 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
                 (line_start_pos, pos, None)
             });
-        crate::apply_transaction(&transaction, doc, view);
+        doc.apply(&transaction, view.id);
     }
 }
