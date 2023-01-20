@@ -1,4 +1,5 @@
 mod completion;
+pub mod dialog;
 pub(crate) mod editor;
 mod fuzzy_match;
 mod info;
@@ -16,6 +17,7 @@ mod text;
 use crate::compositor::{Component, Compositor};
 use crate::job::{self, Callback};
 pub use completion::Completion;
+pub use dialog::Dialog;
 pub use editor::EditorView;
 pub use markdown::Markdown;
 pub use menu::Menu;
