@@ -17,6 +17,7 @@ pub struct Args {
     pub log_file: Option<PathBuf>,
     pub config_file: Option<PathBuf>,
     pub files: Vec<(PathBuf, Position)>,
+    pub line_number: usize,
 }
 
 impl Args {
@@ -73,6 +74,16 @@ impl Args {
                         }
                     }
                 }
+                arg if arg.starts_with('+') => {
+                    let arg = arg.get(1..).unwrap();
+                    args.line_number = match arg.parse() {
+                        Ok(n) => n,
+                        _ => anyhow::bail!("bad line number after +"),
+                    };
+                    if args.line_number > 0 {
+                        args.line_number -= 1;
+                    }
+                }
                 arg => args.files.push(parse_file(arg)),
             }
         }
@@ -80,6 +91,10 @@ impl Args {
         // push the remaining args, if any to the files
         for arg in argv {
             args.files.push(parse_file(&arg));
+        }
+
+        if let Some(file) = args.files.first_mut() {
+            file.1.row = args.line_number;
         }
 
         Ok(args)
