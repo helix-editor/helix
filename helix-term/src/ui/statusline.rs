@@ -454,7 +454,7 @@ where
 {
     let docs = &context.editor.documents;
     let id = context.doc.id();
-    let index = match docs.keys().enumerate().find(|(_, key)| **key == id) {
+    let index = match docs.keys().enumerate().find(|(_, &key)| key == id) {
         Some((num, _)) => num.checked_add(1).unwrap_or(0),
         None => 0,
     };
