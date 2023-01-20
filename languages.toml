@@ -2109,3 +2109,11 @@ formatter = { command = "dhall" , args = ["format"] }
 [[grammar]]
 name = "dhall"
 source = { git = "https://github.com/jbellerb/tree-sitter-dhall", rev = "affb6ee38d629c9296749767ab832d69bb0d9ea8" }
+
+[[language]]
+name = "angular"
+scope = "source.angular"
+roots = ["angular.json"]
+language-server = { command = "ngserver", args = ["--stdio", "--tsProbeLocations", "$(npm -g root)", "--ngProbeLocations", "$(npm -g root)"] }
+file-types = ["ts", "html"]
+grammar = "tsx"
