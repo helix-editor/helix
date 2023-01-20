@@ -16,8 +16,6 @@ use helix_view::{document::Mode, input::KeyEvent};
 use std::{sync::Arc, collections::HashMap};
 use arc_swap::{access::{DynAccess, DynGuard}, ArcSwap};
 
-use std::ops::Deref;
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum KeymapResult {
     Pending(KeyTrie),
@@ -135,13 +133,14 @@ impl Keymap {
         fn _command_list(list: &mut CommandList, node: &KeyTrieNode, prefix: &mut String) {
             match node {
                 KeyTrieNode::KeyTrie(trie_node) => {
-                    for (key_event, subtrie_node) in trie_node.deref() {
+                    for (key_event, index) in trie_node.get_child_order() {
                         let mut temp_prefix: String = prefix.to_string();
                         if &temp_prefix != "" { 
-                            temp_prefix.push_str(">");
+                            temp_prefix.push_str("→");
                         }
                         temp_prefix.push_str(&key_event.to_string());
-                        _command_list(list, subtrie_node, &mut temp_prefix);
+                        _command_list(list, &trie_node.get_children()[*index], &mut temp_prefix);
+
                     }
                 },
                 KeyTrieNode::MappableCommand(mappable_command) => {

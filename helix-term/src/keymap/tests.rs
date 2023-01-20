@@ -66,11 +66,11 @@ mod tests {
                 ),
                 (
                     "goto_file_start".to_string(),
-                    vec![format!("{}>{}", key!('g'), key!('g'))]
+                    vec![format!("{}→{}", key!('g'), key!('g'))]
                 ),
                 (
                     "goto_file_end".to_string(),
-                    vec![format!("{}>{}", key!('g'), key!('e'))]
+                    vec![format!("{}→{}", key!('g'), key!('e'))]
                 ),
                 (
                     "move_line_down".to_string(),
