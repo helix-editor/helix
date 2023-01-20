@@ -1,8 +1,8 @@
 #[macro_export]
 macro_rules! key {
-    ($key:ident) => {
+    ($key_event:ident) => {
         ::helix_view::input::KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::$key,
+            code: ::helix_view::keyboard::KeyCode::$key_event,
             modifiers: ::helix_view::keyboard::KeyModifiers::NONE,
         }
     };
@@ -16,9 +16,9 @@ macro_rules! key {
 
 #[macro_export]
 macro_rules! shift {
-    ($key:ident) => {
+    ($key_event:ident) => {
         ::helix_view::input::KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::$key,
+            code: ::helix_view::keyboard::KeyCode::$key_event,
             modifiers: ::helix_view::keyboard::KeyModifiers::SHIFT,
         }
     };
@@ -32,9 +32,9 @@ macro_rules! shift {
 
 #[macro_export]
 macro_rules! ctrl {
-    ($key:ident) => {
+    ($key_event:ident) => {
         ::helix_view::input::KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::$key,
+            code: ::helix_view::keyboard::KeyCode::$key_event,
             modifiers: ::helix_view::keyboard::KeyModifiers::CONTROL,
         }
     };
@@ -48,9 +48,9 @@ macro_rules! ctrl {
 
 #[macro_export]
 macro_rules! alt {
-    ($key:ident) => {
+    ($key_event:ident) => {
         ::helix_view::input::KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::$key,
+            code: ::helix_view::keyboard::KeyCode::$key_event,
             modifiers: ::helix_view::keyboard::KeyModifiers::ALT,
         }
     };
@@ -79,27 +79,29 @@ macro_rules! alt {
 /// ```
 #[macro_export]
 macro_rules! keytrie {
-    ({ $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }) => {
-        // modified from the hashmap! macro
+    // Sub key_trie
+    ({ $label:literal $(sticky=$sticky:literal)? $($($key_event:literal)|+ => $value:tt,)+ }) => {
         {
-            let _cap = hashmap!(@count $($($key),+),*);
-            let mut _map: ::std::collections::HashMap<::helix_view::input::KeyEvent, $crate::keymap::keytrienode::KeyTrieNode> = 
-                ::std::collections::HashMap::with_capacity(_cap);
+            let _cap = hashmap!(@count $($($key_event),+),*);
+            let mut _children: Vec<$crate::keymap::keytrienode::KeyTrieNode> = ::std::vec::Vec::new();
+            let mut _child_order: ::std::collections::HashMap<::helix_view::input::KeyEvent, usize> = ::std::collections::HashMap::with_capacity(_cap);
             $(
                 $(
-                    let _key = $key.parse::<::helix_view::input::KeyEvent>().unwrap();
-                    let _potential_duplicate = _map.insert(_key,keytrie!(@trie $value));
+                    let _key_event = $key_event.parse::<::helix_view::input::KeyEvent>().unwrap();
+                    let _potential_duplicate = _child_order.insert(_key_event, _children.len());
                     assert!(_potential_duplicate.is_none(), "Duplicate key found: {:?}", _potential_duplicate.unwrap());
+                    _children.push(keytrie!(@trie $value));
                 )+
             )*
-            let mut _node = $crate::keymap::keytrie::KeyTrie::new($label, _map);
+
+            let mut _node = $crate::keymap::keytrie::KeyTrie::new($label, _child_order, _children);
             $( _node.is_sticky = $sticky; )?
             _node
         }
     };
 
-    (@trie {$label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }) => {
-        $crate::keymap::keytrienode::KeyTrieNode::KeyTrie(keytrie!({ $label $(sticky=$sticky)? $($($key)|+ => $value,)+ }))
+    (@trie {$label:literal $(sticky=$sticky:literal)? $($($key_event:literal)|+ => $value:tt,)+ }) => {
+        $crate::keymap::keytrienode::KeyTrieNode::KeyTrie(keytrie!({ $label $(sticky=$sticky)? $($($key_event)|+ => $value,)+ }))
     };
 
     (@trie $cmd:ident) => {

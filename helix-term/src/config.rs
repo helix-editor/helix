@@ -103,11 +103,8 @@ mod tests {
 
     #[test]
     fn keys_resolve_to_correct_defaults() {
-        // From serde default
-        let default_keys = toml::from_str::<Config>("").unwrap().keys;
-        assert_eq!(default_keys, default::default());
-
-        // From the Default trait
+        let serde_default = toml::from_str::<Config>("").unwrap().keys;
+        assert_eq!(serde_default, default::default());
         let default_keys = Config::default().keys;
         assert_eq!(default_keys, default::default());
     }
@@ -173,7 +170,7 @@ mod tests {
         );
 
         // Huh?
-        assert!(merged_config.keys.get(&Mode::Normal).unwrap().len() > 1);
-        assert!(merged_config.keys.get(&Mode::Insert).unwrap().len() > 0);
+        assert!(merged_config.keys.get(&Mode::Normal).unwrap().get_children().len() > 1);
+        assert!(merged_config.keys.get(&Mode::Insert).unwrap().get_children().len() > 0);
     }
 }

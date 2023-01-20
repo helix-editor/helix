@@ -8,7 +8,7 @@ use serde::{Deserialize, de::Visitor};
 /// For the MappableCommand and CommandSequence variants, the property is self explanatory.
 /// For KeyTrie, the documentation is used for respective infobox titles,
 /// or infobox KeyEvent descriptions that in themselves trigger the opening of another infobox.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum KeyTrieNode {
     MappableCommand(MappableCommand),
     CommandSequence(Vec<MappableCommand>),
@@ -21,6 +21,23 @@ impl<'de> Deserialize<'de> for KeyTrieNode {
         D: serde::Deserializer<'de>,
     {
         deserializer.deserialize_any(KeyTrieNodeVisitor)
+    }
+}
+
+impl PartialEq for KeyTrieNode {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (KeyTrieNode::MappableCommand(_self), KeyTrieNode::MappableCommand(_other)) => {
+                _self == _other
+            },          
+            (KeyTrieNode::CommandSequence(_self), KeyTrieNode::CommandSequence(_other)) => {
+                _self == _other        
+            },  
+            (KeyTrieNode::KeyTrie(_self), KeyTrieNode::KeyTrie(_other)) => {
+                _self.get_children() == _other.get_children()
+            }, 
+            _ => false
+        }
     }
 }
 
@@ -62,10 +79,12 @@ impl<'de> Visitor<'de> for KeyTrieNodeVisitor {
     where
         M: serde::de::MapAccess<'de>,
     {
-        let mut sub_key_trie = HashMap::new();
+        let mut children = Vec::new();
+        let mut child_order = HashMap::new();
         while let Some((key_event, key_trie_node)) = map.next_entry::<KeyEvent, KeyTrieNode>()? {
-            sub_key_trie.insert(key_event, key_trie_node);
+            child_order.insert(key_event, children.len());
+            children.push(key_trie_node);
         }
-        Ok(KeyTrieNode::KeyTrie(KeyTrie::new("", sub_key_trie)))
+        Ok(KeyTrieNode::KeyTrie(KeyTrie::new("", child_order, children)))
     }
 }
