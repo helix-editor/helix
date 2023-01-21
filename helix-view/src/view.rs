@@ -380,8 +380,6 @@ impl View {
     // }
 
     /// Applies a [`Transaction`] to the view.
-    /// Instead of calling this function directly, use [crate::apply_transaction]
-    /// which applies a transaction to the [`Document`] and view together.
     pub fn apply(&mut self, transaction: &Transaction, doc: &mut Document) {
         self.jumps.apply(transaction, doc);
         self.doc_revisions
