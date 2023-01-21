@@ -246,6 +246,8 @@ pub struct Config {
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
+    /// Sort infoboxes alphabetically rather than by predefined categories. Defaults to `false`.
+    pub sorted_infobox: bool,
     pub file_picker: FilePickerConfig,
     /// Configuration of the statusline elements
     pub statusline: StatusLineConfig,
@@ -717,6 +719,7 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
+            sorted_infobox: false,
         }
     }
 }
