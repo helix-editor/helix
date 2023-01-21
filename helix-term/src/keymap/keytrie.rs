@@ -82,7 +82,7 @@ impl KeyTrie {
     
     /// Open an Info box for a given KeyTrie
     /// Shows the children as possible KeyEvents and thier associated description.
-    pub fn infobox(&self) -> Info {
+    pub fn infobox(&self, alphabetical_sort: bool) -> Info {
         let mut body: InfoBoxBody = Vec::with_capacity(self.children.len());
         let mut key_event_order = Vec::with_capacity(self.children.len());
         // child_order and children is of same length
@@ -126,7 +126,8 @@ impl KeyTrie {
             });
         }
 
-        // TODO: conditional sort added here by calling infobox_sort(body)
+        if alphabetical_sort { body = alphabetially_sort_infobox(body); }
+
         let stringified_key_events_body: Vec<(String, &str)> = body
             .iter()
             .map(|(key_events, description)| {
@@ -178,7 +179,7 @@ impl<'de> Deserialize<'de> for KeyTrie {
 }
 
 type InfoBoxBody<'a> = Vec<(Vec<String>, &'a str)>;
-fn infobox_sort(mut body: InfoBoxBody) -> InfoBoxBody {
+fn alphabetially_sort_infobox(mut body: InfoBoxBody) -> InfoBoxBody {
     body.sort_unstable_by(|a, b| a.0[0].to_lowercase().cmp(&b.0[0].to_lowercase()));
     // Consistently place lowercase before uppercase of the same letter.
     if body.len() > 1 {
