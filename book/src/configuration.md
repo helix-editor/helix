@@ -256,3 +256,55 @@ render = true
 character = "╎" # Some characters that work well: "▏", "┆", "┊", "⸽"
 skip-levels = 1
 ```
+
+### `[editor.gutters]` Section
+
+For simplicity, `editor.gutters` accepts an array of gutter types, which will
+use default settings for all gutter components.
+
+```toml
+[editor]
+gutters = ["diff", "diagnostics", "line-numbers", "spacer"]
+```
+
+To customize the behavior of gutters, the `[editor.gutters]` section must
+be used. This section contains top level settings, as well as settings for
+specific gutter components as sub-sections.
+
+| Key      | Description                    | Default                                                       |
+| ---      | ---                            | ---                                                           |
+| `layout` | A vector of gutters to display | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
+
+Example:
+
+```toml
+[editor.gutters]
+layout = ["diff", "diagnostics", "line-numbers", "spacer"]
+```
+
+#### `[editor.gutters.line-numbers]` Section
+
+Options for the line number gutter
+
+| Key         | Description                             | Default |
+| ---         | ---                                     | ---     |
+| `min-width` | The minimum number of characters to use | `3`     |
+
+Example:
+
+```toml
+[editor.gutters.line-numbers]
+min-width = 1
+```
+
+#### `[editor.gutters.diagnotics]` Section
+
+Currently unused
+
+#### `[editor.gutters.diff]` Section
+
+Currently unused
+
+#### `[editor.gutters.spacer]` Section
+
+Currently unused
