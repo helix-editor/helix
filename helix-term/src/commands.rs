@@ -29,7 +29,6 @@ use helix_core::{
     visual_coords_at_pos, LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection,
     SmallVec, Tendril, Transaction,
 };
-use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::{
     apply_transaction,
     clipboard::ClipboardType,
@@ -2333,20 +2332,12 @@ fn buffer_picker(cx: &mut Context) {
 
             let (hint, info, warning, error) =
                 diagnostics.iter().fold((0, 0, 0, 0), |mut acc, d| {
-                    let severity = d.severity.map(|s| match s {
-                        Hint => DiagnosticSeverity::HINT,
-                        Info => DiagnosticSeverity::INFORMATION,
-                        Warning => DiagnosticSeverity::WARNING,
-                        Error => DiagnosticSeverity::ERROR,
-                    });
-
-                    if let Some(s) = severity {
+                    if let Some(s) = d.severity {
                         match s {
-                            DiagnosticSeverity::HINT => acc.0 += 1,
-                            DiagnosticSeverity::INFORMATION => acc.1 += 1,
-                            DiagnosticSeverity::WARNING => acc.2 += 1,
-                            DiagnosticSeverity::ERROR => acc.3 += 1,
-                            _ => (),
+                            Hint => acc.0 += 1,
+                            Info => acc.1 += 1,
+                            Warning => acc.2 += 1,
+                            Error => acc.3 += 1,
                         };
                     }
 
