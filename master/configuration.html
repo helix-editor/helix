@@ -358,6 +358,39 @@ render = true
 character = &quot;╎&quot; # Some characters that work well: &quot;▏&quot;, &quot;┆&quot;, &quot;┊&quot;, &quot;⸽&quot;
 skip-levels = 1
 </code></pre>
+<h3 id="editorgutters-section"><a class="header" href="#editorgutters-section"><code>[editor.gutters]</code> Section</a></h3>
+<p>For simplicity, <code>editor.gutters</code> accepts an array of gutter types, which will
+use default settings for all gutter components.</p>
+<pre><code class="language-toml">[editor]
+gutters = [&quot;diff&quot;, &quot;diagnostics&quot;, &quot;line-numbers&quot;, &quot;spacer&quot;]
+</code></pre>
+<p>To customize the behavior of gutters, the <code>[editor.gutters]</code> section must
+be used. This section contains top level settings, as well as settings for
+specific gutter components as sub-sections.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>layout</code></td><td>A vector of gutters to display</td><td><code>[&quot;diagnostics&quot;, &quot;spacer&quot;, &quot;line-numbers&quot;, &quot;spacer&quot;, &quot;diff&quot;]</code></td></tr>
+</tbody></table>
+</div>
+<p>Example:</p>
+<pre><code class="language-toml">[editor.gutters]
+layout = [&quot;diff&quot;, &quot;diagnostics&quot;, &quot;line-numbers&quot;, &quot;spacer&quot;]
+</code></pre>
+<h4 id="editorguttersline-numbers-section"><a class="header" href="#editorguttersline-numbers-section"><code>[editor.gutters.line-numbers]</code> Section</a></h4>
+<p>Options for the line number gutter</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>min-width</code></td><td>The minimum number of characters to use</td><td><code>3</code></td></tr>
+</tbody></table>
+</div>
+<p>Example:</p>
+<pre><code class="language-toml">[editor.gutters.line-numbers]
+min-width = 1
+</code></pre>
+<h4 id="editorguttersdiagnotics-section"><a class="header" href="#editorguttersdiagnotics-section"><code>[editor.gutters.diagnotics]</code> Section</a></h4>
+<p>Currently unused</p>
+<h4 id="editorguttersdiff-section"><a class="header" href="#editorguttersdiff-section"><code>[editor.gutters.diff]</code> Section</a></h4>
+<p>Currently unused</p>
+<h4 id="editorguttersspacer-section"><a class="header" href="#editorguttersspacer-section"><code>[editor.gutters.spacer]</code> Section</a></h4>
+<p>Currently unused</p>
 
                     </main>
 
