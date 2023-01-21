@@ -9,7 +9,9 @@ use tui::text::Spans;
 pub use typed::*;
 
 use helix_core::{
-    comment, coords_at_pos, encoding, find_first_non_whitespace_char, find_root, graphemes,
+    comment, coords_at_pos,
+    diagnostic::{Diagnostic, Severity::*},
+    encoding, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
     increment::date_time::DateTimeIncrementor,
     increment::{number::NumberIncrementor, Increment},
@@ -27,6 +29,7 @@ use helix_core::{
     visual_coords_at_pos, LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection,
     SmallVec, Tendril, Transaction,
 };
+use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::{
     apply_transaction,
     clipboard::ClipboardType,
@@ -2308,7 +2311,7 @@ fn buffer_picker(cx: &mut Context) {
         path: Option<PathBuf>,
         is_modified: bool,
         is_current: bool,
-        diagnostic_count: usize,
+        diagnostics: Vec<Diagnostic>,
     }
 
     impl ui::menu::Item for BufferMeta {
@@ -2326,9 +2329,31 @@ fn buffer_picker(cx: &mut Context) {
 
             let mut flags = Vec::new();
 
-            let diagnostic_count = self.diagnostic_count;
+            let diagnostics = &self.diagnostics;
 
-            if diagnostic_count > 0 {
+            let (hint, info, warning, error) =
+                diagnostics.iter().fold((0, 0, 0, 0), |mut acc, d| {
+                    let severity = d.severity.map(|s| match s {
+                        Hint => DiagnosticSeverity::HINT,
+                        Info => DiagnosticSeverity::INFORMATION,
+                        Warning => DiagnosticSeverity::WARNING,
+                        Error => DiagnosticSeverity::ERROR,
+                    });
+
+                    if let Some(s) = severity {
+                        match s {
+                            DiagnosticSeverity::HINT => acc.0 += 1,
+                            DiagnosticSeverity::INFORMATION => acc.1 += 1,
+                            DiagnosticSeverity::WARNING => acc.2 += 1,
+                            DiagnosticSeverity::ERROR => acc.3 += 1,
+                            _ => (),
+                        };
+                    }
+
+                    acc
+                });
+
+            if !diagnostics.is_empty() {
                 flags.push("!");
             }
             if self.is_modified {
@@ -2349,8 +2374,11 @@ fn buffer_picker(cx: &mut Context) {
                 self.id,
                 path,
                 flag,
-                if diagnostic_count > 0 {
-                    format!(" | {} diagnostics", diagnostic_count)
+                if !diagnostics.is_empty() {
+                    format!(
+                        " | {} error(s), {} warning(s), {} info, {} hint(s)",
+                        error, warning, info, hint
+                    )
                 } else {
                     String::new()
                 }
@@ -2364,7 +2392,7 @@ fn buffer_picker(cx: &mut Context) {
         path: doc.path().cloned(),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
-        diagnostic_count: doc.diagnostics().len(),
+        diagnostics: doc.diagnostics().to_vec(),
     };
 
     let picker = FilePicker::new(
