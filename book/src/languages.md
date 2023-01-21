@@ -96,7 +96,7 @@ The `language-server` field takes the following keys:
 | Key           | Description                                                           |
 | ---           | -----------                                                           |
 | `command`     | The name of the language server binary to execute. Binaries must be in `$PATH` |
-| `args`        | A list of arguments to pass to the language server binary             |
+| `args`        | A list of arguments to pass to the language server binary. Those can have `"{}"` as a placeholder for the current file path. |
 | `timeout`     | The maximum time a request to the language server may take, in seconds. Defaults to `20` |
 | `language-id` | The language name to pass to the language server. Some language servers support multiple languages and use this field to determine which one is being served in a buffer |
 | `environment` | Any environment variables that will be used when starting the language server `{ "KEY1" = "Value1", "KEY2" = "Value2" }` |

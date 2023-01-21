@@ -286,21 +286,23 @@ fn write_impl(
 ) -> anyhow::Result<()> {
     let editor_auto_fmt = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
+    let redraw_handle = cx.editor.redraw_handle.clone();
     let (view, doc) = current!(cx.editor);
     let path = path.map(AsRef::as_ref);
 
     let fmt = if editor_auto_fmt {
-        doc.auto_format().map(|fmt| {
-            let callback = make_format_callback(
-                doc.id(),
-                doc.version(),
-                view.id,
-                fmt,
-                Some((path.map(Into::into), force)),
-            );
+        doc.auto_format(view, &cx.editor.diff_providers, redraw_handle)
+            .map(|fmt| {
+                let callback = make_format_callback(
+                    doc.id(),
+                    doc.version(),
+                    view.id,
+                    fmt,
+                    Some((path.map(Into::into), force)),
+                );
 
-            jobs.add(Job::with_callback(callback).wait_before_exiting());
-        })
+                jobs.add(Job::with_callback(callback).wait_before_exiting());
+            })
     } else {
         None
     };
@@ -361,7 +363,9 @@ fn format(
     }
 
     let (view, doc) = current!(cx.editor);
-    if let Some(format) = doc.format() {
+    let redraw_handle = cx.editor.redraw_handle.clone();
+    if let Some(format) = doc.format(view, &cx.editor.diff_providers, redraw_handle) {
+        let view = view!(cx.editor);
         let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
         cx.jobs.callback(callback);
     }
@@ -584,7 +588,7 @@ pub fn write_all_impl(
     let mut errors: Vec<&'static str> = Vec::new();
     let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
-    let current_view = view!(cx.editor);
+    let current_view = view_mut!(cx.editor);
 
     // save all documents
     let saves: Vec<_> = cx
@@ -618,7 +622,12 @@ pub fn write_all_impl(
             };
 
             let fmt = if auto_format {
-                doc.auto_format().map(|fmt| {
+                doc.auto_format(
+                    current_view,
+                    &cx.editor.diff_providers,
+                    cx.editor.redraw_handle.clone(),
+                )
+                .map(|fmt| {
                     let callback = make_format_callback(
                         doc.id(),
                         doc.version(),
